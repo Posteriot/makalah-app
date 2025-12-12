@@ -1,7 +1,7 @@
 "use server"
 
 import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { createOpenAI } from "@ai-sdk/openai"
 
 const aiGatewayUrl = process.env.AI_GATEWAY_URL
 const aiGatewayApiKey =
@@ -9,32 +9,39 @@ const aiGatewayApiKey =
 
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 
+const gatewayOpenAI =
+  aiGatewayUrl && aiGatewayApiKey
+    ? createOpenAI({
+        apiKey: aiGatewayApiKey,
+        baseURL: aiGatewayUrl,
+      })
+    : null
+
+const openRouterOpenAI = openRouterApiKey
+  ? createOpenAI({
+      apiKey: openRouterApiKey,
+      baseURL: "https://openrouter.ai/api/v1",
+      headers: {
+        "HTTP-Referer": process.env.APP_URL ?? "http://localhost:3000",
+        "X-Title": "Makalah App",
+      },
+    })
+  : null
+
 function getGatewayModel() {
-  if (!aiGatewayUrl || !aiGatewayApiKey) {
+  if (!gatewayOpenAI) {
     throw new Error("AI Gateway is not configured (URL or API key missing)")
   }
 
-  return openai("gpt-4o-mini", {
-    baseURL: aiGatewayUrl,
-    apiKey: aiGatewayApiKey,
-  })
+  return gatewayOpenAI("gpt-4o-mini")
 }
 
 function getOpenRouterModel() {
-  if (!openRouterApiKey) {
+  if (!openRouterOpenAI) {
     throw new Error("OpenRouter API key is not configured")
   }
 
-  const referer = process.env.APP_URL ?? "http://localhost:3000"
-
-  return openai("gpt-4o-mini", {
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: openRouterApiKey,
-    headers: {
-      "HTTP-Referer": referer,
-      "X-Title": "Makalah App",
-    },
-  })
+  return openRouterOpenAI("gpt-4o-mini")
 }
 
 /**
@@ -64,4 +71,3 @@ export async function basicGenerateText(prompt: string): Promise<string> {
     throw error
   }
 }
-
