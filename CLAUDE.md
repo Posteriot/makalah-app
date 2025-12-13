@@ -90,14 +90,32 @@ npx convex -h
   - `(marketing)`: Public pages (home, pricing, about)
   - `(auth)`: Clerk sign-in/sign-up pages
   - `(dashboard)`: Protected dashboard area
-  - `chat`: AI chat interface
-  - `api/ai`: AI-related API routes
-- **`src/components`**: Reusable UI components (Radix UI-based)
-- **`src/lib`**: Shared utilities, AI client, email helpers
-- **`convex`**: Backend schema and functions (queries, mutations)
-  - `schema.ts`: Database schema (users, papers tables)
-  - `users.ts`: User CRUD operations
-  - `papers.ts`: Paper metadata operations
+    - `/admin`: Admin panel for user management (superadmin/admin only)
+    - `/settings`: User profile settings
+    - `/dashboard`: Redirects to settings
+  - `chat`: AI chat interface with conversation history
+  - `api/chat`: Chat API endpoint with streaming support
+  - `api/webhooks/clerk`: Clerk webhook handler for user events
+- **`src/components`**: Reusable UI components
+  - `admin/`: Admin panel components (UserList, AdminNavLink, RoleBadge)
+  - `settings/`: Settings page components (ProfileForm, EmailVerificationBanner)
+  - `chat/`: Chat interface components (ChatWindow, ChatSidebar, MessageBubble)
+  - `ui/`: shadcn/ui components (Table, Tabs, AlertDialog, etc.)
+- **`src/lib`**: Shared utilities
+  - `ai/`: AI client, streaming, title generation
+  - `hooks/`: Custom React hooks (useCurrentUser, usePermissions, useMessages, useConversations)
+- **`convex`**: Backend schema and functions
+  - `schema.ts`: Database schema (users, conversations, messages, files, papers)
+  - `users.ts`: User CRUD & role management
+  - `permissions.ts`: Role hierarchy & permission helpers
+  - `adminUserManagement.ts`: Promote/demote mutations
+  - `adminManualUserCreation.ts`: Manual admin creation
+  - `conversations.ts`: Chat conversation management
+  - `messages.ts`: Chat message CRUD & retrieval
+  - `files.ts`: File attachment handling
+  - `chatHelpers.ts`: Chat utility functions
+  - `migrations/`: Database migration scripts
+  - `auth.config.ts`: Clerk authentication config
   - `_generated/`: Auto-generated Convex client code
 
 ### Data Flow Patterns
@@ -127,20 +145,61 @@ await fetchMutation(api.module.mutationFunction, { args })
 - The `basicGenerateText()` function in `src/lib/ai/client.ts` handles automatic failover
 
 ### Authentication Flow
-1. Clerk handles auth UI and session management
-2. Dashboard layout (`src/app/(dashboard)/layout.tsx`) calls `ensureConvexUser()` on every protected page load
-3. This syncs the Clerk user to Convex `users` table using `fetchMutation(api.users.createUser, ...)`
-4. Convex user records include `clerkUserId`, `email`, `subscriptionStatus`
+1. **Clerk** handles auth UI and session management
+2. **JWT Configuration**: Clerk JWT template configured with audience "convex" (see `convex/auth.config.ts`)
+3. **Middleware Protection**: `src/proxy.ts` protects all routes except public routes (/, /sign-in, /sign-up, /api)
+4. **User Sync**: Dashboard layout (`src/app/(dashboard)/layout.tsx`) calls `ensureConvexUser()` on every protected page load
+5. **User Creation**: Syncs Clerk user to Convex via `fetchMutation(api.users.createUser, ...)` with:
+   - Auto-superadmin promotion for `erik.supit@gmail.com`
+   - Pending admin detection and upgrade
+   - firstName, lastName, emailVerified sync from Clerk
+6. **Client-Side Auth**:
+   - `ConvexProviderWithClerk` in `src/app/providers.tsx` integrates Clerk + Convex
+   - `useCurrentUser()` hook provides current Convex user
+   - `usePermissions()` hook provides permission checking (isAdmin, isSuperAdmin, hasRole)
 
 ### Database Schema
-**users table**
-- `clerkUserId`: string (indexed)
-- `email`: string
+
+**users table** (User Management & RBAC)
+- `clerkUserId`: string (indexed by `by_clerkUserId`)
+- `email`: string (indexed by `by_email`)
+- `role`: "superadmin" | "admin" | "user" (indexed by `by_role`)
+- `firstName`: string (optional)
+- `lastName`: string (optional)
+- `emailVerified`: boolean
 - `subscriptionStatus`: "free" | "pro" | "canceled"
 - `createdAt`: number
+- `lastLoginAt`: number (optional)
+- `updatedAt`: number (optional)
 
-**papers table**
-- `userId`: Id<"users"> (indexed with createdAt)
+**Role Hierarchy:**
+- `superadmin` (level 3): Full access, can promote/demote
+- `admin` (level 2): Read-only access to admin panel
+- `user` (level 1): Regular user access
+
+**conversations table** (Chat)
+- `userId`: Id<"users"> (indexed by `by_user`)
+- `title`: string
+- `createdAt`: number
+- `updatedAt`: number
+
+**messages table** (Chat)
+- `conversationId`: Id<"conversations"> (indexed by `by_conversation_createdAt`)
+- `role`: "user" | "assistant" | "system"
+- `content`: string
+- `fileIds`: Id<"files">[] (optional, references attached files)
+- `createdAt`: number
+
+**files table** (File Attachments)
+- `conversationId`: Id<"conversations"> (indexed by `by_conversation`)
+- `storageId`: string (Convex file storage ID)
+- `name`: string
+- `type`: string (MIME type)
+- `size`: number (bytes)
+- `uploadedAt`: number
+
+**papers table** (Future: Academic Papers)
+- `userId`: Id<"users"> (indexed by `by_user_createdAt`)
 - `title`: string
 - `abstract`: string
 - `createdAt`: number

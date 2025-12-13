@@ -1,8 +1,8 @@
 "use client"
 
 import { useChat } from "@ai-sdk/react"
-import { UIMessage } from "ai"
-import { useEffect, useState, useRef } from "react"
+import { UIMessage, DefaultChatTransport } from "ai"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
@@ -14,19 +14,6 @@ import { Button } from "@/components/ui/button"
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
-
-interface UseChatResult {
-  messages: UIMessage[]
-  append: (
-    message: UIMessage | string,
-    options?: { body?: Record<string, unknown> }
-  ) => Promise<unknown>
-  status: string
-  stop: () => void
-  setMessages: (messages: UIMessage[]) => void
-  reload: () => Promise<string | null | undefined>
-  error?: Error
-}
 
 interface ChatWindowProps {
   conversationId: string | null
@@ -44,16 +31,27 @@ export function ChatWindow({ conversationId, onMobileMenuClick }: ChatWindowProp
   // 1. Fetch history from Convex
   const { messages: historyMessages, isLoading: isHistoryLoading } = useMessages(conversationId)
 
-  // 2. Initialize useChat
+  // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
-  const { messages, append, status, stop, setMessages, reload, error } = useChat({
+
+  // Create transport with custom body for conversationId
+  const transport = useMemo(() => new DefaultChatTransport({
+    api: '/api/chat',
+    body: {
+      conversationId: conversationId,
+      fileIds: uploadedFileIds,
+    },
+  }), [conversationId, uploadedFileIds])
+
+  const { messages, sendMessage, status, stop, setMessages, regenerate, error } = useChat({
+    transport,
     onFinish: () => {
       // Optional: Add sound or other feedback
     },
     onError: (err) => {
       toast.error("Terjadi kesalahan: " + (err.message || "Gagal memproses pesan"))
     }
-  }) as unknown as UseChatResult
+  })
 
   // 3. Sync history messages to useChat state - only when conversation changes or history first loads
   useEffect(() => {
@@ -85,7 +83,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick }: ChatWindowProp
     }
   }, [conversationId, historyMessages, isHistoryLoading, setMessages])
 
-  const isLoading = status === 'submitted' || status === 'streaming'
+  const isLoading = status !== 'ready' && status !== 'error'
 
   // Ref handle for Virtuoso is sufficient for auto-scroll via followOutput prop
 
@@ -123,7 +121,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick }: ChatWindowProp
 
         // 3. Trigger Regenerate
         setTimeout(() => {
-          reload()
+          regenerate()
         }, 0)
       }
 
@@ -137,21 +135,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick }: ChatWindowProp
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
-    const userMessage: UIMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      parts: [{ type: 'text', text: input }],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      annotations: uploadedFileIds.length > 0 ? [{ type: 'file_ids', fileIds: uploadedFileIds }] : undefined
-    } as unknown as UIMessage
-
-    // append sends the message to the API
-    await append(userMessage, {
-      body: {
-        conversationId: conversationId as string,
-        fileIds: uploadedFileIds
-      }
-    })
+    // AI SDK v5/v6: Use sendMessage with text
+    sendMessage({ text: input })
     setInput("")
     setUploadedFileIds([])
   }
@@ -233,7 +218,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick }: ChatWindowProp
               <AlertCircleIcon className="h-4 w-4" />
               <span>Gagal mengirim pesan.</span>
             </div>
-            <Button variant="outline" size="sm" onClick={() => reload()} className="bg-background hover:bg-accent h-7 text-xs border-destructive/20 hover:border-destructive/40">
+            <Button variant="outline" size="sm" onClick={() => regenerate()} className="bg-background hover:bg-accent h-7 text-xs border-destructive/20 hover:border-destructive/40">
               <RotateCcwIcon className="h-3 w-3 mr-1" />
               Coba Lagi
             </Button>

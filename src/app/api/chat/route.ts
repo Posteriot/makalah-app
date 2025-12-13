@@ -1,4 +1,5 @@
 import { generateTitle } from "@/lib/ai/title-generator"
+import { convertToModelMessages } from "ai"
 
 import { auth } from "@clerk/nextjs/server"
 import { getSystemPrompt } from "@/lib/ai/chat-config"
@@ -14,8 +15,9 @@ export async function POST(req: Request) {
             return new Response("Unauthorized", { status: 401 })
         }
 
-        // 2. Parse request
-        const { messages, conversationId, fileIds } = await req.json()
+        // 2. Parse request (AI SDK v5/v6 format)
+        const body = await req.json()
+        const { messages, conversationId, fileIds } = body
 
         // 3. Get Convex User ID
         const userId = await fetchQuery(api.chatHelpers.getUserId, { clerkUserId })
@@ -26,7 +28,11 @@ export async function POST(req: Request) {
         // 4. Handle Conversation ID (or Create New)
         let currentConversationId = conversationId
         let isNewConversation = false
-        const firstUserContent = messages.find((m: { role: string; content: string }) => m.role === "user")?.content || ""
+        // Extract first user message content (handle AI SDK v5/v6 UIMessage format)
+        const firstUserMsg = messages.find((m: { role: string }) => m.role === "user")
+        const firstUserContent = firstUserMsg?.content ||
+            firstUserMsg?.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text ||
+            ""
 
         if (!currentConversationId) {
             isNewConversation = true
@@ -52,27 +58,33 @@ export async function POST(req: Request) {
                 .catch(err => console.error("Background title generation error:", err))
         }
 
-        // 5. Save USER message ...
-
         // 5. Save USER message to Convex
-        // The last message in the array is the new user message
+        // Extract content from last message (AI SDK v5/v6 UIMessage format)
         const lastMessage = messages[messages.length - 1]
-        if (lastMessage.role === "user") {
-            await fetchMutation(api.messages.createMessage, {
-                conversationId: currentConversationId as Id<"conversations">,
-                role: "user",
-                content: lastMessage.content,
-                fileIds: fileIds ? (fileIds as Id<"files">[]) : undefined,
-            })
+        if (lastMessage && lastMessage.role === "user") {
+            // AI SDK v5/v6: content is in parts array or direct content field
+            const userContent = lastMessage.content ||
+                lastMessage.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text ||
+                ""
+
+            if (userContent) {
+                await fetchMutation(api.messages.createMessage, {
+                    conversationId: currentConversationId as Id<"conversations">,
+                    role: "user",
+                    content: userContent,
+                    fileIds: fileIds ? (fileIds as Id<"files">[]) : undefined,
+                })
+            }
         }
 
         // 6. Prepare System Prompt & Context
         const systemPrompt = getSystemPrompt()
-        // You might append file context here if needed in the future
 
+        // Convert UIMessages to model messages format
+        const modelMessages = convertToModelMessages(messages)
         const fullMessages = [
-            { role: "system", content: systemPrompt },
-            ...messages,
+            { role: "system" as const, content: systemPrompt },
+            ...modelMessages,
         ]
 
         // 7. Stream AI Response and Save Assistant Message on Finish
@@ -128,7 +140,7 @@ export async function POST(req: Request) {
 
         try {
             const model = getGatewayModel()
-            const result = await streamText({
+            const result = streamText({
                 model,
                 messages: fullMessages,
                 temperature: 0.7,
@@ -136,12 +148,12 @@ export async function POST(req: Request) {
                     await saveAssistantMessage(text)
                 },
             })
-            return result.toTextStreamResponse()
+            return result.toUIMessageStreamResponse()
         } catch (error) {
             console.error("Gateway stream failed, trying fallback...", error)
-            // Fallback
+            // Fallback: OpenRouter
             const fallbackModel = getOpenRouterModel()
-            const result = await streamText({
+            const result = streamText({
                 model: fallbackModel,
                 messages: fullMessages,
                 temperature: 0.7,
@@ -149,7 +161,7 @@ export async function POST(req: Request) {
                     await saveAssistantMessage(text)
                 },
             })
-            return result.toTextStreamResponse()
+            return result.toUIMessageStreamResponse()
         }
 
     } catch (error) {

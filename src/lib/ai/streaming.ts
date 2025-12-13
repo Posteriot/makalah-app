@@ -1,26 +1,18 @@
 import { streamText, type CoreMessage } from "ai"
 import { createOpenAI } from "@ai-sdk/openai"
 
-const aiGatewayUrl = process.env.AI_GATEWAY_URL
-const aiGatewayApiKey = process.env.AI_GATEWAY_API_KEY ?? process.env.VERCEL_AI_GATEWAY_TOKEN
+// AI Provider configuration
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 
+// Primary: Vercel AI Gateway - model ID sebagai string, AI SDK otomatis routing
 export function getGatewayModel() {
-    if (!aiGatewayUrl || !aiGatewayApiKey) {
-        throw new Error("AI Gateway is not configured")
-    }
-
-    const gatewayOpenAI = createOpenAI({
-        apiKey: aiGatewayApiKey,
-        baseURL: aiGatewayUrl,
-    })
-
-    return gatewayOpenAI(process.env.MODEL ?? "google/gemini-2.5-flash-lite")
+    return "google/gemini-2.5-flash-lite" as const
 }
 
+// Fallback: OpenRouter
 export function getOpenRouterModel() {
     if (!openRouterApiKey) {
-        throw new Error("OpenRouter API key is not configured")
+        throw new Error("OpenRouter API key is not configured. Set OPENROUTER_API_KEY in .env.local")
     }
 
     const openRouterOpenAI = createOpenAI({
@@ -32,8 +24,7 @@ export function getOpenRouterModel() {
         },
     })
 
-    // OpenRouter specific model string if different, or reuse the same model env
-    return openRouterOpenAI(process.env.MODEL ?? "google/gemini-2.5-flash-lite")
+    return openRouterOpenAI("google/gemini-2.5-flash-lite")
 }
 
 export async function streamChatResponse(
