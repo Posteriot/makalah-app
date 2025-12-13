@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 import "./globals.css"
 import { AppProviders } from "./providers"
+import { Toaster } from "@/components/ui/sonner"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,18 +35,18 @@ export default function RootLayout({
         <AppProviders>
           <div className="min-h-screen bg-background text-foreground">
             <header className="border-b bg-card/40">
-        {process.env.NODE_ENV === "development" && (
-          <>
-            <Script
-              src="//unpkg.com/react-grab/dist/index.global.js"
-              strategy="beforeInteractive"
-            />
-            <Script
-              src="//unpkg.com/@react-grab/claude-code/dist/client.global.js"
-              strategy="lazyOnload"
-            />
-          </>
-        )}
+              {process.env.NODE_ENV === "development" && (
+                <>
+                  <Script
+                    src="//unpkg.com/react-grab/dist/index.global.js"
+                    strategy="beforeInteractive"
+                  />
+                  <Script
+                    src="//unpkg.com/@react-grab/claude-code/dist/client.global.js"
+                    strategy="lazyOnload"
+                  />
+                </>
+              )}
               <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 sm:px-8">
                 <div className="flex items-baseline gap-2">
                   <Link
@@ -110,6 +111,7 @@ export default function RootLayout({
               </div>
             </header>
             <main>{children}</main>
+            <Toaster />
           </div>
         </AppProviders>
       </body>

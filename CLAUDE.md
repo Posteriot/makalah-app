@@ -210,6 +210,16 @@ After modifying `convex/schema.ts`:
 
 ## Common Issues
 
+### User Management (Clerk)
+Auth pakai Clerk; tidak perlu registrasi manual via script.
+
+## Catatan Next.js 16: proxy.ts
+- Di Next.js 16, `middleware.ts` diganti menjadi `proxy.ts` untuk proteksi rute global.
+- Implementasi ada di `src/proxy.ts` dan memakai `clerkMiddleware`.
+- `config.matcher` dipakai untuk menentukan rute publik vs terproteksi.
+- Simpan logika ringan di `proxy.ts` (auth/redirect); pindahkan proses berat ke server actions/API.
+- Referensi: https://nextjs.org/docs/messages/middleware-to-proxy
+
 ### Convex Not Syncing
 - Ensure `npx convex dev` is running in a separate terminal
 - Check `NEXT_PUBLIC_CONVEX_URL` matches your Convex dashboard

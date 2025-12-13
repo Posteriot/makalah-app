@@ -4,6 +4,15 @@
       "command": "npx",
       "args": ["shadcn@latest", "mcp"]
     },
+    "convex": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "convex@latest",
+        "mcp",
+        "start"
+      ]
+    },
     "chrome-devtools": {
       "command": "npx",
       "args": ["chrome-devtools-mcp@latest"]

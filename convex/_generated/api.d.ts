@@ -8,7 +8,15 @@
  * @module
  */
 
+import type * as adminManualUserCreation from "../adminManualUserCreation.js";
+import type * as adminUserManagement from "../adminUserManagement.js";
+import type * as chatHelpers from "../chatHelpers.js";
+import type * as conversations from "../conversations.js";
+import type * as files from "../files.js";
+import type * as messages from "../messages.js";
+import type * as migrations_addRoleToExistingUsers from "../migrations/addRoleToExistingUsers.js";
 import type * as papers from "../papers.js";
+import type * as permissions from "../permissions.js";
 import type * as users from "../users.js";
 
 import type {
@@ -18,7 +26,15 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  adminManualUserCreation: typeof adminManualUserCreation;
+  adminUserManagement: typeof adminUserManagement;
+  chatHelpers: typeof chatHelpers;
+  conversations: typeof conversations;
+  files: typeof files;
+  messages: typeof messages;
+  "migrations/addRoleToExistingUsers": typeof migrations_addRoleToExistingUsers;
   papers: typeof papers;
+  permissions: typeof permissions;
   users: typeof users;
 }>;
 

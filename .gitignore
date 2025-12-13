@@ -44,3 +44,8 @@ next-env.d.ts
 # Docs
 installation-plan.txt
 stack-requirements.txt
+
+# Screenshots (testing artifacts)
+screenshots/*.png
+screenshots/*.jpg
+screenshots/*.jpeg

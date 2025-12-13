@@ -1496,18 +1496,15 @@ SAVE:
 # Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_***
 CLERK_SECRET_KEY=sk_***
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 
 # Convex
 CONVEX_DEPLOYMENT=***
 NEXT_PUBLIC_CONVEX_URL=https://***
 
 # AI Providers
-AI_GATEWAY_URL=https://gateway.ai.cloudflare.com/v1/***
 AI_GATEWAY_API_KEY=*** (or VERCEL_AI_GATEWAY_TOKEN)
 OPENROUTER_API_KEY=***
-APP_URL=https://makalah-app.vercel.app
+MODEL='google/gemini-2.5-flash-lite'
 ```
 
 ### 12.2 NPM Packages (Already Installed)
