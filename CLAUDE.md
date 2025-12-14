@@ -540,3 +540,127 @@ const content = message.content ||
   message.parts?.find(p => p.type === 'text')?.text ||
   ""
 ```
+
+## Pending Testing
+
+### File Text Extraction Feature (Task Group 7)
+
+**Status**: Implementation complete, manual testing PENDING
+**Reason**: OpenAI API token budget depleted (untuk Image OCR testing)
+**Date**: 2025-12-15
+
+**When testing resumes**, complete these verification tasks:
+
+#### File Upload & Extraction Testing (7.1-7.5)
+- [ ] 7.1 Test TXT file upload → Verify extraction di database
+  - Upload sample .txt file
+  - Check console log: "File extraction started for: ..."
+  - Wait 5-10 seconds
+  - Query database: verify `extractedText` populated, `extractionStatus: "success"`
+
+- [ ] 7.2 Test PDF file upload → Verify extraction di database
+  - Upload sample PDF (dengan embedded text, bukan scanned)
+  - Check console log untuk extraction trigger
+  - Verify `extractedText` contains PDF content
+  - Verify paragraph structure preserved
+
+- [ ] 7.3 Test DOCX file upload → Verify extraction di database
+  - Upload sample Word document
+  - Verify `extractedText` contains document content
+  - Check paragraph breaks maintained
+
+- [ ] 7.4 Test XLSX file upload → Verify extraction & formatting di database
+  - Upload sample Excel spreadsheet
+  - Verify `extractedText` contains markdown table format
+  - Check column headers and data rows formatted correctly
+  - Example format: `| Column1 | Column2 |\n| --- | --- |\n| Data1 | Data2 |`
+
+- [ ] 7.5 Test Image upload → Verify OCR extraction di database
+  - **Requires**: OpenAI API key dengan sufficient credits
+  - Upload image dengan text (screenshot, document photo)
+  - Verify OCR extraction via GPT-4o Vision
+  - Check `extractedText` contains recognized text
+  - Test .png, .jpg, .webp formats
+
+#### Chat Integration Testing (7.6)
+- [ ] 7.6 Test chat dengan file context → Verify AI bisa baca file
+  - Upload file (any type from 7.1-7.5)
+  - Wait for extraction complete (`extractionStatus: "success"`)
+  - Send chat message: "Apa isi file yang saya upload?"
+  - Verify AI response references file content
+  - Check AI uses format: "Berdasarkan file yang Anda upload [filename], ..."
+
+#### Error Case Testing (7.7-7.8)
+- [ ] 7.7 Test error case: Upload corrupt file → Verify graceful degradation
+  - Create corrupt PDF (truncate valid PDF file)
+  - Upload corrupt file
+  - Verify upload succeeds (file saved to storage)
+  - Verify `extractionStatus: "failed"` in database
+  - Verify `extractionError` contains descriptive message
+  - Chat with file → AI should show: "❌ File gagal diproses: ..."
+
+- [ ] 7.8 Test error case: Upload unsupported file type → Verify fallback behavior
+  - Try upload .zip or .rar file
+  - Verify client-side validation blocks upload
+  - Check alert message: "Invalid file type. Please upload PDF, DOC, DOCX, XLSX, TXT, or Image."
+
+#### Screenshot Verification (7.9-7.11)
+- [ ] 7.9 Screenshot verification: Chat dengan PDF attachment
+  - Upload PDF → Wait for extraction
+  - Chat with AI about PDF content
+  - Screenshot: Chat interface showing AI reading PDF
+  - Save to: `.development/specs/file-text-extraction/implementation/verification/`
+
+- [ ] 7.10 Screenshot verification: Chat dengan XLSX attachment
+  - Upload Excel file → Wait for extraction
+  - Chat: "Rangkum data di spreadsheet ini"
+  - Screenshot: AI analyzing tabular data
+  - Save screenshot with filename indicating test case
+
+- [ ] 7.11 Screenshot verification: Chat dengan image OCR
+  - Upload image dengan text (e.g., screenshot dari dokumen)
+  - Chat: "Apa yang tertulis di gambar ini?"
+  - Screenshot: AI reading text from image via OCR
+  - Save to verification folder
+
+#### Build & Code Quality (7.12-7.13)
+- [ ] 7.12 Run `npm run build` - Verify no errors
+  - Already verified ✅ (passed during implementation)
+  - Re-run before deployment
+
+- [ ] 7.13 Run `npm run lint` - Fix any issues
+  - Already verified ✅ (0 errors, 6 warnings from existing code)
+  - Re-run before deployment
+
+#### Documentation (7.14)
+- [ ] 7.14 Update verification folder dengan screenshots
+  - Create `.development/specs/file-text-extraction/implementation/verification/` directory
+  - Save all screenshots from 7.9-7.11
+  - Create `TESTING-RESULTS.md` dengan summary:
+    - Test execution date
+    - Pass/fail status untuk each test case
+    - Screenshot references
+    - Issues found (if any)
+    - Performance metrics (extraction time per file type)
+
+### Testing Environment Setup
+
+**Prerequisites**:
+1. OpenAI API key dengan credits (untuk Image OCR testing - 7.5, 7.11)
+2. Dev server running: `npm run dev`
+3. Convex backend running: `npx convex dev`
+4. Sample test files prepared:
+   - sample.txt (plain text)
+   - sample.pdf (embedded text PDF)
+   - sample.docx (Word document)
+   - sample.xlsx (Excel spreadsheet)
+   - sample.png/jpg (image dengan text)
+   - corrupt.pdf (untuk error testing)
+
+**Estimated Time**: 1.5-2 hours (termasuk screenshot documentation)
+
+**Priority**: Medium-High (feature complete tapi belum verified end-to-end)
+
+---
+
+**Note**: Commit hash untuk implementation yang perlu di-test: `ff70fe1`
