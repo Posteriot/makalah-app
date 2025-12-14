@@ -42,7 +42,20 @@ npm run dev
 
 # In a separate terminal: Start Convex backend dev mode (syncs schema and functions)
 npx convex dev
+
+# In a separate terminal: Start ngrok for Clerk webhooks (development only)
+ngrok http 3000
 ```
+
+**Development Setup Notes:**
+- **ngrok Required**: Development masih menggunakan ngrok untuk expose localhost ke public URL
+- **Purpose**: Diperlukan untuk Clerk webhook endpoint (`/api/webhooks/clerk`)
+- **Production**: Belum menggunakan production URL, masih full local development dengan ngrok
+- **Setup**:
+  1. Install ngrok: `brew install ngrok` (macOS) atau download dari https://ngrok.com
+  2. Start ngrok: `ngrok http 3000`
+  3. Copy ngrok URL (e.g., `https://abc123.ngrok.io`)
+  4. Update Clerk webhook endpoint di dashboard dengan ngrok URL + `/api/webhooks/clerk`
 
 ### Build and Lint
 ```bash
@@ -80,7 +93,10 @@ npx convex -h
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4
 - **Backend**: Convex (real-time database and serverless functions)
 - **Authentication**: Clerk
-- **AI/LLM**: Vercel AI SDK with dual provider setup (AI Gateway primary, OpenRouter fallback)
+- **AI/LLM**: Vercel AI SDK v5 with dual provider setup:
+  - Primary: Vercel AI Gateway (automatic routing with model ID string)
+  - Fallback: OpenRouter (via `@ai-sdk/openai`)
+  - Model: `google/gemini-2.5-flash-lite`
 - **Email**: Resend
 - **Payments**: Xendit (configured but not yet implemented)
 - **UI Components**: Radix UI primitives with custom styling
@@ -139,10 +155,37 @@ const data = await fetchQuery(api.module.queryFunction, { args })
 await fetchMutation(api.module.mutationFunction, { args })
 ```
 
-**AI Provider Setup**
-- Primary: Vercel AI Gateway (requires `AI_GATEWAY_URL` + `AI_GATEWAY_API_KEY`)
-- Fallback: OpenRouter (requires `OPENROUTER_API_KEY`)
-- The `basicGenerateText()` function in `src/lib/ai/client.ts` handles automatic failover
+**AI Provider Setup (AI SDK v5)**
+```typescript
+import { streamText } from "ai"
+
+// Primary: Vercel AI Gateway (automatic routing)
+const model = "google/gemini-2.5-flash-lite" // Model ID as string
+const result = streamText({
+  model,
+  messages: [...],
+  temperature: 0.7,
+})
+
+// Fallback: OpenRouter (manual provider)
+import { createOpenAI } from "@ai-sdk/openai"
+const openRouterModel = createOpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+  headers: {
+    "HTTP-Referer": process.env.APP_URL,
+    "X-Title": "Makalah App",
+  },
+})("google/gemini-2.5-flash-lite")
+```
+
+**Environment Variables:**
+- `VERCEL_AI_GATEWAY_API_KEY`: Required for Vercel AI Gateway
+- `OPENROUTER_API_KEY`: Required for OpenRouter fallback
+
+**Automatic Failover:**
+- `src/app/api/chat/route.ts` implements try-catch for automatic provider switching
+- On AI Gateway error, automatically falls back to OpenRouter
 
 ### Authentication Flow
 1. **Clerk** handles auth UI and session management
@@ -206,12 +249,26 @@ await fetchMutation(api.module.mutationFunction, { args })
 - `updatedAt`: number
 
 ### Environment Variables
-Required variables (see `.env.example`):
+Required variables (see `.env.local`):
 - **Convex**: `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_DEPLOYMENT`
-- **Clerk**: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
-- **AI**: `AI_GATEWAY_URL`, `AI_GATEWAY_API_KEY` (or `VERCEL_AI_GATEWAY_TOKEN`), `OPENROUTER_API_KEY` (fallback)
+- **Clerk**: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`
+- **AI/LLM**:
+  - `VERCEL_AI_GATEWAY_API_KEY`: Vercel AI Gateway API key (primary provider)
+  - `OPENROUTER_API_KEY`: OpenRouter API key (fallback provider)
+  - `MODEL`: Model identifier (default: `google/gemini-2.5-flash-lite`)
+  - `APP_URL`: App base URL for OpenRouter headers
 - **Resend**: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
-- **Xendit**: `XENDIT_SECRET_KEY` (payments, not yet implemented)
+- **Xendit**: `XENDIT_SECRET_KEY`, `XENDIT_WEBHOOK_SECRET` (payments, not yet implemented)
+
+**How to get API keys:**
+- **Vercel AI Gateway**: https://vercel.com/dashboard → AI Gateway → API keys
+- **OpenRouter**: https://openrouter.ai/keys
+- **Clerk**: https://dashboard.clerk.com → API Keys
+
+**Development Environment:**
+- **Current Setup**: Local development dengan ngrok untuk Clerk webhooks
+- **APP_URL**: Set ke ngrok URL saat development (e.g., `https://abc123-xyz.ngrok.io`)
+- **Production**: Belum deployed, masih full local development
 
 ## Coding Standards
 
@@ -252,8 +309,62 @@ export const myFunction = query({
 })
 ```
 
-### Error Handling in AI Routes
-The AI client (`src/lib/ai/client.ts`) implements automatic failover. When creating new AI routes, use `basicGenerateText()` which tries AI Gateway first, then falls back to OpenRouter.
+### AI SDK v5 Usage Pattern (Chat Interface)
+
+**Client-Side: useChat Hook**
+```typescript
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport } from "ai"
+
+// Create transport with custom body
+const transport = useMemo(() => new DefaultChatTransport({
+  api: '/api/chat',
+  body: {
+    conversationId: conversationId,
+    fileIds: uploadedFileIds,
+  },
+}), [conversationId, uploadedFileIds])
+
+// Initialize useChat with AI SDK v5 API
+const { messages, sendMessage, status, stop, setMessages, regenerate, error } = useChat({
+  transport,
+  onFinish: () => {},
+  onError: (err) => toast.error(err.message)
+})
+
+// Send message
+sendMessage({ text: input })
+
+// Regenerate last response
+regenerate()
+```
+
+**Server-Side: API Route**
+```typescript
+import { streamText, convertToModelMessages } from "ai"
+
+// Convert UIMessages to model messages
+const modelMessages = convertToModelMessages(messages)
+
+// Stream with model ID string (AI Gateway automatic routing)
+const result = streamText({
+  model: "google/gemini-2.5-flash-lite",
+  messages: fullMessages,
+  temperature: 0.7,
+  onFinish: async ({ text }) => {
+    await saveToDatabase(text)
+  },
+})
+
+// Return UIMessage stream response
+return result.toUIMessageStreamResponse()
+```
+
+**Error Handling in AI Routes:**
+- `src/app/api/chat/route.ts` implements try-catch for automatic failover
+- Primary: Vercel AI Gateway (model ID as string)
+- Fallback: OpenRouter (via `createOpenAI`)
+- See "AI Provider Setup" section for implementation details
 
 ### Convex Schema Changes
 After modifying `convex/schema.ts`:
@@ -290,14 +401,36 @@ Auth pakai Clerk; tidak perlu registrasi manual via script.
 - Never edit files in `convex/_generated/` manually
 
 ### AI Provider Failures
-- Check both `AI_GATEWAY_URL` + `AI_GATEWAY_API_KEY` are set
-- Verify OpenRouter key is valid for fallback
-- Review error logs for specific provider issues
+- **Vercel AI Gateway Issues:**
+  - Verify `VERCEL_AI_GATEWAY_API_KEY` is set correctly
+  - Check API key is active at https://vercel.com/dashboard → AI Gateway → API keys
+  - Review console for `AI_LoadAPIKeyError` or `DEPLOYMENT_NOT_FOUND` errors
+- **OpenRouter Fallback:**
+  - Ensure `OPENROUTER_API_KEY` is valid
+  - Verify key has credits at https://openrouter.ai/credits
+  - Check `APP_URL` is set for request headers
+- **Common Errors:**
+  - `AI_LoadAPIKeyError`: API key missing or incorrect environment variable name
+  - `DEPLOYMENT_NOT_FOUND`: AI Gateway deployment issue (falls back to OpenRouter)
+  - `append is not a function`: Using AI SDK v4 API instead of v5 (use `sendMessage`)
+- Review error logs in `src/app/api/chat/route.ts` for specific provider issues
 
 ### Clerk Auth Not Working
 - Verify both public and secret keys are set
 - Check middleware config if adding new protected routes
 - Ensure `ClerkProvider` wraps app in `src/app/providers.tsx`
+
+### Clerk Webhook (Development)
+- **ngrok Required**: Clerk webhooks butuh public URL, tidak bisa hit localhost directly
+- **Setup**:
+  1. Start ngrok: `ngrok http 3000`
+  2. Copy ngrok URL (e.g., `https://abc123-xyz.ngrok.io`)
+  3. Go to Clerk Dashboard → Webhooks → Create endpoint
+  4. Endpoint URL: `https://abc123-xyz.ngrok.io/api/webhooks/clerk`
+  5. Subscribe to events: `user.created`, `user.updated`, `user.deleted`
+  6. Copy webhook signing secret → update `CLERK_WEBHOOK_SECRET` in `.env.local`
+- **Testing**: Create new user di Clerk, check logs di `src/app/api/webhooks/clerk/route.ts`
+- **Production**: Replace ngrok URL dengan production domain (e.g., `https://makalah.ai/api/webhooks/clerk`)
 
 ## Project Specifics
 
@@ -313,9 +446,97 @@ This project uses `mutationGeneric` and `queryGeneric` instead of standard `muta
 - Provides better type inference
 - Use same validator/handler pattern
 
-### Multi-provider AI Strategy
-The codebase is architected for resilience:
-1. Primary requests go through Vercel AI Gateway (cost optimization, caching)
-2. Automatic fallback to OpenRouter if Gateway fails
-3. Direct provider keys (OpenAI, Google) reserved for future use
-4. Never bypass this pattern in new AI routes without discussion
+### Multi-provider AI Strategy (AI SDK v5)
+The codebase is architected for resilience and simplicity:
+
+**Primary Provider: Vercel AI Gateway**
+- Use model ID as **plain string**: `"google/gemini-2.5-flash-lite"`
+- AI SDK automatically routes to Vercel AI Gateway
+- Benefits: Cost optimization, built-in caching, unified endpoint
+- Environment variable: `VERCEL_AI_GATEWAY_API_KEY`
+
+**Fallback Provider: OpenRouter**
+- Manually instantiated via `createOpenAI` from `@ai-sdk/openai`
+- Activated on AI Gateway failure via try-catch in API route
+- Same model: `google/gemini-2.5-flash-lite`
+- Environment variable: `OPENROUTER_API_KEY`
+
+**Implementation:**
+```typescript
+// src/lib/ai/streaming.ts
+export function getGatewayModel() {
+  return "google/gemini-2.5-flash-lite" as const  // String for AI Gateway
+}
+
+export function getOpenRouterModel() {
+  const openRouterOpenAI = createOpenAI({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: "https://openrouter.ai/api/v1",
+    headers: {
+      "HTTP-Referer": process.env.APP_URL,
+      "X-Title": "Makalah App",
+    },
+  })
+  return openRouterOpenAI("google/gemini-2.5-flash-lite")
+}
+
+// src/app/api/chat/route.ts
+try {
+  const model = getGatewayModel()
+  const result = streamText({ model, messages, temperature: 0.7 })
+  return result.toUIMessageStreamResponse()
+} catch (error) {
+  console.error("Gateway failed, falling back to OpenRouter:", error)
+  const fallbackModel = getOpenRouterModel()
+  const result = streamText({ model: fallbackModel, messages, temperature: 0.7 })
+  return result.toUIMessageStreamResponse()
+}
+```
+
+**Best Practices:**
+- Never bypass this pattern in new AI routes without discussion
+- Always implement try-catch for automatic failover
+- Log errors to help diagnose provider issues
+- Keep both providers using the same model for consistency
+
+### AI SDK v4 → v5 Migration Notes
+
+**Breaking Changes:**
+| AI SDK v4 | AI SDK v5 | Notes |
+|-----------|-----------|-------|
+| `append(message, { body })` | `sendMessage({ text })` | Body passed via `DefaultChatTransport` |
+| `reload()` | `regenerate()` | Regenerate last AI response |
+| `status === 'submitted'` | `status !== 'ready' && !== 'error'` | New status values |
+| Manual body config | `DefaultChatTransport` | Centralized request config |
+| `toTextStreamResponse()` | `toUIMessageStreamResponse()` | New response format |
+| N/A | `convertToModelMessages()` | Convert UIMessages to model format |
+
+**Migration Checklist:**
+- ✅ Install `@ai-sdk/react` for `useChat` hook
+- ✅ Replace `append` calls with `sendMessage({ text })`
+- ✅ Replace `reload` calls with `regenerate()`
+- ✅ Create `DefaultChatTransport` for custom body params
+- ✅ Update status checks to use `status !== 'ready'`
+- ✅ Use `convertToModelMessages()` in API routes
+- ✅ Replace `toTextStreamResponse()` with `toUIMessageStreamResponse()`
+- ✅ Handle UIMessage format with `parts[]` array
+
+**UIMessage Format:**
+```typescript
+// AI SDK v5 UIMessage structure
+interface UIMessage {
+  id: string
+  role: 'user' | 'assistant' | 'system' | 'data'
+  content?: string              // Direct content (optional)
+  parts?: Array<{               // Content parts (v5 format)
+    type: 'text' | 'image' | ...
+    text?: string
+  }>
+  annotations?: Array<{...}>    // Metadata (e.g., file attachments)
+}
+
+// Extracting content (handles both formats)
+const content = message.content ||
+  message.parts?.find(p => p.type === 'text')?.text ||
+  ""
+```

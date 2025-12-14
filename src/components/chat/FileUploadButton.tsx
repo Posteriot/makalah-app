@@ -27,15 +27,17 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
             "application/pdf",
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
             "text/plain",
             "image/jpeg",
             "image/png",
-            "image/gif"
+            "image/gif",
+            "image/webp"
         ]
         const maxSize = 10 * 1024 * 1024 // 10MB
 
         if (!allowedTypes.includes(file.type)) {
-            alert("Invalid file type. Please upload PDF, DOC, DOCX, TXT, or Image.") // Fallback prompt
+            alert("Invalid file type. Please upload PDF, DOC, DOCX, XLSX, TXT, or Image.") // Fallback prompt
             return
         }
 
@@ -70,6 +72,24 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
                 conversationId: conversationId as Id<"conversations"> ?? undefined,
             })
 
+            // Trigger background text extraction (fire and forget)
+            fetch('/api/extract-file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileId }),
+            })
+                .then(res => {
+                    if (!res.ok) {
+                        console.warn('File extraction trigger failed:', res.statusText)
+                    } else {
+                        console.log('File extraction started for:', file.name)
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to trigger file extraction:', err)
+                    // Tidak throw error - graceful degradation
+                })
+
             if (onFileUploaded) {
                 onFileUploaded(fileId)
             }
@@ -93,7 +113,7 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
+                accept=".pdf,.doc,.docx,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.webp"
                 onChange={handleFileSelect}
                 disabled={isUploading}
             />

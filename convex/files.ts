@@ -49,6 +49,25 @@ export const updateFileStatus = mutation({
     },
 })
 
+// Update file extraction result after background processing
+export const updateExtractionResult = mutation({
+    args: {
+        fileId: v.id("files"),
+        extractedText: v.optional(v.string()),
+        extractionStatus: v.string(), // "pending" | "success" | "failed"
+        extractionError: v.optional(v.string()),
+        processedAt: v.number(),
+    },
+    handler: async ({ db }, { fileId, extractedText, extractionStatus, extractionError, processedAt }) => {
+        await db.patch(fileId, {
+            extractedText,
+            extractionStatus,
+            extractionError,
+            processedAt,
+        })
+    },
+})
+
 // Get file by ID
 export const getFile = query({
     args: { fileId: v.id("files") },
@@ -56,6 +75,24 @@ export const getFile = query({
         return await db.get(fileId)
     },
 })
+
+// Get file storage URL untuk download/processing
+export const getFileUrl = query({
+    args: { storageId: v.string() },
+    handler: async ({ storage }, { storageId }) => {
+        return await storage.getUrl(storageId)
+    },
+})
+
+// Get multiple files by IDs (untuk chat context injection)
+export const getFilesByIds = query({
+    args: { fileIds: v.array(v.id("files")) },
+    handler: async ({ db }, { fileIds }) => {
+        const files = await Promise.all(fileIds.map((id) => db.get(id)))
+        return files.filter((file) => file !== null)
+    },
+})
+
 // Generate upload URL for client-side upload
 export const generateUploadUrl = mutation({
     args: {},

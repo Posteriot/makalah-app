@@ -60,10 +60,14 @@ export default defineSchema({
     size: v.number(),
     status: v.string(), // "uploading" | "processing" | "ready" | "error"
     extractedText: v.optional(v.string()),
+    extractionStatus: v.optional(v.string()), // "pending" | "success" | "failed"
+    extractionError: v.optional(v.string()),
+    processedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_user", ["userId", "createdAt"])
     .index("by_conversation", ["conversationId", "createdAt"])
-    .index("by_message", ["messageId"]),
+    .index("by_message", ["messageId"])
+    .index("by_extraction_status", ["extractionStatus"]),
 })
 

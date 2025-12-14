@@ -80,10 +80,40 @@ export async function POST(req: Request) {
         // 6. Prepare System Prompt & Context
         const systemPrompt = getSystemPrompt()
 
+        // Task 6.1-6.4: Fetch file records dan inject context
+        let fileContext = ""
+        if (fileIds && fileIds.length > 0) {
+            const files = await fetchQuery(api.files.getFilesByIds, {
+                fileIds: fileIds as Id<"files">[],
+            })
+
+            // Format file context based on extraction status
+            for (const file of files) {
+                fileContext += `[File: ${file.name}]\n`
+
+                if (!file.extractionStatus || file.extractionStatus === "pending") {
+                    // Task 6.6: Handle pending state
+                    fileContext += "⏳ File sedang diproses, belum bisa dibaca oleh AI.\n\n"
+                } else if (file.extractionStatus === "success" && file.extractedText) {
+                    // Task 6.2-6.3: Extract and format text
+                    fileContext += file.extractedText + "\n\n"
+                } else if (file.extractionStatus === "failed") {
+                    // Task 6.6: Handle failed state
+                    const errorMsg = file.extractionError || "Unknown error"
+                    fileContext += `❌ File gagal diproses: ${errorMsg}\n\n`
+                }
+            }
+        }
+
         // Convert UIMessages to model messages format
         const modelMessages = convertToModelMessages(messages)
+
+        // Task 6.4: Inject file context BEFORE user messages
         const fullMessages = [
             { role: "system" as const, content: systemPrompt },
+            ...(fileContext
+                ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
+                : []),
             ...modelMessages,
         ]
 
