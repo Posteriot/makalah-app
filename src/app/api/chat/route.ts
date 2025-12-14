@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         }
 
         // 6. Prepare System Prompt & Context
-        const systemPrompt = getSystemPrompt()
+        const systemPrompt = await getSystemPrompt()
 
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""

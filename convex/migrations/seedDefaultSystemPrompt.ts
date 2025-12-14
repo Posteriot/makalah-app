@@ -1,12 +1,14 @@
-import { fetchQuery } from "convex/nextjs"
-import { api } from "@convex/_generated/api"
+import { internalMutation } from "../_generated/server"
 
 /**
- * Hardcoded fallback system prompt
- * Used when database fetch fails or no active prompt exists
+ * Migration script to seed the default system prompt
+ * Run via: npx convex run migrations:seedDefaultSystemPrompt
+ *
+ * This creates the initial system prompt with the same content
+ * as the hardcoded prompt in src/lib/ai/chat-config.ts
  */
-export function getHardcodedSystemPrompt(): string {
-    return `Anda adalah asisten AI untuk Makalah App, sebuah aplikasi yang membantu pengguna menyusun paper akademik dalam Bahasa Indonesia.
+
+const DEFAULT_PROMPT_CONTENT = `Anda adalah asisten AI untuk Makalah App, sebuah aplikasi yang membantu pengguna menyusun paper akademik dalam Bahasa Indonesia.
 
 PERSONA & TONE:
 - Gunakan bahasa Indonesia formal dan akademik
@@ -65,37 +67,51 @@ BATASAN:
 - Fokus pada academic writing berbahasa Indonesia
 
 Selalu respons dengan helpful, terstruktur, dan actionable.`
-}
 
-/**
- * Async function to get system prompt from database
- * Falls back to hardcoded prompt if:
- * - Database fetch fails
- * - No active prompt exists
- */
-export async function getSystemPrompt(): Promise<string> {
-    try {
-        const activePrompt = await fetchQuery(api.systemPrompts.getActiveSystemPrompt)
-
-        if (activePrompt?.content) {
-            return activePrompt.content
-        }
-
-        // No active prompt found, use fallback
-        console.log("[chat-config] No active system prompt in database, using fallback")
-        return getHardcodedSystemPrompt()
-    } catch (error) {
-        // Database error, use fallback
-        console.error("[chat-config] Failed to fetch system prompt from database:", error)
-        return getHardcodedSystemPrompt()
+export const seedDefaultSystemPrompt = internalMutation({
+  handler: async ({ db }) => {
+    // Check if any system prompts exist
+    const existing = await db.query("systemPrompts").first()
+    if (existing) {
+      return {
+        success: false,
+        message: "Default prompt sudah ada. Migration dibatalkan.",
+      }
     }
-}
 
-export const CHAT_CONFIG = {
-    model: process.env.MODEL ?? "google/gemini-2.5-flash-lite", // Default tailored from env or fallback
-    temperature: 0.7,
-    maxTokens: 2048,
-    topP: 1,
-    frequencyPenalty: 0,
-    presencePenalty: 0,
-}
+    // Find superadmin user to set as creator
+    const superadmin = await db
+      .query("users")
+      .filter((q) => q.eq(q.field("role"), "superadmin"))
+      .first()
+
+    if (!superadmin) {
+      return {
+        success: false,
+        message: "Superadmin user tidak ditemukan. Silakan buat superadmin terlebih dahulu.",
+      }
+    }
+
+    const now = Date.now()
+
+    // Create default prompt (v1, active)
+    const promptId = await db.insert("systemPrompts", {
+      name: "Default Academic Assistant",
+      content: DEFAULT_PROMPT_CONTENT,
+      description: "Default system prompt untuk membantu penulisan paper akademik dalam Bahasa Indonesia",
+      version: 1,
+      isActive: true, // Set as active
+      parentId: undefined,
+      rootId: undefined, // v1 prompts have no rootId
+      createdBy: superadmin._id,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    return {
+      success: true,
+      promptId,
+      message: "Default system prompt berhasil dibuat dan diaktifkan.",
+    }
+  },
+})

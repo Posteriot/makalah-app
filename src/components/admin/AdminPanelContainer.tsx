@@ -4,6 +4,7 @@ import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UserList } from "./UserList"
+import { SystemPromptsManager } from "./SystemPromptsManager"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Id } from "@convex/_generated/dataModel"
 
@@ -41,11 +42,16 @@ export function AdminPanelContainer({
       <Tabs defaultValue="users" className="space-y-4">
         <TabsList>
           <TabsTrigger value="users">User Management</TabsTrigger>
+          <TabsTrigger value="system-prompts">System Prompts</TabsTrigger>
           <TabsTrigger value="stats">Statistik</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
           <UserList users={users} currentUserRole={userRole} />
+        </TabsContent>
+
+        <TabsContent value="system-prompts" className="space-y-4">
+          <SystemPromptsManager userId={userId} />
         </TabsContent>
 
         <TabsContent value="stats" className="space-y-4">

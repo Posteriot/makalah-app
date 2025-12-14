@@ -69,5 +69,22 @@ export default defineSchema({
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_message", ["messageId"])
     .index("by_extraction_status", ["extractionStatus"]),
+
+  // System Prompts for AI chat (admin-managed)
+  systemPrompts: defineTable({
+    name: v.string(), // Display name (e.g., "Default Academic Assistant")
+    content: v.string(), // Full prompt text
+    description: v.optional(v.string()), // Optional description
+    version: v.number(), // Version number (1, 2, 3, ...)
+    isActive: v.boolean(), // Only one can be active at a time
+    parentId: v.optional(v.id("systemPrompts")), // Link to parent version (null for v1)
+    rootId: v.optional(v.id("systemPrompts")), // Link to root prompt (for easier history queries)
+    createdBy: v.id("users"), // User who created this version
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_active", ["isActive"]) // Query active prompt
+    .index("by_root", ["rootId", "version"]) // Query version history
+    .index("by_createdAt", ["createdAt"]), // List all by date
 })
 
