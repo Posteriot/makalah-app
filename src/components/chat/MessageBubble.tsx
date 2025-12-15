@@ -4,6 +4,7 @@ import { UIMessage } from "ai"
 import { PaperclipIcon, PencilIcon, XIcon, CheckIcon } from "lucide-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
+import { ToolStateIndicator } from "./ToolStateIndicator"
 import { useState, useRef } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
 
@@ -57,9 +58,49 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
         return created
     }
 
+    const extractInProgressTools = (uiMessage: UIMessage) => {
+        const tools: { toolName: string; state: string; errorText?: string }[] = []
+
+        for (const part of uiMessage.parts ?? []) {
+            const maybeToolPart = part as unknown as {
+                type?: string
+                state?: string
+                args?: unknown
+                output?: unknown
+                result?: unknown
+            }
+
+            if (!maybeToolPart.type?.startsWith("tool-")) continue
+
+            // Skip completed states (handled by ArtifactIndicator or just hidden)
+            if (maybeToolPart.state === "output-available" || maybeToolPart.state === "result") continue
+
+            const toolName = maybeToolPart.type.replace("tool-", "")
+            let errorText: string | undefined
+
+            if (maybeToolPart.state === "output-error" || maybeToolPart.state === "error") {
+                const output = maybeToolPart.output ?? maybeToolPart.result
+                if (typeof output === "string") {
+                    errorText = output
+                } else if (typeof output === "object" && output && "error" in output) {
+                    errorText = String((output as { error: unknown }).error)
+                }
+            }
+
+            tools.push({
+                toolName,
+                state: maybeToolPart.state || "unknown",
+                errorText
+            })
+        }
+
+        return tools
+    }
+
     const content = message.parts
         ? message.parts.filter(part => part.type === 'text').map(part => part.text).join('')
         : ''
+
 
     const startEditing = () => {
         setIsEditing(true)
@@ -101,7 +142,9 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
     const fileIds = fileAnnotations ? (fileAnnotations as any).fileIds : []
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
+    // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     const createdArtifacts = extractCreatedArtifacts(message)
+    const inProgressTools = extractInProgressTools(message)
 
     return (
         <div className={`group p-2 mb-2 rounded ${message.role === 'user' ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted'} max-w-[80%] relative`}>
@@ -129,6 +172,20 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
                             <PaperclipIcon className="h-3 w-3" />
                             <span>Attachment</span>
                         </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Tool State Indicators */}
+            {inProgressTools.length > 0 && (
+                <div className="mb-2 space-y-1">
+                    {inProgressTools.map((tool, index) => (
+                        <ToolStateIndicator
+                            key={index}
+                            toolName={tool.toolName}
+                            state={tool.state}
+                            errorText={tool.errorText}
+                        />
                     ))}
                 </div>
             )}

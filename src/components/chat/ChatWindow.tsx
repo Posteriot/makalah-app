@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
+import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator"
 
 interface ChatWindowProps {
   conversationId: string | null
@@ -251,6 +252,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             followOutput="auto"
             initialTopMostItemIndex={messages.length - 1}
             style={{ height: "100%" }}
+            components={{
+              Footer: () => (
+                <div className="pb-4">
+                  <ThinkingIndicator visible={status === 'submitted'} />
+                  <div className="h-4" />
+                </div>
+              )
+            }}
           />
         )}
 

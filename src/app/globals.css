@@ -130,3 +130,54 @@
 .cl-internal-1dauvpw {
   display: none !important;
 }
+
+@layer utilities {
+  @keyframes thinking-dot {
+    0%, 100% {
+      opacity: 0.3;
+      transform: scale(0.8);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-thinking-dot {
+    animation: thinking-dot 1.4s ease-in-out infinite both;
+  }
+
+  .thinking-dot-1 {
+    animation-delay: 0s;
+  }
+
+  .thinking-dot-2 {
+    animation-delay: 0.2s;
+  }
+
+  .thinking-dot-3 {
+    animation-delay: 0.4s;
+  }
+
+  @keyframes cursor-blink {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .animate-cursor-blink {
+    animation: cursor-blink 1s step-end infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-thinking-dot,
+  .animate-cursor-blink {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
