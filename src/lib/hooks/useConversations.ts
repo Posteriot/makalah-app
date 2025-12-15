@@ -29,7 +29,7 @@ export function useConversations() {
         if (!userId) return null
         const id = await createConversationMutation({
             userId,
-            title: "New Chat",
+            title: "Percakapan baru",
         })
         return id
     }

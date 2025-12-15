@@ -164,20 +164,22 @@ export const createConfig = mutation({
 /**
  * Update an existing config (creates new version)
  * Admin only
+ * Supports partial update - only send fields that changed
+ * API keys are optional - if not provided, uses existing keys from old config
  */
 export const updateConfig = mutation({
   args: {
     requestorUserId: v.id("users"),
     configId: v.id("aiProviderConfigs"),
-    name: v.string(),
+    name: v.optional(v.string()),
     description: v.optional(v.string()),
-    primaryProvider: v.string(),
-    primaryModel: v.string(),
-    primaryApiKey: v.string(), // Plain text
-    fallbackProvider: v.string(),
-    fallbackModel: v.string(),
-    fallbackApiKey: v.string(), // Plain text
-    temperature: v.number(),
+    primaryProvider: v.optional(v.string()),
+    primaryModel: v.optional(v.string()),
+    primaryApiKey: v.optional(v.string()), // Optional - uses existing if not provided
+    fallbackProvider: v.optional(v.string()),
+    fallbackModel: v.optional(v.string()),
+    fallbackApiKey: v.optional(v.string()), // Optional - uses existing if not provided
+    temperature: v.optional(v.number()),
     topP: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -188,14 +190,26 @@ export const updateConfig = mutation({
       throw new Error("Config tidak ditemukan")
     }
 
+    // Merge with existing data - use provided value or fall back to old config
+    const name = args.name ?? oldConfig.name
+    const description = args.description ?? oldConfig.description
+    const primaryProvider = args.primaryProvider ?? oldConfig.primaryProvider
+    const primaryModel = args.primaryModel ?? oldConfig.primaryModel
+    const primaryApiKey = args.primaryApiKey?.trim() || oldConfig.primaryApiKey
+    const fallbackProvider = args.fallbackProvider ?? oldConfig.fallbackProvider
+    const fallbackModel = args.fallbackModel ?? oldConfig.fallbackModel
+    const fallbackApiKey = args.fallbackApiKey?.trim() || oldConfig.fallbackApiKey
+    const temperature = args.temperature ?? oldConfig.temperature
+    const topP = args.topP ?? oldConfig.topP
+
     // Validate inputs
-    if (!args.name.trim()) {
+    if (!name.trim()) {
       throw new Error("Nama tidak boleh kosong")
     }
-    if (args.temperature < 0 || args.temperature > 2) {
+    if (temperature < 0 || temperature > 2) {
       throw new Error("Temperature harus antara 0 dan 2")
     }
-    if (!args.primaryApiKey.trim() || !args.fallbackApiKey.trim()) {
+    if (!primaryApiKey || !fallbackApiKey) {
       throw new Error("API key tidak boleh kosong")
     }
 
@@ -205,16 +219,16 @@ export const updateConfig = mutation({
 
     // Create new version
     const newConfigId = await ctx.db.insert("aiProviderConfigs", {
-      name: args.name.trim(),
-      description: args.description?.trim(),
-      primaryProvider: args.primaryProvider,
-      primaryModel: args.primaryModel,
-      primaryApiKey: args.primaryApiKey, // Store plain text
-      fallbackProvider: args.fallbackProvider,
-      fallbackModel: args.fallbackModel,
-      fallbackApiKey: args.fallbackApiKey, // Store plain text
-      temperature: args.temperature,
-      topP: args.topP,
+      name: name.trim(),
+      description: description?.trim(),
+      primaryProvider,
+      primaryModel,
+      primaryApiKey,
+      fallbackProvider,
+      fallbackModel,
+      fallbackApiKey,
+      temperature,
+      topP,
       version: newVersion,
       isActive: false, // Not active yet
       parentId: args.configId,

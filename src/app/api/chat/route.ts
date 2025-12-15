@@ -1,5 +1,6 @@
 import { generateTitle } from "@/lib/ai/title-generator"
-import { convertToModelMessages } from "ai"
+import { convertToModelMessages, tool, type ToolSet, stepCountIs } from "ai"
+import { z } from "zod"
 
 import { auth } from "@clerk/nextjs/server"
 import { getSystemPrompt } from "@/lib/ai/chat-config"
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
         if (!currentConversationId) {
             isNewConversation = true
             // Initial placeholder title
-            const title = "New Chat"
+            const title = "Percakapan baru"
 
             currentConversationId = await fetchMutation(api.conversations.createConversation, {
                 userId,
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
         // Background Title Generation (Fire and Forget)
         if (isNewConversation && firstUserContent) {
             // We don't await this to avoid blocking the response
-            generateTitle(firstUserContent)
+            generateTitle({ userMessage: firstUserContent })
                 .then(async (generatedTitle) => {
                     await fetchMutation(api.conversations.updateConversation, {
                         conversationId: currentConversationId as Id<"conversations">,
@@ -56,6 +57,46 @@ export async function POST(req: Request) {
                     })
                 })
                 .catch(err => console.error("Background title generation error:", err))
+        }
+
+        // Helper: update judul conversation berdasarkan aturan AI rename (2x max)
+        const maybeUpdateTitleFromAI = async (options: {
+            assistantText: string
+            minPairsForFinalTitle: number
+        }) => {
+            const conversation = await fetchQuery(api.conversations.getConversation, {
+                conversationId: currentConversationId as Id<"conversations">,
+            })
+
+            if (!conversation) return
+            if (conversation.userId !== userId) return
+            if (conversation.titleLocked) return
+
+            const currentCount = conversation.titleUpdateCount ?? 0
+            if (currentCount >= 2) return
+
+            const placeholderTitles = new Set(["Percakapan baru", "New Chat"])
+            const isPlaceholder = placeholderTitles.has(conversation.title)
+
+            // Rename pertama: begitu assistant selesai merespons pertama kali, dan judul masih placeholder
+            if (currentCount === 0 && isPlaceholder && firstUserContent && options.assistantText) {
+                const generatedTitle = await generateTitle({
+                    userMessage: firstUserContent,
+                    assistantMessage: options.assistantText,
+                })
+
+                await fetchMutation(api.conversations.updateConversationTitleFromAI, {
+                    conversationId: currentConversationId as Id<"conversations">,
+                    userId,
+                    title: generatedTitle,
+                    nextTitleUpdateCount: 1,
+                })
+            }
+
+            // Rename kedua (final) sengaja nggak otomatis di sini; itu lewat tool,
+            // dan baru boleh kalau udah lewat minimal X pasang pesan.
+            // Nilai X dipakai buat validasi tool.
+            void options.minPairsForFinalTitle
         }
 
         // 5. Save USER message to Convex
@@ -117,42 +158,7 @@ export async function POST(req: Request) {
             ...modelMessages,
         ]
 
-        // 7. Stream AI Response and Save Assistant Message on Finish
-
-        // Hook into the stream onFinish callback is handled by the client usually, 
-        // BUT Vercel AI SDK 'streamText' result object allows `onFinish` in the `streamText` call itself.
-        // However, since we wrapped it in `streamChatResponse`, we need to handle persistence differently
-        // or pass a callback.
-        // For simplicity with `streamText` in a route handler, we often let the client trigger the save 
-        // OR we use the `onFinish` callback inside the `streamText` options.
-
-        // REVISION: The `streamChatResponse` helper currently just returns the result. 
-        // To persist the ASSISTANT response, we need to capture the full text.
-        // The cleanest way in the Next.js App Router with `ai` SDK v3/v4/v5 is to use `onFinish` callback 
-        // inside the `streamText` function. But our helper abstracts that.
-
-        // FIX: We should listen to the stream server-side ? 
-        // Actually, `result.toDataStreamResponse()` returns a Response object. 
-        // Verification: We cannot easily attach a "save to DB" hook AFTER returning the response body 
-        // unless we use `streamText({ onFinish: ... })`.
-
-        // STRATEGY: We will modify `src/lib/ai/streaming.ts` later to accept an onFinish callback?
-        // OR: We implement the streamText call DIRECTLY here to have access to `onFinish`.
-        // Given the constraints, calling `streamText` directly here is safer for the "Save to Convex" requirement.
-        // But we have a helper to handle Fallbacks.
-
-        // Let's rely on the CLIENT-SIDE `useChat` hook's `onFinish` to save the assistant message for MVP?
-        // NO. Spec says "Save assistant message to Convex after completion" in `CHAT-020`, implying Server-Side.
-        // Relying on client is insecure and unreliable.
-
-        // SOLUTION: We will refactor to call the helper, but since the helper returns a `StreamTextResult`, 
-        // we can't easily inject onFinish into the already-executed stream.
-        // We must pass the save logic INTO the helper or move the helper logic here.
-        // Moving helper logic here is better for control, using helper just for Model creation.
-
-        // Let's refactor: Use helper for `getGatewayModel` / `getOpenRouterModel` only.
-
-        // Re-import helpers to just get models
+        // Import streamText and model helpers
         const { getGatewayModel, getOpenRouterModel } = await import("@/lib/ai/streaming")
         const { streamText } = await import("ai")
 
@@ -168,14 +174,167 @@ export async function POST(req: Request) {
             })
         }
 
+        // ============================================================
+        // ARTIFACT TOOL - Creates standalone deliverable content
+        // ============================================================
+        const tools = {
+            createArtifact: tool({
+                description: `Create an artifact for standalone, non-conversational content that the user might want to edit, copy, or export.
+
+USE THIS TOOL WHEN generating:
+✓ Paper outlines and structures (type: "outline")
+✓ Draft sections: Introduction, Methodology, Results, Discussion, Conclusion (type: "section")
+✓ Code snippets for data analysis in Python, R, JavaScript, TypeScript (type: "code")
+✓ Tables and formatted data (type: "table")
+✓ Bibliography entries and citations (type: "citation")
+✓ LaTeX mathematical formulas (type: "formula")
+✓ Research summaries and abstracts (type: "section")
+✓ Paraphrased paragraphs (type: "section")
+
+DO NOT use this tool for:
+✗ Explanations and teaching
+✗ Discussions about concepts
+✗ Questions and clarifications
+✗ Suggestions and feedback
+✗ Meta-conversation about writing process
+✗ Short answers (less than 3 sentences)
+
+When using this tool, always provide a clear, descriptive title (max 50 chars).`,
+                inputSchema: z.object({
+                    type: z.enum(["code", "outline", "section", "table", "citation", "formula"])
+                        .describe("The type of artifact to create"),
+                    title: z.string().max(50)
+                        .describe("Short, descriptive title for the artifact (max 50 chars). Examples: 'Introduction Draft', 'Data Analysis Code', 'Research Outline'"),
+                    content: z.string().min(10)
+                        .describe("The actual content of the artifact"),
+                    format: z.enum(["markdown", "latex", "python", "r", "javascript", "typescript"]).optional()
+                        .describe("Format of the content. Use 'markdown' for text, language name for code"),
+                    description: z.string().optional()
+                        .describe("Optional brief description of what the artifact contains"),
+                }),
+                execute: async ({ type, title, content, format, description }) => {
+                    try {
+                        const result = await fetchMutation(api.artifacts.create, {
+                            conversationId: currentConversationId as Id<"conversations">,
+                            userId: userId as Id<"users">,
+                            type,
+                            title,
+                            content,
+                            format,
+                            description,
+                        })
+
+                        return {
+                            success: true,
+                            artifactId: result.artifactId,
+                            title,
+                            message: `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
+                        }
+                    } catch (error) {
+                        console.error("Failed to create artifact:", error)
+                        return {
+                            success: false,
+                            error: "Gagal membuat artifact. Silakan coba lagi.",
+                        }
+                    }
+                },
+            }),
+            renameConversationTitle: tool({
+                description: `Ganti judul conversation secara final ketika kamu benar-benar sudah yakin dengan tujuan utama user.
+
+Aturan:
+- Maksimal 2 kali update judul oleh AI per conversation.
+- Jangan panggil kalau user sudah mengganti judul sendiri.
+- Panggil ini hanya ketika kamu yakin judul finalnya stabil (tidak akan berubah lagi).
+- Judul maksimal 50 karakter.`,
+                inputSchema: z.object({
+                    title: z.string().min(3).max(50).describe("Judul final conversation (maks 50 karakter)"),
+                }),
+                execute: async ({ title }) => {
+                    try {
+                        const conversation = await fetchQuery(api.conversations.getConversation, {
+                            conversationId: currentConversationId as Id<"conversations">,
+                        })
+
+                        if (!conversation) {
+                            return { success: false, error: "Conversation tidak ditemukan" }
+                        }
+                        if (conversation.userId !== userId) {
+                            return { success: false, error: "Tidak memiliki akses" }
+                        }
+                        if (conversation.titleLocked) {
+                            return { success: false, error: "Judul sudah dikunci oleh user" }
+                        }
+
+                        const currentCount = conversation.titleUpdateCount ?? 0
+                        if (currentCount >= 2) {
+                            return { success: false, error: "Batas update judul AI sudah tercapai" }
+                        }
+                        if (currentCount < 1) {
+                            return { success: false, error: "Judul awal belum terbentuk" }
+                        }
+
+                        const minPairsForFinalTitle = Number.parseInt(
+                            process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                            10
+                        )
+                        const effectiveMinPairs = Number.isFinite(minPairsForFinalTitle)
+                            ? minPairsForFinalTitle
+                            : 3
+
+                        const counts = await fetchQuery(api.messages.countMessagePairsForConversation, {
+                            conversationId: currentConversationId as Id<"conversations">,
+                            userId,
+                        })
+
+                        if ((counts?.pairCount ?? 0) < effectiveMinPairs) {
+                            return {
+                                success: false,
+                                error: `Belum cukup putaran percakapan (butuh minimal ${effectiveMinPairs} pasang pesan)`,
+                            }
+                        }
+
+                        await fetchMutation(api.conversations.updateConversationTitleFromAI, {
+                            conversationId: currentConversationId as Id<"conversations">,
+                            userId,
+                            title,
+                            nextTitleUpdateCount: 2,
+                        })
+
+                        return { success: true, title: title.trim().slice(0, 50) }
+                    } catch (error) {
+                        console.error("Failed to rename conversation title:", error)
+                        return { success: false, error: "Gagal mengubah judul conversation" }
+                    }
+                },
+            }),
+        } satisfies ToolSet
+
+        // 7. Stream AI Response - Dual Provider with Fallback
         try {
             const model = await getGatewayModel()
+            console.log("[Chat API] Using Gateway model:", model)
             const result = streamText({
                 model,
                 messages: fullMessages,
+                tools,
+                stopWhen: stepCountIs(5),
                 temperature: 0.7,
                 onFinish: async ({ text }) => {
-                    await saveAssistantMessage(text)
+                    if (text) {
+                        await saveAssistantMessage(text)
+                        // Rename pertama dilakukan setelah assistant selesai merespons
+                        const minPairsForFinalTitle = Number.parseInt(
+                            process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                            10
+                        )
+                        await maybeUpdateTitleFromAI({
+                            assistantText: text,
+                            minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                                ? minPairsForFinalTitle
+                                : 3,
+                        })
+                    }
                 },
             })
             return result.toUIMessageStreamResponse()
@@ -183,12 +342,27 @@ export async function POST(req: Request) {
             console.error("Gateway stream failed, trying fallback...", error)
             // Fallback: OpenRouter
             const fallbackModel = await getOpenRouterModel()
+            console.log("[Chat API] Using OpenRouter fallback")
             const result = streamText({
                 model: fallbackModel,
                 messages: fullMessages,
+                tools,
+                stopWhen: stepCountIs(5),
                 temperature: 0.7,
                 onFinish: async ({ text }) => {
-                    await saveAssistantMessage(text)
+                    if (text) {
+                        await saveAssistantMessage(text)
+                        const minPairsForFinalTitle = Number.parseInt(
+                            process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                            10
+                        )
+                        await maybeUpdateTitleFromAI({
+                            assistantText: text,
+                            minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                                ? minPairsForFinalTitle
+                                : 3,
+                        })
+                    }
                 },
             })
             return result.toUIMessageStreamResponse()

@@ -28,6 +28,9 @@ export default defineSchema({
   conversations: defineTable({
     userId: v.id("users"),
     title: v.string(),
+    // Chat title generation metadata (untuk AI rename 2x + lock kalau user rename sendiri)
+    titleUpdateCount: v.optional(v.number()),
+    titleLocked: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
     lastMessageAt: v.number(),
@@ -87,6 +90,48 @@ export default defineSchema({
     .index("by_root", ["rootId", "version"]) // Query version history
     .index("by_createdAt", ["createdAt"]), // List all by date
 
+  // Artifacts - Standalone deliverable content from AI (non-conversational)
+  artifacts: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+    messageId: v.optional(v.id("messages")), // Which message generated this artifact
+
+    // Artifact metadata
+    type: v.union(
+      v.literal("code"),
+      v.literal("outline"),
+      v.literal("section"),
+      v.literal("table"),
+      v.literal("citation"),
+      v.literal("formula")
+    ),
+    title: v.string(),
+    description: v.optional(v.string()),
+
+    // Content
+    content: v.string(),
+    format: v.optional(v.union(
+      v.literal("markdown"),
+      v.literal("latex"),
+      v.literal("python"),
+      v.literal("r"),
+      v.literal("javascript"),
+      v.literal("typescript")
+    )),
+
+    // Versioning (pattern from systemPrompts)
+    version: v.number(),
+    parentId: v.optional(v.id("artifacts")), // Link to previous version
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId", "createdAt"])
+    .index("by_type", ["type"])
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_parent", ["parentId"]),
+
   // AI Provider Configurations (admin-managed)
   aiProviderConfigs: defineTable({
     name: v.string(), // Display name (e.g., "Production Config")
@@ -121,4 +166,3 @@ export default defineSchema({
     .index("by_root", ["rootId", "version"]) // Version history
     .index("by_createdAt", ["createdAt"]), // List all by date
 })
-

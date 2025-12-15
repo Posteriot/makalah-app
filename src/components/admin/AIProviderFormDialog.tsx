@@ -27,20 +27,97 @@ import { Separator } from "@/components/ui/separator"
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react"
 import type { Id } from "@convex/_generated/dataModel"
 
-// Model presets untuk dropdown
-const MODEL_PRESETS = [
-  { value: "google/gemini-2.5-flash-lite", label: "Google Gemini 2.5 Flash Lite" },
-  { value: "google/gemini-2.0-flash-exp", label: "Google Gemini 2.0 Flash Experimental" },
-  { value: "google/gemini-pro", label: "Google Gemini Pro" },
-  { value: "openai/gpt-4o", label: "OpenAI GPT-4o" },
-  { value: "openai/gpt-4o-mini", label: "OpenAI GPT-4o Mini" },
-  { value: "openai/gpt-4-turbo", label: "OpenAI GPT-4 Turbo" },
-  { value: "anthropic/claude-3.7-sonnet", label: "Anthropic Claude 3.7 Sonnet" },
-  { value: "anthropic/claude-3.5-haiku", label: "Anthropic Claude 3.5 Haiku" },
-  { value: "meta-llama/llama-3.3-70b-instruct", label: "Meta Llama 3.3 70B" },
-  { value: "qwen/qwen-2.5-72b-instruct", label: "Qwen 2.5 72B" },
+// Model presets per provider
+// Vercel AI Gateway: model ID tanpa prefix provider
+// OpenRouter: model ID dengan prefix provider/model
+
+const VERCEL_GATEWAY_MODELS = [
+  // Google
+  { value: "gemini-2.5-flash-lite", label: "Google Gemini 2.5 Flash Lite" },
+  { value: "gemini-2.5-flash", label: "Google Gemini 2.5 Flash" },
+  { value: "gemini-2.5-pro", label: "Google Gemini 2.5 Pro" },
+  { value: "gemini-2.0-flash", label: "Google Gemini 2.0 Flash" },
+  { value: "gemini-2.0-flash-lite", label: "Google Gemini 2.0 Flash Lite" },
+  // OpenAI
+  { value: "gpt-4o", label: "OpenAI GPT-4o" },
+  { value: "gpt-4o-mini", label: "OpenAI GPT-4o Mini" },
+  { value: "gpt-4.1", label: "OpenAI GPT-4.1" },
+  { value: "gpt-4.1-mini", label: "OpenAI GPT-4.1 Mini" },
+  { value: "gpt-4-turbo", label: "OpenAI GPT-4 Turbo" },
+  { value: "o1", label: "OpenAI o1" },
+  { value: "o3-mini", label: "OpenAI o3 Mini" },
+  // Anthropic
+  { value: "claude-sonnet-4", label: "Anthropic Claude Sonnet 4" },
+  { value: "claude-3.7-sonnet", label: "Anthropic Claude 3.7 Sonnet" },
+  { value: "claude-3.5-sonnet", label: "Anthropic Claude 3.5 Sonnet" },
+  { value: "claude-3.5-haiku", label: "Anthropic Claude 3.5 Haiku" },
+  { value: "claude-opus-4", label: "Anthropic Claude Opus 4" },
+  // Meta Llama
+  { value: "llama-3.3-70b", label: "Meta Llama 3.3 70B" },
+  { value: "llama-4-scout", label: "Meta Llama 4 Scout" },
+  { value: "llama-4-maverick", label: "Meta Llama 4 Maverick" },
+  // DeepSeek
+  { value: "deepseek-v3", label: "DeepSeek V3" },
+  { value: "deepseek-r1", label: "DeepSeek R1" },
+  // Mistral
+  { value: "mistral-large", label: "Mistral Large" },
+  { value: "mistral-small", label: "Mistral Small" },
+  // Qwen
+  { value: "qwen3-max", label: "Qwen 3 Max" },
+  { value: "qwen3-coder", label: "Qwen 3 Coder" },
+  // Custom
   { value: "custom", label: "Custom (input manual)" },
 ]
+
+const OPENROUTER_MODELS = [
+  // Google Gemini (from https://openrouter.ai/models)
+  { value: "google/gemini-2.5-flash-lite", label: "Google Gemini 2.5 Flash Lite" },
+  { value: "google/gemini-2.5-flash", label: "Google Gemini 2.5 Flash" },
+  { value: "google/gemini-2.5-pro", label: "Google Gemini 2.5 Pro" },
+  { value: "google/gemini-2.0-flash-001", label: "Google Gemini 2.0 Flash" },
+  { value: "google/gemini-2.0-flash-lite-001", label: "Google Gemini 2.0 Flash Lite" },
+  // OpenAI
+  { value: "openai/gpt-4o", label: "OpenAI GPT-4o" },
+  { value: "openai/gpt-4o-mini", label: "OpenAI GPT-4o Mini" },
+  { value: "openai/gpt-4.1", label: "OpenAI GPT-4.1" },
+  { value: "openai/gpt-4.1-mini", label: "OpenAI GPT-4.1 Mini" },
+  { value: "openai/gpt-4-turbo", label: "OpenAI GPT-4 Turbo" },
+  { value: "openai/chatgpt-4o-latest", label: "OpenAI ChatGPT-4o Latest" },
+  // Anthropic Claude
+  { value: "anthropic/claude-sonnet-4", label: "Anthropic Claude Sonnet 4" },
+  { value: "anthropic/claude-3.7-sonnet", label: "Anthropic Claude 3.7 Sonnet" },
+  { value: "anthropic/claude-3.5-sonnet", label: "Anthropic Claude 3.5 Sonnet" },
+  { value: "anthropic/claude-3.5-haiku", label: "Anthropic Claude 3.5 Haiku" },
+  { value: "anthropic/claude-opus-4", label: "Anthropic Claude Opus 4" },
+  // Meta Llama
+  { value: "meta-llama/llama-3.3-70b-instruct", label: "Meta Llama 3.3 70B" },
+  { value: "meta-llama/llama-4-scout", label: "Meta Llama 4 Scout" },
+  { value: "meta-llama/llama-4-maverick", label: "Meta Llama 4 Maverick" },
+  { value: "meta-llama/llama-3.1-405b-instruct", label: "Meta Llama 3.1 405B" },
+  // DeepSeek
+  { value: "deepseek/deepseek-chat", label: "DeepSeek Chat" },
+  { value: "deepseek/deepseek-r1", label: "DeepSeek R1" },
+  { value: "deepseek/deepseek-v3.2", label: "DeepSeek V3.2" },
+  // Mistral
+  { value: "mistralai/mistral-large", label: "Mistral Large" },
+  { value: "mistralai/ministral-8b", label: "Ministral 8B" },
+  { value: "mistralai/codestral-2508", label: "Codestral" },
+  // Qwen
+  { value: "qwen/qwen-2.5-72b-instruct", label: "Qwen 2.5 72B" },
+  { value: "qwen/qwen-2.5-coder-32b-instruct", label: "Qwen 2.5 Coder 32B" },
+  { value: "qwen/qwen3-235b-a22b", label: "Qwen 3 235B" },
+  { value: "qwen/qwen-max", label: "Qwen Max" },
+  // Custom
+  { value: "custom", label: "Custom (input manual)" },
+]
+
+// Helper function to get models based on provider
+const getModelsForProvider = (provider: string) => {
+  if (provider === "vercel-gateway") {
+    return VERCEL_GATEWAY_MODELS
+  }
+  return OPENROUTER_MODELS
+}
 
 const PROVIDER_OPTIONS = [
   { value: "vercel-gateway", label: "Vercel AI Gateway" },
@@ -79,13 +156,13 @@ export function AIProviderFormDialog({
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
 
-  // Primary provider
+  // Primary provider (default: Vercel Gateway)
   const [primaryProvider, setPrimaryProvider] = useState("vercel-gateway")
-  const [primaryModel, setPrimaryModel] = useState("google/gemini-2.5-flash-lite")
-  const [primaryModelPreset, setPrimaryModelPreset] = useState("google/gemini-2.5-flash-lite")
+  const [primaryModel, setPrimaryModel] = useState("gemini-2.5-flash-lite")
+  const [primaryModelPreset, setPrimaryModelPreset] = useState("gemini-2.5-flash-lite")
   const [primaryApiKey, setPrimaryApiKey] = useState("")
 
-  // Fallback provider
+  // Fallback provider (default: OpenRouter)
   const [fallbackProvider, setFallbackProvider] = useState("openrouter")
   const [fallbackModel, setFallbackModel] = useState("google/gemini-2.5-flash-lite")
   const [fallbackModelPreset, setFallbackModelPreset] = useState("google/gemini-2.5-flash-lite")
@@ -114,13 +191,16 @@ export function AIProviderFormDialog({
         setDescription(config.description ?? "")
         setPrimaryProvider(config.primaryProvider)
         setPrimaryModel(config.primaryModel)
+        // Check if model exists in the provider's preset list
+        const primaryModels = getModelsForProvider(config.primaryProvider)
         setPrimaryModelPreset(
-          MODEL_PRESETS.find((p) => p.value === config.primaryModel) ? config.primaryModel : "custom"
+          primaryModels.find((p) => p.value === config.primaryModel) ? config.primaryModel : "custom"
         )
         setFallbackProvider(config.fallbackProvider)
         setFallbackModel(config.fallbackModel)
+        const fallbackModels = getModelsForProvider(config.fallbackProvider)
         setFallbackModelPreset(
-          MODEL_PRESETS.find((p) => p.value === config.fallbackModel) ? config.fallbackModel : "custom"
+          fallbackModels.find((p) => p.value === config.fallbackModel) ? config.fallbackModel : "custom"
         )
         setTemperature(config.temperature)
         setTopP(config.topP)
@@ -132,11 +212,11 @@ export function AIProviderFormDialog({
         setName("")
         setDescription("")
         setPrimaryProvider("vercel-gateway")
-        setPrimaryModel("google/gemini-2.5-flash-lite")
-        setPrimaryModelPreset("google/gemini-2.5-flash-lite")
+        setPrimaryModel("gemini-2.5-flash-lite") // Vercel Gateway format
+        setPrimaryModelPreset("gemini-2.5-flash-lite")
         setPrimaryApiKey("")
         setFallbackProvider("openrouter")
-        setFallbackModel("google/gemini-2.5-flash-lite")
+        setFallbackModel("google/gemini-2.5-flash-lite") // OpenRouter format
         setFallbackModelPreset("google/gemini-2.5-flash-lite")
         setFallbackApiKey("")
         setTemperature(0.7)
@@ -147,6 +227,27 @@ export function AIProviderFormDialog({
       setFallbackValidation("idle")
     }
   }, [open, config])
+
+  // Reset model when provider changes
+  const handlePrimaryProviderChange = (provider: string) => {
+    setPrimaryProvider(provider)
+    // Reset to first model in new provider's list
+    const models = getModelsForProvider(provider)
+    const defaultModel = models[0]?.value ?? ""
+    setPrimaryModel(defaultModel)
+    setPrimaryModelPreset(defaultModel)
+    setPrimaryValidation("idle") // Reset validation
+  }
+
+  const handleFallbackProviderChange = (provider: string) => {
+    setFallbackProvider(provider)
+    // Reset to first model in new provider's list
+    const models = getModelsForProvider(provider)
+    const defaultModel = models[0]?.value ?? ""
+    setFallbackModel(defaultModel)
+    setFallbackModelPreset(defaultModel)
+    setFallbackValidation("idle") // Reset validation
+  }
 
   const handlePrimaryModelPresetChange = (value: string) => {
     setPrimaryModelPreset(value)
@@ -401,7 +502,7 @@ export function AIProviderFormDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="primaryProvider">Provider</Label>
-                <Select value={primaryProvider} onValueChange={setPrimaryProvider}>
+                <Select value={primaryProvider} onValueChange={handlePrimaryProviderChange}>
                   <SelectTrigger id="primaryProvider" disabled={isLoading}>
                     <SelectValue />
                   </SelectTrigger>
@@ -422,7 +523,7 @@ export function AIProviderFormDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MODEL_PRESETS.map((preset) => (
+                    {getModelsForProvider(primaryProvider).map((preset) => (
                       <SelectItem key={preset.value} value={preset.value}>
                         {preset.label}
                       </SelectItem>
@@ -439,7 +540,7 @@ export function AIProviderFormDialog({
                   id="primaryModel"
                   value={primaryModel}
                   onChange={(e) => setPrimaryModel(e.target.value)}
-                  placeholder="provider/model-name"
+                  placeholder={primaryProvider === "vercel-gateway" ? "model-name" : "provider/model-name"}
                   disabled={isLoading}
                 />
               </div>
@@ -502,7 +603,7 @@ export function AIProviderFormDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fallbackProvider">Provider</Label>
-                <Select value={fallbackProvider} onValueChange={setFallbackProvider}>
+                <Select value={fallbackProvider} onValueChange={handleFallbackProviderChange}>
                   <SelectTrigger id="fallbackProvider" disabled={isLoading}>
                     <SelectValue />
                   </SelectTrigger>
@@ -523,7 +624,7 @@ export function AIProviderFormDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MODEL_PRESETS.map((preset) => (
+                    {getModelsForProvider(fallbackProvider).map((preset) => (
                       <SelectItem key={preset.value} value={preset.value}>
                         {preset.label}
                       </SelectItem>
@@ -540,7 +641,7 @@ export function AIProviderFormDialog({
                   id="fallbackModel"
                   value={fallbackModel}
                   onChange={(e) => setFallbackModel(e.target.value)}
-                  placeholder="provider/model-name"
+                  placeholder={fallbackProvider === "vercel-gateway" ? "model-name" : "provider/model-name"}
                   disabled={isLoading}
                 />
               </div>

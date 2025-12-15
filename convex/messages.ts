@@ -13,6 +13,42 @@ export const getMessages = query({
     },
 })
 
+// Hitung jumlah "pasang pesan" (user+assistant) untuk satu conversation.
+// Dipakai buat gating rename judul final oleh AI.
+export const countMessagePairsForConversation = query({
+    args: {
+        conversationId: v.id("conversations"),
+        userId: v.id("users"),
+    },
+    handler: async ({ db }, { conversationId, userId }) => {
+        const conversation = await db.get(conversationId)
+        if (!conversation) {
+            throw new Error("Conversation tidak ditemukan")
+        }
+        if (conversation.userId !== userId) {
+            throw new Error("Tidak memiliki akses ke conversation ini")
+        }
+
+        const messages = await db
+            .query("messages")
+            .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+            .collect()
+
+        let userCount = 0
+        let assistantCount = 0
+        for (const msg of messages) {
+            if (msg.role === "user") userCount += 1
+            if (msg.role === "assistant") assistantCount += 1
+        }
+
+        return {
+            userCount,
+            assistantCount,
+            pairCount: Math.min(userCount, assistantCount),
+        }
+    },
+})
+
 // Create message
 export const createMessage = mutation({
     args: {

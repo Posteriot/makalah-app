@@ -3,18 +3,59 @@
 import { UIMessage } from "ai"
 import { PaperclipIcon, PencilIcon, XIcon, CheckIcon } from "lucide-react"
 import { QuickActions } from "./QuickActions"
+import { ArtifactIndicator } from "./ArtifactIndicator"
 import { useState, useRef } from "react"
+import { Id } from "../../../convex/_generated/dataModel"
 
 interface MessageBubbleProps {
     message: UIMessage
     conversationId: string | null
     onEdit?: (messageId: string, newContent: string) => void
+    onArtifactSelect?: (artifactId: Id<"artifacts">) => void
 }
 
-export function MessageBubble({ message, conversationId, onEdit }: MessageBubbleProps) {
+export function MessageBubble({ message, conversationId, onEdit, onArtifactSelect }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+    type CreatedArtifact = { artifactId: Id<"artifacts">; title: string }
+
+    const extractCreatedArtifacts = (uiMessage: UIMessage): CreatedArtifact[] => {
+        const created: CreatedArtifact[] = []
+
+        for (const part of uiMessage.parts ?? []) {
+            const maybeToolPart = part as unknown as {
+                type?: unknown
+                state?: unknown
+                output?: unknown
+                result?: unknown
+            }
+
+            if (maybeToolPart.type !== "tool-createArtifact") continue
+
+            const okState =
+                maybeToolPart.state === "output-available" || maybeToolPart.state === "result"
+            if (!okState) continue
+
+            const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
+                success?: unknown
+                artifactId?: unknown
+                title?: unknown
+            } | null
+
+            if (!maybeOutput || maybeOutput.success !== true) continue
+            if (typeof maybeOutput.artifactId !== "string") continue
+            if (typeof maybeOutput.title !== "string") continue
+
+            created.push({
+                artifactId: maybeOutput.artifactId as Id<"artifacts">,
+                title: maybeOutput.title,
+            })
+        }
+
+        return created
+    }
 
     const content = message.parts
         ? message.parts.filter(part => part.type === 'text').map(part => part.text).join('')
@@ -59,6 +100,9 @@ export function MessageBubble({ message, conversationId, onEdit }: MessageBubble
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fileIds = fileAnnotations ? (fileAnnotations as any).fileIds : []
 
+    // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
+    const createdArtifacts = extractCreatedArtifacts(message)
+
     return (
         <div className={`group p-2 mb-2 rounded ${message.role === 'user' ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted'} max-w-[80%] relative`}>
             <div className="flex justify-between items-start">
@@ -80,7 +124,6 @@ export function MessageBubble({ message, conversationId, onEdit }: MessageBubble
             {/* File Attachments Indicator */}
             {fileIds && fileIds.length > 0 && (
                 <div className="mb-2 space-y-1">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {fileIds.map((id: string) => (
                         <div key={id} className={`flex items-center gap-2 text-xs p-1 rounded ${message.role === 'user' ? 'bg-primary-foreground/10' : 'bg-background/50'}`}>
                             <PaperclipIcon className="h-3 w-3" />
@@ -124,6 +167,20 @@ export function MessageBubble({ message, conversationId, onEdit }: MessageBubble
                 </div>
             ) : (
                 <div className="whitespace-pre-wrap">{content}</div>
+            )}
+
+            {/* Artifact Indicators */}
+            {createdArtifacts.length > 0 && onArtifactSelect && (
+                <div className="mt-2 space-y-2">
+                    {createdArtifacts.map((created) => (
+                        <ArtifactIndicator
+                            key={created.artifactId}
+                            artifactId={created.artifactId}
+                            title={created.title}
+                            onSelect={onArtifactSelect}
+                        />
+                    ))}
+                </div>
             )}
 
             {/* Quick Actions for Assistant */}

@@ -6,21 +6,39 @@ const TITLE_MAX_LENGTH = 50
 const MESSAGE_PREVIEW_LENGTH = 500
 const FALLBACK_TITLE_LENGTH = 30
 
-// Title generation prompt template
-const TITLE_PROMPT_TEMPLATE = `Generate a short, concise title (maximum ${TITLE_MAX_LENGTH} characters) for a conversation that starts with this message. The title should be in Indonesian. Do not use quotes. Just the title.
-
-Message: `
-
-/**
- * Helper function to create full prompt with message
- */
-function createTitlePrompt(userMessage: string): string {
-    const messagePreview = userMessage.substring(0, MESSAGE_PREVIEW_LENGTH)
-    return `${TITLE_PROMPT_TEMPLATE}"${messagePreview}"`
+type TitleGenerationInput = {
+    userMessage: string
+    assistantMessage?: string
 }
 
-export async function generateTitle(userMessage: string): Promise<string> {
-    const prompt = createTitlePrompt(userMessage)
+// Template prompt (Indonesia) untuk bikin judul singkat
+const TITLE_PROMPT_TEMPLATE = `Buat judul singkat dan jelas untuk percakapan ini (maksimal ${TITLE_MAX_LENGTH} karakter).
+
+Aturan:
+- Bahasa Indonesia
+- Tanpa tanda kutip
+- Jangan pakai prefiks seperti "Judul:" atau "Title:"
+- Output hanya judulnya saja
+
+Konteks:`
+
+function createTitlePrompt(input: TitleGenerationInput): string {
+    const userPreview = input.userMessage.substring(0, MESSAGE_PREVIEW_LENGTH)
+    const assistantPreview = (input.assistantMessage ?? "").substring(0, MESSAGE_PREVIEW_LENGTH)
+
+    return [
+        TITLE_PROMPT_TEMPLATE,
+        "",
+        "Pesan user:",
+        userPreview,
+        "",
+        "Respons assistant:",
+        assistantPreview || "(belum ada)",
+    ].join("\n")
+}
+
+export async function generateTitle(input: TitleGenerationInput): Promise<string> {
+    const prompt = createTitlePrompt(input)
 
     try {
         const model = await getGatewayModel()
@@ -40,7 +58,7 @@ export async function generateTitle(userMessage: string): Promise<string> {
             return text.trim().slice(0, TITLE_MAX_LENGTH)
         } catch (finalError) {
             console.error("All title generation attempts failed", finalError)
-            return userMessage.substring(0, FALLBACK_TITLE_LENGTH) + "..."
+            return input.userMessage.substring(0, FALLBACK_TITLE_LENGTH) + "..."
         }
     }
 }

@@ -18,9 +18,10 @@ import { toast } from "sonner"
 interface ChatWindowProps {
   conversationId: string | null
   onMobileMenuClick?: () => void
+  onArtifactSelect?: (artifactId: Id<"artifacts">) => void
 }
 
-export function ChatWindow({ conversationId, onMobileMenuClick }: ChatWindowProps) {
+export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect }: ChatWindowProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
@@ -43,10 +44,51 @@ export function ChatWindow({ conversationId, onMobileMenuClick }: ChatWindowProp
     },
   }), [conversationId, uploadedFileIds])
 
+  type CreatedArtifact = { artifactId: Id<"artifacts">; title?: string }
+
+  const extractCreatedArtifacts = (uiMessage: UIMessage): CreatedArtifact[] => {
+    const created: CreatedArtifact[] = []
+
+    for (const part of uiMessage.parts ?? []) {
+      const maybeToolPart = part as unknown as {
+        type?: unknown
+        state?: unknown
+        output?: unknown
+        result?: unknown
+      }
+
+      if (maybeToolPart.type !== "tool-createArtifact") continue
+
+      const okState =
+        maybeToolPart.state === "output-available" || maybeToolPart.state === "result"
+      if (!okState) continue
+
+      const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
+        success?: unknown
+        artifactId?: unknown
+        title?: unknown
+      } | null
+
+      if (!maybeOutput || maybeOutput.success !== true) continue
+      if (typeof maybeOutput.artifactId !== "string") continue
+
+      created.push({
+        artifactId: maybeOutput.artifactId as Id<"artifacts">,
+        title: typeof maybeOutput.title === "string" ? maybeOutput.title : undefined,
+      })
+    }
+
+    return created
+  }
+
   const { messages, sendMessage, status, stop, setMessages, regenerate, error } = useChat({
     transport,
-    onFinish: () => {
-      // Optional: Add sound or other feedback
+    onFinish: ({ message }) => {
+      const createdArtifacts = extractCreatedArtifacts(message)
+      if (createdArtifacts.length > 0 && onArtifactSelect) {
+        // Auto-open artifact panel dengan artifact terbaru yang dibuat
+        onArtifactSelect(createdArtifacts[createdArtifacts.length - 1].artifactId)
+      }
     },
     onError: (err) => {
       toast.error("Terjadi kesalahan: " + (err.message || "Gagal memproses pesan"))
@@ -202,6 +244,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick }: ChatWindowProp
                   message={message}
                   conversationId={conversationId}
                   onEdit={handleEdit}
+                  onArtifactSelect={onArtifactSelect}
                 />
               </div>
             )}
