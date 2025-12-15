@@ -169,7 +169,7 @@ export async function POST(req: Request) {
         }
 
         try {
-            const model = getGatewayModel()
+            const model = await getGatewayModel()
             const result = streamText({
                 model,
                 messages: fullMessages,
@@ -182,7 +182,7 @@ export async function POST(req: Request) {
         } catch (error) {
             console.error("Gateway stream failed, trying fallback...", error)
             // Fallback: OpenRouter
-            const fallbackModel = getOpenRouterModel()
+            const fallbackModel = await getOpenRouterModel()
             const result = streamText({
                 model: fallbackModel,
                 messages: fullMessages,

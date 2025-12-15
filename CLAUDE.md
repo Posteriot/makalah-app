@@ -41,7 +41,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev
 
 # In a separate terminal: Start Convex backend dev mode (syncs schema and functions)
-npx convex dev
+npm run convex:dev
 
 # In a separate terminal: Start ngrok for Clerk webhooks (development only)
 ngrok http 3000
@@ -75,16 +75,16 @@ npm run lint -- --fix
 ### Convex CLI Commands
 ```bash
 # Push schema/functions to Convex deployment
-npx convex deploy
+npm run convex:deploy
 
 # Run a specific Convex function
-npx convex run <functionName> --args '{"key": "value"}'
+npm run convex -- run <functionName> --args '{"key": "value"}'
 
 # Open Convex dashboard
-npx convex dashboard
+npm run convex:dashboard
 
 # View all Convex CLI options
-npx convex -h
+npm run convex -- -h
 ```
 
 ## Architecture Overview
@@ -106,14 +106,14 @@ npx convex -h
   - `(marketing)`: Public pages (home, pricing, about)
   - `(auth)`: Clerk sign-in/sign-up pages
   - `(dashboard)`: Protected dashboard area
-    - `/admin`: Admin panel for user management (superadmin/admin only)
+    - `/admin`: Admin panel for user management & system prompts (superadmin/admin only)
     - `/settings`: User profile settings
     - `/dashboard`: Redirects to settings
   - `chat`: AI chat interface with conversation history
   - `api/chat`: Chat API endpoint with streaming support
   - `api/webhooks/clerk`: Clerk webhook handler for user events
 - **`src/components`**: Reusable UI components
-  - `admin/`: Admin panel components (UserList, AdminNavLink, RoleBadge)
+  - `admin/`: Admin panel components (UserList, SystemPromptsManager, SystemPromptFormDialog, VersionHistoryDialog, AdminNavLink, RoleBadge)
   - `settings/`: Settings page components (ProfileForm, EmailVerificationBanner)
   - `chat/`: Chat interface components (ChatWindow, ChatSidebar, MessageBubble)
   - `ui/`: shadcn/ui components (Table, Tabs, AlertDialog, etc.)
@@ -121,16 +121,17 @@ npx convex -h
   - `ai/`: AI client, streaming, title generation
   - `hooks/`: Custom React hooks (useCurrentUser, usePermissions, useMessages, useConversations)
 - **`convex`**: Backend schema and functions
-  - `schema.ts`: Database schema (users, conversations, messages, files, papers)
+  - `schema.ts`: Database schema (users, conversations, messages, files, systemPrompts, papers)
   - `users.ts`: User CRUD & role management
   - `permissions.ts`: Role hierarchy & permission helpers
   - `adminUserManagement.ts`: Promote/demote mutations
   - `adminManualUserCreation.ts`: Manual admin creation
+  - `systemPrompts.ts`: System prompt management with versioning
   - `conversations.ts`: Chat conversation management
   - `messages.ts`: Chat message CRUD & retrieval
   - `files.ts`: File attachment handling
   - `chatHelpers.ts`: Chat utility functions
-  - `migrations/`: Database migration scripts
+  - `migrations/`: Database migration scripts (including seedDefaultSystemPrompt.ts)
   - `auth.config.ts`: Clerk authentication config
   - `_generated/`: Auto-generated Convex client code
 
@@ -216,8 +217,8 @@ const openRouterModel = createOpenAI({
 - `updatedAt`: number (optional)
 
 **Role Hierarchy:**
-- `superadmin` (level 3): Full access, can promote/demote
-- `admin` (level 2): Read-only access to admin panel
+- `superadmin` (level 3): Full access, can promote/demote users, manage system prompts
+- `admin` (level 2): Can manage system prompts, read-only access to user management
 - `user` (level 1): Regular user access
 
 **conversations table** (Chat)
@@ -240,6 +241,23 @@ const openRouterModel = createOpenAI({
 - `type`: string (MIME type)
 - `size`: number (bytes)
 - `uploadedAt`: number
+- `extractedText`: string (optional, extracted via /api/extract-file)
+- `extractionStatus`: "pending" | "success" | "failed" (optional)
+- `extractionError`: string (optional, error message if failed)
+- `processedAt`: number (optional, timestamp when extraction completed)
+
+**systemPrompts table** (AI System Prompts Management)
+- `name`: string (display name, e.g., "Default Academic Assistant")
+- `content`: string (full prompt text)
+- `description`: string (optional, prompt description)
+- `version`: number (version number: 1, 2, 3, ...)
+- `isActive`: boolean (only one prompt can be active at a time)
+- `parentId`: Id<"systemPrompts"> (optional, links to parent version, null for v1)
+- `rootId`: Id<"systemPrompts"> (optional, links to root prompt for version history)
+- `createdBy`: Id<"users"> (user who created this version)
+- `createdAt`: number
+- `updatedAt`: number
+- Indexes: `by_active`, `by_root` (rootId + version), `by_createdAt`
 
 **papers table** (Future: Academic Papers)
 - `userId`: Id<"users"> (indexed by `by_user_createdAt`)
@@ -377,6 +395,37 @@ After modifying `convex/schema.ts`:
 2. Create corresponding functions file (e.g., `convex/tableName.ts`)
 3. Add indexes for common query patterns
 4. Export queries/mutations with proper validators
+
+### System Prompt Management
+
+System prompts are managed via admin panel with full versioning support:
+
+**Loading Active Prompt (Chat API):**
+```typescript
+import { getSystemPrompt } from "@/lib/ai/chat-config"
+
+// In API route
+const systemPrompt = await getSystemPrompt() // Fetches from DB, fallback to hardcoded
+```
+
+**Key Features:**
+- Database-driven prompts (editable via admin UI)
+- Automatic fallback to hardcoded prompt if DB fetch fails
+- Version history: Each edit creates new version, maintains full history
+- Only one prompt can be active at a time
+- Admin + Superadmin can manage prompts
+
+**Files:**
+- `convex/systemPrompts.ts` - CRUD operations
+- `src/lib/ai/chat-config.ts` - `getSystemPrompt()` async function
+- `src/components/admin/SystemPromptsManager.tsx` - Admin UI
+- `convex/migrations/seedDefaultSystemPrompt.ts` - Initial data
+
+**First-Time Setup:**
+```bash
+# Run migration to seed default prompt
+npx convex run migrations:seedDefaultSystemPrompt
+```
 
 ## Common Issues
 

@@ -86,5 +86,39 @@ export default defineSchema({
     .index("by_active", ["isActive"]) // Query active prompt
     .index("by_root", ["rootId", "version"]) // Query version history
     .index("by_createdAt", ["createdAt"]), // List all by date
+
+  // AI Provider Configurations (admin-managed)
+  aiProviderConfigs: defineTable({
+    name: v.string(), // Display name (e.g., "Production Config")
+    description: v.optional(v.string()), // Optional description
+
+    // Primary Provider Config
+    primaryProvider: v.string(), // "vercel-gateway" | "openrouter"
+    primaryModel: v.string(), // e.g., "google/gemini-2.5-flash-lite"
+    primaryApiKey: v.string(), // API key (stored as-is, DB is private)
+
+    // Fallback Provider Config
+    fallbackProvider: v.string(), // "openrouter" | "vercel-gateway"
+    fallbackModel: v.string(), // e.g., "google/gemini-2.5-flash-lite"
+    fallbackApiKey: v.string(), // API key (stored as-is, DB is private)
+
+    // AI Settings
+    temperature: v.number(), // 0.0 - 2.0, default 0.7
+    topP: v.optional(v.number()), // Optional: 0.0 - 1.0
+
+    // Versioning & Activation (pattern from systemPrompts)
+    version: v.number(), // 1, 2, 3, ...
+    isActive: v.boolean(), // Only one active at a time
+    parentId: v.optional(v.id("aiProviderConfigs")), // Link to parent version
+    rootId: v.optional(v.id("aiProviderConfigs")), // Link to root config
+
+    // Audit Trail
+    createdBy: v.id("users"), // Admin who created this version
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_active", ["isActive"]) // Query active config
+    .index("by_root", ["rootId", "version"]) // Version history
+    .index("by_createdAt", ["createdAt"]), // List all by date
 })
 

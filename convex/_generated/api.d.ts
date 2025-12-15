@@ -10,11 +10,13 @@
 
 import type * as adminManualUserCreation from "../adminManualUserCreation.js";
 import type * as adminUserManagement from "../adminUserManagement.js";
+import type * as aiProviderConfigs from "../aiProviderConfigs.js";
 import type * as chatHelpers from "../chatHelpers.js";
 import type * as conversations from "../conversations.js";
 import type * as files from "../files.js";
 import type * as messages from "../messages.js";
 import type * as migrations_addRoleToExistingUsers from "../migrations/addRoleToExistingUsers.js";
+import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultAIConfig.js";
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
 import type * as papers from "../papers.js";
 import type * as permissions from "../permissions.js";
@@ -30,11 +32,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   adminManualUserCreation: typeof adminManualUserCreation;
   adminUserManagement: typeof adminUserManagement;
+  aiProviderConfigs: typeof aiProviderConfigs;
   chatHelpers: typeof chatHelpers;
   conversations: typeof conversations;
   files: typeof files;
   messages: typeof messages;
   "migrations/addRoleToExistingUsers": typeof migrations_addRoleToExistingUsers;
+  "migrations/seedDefaultAIConfig": typeof migrations_seedDefaultAIConfig;
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
   papers: typeof papers;
   permissions: typeof permissions;

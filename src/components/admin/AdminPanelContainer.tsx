@@ -5,6 +5,7 @@ import { api } from "@convex/_generated/api"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UserList } from "./UserList"
 import { SystemPromptsManager } from "./SystemPromptsManager"
+import { AIProviderManager } from "./AIProviderManager"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Id } from "@convex/_generated/dataModel"
 
@@ -43,6 +44,7 @@ export function AdminPanelContainer({
         <TabsList>
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="system-prompts">System Prompts</TabsTrigger>
+          <TabsTrigger value="ai-providers">AI Providers</TabsTrigger>
           <TabsTrigger value="stats">Statistik</TabsTrigger>
         </TabsList>
 
@@ -52,6 +54,10 @@ export function AdminPanelContainer({
 
         <TabsContent value="system-prompts" className="space-y-4">
           <SystemPromptsManager userId={userId} />
+        </TabsContent>
+
+        <TabsContent value="ai-providers" className="space-y-4">
+          <AIProviderManager userId={userId} userRole={userRole} />
         </TabsContent>
 
         <TabsContent value="stats" className="space-y-4">

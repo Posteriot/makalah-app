@@ -23,7 +23,7 @@ export async function generateTitle(userMessage: string): Promise<string> {
     const prompt = createTitlePrompt(userMessage)
 
     try {
-        const model = getGatewayModel()
+        const model = await getGatewayModel()
         const { text } = await generateText({
             model,
             prompt
@@ -32,7 +32,7 @@ export async function generateTitle(userMessage: string): Promise<string> {
     } catch (error) {
         console.error("Title generation failed, trying fallback...", error)
         try {
-            const fallbackModel = getOpenRouterModel()
+            const fallbackModel = await getOpenRouterModel()
             const { text } = await generateText({
                 model: fallbackModel,
                 prompt
