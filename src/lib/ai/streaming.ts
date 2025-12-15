@@ -147,3 +147,21 @@ export async function getOpenRouterModel() {
     config.fallback.apiKey
   )
 }
+
+/**
+ * Get the Google Search tool definition
+ * Returns null if initialization fails (graceful degradation)
+ * Async to support dynamic imports (cleaner bundle/lint compliance)
+ */
+export async function getGoogleSearchTool() {
+  try {
+    // Dynamic import to avoid 'require' and optimize bundling
+    const { google } = await import("@ai-sdk/google")
+
+    console.log("[Streaming] Initializing Google Search Grounding tool")
+    return google.tools.googleSearch({})
+  } catch (error) {
+    console.error("[Streaming] Failed to initialize Google Search tool:", error)
+    return null
+  }
+}

@@ -1,0 +1,491 @@
+import { mutationGeneric, queryGeneric } from "convex/server"
+import { v } from "convex/values"
+import { requireRole } from "./permissions"
+import { Id } from "./_generated/dataModel"
+
+// Note: Encryption happens in Next.js layer before sending to Convex
+// These mutations accept pre-encrypted API key strings
+
+// ============================================================================
+// QUERIES
+// ============================================================================
+
+/**
+ * Get the currently active AI provider config
+ * Used by chat API - no auth required for reading active config
+ */
+export const getActiveConfig = queryGeneric({
+  args: {},
+  handler: async ({ db }) => {
+    const active = await db
+      .query("aiProviderConfigs")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .first()
+
+    return active
+  },
+})
+
+/**
+ * List all AI provider configs (latest versions only)
+ * Admin/superadmin only
+ */
+export const listConfigs = queryGeneric({
+  args: { requestorUserId: v.id("users") },
+  handler: async ({ db }, { requestorUserId }) => {
+    // Permission check
+    await requireRole(db, requestorUserId, "admin")
+
+    // Get all configs ordered by createdAt desc
+    const allConfigs = await db
+      .query("aiProviderConfigs")
+      .withIndex("by_createdAt")
+      .order("desc")
+      .collect()
+
+    // Group by rootId (or self if rootId is undefined) and keep only latest version
+    const latestByRoot = new Map<string, typeof allConfigs[0]>()
+
+    for (const config of allConfigs) {
+      // For v1 configs, rootId is undefined, so we use the config's own ID as key
+      const rootKey = config.rootId ?? config._id
+
+      if (!latestByRoot.has(rootKey)) {
+        // First entry is latest since we ordered by createdAt desc
+        latestByRoot.set(rootKey, config)
+      }
+    }
+
+    // Convert to array and sort by createdAt desc
+    const latestVersions = Array.from(latestByRoot.values())
+    latestVersions.sort((a, b) => b.createdAt - a.createdAt)
+
+    // Fetch creator info for each config
+    const configsWithCreator = await Promise.all(
+      latestVersions.map(async (config) => {
+        const creator = await db.get(config.createdBy)
+        return {
+          ...config,
+          creatorEmail: creator?.email ?? "Unknown",
+        }
+      })
+    )
+
+    return configsWithCreator
+  },
+})
+
+/**
+ * Get version history for a config chain
+ * Admin/superadmin only
+ */
+export const getConfigVersionHistory = queryGeneric({
+  args: {
+    configId: v.id("aiProviderConfigs"),
+    requestorUserId: v.id("users"),
+  },
+  handler: async ({ db }, { configId, requestorUserId }) => {
+    // Permission check
+    await requireRole(db, requestorUserId, "admin")
+
+    const config = await db.get(configId)
+    if (!config) {
+      throw new Error("Config tidak ditemukan")
+    }
+
+    // Determine rootId - for v1 configs, use their own ID
+    const rootId = config.rootId ?? configId
+
+    // Get all configs in this chain
+    // First, get the v1 config (which has rootId undefined and _id = rootId)
+    const v1Config = await db.get(rootId as Id<"aiProviderConfigs">)
+
+    // Then get all subsequent versions (which have rootId = rootId)
+    const subsequentVersions = await db
+      .query("aiProviderConfigs")
+      .withIndex("by_root", (q) => q.eq("rootId", rootId as Id<"aiProviderConfigs">))
+      .order("asc")
+      .collect()
+
+    // Combine v1 with subsequent versions
+    const allVersions = v1Config ? [v1Config, ...subsequentVersions] : subsequentVersions
+
+    // Sort by version number ascending
+    allVersions.sort((a, b) => a.version - b.version)
+
+    // Fetch creator info for each version
+    const versionsWithCreator = await Promise.all(
+      allVersions.map(async (version) => {
+        const creator = await db.get(version.createdBy)
+        return {
+          ...version,
+          creatorEmail: creator?.email ?? "Unknown",
+        }
+      })
+    )
+
+    return versionsWithCreator
+  },
+})
+
+// ============================================================================
+// MUTATIONS
+// ============================================================================
+
+/**
+ * Create a new AI provider config (v1)
+ * Admin/superadmin only
+ */
+export const createConfig = actionGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    primaryProvider: v.string(),
+    primaryModel: v.string(),
+    primaryApiKey: v.string(), // Plain text, will be encrypted
+    fallbackProvider: v.string(),
+    fallbackModel: v.string(),
+    fallbackApiKey: v.string(), // Plain text, will be encrypted
+    temperature: v.number(),
+    topP: v.optional(v.number()),
+  },
+  handler: async ({ db }, args) => {
+    // Permission check
+    await requireRole(db, args.requestorUserId, "admin")
+
+    // Validate
+    if (!args.name.trim()) {
+      throw new Error("Nama config tidak boleh kosong")
+    }
+    if (args.temperature < 0 || args.temperature > 2) {
+      throw new Error("Temperature harus antara 0 dan 2")
+    }
+    if (args.topP !== undefined && (args.topP < 0 || args.topP > 1)) {
+      throw new Error("Top P harus antara 0 dan 1")
+    }
+    if (!args.primaryApiKey.trim()) {
+      throw new Error("Primary API key tidak boleh kosong")
+    }
+    if (!args.fallbackApiKey.trim()) {
+      throw new Error("Fallback API key tidak boleh kosong")
+    }
+
+    const now = Date.now()
+
+    // Encrypt API keys
+    const primaryApiKeyEncrypted = encryptApiKey(args.primaryApiKey)
+    const fallbackApiKeyEncrypted = encryptApiKey(args.fallbackApiKey)
+
+    // Create v1 config (rootId and parentId are undefined for v1)
+    const configId = await ctx.runMutation(internal.aiProviderConfigs.insertConfig, {
+      name: args.name.trim(),
+      description: args.description?.trim(),
+      primaryProvider: args.primaryProvider,
+      primaryModel: args.primaryModel,
+      primaryApiKeyEncrypted: args.primaryApiKeyEncrypted,
+      fallbackProvider: args.fallbackProvider,
+      fallbackModel: args.fallbackModel,
+      fallbackApiKeyEncrypted: args.fallbackApiKeyEncrypted,
+      temperature: args.temperature,
+      topP: args.topP,
+      version: 1,
+      isActive: false, // Not active by default
+      parentId: undefined,
+      rootId: undefined, // v1 configs have no rootId
+      createdBy: args.requestorUserId,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    return { configId, message: "Config berhasil dibuat" }
+  },
+})
+
+/**
+ * Update an AI provider config (creates new version)
+ * Admin/superadmin only
+ * Note: API keys should be pre-encrypted before calling this mutation
+ */
+export const updateConfig = mutationGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    configId: v.id("aiProviderConfigs"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    primaryProvider: v.optional(v.string()),
+    primaryModel: v.optional(v.string()),
+    primaryApiKeyEncrypted: v.optional(v.string()), // Pre-encrypted API key
+    fallbackProvider: v.optional(v.string()),
+    fallbackModel: v.optional(v.string()),
+    fallbackApiKeyEncrypted: v.optional(v.string()), // Pre-encrypted API key
+    temperature: v.optional(v.number()),
+    topP: v.optional(v.number()),
+  },
+  handler: async ({ db }, args) => {
+    // Permission check
+    await requireRole(db, args.requestorUserId, "admin")
+
+    const oldConfig = await db.get(args.configId)
+    if (!oldConfig) {
+      throw new Error("Config tidak ditemukan")
+    }
+
+    // Validate
+    if (args.temperature !== undefined && (args.temperature < 0 || args.temperature > 2)) {
+      throw new Error("Temperature harus antara 0 dan 2")
+    }
+    if (args.topP !== undefined && (args.topP < 0 || args.topP > 1)) {
+      throw new Error("Top P harus antara 0 dan 1")
+    }
+
+    const now = Date.now()
+    const newVersion = oldConfig.version + 1
+
+    // Determine rootId - for v1 configs, use their own ID as rootId for children
+    const rootId = oldConfig.rootId ?? args.configId
+
+    // Use new encrypted keys if provided, otherwise reuse old encrypted keys
+    const primaryApiKeyEncrypted = args.primaryApiKeyEncrypted ?? oldConfig.primaryApiKeyEncrypted
+    const fallbackApiKeyEncrypted = args.fallbackApiKeyEncrypted ?? oldConfig.fallbackApiKeyEncrypted
+
+    // Create new version
+    const newConfigId = await db.insert("aiProviderConfigs", {
+      name: args.name?.trim() ?? oldConfig.name,
+      description: args.description?.trim() ?? oldConfig.description,
+      primaryProvider: args.primaryProvider ?? oldConfig.primaryProvider,
+      primaryModel: args.primaryModel ?? oldConfig.primaryModel,
+      primaryApiKeyEncrypted,
+      fallbackProvider: args.fallbackProvider ?? oldConfig.fallbackProvider,
+      fallbackModel: args.fallbackModel ?? oldConfig.fallbackModel,
+      fallbackApiKeyEncrypted,
+      temperature: args.temperature ?? oldConfig.temperature,
+      topP: args.topP ?? oldConfig.topP,
+      version: newVersion,
+      isActive: oldConfig.isActive, // Inherit active status
+      parentId: args.configId, // Link to previous version
+      rootId: rootId, // Link to root config
+      createdBy: args.requestorUserId,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    // Deactivate old version if it was active
+    if (oldConfig.isActive) {
+      await db.patch(args.configId, { isActive: false, updatedAt: now })
+    }
+
+    return {
+      configId: newConfigId,
+      version: newVersion,
+      message: `Config berhasil diupdate ke versi ${newVersion}`,
+    }
+  },
+})
+
+/**
+ * Activate an AI provider config (deactivates all others)
+ * Admin/superadmin only
+ */
+export const activateConfig = mutationGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    configId: v.id("aiProviderConfigs"),
+  },
+  handler: async ({ db }, { requestorUserId, configId }) => {
+    // Permission check
+    await requireRole(db, requestorUserId, "admin")
+
+    const targetConfig = await db.get(configId)
+    if (!targetConfig) {
+      throw new Error("Config tidak ditemukan")
+    }
+
+    if (targetConfig.isActive) {
+      return { message: "Config sudah aktif" }
+    }
+
+    const now = Date.now()
+
+    // Deactivate all currently active configs
+    const activeConfigs = await db
+      .query("aiProviderConfigs")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .collect()
+
+    for (const config of activeConfigs) {
+      await db.patch(config._id, { isActive: false, updatedAt: now })
+    }
+
+    // Activate target config
+    await db.patch(configId, { isActive: true, updatedAt: now })
+
+    return {
+      message: `Config "${targetConfig.name}" v${targetConfig.version} berhasil diaktifkan`,
+    }
+  },
+})
+
+/**
+ * Deactivate an AI provider config
+ * Admin/superadmin only
+ */
+export const deactivateConfig = mutationGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    configId: v.id("aiProviderConfigs"),
+  },
+  handler: async ({ db }, { requestorUserId, configId }) => {
+    // Permission check
+    await requireRole(db, requestorUserId, "admin")
+
+    const config = await db.get(configId)
+    if (!config) {
+      throw new Error("Config tidak ditemukan")
+    }
+
+    if (!config.isActive) {
+      return { message: "Config sudah tidak aktif" }
+    }
+
+    await db.patch(configId, { isActive: false, updatedAt: Date.now() })
+
+    return {
+      message: "Config berhasil dinonaktifkan. AI akan fallback ke hardcoded config.",
+    }
+  },
+})
+
+/**
+ * Swap providers (swap primary ↔ fallback)
+ * Admin/superadmin only
+ */
+export const swapProviders = mutationGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    configId: v.id("aiProviderConfigs"),
+  },
+  handler: async ({ db }, { requestorUserId, configId }) => {
+    // Permission check
+    await requireRole(db, requestorUserId, "admin")
+
+    const config = await db.get(configId)
+    if (!config) {
+      throw new Error("Config tidak ditemukan")
+    }
+
+    // Create new version dengan swapped providers
+    const newVersion = config.version + 1
+    const rootId = config.rootId ?? configId
+    const now = Date.now()
+
+    const newConfigId = await db.insert("aiProviderConfigs", {
+      name: config.name,
+      description: config.description,
+      // Swap primary ↔ fallback
+      primaryProvider: config.fallbackProvider,
+      primaryModel: config.fallbackModel,
+      primaryApiKeyEncrypted: config.fallbackApiKeyEncrypted,
+      fallbackProvider: config.primaryProvider,
+      fallbackModel: config.primaryModel,
+      fallbackApiKeyEncrypted: config.primaryApiKeyEncrypted,
+      temperature: config.temperature,
+      topP: config.topP,
+      version: newVersion,
+      isActive: config.isActive, // Inherit active status
+      parentId: configId,
+      rootId,
+      createdBy: requestorUserId,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    // Deactivate old version if it was active
+    if (config.isActive) {
+      await db.patch(configId, { isActive: false, updatedAt: now })
+    }
+
+    return {
+      configId: newConfigId,
+      message: `Provider berhasil ditukar (v${newVersion})`,
+    }
+  },
+})
+
+/**
+ * Delete an AI provider config
+ * Admin/superadmin only
+ * Cannot delete active configs
+ */
+export const deleteConfig = mutationGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    configId: v.id("aiProviderConfigs"),
+  },
+  handler: async ({ db }, { requestorUserId, configId }) => {
+    // Permission check
+    await requireRole(db, requestorUserId, "admin")
+
+    const config = await db.get(configId)
+    if (!config) {
+      throw new Error("Config tidak ditemukan")
+    }
+
+    if (config.isActive) {
+      throw new Error("Tidak bisa menghapus config yang sedang aktif. Nonaktifkan terlebih dahulu.")
+    }
+
+    // Delete this config
+    await db.delete(configId)
+
+    return { message: "Config berhasil dihapus" }
+  },
+})
+
+/**
+ * Delete entire config chain (all versions)
+ * Admin/superadmin only
+ * Cannot delete if any version is active
+ */
+export const deleteConfigChain = mutationGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    configId: v.id("aiProviderConfigs"),
+  },
+  handler: async ({ db }, { requestorUserId, configId }) => {
+    // Permission check
+    await requireRole(db, requestorUserId, "admin")
+
+    const config = await db.get(configId)
+    if (!config) {
+      throw new Error("Config tidak ditemukan")
+    }
+
+    // Determine rootId
+    const rootId = config.rootId ?? configId
+
+    // Get all configs in this chain
+    const v1Config = await db.get(rootId as Id<"aiProviderConfigs">)
+    const subsequentVersions = await db
+      .query("aiProviderConfigs")
+      .withIndex("by_root", (q) => q.eq("rootId", rootId as Id<"aiProviderConfigs">))
+      .collect()
+
+    const allVersions = v1Config ? [v1Config, ...subsequentVersions] : subsequentVersions
+
+    // Check if any version is active
+    const hasActive = allVersions.some((c) => c.isActive)
+    if (hasActive) {
+      throw new Error(
+        "Tidak bisa menghapus config chain yang memiliki versi aktif. Nonaktifkan terlebih dahulu."
+      )
+    }
+
+    // Delete all versions
+    for (const version of allVersions) {
+      await db.delete(version._id)
+    }
+
+    return { message: `${allVersions.length} versi config berhasil dihapus` }
+  },
+})

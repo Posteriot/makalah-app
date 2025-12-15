@@ -1,6 +1,7 @@
 import { generateTitle } from "@/lib/ai/title-generator"
 import { convertToModelMessages, tool, type ToolSet, stepCountIs } from "ai"
 import { z } from "zod"
+import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
 
 import { auth } from "@clerk/nextjs/server"
 import { getSystemPrompt } from "@/lib/ai/chat-config"
@@ -159,7 +160,7 @@ export async function POST(req: Request) {
         ]
 
         // Import streamText and model helpers
-        const { getGatewayModel, getOpenRouterModel } = await import("@/lib/ai/streaming")
+        const { getGatewayModel, getOpenRouterModel, getGoogleSearchTool } = await import("@/lib/ai/streaming")
         const { streamText } = await import("ai")
 
         // Helper for saving
@@ -314,15 +315,33 @@ Aturan:
         try {
             const model = await getGatewayModel()
             console.log("[Chat API] Using Gateway model:", model)
+
+            // Inject Google Search Tool for Gateway (Primary) only
+            const googleSearchTool = await getGoogleSearchTool()
+            const gatewayTools = {
+                ...tools,
+                ...(googleSearchTool ? { google_search: googleSearchTool } : {})
+            }
+
             const result = streamText({
                 model,
                 messages: fullMessages,
-                tools,
+                tools: gatewayTools,
                 stopWhen: stepCountIs(5),
                 temperature: 0.7,
-                onFinish: async ({ text }) => {
+                onFinish: async ({ text, providerMetadata }) => {
                     if (text) {
                         await saveAssistantMessage(text)
+
+                        // Task 2.3: Extract and log Grounding Metadata
+                        const googleMetadata = providerMetadata?.google as GoogleGenerativeAIProviderMetadata | undefined
+                        const groundingMetadata = googleMetadata?.groundingMetadata
+
+                        if (groundingMetadata) {
+                            console.log("[Chat API] Grounding Metadata received:", JSON.stringify(groundingMetadata, null, 2))
+                            // Phase 2: Will pass this to frontend via data stream or message metadata
+                        }
+
                         // Rename pertama dilakukan setelah assistant selesai merespons
                         const minPairsForFinalTitle = Number.parseInt(
                             process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",

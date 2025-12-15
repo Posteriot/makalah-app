@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Loader2Icon, AlertCircleIcon } from "lucide-react"
+import { Loader2Icon, AlertCircleIcon, GlobeIcon } from "lucide-react"
 
 interface ToolStateIndicatorProps {
     toolName: string
@@ -16,9 +16,15 @@ export function ToolStateIndicator({ toolName, state, errorText }: ToolStateIndi
     const isError = state === 'output-error' || state === 'error'
     const isProcessing = state === 'input-streaming' || state === 'input-available'
 
+    const isGoogleSearch = toolName === 'google_search'
+
     let text = ""
-    if (state === 'input-streaming') text = `AI menyiapkan ${toolName}...`
-    else if (state === 'input-available') text = `Memproses ${toolName}...`
+    if (state === 'input-streaming') {
+        text = isGoogleSearch ? "Mencari informasi di internet..." : `AI menyiapkan ${toolName}...`
+    }
+    else if (state === 'input-available') {
+        text = isGoogleSearch ? "Mencari informasi di internet..." : `Memproses ${toolName}...`
+    }
     else if (isError) text = `Gagal: ${errorText || "Terjadi kesalahan"}`
     else text = `${toolName} (${state})`
 
@@ -33,7 +39,13 @@ export function ToolStateIndicator({ toolName, state, errorText }: ToolStateIndi
             role="status"
             aria-label={text}
         >
-            {isProcessing && <Loader2Icon className="h-4 w-4 animate-spin text-blue-500" />}
+            {isProcessing && (
+                isGoogleSearch ? (
+                    <GlobeIcon className="h-4 w-4 animate-pulse text-blue-500" />
+                ) : (
+                    <Loader2Icon className="h-4 w-4 animate-spin text-blue-500" />
+                )
+            )}
             {isError && <AlertCircleIcon className="h-4 w-4" />}
             <span>{text}</span>
         </div>
