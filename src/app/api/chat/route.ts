@@ -1,5 +1,5 @@
 import { generateTitle } from "@/lib/ai/title-generator"
-import { convertToModelMessages, tool, type ToolSet, stepCountIs } from "ai"
+import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, tool, type ToolSet, stepCountIs } from "ai"
 import { z } from "zod"
 import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
 
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
         const modelMessages = convertToModelMessages(messages)
 
         // Task 6.4: Inject file context BEFORE user messages
-        const fullMessages = [
+        const fullMessagesBase = [
             { role: "system" as const, content: systemPrompt },
             ...(fileContext
                 ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
@@ -322,14 +322,29 @@ Aturan:
 
             // Inject Google Search Tool for Gateway (Primary) only
             const googleSearchTool = await getGoogleSearchTool()
+            const wrappedGoogleSearchTool = googleSearchTool ?? null
+
+            const webSearchBehaviorSystemNote = `Jika Anda memutuskan untuk menggunakan pencarian internet (tool google_search), lakukan urutan ini:
+1) Tulis satu kalimat pendek untuk memberi tahu user bahwa Anda akan mencari informasi terlebih dahulu.
+2) Panggil tool google_search.
+3) Setelah itu, lanjutkan jawaban utama secara normal.`
+
+            const fullMessagesGateway = wrappedGoogleSearchTool
+                ? [
+                    fullMessagesBase[0],
+                    { role: "system" as const, content: webSearchBehaviorSystemNote },
+                    ...fullMessagesBase.slice(1),
+                ]
+                : fullMessagesBase
+
             const gatewayTools = {
                 ...tools,
-                ...(googleSearchTool ? { google_search: googleSearchTool } : {})
+                ...(wrappedGoogleSearchTool ? { google_search: wrappedGoogleSearchTool } : {})
             }
 
             const result = streamText({
                 model,
-                messages: fullMessages,
+                messages: fullMessagesGateway,
                 tools: gatewayTools,
                 stopWhen: stepCountIs(5),
                 temperature: 0.7,
@@ -387,6 +402,92 @@ Aturan:
                     }
                 },
             })
+
+            // Indikator pencarian (inline) untuk grounding web:
+            // - Karena `google_search` adalah provider-defined tool, event tool `tool-input-*` bisa nggak muncul sama sekali.
+            // - AI SDK merekomendasikan status/progress UI lewat `data-*` parts (Streaming Custom Data).
+            // - Jadi kita kirim `data-search` secara optimistis di awal stream, lalu matikan di akhir.
+            //   Kalau ternyata tidak ada `source-url` yang muncul, status ditutup sebagai `off`.
+            if (wrappedGoogleSearchTool) {
+                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
+
+                const stream = createUIMessageStream({
+                    execute: async ({ writer }) => {
+                        let started = false
+                        let hasAnySource = false
+                        let searchStatusClosed = false
+
+                        const ensureStart = () => {
+                            if (started) return
+                            started = true
+                            writer.write({ type: "start", messageId })
+                        }
+
+                        const ensureSearchStatusShown = () => {
+                            ensureStart()
+                            writer.write({
+                                type: "data-search",
+                                id: searchStatusId,
+                                data: {
+                                    status: "searching",
+                                },
+                            })
+                        }
+
+                        const closeSearchStatus = (finalStatus: "done" | "off" | "error") => {
+                            if (searchStatusClosed) return
+                            searchStatusClosed = true
+                            ensureStart()
+                            writer.write({
+                                type: "data-search",
+                                id: searchStatusId,
+                                data: {
+                                    status: finalStatus,
+                                },
+                            })
+                        }
+
+                        // Optimistis: tampilkan indikator "Mencari..." sejak awal stream (sebelum token ada).
+                        ensureSearchStatusShown()
+
+                        for await (const chunk of result.toUIMessageStream({
+                            sendStart: false,
+                            generateMessageId: () => messageId,
+                            sendSources: true,
+                        })) {
+                            if (chunk.type === "source-url") {
+                                hasAnySource = true
+                            }
+
+                            if (chunk.type === "finish") {
+                                closeSearchStatus(hasAnySource ? "done" : "off")
+                                writer.write(chunk)
+                                break
+                            }
+
+                            if (chunk.type === "error") {
+                                closeSearchStatus("error")
+                                writer.write(chunk)
+                                break
+                            }
+
+                            if (chunk.type === "abort") {
+                                closeSearchStatus(hasAnySource ? "done" : "off")
+                                writer.write(chunk)
+                                break
+                            }
+
+                            // Tulis chunk normal
+                            ensureStart()
+                            writer.write(chunk)
+                        }
+                    },
+                })
+
+                return createUIMessageStreamResponse({ stream })
+            }
+
             return result.toUIMessageStreamResponse()
         } catch (error) {
             console.error("Gateway stream failed, trying fallback...", error)
@@ -395,7 +496,7 @@ Aturan:
             console.log("[Chat API] Using OpenRouter fallback")
             const result = streamText({
                 model: fallbackModel,
-                messages: fullMessages,
+                messages: fullMessagesBase,
                 tools,
                 stopWhen: stepCountIs(5),
                 temperature: 0.7,

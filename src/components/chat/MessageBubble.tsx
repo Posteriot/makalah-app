@@ -5,6 +5,7 @@ import { PaperclipIcon, PencilIcon, XIcon, CheckIcon } from "lucide-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
+import { SearchStatusIndicator, type SearchStatus } from "./SearchStatusIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { useState, useRef } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -98,10 +99,28 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
         return tools
     }
 
+    const extractSearchStatus = (uiMessage: UIMessage): SearchStatus | null => {
+        for (const part of uiMessage.parts ?? []) {
+            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+            if (maybeDataPart.type !== "data-search") continue
+
+            const data = maybeDataPart.data as { status?: unknown } | null
+            if (!data || typeof data !== "object") continue
+
+            const status = data.status
+            if (status === "searching" || status === "done" || status === "off" || status === "error") {
+                return status
+            }
+        }
+
+        return null
+    }
+
     const content = message.parts
         ? message.parts.filter(part => part.type === 'text').map(part => part.text).join('')
         : ''
 
+    const searchStatus = extractSearchStatus(message)
 
     const startEditing = () => {
         setIsEditing(true)
@@ -146,6 +165,8 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     const createdArtifacts = extractCreatedArtifacts(message)
     const inProgressTools = extractInProgressTools(message)
+    const searchTools = inProgressTools.filter((t) => t.toolName === "google_search")
+    const nonSearchTools = inProgressTools.filter((t) => t.toolName !== "google_search")
 
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,10 +204,10 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
                 </div>
             )}
 
-            {/* Tool State Indicators */}
-            {inProgressTools.length > 0 && (
+            {/* Tool State Indicators (non-search) */}
+            {nonSearchTools.length > 0 && (
                 <div className="mb-2 space-y-1">
-                    {inProgressTools.map((tool, index) => (
+                    {nonSearchTools.map((tool, index) => (
                         <ToolStateIndicator
                             key={index}
                             toolName={tool.toolName}
@@ -231,6 +252,27 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
                 </div>
             ) : (
                 <div className="whitespace-pre-wrap">{content}</div>
+            )}
+
+            {/* Search Status (data stream, below assistant text) */}
+            {!isEditing && message.role === "assistant" && searchStatus && (
+                <div className="mt-2 space-y-1">
+                    <SearchStatusIndicator status={searchStatus} />
+                </div>
+            )}
+
+            {/* Search Indicator (below assistant text) */}
+            {!isEditing && message.role === "assistant" && searchTools.length > 0 && (
+                <div className="mt-2 space-y-1">
+                    {searchTools.map((tool, index) => (
+                        <ToolStateIndicator
+                            key={`search-${index}`}
+                            toolName={tool.toolName}
+                            state={tool.state}
+                            errorText={tool.errorText}
+                        />
+                    ))}
+                </div>
             )}
 
             {/* Artifact Indicators */}
