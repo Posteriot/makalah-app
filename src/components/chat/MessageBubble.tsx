@@ -5,6 +5,7 @@ import { PaperclipIcon, PencilIcon, XIcon, CheckIcon } from "lucide-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
+import { SourcesIndicator } from "./SourcesIndicator"
 import { useState, useRef } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
 
@@ -146,6 +147,12 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
     const createdArtifacts = extractCreatedArtifacts(message)
     const inProgressTools = extractInProgressTools(message)
 
+    // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sourcesFromAnnotation = (message as any).annotations?.find((a: any) => a.type === 'sources')?.sources
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sources = sourcesFromAnnotation || (message as any).sources || []
+
     return (
         <div className={`group p-2 mb-2 rounded ${message.role === 'user' ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted'} max-w-[80%] relative`}>
             <div className="flex justify-between items-start">
@@ -237,6 +244,13 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
                             onSelect={onArtifactSelect}
                         />
                     ))}
+                </div>
+            )}
+
+            {/* Task 4.2: Sources Indicator (after Artifacts, before QuickActions) */}
+            {sources && sources.length > 0 && message.role === "assistant" && (
+                <div className="mt-2">
+                    <SourcesIndicator sources={sources} />
                 </div>
             )}
 

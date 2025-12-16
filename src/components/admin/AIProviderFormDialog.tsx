@@ -292,6 +292,7 @@ export function AIProviderFormDialog({
         setPrimaryValidation("error")
         toast.error(result.error || "Validasi gagal")
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setPrimaryValidation("error")
       toast.error(error.message || "Terjadi kesalahan saat validasi")
@@ -329,6 +330,7 @@ export function AIProviderFormDialog({
         setFallbackValidation("error")
         toast.error(result.error || "Validasi gagal")
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setFallbackValidation("error")
       toast.error(error.message || "Terjadi kesalahan saat validasi")
@@ -371,6 +373,7 @@ export function AIProviderFormDialog({
     try {
       if (isEditing) {
         // Update existing config
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updateArgs: any = {
           requestorUserId: userId,
           configId: config._id,
@@ -421,15 +424,15 @@ export function AIProviderFormDialog({
 
   const hasChanges = isEditing
     ? name !== config.name ||
-      description !== (config.description ?? "") ||
-      primaryProvider !== config.primaryProvider ||
-      primaryModel !== config.primaryModel ||
-      fallbackProvider !== config.fallbackProvider ||
-      fallbackModel !== config.fallbackModel ||
-      temperature !== config.temperature ||
-      topP !== config.topP ||
-      primaryApiKey.trim() !== "" ||
-      fallbackApiKey.trim() !== ""
+    description !== (config.description ?? "") ||
+    primaryProvider !== config.primaryProvider ||
+    primaryModel !== config.primaryModel ||
+    fallbackProvider !== config.fallbackProvider ||
+    fallbackModel !== config.fallbackModel ||
+    temperature !== config.temperature ||
+    topP !== config.topP ||
+    primaryApiKey.trim() !== "" ||
+    fallbackApiKey.trim() !== ""
     : name.trim() !== "" && primaryApiKey.trim() !== "" && fallbackApiKey.trim() !== ""
 
   return (

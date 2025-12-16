@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
 
   // Validate provider configuration
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let testModel: any
 
     if (provider === "vercel-gateway") {
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
       provider,
       model,
     })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("[ValidateProvider] Validation failed:", error)
 

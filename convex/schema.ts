@@ -49,6 +49,10 @@ export default defineSchema({
       tokens: v.optional(v.number()),
       finishReason: v.optional(v.string()),
     })),
+    sources: v.optional(v.array(v.object({
+      url: v.string(),
+      title: v.string()
+    }))),
   })
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_conversation_role", ["conversationId", "role", "createdAt"]),

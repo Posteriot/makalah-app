@@ -8,6 +8,8 @@ import { getSystemPrompt } from "@/lib/ai/chat-config"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
+import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
+import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 
 export async function POST(req: Request) {
     try {
@@ -164,14 +166,16 @@ export async function POST(req: Request) {
         const { streamText } = await import("ai")
 
         // Helper for saving
-        const saveAssistantMessage = async (content: string) => {
+        // Helper for saving
+        const saveAssistantMessage = async (content: string, sources?: { url: string; title: string }[]) => {
             await fetchMutation(api.messages.createMessage, {
                 conversationId: currentConversationId as Id<"conversations">,
                 role: "assistant",
                 content: content,
                 metadata: {
                     model: "google/gemini-2.5-flash-lite", // or dynamic
-                }
+                },
+                sources: sources && sources.length > 0 ? sources : undefined,
             })
         }
 
@@ -330,16 +334,43 @@ Aturan:
                 stopWhen: stepCountIs(5),
                 temperature: 0.7,
                 onFinish: async ({ text, providerMetadata }) => {
+                    let sources: { url: string; title: string }[] | undefined
+
+                    // Task 2.2: Extract sources from groundingMetadata (BEFORE saving message)
+                    const googleMetadata = providerMetadata?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
+                    const groundingMetadata = googleMetadata?.groundingMetadata
+
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const chunks = (groundingMetadata as any)?.groundingChunks as any[] | undefined
+
+                    if (chunks) {
+                        sources = chunks
+                            .map((chunk) => {
+                                if (chunk.web?.uri) {
+                                    const normalizedUrl = normalizeWebSearchUrl(chunk.web.uri)
+                                    return {
+                                        url: normalizedUrl,
+                                        title: chunk.web.title || normalizedUrl,
+                                    }
+                                }
+                                return null
+                            })
+                            .filter(Boolean) as { url: string; title: string }[]
+                    }
+
                     if (text) {
-                        await saveAssistantMessage(text)
+                        if (sources && sources.length > 0) {
+                            sources = await enrichSourcesWithFetchedTitles(sources, {
+                                concurrency: 4,
+                                timeoutMs: 2500,
+                            })
+                        }
+
+                        await saveAssistantMessage(text, sources)
 
                         // Task 2.3: Extract and log Grounding Metadata
-                        const googleMetadata = providerMetadata?.google as GoogleGenerativeAIProviderMetadata | undefined
-                        const groundingMetadata = googleMetadata?.groundingMetadata
-
                         if (groundingMetadata) {
                             console.log("[Chat API] Grounding Metadata received:", JSON.stringify(groundingMetadata, null, 2))
-                            // Phase 2: Will pass this to frontend via data stream or message metadata
                         }
 
                         // Rename pertama dilakukan setelah assistant selesai merespons

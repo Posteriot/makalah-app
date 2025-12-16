@@ -1,4 +1,4 @@
-// @ts-ignore
+
 import natural from 'natural';
 
 export class BahasaTokenizer {

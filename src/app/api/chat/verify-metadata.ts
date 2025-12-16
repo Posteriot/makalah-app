@@ -11,13 +11,27 @@ async function verifyMetadataExtraction() {
             groundingMetadata: {
                 webSearchQueries: ["berita terkini indonesia"],
                 searchEntryPoint: { renderedContent: "<html>...</html>" },
-                groundingSupports: [{ url: "https://example.com/news" }]
+                groundingChunks: [
+                    {
+                        web: {
+                            uri: "https://example.com/news",
+                            title: "Example News"
+                        }
+                    }
+                ],
+                groundingSupports: [
+                    {
+                        segment: { text: "..." },
+                        groundingChunkIndices: [0],
+                        confidenceScores: [0.9]
+                    }
+                ]
             }
         }
     }
 
     // Type Safety Check (Static)
-    const googleMetadata = mockProviderMetadata.google as GoogleGenerativeAIProviderMetadata | undefined
+    const googleMetadata = mockProviderMetadata.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
     const groundingMetadata = googleMetadata?.groundingMetadata
 
     if (groundingMetadata && groundingMetadata.webSearchQueries) {

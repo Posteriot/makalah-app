@@ -61,6 +61,10 @@ export const createMessage = mutation({
             tokens: v.optional(v.number()),
             finishReason: v.optional(v.string()),
         })),
+        sources: v.optional(v.array(v.object({
+            url: v.string(),
+            title: v.string()
+        }))),
     },
     handler: async ({ db }, args) => {
         const now = Date.now()

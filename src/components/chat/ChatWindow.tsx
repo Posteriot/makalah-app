@@ -113,7 +113,10 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         role: msg.role as "user" | "assistant" | "system" | "data",
         content: msg.content,
         parts: [{ type: 'text', text: msg.content } as const],
-        annotations: msg.fileIds ? [{ type: 'file_ids', fileIds: msg.fileIds }] : undefined
+        annotations: msg.fileIds ? [{ type: 'file_ids', fileIds: msg.fileIds }] : undefined,
+        // Helper: pass sources directly to be picked up by MessageBubble
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sources: (msg as any).sources,
       })) as unknown as UIMessage[]
 
       setMessages(mappedMessages)
@@ -238,17 +241,33 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             ref={virtuosoRef}
             data={messages}
             totalCount={messages.length}
-            itemContent={(index, message) => (
-              <div className="pb-4">
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  conversationId={conversationId}
-                  onEdit={handleEdit}
-                  onArtifactSelect={onArtifactSelect}
-                />
-              </div>
-            )}
+            itemContent={(index, message) => {
+              // Task 4.1 Option B Enhanced: Live Sync via History Matching
+              // Try to find matching message in history to get persisted metadata like sources
+              // We use index matching as a heuristic since IDs differ for new messages
+              const historyMsg = historyMessages && historyMessages[index]
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const persistedSources = (historyMsg && historyMsg.role === message.role) ? (historyMsg as any).sources : undefined
+
+              // Merge sources into message for display
+              const displayMessage = {
+                ...message,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                sources: (message as any).sources || persistedSources
+              } as UIMessage
+
+              return (
+                <div className="pb-4">
+                  <MessageBubble
+                    key={message.id}
+                    message={displayMessage}
+                    conversationId={conversationId}
+                    onEdit={handleEdit}
+                    onArtifactSelect={onArtifactSelect}
+                  />
+                </div>
+              )
+            }}
             followOutput="auto"
             initialTopMostItemIndex={messages.length - 1}
             style={{ height: "100%" }}
