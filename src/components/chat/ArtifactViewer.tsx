@@ -81,7 +81,7 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [viewingVersionId, setViewingVersionId] = useState<Id<"artifacts"> | null>(artifactId)
-    const currentUser = useCurrentUser()
+    const { user: currentUser } = useCurrentUser()
 
     const updateArtifact = useMutation(api.artifacts.update)
 

@@ -44,7 +44,7 @@ export function VersionHistoryDialog({
     currentVersionId,
     onSelectVersion,
 }: VersionHistoryDialogProps) {
-    const currentUser = useCurrentUser()
+    const { user: currentUser } = useCurrentUser()
 
     const versionHistory = useQuery(
         api.artifacts.getVersionHistory,

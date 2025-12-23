@@ -22,6 +22,9 @@ import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefa
 import type * as migrations_updateAIConfigForToolCalling from "../migrations/updateAIConfigForToolCalling.js";
 import type * as migrations_updatePromptWithArtifactGuidelines from "../migrations/updatePromptWithArtifactGuidelines.js";
 import type * as migrations_updateToGPT4oForToolCalling from "../migrations/updateToGPT4oForToolCalling.js";
+import type * as paperSessions from "../paperSessions.js";
+import type * as paperSessions_constants from "../paperSessions/constants.js";
+import type * as paperSessions_types from "../paperSessions/types.js";
 import type * as papers from "../papers.js";
 import type * as permissions from "../permissions.js";
 import type * as systemPrompts from "../systemPrompts.js";
@@ -48,6 +51,9 @@ declare const fullApi: ApiFromModules<{
   "migrations/updateAIConfigForToolCalling": typeof migrations_updateAIConfigForToolCalling;
   "migrations/updatePromptWithArtifactGuidelines": typeof migrations_updatePromptWithArtifactGuidelines;
   "migrations/updateToGPT4oForToolCalling": typeof migrations_updateToGPT4oForToolCalling;
+  paperSessions: typeof paperSessions;
+  "paperSessions/constants": typeof paperSessions_constants;
+  "paperSessions/types": typeof paperSessions_types;
   papers: typeof papers;
   permissions: typeof permissions;
   systemPrompts: typeof systemPrompts;

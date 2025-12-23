@@ -169,4 +169,73 @@ export default defineSchema({
     .index("by_active", ["isActive"]) // Query active config
     .index("by_root", ["rootId", "version"]) // Version history
     .index("by_createdAt", ["createdAt"]), // List all by date
+
+  // Paper Writing Workflow Sessions
+  paperSessions: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+
+    // Workflow State
+    currentStage: v.string(), // PaperStage enum (gagasan, topik, etc.)
+    stageStatus: v.string(), // StageStatus (drafting, pending_validation, approved, revision)
+
+    // Accumulated data for all 14 stages
+    stageData: v.object({
+      // Phase 1: Foundation Stages
+      gagasan: v.optional(v.object({
+        ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
+        analisis: v.optional(v.string()),
+        angle: v.optional(v.string()),
+        novelty: v.optional(v.string()),
+        referensiAwal: v.optional(v.array(v.object({
+          title: v.string(),
+          authors: v.optional(v.string()),
+          year: v.optional(v.number()),
+          url: v.optional(v.string()),
+        }))),
+        artifactId: v.optional(v.id("artifacts")),
+        validatedAt: v.optional(v.number()),
+        revisionCount: v.optional(v.number()),
+      })),
+      topik: v.optional(v.object({
+        definitif: v.optional(v.string()), // Optional: may not exist during initial revision
+        angleSpesifik: v.optional(v.string()),
+        argumentasiKebaruan: v.optional(v.string()),
+        researchGap: v.optional(v.string()), // Gap spesifik yang akan diisi
+        referensiPendukung: v.optional(v.array(v.object({
+          title: v.string(),
+          authors: v.optional(v.string()),
+          year: v.optional(v.number()),
+          url: v.optional(v.string()),
+        }))),
+        artifactId: v.optional(v.id("artifacts")),
+        validatedAt: v.optional(v.number()),
+        revisionCount: v.optional(v.number()),
+      })),
+
+      // Future Stages (Placeholder structure - use v.any() for flexibility)
+      abstrak: v.optional(v.any()),
+      pendahuluan: v.optional(v.any()),
+      tinjauan_literatur: v.optional(v.any()),
+      metodologi: v.optional(v.any()),
+      hasil: v.optional(v.any()),
+      diskusi: v.optional(v.any()),
+      kesimpulan: v.optional(v.any()),
+      daftar_pustaka: v.optional(v.any()),
+      lampiran: v.optional(v.any()),
+      judul: v.optional(v.any()),
+      outline: v.optional(v.any()),
+      elaborasi: v.optional(v.any()),
+    }),
+
+    paperTitle: v.optional(v.string()),
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_user_updated", ["userId", "updatedAt"])
+    .index("by_stage", ["currentStage", "stageStatus"]),
 })

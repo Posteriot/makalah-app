@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createOpenAI } from "@ai-sdk/openai"
 import { generateText } from "ai"
+import { fetchQuery } from "convex/nextjs"
+import { api } from "@convex/_generated/api"
 
 /**
  * POST /api/admin/validate-provider
@@ -16,8 +18,6 @@ export async function POST(request: NextRequest) {
   }
 
   // Permission check (admin only)
-  const { fetchQuery } = await import("convex/nextjs")
-  const { api } = await import("@convex/_generated/api")
 
   try {
     const convexUser = await fetchQuery(api.users.getUserByClerkId, {

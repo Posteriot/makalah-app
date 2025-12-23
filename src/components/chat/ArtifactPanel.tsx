@@ -30,7 +30,7 @@ export function ArtifactPanel({
     onSelectArtifact,
 }: ArtifactPanelProps) {
     const [typeFilter, setTypeFilter] = useState<ArtifactType | null>(null)
-    const currentUser = useCurrentUser()
+    const { user: currentUser } = useCurrentUser()
 
     // Fetch artifacts with optional type filter
     const artifacts = useQuery(

@@ -9,7 +9,7 @@ type Role = "superadmin" | "admin" | "user"
  * Returns helper functions for client-side permission checks
  */
 export function usePermissions() {
-  const user = useCurrentUser()
+  const { user } = useCurrentUser()
 
   const isAdmin = () => {
     if (!user) return false

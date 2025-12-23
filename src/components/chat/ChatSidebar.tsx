@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button"
 import { PlusIcon, MessageSquareIcon, TrashIcon } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useQuery } from "convex/react"
+import { api } from "../../../convex/_generated/api"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { PaperSessionBadge } from "@/components/paper"
+import { getStageNumber, type PaperStageId } from "../../../convex/paperSessions/constants"
 
 interface ChatSidebarProps {
     conversations: Array<{
@@ -30,6 +35,19 @@ export function ChatSidebar({
     onCloseMobile,
     isLoading
 }: ChatSidebarProps) {
+    const { user } = useCurrentUser()
+
+    // Query paper sessions for current user to show badges
+    const paperSessions = useQuery(
+        api.paperSessions.getByUser,
+        user ? { userId: user._id } : "skip"
+    )
+
+    // Create a map of conversationId -> paper session for quick lookup
+    const paperSessionMap = new Map(
+        paperSessions?.map(session => [session.conversationId, session]) ?? []
+    )
+
     const handleSelect = (id: string) => {
         onSelectConversation(id)
         onCloseMobile?.()
@@ -66,47 +84,58 @@ export function ChatSidebar({
                         <span className="text-xs">No conversations yet</span>
                     </div>
                 ) : (
-                    conversations.map((conv) => (
-                        <button
-                            key={conv._id}
-                            className={`group flex items-center w-full p-2 rounded-lg mb-1 transition-colors text-left ${currentConversationId === conv._id
-                                ? "bg-accent text-accent-foreground"
-                                : "hover:bg-accent/50"
-                                }`}
-                            onClick={() => handleSelect(conv._id)}
-                            aria-label={`Select conversation: ${conv.title}`}
-                        >
-                            <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm truncate">{conv.title}</div>
-                                <div className="text-xs text-muted-foreground">
-                                    {new Date(conv.lastMessageAt).toLocaleDateString()}
+                    conversations.map((conv) => {
+                        const paperSession = paperSessionMap.get(conv._id)
+                        return (
+                            <button
+                                key={conv._id}
+                                className={`group flex items-center w-full p-2 rounded-lg mb-1 transition-colors text-left ${currentConversationId === conv._id
+                                    ? "bg-accent text-accent-foreground"
+                                    : "hover:bg-accent/50"
+                                    }`}
+                                onClick={() => handleSelect(conv._id)}
+                                aria-label={`Select conversation: ${conv.title}`}
+                            >
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-medium text-sm truncate">{conv.title}</span>
+                                        {paperSession && (
+                                            <PaperSessionBadge
+                                                stageNumber={getStageNumber(paperSession.currentStage as PaperStageId)}
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {new Date(conv.lastMessageAt).toLocaleDateString()}
+                                    </div>
                                 </div>
-                            </div>
-                            <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (confirm("Are you sure you want to delete this chat?")) {
-                                        onDeleteConversation(conv._id)
-                                    }
-                                }}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => {
                                         e.stopPropagation()
                                         if (confirm("Are you sure you want to delete this chat?")) {
                                             onDeleteConversation(conv._id)
                                         }
-                                    }
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all focus:opacity-100"
-                                title="Delete conversation"
-                                aria-label="Delete conversation"
-                            >
-                                <TrashIcon className="h-4 w-4" />
-                            </div>
-                        </button>
-                    )))}
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.stopPropagation()
+                                            if (confirm("Are you sure you want to delete this chat?")) {
+                                                onDeleteConversation(conv._id)
+                                            }
+                                        }
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all focus:opacity-100"
+                                    title="Delete conversation"
+                                    aria-label="Delete conversation"
+                                >
+                                    <TrashIcon className="h-4 w-4" />
+                                </div>
+                            </button>
+                        )
+                    })
+                )}
             </div>
 
             {/* Footer (User Info) */}

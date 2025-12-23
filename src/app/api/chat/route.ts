@@ -10,6 +10,10 @@ import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
+import { createPaperTools } from "@/lib/ai/paper-tools"
+import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
+import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
+import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
 
 export async function POST(req: Request) {
     try {
@@ -124,6 +128,26 @@ export async function POST(req: Request) {
         // 6. Prepare System Prompt & Context
         const systemPrompt = await getSystemPrompt()
 
+        // Task Group 3: Fetch paper mode system prompt if paper session exists
+        const paperModePrompt = await getPaperModeSystemPrompt(currentConversationId as Id<"conversations">)
+
+        // Flow Detection: Auto-detect paper intent and inject reminder if no session
+        let paperWorkflowReminder = ""
+        if (!paperModePrompt) {
+            // No active paper session - check if user has paper writing intent
+            const lastUserMessage = messages[messages.length - 1]
+            const lastUserContent = lastUserMessage?.role === "user"
+                ? (lastUserMessage.content ||
+                    lastUserMessage.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text ||
+                    "")
+                : ""
+
+            if (lastUserContent && hasPaperWritingIntent(lastUserContent)) {
+                paperWorkflowReminder = PAPER_WORKFLOW_REMINDER
+                console.log("[Chat API] Paper intent detected, injecting workflow reminder")
+            }
+        }
+
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
         if (fileIds && fileIds.length > 0) {
@@ -153,8 +177,16 @@ export async function POST(req: Request) {
         const modelMessages = convertToModelMessages(messages)
 
         // Task 6.4: Inject file context BEFORE user messages
+        // Task Group 3: Inject paper mode prompt if paper session exists
+        // Flow Detection: Inject paper workflow reminder if intent detected but no session
         const fullMessagesBase = [
             { role: "system" as const, content: systemPrompt },
+            ...(paperModePrompt
+                ? [{ role: "system" as const, content: paperModePrompt }]
+                : []),
+            ...(paperWorkflowReminder
+                ? [{ role: "system" as const, content: paperWorkflowReminder }]
+                : []),
             ...(fileContext
                 ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
                 : []),
@@ -312,6 +344,11 @@ Aturan:
                         return { success: false, error: "Gagal mengubah judul conversation" }
                     }
                 },
+            }),
+            // Task Group 3: Paper Writing Workflow Tools
+            ...createPaperTools({
+                userId: userId as Id<"users">,
+                conversationId: currentConversationId as Id<"conversations">,
             }),
         } satisfies ToolSet
 
