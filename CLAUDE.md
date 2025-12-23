@@ -115,13 +115,15 @@ npm run convex -- -h
 - **`src/components`**: Reusable UI components
   - `admin/`: Admin panel components (UserList, SystemPromptsManager, SystemPromptFormDialog, VersionHistoryDialog, AdminNavLink, RoleBadge)
   - `settings/`: Settings page components (ProfileForm, EmailVerificationBanner)
-  - `chat/`: Chat interface components (ChatWindow, ChatSidebar, MessageBubble)
+  - `chat/`: Chat interface components (ChatWindow, ChatSidebar, MessageBubble, ArtifactPanel, ArtifactViewer)
+  - `paper/`: Paper workflow components (PaperStageProgress, PaperValidationPanel, PaperSessionBadge)
   - `ui/`: shadcn/ui components (Table, Tabs, AlertDialog, etc.)
 - **`src/lib`**: Shared utilities
-  - `ai/`: AI client, streaming, title generation
-  - `hooks/`: Custom React hooks (useCurrentUser, usePermissions, useMessages, useConversations)
+  - `ai/`: AI client, streaming, title generation, paper workflow tools
+  - `ai/paper-stages/`: Stage-specific instructions (foundation.ts for Stage 1-2)
+  - `hooks/`: Custom React hooks (useCurrentUser, usePermissions, usePaperSession, useMessages, useConversations)
 - **`convex`**: Backend schema and functions
-  - `schema.ts`: Database schema (users, conversations, messages, files, systemPrompts, papers)
+  - `schema.ts`: Database schema (users, conversations, messages, files, systemPrompts, paperSessions, artifacts)
   - `users.ts`: User CRUD & role management
   - `permissions.ts`: Role hierarchy & permission helpers
   - `adminUserManagement.ts`: Promote/demote mutations
@@ -130,6 +132,10 @@ npm run convex -- -h
   - `conversations.ts`: Chat conversation management
   - `messages.ts`: Chat message CRUD & retrieval
   - `files.ts`: File attachment handling
+  - `artifacts.ts`: Artifact CRUD & versioning
+  - `paperSessions.ts`: Paper workflow session management
+  - `paperSessions/constants.ts`: Stage IDs, labels, order
+  - `paperSessions/types.ts`: Type definitions for stage data
   - `chatHelpers.ts`: Chat utility functions
   - `migrations/`: Database migration scripts (including seedDefaultSystemPrompt.ts)
   - `auth.config.ts`: Clerk authentication config
@@ -199,7 +205,7 @@ const openRouterModel = createOpenAI({
    - firstName, lastName, emailVerified sync from Clerk
 6. **Client-Side Auth**:
    - `ConvexProviderWithClerk` in `src/app/providers.tsx` integrates Clerk + Convex
-   - `useCurrentUser()` hook provides current Convex user
+   - `useCurrentUser()` hook returns `{ user, isLoading }` - ALWAYS returns object, never null
    - `usePermissions()` hook provides permission checking (isAdmin, isSuperAdmin, hasRole)
 
 ### Database Schema
@@ -265,6 +271,32 @@ const openRouterModel = createOpenAI({
 - `abstract`: string
 - `createdAt`: number
 - `updatedAt`: number
+
+**paperSessions table** (Paper Writing Workflow)
+- `userId`: Id<"users">
+- `conversationId`: Id<"conversations"> (indexed by `by_conversation`)
+- `currentStage`: PaperStageId (gagasan, topik, abstrak, etc.)
+- `stageStatus`: "drafting" | "pending_validation" | "approved" | "revision"
+- `stageData`: object containing stage-specific data:
+  - `gagasan`: { ideKasar, analisis, angle, novelty, referensiAwal[] }
+  - `topik`: { definitif, angleSpesifik, argumentasiKebaruan, researchGap, referensiPendukung[] }
+- `createdAt`: number
+- `updatedAt`: number
+- Indexes: `by_conversation`, `by_user`
+
+**artifacts table** (AI-Generated Content)
+- `conversationId`: Id<"conversations">
+- `userId`: Id<"users">
+- `type`: "code" | "outline" | "section" | "table" | "citation" | "formula"
+- `title`: string
+- `content`: string
+- `format`: string (optional, e.g., "python", "markdown")
+- `description`: string (optional)
+- `version`: number
+- `parentId`: Id<"artifacts"> (optional, for version history)
+- `rootId`: Id<"artifacts"> (optional, links to root artifact)
+- `createdAt`: number
+- Indexes: `by_conversation_user`, `by_root`
 
 ### Environment Variables
 Required variables (see `.env.local`):
@@ -630,3 +662,117 @@ Chat API (/api/chat/route.ts)
 
 **Environment Variables (for Image OCR):**
 - `OPENAI_API_KEY`: Required for image text extraction via Vision API
+
+### Paper Writing Workflow (Phase 1)
+
+Guided workflow untuk menulis paper akademik dengan pendekatan dialog-first dan kolaboratif.
+
+**Stages (Phase 1 - Foundation):**
+1. **Gagasan** - Brainstorming ide paper dengan literatur review
+2. **Topik** - Kristalisasi topik definitif dengan research gap
+
+**Key Components:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PAPER WORKFLOW FLOW                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  User: "Bantu bikin paper tentang AI"                       │
+│                    ↓                                         │
+│  hasPaperWritingIntent() → true                             │
+│                    ↓                                         │
+│  Paper session exists? NO                                    │
+│                    ↓                                         │
+│  Inject PAPER_WORKFLOW_REMINDER                             │
+│                    ↓                                         │
+│  AI calls startPaperSession()                               │
+│                    ↓                                         │
+│  Paper mode active → Dialog-first instructions              │
+│                    ↓                                         │
+│  Clarifying questions → Web search → Discussion → Draft     │
+│                    ↓                                         │
+│  User validates (approve/revise) via PaperValidationPanel   │
+│                    ↓                                         │
+│  Next stage...                                               │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Files:**
+- `src/lib/ai/paper-intent-detector.ts` - Auto-detect paper writing intent
+- `src/lib/ai/paper-workflow-reminder.ts` - Enforcement reminder injection
+- `src/lib/ai/paper-mode-prompt.ts` - Paper mode system prompt injection
+- `src/lib/ai/paper-tools.ts` - AI tools (startPaperSession, updateStageData, submitStageForValidation)
+- `src/lib/ai/paper-stages/foundation.ts` - Stage 1-2 dialog-first instructions
+- `src/lib/ai/paper-stages/formatStageData.ts` - Format stage data for prompt
+- `src/lib/hooks/usePaperSession.ts` - React hook for paper session state
+- `src/components/paper/PaperStageProgress.tsx` - Stage progress indicator
+- `src/components/paper/PaperValidationPanel.tsx` - Approve/revise panel
+- `src/components/paper/PaperSessionBadge.tsx` - Badge in conversation list
+- `convex/paperSessions.ts` - CRUD mutations/queries
+
+**AI Tools Available in Paper Mode:**
+```typescript
+// Start paper session (auto-triggered by intent detection)
+startPaperSession({ initialIdea: string })
+
+// Get current session state
+getCurrentPaperState()
+
+// Save stage draft
+updateStageData({ stage: string, data: object })
+
+// Submit for user validation
+submitStageForValidation()
+```
+
+**Intent Detection Keywords:**
+- Document types: paper, makalah, skripsi, tesis, jurnal, artikel ilmiah, karya tulis
+- Action verbs: menulis paper, bikin makalah, buat skripsi, susun paper
+- Workflow terms: bantu menulis paper, asistensi makalah, bantuan skripsi
+
+**Exclude Keywords (prevent false positives):**
+- jelaskan, apa itu, definisi, contoh, cara menulis, tips menulis, template
+
+**Dialog-First Principles:**
+1. DIALOG, bukan monolog - tanya dulu sebelum generate
+2. Web search di AWAL untuk eksplorasi literatur
+3. ITERASI sampai matang - jangan langsung submit
+4. LARANGAN KERAS: Jangan langsung bikin outline tanpa diskusi
+
+**Usage in Chat:**
+```typescript
+// Paper mode prompt auto-injected when session exists
+const paperModePrompt = await getPaperModeSystemPrompt(conversationId)
+
+// Intent detection auto-injects reminder when no session
+if (!paperModePrompt && hasPaperWritingIntent(userMessage)) {
+  inject PAPER_WORKFLOW_REMINDER
+}
+```
+
+### useCurrentUser Hook Pattern
+
+**IMPORTANT:** Hook ini SELALU return object `{ user, isLoading }`, tidak pernah return null.
+
+```typescript
+// CORRECT usage
+const { user, isLoading } = useCurrentUser()
+
+if (isLoading) return <Skeleton />
+if (!user) return <LoginPrompt />
+return <UserContent user={user} />
+
+// WRONG - akan crash
+const user = useCurrentUser()  // ❌ Old pattern, jangan pakai
+const { user } = useCurrentUser() ?? {}  // ❌ Tidak perlu fallback
+```
+
+**State Machine:**
+| Clerk State | Convex State | Return Value |
+|-------------|--------------|--------------|
+| Loading | - | `{ user: null, isLoading: true }` |
+| Not authenticated | - | `{ user: null, isLoading: false }` |
+| Authenticated | Loading | `{ user: null, isLoading: true }` |
+| Authenticated | Found | `{ user: convexUser, isLoading: false }` |
