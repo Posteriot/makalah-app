@@ -97,6 +97,7 @@ npm run convex -- -h
   - Primary: Vercel AI Gateway (automatic routing with model ID string)
   - Fallback: OpenRouter (via `@ai-sdk/openai`)
   - Model: `google/gemini-2.5-flash-lite`
+  - Web Search Grounding: `google_search` (provider-defined tool dari `@ai-sdk/google`)
 - **Email**: Resend
 - **Payments**: Xendit (configured but not yet implemented)
 - **UI Components**: Radix UI primitives with custom styling
@@ -189,10 +190,31 @@ const openRouterModel = createOpenAI({
 **Environment Variables:**
 - `VERCEL_AI_GATEWAY_API_KEY`: Required for Vercel AI Gateway
 - `OPENROUTER_API_KEY`: Required for OpenRouter fallback
+  - Catatan: AI SDK native gateway pakai env `AI_GATEWAY_API_KEY` juga; repo ini nyamain otomatis dari `VERCEL_AI_GATEWAY_API_KEY` di `src/lib/ai/streaming.ts`
 
 **Automatic Failover:**
 - `src/app/api/chat/route.ts` implements try-catch for automatic provider switching
 - On AI Gateway error, automatically falls back to OpenRouter
+
+### Web Search (Grounding)
+
+**Constraint penting (AI SDK):**
+- `google_search` dari `@ai-sdk/google` adalah **provider-defined tool**
+- Provider-defined tools **tidak bisa** dicampur dengan function tools dalam 1 request (contoh function tools: `createArtifact`, paper workflow tools). Kalau dicampur, function tools akan diabaikan dan biasanya keluar warning.
+
+**Cara repo ini ngatasin (tanpa regex):**
+- `src/app/api/chat/route.ts` menjalankan “router” kecil (tanpa tools) untuk mutusin request ini:
+  - **Mode Websearch**: `tools` hanya `{ google_search }`
+  - **Mode Normal**: `tools` hanya function tools (artifact + paper workflow, dll)
+
+**Log verifikasi yang diharapkan:**
+- `[WebSearchRouter] Decision: { enableWebSearch, confidence, reason }`
+- `[Chat API] Gateway Tools Configured: { webSearchModeEnabled, hasCreateArtifact, hasGoogleSearch, ... }`
+- Kalau websearch aktif: `[Chat API] Grounding Metadata received: ...`
+
+**Catatan implementasi tool google_search:**
+- `@ai-sdk/google` nge-ekspos `google.tools.googleSearch` sebagai tool factory (function) yang harus dipanggil `({})` dulu supaya jadi tool instance.
+- Helper ada di `src/lib/ai/streaming.ts` (`getGoogleSearchTool()`).
 
 ### Authentication Flow
 1. **Clerk** handles auth UI and session management
@@ -234,11 +256,20 @@ const openRouterModel = createOpenAI({
 - `updatedAt`: number
 
 **messages table** (Chat)
-- `conversationId`: Id<"conversations"> (indexed by `by_conversation_createdAt`)
+- `conversationId`: Id<"conversations"> (indexed by `by_conversation`)
 - `role`: "user" | "assistant" | "system"
 - `content`: string
 - `fileIds`: Id<"files">[] (optional, references attached files)
+- `metadata`: object (optional: model, tokens, finishReason)
+- `sources`: array (optional) untuk web search citations:
+  - `{ url: string, title: string }[]`
 - `createdAt`: number
+
+### Chat UI: Artifact Panel
+
+**Bugfix penting:**
+- “New chat” sebelumnya bisa masih nampilin artifact dari sesi lama karena state panel tidak di-reset.
+- Fix ada di `src/components/chat/ChatContainer.tsx` (reset `artifactPanelOpen` + `selectedArtifactId` saat new chat / delete, dan remount `ArtifactPanel` per conversation).
 
 **files table** (File Attachments)
 - `conversationId`: Id<"conversations"> (indexed by `by_conversation`)

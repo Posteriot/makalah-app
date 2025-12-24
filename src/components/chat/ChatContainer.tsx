@@ -31,6 +31,8 @@ export function ChatContainer() {
         const newId = await createNewConversation()
         if (newId) {
             setCurrentConversationId(newId)
+            setArtifactPanelOpen(false)
+            setSelectedArtifactId(null)
         }
     }
 
@@ -38,6 +40,8 @@ export function ChatContainer() {
         await deleteConversation(id as Id<"conversations">)
         if (currentConversationId === id) {
             setCurrentConversationId(null)
+            setArtifactPanelOpen(false)
+            setSelectedArtifactId(null)
         }
     }
 
@@ -102,6 +106,7 @@ export function ChatContainer() {
                     )}
                 >
                     <ArtifactPanel
+                        key={currentConversationId ?? "no-conversation"}
                         conversationId={currentConversationId as Id<"conversations"> | null}
                         isOpen={artifactPanelOpen}
                         onToggle={toggleArtifactPanel}

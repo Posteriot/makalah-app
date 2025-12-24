@@ -35,7 +35,11 @@ export default function RootLayout({
         <AppProviders>
           <div className="min-h-screen bg-background text-foreground">
             <header className="border-b bg-card/40">
-              {process.env.NODE_ENV === "development" && (
+              {/* 
+                  Temporarily disabled react-grab scripts to diagnose browser issues 
+                  as reported by user (right click disabled, crash).
+              */}
+              {/* {process.env.NODE_ENV === "development" && (
                 <>
                   <Script
                     src="//unpkg.com/react-grab/dist/index.global.js"
@@ -46,7 +50,7 @@ export default function RootLayout({
                     strategy="lazyOnload"
                   />
                 </>
-              )}
+              )} */}
               <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 sm:px-8">
                 <div className="flex items-baseline gap-2">
                   <Link

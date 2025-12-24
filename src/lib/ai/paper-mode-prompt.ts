@@ -42,7 +42,7 @@ Tahap: ${stageLabel} (${stage}) | Status: ${status}
 ${revisionNote}${pendingNote}
 ATURAN UMUM:
 - DISKUSI DULU sebelum drafting - jangan langsung generate output lengkap
-- Gunakan google_search untuk eksplorasi literatur di AWAL tahap
+- Gunakan google_search secara selektif jika membutuhkan literatur tambahan (opsional)
 - Simpan progres dengan updateStageData() setelah diskusi matang
 - submitStageForValidation() HANYA setelah user EKSPLISIT konfirmasi puas
 - Jangan lompat ke tahap berikutnya sebelum currentStage berubah di database

@@ -2,6 +2,11 @@ import { streamText, type CoreMessage } from "ai"
 import { createOpenAI } from "@ai-sdk/openai"
 import { configCache } from "./config-cache"
 
+// Vercel AI SDK expects AI_GATEWAY_API_KEY for native gateway integration
+if (!process.env.AI_GATEWAY_API_KEY && process.env.VERCEL_AI_GATEWAY_API_KEY) {
+  process.env.AI_GATEWAY_API_KEY = process.env.VERCEL_AI_GATEWAY_API_KEY
+}
+
 // ============================================================================
 // DYNAMIC PROVIDER CONFIGURATION
 // ============================================================================
@@ -19,7 +24,7 @@ async function getProviderConfig() {
     return {
       primary: {
         provider: "vercel-gateway",
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash-lite", // Format: provider/model-id
         apiKey: process.env.VERCEL_AI_GATEWAY_API_KEY!,
       },
       fallback: {
@@ -54,10 +59,17 @@ async function getProviderConfig() {
  */
 function createProviderModel(provider: string, model: string, apiKey: string) {
   if (provider === "vercel-gateway") {
-    // Vercel AI Gateway: model ID as string, automatic routing
-    // Note: For gateway, we use the global VERCEL_AI_GATEWAY_API_KEY from env
-    // The apiKey parameter is ignored for gateway (can't override env key)
-    return model
+    // Vercel AI Gateway Native Integration
+    // Just return the model ID as a string. The AI SDK will automatically 
+    // route it through the gateway using AI_GATEWAY_API_KEY.
+
+    // Ensure google prefix is present for Gemini models if missing
+    const targetModel = (model.includes("gemini") && !model.includes("/"))
+      ? `google/${model}`
+      : model
+
+    console.log(`[Streaming] Using Native Gateway Model String: ${targetModel}`)
+    return targetModel
   } else if (provider === "openrouter") {
     // OpenRouter: createOpenAI with custom config
     const openRouterOpenAI = createOpenAI({
@@ -132,7 +144,11 @@ export async function streamChatResponse(
  */
 export async function getGatewayModel() {
   const config = await getProviderConfig()
-  return config.primary.model
+  return createProviderModel(
+    config.primary.provider,
+    config.primary.model,
+    config.primary.apiKey
+  )
 }
 
 /**
@@ -155,13 +171,29 @@ export async function getOpenRouterModel() {
  */
 export async function getGoogleSearchTool() {
   try {
-    // Dynamic import to avoid 'require' and optimize bundling
     const { google } = await import("@ai-sdk/google")
+    // Native Google Search tool from the provider (provider-defined tool factory)
+    // Note: This requires GOOGLE_GENERATIVE_AI_API_KEY to be set in env (when using google provider directly).
+    const toolFactory = google.tools?.googleSearch ?? google.tools?.search
 
-    console.log("[Streaming] Initializing Google Search Grounding tool")
-    return google.tools.googleSearch({})
+    if (!toolFactory) {
+      console.warn("[Streaming] Native Google Search tool factory not found in SDK export.")
+      return null
+    }
+
+    // @ai-sdk/google exposes provider-defined tools as factories (functions).
+    // We must call the factory to get a tool instance to pass into `streamText({ tools })`.
+    if (typeof toolFactory === "function") {
+      const toolInstance = toolFactory({})
+      console.log("[Streaming] Google Search Tool initialized successfully from @ai-sdk/google")
+      return toolInstance
+    }
+
+    // Defensive fallback: if SDK ever changes shape and returns an instance directly.
+    console.log("[Streaming] Google Search Tool returned as non-function (unexpected), using as-is")
+    return toolFactory
   } catch (error) {
-    console.error("[Streaming] Failed to initialize Google Search tool:", error)
+    console.error("[Streaming] Failed to load Google Search tool:", error)
     return null
   }
 }

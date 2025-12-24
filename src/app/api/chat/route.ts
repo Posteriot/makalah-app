@@ -1,5 +1,5 @@
 import { generateTitle } from "@/lib/ai/title-generator"
-import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, tool, type ToolSet, stepCountIs } from "ai"
+import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, tool, type ToolSet, stepCountIs } from "ai"
 import { z } from "zod"
 import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
 
@@ -197,6 +197,67 @@ export async function POST(req: Request) {
         const { getGatewayModel, getOpenRouterModel, getGoogleSearchTool } = await import("@/lib/ai/streaming")
         const { streamText } = await import("ai")
 
+        const decideWebSearchMode = async (options: {
+            model: unknown
+            recentMessages: unknown[]
+        }): Promise<{ enableWebSearch: boolean; confidence: number; reason: string }> => {
+            const routerPrompt = `Anda adalah "router" yang memutuskan apakah jawaban untuk user WAJIB memakai pencarian web (tool google_search).
+
+Tujuan:
+- enableWebSearch = true HANYA jika (A) user meminta cek internet/pencarian secara eksplisit, ATAU (B) pertanyaan butuh data faktual terbaru/real-time sehingga tanpa internet berisiko salah.
+- Jika pertanyaan bisa dijawab tanpa data terbaru, set false.
+
+Aturan output:
+- Output HARUS satu JSON object SAJA.
+- TANPA markdown, TANPA backticks, TANPA penjelasan di luar JSON.
+- confidence 0..1.
+
+JSON schema:
+{
+  "enableWebSearch": boolean,
+  "confidence": number,
+  "reason": string
+}`
+
+            const { text } = await generateText({
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                model: options.model as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                messages: [{ role: "system", content: routerPrompt }, ...(options.recentMessages as any[])],
+                temperature: 0.2,
+            })
+
+            const raw = text.trim()
+            const cleaned = raw
+                .replace(/^```json\s*/i, "")
+                .replace(/^```\s*/i, "")
+                .replace(/```$/i, "")
+                .trim()
+
+            const start = cleaned.indexOf("{")
+            const end = cleaned.lastIndexOf("}")
+            if (start < 0 || end < 0 || end <= start) {
+                return { enableWebSearch: false, confidence: 0, reason: "router_invalid_json_shape" }
+            }
+
+            try {
+                const parsed = JSON.parse(cleaned.slice(start, end + 1)) as {
+                    enableWebSearch?: unknown
+                    confidence?: unknown
+                    reason?: unknown
+                }
+
+                const enableWebSearch = parsed.enableWebSearch === true
+                const confidenceRaw = typeof parsed.confidence === "number" ? parsed.confidence : 0
+                const confidence = Number.isFinite(confidenceRaw) ? Math.max(0, Math.min(1, confidenceRaw)) : 0
+                const reason = typeof parsed.reason === "string" ? parsed.reason.slice(0, 240) : ""
+
+                return { enableWebSearch, confidence, reason }
+            } catch {
+                return { enableWebSearch: false, confidence: 0, reason: "router_json_parse_failed" }
+            }
+        }
+
         // Helper for saving
         // Helper for saving
         const saveAssistantMessage = async (content: string, sources?: { url: string; title: string }[]) => {
@@ -240,8 +301,8 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                 inputSchema: z.object({
                     type: z.enum(["code", "outline", "section", "table", "citation", "formula"])
                         .describe("The type of artifact to create"),
-                    title: z.string().max(50)
-                        .describe("Short, descriptive title for the artifact (max 50 chars). Examples: 'Introduction Draft', 'Data Analysis Code', 'Research Outline'"),
+                    title: z.string().max(200)
+                        .describe("Short, descriptive title for the artifact (max 200 chars). Examples: 'Introduction Draft', 'Data Analysis Code', 'Research Outline'"),
                     content: z.string().min(10)
                         .describe("The actual content of the artifact"),
                     format: z.enum(["markdown", "latex", "python", "r", "javascript", "typescript"]).optional()
@@ -250,6 +311,16 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                         .describe("Optional brief description of what the artifact contains"),
                 }),
                 execute: async ({ type, title, content, format, description }) => {
+                    // Debug logging untuk diagnosis
+                    console.log("[createArtifact] Attempting to create artifact:", {
+                        type,
+                        title,
+                        contentLength: content?.length ?? 0,
+                        format,
+                        conversationId: currentConversationId,
+                        userId,
+                    })
+
                     try {
                         const result = await fetchMutation(api.artifacts.create, {
                             conversationId: currentConversationId as Id<"conversations">,
@@ -261,6 +332,8 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                             description,
                         })
 
+                        console.log("[createArtifact] Success:", { artifactId: result.artifactId, title })
+
                         return {
                             success: true,
                             artifactId: result.artifactId,
@@ -268,10 +341,18 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                             message: `Artifact "${title}" berhasil dibuat. User dapat melihatnya di panel artifact.`,
                         }
                     } catch (error) {
-                        console.error("Failed to create artifact:", error)
+                        const errorMessage = error instanceof Error ? error.message : String(error)
+                        console.error("[createArtifact] Failed:", {
+                            error: errorMessage,
+                            type,
+                            title,
+                            contentLength: content?.length ?? 0,
+                            conversationId: currentConversationId,
+                            userId,
+                        })
                         return {
                             success: false,
-                            error: "Gagal membuat artifact. Silakan coba lagi.",
+                            error: `Gagal membuat artifact: ${errorMessage}`,
                         }
                     }
                 },
@@ -361,12 +442,29 @@ Aturan:
             const googleSearchTool = await getGoogleSearchTool()
             const wrappedGoogleSearchTool = googleSearchTool ?? null
 
-            const webSearchBehaviorSystemNote = `Jika Anda memutuskan untuk menggunakan pencarian internet (tool google_search), lakukan urutan ini:
-1) Tulis satu kalimat pendek untuk memberi tahu user bahwa Anda akan mencari informasi terlebih dahulu.
-2) Panggil tool google_search.
-3) Setelah itu, lanjutkan jawaban utama secara normal.`
+            // Router: tentukan apakah request ini perlu mode websearch.
+            // Catatan penting: AI SDK tidak bisa mix provider-defined tools (google_search) dengan function tools dalam 1 request.
+            // Jadi kita pilih salah satu tools set per request.
+            const recentForRouter = modelMessages.slice(-8)
+            const webSearchDecision = await decideWebSearchMode({
+                model,
+                recentMessages: recentForRouter,
+            })
 
-            const fullMessagesGateway = wrappedGoogleSearchTool
+            const enableWebSearch = webSearchDecision.enableWebSearch && !!wrappedGoogleSearchTool
+
+            console.log("[WebSearchRouter] Decision:", {
+                enableWebSearch,
+                confidence: webSearchDecision.confidence,
+                reason: webSearchDecision.reason,
+            })
+
+            const webSearchBehaviorSystemNote = `KETENTUAN PENCARIAN WEB (google_search):
+1) Gunakan tool google_search HANYA jika Anda memerlukan data faktual terbaru atau jika user memintanya secara eksplisit.
+2) Jika Anda melakukan pencarian, Anda TIDAK BOLEH memanggil tool createArtifact dalam langkah (turn) yang sama.
+3) Selesaikan pencarian dan diskusi data terlebih dahulu, baru kemudian buat artifact di langkah berikutnya jika diperlukan.`
+
+            const fullMessagesGateway = enableWebSearch
                 ? [
                     fullMessagesBase[0],
                     { role: "system" as const, content: webSearchBehaviorSystemNote },
@@ -374,10 +472,21 @@ Aturan:
                 ]
                 : fullMessagesBase
 
-            const gatewayTools = {
-                ...tools,
-                ...(wrappedGoogleSearchTool ? { google_search: wrappedGoogleSearchTool } : {})
-            }
+            const gatewayTools: ToolSet = enableWebSearch
+                ? ({ google_search: wrappedGoogleSearchTool } as unknown as ToolSet)
+                : tools
+
+            console.log("[Chat API] Gateway Tools Configured:", {
+                webSearchModeEnabled: enableWebSearch,
+                hasCreateArtifact: !!gatewayTools.createArtifact,
+                hasGoogleSearch: !!gatewayTools.google_search,
+                googleSearchType: typeof gatewayTools.google_search,
+                // Debug: provider-defined tools should be objects with `type: "provider-defined"`.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                googleSearchToolTypeField: (gatewayTools.google_search as any)?.type,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                googleSearchToolIdField: (gatewayTools.google_search as any)?.id,
+            })
 
             const result = streamText({
                 model,
@@ -445,7 +554,7 @@ Aturan:
             // - AI SDK merekomendasikan status/progress UI lewat `data-*` parts (Streaming Custom Data).
             // - Jadi kita kirim `data-search` secara optimistis di awal stream, lalu matikan di akhir.
             //   Kalau ternyata tidak ada `source-url` yang muncul, status ditutup sebagai `off`.
-            if (wrappedGoogleSearchTool) {
+            if (enableWebSearch) {
                 const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
                 const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
 
