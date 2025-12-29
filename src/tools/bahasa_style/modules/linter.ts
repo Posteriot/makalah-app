@@ -125,7 +125,7 @@ export class Linter {
     }
 
     private checkSentenceStarts(sentences: string[], issues: ValidationIssue[]) {
-        sentences.forEach((s, idx) => {
+        sentences.forEach((s) => {
             if (/^Ini\b/i.test(s)) {
                 issues.push({
                     type: 'BAD_PLACEMENT',

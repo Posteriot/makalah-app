@@ -6,7 +6,7 @@ import { ChatWindow } from "./ChatWindow"
 import { ArtifactPanel } from "./ArtifactPanel"
 import { useConversations } from "@/lib/hooks/useConversations"
 import { Id } from "../../../convex/_generated/dataModel"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 
 export function ChatContainer() {
@@ -68,6 +68,9 @@ export function ChatContainer() {
             {/* Mobile Sidebar (Sheet) */}
             <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
                 <SheetContent side="left" className="p-0 w-[300px]">
+                    <SheetHeader className="sr-only">
+                        <SheetTitle>Menu</SheetTitle>
+                    </SheetHeader>
                     <ChatSidebar
                         className="w-full border-none"
                         conversations={conversations}

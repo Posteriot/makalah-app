@@ -10,12 +10,13 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { getApaWebReferenceParts } from "@/lib/citations/apaWeb"
+import { getWebCitationDisplayParts } from "@/lib/citations/apaWeb"
 import { cn } from "@/lib/utils"
 
 interface Source {
     url: string
     title: string
+    publishedAt?: number | null
 }
 
 interface SourcesIndicatorProps {
@@ -28,7 +29,8 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
 
     if (!sources || sources.length === 0) return null
 
-    const displayedSources = showAll ? sources : sources.slice(0, 5)
+    const indexedSources = sources.map((source, idx) => ({ source, idx }))
+    const displayedSources = showAll ? indexedSources : indexedSources.slice(0, 5)
     const remainingCount = sources.length - 5
     const hasMore = sources.length > 5
 
@@ -67,13 +69,12 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
 
             <CollapsibleContent className="space-y-3 pt-1">
                 <div className="flex flex-col gap-2">
-                    {displayedSources.map((source, index) => {
-                        const parts = getApaWebReferenceParts(source)
-
+                    {displayedSources.map(({ source, idx }) => {
+                        const parts = getWebCitationDisplayParts(source)
                         return (
                             <div
-                                key={index}
-                                className="group flex flex-col gap-0.5 rounded-md p-2 hover:bg-blue-500/5 hover:shadow-sm border border-transparent hover:border-blue-500/10 transition-all text-foreground/90 font-serif"
+                                key={idx}
+                                className="group flex flex-col gap-1 rounded-md p-2 hover:bg-blue-500/5 hover:shadow-sm border border-transparent hover:border-blue-500/10 transition-all text-foreground/90 font-sans"
                             >
                                 <a
                                     href={parts.url}
@@ -81,15 +82,12 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                                     rel="noopener noreferrer"
                                     className="leading-snug hover:underline decoration-blue-500/50 underline-offset-4 text-xs block"
                                 >
-                                    <span className="italic font-medium">
-                                        {parts.title}
-                                    </span>
-                                    <span className="text-muted-foreground ml-1">
-                                        {(parts.siteName ?? parts.author)}.
-                                    </span>
-                                    <span className="text-muted-foreground ml-1 break-all">
-                                        {parts.url}
-                                    </span>
+                                    <span className="font-medium">{parts.title}</span>
+                                    {parts.dateText ? (
+                                        <span className="text-muted-foreground">{" — "}{parts.dateText}</span>
+                                    ) : null}
+                                    <span className="text-muted-foreground">{" — "}</span>
+                                    <span className="text-muted-foreground break-all">{parts.url}</span>
                                 </a>
                             </div>
                         )

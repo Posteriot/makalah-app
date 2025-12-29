@@ -114,7 +114,7 @@ npm run convex -- -h
   - `api/chat`: Chat API endpoint with streaming support
   - `api/webhooks/clerk`: Clerk webhook handler for user events
 - **`src/components`**: Reusable UI components
-  - `admin/`: Admin panel components (UserList, SystemPromptsManager, SystemPromptFormDialog, VersionHistoryDialog, AdminNavLink, RoleBadge)
+  - `admin/`: Admin panel components (UserList, SystemPromptsManager, SystemPromptFormDialog, VersionHistoryDialog, AdminNavLink, RoleBadge, AIProviderManager, AIProviderFormDialog)
   - `settings/`: Settings page components (ProfileForm, EmailVerificationBanner)
   - `chat/`: Chat interface components (ChatWindow, ChatSidebar, MessageBubble, ArtifactPanel, ArtifactViewer)
   - `paper/`: Paper workflow components (PaperStageProgress, PaperValidationPanel, PaperSessionBadge)
@@ -138,7 +138,8 @@ npm run convex -- -h
   - `paperSessions/constants.ts`: Stage IDs, labels, order
   - `paperSessions/types.ts`: Type definitions for stage data
   - `chatHelpers.ts`: Chat utility functions
-  - `migrations/`: Database migration scripts (including seedDefaultSystemPrompt.ts)
+  - `aiProviderConfigs.ts`: AI provider configuration management
+  - `migrations/`: Database migration scripts (seedDefaultSystemPrompt.ts, seedDefaultAIConfig.ts)
   - `auth.config.ts`: Clerk authentication config
   - `_generated/`: Auto-generated Convex client code
 
@@ -252,8 +253,11 @@ const openRouterModel = createOpenAI({
 **conversations table** (Chat)
 - `userId`: Id<"users"> (indexed by `by_user`)
 - `title`: string
+- `titleUpdateCount`: number (optional, tracks AI title updates)
+- `titleLocked`: boolean (optional, true when user manually renames)
 - `createdAt`: number
 - `updatedAt`: number
+- `lastMessageAt`: number
 
 **messages table** (Chat)
 - `conversationId`: Id<"conversations"> (indexed by `by_conversation`)
@@ -262,7 +266,7 @@ const openRouterModel = createOpenAI({
 - `fileIds`: Id<"files">[] (optional, references attached files)
 - `metadata`: object (optional: model, tokens, finishReason)
 - `sources`: array (optional) untuk web search citations:
-  - `{ url: string, title: string }[]`
+  - `{ url: string, title: string, publishedAt?: number }[]` (`publishedAt` epoch ms, optional)
 - `createdAt`: number
 
 ### Chat UI: Artifact Panel
@@ -270,6 +274,50 @@ const openRouterModel = createOpenAI({
 **Bugfix penting:**
 - “New chat” sebelumnya bisa masih nampilin artifact dari sesi lama karena state panel tidak di-reset.
 - Fix ada di `src/components/chat/ChatContainer.tsx` (reset `artifactPanelOpen` + `selectedArtifactId` saat new chat / delete, dan remount `ArtifactPanel` per conversation).
+
+### Chat UI: Render Markdown (Chat + Artifact)
+
+**Masalah:**
+- Output model sering berupa markdown (contoh: `*` list, `#` heading, `**bold**`). Sebelumnya UI nampilin mentah (chat: `whitespace-pre-wrap`, artifact: `<pre>`), jadi tampilannya kurang enak dibaca di web/mobile.
+
+**Solusi:**
+- Tambah renderer markdown aman di `src/components/chat/MarkdownRenderer.tsx`.
+- Renderer ini dipakai buat tampilan **user + assistant** di `src/components/chat/MessageBubble.tsx` (saat tidak edit).
+- Renderer ini dipakai buat tampilan artifact non-code di `src/components/chat/ArtifactViewer.tsx` (mode edit tetap string mentah biar user gampang revisi).
+
+**Fitur markdown yang didukung (subset):**
+- Heading: `#` sampai `######`
+- List: `*` / `-` / `+` dan `1.`
+- Outline dokumen: pola `1. Judul` yang diikuti konten (paragraf / bullet) akan digabung jadi satu outline supaya penomoran tidak reset ke `1` terus.
+- Inline: `**bold**`, `*italic*`, `` `code` ``
+- Block: fenced code block ```...```, blockquote `>`, horizontal rule `---`
+- Link: `[teks](https://...)`
+
+**Keamanan:**
+- Tidak menjalankan HTML mentah dari model.
+- Link cuma diizinkan `http://`/`https://`, dibuka tab baru (`target="_blank"`) dengan `rel="noopener noreferrer"`.
+
+**Catatan:**
+- Ini bukan parser markdown full (bukan GFM lengkap). Kalau ada format kompleks (mis. tabel/checkbox) yang perlu dirender juga, baru diputusin belakangan.
+
+### Web Search: Tampilan Sitasi/Sumber
+
+**Masalah yang pernah muncul:**
+- Sumber/citation kadang berantakan karena URL masih berupa proxy Google Grounding (`vertexaisearch.cloud.google...`).
+- Ada kasus judul jadi token panjang (mis. `AUZI...`) karena fallback judul diambil dari path URL proxy.
+- Beberapa situs mengembalikan `403`, tapi URL final artikel tetap berguna untuk disimpan sebagai sitasi.
+
+**Pembenahan:**
+- Backend enrichment (`src/lib/citations/webTitle.ts`) sekarang:
+  - Tetap menyimpan `finalUrl` hasil redirect walaupun HTTP status bukan 200 (contoh 403).
+  - Ekstrak `publishedAt` dari meta tag/JSON-LD atau dari pola tanggal di URL (kalau ada).
+- Normalisasi judul (`src/lib/citations/apaWeb.ts`) menghindari judul token/path proxy (mis. `grounding-api-redirect`, `AUZI...`).
+- Setelah enrichment, server akan dedupe URL dan (kalau ada minimal 1 URL non-proxy) membuang item yang masih `vertex...` supaya daftar sumber tidak dipenuhi link proxy.
+- UI (`src/components/chat/SourcesIndicator.tsx`) menampilkan format: `Judul — (Tanggal jika ada) — Link`, tanpa italic/serif.
+- Tambahan: sitasi inline di body (superscript) berbasis `groundingSupports.segment.*Index`:
+  - Backend (`src/app/api/chat/route.ts`) menyisipkan marker `[\d]` di akhir kalimat yang didukung sumber.
+  - `SourcesIndicator` menampilkan daftar bernomor `[n] ...` sesuai urutan yang sama.
+  - Saat streaming websearch, server juga mengirim `data-cited-text` dan `data-cited-sources` supaya UI bisa langsung menampilkan sitasi tanpa perlu reload.
 
 **files table** (File Attachments)
 - `conversationId`: Id<"conversations"> (indexed by `by_conversation`)
@@ -296,6 +344,24 @@ const openRouterModel = createOpenAI({
 - `updatedAt`: number
 - Indexes: `by_active`, `by_root` (rootId + version), `by_createdAt`
 
+**aiProviderConfigs table** (AI Provider Management - Admin)
+- `name`: string (display name, e.g., "Production Config")
+- `description`: string (optional)
+- `primaryProvider`: string ("vercel-gateway" | "openrouter")
+- `primaryModel`: string (e.g., "google/gemini-2.5-flash-lite")
+- `primaryApiKey`: string (stored as-is, DB is private)
+- `fallbackProvider`: string ("openrouter" | "vercel-gateway")
+- `fallbackModel`: string
+- `fallbackApiKey`: string
+- `temperature`: number (0.0 - 2.0)
+- `topP`: number (optional, 0.0 - 1.0)
+- `version`: number (versioning pattern from systemPrompts)
+- `isActive`: boolean (only one active at a time)
+- `parentId`, `rootId`: version history linking
+- `createdBy`: Id<"users">
+- `createdAt`, `updatedAt`: number
+- Indexes: `by_active`, `by_root`, `by_createdAt`
+
 **papers table** (Future: Academic Papers)
 - `userId`: Id<"users"> (indexed by `by_user_createdAt`)
 - `title`: string
@@ -309,8 +375,12 @@ const openRouterModel = createOpenAI({
 - `currentStage`: PaperStageId (gagasan, topik, abstrak, etc.)
 - `stageStatus`: "drafting" | "pending_validation" | "approved" | "revision"
 - `stageData`: object containing stage-specific data:
-  - `gagasan`: { ideKasar, analisis, angle, novelty, referensiAwal[] }
-  - `topik`: { definitif, angleSpesifik, argumentasiKebaruan, researchGap, referensiPendukung[] }
+  - `gagasan`: { ideKasar, analisis, angle, novelty, referensiAwal[], artifactId }
+  - `topik`: { definitif, angleSpesifik, argumentasiKebaruan, researchGap, referensiPendukung[], artifactId }
+  - `abstrak`: { ringkasanPenelitian, keywords[], wordCount, artifactId }
+  - `pendahuluan`: { latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, sitasiAPA[], artifactId }
+  - `tinjauan_literatur`: { kerangkaTeoretis, reviewLiteratur, gapAnalysis, referensi[], artifactId }
+  - `metodologi`: { desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian, pendekatanPenelitian, artifactId }
 - `createdAt`: number
 - `updatedAt`: number
 - Indexes: `by_conversation`, `by_user`
@@ -488,6 +558,38 @@ const systemPrompt = await getSystemPrompt() // Fetches from DB, fallback to har
 ```bash
 # Run migration to seed default prompt
 npx convex run migrations:seedDefaultSystemPrompt
+```
+
+### AI Provider Management (Database-driven)
+
+AI provider configs are managed via admin panel with versioning support:
+
+**Loading Active Config (Chat API):**
+```typescript
+import { fetchQuery } from "convex/nextjs"
+import { api } from "@convex/_generated/api"
+
+const activeConfig = await fetchQuery(api.aiProviderConfigs.getActiveConfig)
+// Returns: { primaryProvider, primaryModel, primaryApiKey, fallbackProvider, ... }
+```
+
+**Key Features:**
+- Database-driven config (editable via admin UI at `/admin`)
+- Primary + Fallback provider with automatic failover
+- Swap providers feature (quick switch primary ↔ fallback)
+- Version history: Each edit creates new version
+- Only one config can be active at a time
+
+**Files:**
+- `convex/aiProviderConfigs.ts` - CRUD operations
+- `src/components/admin/AIProviderManager.tsx` - Admin UI
+- `src/components/admin/AIProviderFormDialog.tsx` - Create/Edit dialog
+- `convex/migrations/seedDefaultAIConfig.ts` - Initial data
+
+**First-Time Setup:**
+```bash
+# Run migration to seed default AI config
+npx convex run migrations:seedDefaultAIConfig
 ```
 
 ## Common Issues
@@ -694,13 +796,19 @@ Chat API (/api/chat/route.ts)
 **Environment Variables (for Image OCR):**
 - `OPENAI_API_KEY`: Required for image text extraction via Vision API
 
-### Paper Writing Workflow (Phase 1)
+### Paper Writing Workflow (Phase 1 & 2)
 
 Guided workflow untuk menulis paper akademik dengan pendekatan dialog-first dan kolaboratif.
 
 **Stages (Phase 1 - Foundation):**
 1. **Gagasan** - Brainstorming ide paper dengan literatur review
 2. **Topik** - Kristalisasi topik definitif dengan research gap
+
+**Stages (Phase 2 - Core):**
+3. **Abstrak** - Ringkasan penelitian dengan keywords
+4. **Pendahuluan** - Latar belakang, rumusan masalah, tujuan
+5. **Tinjauan Literatur** - Kerangka teoretis dan review
+6. **Metodologi** - Desain penelitian dan teknik analisis
 
 **Key Components:**
 

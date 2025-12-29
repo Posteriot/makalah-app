@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import Script from "next/script";
 import Link from "next/link"
 import { Geist, Geist_Mono } from "next/font/google"
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"

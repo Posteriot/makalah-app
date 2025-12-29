@@ -1,6 +1,7 @@
 export interface WebSource {
   url: string
   title?: string | null
+  publishedAt?: number | null
 }
 
 const GOOGLE_PROXY_HOSTS = new Set([
@@ -60,6 +61,18 @@ function isProbablyUrlish(text: string): boolean {
   if (t.startsWith('www.')) return true
   if (/\s/.test(t)) return false
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+/i.test(t)
+}
+
+function isFullUrlNotDomainOnly(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  const parsed = tryParseAbsoluteUrl(trimmed)
+  if (!parsed) return false
+  const pathname = parsed.pathname || '/'
+  const hasPath = pathname !== '/' && pathname.trim() !== ''
+  const hasQuery = (parsed.search ?? '').length > 1
+  const hasHash = (parsed.hash ?? '').length > 1
+  return hasPath || hasQuery || hasHash
 }
 
 function stripTrailingPunctuation(text: string): string {
@@ -275,7 +288,26 @@ function deriveTitleFromUrl(rawUrl: string): string | null {
 
   if (segments.length === 0) return null
 
-  const ignored = new Set(['amp', 'index', 'home', 'beranda'])
+  const ignored = new Set([
+    'amp',
+    'index',
+    'home',
+    'beranda',
+    'grounding-api-redirect',
+  ])
+
+  const looksLikeOpaqueIdSegment = (segment: string) => {
+    const s = segment.trim()
+    if (s.length < 24) return false
+    if (!/^[a-z0-9_-]+$/i.test(s)) return false
+
+    // Hindari judul yang cuma token/base64url panjang (mis. AUZIYQ...).
+    const digitCount = (s.match(/\d/g) ?? []).length
+    const underscoreDashCount = (s.match(/[_-]/g) ?? []).length
+    const ratio = (digitCount + underscoreDashCount) / s.length
+    return ratio >= 0.25
+  }
+
   for (let idx = segments.length - 1; idx >= 0; idx -= 1) {
     let segment = segments[idx]
     segment = segment.replace(/\.(html?|php|aspx?)$/i, '')
@@ -283,6 +315,7 @@ function deriveTitleFromUrl(rawUrl: string): string | null {
     segment = segment.trim()
     if (!segment) continue
     if (ignored.has(segment.toLowerCase())) continue
+    if (looksLikeOpaqueIdSegment(segment)) continue
     if (/^\d+$/.test(segment)) continue
     if (/^\d{4}-\d{2}-\d{2}$/.test(segment)) continue
 
@@ -291,6 +324,7 @@ function deriveTitleFromUrl(rawUrl: string): string | null {
       .replace(/\s+/g, ' ')
       .trim()
     if (!words) continue
+    if (words.toLowerCase() === 'grounding api redirect') continue
 
     return words || null
   }
@@ -308,7 +342,9 @@ export function getApaWebReferenceParts(source: WebSource): ApaWebReferenceParts
       : titleText
 
   const maybeResolvedUrl =
-    isGoogleProxyHost(hostnameFromUrl(normalizedFromUrl) ?? '') && isProbablyUrlish(titleText)
+    isGoogleProxyHost(hostnameFromUrl(normalizedFromUrl) ?? '') &&
+    isProbablyUrlish(titleText) &&
+    isFullUrlNotDomainOnly(urlFromTitle)
       ? urlFromTitle
       : normalizedFromUrl
 
@@ -339,5 +375,36 @@ export function getApaWebReferenceParts(source: WebSource): ApaWebReferenceParts
     title,
     siteName,
     url: resolvedUrl,
+  }
+}
+
+export interface WebCitationDisplayParts {
+  title: string
+  dateText?: string
+  url: string
+}
+
+function formatIdDate(publishedAt: number): string {
+  return new Date(publishedAt).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+export function getWebCitationDisplayParts(source: WebSource): WebCitationDisplayParts {
+  const parts = getApaWebReferenceParts(source)
+  const title = stripTrailingPeriod(parts.title)
+  const publishedAt = source.publishedAt
+
+  const dateText =
+    typeof publishedAt === 'number' && Number.isFinite(publishedAt)
+      ? formatIdDate(publishedAt)
+      : undefined
+
+  return {
+    title,
+    ...(dateText ? { dateText } : {}),
+    url: parts.url,
   }
 }

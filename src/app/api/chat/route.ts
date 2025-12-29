@@ -260,7 +260,19 @@ JSON schema:
 
         // Helper for saving
         // Helper for saving
-        const saveAssistantMessage = async (content: string, sources?: { url: string; title: string }[]) => {
+        const saveAssistantMessage = async (
+            content: string,
+            sources?: { url: string; title: string; publishedAt?: number | null }[]
+        ) => {
+            const normalizedSources = sources
+                ?.map((source) => ({
+                    url: source.url,
+                    title: source.title,
+                    ...(typeof source.publishedAt === "number" && Number.isFinite(source.publishedAt)
+                        ? { publishedAt: source.publishedAt }
+                        : {}),
+                }))
+                .filter((source) => source.url && source.title)
             await fetchMutation(api.messages.createMessage, {
                 conversationId: currentConversationId as Id<"conversations">,
                 role: "assistant",
@@ -268,7 +280,7 @@ JSON schema:
                 metadata: {
                     model: "google/gemini-2.5-flash-lite", // or dynamic
                 },
-                sources: sources && sources.length > 0 ? sources : undefined,
+                sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
             })
         }
 
@@ -462,7 +474,9 @@ Aturan:
             const webSearchBehaviorSystemNote = `KETENTUAN PENCARIAN WEB (google_search):
 1) Gunakan tool google_search HANYA jika Anda memerlukan data faktual terbaru atau jika user memintanya secara eksplisit.
 2) Jika Anda melakukan pencarian, Anda TIDAK BOLEH memanggil tool createArtifact dalam langkah (turn) yang sama.
-3) Selesaikan pencarian dan diskusi data terlebih dahulu, baru kemudian buat artifact di langkah berikutnya jika diperlukan.`
+3) Selesaikan pencarian dan diskusi data terlebih dahulu, baru kemudian buat artifact di langkah berikutnya jika diperlukan.
+4) Hindari menjadikan halaman listing/tag/homepage sebagai sumber utama; utamakan URL artikel/siaran pers yang spesifik.
+5) Tulis klaim faktual secara ringkas per kalimat, dan hindari klaim yang tidak bisa didukung sumber.`
 
             const fullMessagesGateway = enableWebSearch
                 ? [
@@ -494,59 +508,53 @@ Aturan:
                 tools: gatewayTools,
                 stopWhen: stepCountIs(5),
                 temperature: 0.7,
-                onFinish: async ({ text, providerMetadata }) => {
-                    let sources: { url: string; title: string }[] | undefined
+                onFinish: enableWebSearch
+                    ? undefined
+                    : async ({ text, providerMetadata }) => {
+                        let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
 
-                    // Task 2.2: Extract sources from groundingMetadata (BEFORE saving message)
-                    const googleMetadata = providerMetadata?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
-                    const groundingMetadata = googleMetadata?.groundingMetadata
+                        const googleMetadata = providerMetadata?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
+                        const groundingMetadata = googleMetadata?.groundingMetadata
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const chunks = (groundingMetadata as any)?.groundingChunks as any[] | undefined
 
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const chunks = (groundingMetadata as any)?.groundingChunks as any[] | undefined
-
-                    if (chunks) {
-                        sources = chunks
-                            .map((chunk) => {
-                                if (chunk.web?.uri) {
-                                    const normalizedUrl = normalizeWebSearchUrl(chunk.web.uri)
-                                    return {
-                                        url: normalizedUrl,
-                                        title: chunk.web.title || normalizedUrl,
+                        if (chunks) {
+                            sources = chunks
+                                .map((chunk) => {
+                                    if (chunk.web?.uri) {
+                                        const normalizedUrl = normalizeWebSearchUrl(chunk.web.uri)
+                                        return {
+                                            url: normalizedUrl,
+                                            title: chunk.web.title || normalizedUrl,
+                                        }
                                     }
-                                }
-                                return null
-                            })
-                            .filter(Boolean) as { url: string; title: string }[]
-                    }
-
-                    if (text) {
-                        if (sources && sources.length > 0) {
-                            sources = await enrichSourcesWithFetchedTitles(sources, {
-                                concurrency: 4,
-                                timeoutMs: 2500,
-                            })
+                                    return null
+                                })
+                                .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
                         }
 
-                        await saveAssistantMessage(text, sources)
+                        if (text) {
+                            if (sources && sources.length > 0) {
+                                sources = await enrichSourcesWithFetchedTitles(sources, {
+                                    concurrency: 4,
+                                    timeoutMs: 2500,
+                                })
+                            }
 
-                        // Task 2.3: Extract and log Grounding Metadata
-                        if (groundingMetadata) {
-                            console.log("[Chat API] Grounding Metadata received:", JSON.stringify(groundingMetadata, null, 2))
+                            await saveAssistantMessage(text, sources)
+
+                            const minPairsForFinalTitle = Number.parseInt(
+                                process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                                10
+                            )
+                            await maybeUpdateTitleFromAI({
+                                assistantText: text,
+                                minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                                    ? minPairsForFinalTitle
+                                    : 3,
+                            })
                         }
-
-                        // Rename pertama dilakukan setelah assistant selesai merespons
-                        const minPairsForFinalTitle = Number.parseInt(
-                            process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
-                            10
-                        )
-                        await maybeUpdateTitleFromAI({
-                            assistantText: text,
-                            minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
-                                ? minPairsForFinalTitle
-                                : 3,
-                        })
-                    }
-                },
+                    },
             })
 
             // Indikator pencarian (inline) untuk grounding web:
@@ -555,14 +563,18 @@ Aturan:
             // - Jadi kita kirim `data-search` secara optimistis di awal stream, lalu matikan di akhir.
             //   Kalau ternyata tidak ada `source-url` yang muncul, status ditutup sebagai `off`.
             if (enableWebSearch) {
-                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-                const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
+	                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+	                const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
+	                const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
+	                const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
 
-                const stream = createUIMessageStream({
-                    execute: async ({ writer }) => {
-                        let started = false
-                        let hasAnySource = false
+	                const stream = createUIMessageStream({
+	                    execute: async ({ writer }) => {
+	                        let started = false
+	                        let hasAnySource = false
                         let searchStatusClosed = false
+                        let streamedText = ""
+                        let lastProviderMetadata: unknown = null
 
                         const ensureStart = () => {
                             if (started) return
@@ -606,8 +618,369 @@ Aturan:
                                 hasAnySource = true
                             }
 
+                            if (
+                                "providerMetadata" in chunk &&
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (chunk as any).providerMetadata
+                            ) {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                lastProviderMetadata = (chunk as any).providerMetadata
+                            }
+
+                            if (chunk.type === "text-delta") {
+                                streamedText += chunk.delta
+                            }
+
                             if (chunk.type === "finish") {
                                 closeSearchStatus(hasAnySource ? "done" : "off")
+
+                                type SourceWithChunk = {
+                                    url: string
+                                    title: string
+                                    publishedAt?: number | null
+                                    chunkIndices: number[]
+                                }
+
+                                type GroundingChunk = {
+                                    web?: { uri?: string; title?: string }
+                                }
+
+                                type GroundingSupport = {
+                                    segment?: { endIndex?: number }
+                                    groundingChunkIndices?: number[]
+                                }
+
+                                type ProviderMetadataWithGoogle = {
+                                    google?: GoogleGenerativeAIProviderMetadata
+                                }
+
+                                const isRecord = (value: unknown): value is Record<string, unknown> =>
+                                    typeof value === "object" && value !== null
+
+                                const hasGroundingMetadata = (value: unknown): value is ProviderMetadataWithGoogle => {
+                                    if (!isRecord(value)) return false
+                                    if (!("google" in value)) return false
+                                    const google = (value as ProviderMetadataWithGoogle).google
+                                    return isRecord(google) && "groundingMetadata" in google
+                                }
+
+                                const getGroundingChunks = (meta: unknown): GroundingChunk[] | undefined => {
+                                    if (!isRecord(meta)) return undefined
+                                    const raw = (meta as { groundingChunks?: unknown }).groundingChunks
+                                    if (!Array.isArray(raw)) return undefined
+                                    return raw.filter((chunk): chunk is GroundingChunk => isRecord(chunk))
+                                }
+
+                                const getGroundingSupports = (meta: unknown): GroundingSupport[] | undefined => {
+                                    if (!isRecord(meta)) return undefined
+                                    const raw = (meta as { groundingSupports?: unknown }).groundingSupports
+                                    if (!Array.isArray(raw)) return undefined
+                                    return raw.filter((support): support is GroundingSupport => isRecord(support))
+                                }
+
+                                const isVertexProxyUrl = (raw: string) => {
+                                    try {
+                                        const u = new URL(raw)
+                                        const host = u.hostname.toLowerCase()
+                                        return host === "vertexaisearch.cloud.google.com" || host.startsWith("vertexaisearch.cloud.google.")
+                                    } catch {
+                                        return false
+                                    }
+                                }
+
+                                const isLowValueCitationUrl = (raw: string) => {
+                                    try {
+                                        const u = new URL(raw)
+                                        const host = u.hostname.toLowerCase()
+                                        const path = u.pathname || "/"
+                                        const trimmedPath = path.replace(/\/+$/, "") || "/"
+                                        const segments = trimmedPath.split("/").filter(Boolean)
+
+                                        if (path === "/" || path === "") return true
+                                        if (/(^|\/)(tag|tags|topik|topic|search)(\/|$)/i.test(path)) return true
+                                        if (segments.length === 1) {
+                                            const only = segments[0].toLowerCase()
+                                            if (["berita", "news", "artikel", "articles", "posts", "post"].includes(only)) return true
+                                        }
+                                        if ((host === "google.com" || host === "www.google.com") && path === "/search") return true
+
+                                        return false
+                                    } catch {
+                                        return false
+                                    }
+                                }
+
+                                const canonicalizeCitationUrl = (raw: string) => {
+                                    try {
+                                        const u = new URL(raw)
+                                        for (const key of Array.from(u.searchParams.keys())) {
+                                            if (/^utm_/i.test(key)) u.searchParams.delete(key)
+                                        }
+                                        u.hash = ""
+                                        const out = u.toString()
+                                        return out.endsWith("/") ? out.slice(0, -1) : out
+                                    } catch {
+                                        return raw
+                                    }
+                                }
+
+                                const stripToPersistedSources = (items: SourceWithChunk[]) =>
+                                    items.map((s) => ({
+                                        url: s.url,
+                                        title: s.title,
+                                        ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                            ? { publishedAt: s.publishedAt }
+                                            : {}),
+                                    }))
+
+                                const buildChunkIndexToCitationNumber = (items: SourceWithChunk[]) => {
+                                    const out = new Map<number, number>()
+                                    items.forEach((src, idx) => {
+                                        const n = idx + 1
+                                        for (const ci of src.chunkIndices) out.set(ci, n)
+                                    })
+                                    return out
+                                }
+
+                                const insertInlineCitations = (
+                                    inputText: string,
+                                    items: SourceWithChunk[],
+                                    groundingSupports: GroundingSupport[] | undefined
+                                ) => {
+                                    if (!groundingSupports || items.length === 0) return inputText
+
+                                    const chunkToNumber = buildChunkIndexToCitationNumber(items)
+                                    if (chunkToNumber.size === 0) return inputText
+
+                                    const insertsMap = new Map<number, Set<number>>()
+
+                                    const isSentenceBoundaryChar = (ch: string) => ch === "." || ch === "?" || ch === "!" || ch === "\n"
+
+                                    const findSentenceEnd = (text: string, pos: number) => {
+                                        const clamped = Math.max(0, Math.min(text.length - 1, pos))
+                                        for (let i = clamped; i < text.length; i += 1) {
+                                            const ch = text[i]
+                                            if (!isSentenceBoundaryChar(ch)) continue
+                                            if (ch === "\n") return Math.max(0, i - 1)
+                                            return i
+                                        }
+                                        return text.length - 1
+                                    }
+
+                                    for (const s of groundingSupports) {
+                                        const seg = s?.segment
+                                        const endIndex = typeof seg?.endIndex === "number" ? seg.endIndex : null
+                                        if (endIndex === null || !Number.isFinite(endIndex)) continue
+                                        const indices = Array.isArray(s?.groundingChunkIndices) ? s.groundingChunkIndices : []
+                                        const numbersSet = new Set<number>()
+                                        for (const rawIndex of indices) {
+                                            if (typeof rawIndex !== "number") continue
+                                            const mapped = chunkToNumber.get(rawIndex)
+                                            if (typeof mapped === "number" && Number.isFinite(mapped)) {
+                                                numbersSet.add(mapped)
+                                            }
+                                        }
+                                        const numbers = Array.from(numbersSet).sort((a, b) => a - b)
+                                        if (numbers.length === 0) continue
+
+                                        const sentenceEnd = findSentenceEnd(
+                                            inputText,
+                                            Math.max(0, Math.min(inputText.length - 1, endIndex - 1))
+                                        )
+                                        const existing = insertsMap.get(sentenceEnd) ?? new Set<number>()
+                                        numbers.forEach((n) => existing.add(n))
+                                        insertsMap.set(sentenceEnd, existing)
+                                    }
+
+                                    if (insertsMap.size === 0) return inputText
+
+                                    const inserts = Array.from(insertsMap.entries())
+                                        .map(([at, set]) => ({ at, numbers: Array.from(set).sort((a, b) => a - b) }))
+                                        .sort((a, b) => b.at - a.at)
+
+                                    let out = inputText
+                                    for (const ins of inserts) {
+                                        const marker = ` [${ins.numbers.join(",")}]`
+                                        const before = out.slice(0, ins.at + 1)
+                                        const after = out.slice(ins.at + 1)
+                                        const tail = before.slice(-20)
+                                        if (/\[\d+(?:\s*,\s*\d+)*\]\s*$/.test(tail)) continue
+                                        out = `${before}${marker}${after}`
+                                    }
+
+                                    return out
+                                }
+
+                                try {
+                                    // providerMetadata kadang tidak ikut kebawa di chunk; ambil dari result sebagai fallback.
+                                    const providerMetadataFromResult = await (async () => {
+                                        try {
+                                            return await Promise.race([
+                                                result.providerMetadata,
+                                                new Promise<undefined>((resolve) =>
+                                                    setTimeout(() => resolve(undefined), 8000)
+                                                ),
+                                            ])
+                                        } catch {
+                                            return undefined
+                                        }
+                                    })()
+                                    const preferredProviderMetadata = hasGroundingMetadata(lastProviderMetadata)
+                                        ? lastProviderMetadata
+                                        : providerMetadataFromResult
+
+                                    console.log("[InlineCitations] providerMetadata source:", {
+                                        hasLastProviderMetadata: !!lastProviderMetadata,
+                                        hasProviderMetadataFromResult: !!providerMetadataFromResult,
+                                        usingLastProviderMetadata: hasGroundingMetadata(lastProviderMetadata),
+                                        streamedTextLength: streamedText.length,
+                                    })
+
+                                    const googleMetadata = hasGroundingMetadata(preferredProviderMetadata)
+                                        ? preferredProviderMetadata.google
+                                        : undefined
+                                    const groundingMetadata = googleMetadata?.groundingMetadata
+                                    const chunks = getGroundingChunks(groundingMetadata)
+                                    const supports = getGroundingSupports(groundingMetadata)
+
+                                    console.log("[InlineCitations] Grounding present:", !!groundingMetadata, {
+                                        chunks: Array.isArray(chunks) ? chunks.length : 0,
+                                        supports: Array.isArray(supports) ? supports.length : 0,
+                                    })
+
+                                    const usedChunkIndices = (() => {
+                                        const out = new Set<number>()
+                                        if (!supports) return out
+                                        for (const s of supports) {
+                                            const indices = s?.groundingChunkIndices as unknown
+                                            if (!Array.isArray(indices)) continue
+                                            for (const raw of indices) {
+                                                if (typeof raw === "number" && Number.isFinite(raw)) out.add(raw)
+                                            }
+                                        }
+                                        return out
+                                    })()
+
+                                    let sources: SourceWithChunk[] = []
+                                    if (chunks) {
+                                        const rawSources = chunks
+                                            .map((chunk, idx) => ({ chunk, idx }))
+                                            .filter(({ idx }) => usedChunkIndices.size === 0 || usedChunkIndices.has(idx))
+                                            .map(({ chunk, idx }) => {
+                                                const uri = chunk.web?.uri
+                                                if (typeof uri === "string" && uri.length > 0) {
+                                                    const normalizedUrl = normalizeWebSearchUrl(uri)
+                                                    const title = typeof chunk.web?.title === "string" ? chunk.web.title : normalizedUrl
+                                                    return {
+                                                        url: normalizedUrl,
+                                                        title,
+                                                        chunkIndex: idx,
+                                                    }
+                                                }
+                                                return null
+                                            })
+                                            .filter((item): item is { url: string; title: string; chunkIndex: number } => !!item)
+
+                                        sources = rawSources.map((s) => ({
+                                            url: s.url,
+                                            title: s.title,
+                                            chunkIndices: [s.chunkIndex],
+                                        }))
+                                    }
+
+                                    if (sources.length > 0) {
+                                        sources = await enrichSourcesWithFetchedTitles(sources, {
+                                            concurrency: 4,
+                                            timeoutMs: 2500,
+                                        })
+
+                                        const deduped = new Map<string, SourceWithChunk>()
+                                        for (const src of sources) {
+                                            const key = canonicalizeCitationUrl(src.url)
+                                            const existing = deduped.get(key)
+                                            if (!existing) {
+                                                deduped.set(key, src)
+                                                continue
+                                            }
+
+                                            const existingIsProxy = isVertexProxyUrl(existing.url)
+                                            const currentIsProxy = isVertexProxyUrl(src.url)
+                                            if (existingIsProxy && !currentIsProxy) {
+                                                deduped.set(key, {
+                                                    ...src,
+                                                    chunkIndices: Array.from(new Set([...existing.chunkIndices, ...src.chunkIndices])),
+                                                })
+                                                continue
+                                            }
+
+                                            if (!existing.publishedAt && src.publishedAt) {
+                                                deduped.set(key, {
+                                                    ...existing,
+                                                    publishedAt: src.publishedAt,
+                                                    chunkIndices: Array.from(new Set([...existing.chunkIndices, ...src.chunkIndices])),
+                                                })
+                                            } else {
+                                                deduped.set(key, {
+                                                    ...existing,
+                                                    chunkIndices: Array.from(new Set([...existing.chunkIndices, ...src.chunkIndices])),
+                                                })
+                                            }
+                                        }
+                                        sources = Array.from(deduped.values())
+
+                                        const hasHighValue = sources.some((s) => !isVertexProxyUrl(s.url) && !isLowValueCitationUrl(s.url))
+                                        if (hasHighValue) {
+                                            sources = sources.filter((s) => !isVertexProxyUrl(s.url) && !isLowValueCitationUrl(s.url))
+                                        } else {
+                                            const hasNonProxy = sources.some((s) => !isVertexProxyUrl(s.url))
+                                            if (hasNonProxy) sources = sources.filter((s) => !isVertexProxyUrl(s.url))
+                                        }
+                                    }
+
+                                    const textWithInlineCitations = insertInlineCitations(streamedText, sources, supports)
+                                    const persistedSources = sources.length > 0 ? stripToPersistedSources(sources) : undefined
+
+                                    console.log("[InlineCitations] Computed:", {
+                                        sources: persistedSources ? persistedSources.length : 0,
+                                        inserted: /\[\d+(?:,\d+)*\]/.test(textWithInlineCitations),
+                                    })
+
+                                    ensureStart()
+                                    writer.write({
+                                        type: "data-cited-text",
+                                        id: citedTextId,
+                                        data: { text: textWithInlineCitations },
+                                    })
+
+                                    if (persistedSources && persistedSources.length > 0) {
+                                        ensureStart()
+                                        writer.write({
+                                            type: "data-cited-sources",
+                                            id: citedSourcesId,
+                                            data: { sources: persistedSources },
+                                        })
+                                    }
+
+                                    await saveAssistantMessage(textWithInlineCitations, persistedSources)
+
+                                    if (groundingMetadata) {
+                                        console.log("[Chat API] Grounding Metadata received:", JSON.stringify(groundingMetadata, null, 2))
+                                    }
+
+                                    const minPairsForFinalTitle = Number.parseInt(
+                                        process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                                        10
+                                    )
+                                    await maybeUpdateTitleFromAI({
+                                        assistantText: textWithInlineCitations,
+                                        minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                                            ? minPairsForFinalTitle
+                                            : 3,
+                                    })
+                                } catch (err) {
+                                    console.error("[Chat API] Failed to compute inline citations:", err)
+                                }
+
                                 writer.write(chunk)
                                 break
                             }

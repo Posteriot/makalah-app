@@ -28,7 +28,6 @@ import {
 import {
   Plus,
   Pencil,
-  History,
   Power,
   Trash2,
   ArrowLeftRight,
@@ -57,10 +56,9 @@ interface AIProviderConfig {
 
 interface AIProviderManagerProps {
   userId: Id<"users">
-  userRole: string
 }
 
-export function AIProviderManager({ userId, userRole }: AIProviderManagerProps) {
+export function AIProviderManager({ userId }: AIProviderManagerProps) {
   const configs = useQuery(api.aiProviderConfigs.listConfigs, {
     requestorUserId: userId,
   })
@@ -149,7 +147,7 @@ export function AIProviderManager({ userId, userRole }: AIProviderManagerProps) 
       // For now, just show success message
       // In production, you might want to call an API endpoint to invalidate cache
       toast.success("Config cache akan di-refresh otomatis dalam 5 menit, atau segera di request chat berikutnya")
-    } catch (error) {
+    } catch {
       toast.error("Gagal reload config cache")
     }
   }

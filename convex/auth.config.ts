@@ -2,7 +2,7 @@
  * Convex Authentication Configuration
  * Configures Clerk as the authentication provider
  */
-export default {
+const authConfig = {
   providers: [
     {
       domain: "https://artistic-hawk-97.clerk.accounts.dev",
@@ -10,3 +10,5 @@ export default {
     },
   ],
 }
+
+export default authConfig

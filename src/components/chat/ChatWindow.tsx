@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react"
 import { UIMessage, DefaultChatTransport } from "ai"
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
@@ -28,6 +28,10 @@ interface ChatWindowProps {
 
 export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect }: ChatWindowProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null)
+  const scrollRafRef = useRef<number | null>(null)
+  const pendingScrollToBottomRef = useRef(false)
+  const wasGeneratingRef = useRef(false)
+  const [isAtBottom, setIsAtBottom] = useState(true)
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
 
@@ -140,6 +144,60 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }, [conversationId, historyMessages, isHistoryLoading, setMessages])
 
   const isLoading = status !== 'ready' && status !== 'error'
+  const isGenerating = status === "submitted" || status === "streaming"
+
+  const scheduleScrollToBottom = useCallback((behavior: "auto" | "smooth" = "auto") => {
+    if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current)
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null
+      if (messages.length === 0) return
+      virtuosoRef.current?.scrollToIndex({
+        index: messages.length - 1,
+        align: "end",
+        behavior,
+      })
+    })
+  }, [messages.length])
+
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!pendingScrollToBottomRef.current) return
+    pendingScrollToBottomRef.current = false
+    scheduleScrollToBottom("auto")
+  }, [messages.length, scheduleScrollToBottom])
+
+  const lastMessageText = useMemo(() => {
+    const last = messages[messages.length - 1]
+    if (!last) return ""
+    const maybeContent = (last as { content?: string }).content
+    if (typeof maybeContent === "string") return maybeContent
+    const textPart = last.parts?.find((part) => part.type === "text") as
+      | { text?: string }
+      | undefined
+    return textPart?.text ?? ""
+  }, [messages])
+
+  useEffect(() => {
+    if (!isGenerating) return
+    if (!isAtBottom) return
+    scheduleScrollToBottom("auto")
+  }, [isGenerating, isAtBottom, scheduleScrollToBottom, lastMessageText])
+
+  useEffect(() => {
+    if (wasGeneratingRef.current && !isGenerating) {
+      if (!isAtBottom) {
+        wasGeneratingRef.current = isGenerating
+        return
+      }
+      scheduleScrollToBottom("auto")
+    }
+    wasGeneratingRef.current = isGenerating
+  }, [isGenerating, isAtBottom, scheduleScrollToBottom])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
@@ -184,6 +242,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
+    pendingScrollToBottomRef.current = true
     sendMessage({ text: input })
     setInput("")
     setUploadedFileIds([])
@@ -314,7 +373,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                   </div>
                 )
               }}
-              followOutput="auto"
+              atBottomStateChange={setIsAtBottom}
+              atBottomThreshold={160}
+              followOutput={(atBottom) => {
+                if (pendingScrollToBottomRef.current) return "auto"
+                if (isGenerating) return atBottom ? "auto" : false
+                return atBottom ? "smooth" : false
+              }}
               initialTopMostItemIndex={messages.length - 1}
               style={{ height: "100%" }}
               components={{

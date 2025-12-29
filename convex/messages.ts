@@ -63,7 +63,8 @@ export const createMessage = mutation({
         })),
         sources: v.optional(v.array(v.object({
             url: v.string(),
-            title: v.string()
+            title: v.string(),
+            publishedAt: v.optional(v.number()),
         }))),
     },
     handler: async ({ db }, args) => {

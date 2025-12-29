@@ -57,7 +57,7 @@ export function AdminPanelContainer({
         </TabsContent>
 
         <TabsContent value="ai-providers" className="space-y-4">
-          <AIProviderManager userId={userId} userRole={userRole} />
+          <AIProviderManager userId={userId} />
         </TabsContent>
 
         <TabsContent value="stats" className="space-y-4">

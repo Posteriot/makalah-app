@@ -20,6 +20,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { ArtifactEditor } from "./ArtifactEditor"
 import { VersionHistoryDialog } from "./VersionHistoryDialog"
+import { MarkdownRenderer } from "./MarkdownRenderer"
 
 interface ArtifactViewerProps {
     artifactId: Id<"artifacts"> | null
@@ -210,6 +211,7 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
     const TypeIcon = typeIcons[artifact.type] || FileTextIcon
     const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
     const language = artifact.format ? formatToLanguage[artifact.format] : undefined
+    const shouldRenderMarkdown = !isCodeArtifact
 
     return (
         <div className="flex flex-col h-full">
@@ -281,12 +283,12 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                             >
                                 {artifact.content}
                             </SyntaxHighlighter>
+                        ) : shouldRenderMarkdown ? (
+                            <MarkdownRenderer markdown={artifact.content} className="space-y-2 text-sm" />
                         ) : (
-                            <div className="prose prose-sm dark:prose-invert max-w-none">
-                                <pre className="whitespace-pre-wrap font-sans bg-muted p-4 rounded-lg text-sm">
-                                    {artifact.content}
-                                </pre>
-                            </div>
+                            <pre className="whitespace-pre-wrap font-sans bg-muted p-4 rounded-lg text-sm">
+                                {artifact.content}
+                            </pre>
                         )}
                     </div>
 

@@ -29,7 +29,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
         try {
             await onApprove();
             toast.success(`Mantap! Tahap "${stageLabel}" disetujui. Lanjut ke tahap berikutnya.`);
-        } catch (error) {
+        } catch {
             toast.error("Gagal nyetujui tahap ini. Coba lagi, ya.");
         } finally {
             setIsSubmitting(false);
@@ -47,7 +47,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
             toast.success("Feedback lo udah dikirim. AI bakal segera revisi.");
             setShowRevisionForm(false);
             setFeedback("");
-        } catch (error) {
+        } catch {
             toast.error("Gagal ngirim feedback. Coba lagi.");
         } finally {
             setIsSubmitting(false);

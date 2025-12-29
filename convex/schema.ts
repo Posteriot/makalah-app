@@ -51,7 +51,8 @@ export default defineSchema({
     })),
     sources: v.optional(v.array(v.object({
       url: v.string(),
-      title: v.string()
+      title: v.string(),
+      publishedAt: v.optional(v.number()),
     }))),
   })
     .index("by_conversation", ["conversationId", "createdAt"])

@@ -145,7 +145,7 @@ export function ArtifactList({
                                         isSelected && "bg-accent text-accent-foreground"
                                     )}
                                     aria-label={`Select artifact: ${artifact.title}`}
-                                    aria-selected={isSelected}
+                                    aria-pressed={isSelected}
                                 >
                                     <div className="flex items-start gap-2">
                                         <TypeIcon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />

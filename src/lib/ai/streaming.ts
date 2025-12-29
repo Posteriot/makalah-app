@@ -174,7 +174,7 @@ export async function getGoogleSearchTool() {
     const { google } = await import("@ai-sdk/google")
     // Native Google Search tool from the provider (provider-defined tool factory)
     // Note: This requires GOOGLE_GENERATIVE_AI_API_KEY to be set in env (when using google provider directly).
-    const toolFactory = google.tools?.googleSearch ?? google.tools?.search
+    const toolFactory = google.tools?.googleSearch
 
     if (!toolFactory) {
       console.warn("[Streaming] Native Google Search tool factory not found in SDK export.")

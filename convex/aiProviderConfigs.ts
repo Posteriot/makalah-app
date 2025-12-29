@@ -1,7 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireRole } from "./permissions"
-import type { Id } from "./_generated/dataModel"
 
 /**
  * Get the currently active AI provider configuration

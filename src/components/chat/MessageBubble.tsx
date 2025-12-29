@@ -9,6 +9,7 @@ import { SearchStatusIndicator, type SearchStatus } from "./SearchStatusIndicato
 import { SourcesIndicator } from "./SourcesIndicator"
 import { useState, useRef } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
+import { MarkdownRenderer } from "./MarkdownRenderer"
 
 interface MessageBubbleProps {
     message: UIMessage
@@ -120,7 +121,43 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
         ? message.parts.filter(part => part.type === 'text').map(part => part.text).join('')
         : ''
 
+    const extractCitedText = (uiMessage: UIMessage): string | null => {
+        for (const part of uiMessage.parts ?? []) {
+            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+            if (maybeDataPart.type !== "data-cited-text") continue
+            const data = maybeDataPart.data as { text?: unknown } | null
+            if (!data || typeof data !== "object") continue
+            return typeof data.text === "string" ? data.text : null
+        }
+        return null
+    }
+
+    const extractCitedSources = (uiMessage: UIMessage): { url: string; title: string; publishedAt?: number | null }[] | null => {
+        for (const part of uiMessage.parts ?? []) {
+            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+            if (maybeDataPart.type !== "data-cited-sources") continue
+            const data = maybeDataPart.data as { sources?: unknown } | null
+            if (!data || typeof data !== "object") continue
+            if (!Array.isArray(data.sources)) return null
+            const out = data.sources
+                .map((s) => {
+                    const src = s as { url?: unknown; title?: unknown; publishedAt?: unknown }
+                    if (typeof src?.url !== "string" || typeof src?.title !== "string") return null
+                    const publishedAt = typeof src.publishedAt === "number" && Number.isFinite(src.publishedAt) ? src.publishedAt : null
+                    return {
+                        url: src.url,
+                        title: src.title,
+                        ...(publishedAt ? { publishedAt } : {}),
+                    }
+                })
+                .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
+            return out.length > 0 ? out : null
+        }
+        return null
+    }
+
     const searchStatus = extractSearchStatus(message)
+    const citedText = extractCitedText(message)
 
     const startEditing = () => {
         setIsEditing(true)
@@ -156,10 +193,9 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fileAnnotations = (message as any).annotations?.find((a: any) => a.type === 'file_ids')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fileIds = fileAnnotations ? (fileAnnotations as any).fileIds : []
+    const annotations = (message as { annotations?: { type?: string; fileIds?: string[] }[] }).annotations
+    const fileAnnotations = annotations?.find((annotation) => annotation.type === "file_ids")
+    const fileIds = fileAnnotations?.fileIds ?? []
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
@@ -169,10 +205,12 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
     const nonSearchTools = inProgressTools.filter((t) => t.toolName !== "google_search")
 
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sourcesFromAnnotation = (message as any).annotations?.find((a: any) => a.type === 'sources')?.sources
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sources = sourcesFromAnnotation || (message as any).sources || []
+    const sourcesFromAnnotation = (message as {
+        annotations?: { type?: string; sources?: { url: string; title: string; publishedAt?: number | null }[] }[]
+    }).annotations?.find((annotation) => annotation.type === "sources")?.sources
+    const citedSources = extractCitedSources(message)
+    const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
+    const sources = citedSources || sourcesFromAnnotation || messageSources || []
 
     return (
         <div className={`group p-2 mb-2 rounded ${message.role === 'user' ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted'} max-w-[80%] relative`}>
@@ -251,7 +289,11 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
                     </div>
                 </div>
             ) : (
-                <div className="whitespace-pre-wrap">{content}</div>
+                <MarkdownRenderer
+                    markdown={citedText ?? content}
+                    className="space-y-2"
+                    sources={sources}
+                />
             )}
 
             {/* Search Status (data stream, below assistant text) */}

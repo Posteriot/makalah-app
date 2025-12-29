@@ -8,6 +8,10 @@ function decodeHtmlEntities(input: string): string {
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, "\"")
     .replace(/&#39;/gi, "'")
+    .replace(/&raquo;/gi, "»")
+    .replace(/&laquo;/gi, "«")
+    .replace(/&ndash;/gi, "–")
+    .replace(/&mdash;/gi, "—")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
 }
@@ -122,6 +126,17 @@ function isGoogleGroundingRedirectHost(hostname: string): boolean {
   return lower === "vertexaisearch.cloud.google.com" || lower.startsWith("vertexaisearch.cloud.google.")
 }
 
+function isGoogleSearchResultsUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.toLowerCase()
+    if (!(host === "google.com" || host === "www.google.com")) return false
+    return parsed.pathname === "/search"
+  } catch {
+    return false
+  }
+}
+
 async function mapWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
@@ -145,6 +160,87 @@ async function mapWithConcurrency<T, R>(
 export interface WebPageMetadata {
   title: string | null
   finalUrl: string | null
+  publishedAt: number | null
+}
+
+function parseDateFromUrl(url: string): number | null {
+  try {
+    const parsed = new URL(url)
+    const path = parsed.pathname
+
+    // /YYYY/MM/DD/...
+    const m1 = path.match(/\/(20\d{2})\/(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\b/)
+    if (m1) {
+      const y = Number(m1[1])
+      const mo = Number(m1[2]) - 1
+      const d = Number(m1[3])
+      const t = Date.UTC(y, mo, d)
+      return Number.isFinite(t) ? t : null
+    }
+
+    // /YYYY-MM-DD/...
+    const m2 = path.match(/\b(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/)
+    if (m2) {
+      const y = Number(m2[1])
+      const mo = Number(m2[2]) - 1
+      const d = Number(m2[3])
+      const t = Date.UTC(y, mo, d)
+      return Number.isFinite(t) ? t : null
+    }
+  } catch {
+    // ignore
+  }
+
+  return null
+}
+
+function parseIsoDateTimeToMs(input: string): number | null {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+
+  const t = Date.parse(trimmed)
+  if (Number.isFinite(t)) return t
+
+  const m = trimmed.match(/\b(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2]) - 1
+  const d = Number(m[3])
+  const utc = Date.UTC(y, mo, d)
+  return Number.isFinite(utc) ? utc : null
+}
+
+function extractPublishedAtFromHtml(html: string): number | null {
+  const candidates = [
+    extractMetaContent(html, "property", "article:published_time"),
+    extractMetaContent(html, "name", "article:published_time"),
+    extractMetaContent(html, "property", "og:published_time"),
+    extractMetaContent(html, "name", "og:published_time"),
+    extractMetaContent(html, "name", "pubdate"),
+    extractMetaContent(html, "property", "pubdate"),
+    extractMetaContent(html, "name", "date"),
+    extractMetaContent(html, "property", "date"),
+    extractMetaContent(html, "name", "datePublished"),
+    extractMetaContent(html, "property", "datePublished"),
+  ]
+
+  for (const raw of candidates) {
+    if (!raw) continue
+    const cleaned = collapseWhitespace(decodeHtmlEntities(raw))
+    const parsed = parseIsoDateTimeToMs(cleaned)
+    if (parsed) return parsed
+  }
+
+  // JSON-LD: "datePublished": "2025-12-24T..."
+  const jsonLdMatches = html.match(/"datePublished"\s*:\s*"([^"]+)"/gi) ?? []
+  for (const hit of jsonLdMatches) {
+    const m = hit.match(/"datePublished"\s*:\s*"([^"]+)"/i)
+    if (!m?.[1]) continue
+    const parsed = parseIsoDateTimeToMs(m[1])
+    if (parsed) return parsed
+  }
+
+  return null
 }
 
 export async function fetchWebPageMetadata(
@@ -156,11 +252,11 @@ export async function fetchWebPageMetadata(
   try {
     parsed = new URL(normalized)
   } catch {
-    return { title: null, finalUrl: null }
+    return { title: null, finalUrl: null, publishedAt: null }
   }
 
-  if (!["http:", "https:"].includes(parsed.protocol)) return { title: null, finalUrl: null }
-  if (isDisallowedHost(parsed.hostname)) return { title: null, finalUrl: null }
+  if (!["http:", "https:"].includes(parsed.protocol)) return { title: null, finalUrl: null, publishedAt: null }
+  if (isDisallowedHost(parsed.hostname)) return { title: null, finalUrl: null, publishedAt: null }
 
   const controller = new AbortController()
   const timeoutMs = options?.timeoutMs ?? 2500
@@ -177,8 +273,6 @@ export async function fetchWebPageMetadata(
         "user-agent": "makalahapp/1.0",
       },
     })
-
-    if (!res.ok) return { title: null, finalUrl: null }
 
     const finalUrlCandidate = normalizeWebSearchUrl(res.url || parsed.toString())
     const finalUrlParsed = (() => {
@@ -197,9 +291,19 @@ export async function fetchWebPageMetadata(
         ? finalUrlParsed.toString()
         : null
 
+    if (finalUrlSafe && isGoogleSearchResultsUrl(finalUrlSafe)) {
+      finalUrlSafe = null
+    }
+
+    if (!res.ok) {
+      const publishedAt = finalUrlSafe ? parseDateFromUrl(finalUrlSafe) : null
+      return { title: null, finalUrl: finalUrlSafe, publishedAt }
+    }
+
     const contentType = res.headers.get("content-type") ?? ""
     if (!contentType.toLowerCase().includes("text/html")) {
-      return { title: null, finalUrl: finalUrlSafe }
+      const publishedAt = finalUrlSafe ? parseDateFromUrl(finalUrlSafe) : null
+      return { title: null, finalUrl: finalUrlSafe, publishedAt }
     }
 
     const html = (await res.text()).slice(0, 250_000)
@@ -238,18 +342,19 @@ export async function fetchWebPageMetadata(
     const titleTag = extractTitleTag(html)
 
     const raw = ogTitle ?? twitterTitle ?? titleTag
-    if (!raw) return { title: null, finalUrl: finalUrlSafe }
+    const publishedAt = extractPublishedAtFromHtml(html) ?? (finalUrlSafe ? parseDateFromUrl(finalUrlSafe) : null)
+    if (!raw) return { title: null, finalUrl: finalUrlSafe, publishedAt }
 
     const siteName = deriveSiteNameFromUrl(finalUrlSafe ?? normalized)
     const decoded = collapseWhitespace(decodeHtmlEntities(raw))
     const stripped = stripSiteSuffix(decoded, siteName)
     const final = collapseWhitespace(stripped)
 
-    if (!final) return { title: null, finalUrl: finalUrlSafe }
+    if (!final) return { title: null, finalUrl: finalUrlSafe, publishedAt }
     const title = final.length > 200 ? final.slice(0, 200).trim() : final
-    return { title, finalUrl: finalUrlSafe }
+    return { title, finalUrl: finalUrlSafe, publishedAt }
   } catch {
-    return { title: null, finalUrl: null }
+    return { title: null, finalUrl: null, publishedAt: null }
   } finally {
     clearTimeout(timer)
   }
@@ -260,7 +365,9 @@ export async function fetchWebPageTitle(url: string, options?: { timeoutMs?: num
   return meta.title
 }
 
-export async function enrichSourcesWithFetchedTitles<T extends { url: string; title?: string | null }>(
+export async function enrichSourcesWithFetchedTitles<
+  T extends { url: string; title?: string | null; publishedAt?: number | null }
+>(
   sources: T[],
   options?: { concurrency?: number; timeoutMs?: number }
 ): Promise<T[]> {
@@ -269,11 +376,12 @@ export async function enrichSourcesWithFetchedTitles<T extends { url: string; ti
 
   return await mapWithConcurrency(sources, concurrency, async (src) => {
     const meta = await fetchWebPageMetadata(src.url, { timeoutMs })
-    if (!meta.title && !meta.finalUrl) return src
+    if (!meta.title && !meta.finalUrl && !meta.publishedAt) return src
     return {
       ...src,
       ...(meta.title ? { title: meta.title } : {}),
       ...(meta.finalUrl ? { url: meta.finalUrl } : {}),
+      ...(meta.publishedAt ? { publishedAt: meta.publishedAt } : {}),
     }
   })
 }
