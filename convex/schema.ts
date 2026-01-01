@@ -1,5 +1,15 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
+import {
+  DiskusiData,
+  HasilData,
+  KesimpulanData,
+  DaftarPustakaData,
+  LampiranData,
+  JudulData,
+  OutlineData,
+  ElaborasiData,
+} from "./paperSessions/types"
 
 export default defineSchema({
   users: defineTable({
@@ -228,6 +238,8 @@ export default defineSchema({
         rumusanMasalah: v.optional(v.string()),
         researchGapAnalysis: v.optional(v.string()),
         tujuanPenelitian: v.optional(v.string()),
+        signifikansiPenelitian: v.optional(v.string()), // Mengapa penelitian ini penting
+        hipotesis: v.optional(v.string()), // Hipotesis atau pertanyaan penelitian
         sitasiAPA: v.optional(v.array(v.object({
           inTextCitation: v.string(),
           fullReference: v.string(),
@@ -241,6 +253,7 @@ export default defineSchema({
         kerangkaTeoretis: v.optional(v.string()),
         reviewLiteratur: v.optional(v.string()),
         gapAnalysis: v.optional(v.string()),
+        justifikasiPenelitian: v.optional(v.string()), // Mengapa penelitian ini diperlukan
         referensi: v.optional(v.array(v.object({
           title: v.string(),
           authors: v.optional(v.string()),
@@ -258,6 +271,7 @@ export default defineSchema({
         metodePerolehanData: v.optional(v.string()),
         teknikAnalisis: v.optional(v.string()),
         etikaPenelitian: v.optional(v.string()),
+        alatInstrumen: v.optional(v.string()), // Alat atau instrumen penelitian
         pendekatanPenelitian: v.optional(v.union(
           v.literal("kualitatif"),
           v.literal("kuantitatif"),
@@ -267,17 +281,23 @@ export default defineSchema({
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
       })),
-      hasil: v.optional(v.any()),
-      diskusi: v.optional(v.any()),
-      kesimpulan: v.optional(v.any()),
-      daftar_pustaka: v.optional(v.any()),
-      lampiran: v.optional(v.any()),
-      judul: v.optional(v.any()),
-      outline: v.optional(v.any()),
-      elaborasi: v.optional(v.any()),
+
+      // Phase 3: Results & Analysis
+      hasil: v.optional(HasilData),
+      diskusi: v.optional(DiskusiData),
+      kesimpulan: v.optional(KesimpulanData),
+
+      // Phase 4: Finalization
+      daftar_pustaka: v.optional(DaftarPustakaData),
+      lampiran: v.optional(LampiranData),
+      judul: v.optional(JudulData),
+      outline: v.optional(OutlineData),
+      elaborasi: v.optional(ElaborasiData),
     }),
 
+    // Paper metadata (Phase 5)
     paperTitle: v.optional(v.string()),
+    archivedAt: v.optional(v.number()), // Soft delete timestamp untuk archive
 
     // Timestamps
     createdAt: v.number(),
@@ -286,5 +306,6 @@ export default defineSchema({
   })
     .index("by_conversation", ["conversationId"])
     .index("by_user_updated", ["userId", "updatedAt"])
-    .index("by_stage", ["currentStage", "stageStatus"]),
+    .index("by_stage", ["currentStage", "stageStatus"])
+    .index("by_user_archived", ["userId", "archivedAt"]), // Filter archived sessions
 })

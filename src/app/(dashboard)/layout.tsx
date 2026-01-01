@@ -3,7 +3,7 @@ import { currentUser } from "@clerk/nextjs/server"
 import { fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import Link from "next/link"
-import { Settings } from "lucide-react"
+import { FileText, Settings } from "lucide-react"
 import { AdminNavLink } from "@/components/admin/AdminNavLink"
 
 async function ensureConvexUser() {
@@ -54,6 +54,13 @@ export default async function DashboardLayout({
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Chat
+            </Link>
+            <Link
+              href="/dashboard/papers"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Papers</span>
             </Link>
             <AdminNavLink />
             <Link

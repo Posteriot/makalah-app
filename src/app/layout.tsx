@@ -1,19 +1,33 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { Geist, Geist_Mono } from "next/font/google"
+import localFont from "next/font/local"
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 import "./globals.css"
 import { AppProviders } from "./providers"
 import { Toaster } from "@/components/ui/sonner"
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: [
+    {
+      path: "../assets/fonts/Geist-Variable.woff2",
+      weight: "100 900",
+      style: "normal",
+    },
+  ],
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  display: "swap",
 })
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: [
+    {
+      path: "../assets/fonts/GeistMono-Variable.woff2",
+      weight: "100 900",
+      style: "normal",
+    },
+  ],
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 })
 
 export const metadata: Metadata = {

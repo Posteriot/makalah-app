@@ -1,9 +1,9 @@
 /**
  * Stage Instructions: Core (Phase 2)
- * 
+ *
  * Instructions for Stage 3 (Abstrak), Stage 4 (Pendahuluan),
  * Stage 5 (Tinjauan Literatur), and Stage 6 (Metodologi).
- * 
+ *
  * Focus: MAINTAIN DIALOG-FIRST, utilize Phase 1 data.
  */
 
@@ -126,6 +126,8 @@ OUTPUT 'PENDAHULUAN' (SETELAH diskusi):
 - rumusanMasalah: Poin-poin pertanyaan penelitian
 - researchGapAnalysis: Penjelasan mengapa penelitian ini perlu (gap fill)
 - tujuanPenelitian: Apa yang ingin dicapai
+- signifikansiPenelitian: Mengapa penelitian ini penting (kontribusi teoretis/praktis)
+- hipotesis: Hipotesis atau pertanyaan penelitian spesifik (jika ada)
 - sitasiAPA: Array referensi [{ inTextCitation, fullReference, url }]
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -133,7 +135,7 @@ TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → Cari data/fakta pendukung urgensi
-- updateStageData({ latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, sitasiAPA })
+- updateStageData({ latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, hipotesis, sitasiAPA })
 - createArtifact({ type: "section", title: "Pendahuluan - [Judul Paper]", content: "[konten pendahuluan lengkap]" })
 - ❌ JANGAN skip tracking sitasi - ini wajib untuk daftar pustaka
 - ❌ JANGAN lupakan "anchor" argumentasi kebaruan dari Stage Topik
@@ -189,6 +191,7 @@ OUTPUT 'TINJAUAN LITERATUR':
 - kerangkaTeoretis: Penjelasan landasan teori yang digunakan
 - reviewLiteratur: Sintesis dari studi-studi terdahulu
 - gapAnalysis: Penajaman celah penelitian berdasarkan literatur
+- justifikasiPenelitian: Mengapa penelitian ini diperlukan berdasarkan literatur yang ada
 - referensi: Array [{ title, authors, year, url, inTextCitation, isFromPhase1 }]
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -196,7 +199,7 @@ TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → Target pendalaman (3-5 queries)
-- updateStageData({ kerangkaTeoretis, reviewLiteratur, gapAnalysis, referensi })
+- updateStageData({ kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi })
 - createArtifact({ type: "section", title: "Tinjauan Literatur - [Judul Paper]", content: "[konten tinjauan literatur lengkap]" })
 - ❌ JANGAN ignore referensi Phase 1 - itu adalah fondasi awal
 - ❌ JANGAN cuma copas abstrak literatur lain - harus ada SINTESIS
@@ -257,13 +260,14 @@ OUTPUT 'METODOLOGI':
 - metodePerolehanData: Teknis gimana data didapat
 - teknikAnalisis: Teknis gimana data diolah
 - etikaPenelitian: Pernyataan etika penelitian
+- alatInstrumen: Alat atau instrumen penelitian yang digunakan (kuesioner, wawancara, software, dll)
 
 ═══════════════════════════════════════════════════════════════════════════════
 TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → Cari referensi/contoh metodologi sejenis
-- updateStageData({ pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian })
+- updateStageData({ pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian, alatInstrumen })
 - createArtifact({ type: "section", title: "Metodologi - [Judul Paper]", content: "[konten metodologi lengkap]" })
 - ❌ JANGAN langsung generate tanpa diskusi pendekatan dulu
 - ❌ JANGAN buat desain yang nggak bisa menjawab rumusan masalah

@@ -1,5 +1,6 @@
 import { streamText, type CoreMessage } from "ai"
 import { createOpenAI } from "@ai-sdk/openai"
+import { createVercel } from "@ai-sdk/vercel"
 import { configCache } from "./config-cache"
 
 // Vercel AI SDK expects AI_GATEWAY_API_KEY for native gateway integration
@@ -59,17 +60,18 @@ async function getProviderConfig() {
  */
 function createProviderModel(provider: string, model: string, apiKey: string) {
   if (provider === "vercel-gateway") {
-    // Vercel AI Gateway Native Integration
-    // Just return the model ID as a string. The AI SDK will automatically 
-    // route it through the gateway using AI_GATEWAY_API_KEY.
+    // Vercel AI Gateway Native Integration via provider instance.
+    const vercel = createVercel({
+      apiKey: apiKey || process.env.VERCEL_AI_GATEWAY_API_KEY,
+    })
 
-    // Ensure google prefix is present for Gemini models if missing
+    // Ensure google prefix is present for Gemini models if missing.
     const targetModel = (model.includes("gemini") && !model.includes("/"))
       ? `google/${model}`
       : model
 
-    console.log(`[Streaming] Using Native Gateway Model String: ${targetModel}`)
-    return targetModel
+    console.log(`[Streaming] Using Vercel Gateway Model Instance: ${targetModel}`)
+    return vercel(targetModel)
   } else if (provider === "openrouter") {
     // OpenRouter: createOpenAI with custom config
     const openRouterOpenAI = createOpenAI({
