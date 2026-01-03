@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createOpenAI } from "@ai-sdk/openai"
+import { createVercel } from "@ai-sdk/vercel"
 import { generateText } from "ai"
 import { fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
@@ -63,16 +64,16 @@ export async function POST(request: NextRequest) {
 
     if (provider === "vercel-gateway") {
       // Vercel AI Gateway: Use model ID as string
-      // Note: Cannot set custom API key for gateway, uses VERCEL_AI_GATEWAY_API_KEY from env
-      // This validation just checks if model ID is valid format
       if (!model || typeof model !== "string") {
         throw new Error("Invalid model ID format")
       }
 
-      // For gateway, we use the model ID directly (AI SDK handles routing)
-      testModel = model
+      const vercel = createVercel({ apiKey })
+      const targetModel =
+        model.includes("gemini") && !model.includes("/") ? `google/${model}` : model
+      testModel = vercel(targetModel)
 
-      console.log(`[ValidateProvider] Testing Vercel AI Gateway with model: ${model}`)
+      console.log(`[ValidateProvider] Testing Vercel AI Gateway with model: ${targetModel}`)
     } else if (provider === "openrouter") {
       // OpenRouter: Test with provided API key
       const openRouterOpenAI = createOpenAI({

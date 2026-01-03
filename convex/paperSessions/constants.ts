@@ -33,7 +33,8 @@ export function getPreviousStage(current: PaperStageId): PaperStageId | null {
     return STAGE_ORDER[currentIndex - 1];
 }
 
-export function getStageNumber(stage: PaperStageId): number {
+export function getStageNumber(stage: PaperStageId | "completed"): number {
+    if (stage === "completed") return STAGE_ORDER.length;
     return STAGE_ORDER.indexOf(stage) + 1;
 }
 

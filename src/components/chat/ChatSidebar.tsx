@@ -100,9 +100,9 @@ export function ChatSidebar({
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium text-sm truncate">{conv.title}</span>
                                         {paperSession && (
-                                            <PaperSessionBadge
-                                                stageNumber={getStageNumber(paperSession.currentStage as PaperStageId)}
-                                            />
+                                                <PaperSessionBadge
+                                                    stageNumber={getStageNumber(paperSession.currentStage as PaperStageId | "completed")}
+                                                />
                                         )}
                                     </div>
                                     <div className="text-xs text-muted-foreground">

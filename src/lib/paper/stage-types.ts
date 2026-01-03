@@ -11,6 +11,7 @@ export interface GagasanData {
   angle?: string
   novelty?: string
   referensiAwal?: ReferensiAwal[]
+  artifactId?: string
   validatedAt?: number
   revisionCount?: number
 }
@@ -28,6 +29,7 @@ export interface TopikData {
   argumentasiKebaruan?: string
   researchGap?: string
   referensiPendukung?: ReferensiPendukung[]
+  artifactId?: string
   validatedAt?: number
   revisionCount?: number
 }
@@ -36,6 +38,7 @@ export interface AbstrakData {
   ringkasanPenelitian?: string
   keywords?: string[]
   wordCount?: number
+  artifactId?: string
   validatedAt?: number
   revisionCount?: number
 }
@@ -58,6 +61,7 @@ export interface PendahuluanData {
   signifikansiPenelitian?: string
   hipotesis?: string
   sitasiAPA?: SitasiAPA[]
+  artifactId?: string
   validatedAt?: number
   revisionCount?: number
 }
@@ -77,6 +81,7 @@ export interface TinjauanLiteraturData {
   gapAnalysis?: string
   justifikasiPenelitian?: string
   referensi?: Referensi[]
+  artifactId?: string
   validatedAt?: number
   revisionCount?: number
 }
@@ -88,6 +93,7 @@ export interface MetodologiData {
   etikaPenelitian?: string
   pendekatanPenelitian?: "kualitatif" | "kuantitatif" | "mixed"
   alatInstrumen?: string
+  artifactId?: string
   validatedAt?: number
   revisionCount?: number
 }
@@ -103,6 +109,7 @@ export interface HasilData {
   temuanUtama?: string[]
   metodePenyajian?: "narrative" | "tabular" | "mixed"
   dataPoints?: DataPoint[]
+  artifactId?: string
   validatedAt?: number
   revisionCount?: number
 }
@@ -115,6 +122,7 @@ export interface DiskusiData {
   keterbatasanPenelitian?: string
   saranPenelitianMendatang?: string
   sitasiTambahan?: SitasiTambahan[]
+  artifactId?: string
   validatedAt?: number
   revisionCount?: number
 }
@@ -126,6 +134,7 @@ export interface KesimpulanData {
   saranPraktisi?: string
   saranPeneliti?: string
   saranKebijakan?: string
+  artifactId?: string
   validatedAt?: number
   revisionCount?: number
 }

@@ -14,7 +14,9 @@ export const PaperStageProgress: React.FC<PaperStageProgressProps> = ({
     currentStage,
     stageStatus,
 }) => {
-    const currentIndex = STAGE_ORDER.indexOf(currentStage as PaperStageId);
+    const currentIndex = currentStage === "completed"
+        ? STAGE_ORDER.length
+        : STAGE_ORDER.indexOf(currentStage as PaperStageId);
 
     return (
         <div className="w-full bg-background-900/50 backdrop-blur-sm border-b border-border shadow-sm overflow-x-auto no-scrollbar">

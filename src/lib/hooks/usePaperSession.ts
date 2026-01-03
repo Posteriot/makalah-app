@@ -41,13 +41,15 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
         });
     };
 
+    const currentStage = session?.currentStage as PaperStageId | "completed";
+
     return {
         session,
         isPaperMode,
-        currentStage: session?.currentStage as PaperStageId | "completed",
+        currentStage,
         stageStatus: session?.stageStatus,
-        stageLabel: session ? getStageLabel(session.currentStage as PaperStageId) : "",
-        stageNumber: session ? getStageNumber(session.currentStage as PaperStageId) : 0,
+        stageLabel: session ? getStageLabel(currentStage) : "",
+        stageNumber: session ? getStageNumber(currentStage) : 0,
         approveStage,
         requestRevision,
         updateStageData,

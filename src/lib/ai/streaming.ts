@@ -1,6 +1,6 @@
 import { streamText, type CoreMessage } from "ai"
 import { createOpenAI } from "@ai-sdk/openai"
-import { createVercel } from "@ai-sdk/vercel"
+import { createGateway } from "@ai-sdk/gateway"
 import { configCache } from "./config-cache"
 
 // Vercel AI SDK expects AI_GATEWAY_API_KEY for native gateway integration
@@ -34,6 +34,7 @@ async function getProviderConfig() {
         apiKey: process.env.OPENROUTER_API_KEY!,
       },
       temperature: 0.7,
+      topP: undefined,
     }
   }
 
@@ -52,6 +53,7 @@ async function getProviderConfig() {
       apiKey: config.fallbackApiKey, // Plain text from DB
     },
     temperature: config.temperature,
+    topP: config.topP,
   }
 }
 
@@ -60,9 +62,9 @@ async function getProviderConfig() {
  */
 function createProviderModel(provider: string, model: string, apiKey: string) {
   if (provider === "vercel-gateway") {
-    // Vercel AI Gateway Native Integration via provider instance.
-    const vercel = createVercel({
-      apiKey: apiKey || process.env.VERCEL_AI_GATEWAY_API_KEY,
+    // Vercel AI Gateway (https://ai-gateway.vercel.sh/v1)
+    const gateway = createGateway({
+      apiKey: apiKey || process.env.AI_GATEWAY_API_KEY,
     })
 
     // Ensure google prefix is present for Gemini models if missing.
@@ -71,7 +73,7 @@ function createProviderModel(provider: string, model: string, apiKey: string) {
       : model
 
     console.log(`[Streaming] Using Vercel Gateway Model Instance: ${targetModel}`)
-    return vercel(targetModel)
+    return gateway(targetModel)
   } else if (provider === "openrouter") {
     // OpenRouter: createOpenAI with custom config
     const openRouterOpenAI = createOpenAI({
@@ -91,6 +93,10 @@ function createProviderModel(provider: string, model: string, apiKey: string) {
 /**
  * Stream chat response with dynamic provider configuration
  * Automatically falls back to fallback provider on primary failure
+ */
+/**
+ * @deprecated streamChatResponse is no longer used by the chat route.
+ * Prefer getGatewayModel()/getOpenRouterModel() for fine-grained control.
  */
 export async function streamChatResponse(
   messages: CoreMessage[],
@@ -115,6 +121,7 @@ export async function streamChatResponse(
       model: primaryModel,
       messages,
       temperature: options?.temperature ?? config.temperature,
+      ...(config.topP !== undefined ? { topP: config.topP } : {}),
     })
   } catch (error) {
     // Fallback provider on error
@@ -132,17 +139,17 @@ export async function streamChatResponse(
       model: fallbackModel,
       messages,
       temperature: options?.temperature ?? config.temperature,
+      ...(config.topP !== undefined ? { topP: config.topP } : {}),
     })
   }
 }
 
 // ============================================================================
-// LEGACY FUNCTIONS (Backward Compatibility)
+// MODEL HELPERS
 // ============================================================================
 
 /**
- * @deprecated Use streamChatResponse() instead
- * Kept for backward compatibility during migration
+ * Get primary model instance from active config.
  */
 export async function getGatewayModel() {
   const config = await getProviderConfig()
@@ -154,8 +161,7 @@ export async function getGatewayModel() {
 }
 
 /**
- * @deprecated Use streamChatResponse() instead
- * Kept for backward compatibility during migration
+ * Get fallback model instance from active config.
  */
 export async function getOpenRouterModel() {
   const config = await getProviderConfig()
@@ -164,6 +170,17 @@ export async function getOpenRouterModel() {
     config.fallback.model,
     config.fallback.apiKey
   )
+}
+
+/**
+ * Get sampling settings from active config.
+ */
+export async function getProviderSettings() {
+  const config = await getProviderConfig()
+  return {
+    temperature: config.temperature,
+    topP: config.topP,
+  }
 }
 
 /**

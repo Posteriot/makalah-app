@@ -1,5 +1,5 @@
 import { generateTitle } from "@/lib/ai/title-generator"
-import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, tool, type ToolSet, stepCountIs } from "ai"
+import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateObject, generateText, tool, type ToolSet, stepCountIs } from "ai"
 import { z } from "zod"
 import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
 
@@ -132,20 +132,38 @@ export async function POST(req: Request) {
         const paperModePrompt = await getPaperModeSystemPrompt(currentConversationId as Id<"conversations">)
 
         // Flow Detection: Auto-detect paper intent and inject reminder if no session
-        let paperWorkflowReminder = ""
-        if (!paperModePrompt) {
-            // No active paper session - check if user has paper writing intent
-            const lastUserMessage = messages[messages.length - 1]
-            const lastUserContent = lastUserMessage?.role === "user"
-                ? (lastUserMessage.content ||
-                    lastUserMessage.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text ||
-                    "")
-                : ""
+        const lastUserMessage = messages[messages.length - 1]
+        const lastUserContent = lastUserMessage?.role === "user"
+            ? (lastUserMessage.content ||
+                lastUserMessage.parts?.find((p: { type: string; text?: string }) => p.type === "text")?.text ||
+                "")
+            : ""
 
-            if (lastUserContent && hasPaperWritingIntent(lastUserContent)) {
-                paperWorkflowReminder = PAPER_WORKFLOW_REMINDER
-                console.log("[Chat API] Paper intent detected, injecting workflow reminder")
-            }
+        let paperWorkflowReminder = ""
+        if (!paperModePrompt && lastUserContent && hasPaperWritingIntent(lastUserContent)) {
+            paperWorkflowReminder = PAPER_WORKFLOW_REMINDER
+            console.log("[Chat API] Paper intent detected, injecting workflow reminder")
+        }
+
+        const isExplicitSearchRequest = (text: string) => {
+            const normalized = text.toLowerCase()
+            const patterns = [
+                /\bcari(kan)?\b/,
+                /\bmencari\b/,
+                /\bsearch\b/,
+                /\bpencarian\b/,
+                /\bgoogle\b/,
+                /\binternet\b/,
+                /\btautan\b/,
+                /\blink\b/,
+                /\burl\b/,
+                /\breferensi\b/,
+                /\bliteratur\b/,
+                /\bsumber\b/,
+                /\bdata terbaru\b/,
+                /\bberita terbaru\b/,
+            ]
+            return patterns.some((pattern) => pattern.test(normalized))
         }
 
         // Task 6.1-6.4: Fetch file records dan inject context
@@ -194,8 +212,18 @@ export async function POST(req: Request) {
         ]
 
         // Import streamText and model helpers
-        const { getGatewayModel, getOpenRouterModel, getGoogleSearchTool } = await import("@/lib/ai/streaming")
+        const {
+            getGatewayModel,
+            getOpenRouterModel,
+            getGoogleSearchTool,
+            getProviderSettings,
+        } = await import("@/lib/ai/streaming")
         const { streamText } = await import("ai")
+        const providerSettings = await getProviderSettings()
+        const samplingOptions = {
+            temperature: providerSettings.temperature,
+            ...(providerSettings.topP !== undefined ? { topP: providerSettings.topP } : {}),
+        }
 
         const decideWebSearchMode = async (options: {
             model: unknown
@@ -218,6 +246,37 @@ JSON schema:
   "confidence": number,
   "reason": string
 }`
+
+            const routerSchema = z.object({
+                enableWebSearch: z.boolean(),
+                confidence: z.number().min(0).max(1),
+                reason: z.string().max(240),
+            })
+
+            const runStructuredRouter = async () => {
+                const { object } = await generateObject({
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    model: options.model as any,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    messages: [{ role: "system", content: routerPrompt }, ...(options.recentMessages as any[])],
+                    schema: routerSchema,
+                    temperature: 0.2,
+                })
+                return object
+            }
+
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+                try {
+                    const result = await runStructuredRouter()
+                    return {
+                        enableWebSearch: result.enableWebSearch,
+                        confidence: result.confidence,
+                        reason: result.reason,
+                    }
+                } catch (error) {
+                    console.warn("[WebSearchRouter] Structured output failed:", error)
+                }
+            }
 
             const { text } = await generateText({
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -463,7 +522,14 @@ Aturan:
                 recentMessages: recentForRouter,
             })
 
-            const enableWebSearch = webSearchDecision.enableWebSearch && !!wrappedGoogleSearchTool
+            const routerFailed = ["router_invalid_json_shape", "router_json_parse_failed"].includes(
+                webSearchDecision.reason
+            )
+            const explicitSearchFallback = routerFailed && lastUserContent
+                ? isExplicitSearchRequest(lastUserContent)
+                : false
+            const enableWebSearch = !!wrappedGoogleSearchTool
+                && (webSearchDecision.enableWebSearch || explicitSearchFallback)
 
             console.log("[WebSearchRouter] Decision:", {
                 enableWebSearch,
@@ -507,7 +573,7 @@ Aturan:
                 messages: fullMessagesGateway,
                 tools: gatewayTools,
                 stopWhen: stepCountIs(5),
-                temperature: 0.7,
+                ...samplingOptions,
                 onFinish: enableWebSearch
                     ? undefined
                     : async ({ text, providerMetadata }) => {
@@ -1018,7 +1084,7 @@ Aturan:
                 messages: fullMessagesBase,
                 tools,
                 stopWhen: stepCountIs(5),
-                temperature: 0.7,
+                ...samplingOptions,
                 onFinish: async ({ text }) => {
                     if (text) {
                         await saveAssistantMessage(text)
