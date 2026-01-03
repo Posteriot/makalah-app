@@ -46,6 +46,11 @@ installation-plan.txt
 stack-requirements.txt
 
 # Screenshots (testing artifacts)
-screenshots/*.png
-screenshots/*.jpg
-screenshots/*.jpeg
+screenshots/
+
+# Claude Code / Agent OS (local-only)
+.claude/
+.development/
+CLAUDE.md
+AGENTS.md
+.mcp.json
