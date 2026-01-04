@@ -6,7 +6,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { MessageSquareIcon, MenuIcon, AlertCircleIcon, RotateCcwIcon, FileTextIcon } from "lucide-react"
+import { MessageSquareIcon, MenuIcon, AlertCircleIcon, RotateCcwIcon, FileTextIcon, SearchXIcon } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -49,6 +49,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   // Track which conversation has been synced to prevent infinite loops
   const syncedConversationRef = useRef<string | null>(null)
+
+  // 0. Check if conversation exists (for invalid conversationId handling)
+  const conversation = useQuery(
+    api.conversations.getConversation,
+    conversationId ? { conversationId: conversationId as Id<"conversations"> } : "skip"
+  )
+  const isConversationLoading = conversationId !== null && conversation === undefined
+  const conversationNotFound = conversationId !== null && conversation === null
 
   // 1. Fetch history from Convex
   const { messages: historyMessages, isLoading: isHistoryLoading } = useMessages(conversationId)
@@ -292,6 +300,28 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     )
   }
 
+  // Handle invalid/not-found conversation
+  if (conversationNotFound) {
+    return (
+      <div className="flex-1 flex flex-col h-full">
+        <div className="md:hidden p-4 border-b flex items-center justify-between">
+          <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
+            <MenuIcon className="h-5 w-5" />
+          </Button>
+          <span className="font-semibold">Makalah Chat</span>
+          <div className="w-9" />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-muted-foreground">
+            <SearchXIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="mb-2">Percakapan tidak ditemukan</p>
+            <p className="text-sm opacity-75">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
@@ -316,7 +346,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
         {/* Message Container */}
         <div className="flex-1 overflow-hidden relative p-4">
-          {isHistoryLoading && messages.length === 0 ? (
+          {(isHistoryLoading || isConversationLoading) && messages.length === 0 ? (
             <div className="space-y-4">
               <div className="flex justify-start">
                 <Skeleton className="h-12 w-[60%] rounded-lg" />

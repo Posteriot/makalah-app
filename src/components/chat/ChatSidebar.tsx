@@ -1,7 +1,8 @@
 "use client"
 
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { PlusIcon, MessageSquareIcon, TrashIcon } from "lucide-react"
+import { Loader2Icon, PlusIcon, MessageSquareIcon, TrashIcon } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery } from "convex/react"
@@ -17,23 +18,23 @@ interface ChatSidebarProps {
         lastMessageAt: number
     }>
     currentConversationId: string | null
-    onSelectConversation: (id: string) => void
     onNewChat: () => void
     onDeleteConversation: (id: Id<"conversations">) => void
     className?: string
     onCloseMobile?: () => void
     isLoading?: boolean
+    isCreating?: boolean
 }
 
 export function ChatSidebar({
     conversations,
     currentConversationId,
-    onSelectConversation,
     onNewChat,
     onDeleteConversation,
     className,
     onCloseMobile,
-    isLoading
+    isLoading,
+    isCreating
 }: ChatSidebarProps) {
     const { user } = useCurrentUser()
 
@@ -48,11 +49,6 @@ export function ChatSidebar({
         paperSessions?.map(session => [session.conversationId, session]) ?? []
     )
 
-    const handleSelect = (id: string) => {
-        onSelectConversation(id)
-        onCloseMobile?.()
-    }
-
     return (
         <aside className={`w-64 border-r bg-card/40 flex flex-col ${className}`}>
             {/* Header */}
@@ -61,9 +57,25 @@ export function ChatSidebar({
                     <MessageSquareIcon className="h-5 w-5" />
                     <span className="font-semibold">Makalah Chat</span>
                 </div>
-                <Button onClick={() => { onNewChat(); onCloseMobile?.() }} className="w-full" size="sm" aria-label="Start new chat">
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    New Chat
+                <Button
+                    onClick={() => { onNewChat(); onCloseMobile?.() }}
+                    className="w-full"
+                    size="sm"
+                    aria-label="Start new chat"
+                    aria-busy={isCreating}
+                    disabled={isCreating}
+                >
+                    {isCreating ? (
+                        <>
+                            <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                            Membuat...
+                        </>
+                    ) : (
+                        <>
+                            <PlusIcon className="h-4 w-4 mr-2" />
+                            New Chat
+                        </>
+                    )}
                 </Button>
             </div>
 
@@ -87,13 +99,14 @@ export function ChatSidebar({
                     conversations.map((conv) => {
                         const paperSession = paperSessionMap.get(conv._id)
                         return (
-                            <button
+                            <Link
                                 key={conv._id}
+                                href={`/chat/${conv._id}`}
+                                onClick={() => onCloseMobile?.()}
                                 className={`group flex items-center w-full p-2 rounded-lg mb-1 transition-colors text-left ${currentConversationId === conv._id
                                     ? "bg-accent text-accent-foreground"
                                     : "hover:bg-accent/50"
                                     }`}
-                                onClick={() => handleSelect(conv._id)}
                                 aria-label={`Select conversation: ${conv.title}`}
                             >
                                 <div className="flex-1 min-w-0">
@@ -113,6 +126,7 @@ export function ChatSidebar({
                                     role="button"
                                     tabIndex={0}
                                     onClick={(e) => {
+                                        e.preventDefault()
                                         e.stopPropagation()
                                         if (confirm("Are you sure you want to delete this chat?")) {
                                             onDeleteConversation(conv._id)
@@ -120,6 +134,7 @@ export function ChatSidebar({
                                     }}
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault()
                                             e.stopPropagation()
                                             if (confirm("Are you sure you want to delete this chat?")) {
                                                 onDeleteConversation(conv._id)
@@ -132,7 +147,7 @@ export function ChatSidebar({
                                 >
                                     <TrashIcon className="h-4 w-4" />
                                 </div>
-                            </button>
+                            </Link>
                         )
                     })
                 )}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { ChatSidebar } from "./ChatSidebar"
 import { ChatWindow } from "./ChatWindow"
 import { ArtifactPanel } from "./ArtifactPanel"
@@ -9,11 +10,16 @@ import { Id } from "../../../convex/_generated/dataModel"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 
-export function ChatContainer() {
-    const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
+interface ChatContainerProps {
+    conversationId: string | null
+}
+
+export function ChatContainer({ conversationId }: ChatContainerProps) {
+    const router = useRouter()
     const [isMobileOpen, setIsMobileOpen] = useState(false)
     const [artifactPanelOpen, setArtifactPanelOpen] = useState(false)
     const [selectedArtifactId, setSelectedArtifactId] = useState<Id<"artifacts"> | null>(null)
+    const [isCreating, setIsCreating] = useState(false)
     const { conversations, createNewConversation, deleteConversation, isLoading } = useConversations()
 
     // Handler when artifact is created or selected
@@ -28,28 +34,27 @@ export function ChatContainer() {
     }
 
     const handleNewChat = async () => {
-        const newId = await createNewConversation()
-        if (newId) {
-            setCurrentConversationId(newId)
-            setArtifactPanelOpen(false)
-            setSelectedArtifactId(null)
+        if (isCreating) return
+        setIsCreating(true)
+        try {
+            const newId = await createNewConversation()
+            if (newId) {
+                setArtifactPanelOpen(false)
+                setSelectedArtifactId(null)
+                router.push(`/chat/${newId}`)
+            }
+        } finally {
+            setIsCreating(false)
         }
     }
 
     const handleDeleteConversation = async (id: string) => {
         await deleteConversation(id as Id<"conversations">)
-        if (currentConversationId === id) {
-            setCurrentConversationId(null)
+        if (conversationId === id) {
             setArtifactPanelOpen(false)
             setSelectedArtifactId(null)
+            router.push('/chat')
         }
-    }
-
-    // Reset artifact panel when conversation changes
-    const handleSelectConversation = (id: string | null) => {
-        setCurrentConversationId(id)
-        setArtifactPanelOpen(false)
-        setSelectedArtifactId(null)
     }
 
     return (
@@ -58,11 +63,11 @@ export function ChatContainer() {
             <ChatSidebar
                 className="hidden md:flex"
                 conversations={conversations}
-                currentConversationId={currentConversationId}
-                onSelectConversation={handleSelectConversation}
+                currentConversationId={conversationId}
                 onNewChat={handleNewChat}
                 onDeleteConversation={handleDeleteConversation}
                 isLoading={isLoading}
+                isCreating={isCreating}
             />
 
             {/* Mobile Sidebar (Sheet) */}
@@ -74,12 +79,12 @@ export function ChatContainer() {
                     <ChatSidebar
                         className="w-full border-none"
                         conversations={conversations}
-                        currentConversationId={currentConversationId}
-                        onSelectConversation={handleSelectConversation}
+                        currentConversationId={conversationId}
                         onNewChat={handleNewChat}
                         onDeleteConversation={handleDeleteConversation}
                         onCloseMobile={() => setIsMobileOpen(false)}
                         isLoading={isLoading}
+                        isCreating={isCreating}
                     />
                 </SheetContent>
             </Sheet>
@@ -94,8 +99,8 @@ export function ChatContainer() {
                     )}
                 >
                     <ChatWindow
-                        key={currentConversationId}
-                        conversationId={currentConversationId}
+                        key={conversationId}
+                        conversationId={conversationId}
                         onMobileMenuClick={() => setIsMobileOpen(true)}
                         onArtifactSelect={handleArtifactSelect}
                     />
@@ -109,8 +114,8 @@ export function ChatContainer() {
                     )}
                 >
                     <ArtifactPanel
-                        key={currentConversationId ?? "no-conversation"}
-                        conversationId={currentConversationId as Id<"conversations"> | null}
+                        key={conversationId ?? "no-conversation"}
+                        conversationId={conversationId as Id<"conversations"> | null}
                         isOpen={artifactPanelOpen}
                         onToggle={toggleArtifactPanel}
                         selectedArtifactId={selectedArtifactId}
