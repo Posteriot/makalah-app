@@ -22,8 +22,7 @@ import {
     DAFTAR_PUSTAKA_INSTRUCTIONS,
     LAMPIRAN_INSTRUCTIONS,
     JUDUL_INSTRUCTIONS,
-    OUTLINE_INSTRUCTIONS,
-    ELABORASI_INSTRUCTIONS
+    OUTLINE_INSTRUCTIONS
 } from "./finalization";
 import type { PaperStageId } from "../../../../convex/paperSessions/constants";
 
@@ -39,7 +38,11 @@ export function getStageInstructions(stage: PaperStageId | "completed"): string 
         case "topik":
             return TOPIK_INSTRUCTIONS;
 
-        // Phase 2: Core
+        // Phase 2: Outline
+        case "outline":
+            return OUTLINE_INSTRUCTIONS;
+
+        // Phase 3: Core
         case "abstrak":
             return ABSTRAK_INSTRUCTIONS;
         case "pendahuluan":
@@ -49,7 +52,7 @@ export function getStageInstructions(stage: PaperStageId | "completed"): string 
         case "metodologi":
             return METODOLOGI_INSTRUCTIONS;
 
-        // Phase 3: Results
+        // Phase 4: Results
         case "hasil":
             return HASIL_INSTRUCTIONS;
         case "diskusi":
@@ -57,18 +60,13 @@ export function getStageInstructions(stage: PaperStageId | "completed"): string 
         case "kesimpulan":
             return KESIMPULAN_INSTRUCTIONS;
 
-        // Phase 4: Finalization
+        // Phase 5: Finalization
         case "daftar_pustaka":
             return DAFTAR_PUSTAKA_INSTRUCTIONS;
         case "lampiran":
             return LAMPIRAN_INSTRUCTIONS;
         case "judul":
             return JUDUL_INSTRUCTIONS;
-        case "outline":
-            return OUTLINE_INSTRUCTIONS;
-        case "elaborasi":
-            return ELABORASI_INSTRUCTIONS;
-
         case "completed":
             return "Paper telah selesai. Semua tahap sudah divalidasi.";
         default:
@@ -96,13 +94,14 @@ export {
     KESIMPULAN_INSTRUCTIONS
 } from "./results";
 
-// Phase 4: Finalization
+// Phase 4: Outline
+export { OUTLINE_INSTRUCTIONS } from "./finalization";
+
+// Phase 5: Finalization
 export {
     DAFTAR_PUSTAKA_INSTRUCTIONS,
     LAMPIRAN_INSTRUCTIONS,
-    JUDUL_INSTRUCTIONS,
-    OUTLINE_INSTRUCTIONS,
-    ELABORASI_INSTRUCTIONS
+    JUDUL_INSTRUCTIONS
 } from "./finalization";
 
 // Re-export formatStageData helper

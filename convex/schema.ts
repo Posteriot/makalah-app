@@ -8,7 +8,6 @@ import {
   LampiranData,
   JudulData,
   OutlineData,
-  ElaborasiData,
 } from "./paperSessions/types"
 
 export default defineSchema({
@@ -190,10 +189,11 @@ export default defineSchema({
     currentStage: v.string(), // PaperStage enum (gagasan, topik, etc.)
     stageStatus: v.string(), // StageStatus (drafting, pending_validation, approved, revision)
 
-    // Accumulated data for all 14 stages
+    // Accumulated data for all 13 stages
     stageData: v.object({
       // Phase 1: Foundation Stages
       gagasan: v.optional(v.object({
+        ringkasan: v.optional(v.string()),
         ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
         analisis: v.optional(v.string()),
         angle: v.optional(v.string()),
@@ -209,6 +209,7 @@ export default defineSchema({
         revisionCount: v.optional(v.number()),
       })),
       topik: v.optional(v.object({
+        ringkasan: v.optional(v.string()),
         definitif: v.optional(v.string()), // Optional: may not exist during initial revision
         angleSpesifik: v.optional(v.string()),
         argumentasiKebaruan: v.optional(v.string()),
@@ -224,8 +225,12 @@ export default defineSchema({
         revisionCount: v.optional(v.number()),
       })),
 
-      // Phase 2: Core Stages
+      // Phase 2: Outline Stage
+      outline: v.optional(OutlineData),
+
+      // Phase 3: Core Stages
       abstrak: v.optional(v.object({
+        ringkasan: v.optional(v.string()),
         ringkasanPenelitian: v.optional(v.string()),
         keywords: v.optional(v.array(v.string())),
         wordCount: v.optional(v.number()),
@@ -234,6 +239,7 @@ export default defineSchema({
         revisionCount: v.optional(v.number()),
       })),
       pendahuluan: v.optional(v.object({
+        ringkasan: v.optional(v.string()),
         latarBelakang: v.optional(v.string()),
         rumusanMasalah: v.optional(v.string()),
         researchGapAnalysis: v.optional(v.string()),
@@ -250,6 +256,7 @@ export default defineSchema({
         revisionCount: v.optional(v.number()),
       })),
       tinjauan_literatur: v.optional(v.object({
+        ringkasan: v.optional(v.string()),
         kerangkaTeoretis: v.optional(v.string()),
         reviewLiteratur: v.optional(v.string()),
         gapAnalysis: v.optional(v.string()),
@@ -267,6 +274,7 @@ export default defineSchema({
         revisionCount: v.optional(v.number()),
       })),
       metodologi: v.optional(v.object({
+        ringkasan: v.optional(v.string()),
         desainPenelitian: v.optional(v.string()),
         metodePerolehanData: v.optional(v.string()),
         teknikAnalisis: v.optional(v.string()),
@@ -282,17 +290,15 @@ export default defineSchema({
         revisionCount: v.optional(v.number()),
       })),
 
-      // Phase 3: Results & Analysis
+      // Phase 4: Results & Analysis
       hasil: v.optional(HasilData),
       diskusi: v.optional(DiskusiData),
       kesimpulan: v.optional(KesimpulanData),
 
-      // Phase 4: Finalization
+      // Phase 5: Finalization
       daftar_pustaka: v.optional(DaftarPustakaData),
       lampiran: v.optional(LampiranData),
       judul: v.optional(JudulData),
-      outline: v.optional(OutlineData),
-      elaborasi: v.optional(ElaborasiData),
     }),
 
     // Paper metadata (Phase 5)

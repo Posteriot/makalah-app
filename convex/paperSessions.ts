@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getNextStage, PaperStageId } from "./paperSessions/constants";
+import { getNextStage, PaperStageId, STAGE_ORDER } from "./paperSessions/constants";
 
 // ═══════════════════════════════════════════════════════════
 // QUERIES
@@ -173,6 +173,9 @@ export const updateStageData = mutation({
     handler: async (ctx, args) => {
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
+        if (!STAGE_ORDER.includes(args.stage as PaperStageId)) {
+            throw new Error(`Unknown stage: ${args.stage}`);
+        }
         if (session.currentStage !== args.stage) {
             throw new Error(`Cannot update ${args.stage} while in ${session.currentStage}`);
         }
@@ -227,6 +230,10 @@ export const approveStage = mutation({
         if (session.userId !== args.userId) throw new Error("Unauthorized");
         if (session.stageStatus !== "pending_validation") {
             throw new Error("Stage is not pending validation");
+        }
+
+        if (!STAGE_ORDER.includes(session.currentStage as PaperStageId)) {
+            throw new Error(`Unknown current stage: ${session.currentStage}`);
         }
 
         const now = Date.now();
@@ -285,6 +292,9 @@ export const requestRevision = mutation({
 
         const now = Date.now();
         const currentStage = session.currentStage;
+        if (!STAGE_ORDER.includes(currentStage as PaperStageId)) {
+            throw new Error(`Unknown current stage: ${currentStage}`);
+        }
 
         const updatedStageData = { ...session.stageData } as Record<string, Record<string, unknown>>;
         const stageData = updatedStageData[currentStage] || { revisionCount: 0 };

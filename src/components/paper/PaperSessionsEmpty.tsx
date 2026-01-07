@@ -4,6 +4,7 @@ import React from "react"
 import Link from "next/link"
 import { FileText, PlusCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { STAGE_ORDER } from "../../../convex/paperSessions/constants"
 
 export function PaperSessionsEmpty() {
   return (
@@ -14,7 +15,7 @@ export function PaperSessionsEmpty() {
       <h3 className="text-lg font-semibold mb-2">Belum ada paper yang dibuat</h3>
       <p className="text-muted-foreground text-center max-w-md mb-6">
         Mulai percakapan baru dan minta bantuan untuk menulis paper. AI akan memandu kamu
-        melalui 14 tahap penulisan paper akademik.
+        melalui {STAGE_ORDER.length} tahap penulisan paper akademik.
       </p>
       <Button asChild>
         <Link href="/chat">

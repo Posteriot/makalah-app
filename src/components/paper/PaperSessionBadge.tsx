@@ -2,6 +2,7 @@
 
 import React from "react";
 import { FileText } from "lucide-react";
+import { STAGE_ORDER } from "../../../convex/paperSessions/constants";
 import { cn } from "@/lib/utils";
 
 interface PaperSessionBadgeProps {
@@ -12,11 +13,11 @@ interface PaperSessionBadgeProps {
 
 /**
  * Small badge indicating conversation has paper session.
- * Shows current stage number (e.g., "2/14")
+ * Shows current stage number (e.g., "2/13")
  */
 export const PaperSessionBadge: React.FC<PaperSessionBadgeProps> = ({
     stageNumber,
-    totalStages = 14,
+    totalStages = STAGE_ORDER.length,
     className,
 }) => {
     return (

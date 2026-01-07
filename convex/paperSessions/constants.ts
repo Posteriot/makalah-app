@@ -1,6 +1,7 @@
 export const STAGE_ORDER = [
     "gagasan",
     "topik",
+    "outline",
     "abstrak",
     "pendahuluan",
     "tinjauan_literatur",
@@ -11,11 +12,10 @@ export const STAGE_ORDER = [
     "daftar_pustaka",
     "lampiran",
     "judul",
-    "outline",
-    "elaborasi",
 ] as const;
 
 export type PaperStageId = typeof STAGE_ORDER[number];
+export type LegacyPaperStageId = PaperStageId | "elaborasi";
 
 export function getNextStage(current: PaperStageId): PaperStageId | "completed" {
     const currentIndex = STAGE_ORDER.indexOf(current);
@@ -38,12 +38,14 @@ export function getStageNumber(stage: PaperStageId | "completed"): number {
     return STAGE_ORDER.indexOf(stage) + 1;
 }
 
-export function getStageLabel(stage: PaperStageId | "completed"): string {
+export function getStageLabel(stage: LegacyPaperStageId | "completed"): string {
     if (stage === "completed") return "Selesai";
+    if (stage === "elaborasi") return "Elaborasi Outline";
 
     const labels: Record<PaperStageId, string> = {
         gagasan: "Gagasan Paper",
         topik: "Penentuan Topik",
+        outline: "Menyusun Outline",
         abstrak: "Penyusunan Abstrak",
         pendahuluan: "Pendahuluan",
         tinjauan_literatur: "Tinjauan Literatur",
@@ -54,8 +56,6 @@ export function getStageLabel(stage: PaperStageId | "completed"): string {
         daftar_pustaka: "Daftar Pustaka",
         lampiran: "Lampiran",
         judul: "Pemilihan Judul",
-        outline: "Menyusun Outline",
-        elaborasi: "Elaborasi Outline",
     };
     return labels[stage];
 }

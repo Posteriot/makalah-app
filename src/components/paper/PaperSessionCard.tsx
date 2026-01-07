@@ -156,7 +156,7 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
                 {displayTitle}
               </CardTitle>
               <CardDescription className="mt-1">
-                {isCompleted ? "Selesai" : `Tahap ${currentStageNumber}/14`} - {getStageLabel(session.currentStage as PaperStageId | "completed")}
+                {isCompleted ? "Selesai" : `Tahap ${currentStageNumber}/${STAGE_ORDER.length}`} - {getStageLabel(session.currentStage as PaperStageId | "completed")}
               </CardDescription>
             </div>
             <StatusBadge isCompleted={isCompleted} isArchived={isArchived} />

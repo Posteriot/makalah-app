@@ -1,14 +1,14 @@
 /**
  * Stage Instructions: Core (Phase 2)
  *
- * Instructions for Stage 3 (Abstrak), Stage 4 (Pendahuluan),
- * Stage 5 (Tinjauan Literatur), and Stage 6 (Metodologi).
+ * Instructions for Stage 4 (Abstrak), Stage 5 (Pendahuluan),
+ * Stage 6 (Tinjauan Literatur), and Stage 7 (Metodologi).
  *
  * Focus: MAINTAIN DIALOG-FIRST, utilize Phase 1 data.
  */
 
 // =============================================================================
-// STAGE 3: ABSTRAK (Ringkasan Eksekutif)
+// STAGE 4: ABSTRAK (Ringkasan Eksekutif)
 // =============================================================================
 
 export const ABSTRAK_INSTRUCTIONS = `
@@ -35,6 +35,10 @@ PRINSIP UTAMA:
 3. KEYWORDS EXTRACTION
    - Identifikasi 3-5 kata kunci (keywords) yang paling merepresentasikan inti paper
    - Diskusikan keywords ini dengan user
+
+4. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Abstrak" sampai user menyetujui
 
 ═══════════════════════════════════════════════════════════════════════════════
 ALUR YANG DIHARAPKAN:
@@ -66,7 +70,7 @@ OUTPUT 'ABSTRAK' (draft SETELAH diskusi):
 TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
-- updateStageData({ ringkasanPenelitian, keywords, wordCount })
+- updateStageData({ ringkasan, ringkasanPenelitian, keywords, wordCount })
 - createArtifact({ type: "section", title: "Abstrak - [Judul Paper]", content: "[konten abstrak lengkap]" })
 - submitStageForValidation()
 - ❌ JANGAN generate abstrak yang nggak nyambung sama Gagasan/Topik Phase 1
@@ -74,7 +78,7 @@ TOOLS & LARANGAN:
 `;
 
 // =============================================================================
-// STAGE 4: PENDAHULUAN (Latar Belakang & Masalah)
+// STAGE 5: PENDAHULUAN (Latar Belakang & Masalah)
 // =============================================================================
 
 export const PENDAHULUAN_INSTRUCTIONS = `
@@ -101,6 +105,10 @@ PRINSIP UTAMA:
 3. WEB SEARCH (OPSIONAL)
    - Gunakan google_search jika memerlukan data/fakta terbaru untuk mendukung urgensi masalah.
    - Diskusikan temuan data dengan user sebelum dimasukkan ke draft.
+
+4. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Pendahuluan" sampai user menyetujui
 
 ═══════════════════════════════════════════════════════════════════════════════
 ALUR YANG DIHARAPKAN:
@@ -135,14 +143,14 @@ TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → Cari data/fakta pendukung urgensi
-- updateStageData({ latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, hipotesis, sitasiAPA })
+- updateStageData({ ringkasan, latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, hipotesis, sitasiAPA })
 - createArtifact({ type: "section", title: "Pendahuluan - [Judul Paper]", content: "[konten pendahuluan lengkap]" })
 - ❌ JANGAN skip tracking sitasi - ini wajib untuk daftar pustaka
 - ❌ JANGAN lupakan "anchor" argumentasi kebaruan dari Stage Topik
 `;
 
 // =============================================================================
-// STAGE 5: TINJAUAN LITERATUR (State of the Art)
+// STAGE 6: TINJAUAN LITERATUR (State of the Art)
 // =============================================================================
 
 export const TINJAUAN_LITERATUR_INSTRUCTIONS = `
@@ -167,6 +175,10 @@ PRINSIP UTAMA:
 3. SINTESIS TEURETIS
    - Jangan hanya list referensi, tapi SINTESIS-kan menjadi Kerangka Teoretis
    - Hubungkan antar literatur untuk menunjukkan di mana posisi penelitian user
+
+4. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Tinjauan Literatur" sampai user menyetujui
 
 ═══════════════════════════════════════════════════════════════════════════════
 ALUR YANG DIHARAPKAN:
@@ -199,14 +211,14 @@ TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → Target pendalaman (3-5 queries)
-- updateStageData({ kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi })
+- updateStageData({ ringkasan, kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi })
 - createArtifact({ type: "section", title: "Tinjauan Literatur - [Judul Paper]", content: "[konten tinjauan literatur lengkap]" })
 - ❌ JANGAN ignore referensi Phase 1 - itu adalah fondasi awal
 - ❌ JANGAN cuma copas abstrak literatur lain - harus ada SINTESIS
 `;
 
 // =============================================================================
-// STAGE 6: METODOLOGI (Design & Process)
+// STAGE 7: METODOLOGI (Design & Process)
 // =============================================================================
 
 export const METODOLOGI_INSTRUCTIONS = `
@@ -234,6 +246,10 @@ PRINSIP UTAMA:
    - Metode Perolehan Data: Sumber, Teknik, Sampling
    - Teknik Analisis: Prosedur pengolahan data
    - Etika Penelitian: Penanganan data & privasi subjek
+
+4. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Metodologi" sampai user menyetujui
 
 ═══════════════════════════════════════════════════════════════════════════════
 ALUR YANG DIHARAPKAN:
@@ -267,7 +283,7 @@ TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → Cari referensi/contoh metodologi sejenis
-- updateStageData({ pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian, alatInstrumen })
+- updateStageData({ ringkasan, pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian, alatInstrumen })
 - createArtifact({ type: "section", title: "Metodologi - [Judul Paper]", content: "[konten metodologi lengkap]" })
 - ❌ JANGAN langsung generate tanpa diskusi pendekatan dulu
 - ❌ JANGAN buat desain yang nggak bisa menjawab rumusan masalah

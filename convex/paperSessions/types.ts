@@ -13,6 +13,7 @@ const SitasiAPAShape = {
 
 // Validators for each stage (used in schema and mutations)
 export const GagasanData = v.object({
+    ringkasan: v.optional(v.string()),
     ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
     analisis: v.optional(v.string()),
     angle: v.optional(v.string()),
@@ -29,6 +30,7 @@ export const GagasanData = v.object({
 });
 
 export const TopikData = v.object({
+    ringkasan: v.optional(v.string()),
     definitif: v.optional(v.string()), // Optional: may not exist during initial revision
     angleSpesifik: v.optional(v.string()),
     argumentasiKebaruan: v.optional(v.string()),
@@ -46,6 +48,7 @@ export const TopikData = v.object({
 
 // Phase 2: Core Stages
 export const AbstrakData = v.object({
+    ringkasan: v.optional(v.string()),
     ringkasanPenelitian: v.optional(v.string()),
     keywords: v.optional(v.array(v.string())),
     wordCount: v.optional(v.number()),
@@ -55,6 +58,7 @@ export const AbstrakData = v.object({
 });
 
 export const PendahuluanData = v.object({
+    ringkasan: v.optional(v.string()),
     latarBelakang: v.optional(v.string()),
     rumusanMasalah: v.optional(v.string()),
     researchGapAnalysis: v.optional(v.string()),
@@ -68,6 +72,7 @@ export const PendahuluanData = v.object({
 });
 
 export const TinjauanLiteraturData = v.object({
+    ringkasan: v.optional(v.string()),
     kerangkaTeoretis: v.optional(v.string()),
     reviewLiteratur: v.optional(v.string()),
     gapAnalysis: v.optional(v.string()),
@@ -86,6 +91,7 @@ export const TinjauanLiteraturData = v.object({
 });
 
 export const MetodologiData = v.object({
+    ringkasan: v.optional(v.string()),
     desainPenelitian: v.optional(v.string()),
     metodePerolehanData: v.optional(v.string()),
     teknikAnalisis: v.optional(v.string()),
@@ -103,6 +109,7 @@ export const MetodologiData = v.object({
 
 // Phase 3: Results & Analysis
 export const HasilData = v.object({
+    ringkasan: v.optional(v.string()),
     temuanUtama: v.optional(v.array(v.string())),
     metodePenyajian: v.optional(v.union(
         v.literal("narrative"),
@@ -121,6 +128,7 @@ export const HasilData = v.object({
 });
 
 export const DiskusiData = v.object({
+    ringkasan: v.optional(v.string()),
     interpretasiTemuan: v.optional(v.string()),
     perbandinganLiteratur: v.optional(v.string()),
     implikasiTeoretis: v.optional(v.string()),
@@ -137,6 +145,7 @@ export const DiskusiData = v.object({
 });
 
 export const KesimpulanData = v.object({
+    ringkasan: v.optional(v.string()),
     ringkasanHasil: v.optional(v.string()),
     jawabanRumusanMasalah: v.optional(v.array(v.string())),
     implikasiPraktis: v.optional(v.string()), // Implikasi praktis dari temuan
@@ -153,6 +162,7 @@ export const KesimpulanData = v.object({
 // Stage 10: Daftar Pustaka (Bibliography/References)
 // Compiles all references from previous stages into APA 7th format
 export const DaftarPustakaData = v.object({
+    ringkasan: v.optional(v.string()),
     // Array of reference entries - compiled from all previous stages
     entries: v.optional(v.array(v.object({
         title: v.string(), // Required - identifier for dedup
@@ -176,6 +186,7 @@ export const DaftarPustakaData = v.object({
 // Stage 11: Lampiran (Appendices)
 // Supporting materials organized with auto-labeling
 export const LampiranData = v.object({
+    ringkasan: v.optional(v.string()),
     // Array of appendix items with sequential labeling
     items: v.optional(v.array(v.object({
         label: v.string(), // Required - "A", "B", "C" (auto-generated sequential)
@@ -191,6 +202,8 @@ export const LampiranData = v.object({
         // Reference linking ke main text sections (format: ["metodologi.alatInstrumen", "hasil.temuan1"])
         referencedInSections: v.optional(v.array(v.string())),
     }))),
+    tidakAdaLampiran: v.optional(v.boolean()),
+    alasanTidakAda: v.optional(v.string()),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -199,6 +212,7 @@ export const LampiranData = v.object({
 // Stage 12: Judul (Title Selection)
 // Generate 5 title options with keyword coverage analysis
 export const JudulData = v.object({
+    ringkasan: v.optional(v.string()),
     // Array of 5 title options
     opsiJudul: v.optional(v.array(v.object({
         judul: v.string(), // Required - the title text
@@ -215,6 +229,7 @@ export const JudulData = v.object({
 // Stage 13: Outline (Full Paper Structure)
 // Hierarchical structure using flat array with parentId
 export const OutlineData = v.object({
+    ringkasan: v.optional(v.string()),
     // Flat array of outline sections with parentId for hierarchy
     sections: v.optional(v.array(v.object({
         id: v.string(), // Required - format: "pendahuluan", "hasil", "hasil.temuan1"
@@ -230,32 +245,6 @@ export const OutlineData = v.object({
     }))),
     totalWordCount: v.optional(v.number()), // Estimated total word count
     completenessScore: v.optional(v.number()), // Percentage of sections completed (0-100)
-    artifactId: v.optional(v.id("artifacts")),
-    validatedAt: v.optional(v.number()),
-    revisionCount: v.optional(v.number()),
-});
-
-// Stage 14: Elaborasi (Content Expansion)
-// Section-by-section expansion with coherence checking
-export const ElaborasiData = v.object({
-    // Section IDs yang sudah di-elaborate
-    sectionsElaborated: v.optional(v.array(v.string())),
-    // Detected coherence issues
-    coherenceIssues: v.optional(v.array(v.object({
-        sectionFrom: v.string(), // Required - section ID asal
-        sectionTo: v.optional(v.string()), // Section ID tujuan (null jika issue internal)
-        issueType: v.optional(v.union(
-            v.literal("terminology"),
-            v.literal("transition"),
-            v.literal("logic_gap")
-        )),
-        description: v.optional(v.string()),
-        resolved: v.optional(v.boolean()), // Default false
-    }))),
-    // Status per mandatory section
-    completenessCheck: v.optional(v.record(v.string(), v.boolean())),
-    // Semua section sudah di-elaborate (NOTE: export adalah Phase 5)
-    draftComplete: v.optional(v.boolean()),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),

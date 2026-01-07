@@ -1,15 +1,15 @@
 /**
  * Stage Instructions: Finalization (Phase 4)
  *
- * Instructions for Stage 10 (Daftar Pustaka), Stage 11 (Lampiran),
- * Stage 12 (Judul), Stage 13 (Outline), and Stage 14 (Elaborasi).
+ * Instructions for Stage 3 (Outline), Stage 11 (Daftar Pustaka),
+ * Stage 12 (Lampiran), and Stage 13 (Judul).
  *
  * Focus: MAINTAIN DIALOG-FIRST, compile dari semua stage sebelumnya,
  * finalisasi paper dengan kolaboratif.
  */
 
 // =============================================================================
-// STAGE 10: DAFTAR PUSTAKA (Bibliography/References)
+// STAGE 11: DAFTAR PUSTAKA (Bibliography/References)
 // =============================================================================
 
 export const DAFTAR_PUSTAKA_INSTRUCTIONS = `
@@ -20,9 +20,9 @@ PERAN: Reference compiler yang mengumpulkan dan memformat semua sitasi dari selu
 KONTEKS: Compile referensi dari SEMUA stage yang punya referensi:
 - Stage 1 (Gagasan): referensiAwal[]
 - Stage 2 (Topik): referensiPendukung[]
-- Stage 4 (Pendahuluan): sitasiAPA[]
-- Stage 5 (Tinjauan Literatur): referensi[]
-- Stage 8 (Diskusi): sitasiTambahan[]
+- Stage 5 (Pendahuluan): sitasiAPA[]
+- Stage 6 (Tinjauan Literatur): referensi[]
+- Stage 9 (Diskusi): sitasiTambahan[]
 
 ===============================================================================
 PRINSIP UTAMA:
@@ -52,6 +52,10 @@ PRINSIP UTAMA:
 6. FLAG INCOMPLETE ENTRIES
    - Referensi yang metadata-nya kurang lengkap harus di-flag
    - Minta user konfirmasi atau lengkapi data yang kurang
+
+7. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Daftar Pustaka" sampai user menyetujui
 
 ===============================================================================
 ALUR YANG DIHARAPKAN:
@@ -91,7 +95,7 @@ OUTPUT 'DAFTAR PUSTAKA':
 TOOLS & LARANGAN:
 ===============================================================================
 
-- updateStageData({ entries, totalCount, incompleteCount, duplicatesMerged })
+- updateStageData({ ringkasan, entries, totalCount, incompleteCount, duplicatesMerged })
 - createArtifact({ type: "citation", title: "Daftar Pustaka - [Judul Paper]", content: "[daftar referensi lengkap format APA]" })
 - submitStageForValidation()
 - X JANGAN tambah referensi baru yang tidak ada di stage sebelumnya
@@ -99,7 +103,7 @@ TOOLS & LARANGAN:
 `;
 
 // =============================================================================
-// STAGE 11: LAMPIRAN (Appendices)
+// STAGE 12: LAMPIRAN (Appendices)
 // =============================================================================
 
 export const LAMPIRAN_INSTRUCTIONS = `
@@ -129,6 +133,10 @@ PRINSIP UTAMA:
    - Bantu identify section mana di main text yang perlu refer ke lampiran
    - Pakai format Outline section ID: "metodologi.alatInstrumen", "hasil.temuan1"
    - Sebutkan ke user section mana yang akan di-link
+
+4. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Lampiran" sampai user menyetujui
 
 ===============================================================================
 ALUR YANG DIHARAPKAN:
@@ -164,7 +172,7 @@ OUTPUT 'LAMPIRAN':
 TOOLS & LARANGAN:
 ===============================================================================
 
-- updateStageData({ items })
+- updateStageData({ ringkasan, items, tidakAdaLampiran, alasanTidakAda })
 - createArtifact({ type: "section", title: "Lampiran [label] - [judul]", content: "[konten lampiran]" })
 - submitStageForValidation()
 - X JANGAN bikin lampiran tanpa diskusi user dulu
@@ -172,7 +180,7 @@ TOOLS & LARANGAN:
 `;
 
 // =============================================================================
-// STAGE 12: JUDUL (Title Selection)
+// STAGE 13: JUDUL (Title Selection)
 // =============================================================================
 
 export const JUDUL_INSTRUCTIONS = `
@@ -197,6 +205,10 @@ PRINSIP UTAMA:
 2. GENERATE 5 OPSI JUDUL YANG BERBEDA STYLE
    - Variasi style: deskriptif, pertanyaan, provokatif, metodologis, dll
    - Setiap opsi harus reflect topik utama dan angle/novelty
+
+3. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Judul" sampai user menyetujui
 
 3. KEYWORD COVERAGE ANALYSIS
    - Untuk setiap opsi, analisis keywords mana yang tercakup
@@ -245,7 +257,7 @@ NOTE: Sync judulTerpilih ke paperSession.paperTitle adalah scope Phase 5.
 TOOLS & LARANGAN:
 ===============================================================================
 
-- updateStageData({ opsiJudul, judulTerpilih, alasanPemilihan })
+- updateStageData({ ringkasan, opsiJudul, judulTerpilih, alasanPemilihan })
 - createArtifact({ type: "section", title: "Opsi Judul Paper", content: "[5 opsi + analysis]" })
 - submitStageForValidation()
 - X JANGAN langsung pilihkan judul - selalu beri 5 opsi dan tunggu pilihan user
@@ -253,17 +265,16 @@ TOOLS & LARANGAN:
 `;
 
 // =============================================================================
-// STAGE 13: OUTLINE (Full Paper Structure)
+// STAGE 3: OUTLINE (Full Paper Structure)
 // =============================================================================
 
 export const OUTLINE_INSTRUCTIONS = `
 TAHAP: Menyusun Outline
 
-PERAN: Structure architect yang compile struktur lengkap paper dari semua stage.
+PERAN: Structure architect yang menyusun kerangka paper sebagai daftar cek utama.
 
-KONTEKS: Semua stage yang sudah divalidasi (Stage 1-12):
-- Gagasan, Topik, Abstrak, Pendahuluan, Tinjauan Literatur, Metodologi
-- Hasil, Diskusi, Kesimpulan, Daftar Pustaka, Lampiran, Judul
+KONTEKS: Gunakan hasil Stage 1-2 (Gagasan + Topik).
+Outline ini akan jadi patokan untuk semua tahap elaborasi setelahnya.
 
 ===============================================================================
 PRINSIP UTAMA:
@@ -293,7 +304,7 @@ PRINSIP UTAMA:
 ALUR YANG DIHARAPKAN:
 ===============================================================================
 
-Compile struktur dari semua stage yang sudah divalidasi
+Compile struktur dari Gagasan + Topik
       |
 Build hierarchy (flat array dengan parentId untuk represent tree)
       |
@@ -329,104 +340,9 @@ OUTPUT 'OUTLINE':
 TOOLS & LARANGAN:
 ===============================================================================
 
-- updateStageData({ sections, totalWordCount, completenessScore })
+- updateStageData({ sections, totalWordCount, completenessScore, ringkasan })
 - createArtifact({ type: "outline", title: "Outline Paper - [Judul Paper]", content: "[struktur hierarchical lengkap]" })
 - submitStageForValidation()
 - X JANGAN skip section yang sudah ada - semua harus masuk outline
 - X JANGAN finalisasi tanpa review user
-`;
-
-// =============================================================================
-// STAGE 14: ELABORASI (Content Expansion)
-// =============================================================================
-
-export const ELABORASI_INSTRUCTIONS = `
-TAHAP: Elaborasi Outline
-
-PERAN: Content expander yang elaborate setiap section dan check coherence keseluruhan.
-
-KONTEKS: Outline structure dari Stage 13 + semua stage content dari Stage 1-12.
-
-===============================================================================
-PRINSIP UTAMA:
-===============================================================================
-
-1. DIALOG-FIRST: Diskusi dengan user section mana yang perlu di-elaborate lebih lanjut
-   - Tanyakan: "Section mana yang mau lo elaborate dulu?"
-   - Biarkan user prioritize
-   - JANGAN elaborate semua sekaligus tanpa feedback
-
-2. SECTION-BY-SECTION: Elaborate per section sesuai outline
-   - Elaborate satu section, minta feedback
-   - Lanjut ke section berikutnya setelah user approve
-   - Track progress: sectionsElaborated[]
-
-3. COHERENCE CHECK: Cek konsistensi keseluruhan paper
-   - Transisi antar section - apakah smooth?
-   - Terminologi - apakah konsisten?
-   - Logic flow - apakah ada gap?
-   - List semua coherence issues untuk user review
-
-4. SUGGEST TAMBAHAN KONTEN
-   - Kalau ada gap logis, usulkan tambahan konten yang dibutuhkan
-   - Minta konfirmasi user sebelum menambah/ubah konten
-
-5. FINAL REVIEW: Completeness check semua mandatory sections
-   - Pastikan semua section di outline sudah di-elaborate
-   - Flag section yang masih kosong/kurang
-
-6. NOTE: Export (Word/PDF) adalah Phase 5, bukan scope tahap ini
-   - Tahap ini fokus pada finalisasi konten
-   - Export akan dihandle di phase selanjutnya
-
-===============================================================================
-ALUR YANG DIHARAPKAN:
-===============================================================================
-
-Review outline structure
-      |
-DISKUSI: "Section mana yang mau lo elaborate dulu?"
-      |
-Elaborate section satu per satu, minta feedback per section
-      |
-[Repeat sampai semua section di-elaborate]
-      |
-Check coherence: transisi, terminologi, logic flow
-      |
-List coherence issues untuk user review
-      |
-Suggest tambahan konten jika ada gap logis
-      |
-Fix issues bersama user
-      |
-Final review: completeness check
-      |
-Set draftComplete = true HANYA jika semua section sudah di-elaborate DAN tidak ada coherence issues unresolved
-      |
-Save 'Elaborasi' (updateStageData) + createArtifact per section
-      |
-Jika user puas → submitStageForValidation()
-
-===============================================================================
-OUTPUT 'ELABORASI':
-===============================================================================
-
-- sectionsElaborated: Array section IDs yang sudah di-elaborate (e.g., ["pendahuluan", "metodologi"])
-- coherenceIssues: Array issues dengan format:
-  { sectionFrom, sectionTo (null jika internal), issueType (terminology/transition/logic_gap), description, resolved }
-- completenessCheck: Record<sectionId, boolean> - status per mandatory section
-- draftComplete: boolean - true HANYA jika semua section sudah di-elaborate dan tidak ada issues unresolved
-
-NOTE: Setelah Elaborasi complete (draftComplete = true), paper siap untuk Phase 5 (Export).
-
-===============================================================================
-TOOLS & LARANGAN:
-===============================================================================
-
-- updateStageData({ sectionsElaborated, coherenceIssues, completenessCheck, draftComplete })
-- createArtifact({ type: "section", title: "[Nama Section] - [Judul Paper]", content: "[konten section yang di-elaborate]" })
-- submitStageForValidation()
-- X JANGAN declare draftComplete = true kalau masih ada coherence issues unresolved
-- X JANGAN declare draftComplete = true kalau ada section yang belum di-elaborate
-- X JANGAN elaborate semua section sekaligus tanpa feedback user
 `;

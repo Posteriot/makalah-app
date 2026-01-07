@@ -1,14 +1,14 @@
 /**
  * Stage Instructions: Results & Analysis (Phase 3)
  *
- * Instructions for Stage 7 (Hasil), Stage 8 (Diskusi),
- * and Stage 9 (Kesimpulan).
+ * Instructions for Stage 8 (Hasil), Stage 9 (Diskusi),
+ * and Stage 10 (Kesimpulan).
  *
  * Focus: MAINTAIN DIALOG-FIRST, gunakan data Phase 1-2.
  */
 
 // =============================================================================
-// STAGE 7: HASIL (Presentasi Temuan)
+// STAGE 8: HASIL (Presentasi Temuan)
 // =============================================================================
 
 export const HASIL_INSTRUCTIONS = `
@@ -40,6 +40,10 @@ PRINSIP UTAMA:
    - JANGAN interpretasi mendalam di tahap ini
    - Interpretasi mendalam ada di Diskusi
 
+5. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Hasil" sampai user menyetujui
+
 ===============================================================================
 ALUR YANG DIHARAPKAN:
 ===============================================================================
@@ -70,7 +74,7 @@ OUTPUT 'HASIL':
 TOOLS & LARANGAN:
 ===============================================================================
 
-- updateStageData({ temuanUtama, metodePenyajian, dataPoints })
+- updateStageData({ ringkasan, temuanUtama, metodePenyajian, dataPoints })
 - createArtifact({ type: "section" | "table", title: "Hasil - [Judul Paper]", content: "[konten hasil lengkap]" })
 - submitStageForValidation()
 - X JANGAN generate temuan fiktif
@@ -78,7 +82,7 @@ TOOLS & LARANGAN:
 `;
 
 // =============================================================================
-// STAGE 8: DISKUSI (Interpretasi & Perbandingan)
+// STAGE 9: DISKUSI (Interpretasi & Perbandingan)
 // =============================================================================
 
 export const DISKUSI_INSTRUCTIONS = `
@@ -108,6 +112,10 @@ PRINSIP UTAMA:
 
 4. TIDAK ADA TEMUAN BARU
    - Diskusi HANYA mengolah temuan dari Hasil
+
+5. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Diskusi" sampai user menyetujui
 
 ===============================================================================
 ALUR YANG DIHARAPKAN:
@@ -142,7 +150,7 @@ TOOLS & LARANGAN:
 ===============================================================================
 
 - google_search -> opsional untuk referensi pembanding
-- updateStageData({ interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang, sitasiTambahan })
+- updateStageData({ ringkasan, interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang, sitasiTambahan })
 - createArtifact({ type: "section", title: "Diskusi - [Judul Paper]", content: "[konten diskusi lengkap]" })
 - submitStageForValidation()
 - X JANGAN introduce temuan baru (itu di Hasil)
@@ -150,7 +158,7 @@ TOOLS & LARANGAN:
 `;
 
 // =============================================================================
-// STAGE 9: KESIMPULAN (Sintesis & Rekomendasi)
+// STAGE 10: KESIMPULAN (Sintesis & Rekomendasi)
 // =============================================================================
 
 export const KESIMPULAN_INSTRUCTIONS = `
@@ -175,6 +183,10 @@ PRINSIP UTAMA:
 3. RINGKAS TAPI COMPLETE
    - Panduan 300-500 kata
    - Saran harus actionable dan spesifik
+
+4. ELABORASI SESUAI OUTLINE
+   - Jadikan outline sebagai checklist utama
+   - Fokus pada section "Kesimpulan" sampai user menyetujui
 
 ===============================================================================
 ALUR YANG DIHARAPKAN:
@@ -205,7 +217,7 @@ OUTPUT 'KESIMPULAN':
 TOOLS & LARANGAN:
 ===============================================================================
 
-- updateStageData({ ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan })
+- updateStageData({ ringkasan, ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan })
 - createArtifact({ type: "section", title: "Kesimpulan - [Judul Paper]", content: "[konten kesimpulan lengkap]" })
 - submitStageForValidation()
 - X JANGAN introduce info baru
