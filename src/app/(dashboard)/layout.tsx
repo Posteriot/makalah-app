@@ -2,33 +2,51 @@ import type { ReactNode } from "react"
 import { currentUser } from "@clerk/nextjs/server"
 import { fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
-import Link from "next/link"
-import { FileText, Settings } from "lucide-react"
-import { AdminNavLink } from "@/components/admin/AdminNavLink"
 
+/**
+ * Sync Clerk user ke Convex database.
+ *
+ * Menggunakan timeout 5 detik untuk mencegah infinite hang jika:
+ * - Convex service slow/unavailable
+ * - Network latency tinggi
+ * - Connection issues
+ *
+ * Jika sync gagal, user tetap bisa access dashboard.
+ * Sync akan otomatis retry di request berikutnya karena
+ * createUser adalah idempotent operation (upsert).
+ */
 async function ensureConvexUser() {
-  const user = await currentUser()
-  if (!user) return
+  try {
+    const user = await currentUser()
+    if (!user) return
 
-  const primaryEmail = user.emailAddresses[0]?.emailAddress
-  if (!primaryEmail) return
+    const primaryEmail = user.emailAddresses[0]?.emailAddress
+    if (!primaryEmail) return
 
-  // Extract email verification status from Clerk
-  const emailVerified =
-    user.emailAddresses[0]?.verification?.status === "verified"
+    const emailVerified =
+      user.emailAddresses[0]?.verification?.status === "verified"
+    const firstName = user.firstName ?? undefined
+    const lastName = user.lastName ?? undefined
 
-  // Extract user name
-  const firstName = user.firstName ?? undefined
-  const lastName = user.lastName ?? undefined
+    // Timeout 5 detik untuk mencegah infinite hang
+    const syncPromise = fetchMutation(api.users.createUser, {
+      clerkUserId: user.id,
+      email: primaryEmail,
+      firstName,
+      lastName,
+      emailVerified,
+    })
 
-  // Sync to Convex
-  await fetchMutation(api.users.createUser, {
-    clerkUserId: user.id,
-    email: primaryEmail,
-    firstName,
-    lastName,
-    emailVerified,
-  })
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Convex sync timeout (5s)")), 5000)
+    )
+
+    await Promise.race([syncPromise, timeoutPromise])
+  } catch (error) {
+    // Log error tapi jangan block user dari accessing dashboard
+    // Sync akan di-retry otomatis di page/request berikutnya
+    console.error("[ensureConvexUser] Sync failed:", error)
+  }
 }
 
 export default async function DashboardLayout({
@@ -40,39 +58,6 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="border-b bg-card/40">
-        <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 sm:px-8">
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
-              Makalah App
-            </span>
-            <span className="text-xs text-muted-foreground">Dashboard</span>
-          </div>
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/chat"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Chat
-            </Link>
-            <Link
-              href="/dashboard/papers"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <FileText className="h-4 w-4" />
-              <span>Papers</span>
-            </Link>
-            <AdminNavLink />
-            <Link
-              href="/settings"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Pengaturan</span>
-            </Link>
-          </nav>
-        </header>
-      </div>
       <div className="mx-auto max-w-5xl px-6 py-8 sm:px-8">{children}</div>
     </div>
   )

@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import localFont from "next/font/local"
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 import "./globals.css"
 import { AppProviders } from "./providers"
 import { Toaster } from "@/components/ui/sonner"
+import { HeaderAuthNav } from "@/components/layout/HeaderAuthNav"
 
 const geistSans = localFont({
   src: [
@@ -101,29 +101,7 @@ export default function RootLayout({
                   >
                     Chat
                   </Link>
-                  <SignedIn>
-                    <Link
-                      href="/dashboard"
-                      className="hidden text-muted-foreground hover:text-foreground sm:inline-block"
-                    >
-                      Dashboard
-                    </Link>
-                    <UserButton afterSignOutUrl="/" />
-                  </SignedIn>
-                  <SignedOut>
-                    <Link
-                      href="/sign-in"
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      Sign in
-                    </Link>
-                    <Link
-                      href="/sign-up"
-                      className="rounded-full border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
-                    >
-                      Sign up
-                    </Link>
-                  </SignedOut>
+                  <HeaderAuthNav />
                 </nav>
               </div>
             </header>
