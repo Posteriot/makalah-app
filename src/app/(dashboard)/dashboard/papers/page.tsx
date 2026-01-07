@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { PaperSessionsContainer } from "@/components/paper/PaperSessionsContainer"
 
 export const metadata: Metadata = {
-  title: "Paper Sessions | Makalah App",
+  title: "Makalah Ai",
   description: "Kelola semua paper sessions kamu - lanjutkan yang belum selesai atau export yang sudah completed.",
 }
 
