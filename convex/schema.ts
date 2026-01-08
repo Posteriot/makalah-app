@@ -146,6 +146,26 @@ export default defineSchema({
     .index("by_user", ["userId", "createdAt"])
     .index("by_parent", ["parentId"]),
 
+  // System Alerts for monitoring (admin panel)
+  systemAlerts: defineTable({
+    alertType: v.string(), // "fallback_activated", "prompt_missing", "database_error", etc.
+    severity: v.union(
+      v.literal("info"),
+      v.literal("warning"),
+      v.literal("critical")
+    ),
+    message: v.string(),
+    source: v.string(), // "chat-api", "admin-panel", etc.
+    resolved: v.boolean(),
+    resolvedAt: v.optional(v.number()),
+    resolvedBy: v.optional(v.id("users")),
+    metadata: v.optional(v.any()), // Additional context (reason, error, etc.)
+    createdAt: v.number(),
+  })
+    .index("by_type", ["alertType", "createdAt"])
+    .index("by_severity", ["severity", "resolved", "createdAt"])
+    .index("by_resolved", ["resolved", "createdAt"]),
+
   // AI Provider Configurations (admin-managed)
   aiProviderConfigs: defineTable({
     name: v.string(), // Display name (e.g., "Production Config")
