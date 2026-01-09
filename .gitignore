@@ -54,3 +54,5 @@ screenshots/
 CLAUDE.md
 AGENTS.md
 .mcp.json
+# Temporary files
+.tmp/

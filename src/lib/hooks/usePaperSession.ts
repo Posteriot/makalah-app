@@ -12,6 +12,7 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
     const approveStageMutation = useMutation(api.paperSessions.approveStage);
     const requestRevisionMutation = useMutation(api.paperSessions.requestRevision);
     const updateStageDataMutation = useMutation(api.paperSessions.updateStageData);
+    const markStageAsDirtyMutation = useMutation(api.paperSessions.markStageAsDirty);
 
     const isPaperMode = !!session;
 
@@ -41,6 +42,21 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
         });
     };
 
+    // Phase 3 Task 3.1.3: Mark stage as dirty when edit/regenerate happens
+    // Non-blocking - errors are logged but don't interrupt user flow
+    const markStageAsDirty = async () => {
+        if (!session) return;
+        try {
+            return await markStageAsDirtyMutation({
+                sessionId: session._id,
+            });
+        } catch (error) {
+            console.error("Failed to mark stage as dirty:", error);
+            // Non-blocking, continue with edit/regenerate
+            return { success: false, error: String(error) };
+        }
+    };
+
     const currentStage = session?.currentStage as PaperStageId | "completed";
 
     return {
@@ -53,6 +69,7 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
         approveStage,
         requestRevision,
         updateStageData,
+        markStageAsDirty,
         isLoading: session === undefined,
     };
 };

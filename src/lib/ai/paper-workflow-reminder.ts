@@ -14,35 +14,56 @@
  */
 export const PAPER_WORKFLOW_REMINDER = `
 ═══════════════════════════════════════════════════════════════════════════════
-⚠️ PAPER WRITING WORKFLOW - WAJIB DIIKUTI
+PAPER WRITING WORKFLOW - AKSI WAJIB SEGERA
 ═══════════════════════════════════════════════════════════════════════════════
 
-User tampaknya ingin bantuan menulis paper/makalah akademik.
+User menunjukkan niat menulis paper/makalah/skripsi.
 
-LANGKAH WAJIB SEBELUM APAPUN:
-1. Panggil tool "startPaperSession" dengan ide awal dari user
-2. JANGAN langsung bikin outline/section dengan createArtifact
-3. JANGAN langsung generate konten lengkap
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║ AKSI WAJIB: Panggil tool "startPaperSession" SEKARANG JUGA                    ║
+║                                                                               ║
+║ JANGAN tanya topik dulu. JANGAN jelaskan workflow dulu.                       ║
+║ LANGSUNG panggil tool, baru setelahnya diskusi dengan user.                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 
-SETELAH startPaperSession berhasil:
-- Sistem akan inject instruksi paper mode secara otomatis
-- Ikuti alur dialog-first: tanya dulu, diskusi, baru drafting
-- Gunakan google_search untuk eksplorasi literatur
+CARA MENGISI PARAMETER initialIdea:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Skenario A: User sudah sebut topik                                          │
+│   Input: "Bantu nulis paper tentang machine learning di pendidikan"         │
+│   → initialIdea: "machine learning di pendidikan"                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Skenario B: User TIDAK sebut topik (hanya ajakan umum)                      │
+│   Input: "Mulai menulis paper"                                              │
+│   → initialIdea: (kosongkan/jangan isi parameter ini)                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Skenario C: User bilang ingin skripsi/makalah/tesis                         │
+│   Input: "Saya mau bikin skripsi"                                           │
+│   → initialIdea: (kosongkan, topik akan ditanya setelah session aktif)      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+URUTAN YANG BENAR:
+1. Panggil startPaperSession (dengan atau tanpa initialIdea)
+2. Session aktif → UI PaperStageProgress muncul
+3. SETELAH ITU baru tanya/diskusi topik dengan user
 
 LARANGAN KERAS:
-❌ JANGAN bikin artifact (outline/section) sebelum paper session aktif
-❌ JANGAN langsung generate output lengkap tanpa diskusi
-❌ JANGAN skip langkah startPaperSession
+❌ JANGAN respond dengan teks dulu lalu panggil tool
+❌ JANGAN tanya "Apa topik yang ingin Anda bahas?" SEBELUM panggil tool
+❌ JANGAN gunakan createArtifact sebelum paper session aktif
+❌ JANGAN jelaskan workflow sebelum panggil tool
+
+CONTOH RESPONS YANG SALAH:
+"Baik, saya siap membantu. Bisakah Anda berikan topik yang ingin dibahas?"
+↑ SALAH! Ini tanya dulu tanpa panggil tool.
+
+CONTOH RESPONS YANG BENAR:
+[Panggil startPaperSession dengan initialIdea kosong atau dari pesan user]
+"Sesi paper sudah aktif! Sekarang kita di tahap Gagasan. Mari mulai dengan brainstorming - apa topik atau bidang yang ingin Anda eksplorasi?"
 
 PENGECUALIAN (boleh langsung tanpa workflow):
 - User eksplisit bilang "jangan pakai workflow" atau "langsung saja"
 - User hanya minta penjelasan konsep (bukan menulis)
 - User minta template/contoh format saja
-
-CONTOH RESPON YANG BENAR:
-"Baik, saya akan bantu menulis paper tentang [topik]. Izinkan saya memulai sesi penulisan paper terlebih dahulu..."
-[Panggil startPaperSession]
-"Sesi paper sudah aktif. Sekarang mari kita mulai dengan brainstorming..."
 
 ═══════════════════════════════════════════════════════════════════════════════
 `;

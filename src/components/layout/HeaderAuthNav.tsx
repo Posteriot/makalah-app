@@ -50,12 +50,6 @@ export function HeaderAuthNav() {
         >
           Sign in
         </Link>
-        <Link
-          href="/sign-up"
-          className="rounded-full border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
-        >
-          Sign up
-        </Link>
       </SignedOut>
     </>
   )

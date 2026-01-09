@@ -65,7 +65,9 @@ export const listByConversation = queryGeneric({
     // Verify conversation exists and user owns it
     const conversation = await db.get(conversationId)
     if (!conversation) {
-      throw new Error("Conversation tidak ditemukan")
+      // Return empty array instead of throwing error
+      // Ini handle race condition saat conversation dihapus sementara query sedang berjalan
+      return []
     }
     if (conversation.userId !== userId) {
       throw new Error("Tidak memiliki akses ke conversation ini")

@@ -325,6 +325,26 @@ export default defineSchema({
     paperTitle: v.optional(v.string()),
     archivedAt: v.optional(v.number()), // Soft delete timestamp untuk archive
 
+    // ════════════════════════════════════════════════════════════════
+    // Phase 3 Task 3.1.1: Dirty Flag for Edit/Regenerate Sync
+    // ════════════════════════════════════════════════════════════════
+    isDirty: v.optional(v.boolean()), // True when chat edited/regenerated after stageData update
+
+    // ════════════════════════════════════════════════════════════════
+    // Phase 3 Task 3.2.1: Paper Memory Digest (Optional)
+    // ════════════════════════════════════════════════════════════════
+    paperMemoryDigest: v.optional(v.array(v.object({
+      stage: v.string(),
+      decision: v.string(),
+      timestamp: v.number(),
+    }))),
+
+    // ════════════════════════════════════════════════════════════════
+    // Phase 3 Task 3.3.1: Estimated Content Tracking
+    // ════════════════════════════════════════════════════════════════
+    estimatedContentChars: v.optional(v.number()), // Total chars of validated content
+    estimatedTokenUsage: v.optional(v.number()), // Estimated tokens (chars / 4)
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),

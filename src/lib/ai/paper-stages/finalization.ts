@@ -100,6 +100,24 @@ TOOLS & LARANGAN:
 - submitStageForValidation()
 - X JANGAN tambah referensi baru yang tidak ada di stage sebelumnya
 - X JANGAN skip review dengan user - ini tahap penting untuk akurasi
+- X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+===============================================================================
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+===============================================================================
+
+- Format: String, max 280 karakter
+- Konten: Jumlah referensi yang dikompilasi dan status kelengkapan
+- Contoh: "Total 42 referensi: 15 dari fase awal, 27 tambahan, 3 incomplete di-flag, format APA 7th verified"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+===============================================================================
+REMINDER - LINEAR FLOW:
+===============================================================================
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (daftar-pustaka)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;
 
 // =============================================================================
@@ -177,6 +195,24 @@ TOOLS & LARANGAN:
 - submitStageForValidation()
 - X JANGAN bikin lampiran tanpa diskusi user dulu
 - X JANGAN skip reference linking - user perlu tahu section mana yang refer ke lampiran
+- X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+===============================================================================
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+===============================================================================
+
+- Format: String, max 280 karakter
+- Konten: Item lampiran atau status tidak ada
+- Contoh: "3 lampiran: A-Kuesioner, B-Panduan Interview, C-Raw Data Summary" atau "Tidak ada lampiran diperlukan untuk paper ini"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+===============================================================================
+REMINDER - LINEAR FLOW:
+===============================================================================
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (lampiran)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;
 
 // =============================================================================
@@ -262,6 +298,24 @@ TOOLS & LARANGAN:
 - submitStageForValidation()
 - X JANGAN langsung pilihkan judul - selalu beri 5 opsi dan tunggu pilihan user
 - X JANGAN generate judul yang tidak reflect konten paper
+- X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+===============================================================================
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+===============================================================================
+
+- Format: String, max 280 karakter
+- Konten: Judul terpilih dan alasannya
+- Contoh: "Terpilih opsi #3: 'Machine Learning untuk Personalisasi Pembelajaran' - coverage 4/5 keywords, catchy tapi tetap akademik"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+===============================================================================
+REMINDER - LINEAR FLOW:
+===============================================================================
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (judul)
+- Ini adalah tahap TERAKHIR - setelah approve, paper selesai!
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;
 
 // =============================================================================
@@ -345,4 +399,22 @@ TOOLS & LARANGAN:
 - submitStageForValidation()
 - X JANGAN skip section yang sudah ada - semua harus masuk outline
 - X JANGAN finalisasi tanpa review user
+- X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+===============================================================================
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+===============================================================================
+
+- Format: String, max 280 karakter
+- Konten: Struktur outline yang DISETUJUI (jumlah section/sub-section)
+- Contoh: "Outline disetujui: 7 bab utama, 21 sub-bab, estimasi 12.000 kata, completeness score 65%"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+===============================================================================
+REMINDER - LINEAR FLOW:
+===============================================================================
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (outline)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;

@@ -110,7 +110,7 @@ export function getExportableContent(
   // Check completion status
   if (session.currentStage !== "completed") {
     throw new ExportValidationError(
-      `Paper belum selesai. Stage saat ini: ${session.currentStage}. Selesaikan semua 14 tahap untuk export.`,
+      `Paper belum selesai. Stage saat ini: ${session.currentStage}. Selesaikan semua 13 tahap untuk export.`,
       "NOT_COMPLETED"
     )
   }

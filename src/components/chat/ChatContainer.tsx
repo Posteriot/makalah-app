@@ -49,10 +49,16 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     }
 
     const handleDeleteConversation = async (id: string) => {
-        await deleteConversation(id as Id<"conversations">)
+        // PENTING: Close artifact panel SEBELUM delete untuk menghindari race condition
+        // Jika tidak, ArtifactPanel akan re-query conversation yang sudah dihapus
         if (conversationId === id) {
             setArtifactPanelOpen(false)
             setSelectedArtifactId(null)
+        }
+
+        await deleteConversation(id as Id<"conversations">)
+
+        if (conversationId === id) {
             router.push('/chat')
         }
     }

@@ -75,6 +75,24 @@ TOOLS & LARANGAN:
 - submitStageForValidation()
 - ❌ JANGAN generate abstrak yang nggak nyambung sama Gagasan/Topik Phase 1
 - ❌ JANGAN monolog - minta feedback di tiap draft
+- ❌ JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+═══════════════════════════════════════════════════════════════════════════════
+
+- Format: String, max 280 karakter
+- Konten: Keywords yang DISEPAKATI bersama user
+- Contoh: "Keywords disepakati: machine learning, personalisasi, pendidikan tinggi, Indonesia, adaptive learning"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+═══════════════════════════════════════════════════════════════════════════════
+REMINDER - LINEAR FLOW:
+═══════════════════════════════════════════════════════════════════════════════
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (abstrak)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;
 
 // =============================================================================
@@ -147,6 +165,24 @@ TOOLS & LARANGAN:
 - createArtifact({ type: "section", title: "Pendahuluan - [Judul Paper]", content: "[konten pendahuluan lengkap]" })
 - ❌ JANGAN skip tracking sitasi - ini wajib untuk daftar pustaka
 - ❌ JANGAN lupakan "anchor" argumentasi kebaruan dari Stage Topik
+- ❌ JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+═══════════════════════════════════════════════════════════════════════════════
+
+- Format: String, max 280 karakter
+- Konten: Rumusan masalah dan tujuan yang DISETUJUI bersama user
+- Contoh: "3 rumusan masalah + 3 tujuan penelitian disetujui, fokus pada efektivitas ML dalam personalisasi pembelajaran"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+═══════════════════════════════════════════════════════════════════════════════
+REMINDER - LINEAR FLOW:
+═══════════════════════════════════════════════════════════════════════════════
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (pendahuluan)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;
 
 // =============================================================================
@@ -215,6 +251,24 @@ TOOLS & LARANGAN:
 - createArtifact({ type: "section", title: "Tinjauan Literatur - [Judul Paper]", content: "[konten tinjauan literatur lengkap]" })
 - ❌ JANGAN ignore referensi Phase 1 - itu adalah fondasi awal
 - ❌ JANGAN cuma copas abstrak literatur lain - harus ada SINTESIS
+- ❌ JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+═══════════════════════════════════════════════════════════════════════════════
+
+- Format: String, max 280 karakter
+- Konten: Kerangka teoretis yang DISEPAKATI bersama user
+- Contoh: "Kerangka: Constructivism + Adaptive Learning Theory, 15 referensi utama dari 3 sumber berbeda"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+═══════════════════════════════════════════════════════════════════════════════
+REMINDER - LINEAR FLOW:
+═══════════════════════════════════════════════════════════════════════════════
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (tinjauan-literatur)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;
 
 // =============================================================================
@@ -287,4 +341,22 @@ TOOLS & LARANGAN:
 - createArtifact({ type: "section", title: "Metodologi - [Judul Paper]", content: "[konten metodologi lengkap]" })
 - ❌ JANGAN langsung generate tanpa diskusi pendekatan dulu
 - ❌ JANGAN buat desain yang nggak bisa menjawab rumusan masalah
+- ❌ JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+═══════════════════════════════════════════════════════════════════════════════
+
+- Format: String, max 280 karakter
+- Konten: Pendekatan penelitian yang DISEPAKATI bersama user
+- Contoh: "Mixed method: Survey (n=200) + Interview (n=10), lokasi: 3 kampus Jakarta, analisis: SPSS + thematic"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+═══════════════════════════════════════════════════════════════════════════════
+REMINDER - LINEAR FLOW:
+═══════════════════════════════════════════════════════════════════════════════
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (metodologi)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;

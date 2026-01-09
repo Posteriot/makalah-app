@@ -1,5 +1,5 @@
 import { generateTitle } from "@/lib/ai/title-generator"
-import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateObject, generateText, tool, type ToolSet, stepCountIs } from "ai"
+import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateObject, generateText, tool, type ToolSet, type ModelMessage, stepCountIs } from "ai"
 import { z } from "zod"
 import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
 
@@ -166,6 +166,12 @@ export async function POST(req: Request) {
             return patterns.some((pattern) => pattern.test(normalized))
         }
 
+        // ════════════════════════════════════════════════════════════════
+        // Phase 2 Task 2.3.1: File Context Limits (Paper Mode Only)
+        // ════════════════════════════════════════════════════════════════
+        const MAX_FILE_CONTEXT_CHARS_PER_FILE = 6000
+        const MAX_FILE_CONTEXT_CHARS_TOTAL = 20000
+
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
         if (fileIds && fileIds.length > 0) {
@@ -173,8 +179,17 @@ export async function POST(req: Request) {
                 fileIds: fileIds as Id<"files">[],
             })
 
+            // Check if paper mode is active (use paperModePrompt as indicator)
+            const isPaperModeForFiles = !!paperModePrompt
+            let totalCharsUsed = 0
+
             // Format file context based on extraction status
             for (const file of files) {
+                // Check if we've exceeded total limit (paper mode only)
+                if (isPaperModeForFiles && totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL) {
+                    break
+                }
+
                 fileContext += `[File: ${file.name}]\n`
 
                 if (!file.extractionStatus || file.extractionStatus === "pending") {
@@ -182,7 +197,22 @@ export async function POST(req: Request) {
                     fileContext += "⏳ File sedang diproses, belum bisa dibaca oleh AI.\n\n"
                 } else if (file.extractionStatus === "success" && file.extractedText) {
                     // Task 6.2-6.3: Extract and format text
-                    fileContext += file.extractedText + "\n\n"
+                    // Task 2.3.1: Apply per-file limit in paper mode
+                    let textToAdd = file.extractedText
+                    if (isPaperModeForFiles && textToAdd.length > MAX_FILE_CONTEXT_CHARS_PER_FILE) {
+                        textToAdd = textToAdd.slice(0, MAX_FILE_CONTEXT_CHARS_PER_FILE)
+                    }
+
+                    // Check remaining total budget
+                    if (isPaperModeForFiles) {
+                        const remainingBudget = MAX_FILE_CONTEXT_CHARS_TOTAL - totalCharsUsed
+                        if (textToAdd.length > remainingBudget) {
+                            textToAdd = textToAdd.slice(0, remainingBudget)
+                        }
+                        totalCharsUsed += textToAdd.length
+                    }
+
+                    fileContext += textToAdd + "\n\n"
                 } else if (file.extractionStatus === "failed") {
                     // Task 6.6: Handle failed state
                     const errorMsg = file.extractionError || "Unknown error"
@@ -192,7 +222,75 @@ export async function POST(req: Request) {
         }
 
         // Convert UIMessages to model messages format
-        const modelMessages = convertToModelMessages(messages)
+        const rawModelMessages = convertToModelMessages(messages)
+
+        // ════════════════════════════════════════════════════════════════
+        // Sanitize messages untuk menghindari ZodError dari OpenRouter
+        // Tool call messages dari history bisa punya format yang tidak kompatibel
+        // ════════════════════════════════════════════════════════════════
+        const modelMessages = rawModelMessages
+            .map((msg) => {
+                // Skip messages dengan role yang tidak valid
+                const validRoles = ["user", "assistant", "system"]
+                if (!validRoles.includes(msg.role)) {
+                    console.log("[Chat API] Skipping message with invalid role:", msg.role)
+                    return null
+                }
+
+                // Handle content array - convert to string
+                if (Array.isArray(msg.content)) {
+                    // Extract text content dari array
+                    const textParts = msg.content
+                        .filter((part): part is { type: "text"; text: string } =>
+                            typeof part === "object" &&
+                            part !== null &&
+                            "type" in part &&
+                            part.type === "text" &&
+                            "text" in part &&
+                            typeof part.text === "string"
+                        )
+                        .map((part) => part.text)
+
+                    // Jika tidak ada text parts, skip message ini
+                    if (textParts.length === 0) {
+                        console.log("[Chat API] Skipping message with no extractable text content")
+                        return null
+                    }
+
+                    return {
+                        ...msg,
+                        content: textParts.join("\n"),
+                    }
+                }
+
+                return msg
+            })
+            .filter((msg): msg is NonNullable<typeof msg> => msg !== null) as ModelMessage[]
+            // Type assertion diperlukan karena:
+            // 1. Tool messages (role: "tool") sudah di-filter out di atas
+            // 2. Content sudah diconvert ke string untuk semua messages
+            // 3. TypeScript tidak bisa infer ini dari runtime checks
+
+        // ════════════════════════════════════════════════════════════════
+        // Phase 2 Task 2.1.1: Message Trimming (Paper Mode Only)
+        // ════════════════════════════════════════════════════════════════
+        const MAX_CHAT_HISTORY_PAIRS = 20 // 20 pairs = 40 messages max
+        const isPaperMode = !!paperModePrompt
+
+        let trimmedModelMessages = modelMessages
+        if (isPaperMode && modelMessages.length > MAX_CHAT_HISTORY_PAIRS * 2) {
+            const originalCount = modelMessages.length
+            trimmedModelMessages = modelMessages.slice(-MAX_CHAT_HISTORY_PAIRS * 2)
+
+            // Task 2.1.2: Logging (development only)
+            if (process.env.NODE_ENV === "development") {
+                console.log("[Chat API] Message trimming applied:", {
+                    originalCount,
+                    trimmedCount: trimmedModelMessages.length,
+                    removedCount: originalCount - trimmedModelMessages.length,
+                })
+            }
+        }
 
         // Task 6.4: Inject file context BEFORE user messages
         // Task Group 3: Inject paper mode prompt if paper session exists
@@ -208,7 +306,7 @@ export async function POST(req: Request) {
             ...(fileContext
                 ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
                 : []),
-            ...modelMessages,
+            ...trimmedModelMessages,
         ]
 
         // Import streamText and model helpers
@@ -228,12 +326,24 @@ export async function POST(req: Request) {
         const decideWebSearchMode = async (options: {
             model: unknown
             recentMessages: unknown[]
+            isPaperMode: boolean
         }): Promise<{ enableWebSearch: boolean; confidence: number; reason: string }> => {
+            const paperModeContext = options.isPaperMode
+                ? `
+
+KONTEKS PENTING - PAPER MODE AKTIF:
+User sedang dalam mode penulisan paper akademik. Dalam konteks ini:
+- enableWebSearch = true WAJIB jika AI akan memberikan atau mendiskusikan referensi, jurnal, literatur, atau sumber akademik.
+- Referensi akademik HARUS diverifikasi melalui web search untuk menghindari halusinasi.
+- Jangan pernah mengarang referensi tanpa pencarian web terlebih dahulu.`
+                : ""
+
             const routerPrompt = `Anda adalah "router" yang memutuskan apakah jawaban untuk user WAJIB memakai pencarian web (tool google_search).
 
 Tujuan:
-- enableWebSearch = true HANYA jika (A) user meminta cek internet/pencarian secara eksplisit, ATAU (B) pertanyaan butuh data faktual terbaru/real-time sehingga tanpa internet berisiko salah.
-- Jika pertanyaan bisa dijawab tanpa data terbaru, set false.
+- enableWebSearch = true HANYA jika (A) user meminta cek internet/pencarian secara eksplisit, ATAU (B) pertanyaan butuh data faktual terbaru/real-time sehingga tanpa internet berisiko salah, ATAU (C) AI akan memberikan referensi akademik/jurnal/literatur.
+- Jika pertanyaan bisa dijawab tanpa data terbaru DAN tidak memerlukan referensi akademik, set false.
+${paperModeContext}
 
 Aturan output:
 - Output HARUS satu JSON object SAJA.
@@ -250,7 +360,7 @@ JSON schema:
             const routerSchema = z.object({
                 enableWebSearch: z.boolean(),
                 confidence: z.number().min(0).max(1),
-                reason: z.string().max(240),
+                reason: z.string().max(500),
             })
 
             const runStructuredRouter = async () => {
@@ -520,6 +630,7 @@ Aturan:
             const webSearchDecision = await decideWebSearchMode({
                 model,
                 recentMessages: recentForRouter,
+                isPaperMode: !!paperModePrompt,
             })
 
             const routerFailed = ["router_invalid_json_shape", "router_json_parse_failed"].includes(
@@ -528,11 +639,17 @@ Aturan:
             const explicitSearchFallback = routerFailed && lastUserContent
                 ? isExplicitSearchRequest(lastUserContent)
                 : false
+
+            // Force disable web search if paper intent detected but no session yet
+            // This allows AI to call startPaperSession tool first before any web search
+            const forcePaperToolsMode = !!paperWorkflowReminder && !paperModePrompt
             const enableWebSearch = !!wrappedGoogleSearchTool
+                && !forcePaperToolsMode
                 && (webSearchDecision.enableWebSearch || explicitSearchFallback)
 
             console.log("[WebSearchRouter] Decision:", {
                 enableWebSearch,
+                forcePaperToolsMode,
                 confidence: webSearchDecision.confidence,
                 reason: webSearchDecision.reason,
             })

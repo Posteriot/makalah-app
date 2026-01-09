@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Loader2Icon, PlusIcon, MessageSquareIcon, TrashIcon } from "lucide-react"
@@ -10,6 +11,17 @@ import { api } from "../../../convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { PaperSessionBadge } from "@/components/paper"
 import { getStageNumber, type PaperStageId } from "../../../convex/paperSessions/constants"
+import { formatRelativeTime } from "@/lib/date/formatters"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface ChatSidebarProps {
     conversations: Array<{
@@ -48,6 +60,28 @@ export function ChatSidebar({
     const paperSessionMap = new Map(
         paperSessions?.map(session => [session.conversationId, session]) ?? []
     )
+
+    // State untuk delete confirmation dialog
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [conversationToDelete, setConversationToDelete] = useState<{
+        id: Id<"conversations">
+        title: string
+    } | null>(null)
+
+    // Handler untuk membuka dialog konfirmasi delete
+    const handleDeleteClick = (id: Id<"conversations">, title: string) => {
+        setConversationToDelete({ id, title })
+        setDeleteDialogOpen(true)
+    }
+
+    // Handler untuk konfirmasi delete
+    const handleConfirmDelete = () => {
+        if (conversationToDelete) {
+            onDeleteConversation(conversationToDelete.id)
+        }
+        setDeleteDialogOpen(false)
+        setConversationToDelete(null)
+    }
 
     return (
         <aside className={`w-64 border-r bg-card/40 flex flex-col ${className}`}>
@@ -119,7 +153,7 @@ export function ChatSidebar({
                                         )}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                        {new Date(conv.lastMessageAt).toLocaleDateString()}
+                                        {formatRelativeTime(conv.lastMessageAt)}
                                     </div>
                                 </div>
                                 <div
@@ -128,22 +162,18 @@ export function ChatSidebar({
                                     onClick={(e) => {
                                         e.preventDefault()
                                         e.stopPropagation()
-                                        if (confirm("Are you sure you want to delete this chat?")) {
-                                            onDeleteConversation(conv._id)
-                                        }
+                                        handleDeleteClick(conv._id, conv.title)
                                     }}
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" || e.key === " ") {
                                             e.preventDefault()
                                             e.stopPropagation()
-                                            if (confirm("Are you sure you want to delete this chat?")) {
-                                                onDeleteConversation(conv._id)
-                                            }
+                                            handleDeleteClick(conv._id, conv.title)
                                         }
                                     }}
                                     className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all focus:opacity-100"
-                                    title="Delete conversation"
-                                    aria-label="Delete conversation"
+                                    title="Hapus percakapan"
+                                    aria-label="Hapus percakapan"
                                 >
                                     <TrashIcon className="h-4 w-4" />
                                 </div>
@@ -159,6 +189,29 @@ export function ChatSidebar({
                     {/* Clerk UserButton or user info could go here */}
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Hapus Percakapan?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Percakapan <span className="font-medium text-foreground">&quot;{conversationToDelete?.title}&quot;</span> akan dihapus secara permanen. Aksi ini tidak bisa dibatalkan.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setConversationToDelete(null)}>
+                            Batal
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Hapus
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </aside>
     )
 }

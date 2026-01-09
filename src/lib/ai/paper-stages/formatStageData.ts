@@ -586,6 +586,12 @@ function formatOutlineData(data: OutlineData, isCurrentStage: boolean, summaryMo
     return output.trim();
 }
 
+// ════════════════════════════════════════════════════════════════
+// Phase 2 Task 2.2.1: Outline Checklist Limiter Constants
+// ════════════════════════════════════════════════════════════════
+const MAX_OUTLINE_SECTIONS = 10;
+const MAX_OUTLINE_DEPTH = 2;
+
 function formatOutlineChecklist(
     outline: OutlineData | undefined,
     currentStage: PaperStageId | "completed"
@@ -600,13 +606,25 @@ function formatOutlineChecklist(
         return output.trim();
     }
 
-    outline.sections.forEach((section) => {
+    // Task 2.2.1: Filter by depth and limit sections
+    const filteredSections = outline.sections
+        .filter((section) => (section.level ?? 1) <= MAX_OUTLINE_DEPTH);
+
+    const limitedSections = filteredSections.slice(0, MAX_OUTLINE_SECTIONS);
+    const remainingCount = filteredSections.length - limitedSections.length;
+
+    limitedSections.forEach((section) => {
         const indent = "  ".repeat((section.level || 1) - 1);
         const statusIcon = section.status === "complete" ? "[OK]"
             : section.status === "partial" ? "[~]"
             : "[_]";
         output += `${indent}${statusIcon} ${section.judul || section.id}\n`;
     });
+
+    // Show indicator if content was truncated
+    if (remainingCount > 0) {
+        output += `  ...dan ${remainingCount} section lainnya\n`;
+    }
 
     return output.trim();
 }

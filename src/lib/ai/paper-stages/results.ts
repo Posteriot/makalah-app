@@ -79,6 +79,24 @@ TOOLS & LARANGAN:
 - submitStageForValidation()
 - X JANGAN generate temuan fiktif
 - X JANGAN interpretasi mendalam (itu tugas Diskusi)
+- X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+===============================================================================
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+===============================================================================
+
+- Format: String, max 280 karakter
+- Konten: Temuan utama yang DISEPAKATI bersama user
+- Contoh: "5 temuan utama: (1) peningkatan 23% engagement, (2) korelasi kuat motivasi-hasil, (3) preferensi adaptive content"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+===============================================================================
+REMINDER - LINEAR FLOW:
+===============================================================================
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (hasil)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;
 
 // =============================================================================
@@ -155,6 +173,24 @@ TOOLS & LARANGAN:
 - submitStageForValidation()
 - X JANGAN introduce temuan baru (itu di Hasil)
 - X JANGAN skip perbandingan literatur
+- X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+===============================================================================
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+===============================================================================
+
+- Format: String, max 280 karakter
+- Konten: Interpretasi utama yang DISEPAKATI bersama user
+- Contoh: "Interpretasi: Temuan sejalan dengan studi X (2023), implikasi praktis untuk dosen dan institusi pendidikan"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+===============================================================================
+REMINDER - LINEAR FLOW:
+===============================================================================
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (diskusi)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;
 
 // =============================================================================
@@ -222,4 +258,22 @@ TOOLS & LARANGAN:
 - submitStageForValidation()
 - X JANGAN introduce info baru
 - X JANGAN terlalu verbose
+- X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+===============================================================================
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+===============================================================================
+
+- Format: String, max 280 karakter
+- Konten: Jawaban rumusan masalah yang DISEPAKATI bersama user
+- Contoh: "3/3 rumusan masalah terjawab, 5 saran praktis untuk institusi pendidikan, 2 rekomendasi untuk penelitian lanjut"
+- ⚠️ WARNING: Jika lo tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+===============================================================================
+REMINDER - LINEAR FLOW:
+===============================================================================
+
+- Lo HANYA bisa update data untuk tahap SAAT INI (kesimpulan)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
 `;

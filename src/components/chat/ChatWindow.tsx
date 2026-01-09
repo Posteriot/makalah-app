@@ -45,6 +45,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     stageLabel,
     approveStage,
     requestRevision,
+    markStageAsDirty,
   } = usePaperSession(conversationId as Id<"conversations">)
 
   // Track which conversation has been synced to prevent infinite loops
@@ -215,6 +216,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     setUploadedFileIds(prev => [...prev, fileId])
   }
 
+  const handleRegenerate = (options?: { markDirty?: boolean }) => {
+    if (isPaperMode && options?.markDirty !== false) {
+      markStageAsDirty()
+    }
+    regenerate()
+  }
+
   const handleEdit = async (messageId: string, newContent: string) => {
     if (!conversationId) return
 
@@ -224,6 +232,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         content: newContent,
         conversationId: conversationId as Id<"conversations">
       })
+
+      // Phase 3 Task 3.1.3: Mark stage as dirty when edit happens in paper mode
+      // Non-blocking - errors are logged but don't interrupt user flow
+      if (isPaperMode) {
+        markStageAsDirty()
+      }
 
       const messageIndex = messages.findIndex(m => m.id === messageId)
       if (messageIndex !== -1) {
@@ -236,7 +250,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         setMessages(truncatedMessages)
 
         setTimeout(() => {
-          regenerate()
+          handleRegenerate({ markDirty: false })
         }, 0)
       }
 
@@ -430,7 +444,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 <AlertCircleIcon className="h-4 w-4" />
                 <span>Gagal mengirim pesan.</span>
               </div>
-              <Button variant="outline" size="sm" onClick={() => regenerate()} className="bg-background hover:bg-accent h-7 text-xs border-destructive/20 hover:border-destructive/40">
+              <Button variant="outline" size="sm" onClick={() => handleRegenerate()} className="bg-background hover:bg-accent h-7 text-xs border-destructive/20 hover:border-destructive/40">
                 <RotateCcwIcon className="h-3 w-3 mr-1" />
                 Coba Lagi
               </Button>
