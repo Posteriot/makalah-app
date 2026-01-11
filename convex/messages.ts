@@ -96,22 +96,20 @@ export const updateMessage = mutation({
     },
 })
 
-// Edit message and truncate conversation (for regeneration)
+// Truncate conversation from a specific message (delete it and all subsequent)
+// Used for edit-and-resend flow: delete the message, then sendMessage() creates new one
 export const editAndTruncateConversation = mutation({
     args: {
         messageId: v.id("messages"),
-        content: v.string(),
+        content: v.string(), // Kept for backwards compatibility, but not used
         conversationId: v.id("conversations"),
     },
-    handler: async ({ db }, { messageId, content, conversationId }) => {
+    handler: async ({ db }, { messageId, conversationId }) => {
         // 1. Get the message to define the split point
         const message = await db.get(messageId)
         if (!message) throw new Error("Message not found")
 
-        // 2. Update the message content
-        await db.patch(messageId, { content })
-
-        // 3. Find and delete all subsequent messages in this conversation
+        // 2. Find and delete all subsequent messages in this conversation
         const subsequentMessages = await db
             .query("messages")
             .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
@@ -121,5 +119,8 @@ export const editAndTruncateConversation = mutation({
         for (const msg of subsequentMessages) {
             await db.delete(msg._id)
         }
+
+        // 3. Delete the edited message itself - sendMessage() will create a new one
+        await db.delete(messageId)
     },
 })

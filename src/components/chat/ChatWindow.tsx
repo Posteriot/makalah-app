@@ -226,32 +226,58 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const handleEdit = async (messageId: string, newContent: string) => {
     if (!conversationId) return
 
+    // Resolve the actual Convex ID
+    // Client-generated IDs (from sendMessage) are ~16 chars, mixed case
+    // Convex IDs are 32 chars, lowercase alphanumeric
+    let actualMessageId: Id<"messages">
+    const isValidConvexId = /^[a-z0-9]{32}$/.test(messageId)
+
+    if (isValidConvexId) {
+      actualMessageId = messageId as Id<"messages">
+    } else {
+      // For client-generated IDs, find the corresponding Convex ID from historyMessages
+      const messageIndex = messages.findIndex(m => m.id === messageId)
+      if (messageIndex !== -1 && historyMessages?.[messageIndex]) {
+        const historyMsg = historyMessages[messageIndex]
+        const currentMsg = messages[messageIndex]
+        // Verify it's the same message by checking role
+        if (historyMsg.role === currentMsg.role) {
+          actualMessageId = historyMsg._id
+        } else {
+          toast.error("Pesan belum tersimpan. Tunggu sebentar lalu coba lagi.")
+          return
+        }
+      } else {
+        toast.error("Pesan belum tersimpan. Tunggu sebentar lalu coba lagi.")
+        return
+      }
+    }
+
     try {
+      // 1. Delete the edited message and all subsequent from DB
       await editAndTruncate({
-        messageId: messageId as Id<"messages">,
-        content: newContent,
+        messageId: actualMessageId,
+        content: newContent, // Passed for backwards compat, but not used by mutation
         conversationId: conversationId as Id<"conversations">
       })
 
-      // Phase 3 Task 3.1.3: Mark stage as dirty when edit happens in paper mode
-      // Non-blocking - errors are logged but don't interrupt user flow
+      // 2. Mark stage as dirty in paper mode
       if (isPaperMode) {
         markStageAsDirty()
       }
 
+      // 3. Truncate local messages to BEFORE the edited message
       const messageIndex = messages.findIndex(m => m.id === messageId)
       if (messageIndex !== -1) {
-        const truncatedMessages = messages.slice(0, messageIndex + 1)
-        truncatedMessages[messageIndex] = {
-          ...truncatedMessages[messageIndex],
-          parts: [{ type: 'text', text: newContent }]
-        } as unknown as UIMessage
-
+        const truncatedMessages = messages.slice(0, messageIndex)
         setMessages(truncatedMessages)
 
-        setTimeout(() => {
-          handleRegenerate({ markDirty: false })
-        }, 0)
+        // 4. Send the edited content as a new message - this triggers AI response
+        pendingScrollToBottomRef.current = true
+        sendMessage({ text: newContent })
+      } else {
+        // Edge case: message not found in local state (should not happen normally)
+        toast.error("Pesan tidak ditemukan. Silakan refresh halaman.")
       }
 
     } catch (error) {

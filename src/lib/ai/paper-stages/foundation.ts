@@ -52,7 +52,7 @@ Share temuan + diskusikan angle potensial dengan user
       ↓
 [Iterasi beberapa kali sampai arah jelas]
       ↓
-Draft 'Gagasan Paper' (simpan dengan updateStageData)
+Draft 'Gagasan Paper' (simpan dengan updateStageData) + createArtifact
       ↓
 Tanyakan: "Gimana menurut lo? Ada yang perlu direvisi?"
       ↓
@@ -74,6 +74,7 @@ TOOLS YANG TERSEDIA:
 
 - google_search → WAJIB pakai untuk mencari referensi akademik yang valid. Jangan pernah mengarang referensi!
 - updateStageData({ ringkasan, ideKasar, analisis, angle, novelty, referensiAwal }) → Simpan draft (WAJIB sertakan ringkasan!)
+- createArtifact({ type: "section", title: "Gagasan Paper - [Judul Kerja]", content: "[gabungan ide, analisis, angle, novelty, referensi dalam markdown]" })
 - submitStageForValidation() → HANYA panggil setelah user EKSPLISIT konfirmasi puas
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -147,7 +148,7 @@ Diskusikan: research gap apa yang bisa diisi?
       ↓
 [Iterasi sampai ada kesepakatan arah topik]
       ↓
-Draft 'Topik Definitif' (simpan dengan updateStageData)
+Draft 'Topik Definitif' (simpan dengan updateStageData) + createArtifact
       ↓
 Konfirmasi dengan user
       ↓
@@ -169,6 +170,7 @@ TOOLS YANG TERSEDIA:
 
 - google_search → WAJIB pakai untuk mencari literatur dan research gap. Jangan mengarang referensi!
 - updateStageData({ ringkasan, definitif, angleSpesifik, argumentasiKebaruan, researchGap, referensiPendukung }) → (WAJIB sertakan ringkasan!)
+- createArtifact({ type: "section", title: "Topik Definitif - [Judul Definitif]", content: "[gabungan topik, angle, argumentasi, gap, referensi dalam markdown]" })
 - submitStageForValidation() → HANYA setelah user konfirmasi puas
 
 ═══════════════════════════════════════════════════════════════════════════════

@@ -1,7 +1,7 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { PaperclipIcon, PencilIcon, XIcon, CheckIcon } from "lucide-react"
+import { PaperclipIcon, PencilIcon, XIcon, SendHorizontalIcon } from "lucide-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
@@ -173,9 +173,10 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
     }
 
     const handleSave = () => {
-        if (editContent.trim() !== content) {
-            onEdit?.(message.id, editContent)
-        }
+        // "Kirim" selalu trigger regeneration, bahkan jika konten tidak berubah
+        // User mungkin ingin retry/regenerate AI response tanpa mengubah pesan
+        const contentToSend = editContent.trim() || content // Fallback ke content original jika empty
+        onEdit?.(message.id, contentToSend)
         setIsEditing(false)
     }
 
@@ -275,16 +276,16 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
                         <button
                             onClick={handleCancel}
                             className="p-1 hover:bg-white/20 rounded text-xs flex items-center gap-1"
-                            aria-label="Cancel edit"
+                            aria-label="Batalkan edit"
                         >
-                            <XIcon className="h-3 w-3" /> Cancel
+                            <XIcon className="h-3 w-3" /> Batal
                         </button>
                         <button
                             onClick={handleSave}
                             className="p-1 bg-white/20 hover:bg-white/30 rounded text-xs flex items-center gap-1"
-                            aria-label="Save changes"
+                            aria-label="Kirim pesan yang diedit"
                         >
-                            <CheckIcon className="h-3 w-3" /> Save
+                            <SendHorizontalIcon className="h-3 w-3" /> Kirim
                         </button>
                     </div>
                 </div>
