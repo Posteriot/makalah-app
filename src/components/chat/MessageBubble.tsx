@@ -7,21 +7,77 @@ import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
 import { SearchStatusIndicator, type SearchStatus } from "./SearchStatusIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
-import { useState, useRef } from "react"
+import { useState, useRef, useMemo } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
+import { isEditAllowed } from "@/lib/utils/paperPermissions"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+// Types for paper permission checking
+interface StageDataEntry {
+    validatedAt?: number;
+    [key: string]: unknown;
+}
+
+interface PermissionMessage {
+    createdAt: number;
+    role?: string;
+    [key: string]: unknown;
+}
 
 interface MessageBubbleProps {
     message: UIMessage
     conversationId: string | null
     onEdit?: (messageId: string, newContent: string) => void
     onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+    // Paper mode edit permissions
+    isPaperMode?: boolean
+    messageIndex?: number
+    currentStageStartIndex?: number
+    allMessages?: PermissionMessage[]
+    stageData?: Record<string, StageDataEntry>
 }
 
-export function MessageBubble({ message, conversationId, onEdit, onArtifactSelect }: MessageBubbleProps) {
+export function MessageBubble({
+    message,
+    conversationId,
+    onEdit,
+    onArtifactSelect,
+    isPaperMode = false,
+    messageIndex = 0,
+    currentStageStartIndex = 0,
+    allMessages = [],
+    stageData,
+}: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+    // Calculate edit permission for this message
+    const editPermission = useMemo(() => {
+        // Only check permission for user messages
+        if (message.role !== "user") {
+            return { allowed: false, reason: "Hanya pesan user yang bisa diedit" }
+        }
+
+        // If no allMessages provided, fall back to allowing edit
+        if (allMessages.length === 0) {
+            return { allowed: true }
+        }
+
+        return isEditAllowed({
+            messages: allMessages,
+            messageIndex,
+            isPaperMode,
+            currentStageStartIndex,
+            stageData,
+        })
+    }, [message.role, allMessages, messageIndex, isPaperMode, currentStageStartIndex, stageData])
 
     type CreatedArtifact = { artifactId: Id<"artifacts">; title: string }
 
@@ -220,14 +276,36 @@ export function MessageBubble({ message, conversationId, onEdit, onArtifactSelec
 
                 {/* Edit Button for User */}
                 {!isEditing && message.role === 'user' && onEdit && (
-                    <button
-                        onClick={startEditing}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded"
-                        title="Edit"
-                        aria-label="Edit message"
-                    >
-                        <PencilIcon className="h-3 w-3" />
-                    </button>
+                    editPermission.allowed ? (
+                        // Edit allowed - render normal button
+                        <button
+                            onClick={startEditing}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded"
+                            title="Edit"
+                            aria-label="Edit message"
+                        >
+                            <PencilIcon className="h-3 w-3" />
+                        </button>
+                    ) : (
+                        // Edit disabled - render button with tooltip
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        disabled
+                                        className="opacity-0 group-hover:opacity-50 transition-opacity p-1 rounded cursor-not-allowed"
+                                        aria-label="Edit message"
+                                        aria-disabled="true"
+                                    >
+                                        <PencilIcon className="h-3 w-3" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-[250px]">
+                                    <p>{editPermission.reason}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )
                 )}
             </div>
 

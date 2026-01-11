@@ -454,11 +454,13 @@ JSON schema:
         }
 
         // ============================================================
-        // ARTIFACT TOOL - Creates standalone deliverable content
+        // ARTIFACT TOOLS - Creates and updates standalone deliverable content
         // ============================================================
         const tools = {
             createArtifact: tool({
-                description: `Create an artifact for standalone, non-conversational content that the user might want to edit, copy, or export.
+                description: `Create a NEW artifact for standalone, non-conversational content that the user might want to edit, copy, or export.
+
+⚠️ PENTING: Jika artifact untuk stage/konten ini SUDAH ADA dan ditandai 'invalidated' (karena rewind), gunakan updateArtifact sebagai gantinya. JANGAN buat artifact baru untuk konten yang sudah punya artifact sebelumnya.
 
 USE THIS TOOL WHEN generating:
 ✓ Paper outlines and structures (type: "outline")
@@ -477,6 +479,7 @@ DO NOT use this tool for:
 ✗ Suggestions and feedback
 ✗ Meta-conversation about writing process
 ✗ Short answers (less than 3 sentences)
+✗ Updating existing/invalidated artifacts (use updateArtifact instead)
 
 When using this tool, always provide a clear, descriptive title (max 50 chars).`,
                 inputSchema: z.object({
@@ -534,6 +537,78 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                         return {
                             success: false,
                             error: `Gagal membuat artifact: ${errorMessage}`,
+                        }
+                    }
+                },
+            }),
+            updateArtifact: tool({
+                description: `Update an existing artifact with new content, creating a new version.
+
+⚠️ WAJIB gunakan tool ini untuk artifact yang ditandai 'invalidated' (karena rewind).
+JANGAN gunakan createArtifact untuk artifact yang sudah ada - gunakan updateArtifact.
+
+USE THIS TOOL WHEN:
+✓ User meminta revisi artifact yang sudah ada
+✓ Artifact ditandai 'invalidated' setelah rewind ke stage sebelumnya
+✓ User ingin memperbaiki atau mengubah konten artifact sebelumnya
+✓ Perlu membuat versi baru dari artifact yang sudah ada
+
+Tool ini akan:
+1. Membuat versi baru dari artifact (immutable versioning)
+2. Versi baru otomatis bersih dari flag invalidation
+3. Versi lama tetap tersimpan sebagai history
+
+PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan AI sebelumnya.`,
+                inputSchema: z.object({
+                    artifactId: z.string()
+                        .describe("ID dari artifact yang akan di-update. Harus artifact yang sudah ada."),
+                    content: z.string().min(10)
+                        .describe("Konten baru untuk artifact (akan menggantikan konten sebelumnya)"),
+                    title: z.string().max(200).optional()
+                        .describe("Judul baru (opsional). Jika tidak diisi, judul lama dipertahankan."),
+                }),
+                execute: async ({ artifactId, content, title }) => {
+                    console.log("[updateArtifact] Attempting to update artifact:", {
+                        artifactId,
+                        contentLength: content?.length ?? 0,
+                        hasNewTitle: !!title,
+                        conversationId: currentConversationId,
+                        userId,
+                    })
+
+                    try {
+                        const result = await fetchMutation(api.artifacts.update, {
+                            artifactId: artifactId as Id<"artifacts">,
+                            userId: userId as Id<"users">,
+                            content,
+                            title,
+                        })
+
+                        console.log("[updateArtifact] Success:", {
+                            oldArtifactId: artifactId,
+                            newArtifactId: result.artifactId,
+                            version: result.version,
+                        })
+
+                        return {
+                            success: true,
+                            newArtifactId: result.artifactId,
+                            oldArtifactId: artifactId,
+                            version: result.version,
+                            message: `Artifact berhasil di-update ke versi ${result.version}. User dapat melihat versi baru di panel artifact.`,
+                        }
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : String(error)
+                        console.error("[updateArtifact] Failed:", {
+                            error: errorMessage,
+                            artifactId,
+                            contentLength: content?.length ?? 0,
+                            conversationId: currentConversationId,
+                            userId,
+                        })
+                        return {
+                            success: false,
+                            error: `Gagal update artifact: ${errorMessage}`,
                         }
                     }
                 },

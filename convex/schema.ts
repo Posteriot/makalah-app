@@ -137,6 +137,12 @@ export default defineSchema({
     version: v.number(),
     parentId: v.optional(v.id("artifacts")), // Link to previous version
 
+    // ════════════════════════════════════════════════════════════════
+    // Rewind Feature: Artifact Invalidation Tracking
+    // ════════════════════════════════════════════════════════════════
+    invalidatedAt: v.optional(v.number()), // Timestamp when invalidated by rewind
+    invalidatedByRewindToStage: v.optional(v.string()), // Stage that triggered invalidation
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -337,6 +343,8 @@ export default defineSchema({
       stage: v.string(),
       decision: v.string(),
       timestamp: v.number(),
+      // Rewind Feature: Mark entry as superseded when stage is rewound
+      superseded: v.optional(v.boolean()), // true = decision replaced by rewind
     }))),
 
     // ════════════════════════════════════════════════════════════════
@@ -354,4 +362,27 @@ export default defineSchema({
     .index("by_user_updated", ["userId", "updatedAt"])
     .index("by_stage", ["currentStage", "stageStatus"])
     .index("by_user_archived", ["userId", "archivedAt"]), // Filter archived sessions
+
+  // ════════════════════════════════════════════════════════════════
+  // Rewind History - Audit trail for stage rewind operations
+  // ════════════════════════════════════════════════════════════════
+  rewindHistory: defineTable({
+    sessionId: v.id("paperSessions"),
+    userId: v.id("users"),
+
+    // Rewind details
+    fromStage: v.string(), // Stage before rewind (e.g., "outline")
+    toStage: v.string(), // Target stage (e.g., "topik")
+
+    // Affected artifacts
+    invalidatedArtifactIds: v.array(v.id("artifacts")), // Artifacts that were invalidated
+
+    // Invalidated stages (for reference)
+    invalidatedStages: v.optional(v.array(v.string())), // e.g., ["topik", "outline"]
+
+    // Timestamps
+    createdAt: v.number(),
+  })
+    .index("by_session", ["sessionId", "createdAt"])
+    .index("by_user", ["userId", "createdAt"]),
 })

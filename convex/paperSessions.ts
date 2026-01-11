@@ -817,3 +817,260 @@ export const markStageAsDirty = mutation({
         return { success: true };
     },
 });
+
+// ═══════════════════════════════════════════════════════════
+// REWIND STAGE FEATURE
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Task 2.2.1: Validate if targetStage is a valid rewind target.
+ * - Target must be before currentStage
+ * - Target must be within 2 stages back (max rewind limit)
+ * - Returns: { valid: boolean, error?: string }
+ */
+function isValidRewindTarget(
+    currentStage: string,
+    targetStage: string
+): { valid: boolean; error?: string } {
+    const currentIndex = STAGE_ORDER.indexOf(currentStage as PaperStageId);
+    const targetIndex = STAGE_ORDER.indexOf(targetStage as PaperStageId);
+
+    // Unknown stages
+    if (currentIndex === -1) {
+        return { valid: false, error: `Unknown current stage: ${currentStage}` };
+    }
+    if (targetIndex === -1) {
+        return { valid: false, error: `Unknown target stage: ${targetStage}` };
+    }
+
+    // Cannot rewind to current or future stage
+    if (targetIndex >= currentIndex) {
+        return {
+            valid: false,
+            error: "Tidak bisa rewind ke stage saat ini atau stage yang belum dilewati",
+        };
+    }
+
+    // Max 2 stages back limit
+    const stagesBack = currentIndex - targetIndex;
+    if (stagesBack > 2) {
+        return {
+            valid: false,
+            error: `Hanya bisa rewind maksimal 2 tahap ke belakang. Target: ${targetStage} (${stagesBack} tahap ke belakang)`,
+        };
+    }
+
+    return { valid: true };
+}
+
+/**
+ * Task 2.2.2: Get list of stages to invalidate.
+ * Returns stages from targetStage to currentStage (exclusive of currentStage).
+ * Example: currentStage = "abstrak", targetStage = "topik"
+ *          returns ["topik", "outline"]
+ */
+function getStagesToInvalidate(
+    targetStage: string,
+    currentStage: string
+): string[] {
+    const targetIndex = STAGE_ORDER.indexOf(targetStage as PaperStageId);
+    const currentIndex = STAGE_ORDER.indexOf(currentStage as PaperStageId);
+
+    if (targetIndex === -1 || currentIndex === -1) return [];
+
+    // Return stages from target to current (exclusive)
+    const stagesToInvalidate: string[] = [];
+    for (let i = targetIndex; i < currentIndex; i++) {
+        stagesToInvalidate.push(STAGE_ORDER[i]);
+    }
+
+    return stagesToInvalidate;
+}
+
+/**
+ * Task 2.2.3: Clear validatedAt for specified stages.
+ * Returns updated stageData object.
+ */
+function clearValidatedAt(
+    stageData: Record<string, Record<string, unknown>>,
+    stagesToInvalidate: string[]
+): Record<string, Record<string, unknown>> {
+    const updatedStageData = { ...stageData };
+
+    for (const stage of stagesToInvalidate) {
+        if (updatedStageData[stage]) {
+            updatedStageData[stage] = {
+                ...updatedStageData[stage],
+                validatedAt: undefined,
+            };
+        }
+    }
+
+    return updatedStageData;
+}
+
+/**
+ * Task 2.2.4: Mark paperMemoryDigest entries as superseded for invalidated stages.
+ */
+function markDigestAsSuperseded(
+    digest: Array<{ stage: string; decision: string; timestamp: number; superseded?: boolean }> | undefined,
+    stagesToInvalidate: string[]
+): Array<{ stage: string; decision: string; timestamp: number; superseded?: boolean }> {
+    if (!digest) return [];
+
+    return digest.map((entry) => {
+        if (stagesToInvalidate.includes(entry.stage)) {
+            return { ...entry, superseded: true };
+        }
+        return entry;
+    });
+}
+
+/**
+ * Task 2.4: Invalidate artifacts for specified stages.
+ * Sets invalidatedAt and invalidatedByRewindToStage fields.
+ * Returns array of invalidated artifact IDs.
+ */
+async function invalidateArtifactsForStages(
+    ctx: { db: { query: (table: string) => { withIndex: (name: string, fn: (q: { eq: (field: string, value: string) => unknown }) => unknown) => { collect: () => Promise<Array<{ _id: string; invalidatedAt?: number }>> } }; patch: (id: string, data: Record<string, unknown>) => Promise<void> } },
+    conversationId: string,
+    stageData: Record<string, Record<string, unknown>>,
+    stagesToInvalidate: string[],
+    targetStage: string
+): Promise<string[]> {
+    const now = Date.now();
+    const invalidatedArtifactIds: string[] = [];
+
+    // Collect artifact IDs from stages to invalidate
+    for (const stage of stagesToInvalidate) {
+        const artifactId = stageData[stage]?.artifactId as string | undefined;
+        if (artifactId) {
+            invalidatedArtifactIds.push(artifactId);
+        }
+    }
+
+    // Mark each artifact as invalidated
+    for (const artifactId of invalidatedArtifactIds) {
+        try {
+            await ctx.db.patch(artifactId as unknown as Parameters<typeof ctx.db.patch>[0], {
+                invalidatedAt: now,
+                invalidatedByRewindToStage: targetStage,
+            });
+        } catch {
+            // Artifact might not exist, continue with others
+            console.warn(`Failed to invalidate artifact ${artifactId}`);
+        }
+    }
+
+    return invalidatedArtifactIds;
+}
+
+/**
+ * Task 2.3 & 2.5: Rewind paper session to a previous stage.
+ *
+ * Guards:
+ * - Session must exist
+ * - User must be owner
+ * - Target stage must be valid (within 2 stages back, previously validated)
+ *
+ * Actions:
+ * - Clear validatedAt for invalidated stages
+ * - Mark paperMemoryDigest entries as superseded
+ * - Invalidate artifacts for affected stages
+ * - Create rewindHistory record
+ * - Update currentStage and stageStatus
+ */
+export const rewindToStage = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        userId: v.id("users"),
+        targetStage: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        if (session.userId !== args.userId) throw new Error("Unauthorized");
+
+        const currentStage = session.currentStage;
+
+        // Guard: Validate target stage
+        const validation = isValidRewindTarget(currentStage, args.targetStage);
+        if (!validation.valid) {
+            throw new Error(validation.error || "Invalid rewind target");
+        }
+
+        // Guard: Target stage must have been validated before
+        const stageData = session.stageData as Record<string, Record<string, unknown>>;
+        const targetStageData = stageData[args.targetStage];
+        if (!targetStageData?.validatedAt) {
+            throw new Error("Target stage belum pernah divalidasi");
+        }
+
+        const now = Date.now();
+
+        // Get stages to invalidate (from target to current, exclusive of current)
+        const stagesToInvalidate = getStagesToInvalidate(args.targetStage, currentStage);
+
+        // Clear validatedAt for invalidated stages
+        const updatedStageData = clearValidatedAt(stageData, stagesToInvalidate);
+
+        // Mark paperMemoryDigest entries as superseded
+        const updatedDigest = markDigestAsSuperseded(
+            session.paperMemoryDigest as Array<{ stage: string; decision: string; timestamp: number; superseded?: boolean }> | undefined,
+            stagesToInvalidate
+        );
+
+        // Invalidate artifacts for affected stages
+        const invalidatedArtifactIds = await invalidateArtifactsForStages(
+            ctx as unknown as Parameters<typeof invalidateArtifactsForStages>[0],
+            session.conversationId as unknown as string,
+            stageData,
+            stagesToInvalidate,
+            args.targetStage
+        );
+
+        // Create rewindHistory record
+        await ctx.db.insert("rewindHistory", {
+            sessionId: args.sessionId,
+            userId: args.userId,
+            fromStage: currentStage,
+            toStage: args.targetStage,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            invalidatedArtifactIds: invalidatedArtifactIds as any,
+            invalidatedStages: stagesToInvalidate,
+            createdAt: now,
+        });
+
+        // Update session
+        await ctx.db.patch(args.sessionId, {
+            currentStage: args.targetStage,
+            stageStatus: "drafting",
+            stageData: updatedStageData,
+            paperMemoryDigest: updatedDigest,
+            updatedAt: now,
+        });
+
+        return {
+            success: true,
+            previousStage: currentStage,
+            newStage: args.targetStage,
+            invalidatedStages: stagesToInvalidate,
+            invalidatedArtifactIds,
+        };
+    },
+});
+
+/**
+ * Query rewind history for a session.
+ * Useful for debugging and audit trail.
+ */
+export const getRewindHistory = query({
+    args: { sessionId: v.id("paperSessions") },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("rewindHistory")
+            .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+            .order("desc")
+            .collect();
+    },
+});

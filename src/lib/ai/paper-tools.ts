@@ -64,14 +64,14 @@ Aturan pengisian initialIdea:
         }),
 
         updateStageData: tool({
-            description: `Simpan progres draf data untuk tahap penulisan saat ini ke database.
+            description: `Simpan progres draf data untuk tahap penulisan SAAT INI ke database.
 
 ═══════════════════════════════════════════════════════════════════════════════
-LINEAR FLOW CONSTRAINT:
+AUTO-STAGE (PENTING!):
 ═══════════════════════════════════════════════════════════════════════════════
-- Lo HANYA bisa update tahap yang SEDANG AKTIF (currentStage)
-- JANGAN coba update tahap yang belum aktif - akan ERROR
-- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut" di UI
+Tool ini OTOMATIS menyimpan ke tahap yang sedang aktif (currentStage).
+Lo TIDAK PERLU dan TIDAK BISA specify stage - tool akan auto-fetch dari session.
+Ini mencegah error "Cannot update X while in Y".
 
 ═══════════════════════════════════════════════════════════════════════════════
 FORMAT DATA:
@@ -95,7 +95,8 @@ Contoh data untuk tahap 'gagasan':
   ]
 }`,
             inputSchema: z.object({
-                stage: z.string().describe("ID tahap saat ini (misal: 'gagasan', 'topik', 'abstrak')"),
+                // NOTE: 'stage' parameter REMOVED - auto-fetched from session.currentStage
+                // This prevents AI from specifying wrong stage (Option B fix for stage confusion bug)
                 ringkasan: z.string().max(280).describe(
                     "WAJIB! Keputusan utama yang DISEPAKATI dengan user untuk tahap ini. Max 280 karakter. " +
                     "Contoh: 'Disepakati angle: dampak AI terhadap pendidikan tinggi Indonesia, gap: belum ada studi di kampus swasta'"
@@ -104,12 +105,16 @@ Contoh data untuk tahap 'gagasan':
                     "Objek data draf lainnya (selain ringkasan). PENTING: referensiAwal/referensiPendukung harus ARRAY OF OBJECTS!"
                 ),
             }),
-            execute: async ({ stage, ringkasan, data }) => {
+            execute: async ({ ringkasan, data }) => {
                 try {
                     const session = await fetchQuery(api.paperSessions.getByConversation, {
                         conversationId: context.conversationId
                     });
                     if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
+
+                    // Option B Fix: Auto-fetch stage from session.currentStage
+                    // This eliminates the possibility of AI specifying wrong stage
+                    const stage = session.currentStage;
 
                     // Merge ringkasan (required by schema) into data object
                     const mergedData = { ...(data || {}), ringkasan };
@@ -125,12 +130,17 @@ Contoh data untuk tahap 'gagasan':
                     if (result && typeof result === 'object' && 'warning' in result && result.warning) {
                         return {
                             success: true,
+                            stage, // Include stage in response so AI knows which stage was updated
                             message: `Berhasil menyimpan progres untuk tahap ${stage}.`,
                             warning: result.warning,
                         };
                     }
 
-                    return { success: true, message: `Berhasil menyimpan progres untuk tahap ${stage}. Ringkasan tersimpan.` };
+                    return {
+                        success: true,
+                        stage, // Include stage in response so AI knows which stage was updated
+                        message: `Berhasil menyimpan progres untuk tahap ${stage}. Ringkasan tersimpan.`
+                    };
                 } catch (error) {
                     console.error("Error in updateStageData tool:", error);
                     // Forward specific error message from backend to AI

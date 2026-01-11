@@ -6,6 +6,39 @@ import { getStageInstructions, formatStageData } from "./paper-stages";
 
 type StageStatus = "drafting" | "pending_validation" | "approved" | "revision";
 
+// Type for invalidated artifact from query
+interface InvalidatedArtifact {
+    _id: Id<"artifacts">;
+    title: string;
+    type: string;
+    invalidatedAt?: number;
+    invalidatedByRewindToStage?: string;
+}
+
+/**
+ * Format invalidated artifacts into AI context section
+ * Returns empty string if no invalidated artifacts
+ */
+function getInvalidatedArtifactsContext(artifacts: InvalidatedArtifact[]): string {
+    if (!artifacts || artifacts.length === 0) {
+        return "";
+    }
+
+    const artifactsList = artifacts
+        .map((a) => `  - ID: ${a._id} | Judul: "${a.title}" | Tipe: ${a.type}`)
+        .join("\n");
+
+    return `
+⚠️ ARTIFACT YANG PERLU DI-UPDATE (karena rewind):
+${artifactsList}
+
+INSTRUKSI PENTING:
+- WAJIB gunakan updateArtifact (BUKAN createArtifact) untuk merevisi artifact di atas
+- Artifact tersebut sudah ada tapi perlu diperbarui karena user melakukan rewind ke tahap sebelumnya
+- Pastikan konten baru konsisten dengan keputusan di tahap yang di-rewind
+`;
+}
+
 /**
  * Generate paper mode system prompt if conversation has active paper session.
  * Simplified approach: goal-oriented instructions + inline revision context.
@@ -35,11 +68,25 @@ export const getPaperModeSystemPrompt = async (conversationId: Id<"conversations
             ? "\n⏳ MENUNGGU VALIDASI: Draf sudah dikirim. Tunggu user approve/revise sebelum lanjut.\n"
             : "";
 
+        // Query invalidated artifacts (Rewind Feature)
+        // Gracefully handle errors - don't break the prompt if query fails
+        let invalidatedArtifactsContext = "";
+        try {
+            const invalidatedArtifacts = await fetchQuery(
+                api.artifacts.getInvalidatedByConversation,
+                { conversationId, userId: session.userId }
+            );
+            invalidatedArtifactsContext = getInvalidatedArtifactsContext(invalidatedArtifacts);
+        } catch (err) {
+            console.error("Error fetching invalidated artifacts:", err);
+            // Continue without invalidated artifacts context
+        }
+
         return `
 ---
 [PAPER WRITING MODE]
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
-${revisionNote}${pendingNote}
+${revisionNote}${pendingNote}${invalidatedArtifactsContext}
 ATURAN UMUM:
 - DISKUSI DULU sebelum drafting - jangan langsung generate output lengkap
 - Gunakan google_search secara selektif jika membutuhkan literatur tambahan (opsional)

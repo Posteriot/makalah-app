@@ -43,9 +43,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     currentStage,
     stageStatus,
     stageLabel,
+    stageData,
     approveStage,
     requestRevision,
     markStageAsDirty,
+    getStageStartIndex,
   } = usePaperSession(conversationId as Id<"conversations">)
 
   // Track which conversation has been synced to prevent infinite loops
@@ -61,6 +63,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   // 1. Fetch history from Convex
   const { messages: historyMessages, isLoading: isHistoryLoading } = useMessages(conversationId)
+
+  // Paper mode: Convert history messages to permission-compatible format
+  const permissionMessages = useMemo(() => {
+    if (!historyMessages) return []
+    return historyMessages.map((msg) => ({
+      createdAt: msg.createdAt ?? 0,
+      role: msg.role,
+    }))
+  }, [historyMessages])
+
+  // Paper mode: Calculate current stage start index
+  const currentStageStartIndex = useMemo(() => {
+    if (!isPaperMode || permissionMessages.length === 0) return 0
+    return getStageStartIndex(permissionMessages)
+  }, [isPaperMode, permissionMessages, getStageStartIndex])
 
   // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
@@ -300,7 +317,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (!userId) return
     try {
       await approveStage(userId)
-      toast.success("Tahap berhasil disetujui!")
+      // Auto-send message agar AI aware dan bisa lanjutkan ke tahap berikutnya
+      sendMessage({ text: `[Approved: ${stageLabel}] Lanjut ke tahap berikutnya.` })
     } catch (error) {
       console.error("Failed to approve stage:", error)
       toast.error("Gagal menyetujui tahap.")
@@ -439,6 +457,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                       conversationId={conversationId}
                       onEdit={handleEdit}
                       onArtifactSelect={onArtifactSelect}
+                      // Paper mode edit permission props
+                      isPaperMode={isPaperMode}
+                      messageIndex={index}
+                      currentStageStartIndex={currentStageStartIndex}
+                      allMessages={permissionMessages}
+                      stageData={stageData}
                     />
                   </div>
                 )

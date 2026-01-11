@@ -13,7 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { CopyIcon, CheckIcon, FileTextIcon, CodeIcon, ListIcon, TableIcon, BookOpenIcon, FunctionSquareIcon, Loader2Icon, PencilIcon, DownloadIcon, HistoryIcon } from "lucide-react"
+import { CopyIcon, CheckIcon, FileTextIcon, CodeIcon, ListIcon, TableIcon, BookOpenIcon, FunctionSquareIcon, Loader2Icon, PencilIcon, DownloadIcon, HistoryIcon, AlertTriangle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -21,6 +21,10 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { ArtifactEditor } from "./ArtifactEditor"
 import { VersionHistoryDialog } from "./VersionHistoryDialog"
 import { MarkdownRenderer } from "./MarkdownRenderer"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
+import { cn } from "@/lib/utils"
 
 interface ArtifactViewerProps {
     artifactId: Id<"artifacts"> | null
@@ -75,6 +79,21 @@ function formatDate(timestamp: number): string {
         hour: "2-digit",
         minute: "2-digit",
     })
+}
+
+// Check if artifact is invalidated
+function isArtifactInvalidated(artifact: { invalidatedAt?: number }): boolean {
+    return artifact.invalidatedAt !== undefined && artifact.invalidatedAt !== null
+}
+
+// Get stage label safely
+function getStageLabelSafe(stageId: string | undefined): string {
+    if (!stageId) return "unknown"
+    try {
+        return getStageLabel(stageId as PaperStageId)
+    } catch {
+        return stageId // fallback to raw stage ID
+    }
 }
 
 export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
@@ -212,6 +231,10 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
     const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
     const language = artifact.format ? formatToLanguage[artifact.format] : undefined
     const shouldRenderMarkdown = !isCodeArtifact
+    const isInvalidated = isArtifactInvalidated(artifact)
+    const invalidatedStageLabel = artifact.invalidatedByRewindToStage
+        ? getStageLabelSafe(artifact.invalidatedByRewindToStage)
+        : null
 
     return (
         <div className="flex flex-col h-full">
@@ -222,9 +245,41 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                         <TypeIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
                         <h2 className="font-semibold truncate">{artifact.title}</h2>
                     </div>
-                    <Badge variant="secondary" className="shrink-0 capitalize">
-                        {artifact.type}
-                    </Badge>
+                    {isInvalidated ? (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Badge
+                                    data-testid="artifact-type-badge"
+                                    variant="secondary"
+                                    className={cn(
+                                        "shrink-0 capitalize cursor-help",
+                                        "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                                    )}
+                                >
+                                    <AlertTriangle className="h-3 w-3 mr-1" data-testid="invalidation-indicator" />
+                                    {artifact.type}
+                                </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-[250px]">
+                                <p className="text-xs">
+                                    <strong>Artifact perlu direvisi</strong>
+                                    <br />
+                                    Di-invalidate pada {artifact.invalidatedAt ? formatDate(artifact.invalidatedAt) : "unknown"}
+                                    {invalidatedStageLabel && (
+                                        <> karena rewind ke tahap <strong>{invalidatedStageLabel}</strong></>
+                                    )}
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <Badge
+                            data-testid="artifact-type-badge"
+                            variant="secondary"
+                            className="shrink-0 capitalize"
+                        >
+                            {artifact.type}
+                        </Badge>
+                    )}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {/* Version dropdown */}
@@ -257,6 +312,22 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                     <p className="text-sm text-muted-foreground">{artifact.description}</p>
                 )}
             </div>
+
+            {/* Invalidation Warning Banner */}
+            {isInvalidated && (
+                <Alert variant="warning" className="mx-4 mt-2" data-testid="invalidation-warning">
+                    <AlertTriangle className="h-4 w-4" data-testid="invalidation-warning-icon" />
+                    <AlertDescription>
+                        <span className="font-medium">Artifact perlu di-update</span>
+                        {invalidatedStageLabel && (
+                            <span> karena rewind ke tahap <strong>{invalidatedStageLabel}</strong></span>
+                        )}
+                        <span className="block text-xs mt-1 text-amber-400/80">
+                            Gunakan chat untuk meminta AI memperbarui artifact ini.
+                        </span>
+                    </AlertDescription>
+                </Alert>
+            )}
 
             {/* Content or Editor */}
             {isEditing ? (

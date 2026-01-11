@@ -119,6 +119,48 @@ export const listByUser = queryGeneric({
 })
 
 /**
+ * Get invalidated artifacts by conversation
+ * Used to provide context to AI about artifacts that need updating after rewind
+ * Rewind Feature
+ */
+export const getInvalidatedByConversation = queryGeneric({
+  args: {
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+  },
+  handler: async ({ db }, { conversationId, userId }) => {
+    // Verify conversation exists and user owns it
+    const conversation = await db.get(conversationId)
+    if (!conversation) {
+      return []
+    }
+    if (conversation.userId !== userId) {
+      throw new Error("Tidak memiliki akses ke conversation ini")
+    }
+
+    // Query all artifacts for the conversation
+    const artifacts = await db
+      .query("artifacts")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+      .collect()
+
+    // Filter to only invalidated artifacts
+    const invalidatedArtifacts = artifacts.filter(
+      (artifact) => artifact.invalidatedAt !== undefined && artifact.invalidatedAt !== null
+    )
+
+    // Return minimal data needed for AI context
+    return invalidatedArtifacts.map((artifact) => ({
+      _id: artifact._id,
+      title: artifact.title,
+      type: artifact.type,
+      invalidatedAt: artifact.invalidatedAt,
+      invalidatedByRewindToStage: artifact.invalidatedByRewindToStage,
+    }))
+  },
+})
+
+/**
  * Get version history for an artifact
  * Traverses parentId chain to get all versions
  */
@@ -273,6 +315,8 @@ export const update = mutationGeneric({
     const newVersion = oldArtifact.version + 1
 
     // Create new version
+    // Note: New version does NOT inherit invalidation flags from old version
+    // This is intentional - updating an invalidated artifact creates a clean new version
     const newArtifactId = await db.insert("artifacts", {
       conversationId: oldArtifact.conversationId,
       userId: oldArtifact.userId,
@@ -286,6 +330,10 @@ export const update = mutationGeneric({
       parentId: artifactId, // Link to previous version
       createdAt: now,
       updatedAt: now,
+      // Rewind Feature: Auto-clear invalidation for new versions
+      // New version starts clean, even if previous version was invalidated
+      invalidatedAt: undefined,
+      invalidatedByRewindToStage: undefined,
     })
 
     return {
@@ -384,5 +432,44 @@ export const removeChain = mutationGeneric({
     }
 
     return { message: `${chainIds.length} versi artifact berhasil dihapus` }
+  },
+})
+
+// ============================================================================
+// REWIND FEATURE: INVALIDATION MANAGEMENT
+// ============================================================================
+
+/**
+ * Clear invalidation flags from an artifact
+ * Used when artifact is updated/revised after a rewind
+ * This is a simple patch operation (no new version created)
+ */
+export const clearInvalidation = mutationGeneric({
+  args: {
+    artifactId: v.id("artifacts"),
+    userId: v.id("users"),
+  },
+  handler: async ({ db }, { artifactId, userId }) => {
+    const artifact = await db.get(artifactId)
+    if (!artifact) {
+      throw new Error("Artifact tidak ditemukan")
+    }
+
+    // Permission check
+    if (artifact.userId !== userId) {
+      throw new Error("Tidak memiliki akses ke artifact ini")
+    }
+
+    // Clear invalidation flags
+    await db.patch(artifactId, {
+      invalidatedAt: undefined,
+      invalidatedByRewindToStage: undefined,
+    })
+
+    return {
+      success: true,
+      artifactId,
+      message: "Invalidation flags berhasil dihapus",
+    }
   },
 })
