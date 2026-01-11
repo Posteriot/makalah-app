@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Loader2Icon, PlusIcon, MessageSquareIcon, TrashIcon } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Loader2Icon, PlusIcon, MessageSquareIcon, TrashIcon, PencilIcon } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery } from "convex/react"
@@ -12,6 +13,7 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { PaperSessionBadge } from "@/components/paper"
 import { getStageNumber, type PaperStageId } from "../../../convex/paperSessions/constants"
 import { formatRelativeTime } from "@/lib/date/formatters"
+import { toast } from "sonner"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -22,6 +24,13 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuSeparator,
+    ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 
 interface ChatSidebarProps {
     conversations: Array<{
@@ -32,6 +41,7 @@ interface ChatSidebarProps {
     currentConversationId: string | null
     onNewChat: () => void
     onDeleteConversation: (id: Id<"conversations">) => void
+    onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
     className?: string
     onCloseMobile?: () => void
     isLoading?: boolean
@@ -43,6 +53,7 @@ export function ChatSidebar({
     currentConversationId,
     onNewChat,
     onDeleteConversation,
+    onUpdateConversationTitle,
     className,
     onCloseMobile,
     isLoading,
@@ -67,6 +78,78 @@ export function ChatSidebar({
         id: Id<"conversations">
         title: string
     } | null>(null)
+
+    // State untuk inline edit mode
+    const [editingId, setEditingId] = useState<Id<"conversations"> | null>(null)
+    const [editValue, setEditValue] = useState("")
+    const [isUpdating, setIsUpdating] = useState(false)
+    const editInputRef = useRef<HTMLInputElement>(null)
+
+    // Auto-focus input saat edit mode aktif
+    useEffect(() => {
+        if (editingId && editInputRef.current) {
+            editInputRef.current.focus()
+            editInputRef.current.select()
+        }
+    }, [editingId])
+
+    // Handler untuk memulai edit mode
+    const handleStartEdit = (id: Id<"conversations">, title: string) => {
+        setEditingId(id)
+        setEditValue(title)
+    }
+
+    // Handler untuk menyimpan edit
+    const handleSaveEdit = async () => {
+        if (!editingId || !onUpdateConversationTitle) {
+            setEditingId(null)
+            return
+        }
+
+        const trimmedValue = editValue.trim()
+        const originalTitle = conversations.find(c => c._id === editingId)?.title ?? ""
+
+        // Skip jika kosong atau tidak berubah
+        if (!trimmedValue || trimmedValue === originalTitle) {
+            setEditingId(null)
+            setEditValue("")
+            return
+        }
+
+        // Validation: max 50 characters
+        if (trimmedValue.length > 50) {
+            toast.error("Judul maksimal 50 karakter")
+            return
+        }
+
+        setIsUpdating(true)
+        try {
+            await onUpdateConversationTitle(editingId, trimmedValue)
+        } catch {
+            toast.error("Gagal menyimpan judul")
+        } finally {
+            setIsUpdating(false)
+            setEditingId(null)
+            setEditValue("")
+        }
+    }
+
+    // Handler untuk cancel edit
+    const handleCancelEdit = () => {
+        setEditingId(null)
+        setEditValue("")
+    }
+
+    // Handler keyboard untuk edit input
+    const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            e.preventDefault()
+            handleSaveEdit()
+        } else if (e.key === "Escape") {
+            e.preventDefault()
+            handleCancelEdit()
+        }
+    }
 
     // Handler untuk membuka dialog konfirmasi delete
     const handleDeleteClick = (id: Id<"conversations">, title: string) => {
@@ -132,52 +215,161 @@ export function ChatSidebar({
                 ) : (
                     conversations.map((conv) => {
                         const paperSession = paperSessionMap.get(conv._id)
-                        return (
-                            <Link
-                                key={conv._id}
-                                href={`/chat/${conv._id}`}
-                                onClick={() => onCloseMobile?.()}
-                                className={`group flex items-center w-full p-2 rounded-lg mb-1 transition-colors text-left ${currentConversationId === conv._id
-                                    ? "bg-accent text-accent-foreground"
-                                    : "hover:bg-accent/50"
-                                    }`}
-                                aria-label={`Select conversation: ${conv.title}`}
-                            >
+                        const isEditing = editingId === conv._id
+                        const hasPaperSession = !!paperSession
+                        const isExceedingMaxLength = isEditing && editValue.length > 50
+
+                        // Shared classes for both Link and div
+                        const itemClasses = `group flex items-center w-full p-2 rounded-lg mb-1 transition-colors text-left ${currentConversationId === conv._id
+                            ? "bg-accent text-accent-foreground"
+                            : "hover:bg-accent/50"
+                        }`
+
+                        // Content yang sama untuk edit mode dan normal mode
+                        const renderContent = () => (
+                            <>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-medium text-sm truncate">{conv.title}</span>
-                                        {paperSession && (
-                                                <PaperSessionBadge
-                                                    stageNumber={getStageNumber(paperSession.currentStage as PaperStageId | "completed")}
-                                                />
+                                        {isEditing ? (
+                                            <Input
+                                                ref={editInputRef}
+                                                value={editValue}
+                                                onChange={(e) => setEditValue(e.target.value)}
+                                                onKeyDown={handleEditKeyDown}
+                                                onBlur={handleSaveEdit}
+                                                disabled={isUpdating}
+                                                className={`h-6 text-sm px-1 py-0 font-medium ${isExceedingMaxLength ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                                                aria-invalid={isExceedingMaxLength}
+                                            />
+                                        ) : (
+                                            <span
+                                                className="font-medium text-sm truncate"
+                                                onDoubleClick={(e) => {
+                                                    if (hasPaperSession) return
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                    handleStartEdit(conv._id, conv.title)
+                                                }}
+                                            >
+                                                {conv.title}
+                                            </span>
+                                        )}
+                                        {paperSession && !isEditing && (
+                                            <PaperSessionBadge
+                                                stageNumber={getStageNumber(paperSession.currentStage as PaperStageId | "completed")}
+                                            />
                                         )}
                                     </div>
-                                    <div className="text-xs text-muted-foreground">
-                                        {formatRelativeTime(conv.lastMessageAt)}
+                                    {!isEditing && (
+                                        <div className="text-xs text-muted-foreground">
+                                            {formatRelativeTime(conv.lastMessageAt)}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Action buttons - hidden saat editing */}
+                                {!isEditing && (
+                                    <div className="flex items-center gap-0.5">
+                                        {/* Edit button - hidden untuk paper session */}
+                                        {!hasPaperSession && (
+                                            <div
+                                                role="button"
+                                                tabIndex={0}
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                }}
+                                                onClick={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                    handleStartEdit(conv._id, conv.title)
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter" || e.key === " ") {
+                                                        e.preventDefault()
+                                                        e.stopPropagation()
+                                                        handleStartEdit(conv._id, conv.title)
+                                                    }
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-accent rounded-md transition-all focus:opacity-100"
+                                                title="Edit judul"
+                                                aria-label="Edit judul"
+                                            >
+                                                <PencilIcon className="h-4 w-4" />
+                                            </div>
+                                        )}
+                                        {/* Delete button */}
+                                        <div
+                                            role="button"
+                                            tabIndex={0}
+                                            onMouseDown={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                            }}
+                                            onClick={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                                handleDeleteClick(conv._id, conv.title)
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" || e.key === " ") {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                    handleDeleteClick(conv._id, conv.title)
+                                                }
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all focus:opacity-100"
+                                            title="Hapus percakapan"
+                                            aria-label="Hapus percakapan"
+                                        >
+                                            <TrashIcon className="h-4 w-4" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                        handleDeleteClick(conv._id, conv.title)
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                            handleDeleteClick(conv._id, conv.title)
-                                        }
-                                    }}
-                                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all focus:opacity-100"
-                                    title="Hapus percakapan"
-                                    aria-label="Hapus percakapan"
-                                >
-                                    <TrashIcon className="h-4 w-4" />
-                                </div>
-                            </Link>
+                                )}
+                                {/* Loading indicator saat updating */}
+                                {isEditing && isUpdating && (
+                                    <Loader2Icon className="h-4 w-4 animate-spin text-muted-foreground" />
+                                )}
+                            </>
+                        )
+
+                        return (
+                            <ContextMenu key={conv._id}>
+                                <ContextMenuTrigger asChild>
+                                    {isEditing ? (
+                                        // Saat editing: gunakan div, BUKAN Link
+                                        <div className={itemClasses}>
+                                            {renderContent()}
+                                        </div>
+                                    ) : (
+                                        // Saat tidak editing: gunakan Link untuk navigasi
+                                        <Link
+                                            href={`/chat/${conv._id}`}
+                                            onClick={() => onCloseMobile?.()}
+                                            className={itemClasses}
+                                            aria-label={`Select conversation: ${conv.title}`}
+                                        >
+                                            {renderContent()}
+                                        </Link>
+                                    )}
+                                </ContextMenuTrigger>
+                                <ContextMenuContent>
+                                    <ContextMenuItem
+                                        onClick={() => handleStartEdit(conv._id, conv.title)}
+                                        disabled={hasPaperSession}
+                                    >
+                                        <PencilIcon className="h-4 w-4 mr-2" />
+                                        Edit Judul
+                                    </ContextMenuItem>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuItem
+                                        onClick={() => handleDeleteClick(conv._id, conv.title)}
+                                        className="text-destructive focus:text-destructive"
+                                    >
+                                        <TrashIcon className="h-4 w-4 mr-2" />
+                                        Hapus
+                                    </ContextMenuItem>
+                                </ContextMenuContent>
+                            </ContextMenu>
                         )
                     })
                 )}

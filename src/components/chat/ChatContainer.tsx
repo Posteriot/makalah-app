@@ -20,7 +20,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     const [artifactPanelOpen, setArtifactPanelOpen] = useState(false)
     const [selectedArtifactId, setSelectedArtifactId] = useState<Id<"artifacts"> | null>(null)
     const [isCreating, setIsCreating] = useState(false)
-    const { conversations, createNewConversation, deleteConversation, isLoading } = useConversations()
+    const { conversations, createNewConversation, deleteConversation, updateConversationTitle, isLoading } = useConversations()
 
     // Handler when artifact is created or selected
     const handleArtifactSelect = (artifactId: Id<"artifacts">) => {
@@ -63,6 +63,10 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
         }
     }
 
+    const handleUpdateConversationTitle = async (id: Id<"conversations">, title: string) => {
+        await updateConversationTitle(id, title)
+    }
+
     return (
         <div className="flex h-[calc(100vh-80px)]">
             {/* Desktop Sidebar */}
@@ -72,6 +76,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
                 currentConversationId={conversationId}
                 onNewChat={handleNewChat}
                 onDeleteConversation={handleDeleteConversation}
+                onUpdateConversationTitle={handleUpdateConversationTitle}
                 isLoading={isLoading}
                 isCreating={isCreating}
             />
@@ -88,6 +93,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
                         currentConversationId={conversationId}
                         onNewChat={handleNewChat}
                         onDeleteConversation={handleDeleteConversation}
+                        onUpdateConversationTitle={handleUpdateConversationTitle}
                         onCloseMobile={() => setIsMobileOpen(false)}
                         isLoading={isLoading}
                         isCreating={isCreating}

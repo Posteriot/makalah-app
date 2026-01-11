@@ -24,6 +24,7 @@ export function useConversations() {
     // Create conversation mutation
     const createConversationMutation = useMutation(api.conversations.createConversation)
     const deleteConversationMutation = useMutation(api.conversations.deleteConversation)
+    const updateTitleMutation = useMutation(api.conversations.updateConversationTitleFromUser)
 
     const createNewConversation = async () => {
         if (!userId) return null
@@ -38,10 +39,28 @@ export function useConversations() {
         await deleteConversationMutation({ conversationId })
     }
 
+    const updateConversationTitle = async (
+        conversationId: Id<"conversations">,
+        title: string
+    ): Promise<{ success: boolean }> => {
+        if (!userId) return { success: false }
+        try {
+            const result = await updateTitleMutation({
+                conversationId,
+                userId,
+                title,
+            })
+            return result ?? { success: true }
+        } catch {
+            return { success: false }
+        }
+    }
+
     return {
         conversations: conversations ?? [],
         createNewConversation,
         deleteConversation,
+        updateConversationTitle,
         isLoading: conversations === undefined,
         userId // exposing userId might be useful
     }
