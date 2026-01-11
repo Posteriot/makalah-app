@@ -1,9 +1,13 @@
 # Task Breakdown: Bahasa Style Refrasa Tool
 
 ## Overview
-Total Tasks: 35 sub-tasks dalam 6 task groups
+Total Tasks: 42 sub-tasks dalam 6 task groups
 
 Fitur ini mengintegrasikan `bahasa_style` linter yang sudah ada ke dalam aplikasi sebagai tool "Refrasa" yang di-trigger oleh user untuk memperbaiki gaya penulisan akademis Bahasa Indonesia.
+
+**Goal Positioning:** "Writing Quality Improver untuk Bahasa Indonesia Akademis"
+- Fokus: tulisan lebih natural, tidak terkesan template
+- Bonus: kebetulan juga lolos detector karena lebih natural
 
 ---
 
@@ -48,6 +52,45 @@ Fitur ini mengintegrasikan `bahasa_style` linter yang sudah ada ke dalam aplikas
     - Pastikan BahasaStyle.validate() masih berfungsi
     - Jalankan existing tests di `src/tools/bahasa_style/tests/`
     - Verifikasi linter tidak break
+  - [ ] 0.7 Buat Vocabulary Diversity Module
+    - Implementasi calculateTTR() function
+    - Buat Indonesian stop words list (dan, yang, di, ke, dari, untuk, dengan, dll)
+    - Implementasi checkVocabularyDiversity() dengan threshold: WARNING < 0.40, CRITICAL < 0.30
+    - File: `src/tools/bahasa_style/modules/vocabulary.ts`
+  - [ ] 0.8 Buat N-gram Analysis Module
+    - Implementasi extractNgrams() untuk bigram dan trigram
+    - Implementasi countNgramFrequencies() dengan Map
+    - Implementasi checkNgramRepetition() dengan threshold > 2x = WARNING
+    - Tambah AI-specific patterns: "dalam konteks ini", "perlu dicatat bahwa", "hal ini menunjukkan", "dapat disimpulkan bahwa", "berdasarkan analisis"
+    - File: `src/tools/bahasa_style/modules/ngram.ts`
+  - [ ] 0.9 Buat Paragraph Analysis Module
+    - Implementasi splitIntoParagraphs() by double newline
+    - Implementasi calculateParagraphVariance() dengan coefficient of variation
+    - Implementasi checkParagraphUniformity() dengan threshold variance < 0.15 = WARNING
+    - File: `src/tools/bahasa_style/modules/paragraph.ts`
+  - [ ] 0.10 Buat Hedging/Certainty Balance Check
+    - Define certainty markers: "pasti", "tentu", "jelas", "sudah pasti", "tidak diragukan"
+    - Define hedging markers: "mungkin", "barangkali", "tampaknya", "cenderung", "kemungkinan"
+    - Implementasi checkHedgingBalance() per paragraf
+    - WARNING jika 100% certainty tanpa hedging dalam paragraf opini
+    - File: `src/tools/bahasa_style/modules/paragraph.ts` (same file as 0.9)
+  - [ ] 0.11 Expand FORBIDDEN_PATTERNS dengan AI-specific patterns
+    - Tambah pattern: `/dalam hal ini/i` - filler phrase
+    - Tambah pattern: `/penting untuk dicatat/i` - AI crutch
+    - Tambah pattern: `/sebagai kesimpulan/i` - formulaic ending
+    - Tambah pattern: `/di sisi lain/i` - translated "on the other hand"
+    - Tambah pattern: `/lebih lanjut/i` - translated "furthermore"
+    - Semua dengan severity WARNING, category 'ai-pattern', dan transformationHint
+    - File: `src/tools/bahasa_style/core/definitions.ts`
+  - [ ] 0.12 Integrasikan semua modules ke linter.ts
+    - Import vocabulary, ngram, paragraph modules
+    - Tambahkan checks ke validateText() pipeline
+    - Ensure semua new checks contribute ke score calculation
+    - File: `src/tools/bahasa_style/modules/linter.ts`
+  - [ ] 0.13 Update type definitions untuk naturalness metrics
+    - Tambah IssueType baru: 'vocabulary_diversity', 'ngram_repetition', 'paragraph_uniformity', 'hedging_imbalance'
+    - Update ValidationIssue dengan metadata untuk metrics (TTR value, variance value, etc)
+    - File: `src/tools/bahasa_style/core/types.ts`
 
 **Acceptance Criteria:**
 - Semua 6 FORBIDDEN_PATTERNS punya examples dan transformationHint
@@ -55,6 +98,11 @@ Fitur ini mengintegrasikan `bahasa_style` linter yang sudah ada ke dalam aplikas
 - Prompt template < 2000 tokens
 - Existing linter tetap berfungsi (backward compatible)
 - Manual test: `npx tsx src/tools/bahasa_style/cli_check.ts "test text"` masih works
+- Vocabulary diversity (TTR) dihitung dan threshold working
+- N-gram repetition detection working untuk bigram/trigram
+- Paragraph variance check working untuk teks >= 3 paragraf
+- Hedging/certainty balance check working
+- 5 AI-specific patterns baru ditambahkan ke FORBIDDEN_PATTERNS
 
 ---
 
@@ -369,10 +417,13 @@ src/
 │       └── useTextSelection.ts
 └── tools/bahasa_style/
     ├── core/
-    │   ├── types.ts                # Enriched type definitions (MODIFIED - Task 0.1)
-    │   └── definitions.ts          # Enriched rules (MODIFIED - Task 0.2, 0.3, 0.4)
+    │   ├── types.ts                # Enriched type definitions (MODIFIED - Task 0.1, 0.13)
+    │   └── definitions.ts          # Enriched rules + AI patterns (MODIFIED - Task 0.2, 0.3, 0.4, 0.11)
     └── modules/
-        └── linter.ts               # Modifikasi scoring formula
+        ├── linter.ts               # Modifikasi scoring formula + integration (MODIFIED - Task 0.12)
+        ├── vocabulary.ts           # NEW: TTR & vocabulary diversity (Task 0.7)
+        ├── ngram.ts                # NEW: N-gram repetition detection (Task 0.8)
+        └── paragraph.ts            # NEW: Paragraph variance & hedging (Task 0.9, 0.10)
 ```
 
 ---
@@ -411,3 +462,34 @@ src/
 - Score badge: kombinasi warna DAN icon
 - Keyboard navigation untuk dialog dan buttons
 - ARIA labels yang tepat untuk semua interactive elements
+
+### Enhanced Naturalness Metrics Strategy
+
+Tool ini menggunakan pendekatan multi-layer untuk menghasilkan tulisan yang natural:
+
+**Layer 1: Pattern Detection (Existing)**
+- Forbidden patterns (Indonenglish, connectors)
+- Budgeted words (crutch words)
+- Sentence variance (burstiness)
+
+**Layer 2: Vocabulary Analysis (NEW)**
+- Type-Token Ratio (TTR) untuk vocabulary diversity
+- Threshold: WARNING < 0.40, CRITICAL < 0.30
+- Stop words excluded dari perhitungan
+
+**Layer 3: Repetition Analysis (NEW)**
+- N-gram (bigram/trigram) repetition detection
+- AI-specific phrase patterns ("dalam konteks ini", etc)
+- Threshold: > 2x occurrence = WARNING
+
+**Layer 4: Structure Analysis (NEW)**
+- Paragraph length variance
+- Hedging/certainty balance per paragraf
+- First-person encouragement (INFO level)
+
+**Scoring Impact:**
+- Layer 1: CRITICAL = -15, WARNING = -5 (existing)
+- Layer 2-4: WARNING = -5 (new metrics are WARNING-level only in v1)
+
+**Why This Works:**
+AI text tends to have: low TTR, repetitive phrases, uniform structure, overly certain tone. By detecting and flagging these patterns, we encourage more human-like writing.

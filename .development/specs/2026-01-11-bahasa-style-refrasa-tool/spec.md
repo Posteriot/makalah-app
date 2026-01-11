@@ -68,6 +68,58 @@ Mengintegrasikan linter `bahasa_style` yang sudah ada ke dalam aplikasi sebagai 
 - Minimum score: 0
 - Score dihitung di server-side (API route) untuk menghindari import `natural` di client bundle
 
+**Enhanced Naturalness Metrics**
+
+Tool ini tidak hanya mendeteksi pattern yang salah, tapi juga mengukur naturalness tulisan secara holistik. Metrics berikut membantu menghasilkan tulisan yang lebih natural dan tidak terkesan template/AI-generated.
+
+*Vocabulary Diversity (Type-Token Ratio)*
+- Mengukur rasio kata unik terhadap total kata
+- Formula: `TTR = unique_words / total_words`
+- Threshold: WARNING jika TTR < 0.40, CRITICAL jika TTR < 0.30
+- AI cenderung menghasilkan TTR rendah karena vocabulary yang repetitif
+- Implementasi: Hitung setelah tokenization, exclude stop words dari perhitungan
+
+*N-gram Repetition Detection*
+- Deteksi bigram (2 kata) dan trigram (3 kata) yang berulang
+- Threshold: WARNING jika phrase muncul > 2x dalam teks < 500 kata
+- Pattern umum AI yang harus di-flag:
+  - "dalam konteks ini"
+  - "perlu dicatat bahwa"
+  - "hal ini menunjukkan"
+  - "dapat disimpulkan bahwa"
+  - "berdasarkan analisis"
+- Implementasi: Sliding window untuk extract n-grams, count frequencies
+
+*Paragraph Variance Analysis*
+- Mengukur variasi panjang paragraf
+- Formula: `variance = stddev(paragraph_lengths) / mean(paragraph_lengths)`
+- Threshold: WARNING jika variance < 0.15 (paragraf terlalu seragam)
+- AI cenderung menghasilkan paragraf dengan panjang yang mirip
+- Implementasi: Split by double newline, hitung kata per paragraf
+
+*First-Person Strategic Encouragement*
+- Untuk tulisan akademis, strategic use of first person menambah authenticity
+- Deteksi absence of first person dalam teks panjang (> 300 kata)
+- Suggestion: "Pertimbangkan menggunakan 'saya berpendapat' atau 'menurut pengamatan saya' untuk menambah voice personal"
+- Severity: INFO (tidak mempengaruhi skor, hanya suggestion)
+- Context-aware: hanya untuk bagian opini/interpretasi, bukan metodologi
+
+*Hedging & Certainty Balance*
+- Codify rules dari constitution tentang kepastian akademis
+- Certainty markers (overuse = AI signal): "pasti", "tentu", "jelas", "sudah pasti"
+- Hedging markers (natural academic): "mungkin", "barangkali", "tampaknya", "cenderung"
+- Ideal ratio: ~30-40% hedging dalam kalimat opini/interpretasi
+- WARNING jika 100% certainty tanpa hedging dalam paragraf opini
+
+*Additional Forbidden Patterns (AI-Specific)*
+- Expand FORBIDDEN_PATTERNS dengan pattern yang sangat khas AI:
+  - `/dalam hal ini/i` - filler phrase
+  - `/penting untuk dicatat/i` - AI crutch
+  - `/sebagai kesimpulan/i` - formulaic ending
+  - `/di sisi lain/i` - translated "on the other hand"
+  - `/lebih lanjut/i` - translated "furthermore"
+- Semua dengan severity WARNING dan transformationHint
+
 **Enriched Rule Structure**
 - Upgrade existing rules di `definitions.ts` dengan structure baru
 - Setiap rule WAJIB punya `examples` array dengan before/after transformations

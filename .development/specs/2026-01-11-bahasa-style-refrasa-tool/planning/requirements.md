@@ -243,6 +243,51 @@ Berdasarkan raw-idea.md, arsitektur visual yang disetujui:
   - [ ] Tidak ada dependency ke state workflow untuk memproses request
   - [ ] Ada test otomatis untuk dua skenario akses agent lintas konteks
 
+#### FR-9: Vocabulary Diversity Check
+- **Deskripsi:** Mengukur keragaman vocabulary dalam tulisan
+- **Detail:**
+  - Hitung Type-Token Ratio (TTR): unique words / total words
+  - Exclude stop words dari perhitungan
+  - Threshold: WARNING jika TTR < 0.40, CRITICAL jika TTR < 0.30
+- **Acceptance Criteria:**
+  - [ ] TTR dihitung untuk setiap validasi
+  - [ ] Issue ditambahkan jika TTR di bawah threshold
+  - [ ] Suggestion berisi rekomendasi untuk diversifikasi vocabulary
+
+#### FR-10: N-gram Repetition Detection
+- **Deskripsi:** Mendeteksi phrase yang berulang (bigram/trigram)
+- **Detail:**
+  - Extract bigram dan trigram dari teks
+  - Flag phrase yang muncul > 2x dalam teks < 500 kata
+  - Termasuk pattern AI-specific seperti "dalam konteks ini", "perlu dicatat bahwa"
+- **Acceptance Criteria:**
+  - [ ] Bigram dan trigram terdeteksi dengan benar
+  - [ ] Repetitive phrases di-flag sebagai WARNING
+  - [ ] Suggestion berisi alternatif phrasing
+
+#### FR-11: Paragraph Variance Check
+- **Deskripsi:** Mengukur variasi panjang paragraf
+- **Detail:**
+  - Hitung coefficient of variation: stddev / mean paragraph lengths
+  - Threshold: WARNING jika variance < 0.15 (terlalu seragam)
+  - Minimal 3 paragraf untuk check ini aktif
+- **Acceptance Criteria:**
+  - [ ] Variance dihitung untuk teks dengan >= 3 paragraf
+  - [ ] Issue ditambahkan jika variance terlalu rendah
+  - [ ] Suggestion merekomendasikan variasi panjang paragraf
+
+#### FR-12: Hedging & Certainty Balance
+- **Deskripsi:** Mengukur keseimbangan antara certainty dan hedging markers
+- **Detail:**
+  - Certainty markers: "pasti", "tentu", "jelas", "sudah pasti"
+  - Hedging markers: "mungkin", "barangkali", "tampaknya", "cenderung"
+  - WARNING jika 100% certainty tanpa hedging dalam paragraf opini
+  - Target: ~30-40% hedging dalam kalimat interpretasi
+- **Acceptance Criteria:**
+  - [ ] Certainty dan hedging markers terdeteksi
+  - [ ] Ratio dihitung per paragraf
+  - [ ] Issue ditambahkan jika balance tidak natural
+
 ---
 
 ### Non-Functional Requirements
@@ -374,6 +419,72 @@ Berdasarkan raw-idea.md, arsitektur visual yang disetujui:
   - [ ] Prompt template menghasilkan consistent transformations
   - [ ] Prompt < 2000 tokens (excluding input text)
   - [ ] Examples dari enriched rules digunakan dalam prompt
+
+#### TR-7: Vocabulary Diversity Module
+- **Deskripsi:** Module untuk menghitung vocabulary diversity metrics
+- **Detail:**
+  - Implementasi Type-Token Ratio (TTR) calculator
+  - Stop words list untuk Bahasa Indonesia
+  - Integration dengan existing linter pipeline
+- **File:** `src/tools/bahasa_style/modules/vocabulary.ts`
+- **Functions:**
+  ```typescript
+  function calculateTTR(words: string[]): number
+  function getUniqueWords(words: string[], excludeStopWords?: boolean): string[]
+  function checkVocabularyDiversity(text: string): ValidationIssue | null
+  ```
+- **Acceptance Criteria:**
+  - [ ] TTR calculation accurate (verified dengan manual count)
+  - [ ] Stop words properly excluded
+  - [ ] Issue generated dengan threshold yang tepat
+
+#### TR-8: N-gram Analysis Module
+- **Deskripsi:** Module untuk deteksi n-gram repetition
+- **Detail:**
+  - Extract bigrams dan trigrams dari teks
+  - Count frequencies dan detect repetition
+  - Include AI-specific phrase patterns
+- **File:** `src/tools/bahasa_style/modules/ngram.ts`
+- **Functions:**
+  ```typescript
+  function extractNgrams(words: string[], n: number): string[]
+  function countNgramFrequencies(ngrams: string[]): Map<string, number>
+  function checkNgramRepetition(text: string): ValidationIssue[]
+  ```
+- **AI-Specific Patterns to Include:**
+  - "dalam konteks ini"
+  - "perlu dicatat bahwa"
+  - "hal ini menunjukkan"
+  - "dapat disimpulkan bahwa"
+  - "berdasarkan analisis"
+  - "dalam hal ini"
+  - "penting untuk dicatat"
+- **Acceptance Criteria:**
+  - [ ] N-grams extracted correctly
+  - [ ] Repetition threshold working (> 2x = warning)
+  - [ ] AI-specific patterns flagged appropriately
+
+#### TR-9: Paragraph Analysis Module
+- **Deskripsi:** Module untuk analisis level paragraf
+- **Detail:**
+  - Split teks menjadi paragraf
+  - Hitung variance panjang paragraf
+  - Detect hedging/certainty balance per paragraf
+- **File:** `src/tools/bahasa_style/modules/paragraph.ts`
+- **Functions:**
+  ```typescript
+  function splitIntoParagraphs(text: string): string[]
+  function calculateParagraphVariance(paragraphs: string[]): number
+  function checkParagraphUniformity(text: string): ValidationIssue | null
+  function checkHedgingBalance(paragraph: string): ValidationIssue | null
+  ```
+- **Markers:**
+  - Certainty: "pasti", "tentu", "jelas", "sudah pasti", "tidak diragukan"
+  - Hedging: "mungkin", "barangkali", "tampaknya", "cenderung", "kemungkinan"
+- **Acceptance Criteria:**
+  - [ ] Paragraphs split correctly (by double newline)
+  - [ ] Variance calculation accurate
+  - [ ] Hedging/certainty detection working
 
 ---
 
