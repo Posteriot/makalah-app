@@ -102,11 +102,6 @@ export async function getSystemPrompt(): Promise<string> {
     }
 }
 
-export const CHAT_CONFIG = {
-    model: process.env.MODEL ?? "google/gemini-2.5-flash-lite",
-    temperature: 0.7,
-    maxTokens: 2048,
-    topP: 1,
-    frequencyPenalty: 0,
-    presencePenalty: 0,
-}
+// CHAT_CONFIG removed - model/provider settings are now managed via Admin Panel (database)
+// Temperature, topP, etc. are also in aiProviderConfigs table
+// See: src/lib/ai/streaming.ts for getProviderSettings()

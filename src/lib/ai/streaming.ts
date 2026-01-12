@@ -13,44 +13,52 @@ if (!process.env.AI_GATEWAY_API_KEY && process.env.VERCEL_AI_GATEWAY_API_KEY) {
 // ============================================================================
 
 /**
+ * Custom error for missing AI provider configuration
+ * Thrown when no active config exists in database
+ */
+export class AIProviderConfigError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "AIProviderConfigError"
+  }
+}
+
+/**
  * Load AI provider configuration from cache/database
- * Falls back to hardcoded config if no active config in DB
+ *
+ * IMPORTANT: Database is the SINGLE SOURCE OF TRUTH.
+ * No hardcoded fallback - if no active config exists, throws error.
+ * This ensures admin panel settings are always respected.
+ *
+ * @throws {AIProviderConfigError} If no active config in database
  */
 async function getProviderConfig() {
   const config = await configCache.get()
 
-  // Fallback to hardcoded config if no active config in database
+  // No hardcoded fallback - database is single source of truth
+  // If no active config, fail explicitly so admin knows to configure
   if (!config) {
-    return {
-      primary: {
-        provider: "vercel-gateway",
-        model: "google/gemini-2.5-flash-lite", // Format: provider/model-id
-        apiKey: process.env.VERCEL_AI_GATEWAY_API_KEY!,
-      },
-      fallback: {
-        provider: "openrouter",
-        model: "google/gemini-2.5-flash-lite",
-        apiKey: process.env.OPENROUTER_API_KEY!,
-      },
-      temperature: 0.7,
-      topP: undefined,
-    }
+    throw new AIProviderConfigError(
+      "No active AI provider configuration found. " +
+      "Please activate a configuration in Admin Panel → AI Providers."
+    )
   }
 
-  // Use API keys from database config (stored as plain text)
+  // Use config from database (single source of truth)
   return {
     primary: {
       provider: config.primaryProvider,
       model: config.primaryModel,
-      apiKey: config.primaryApiKey, // Plain text from DB
+      apiKey: config.primaryApiKey,
     },
     fallback: {
       provider: config.fallbackProvider,
       model: config.fallbackModel,
-      apiKey: config.fallbackApiKey, // Plain text from DB
+      apiKey: config.fallbackApiKey,
     },
     temperature: config.temperature,
     topP: config.topP,
+    maxTokens: config.maxTokens,
   }
 }
 
@@ -172,6 +180,25 @@ export async function getProviderSettings() {
   return {
     temperature: config.temperature,
     topP: config.topP,
+    maxTokens: config.maxTokens,
+  }
+}
+
+/**
+ * Get model names from active config (for metadata/logging).
+ * Returns provider and model strings, not model instances.
+ */
+export async function getModelNames() {
+  const config = await getProviderConfig()
+  return {
+    primary: {
+      provider: config.primary.provider,
+      model: config.primary.model,
+    },
+    fallback: {
+      provider: config.fallback.provider,
+      model: config.fallback.model,
+    },
   }
 }
 

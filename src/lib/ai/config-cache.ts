@@ -15,6 +15,7 @@ export interface AIProviderConfig {
   fallbackApiKey: string // Plain text
   temperature: number
   topP?: number
+  maxTokens?: number
   version: number
   isActive: boolean
   createdBy: Id<"users">

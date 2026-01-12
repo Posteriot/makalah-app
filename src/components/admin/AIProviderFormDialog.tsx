@@ -134,6 +134,7 @@ interface AIProviderConfig {
   fallbackModel: string
   temperature: number
   topP?: number
+  maxTokens?: number
   version: number
 }
 
@@ -171,6 +172,7 @@ export function AIProviderFormDialog({
   // AI settings
   const [temperature, setTemperature] = useState(0.7)
   const [topP, setTopP] = useState<number | undefined>(undefined)
+  const [maxTokens, setMaxTokens] = useState<number | undefined>(undefined)
 
   // UI state
   const [isLoading, setIsLoading] = useState(false)
@@ -204,6 +206,7 @@ export function AIProviderFormDialog({
         )
         setTemperature(config.temperature)
         setTopP(config.topP)
+        setMaxTokens(config.maxTokens)
         // API keys: tidak di-populate (security)
         setPrimaryApiKey("")
         setFallbackApiKey("")
@@ -221,6 +224,7 @@ export function AIProviderFormDialog({
         setFallbackApiKey("")
         setTemperature(0.7)
         setTopP(undefined)
+        setMaxTokens(undefined)
       }
       // Reset validation state
       setPrimaryValidation("idle")
@@ -368,6 +372,11 @@ export function AIProviderFormDialog({
       return
     }
 
+    if (maxTokens !== undefined && maxTokens <= 0) {
+      toast.error("Max Tokens harus lebih dari 0")
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -379,6 +388,7 @@ export function AIProviderFormDialog({
           configId: config._id,
           temperature,
           topP,
+          maxTokens,
         }
 
         // Only update fields that changed
@@ -409,6 +419,7 @@ export function AIProviderFormDialog({
           fallbackApiKey,
           temperature,
           topP,
+          maxTokens,
         })
         toast.success(result.message)
       }
@@ -431,6 +442,7 @@ export function AIProviderFormDialog({
     fallbackModel !== config.fallbackModel ||
     temperature !== config.temperature ||
     topP !== config.topP ||
+    maxTokens !== config.maxTokens ||
     primaryApiKey.trim() !== "" ||
     fallbackApiKey.trim() !== ""
     : name.trim() !== "" && primaryApiKey.trim() !== "" && fallbackApiKey.trim() !== ""
@@ -686,7 +698,7 @@ export function AIProviderFormDialog({
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">AI Settings</h3>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="temperature">
                   Temperature (0-2) <span className="text-destructive">*</span>
@@ -714,6 +726,22 @@ export function AIProviderFormDialog({
                   value={topP ?? ""}
                   onChange={(e) =>
                     setTopP(e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  placeholder="Opsional"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="maxTokens">Max Tokens (Opsional)</Label>
+                <Input
+                  id="maxTokens"
+                  type="number"
+                  step="100"
+                  min="1"
+                  value={maxTokens ?? ""}
+                  onChange={(e) =>
+                    setMaxTokens(e.target.value ? parseInt(e.target.value, 10) : undefined)
                   }
                   placeholder="Opsional"
                   disabled={isLoading}

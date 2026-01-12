@@ -116,6 +116,7 @@ export const createConfig = mutation({
     fallbackApiKey: v.string(), // Plain text
     temperature: v.number(),
     topP: v.optional(v.number()),
+    maxTokens: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
@@ -144,6 +145,7 @@ export const createConfig = mutation({
       fallbackApiKey: args.fallbackApiKey, // Store plain text
       temperature: args.temperature,
       topP: args.topP,
+      maxTokens: args.maxTokens,
       version: 1,
       isActive: false, // Not active by default
       parentId: undefined,
@@ -180,6 +182,7 @@ export const updateConfig = mutation({
     fallbackApiKey: v.optional(v.string()), // Optional - uses existing if not provided
     temperature: v.optional(v.number()),
     topP: v.optional(v.number()),
+    maxTokens: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
@@ -200,6 +203,7 @@ export const updateConfig = mutation({
     const fallbackApiKey = args.fallbackApiKey?.trim() || oldConfig.fallbackApiKey
     const temperature = args.temperature ?? oldConfig.temperature
     const topP = args.topP ?? oldConfig.topP
+    const maxTokens = args.maxTokens ?? oldConfig.maxTokens
 
     // Validate inputs
     if (!name.trim()) {
@@ -228,6 +232,7 @@ export const updateConfig = mutation({
       fallbackApiKey,
       temperature,
       topP,
+      maxTokens,
       version: newVersion,
       isActive: false, // Not active yet
       parentId: args.configId,
@@ -323,6 +328,7 @@ export const swapProviders = mutation({
       fallbackApiKey: config.primaryApiKey,
       temperature: config.temperature,
       topP: config.topP,
+      maxTokens: config.maxTokens,
       version: newVersion,
       isActive: false,
       parentId: configId,

@@ -209,6 +209,7 @@ export default defineSchema({
     // AI Settings
     temperature: v.number(), // 0.0 - 2.0, default 0.7
     topP: v.optional(v.number()), // Optional: 0.0 - 1.0
+    maxTokens: v.optional(v.number()), // Optional: max output tokens
 
     // Versioning & Activation (pattern from systemPrompts)
     version: v.number(), // 1, 2, 3, ...

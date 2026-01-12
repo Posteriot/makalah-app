@@ -302,12 +302,15 @@ export async function POST(req: Request) {
             getOpenRouterModel,
             getGoogleSearchTool,
             getProviderSettings,
+            getModelNames,
         } = await import("@/lib/ai/streaming")
         const { streamText } = await import("ai")
         const providerSettings = await getProviderSettings()
+        const modelNames = await getModelNames()
         const samplingOptions = {
             temperature: providerSettings.temperature,
             ...(providerSettings.topP !== undefined ? { topP: providerSettings.topP } : {}),
+            ...(providerSettings.maxTokens !== undefined ? { maxTokens: providerSettings.maxTokens } : {}),
         }
 
         const decideWebSearchMode = async (options: {
@@ -414,11 +417,11 @@ JSON schema:
             }
         }
 
-        // Helper for saving
-        // Helper for saving
+        // Helper for saving assistant message with dynamic model from config
         const saveAssistantMessage = async (
             content: string,
-            sources?: { url: string; title: string; publishedAt?: number | null }[]
+            sources?: { url: string; title: string; publishedAt?: number | null }[],
+            usedModel?: string // Model name from config (primary or fallback)
         ) => {
             const normalizedSources = sources
                 ?.map((source) => ({
@@ -434,7 +437,7 @@ JSON schema:
                 role: "assistant",
                 content: content,
                 metadata: {
-                    model: "google/gemini-2.5-flash-lite", // or dynamic
+                    model: usedModel ?? modelNames.primary.model, // From database config
                 },
                 sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
             })
@@ -727,7 +730,7 @@ Aturan:
                                 })
                             }
 
-                            await saveAssistantMessage(text, sources)
+                            await saveAssistantMessage(text, sources, modelNames.primary.model)
 
                             const minPairsForFinalTitle = Number.parseInt(
                                 process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
@@ -1130,7 +1133,7 @@ Aturan:
                                         })
                                     }
 
-                                    await saveAssistantMessage(textWithInlineCitations, persistedSources)
+                                    await saveAssistantMessage(textWithInlineCitations, persistedSources, modelNames.primary.model)
 
                                     const minPairsForFinalTitle = Number.parseInt(
                                         process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
@@ -1185,7 +1188,7 @@ Aturan:
                 ...samplingOptions,
                 onFinish: async ({ text }) => {
                     if (text) {
-                        await saveAssistantMessage(text)
+                        await saveAssistantMessage(text, undefined, modelNames.fallback.model)
                         const minPairsForFinalTitle = Number.parseInt(
                             process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                             10
