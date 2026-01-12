@@ -7,6 +7,7 @@ import { UserList } from "./UserList"
 import { SystemPromptsManager } from "./SystemPromptsManager"
 import { SystemHealthPanel } from "./SystemHealthPanel"
 import { AIProviderManager } from "./AIProviderManager"
+import { StyleConstitutionManager } from "./StyleConstitutionManager"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Id } from "@convex/_generated/dataModel"
 
@@ -46,6 +47,7 @@ export function AdminPanelContainer({
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="system-prompts">System Prompts</TabsTrigger>
           <TabsTrigger value="ai-providers">AI Providers</TabsTrigger>
+          <TabsTrigger value="style-constitution">Style Constitution</TabsTrigger>
           <TabsTrigger value="stats">Statistik</TabsTrigger>
         </TabsList>
 
@@ -60,6 +62,10 @@ export function AdminPanelContainer({
 
         <TabsContent value="ai-providers" className="space-y-4">
           <AIProviderManager userId={userId} />
+        </TabsContent>
+
+        <TabsContent value="style-constitution" className="space-y-4">
+          <StyleConstitutionManager userId={userId} />
         </TabsContent>
 
         <TabsContent value="stats" className="space-y-4">

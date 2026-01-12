@@ -21,7 +21,6 @@ async function getProviderConfig() {
 
   // Fallback to hardcoded config if no active config in database
   if (!config) {
-    console.log("[Streaming] No active config in DB, using hardcoded fallback")
     return {
       primary: {
         provider: "vercel-gateway",
@@ -39,8 +38,6 @@ async function getProviderConfig() {
   }
 
   // Use API keys from database config (stored as plain text)
-  console.log(`[Streaming] Using DB config: ${config.name} v${config.version}`)
-
   return {
     primary: {
       provider: config.primaryProvider,
@@ -72,7 +69,6 @@ function createProviderModel(provider: string, model: string, apiKey: string) {
       ? `google/${model}`
       : model
 
-    console.log(`[Streaming] Using Vercel Gateway Model Instance: ${targetModel}`)
     return gateway(targetModel)
   } else if (provider === "openrouter") {
     // OpenRouter: createOpenAI with custom config
@@ -115,8 +111,6 @@ export async function streamChatResponse(
       config.primary.apiKey
     )
 
-    console.log(`[Streaming] Using primary: ${config.primary.provider}/${config.primary.model}`)
-
     return await streamText({
       model: primaryModel,
       messages,
@@ -132,8 +126,6 @@ export async function streamChatResponse(
       config.fallback.model,
       config.fallback.apiKey
     )
-
-    console.log(`[Streaming] Using fallback: ${config.fallback.provider}/${config.fallback.model}`)
 
     return await streamText({
       model: fallbackModel,
@@ -196,7 +188,6 @@ export async function getGoogleSearchTool() {
     const toolFactory = google.tools?.googleSearch
 
     if (!toolFactory) {
-      console.warn("[Streaming] Native Google Search tool factory not found in SDK export.")
       return null
     }
 
@@ -204,12 +195,10 @@ export async function getGoogleSearchTool() {
     // We must call the factory to get a tool instance to pass into `streamText({ tools })`.
     if (typeof toolFactory === "function") {
       const toolInstance = toolFactory({})
-      console.log("[Streaming] Google Search Tool initialized successfully from @ai-sdk/google")
       return toolInstance
     }
 
     // Defensive fallback: if SDK ever changes shape and returns an instance directly.
-    console.log("[Streaming] Google Search Tool returned as non-function (unexpected), using as-is")
     return toolFactory
   } catch (error) {
     console.error("[Streaming] Failed to load Google Search tool:", error)

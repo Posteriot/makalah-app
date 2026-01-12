@@ -77,18 +77,9 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fileId }),
+            }).catch(() => {
+                // Tidak throw error - graceful degradation
             })
-                .then(res => {
-                    if (!res.ok) {
-                        console.warn('File extraction trigger failed:', res.statusText)
-                    } else {
-                        console.log('File extraction started for:', file.name)
-                    }
-                })
-                .catch(err => {
-                    console.error('Failed to trigger file extraction:', err)
-                    // Tidak throw error - graceful degradation
-                })
 
             if (onFileUploaded) {
                 onFileUploaded(fileId)
@@ -96,8 +87,7 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
 
             alert("File uploaded successfully!")
 
-        } catch (error) {
-            console.error("File upload failed:", error)
+        } catch {
             alert("Upload failed. Please try again.")
         } finally {
             setIsUploading(false)

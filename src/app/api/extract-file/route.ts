@@ -39,10 +39,6 @@ async function retryWithBackoff<T>(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
 
-      console.warn(
-        `[Retry] Attempt ${attempt}/${maxRetries} failed: ${lastError.message}`
-      )
-
       if (attempt < maxRetries) {
         const backoffDelay = delayMs * Math.pow(2, attempt - 1)
         await new Promise((resolve) => setTimeout(resolve, backoffDelay))
@@ -134,8 +130,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`[File Extraction API] Starting extraction for fileId: ${fileId}`)
-
     // 1. Fetch file record dari Convex database
     const file = await fetchQuery(api.files.getFile, {
       fileId: fileId as Id<"files">,
@@ -147,10 +141,6 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
-
-    console.log(
-      `[File Extraction API] File details: name=${file.name}, type=${file.type}, size=${file.size} bytes`
-    )
 
     // 2. Get storage URL dari Convex
     const fileUrl = await fetchQuery(api.files.getFileUrl, {
@@ -171,9 +161,6 @@ export async function POST(request: NextRequest) {
     }
 
     const blob = await response.blob()
-    console.log(
-      `[File Extraction API] File fetched successfully: ${blob.size} bytes`
-    )
 
     // 4. Detect file type
     const fileTypeCategory = detectFileType(file.type)
@@ -190,29 +177,24 @@ export async function POST(request: NextRequest) {
     try {
       switch (fileTypeCategory) {
         case "txt":
-          console.log("[File Extraction API] Using TXT extractor")
           extractedText = await retryWithBackoff(() => extractTextFromTxt(blob))
           break
 
         case "pdf":
-          console.log("[File Extraction API] Using PDF extractor")
           extractedText = await retryWithBackoff(() => extractTextFromPdf(blob))
           break
 
         case "docx":
-          console.log("[File Extraction API] Using DOCX extractor")
           extractedText = await retryWithBackoff(() => extractTextFromDocx(blob))
           break
 
         case "xlsx":
-          console.log("[File Extraction API] Using XLSX extractor")
           extractedText = await retryWithBackoff(() =>
             extractDataFromXlsx(blob, { maxSheets: 10, maxRows: 1000 })
           )
           break
 
         case "image":
-          console.log("[File Extraction API] Using Image OCR extractor")
           extractedText = await retryWithBackoff(
             () => extractTextFromImage(blob, file.name),
             3,
@@ -225,9 +207,6 @@ export async function POST(request: NextRequest) {
       }
 
       // 6. Update Convex database dengan SUCCESS result
-      console.log(
-        `[File Extraction API] Extraction successful. Text length: ${extractedText.length} characters`
-      )
       await fetchMutation(api.files.updateExtractionResult, {
         fileId: fileId as Id<"files">,
         extractedText,
@@ -235,10 +214,6 @@ export async function POST(request: NextRequest) {
         extractionError: undefined,
         processedAt: Date.now(),
       })
-
-      console.log(
-        `[File Extraction API] Database updated successfully for fileId: ${fileId}`
-      )
 
       return NextResponse.json({
         success: true,
@@ -253,15 +228,7 @@ export async function POST(request: NextRequest) {
           ? extractionError.message
           : String(extractionError)
 
-      console.error(
-        `[File Extraction API] Extraction failed for fileId: ${fileId}`,
-        {
-          fileName: file.name,
-          fileType: file.type,
-          errorMessage,
-          error: extractionError,
-        }
-      )
+      console.error("[File Extraction API] Extraction failed:", errorMessage)
 
       await fetchMutation(api.files.updateExtractionResult, {
         fileId: fileId as Id<"files">,
@@ -270,10 +237,6 @@ export async function POST(request: NextRequest) {
         extractionError: errorMessage,
         processedAt: Date.now(),
       })
-
-      console.log(
-        `[File Extraction API] Error saved to database for fileId: ${fileId}`
-      )
 
       // Return error info (graceful degradation - file still accessible)
       return NextResponse.json({
@@ -286,7 +249,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
 
-    console.error(`[File Extraction API] Error:`, error)
+    console.error("[File Extraction API] Error:", errorMessage)
 
     return NextResponse.json(
       {

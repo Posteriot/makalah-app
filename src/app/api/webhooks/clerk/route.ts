@@ -60,8 +60,6 @@ export async function POST(req: Request) {
   // Handle the webhook event
   const eventType = evt.type
 
-  console.log(`Webhook received: ${eventType}`)
-
   switch (eventType) {
     case "user.created": {
       const { email_addresses, first_name } = evt.data
@@ -72,17 +70,10 @@ export async function POST(req: Request) {
       )
 
       if (primaryEmail?.email_address) {
-        console.log(
-          `Sending welcome email to: ${primaryEmail.email_address} (${first_name || "User"})`
-        )
-
         try {
           await sendWelcomeEmail({
             to: primaryEmail.email_address,
           })
-          console.log(
-            `Welcome email sent successfully to ${primaryEmail.email_address}`
-          )
         } catch (error) {
           console.error("Failed to send welcome email:", error)
           // Don't fail the webhook, just log the error
@@ -97,7 +88,8 @@ export async function POST(req: Request) {
     // case "session.created":
 
     default:
-      console.log(`Unhandled event type: ${eventType}`)
+      // Unhandled event type - no action needed
+      break
   }
 
   return new Response("Webhook processed", { status: 200 })

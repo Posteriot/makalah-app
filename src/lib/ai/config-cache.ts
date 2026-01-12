@@ -40,12 +40,10 @@ class ConfigCache {
 
     // Return cached config if still fresh
     if (this.config && now - this.lastFetch < this.TTL) {
-      console.log("[ConfigCache] Returning cached config (TTL not expired)")
       return this.config
     }
 
     // Fetch from Convex database
-    console.log("[ConfigCache] Fetching fresh config from database")
 
     try {
       const { fetchQuery } = await import("convex/nextjs")
@@ -57,18 +55,11 @@ class ConfigCache {
       this.config = activeConfig
       this.lastFetch = now
 
-      if (activeConfig) {
-        console.log(`[ConfigCache] Cached config: ${activeConfig.name} v${activeConfig.version}`)
-      } else {
-        console.log("[ConfigCache] No active config found in database")
-      }
-
       return this.config
     } catch (error) {
-      console.error("[ConfigCache] Error fetching config from database:", error)
+      console.error("[ConfigCache] Error fetching config:", error)
       // Return stale cache if available as fallback
       if (this.config) {
-        console.log("[ConfigCache] Returning stale cache due to fetch error")
         return this.config
       }
       return null
@@ -80,7 +71,6 @@ class ConfigCache {
    * Call this after activating/updating config for immediate effect
    */
   invalidate() {
-    console.log("[ConfigCache] Cache invalidated manually")
     this.config = null
     this.lastFetch = 0
   }

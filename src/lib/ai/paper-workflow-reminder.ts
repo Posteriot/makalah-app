@@ -72,4 +72,4 @@ PENGECUALIAN (boleh langsung tanpa workflow):
  * Short version for logging/debugging
  */
 export const PAPER_WORKFLOW_REMINDER_SHORT =
-    "[PAPER INTENT DETECTED] User ingin bantuan paper. WAJIB panggil startPaperSession dulu.";
+    "[PAPER INTENT DETECTED] User ingin menulis paper utuh. WAJIB panggil startPaperSession dulu.";

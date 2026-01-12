@@ -1,11 +1,11 @@
 /**
  * XLSX File Data Extractor
  *
- * Extracts tabular data from Excel spreadsheets (.xlsx) using xlsx library
+ * Extracts tabular data from Excel spreadsheets (.xlsx) using xlsx-populate
  * Formats data as markdown tables for better readability
  */
 
-import * as XLSX from "xlsx"
+import XlsxPopulate from "xlsx-populate"
 
 /**
  * Custom error types untuk XLSX extraction
@@ -109,18 +109,11 @@ export async function extractDataFromXlsx(
     }
 
     // Parse XLSX workbook
-    const workbook = XLSX.read(arrayBuffer, {
-      type: "array",
-      cellDates: true, // Parse dates as Date objects
-      cellNF: false, // Don't include number formats
-      cellStyles: false, // Don't include styles
-    })
+    const buffer = Buffer.from(arrayBuffer)
+    const workbook = await XlsxPopulate.fromDataAsync(buffer)
 
-    // Validate workbook has sheets
-    if (
-      !workbook.SheetNames ||
-      workbook.SheetNames.length === 0
-    ) {
+    const sheets = workbook.sheets()
+    if (!sheets || sheets.length === 0) {
       throw new XLSXExtractionError(
         "XLSX file contains no sheets",
         "EMPTY_XLSX"
@@ -128,41 +121,40 @@ export async function extractDataFromXlsx(
     }
 
     // Extract configuration
-    const maxSheets = options?.maxSheets ?? workbook.SheetNames.length
+    const maxSheets = options?.maxSheets ?? sheets.length
     const maxRows = options?.maxRows ?? 1000
 
     let extractedText = ""
     let totalRows = 0
 
     // Process each sheet (up to maxSheets)
-    const sheetsToProcess = workbook.SheetNames.slice(0, maxSheets)
+    const sheetsToProcess = sheets.slice(0, maxSheets)
 
-    for (const sheetName of sheetsToProcess) {
-      const worksheet = workbook.Sheets[sheetName]
+    for (const sheet of sheetsToProcess) {
+      const sheetName = sheet.name()
+      const usedRange = sheet.usedRange()
 
-      // Convert sheet to JSON (array of objects)
-      const sheetData = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1, // Use first row as headers
-        defval: "", // Default value for empty cells
-        blankrows: false, // Skip blank rows
-      }) as unknown[][]
+      if (!usedRange) {
+        extractedText += `## Sheet: ${sheetName}\n\n*Empty sheet*\n\n`
+        continue
+      }
 
-      // Limit rows if necessary
+      const sheetData = usedRange.value() as unknown[][]
       const limitedData = sheetData.slice(0, maxRows + 1) // +1 for header row
 
-      // Convert array format to object format for markdown
       if (limitedData.length > 0) {
-        const headers =
-          limitedData[0]?.map((h, i) => String(h) || `Column ${i + 1}`) ?? []
+        const headerRow = limitedData[0] ?? []
+        const headers = headerRow.map((h, i) =>
+          String(h ?? "").trim() || `Column ${i + 1}`
+        )
         const dataRows = limitedData.slice(1).map((row) => {
           const obj: Record<string, unknown> = {}
           headers.forEach((header, i) => {
-            obj[header] = (row as unknown[])[i]
+            obj[header] = (row as unknown[] | undefined)?.[i]
           })
           return obj
         })
 
-        // Convert to markdown table
         extractedText += sheetToMarkdownTable(dataRows, sheetName)
         totalRows += dataRows.length
       } else {
@@ -177,11 +169,6 @@ export async function extractDataFromXlsx(
         "EMPTY_XLSX"
       )
     }
-
-    // Log metadata for debugging
-    console.log(
-      `[XLSX Extractor] Successfully extracted ${totalRows} rows from ${sheetsToProcess.length} sheet(s)`
-    )
 
     return extractedText.trim()
   } catch (error) {

@@ -30,20 +30,16 @@ export async function POST(request: NextRequest) {
     const { sessionId } = body
 
     if (!sessionId) {
-      console.log("[PDF Export] Error: sessionId tidak diberikan")
       return NextResponse.json(
         { success: false, error: "sessionId is required" },
         { status: 400 }
       )
     }
 
-    console.log(`[PDF Export] Starting export for sessionId: ${sessionId}`)
-
     // 2. Authenticate user via Clerk
     const { userId: clerkUserId } = await auth()
 
     if (!clerkUserId) {
-      console.log("[PDF Export] Error: User tidak terautentikasi")
       return NextResponse.json(
         { success: false, error: "Unauthorized - please sign in" },
         { status: 401 }
@@ -56,7 +52,6 @@ export async function POST(request: NextRequest) {
     })
 
     if (!convexUser) {
-      console.log("[PDF Export] Error: User tidak ditemukan di Convex")
       return NextResponse.json(
         { success: false, error: "User not found" },
         { status: 404 }
@@ -71,10 +66,6 @@ export async function POST(request: NextRequest) {
     // 5. Validate dan compile content
     // getExportableContent akan throw ExportValidationError jika ada masalah
     const content = getExportableContent(session, convexUser._id)
-
-    console.log(
-      `[PDF Export] Content compiled successfully. Title: ${content.title}`
-    )
 
     // 6. Generate PDF stream
     const pdfStream = generatePDFStream(content, { showPageNumbers: true })
@@ -93,7 +84,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Handle ExportValidationError dengan specific status codes
     if (error instanceof ExportValidationError) {
-      console.log(`[PDF Export] Validation error: ${error.message}`)
 
       const statusMap = {
         SESSION_NOT_FOUND: 404,

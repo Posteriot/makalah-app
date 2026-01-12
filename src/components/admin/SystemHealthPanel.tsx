@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Info,
   RefreshCw,
-  Trash2,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { id as localeId } from "date-fns/locale"

@@ -16,10 +16,7 @@ export function QuickActions({ content, conversationId }: QuickActionsProps) {
             await navigator.clipboard.writeText(content)
             setIsCopied(true)
             setTimeout(() => setIsCopied(false), 2000)
-            // Implementation note: Replace with Toast when available
-            console.log("Copied to clipboard")
-        } catch (err) {
-            console.error("Failed to copy:", err)
+        } catch {
             alert("Failed to copy to clipboard")
         }
     }
@@ -27,13 +24,11 @@ export function QuickActions({ content, conversationId }: QuickActionsProps) {
     const handleInsert = () => {
         // Placeholder for CHAT-046
         alert("This will be implemented in paper integration phase (Insert to Paper)")
-        console.log("Insert to paper triggered", { conversationId })
     }
 
     const handleSave = () => {
         // Placeholder for CHAT-047
         alert("Content saved to your snippets")
-        console.log("Save to snippets triggered", { conversationId })
     }
 
     return (

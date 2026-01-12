@@ -59,19 +59,6 @@ export async function extractTextFromDocx(blob: Blob): Promise<string> {
       )
     }
 
-    // Log warnings if any (optional)
-    if (result.messages.length > 0) {
-      console.warn(
-        `[DOCX Extractor] Warnings during extraction:`,
-        result.messages
-      )
-    }
-
-    // Log metadata for debugging
-    console.log(
-      `[DOCX Extractor] Successfully extracted ${extractedText.length} characters`
-    )
-
     return extractedText
   } catch (error) {
     // Handle specific error types

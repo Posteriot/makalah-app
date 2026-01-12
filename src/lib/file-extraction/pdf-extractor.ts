@@ -60,11 +60,6 @@ export async function extractTextFromPdf(blob: Blob): Promise<string> {
       )
     }
 
-    // Log metadata for debugging (optional)
-    console.log(
-      `[PDF Extractor] Successfully extracted ${extractedText.length} characters from ${result.total} page(s)`
-    )
-
     return extractedText
   } catch (error) {
     // Handle specific error types

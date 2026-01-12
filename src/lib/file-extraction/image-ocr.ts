@@ -1,13 +1,20 @@
 /**
  * Image OCR Extractor
  *
- * Extracts text from images using OpenAI Vision API (GPT-4o)
+ * Extracts text from images using OpenAI GPT-4o Vision via OpenRouter
  * Handles OCR for .png, .jpg, .jpeg, .webp files
- * Completely separate from Gemini chat AI
+ * Uses OpenRouter for consistency with app's LLM architecture
  */
 
-import { createOpenAI } from "@ai-sdk/openai"
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { generateText } from "ai"
+
+// ============================================================================
+// OCR MODEL CONFIGURATION
+// ============================================================================
+// Using OpenRouter for consistency with app architecture
+// Model: openai/gpt-4o (OpenRouter format for GPT-4o Vision)
+const OCR_MODEL = "openai/gpt-4o"
 
 /**
  * Custom error types untuk Image OCR
@@ -29,29 +36,29 @@ export class ImageOCRError extends Error {
 }
 
 /**
- * Validate OpenAI API key from environment
+ * Validate OpenRouter API key from environment
  *
  * @throws Error if API key is missing
  */
-function validateOpenAIKey(): void {
-  if (!process.env.OPENAI_API_KEY) {
+function validateOpenRouterKey(): void {
+  if (!process.env.OPENROUTER_API_KEY) {
     throw new Error(
-      "OPENAI_API_KEY is not configured in environment variables"
+      "OPENROUTER_API_KEY is not configured in environment variables"
     )
   }
 }
 
 /**
- * Create OpenAI client instance
- * Uses separate API key from chat AI (Gemini)
+ * Create OpenRouter client instance
+ * Uses official @openrouter/ai-sdk-provider for proper integration
  *
- * @returns OpenAI client configured for Vision API
+ * @returns OpenRouter provider configured for Vision API (GPT-4o)
  */
-function createOpenAIClient() {
-  validateOpenAIKey()
+function createOpenRouterClient() {
+  validateOpenRouterKey()
 
-  return createOpenAI({
-    apiKey: process.env.OPENAI_API_KEY!,
+  return createOpenRouter({
+    apiKey: process.env.OPENROUTER_API_KEY!,
   })
 }
 
@@ -77,7 +84,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * Extract text from an image using OpenAI Vision API (GPT-4o)
+ * Extract text from an image using GPT-4o Vision via OpenRouter
  *
  * @param blob - Image blob from Convex storage
  * @param filename - Original filename (for context in prompt)
@@ -119,16 +126,12 @@ export async function extractTextFromImage(
       )
     }
 
-    // Create OpenAI client
-    const openai = createOpenAIClient()
+    // Create OpenRouter client (consistent with app architecture)
+    const openRouter = createOpenRouterClient()
 
-    // Call Vision API for OCR
-    console.log(
-      `[Image OCR] Processing image: ${filename} (${mimeType}, ${Math.round(arrayBuffer.byteLength / 1024)}KB)`
-    )
-
+    // Call Vision API for OCR via OpenRouter
     const { text } = await generateText({
-      model: openai("gpt-4o"), // GPT-4o Vision model
+      model: openRouter(OCR_MODEL), // GPT-4o Vision via OpenRouter
       messages: [
         {
           role: "user",
@@ -162,11 +165,6 @@ export async function extractTextFromImage(
       )
     }
 
-    // Log success
-    console.log(
-      `[Image OCR] Successfully extracted ${extractedText.length} characters from ${filename}`
-    )
-
     return extractedText
   } catch (error) {
     // Handle specific error types
@@ -184,7 +182,7 @@ export async function extractTextFromImage(
       errorMessage.includes("429")
     ) {
       throw new ImageOCRError(
-        "OpenAI API rate limit exceeded. Please try again later.",
+        "OpenRouter API rate limit exceeded. Please try again later.",
         "RATE_LIMIT"
       )
     }
@@ -203,7 +201,7 @@ export async function extractTextFromImage(
 
     // Generic API error
     throw new ImageOCRError(
-      `OpenAI Vision API error: ${errorMessage}`,
+      `OpenRouter Vision API error: ${errorMessage}`,
       "API_ERROR"
     )
   }

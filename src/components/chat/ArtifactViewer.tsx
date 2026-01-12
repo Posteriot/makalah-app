@@ -13,7 +13,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { CopyIcon, CheckIcon, FileTextIcon, CodeIcon, ListIcon, TableIcon, BookOpenIcon, FunctionSquareIcon, Loader2Icon, PencilIcon, DownloadIcon, HistoryIcon, AlertTriangle } from "lucide-react"
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import { CopyIcon, CheckIcon, FileTextIcon, CodeIcon, ListIcon, TableIcon, BookOpenIcon, FunctionSquareIcon, Loader2Icon, PencilIcon, DownloadIcon, HistoryIcon, AlertTriangle, WandSparkles } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -25,6 +31,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
 import { cn } from "@/lib/utils"
+import { useRefrasa } from "@/lib/hooks/useRefrasa"
+import {
+    RefrasaButton,
+    RefrasaConfirmDialog,
+    RefrasaLoadingIndicator,
+} from "@/components/refrasa"
 
 interface ArtifactViewerProps {
     artifactId: Id<"artifacts"> | null
@@ -102,6 +114,17 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
     const [isSaving, setIsSaving] = useState(false)
     const [viewingVersionId, setViewingVersionId] = useState<Id<"artifacts"> | null>(artifactId)
     const { user: currentUser } = useCurrentUser()
+
+    // Refrasa state
+    const [showRefrasaDialog, setShowRefrasaDialog] = useState(false)
+    const [isApplyingRefrasa, setIsApplyingRefrasa] = useState(false)
+    const {
+        isLoading: isRefrasaLoading,
+        result: refrasaResult,
+        error: refrasaError,
+        analyzeAndRefrasa,
+        reset: resetRefrasa,
+    } = useRefrasa()
 
     const updateArtifact = useMutation(api.artifacts.update)
 
@@ -195,6 +218,64 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
     // Handle version change
     const handleVersionChange = (versionId: string) => {
         setViewingVersionId(versionId as Id<"artifacts">)
+    }
+
+    // Handle refrasa trigger (from button or context menu)
+    const handleRefrasaTrigger = async () => {
+        if (!artifact) return
+
+        // Reset previous state
+        resetRefrasa()
+
+        // Start analysis
+        await analyzeAndRefrasa(artifact.content, artifact._id)
+    }
+
+    // Show dialog when result is ready
+    useEffect(() => {
+        if (refrasaResult && !refrasaError) {
+            setShowRefrasaDialog(true)
+        }
+    }, [refrasaResult, refrasaError])
+
+    // Show error toast
+    useEffect(() => {
+        if (refrasaError) {
+            toast.error(`Gagal menganalisis: ${refrasaError}`)
+        }
+    }, [refrasaError])
+
+    // Handle apply refrasa changes
+    const handleApplyRefrasa = async () => {
+        if (!artifact || !currentUser?._id || !refrasaResult) return
+
+        setIsApplyingRefrasa(true)
+        try {
+            await updateArtifact({
+                artifactId: artifact._id,
+                userId: currentUser._id,
+                content: refrasaResult.refrasedText,
+            })
+            toast.success(`Tulisan berhasil diperbaiki ke v${artifact.version + 1}`)
+            setShowRefrasaDialog(false)
+            resetRefrasa()
+        } catch (error) {
+            console.error("Failed to apply refrasa:", error)
+            toast.error("Gagal menerapkan perbaikan")
+        } finally {
+            setIsApplyingRefrasa(false)
+        }
+    }
+
+    // Handle close refrasa dialog
+    const handleCloseRefrasaDialog = () => {
+        setShowRefrasaDialog(false)
+        resetRefrasa()
+    }
+
+    // Calculate word count for warning
+    const getWordCount = (content: string): number => {
+        return content.trim().split(/\s+/).filter(Boolean).length
     }
 
     // Empty state - no artifact selected
@@ -306,7 +387,7 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                         <span>v{artifact.version}</span>
                     )}
                     <span>•</span>
-                    <span>{formatDate(artifact.createdAt)}</span>
+                    <span>{formatDate(artifact.updatedAt ?? artifact.createdAt)}</span>
                 </div>
                 {artifact.description && (
                     <p className="text-sm text-muted-foreground">{artifact.description}</p>
@@ -339,29 +420,49 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                 />
             ) : (
                 <>
-                    {/* Content */}
-                    <div className="flex-1 overflow-auto p-4">
-                        {isCodeArtifact && language ? (
-                            <SyntaxHighlighter
-                                language={language}
-                                style={oneDark}
-                                customStyle={{
-                                    margin: 0,
-                                    borderRadius: "0.5rem",
-                                    fontSize: "0.875rem",
-                                }}
-                                showLineNumbers
+                    {/* Content with Context Menu */}
+                    <ContextMenu>
+                        <ContextMenuTrigger asChild>
+                            <div className="flex-1 overflow-auto p-4 relative">
+                                {/* Loading indicator for Refrasa */}
+                                {isRefrasaLoading && (
+                                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                                        <RefrasaLoadingIndicator />
+                                    </div>
+                                )}
+
+                                {isCodeArtifact && language ? (
+                                    <SyntaxHighlighter
+                                        language={language}
+                                        style={oneDark}
+                                        customStyle={{
+                                            margin: 0,
+                                            borderRadius: "0.5rem",
+                                            fontSize: "0.875rem",
+                                        }}
+                                        showLineNumbers
+                                    >
+                                        {artifact.content}
+                                    </SyntaxHighlighter>
+                                ) : shouldRenderMarkdown ? (
+                                    <MarkdownRenderer markdown={artifact.content} className="space-y-2 text-sm" />
+                                ) : (
+                                    <pre className="whitespace-pre-wrap font-sans bg-muted p-4 rounded-lg text-sm">
+                                        {artifact.content}
+                                    </pre>
+                                )}
+                            </div>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                            <ContextMenuItem
+                                onClick={handleRefrasaTrigger}
+                                disabled={isRefrasaLoading || artifact.content.length < 50}
                             >
-                                {artifact.content}
-                            </SyntaxHighlighter>
-                        ) : shouldRenderMarkdown ? (
-                            <MarkdownRenderer markdown={artifact.content} className="space-y-2 text-sm" />
-                        ) : (
-                            <pre className="whitespace-pre-wrap font-sans bg-muted p-4 rounded-lg text-sm">
-                                {artifact.content}
-                            </pre>
-                        )}
-                    </div>
+                                <WandSparkles className="h-4 w-4 mr-2" />
+                                Refrasa
+                            </ContextMenuItem>
+                        </ContextMenuContent>
+                    </ContextMenu>
 
                     {/* Actions */}
                     <div className="p-4 border-t flex justify-end gap-2 flex-wrap">
@@ -373,6 +474,15 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                                 onSelectVersion={(versionId) => setViewingVersionId(versionId)}
                             />
                         )}
+                        {/* Refrasa Button */}
+                        <RefrasaButton
+                            onClick={handleRefrasaTrigger}
+                            isLoading={isRefrasaLoading}
+                            isEditing={isEditing}
+                            hasArtifact={!!artifact}
+                            contentLength={artifact.content.length}
+                            wordCount={getWordCount(artifact.content)}
+                        />
                         <Button
                             variant="outline"
                             size="sm"
@@ -409,6 +519,19 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                         </Button>
                     </div>
                 </>
+            )}
+
+            {/* Refrasa Confirm Dialog */}
+            {refrasaResult && (
+                <RefrasaConfirmDialog
+                    open={showRefrasaDialog}
+                    onOpenChange={handleCloseRefrasaDialog}
+                    originalContent={artifact.content}
+                    refrasedText={refrasaResult.refrasedText}
+                    issues={refrasaResult.issues}
+                    onApply={handleApplyRefrasa}
+                    isApplying={isApplyingRefrasa}
+                />
             )}
         </div>
     )

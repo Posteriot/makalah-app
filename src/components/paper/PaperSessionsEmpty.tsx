@@ -14,7 +14,7 @@ export function PaperSessionsEmpty() {
       </div>
       <h3 className="text-lg font-semibold mb-2">Belum ada paper yang dibuat</h3>
       <p className="text-muted-foreground text-center max-w-md mb-6">
-        Mulai percakapan baru dan minta bantuan untuk menulis paper. AI akan memandu kamu
+        Mulai percakapan baru dan minta bantuan untuk menulis paper. AI akan menulis dan memandu kamu
         melalui {STAGE_ORDER.length} tahap penulisan paper akademik.
       </p>
       <Button asChild>

@@ -142,7 +142,6 @@ export async function POST(req: Request) {
         let paperWorkflowReminder = ""
         if (!paperModePrompt && lastUserContent && hasPaperWritingIntent(lastUserContent)) {
             paperWorkflowReminder = PAPER_WORKFLOW_REMINDER
-            console.log("[Chat API] Paper intent detected, injecting workflow reminder")
         }
 
         const isExplicitSearchRequest = (text: string) => {
@@ -233,7 +232,6 @@ export async function POST(req: Request) {
                 // Skip messages dengan role yang tidak valid
                 const validRoles = ["user", "assistant", "system"]
                 if (!validRoles.includes(msg.role)) {
-                    console.log("[Chat API] Skipping message with invalid role:", msg.role)
                     return null
                 }
 
@@ -253,7 +251,6 @@ export async function POST(req: Request) {
 
                     // Jika tidak ada text parts, skip message ini
                     if (textParts.length === 0) {
-                        console.log("[Chat API] Skipping message with no extractable text content")
                         return null
                     }
 
@@ -279,17 +276,7 @@ export async function POST(req: Request) {
 
         let trimmedModelMessages = modelMessages
         if (isPaperMode && modelMessages.length > MAX_CHAT_HISTORY_PAIRS * 2) {
-            const originalCount = modelMessages.length
             trimmedModelMessages = modelMessages.slice(-MAX_CHAT_HISTORY_PAIRS * 2)
-
-            // Task 2.1.2: Logging (development only)
-            if (process.env.NODE_ENV === "development") {
-                console.log("[Chat API] Message trimming applied:", {
-                    originalCount,
-                    trimmedCount: trimmedModelMessages.length,
-                    removedCount: originalCount - trimmedModelMessages.length,
-                })
-            }
         }
 
         // Task 6.4: Inject file context BEFORE user messages
@@ -383,8 +370,8 @@ JSON schema:
                         confidence: result.confidence,
                         reason: result.reason,
                     }
-                } catch (error) {
-                    console.warn("[WebSearchRouter] Structured output failed:", error)
+                } catch {
+                    // Retry on failure
                 }
             }
 
@@ -495,16 +482,6 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                         .describe("Optional brief description of what the artifact contains"),
                 }),
                 execute: async ({ type, title, content, format, description }) => {
-                    // Debug logging untuk diagnosis
-                    console.log("[createArtifact] Attempting to create artifact:", {
-                        type,
-                        title,
-                        contentLength: content?.length ?? 0,
-                        format,
-                        conversationId: currentConversationId,
-                        userId,
-                    })
-
                     try {
                         const result = await fetchMutation(api.artifacts.create, {
                             conversationId: currentConversationId as Id<"conversations">,
@@ -516,8 +493,6 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                             description,
                         })
 
-                        console.log("[createArtifact] Success:", { artifactId: result.artifactId, title })
-
                         return {
                             success: true,
                             artifactId: result.artifactId,
@@ -526,14 +501,7 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
-                        console.error("[createArtifact] Failed:", {
-                            error: errorMessage,
-                            type,
-                            title,
-                            contentLength: content?.length ?? 0,
-                            conversationId: currentConversationId,
-                            userId,
-                        })
+                        console.error("[createArtifact] Failed:", errorMessage)
                         return {
                             success: false,
                             error: `Gagal membuat artifact: ${errorMessage}`,
@@ -568,26 +536,12 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                         .describe("Judul baru (opsional). Jika tidak diisi, judul lama dipertahankan."),
                 }),
                 execute: async ({ artifactId, content, title }) => {
-                    console.log("[updateArtifact] Attempting to update artifact:", {
-                        artifactId,
-                        contentLength: content?.length ?? 0,
-                        hasNewTitle: !!title,
-                        conversationId: currentConversationId,
-                        userId,
-                    })
-
                     try {
                         const result = await fetchMutation(api.artifacts.update, {
                             artifactId: artifactId as Id<"artifacts">,
                             userId: userId as Id<"users">,
                             content,
                             title,
-                        })
-
-                        console.log("[updateArtifact] Success:", {
-                            oldArtifactId: artifactId,
-                            newArtifactId: result.artifactId,
-                            version: result.version,
                         })
 
                         return {
@@ -599,13 +553,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
-                        console.error("[updateArtifact] Failed:", {
-                            error: errorMessage,
-                            artifactId,
-                            contentLength: content?.length ?? 0,
-                            conversationId: currentConversationId,
-                            userId,
-                        })
+                        console.error("[updateArtifact] Failed:", errorMessage)
                         return {
                             success: false,
                             error: `Gagal update artifact: ${errorMessage}`,
@@ -692,7 +640,6 @@ Aturan:
         // 7. Stream AI Response - Dual Provider with Fallback
         try {
             const model = await getGatewayModel()
-            console.log("[Chat API] Using Gateway model:", model)
 
             // Inject Google Search Tool for Gateway (Primary) only
             const googleSearchTool = await getGoogleSearchTool()
@@ -722,13 +669,6 @@ Aturan:
                 && !forcePaperToolsMode
                 && (webSearchDecision.enableWebSearch || explicitSearchFallback)
 
-            console.log("[WebSearchRouter] Decision:", {
-                enableWebSearch,
-                forcePaperToolsMode,
-                confidence: webSearchDecision.confidence,
-                reason: webSearchDecision.reason,
-            })
-
             const webSearchBehaviorSystemNote = `KETENTUAN PENCARIAN WEB (google_search):
 1) Gunakan tool google_search HANYA jika Anda memerlukan data faktual terbaru atau jika user memintanya secara eksplisit.
 2) Jika Anda melakukan pencarian, Anda TIDAK BOLEH memanggil tool createArtifact dalam langkah (turn) yang sama.
@@ -747,18 +687,6 @@ Aturan:
             const gatewayTools: ToolSet = enableWebSearch
                 ? ({ google_search: wrappedGoogleSearchTool } as unknown as ToolSet)
                 : tools
-
-            console.log("[Chat API] Gateway Tools Configured:", {
-                webSearchModeEnabled: enableWebSearch,
-                hasCreateArtifact: !!gatewayTools.createArtifact,
-                hasGoogleSearch: !!gatewayTools.google_search,
-                googleSearchType: typeof gatewayTools.google_search,
-                // Debug: provider-defined tools should be objects with `type: "provider-defined"`.
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                googleSearchToolTypeField: (gatewayTools.google_search as any)?.type,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                googleSearchToolIdField: (gatewayTools.google_search as any)?.id,
-            })
 
             const result = streamText({
                 model,
@@ -1087,24 +1015,12 @@ Aturan:
                                         ? lastProviderMetadata
                                         : providerMetadataFromResult
 
-                                    console.log("[InlineCitations] providerMetadata source:", {
-                                        hasLastProviderMetadata: !!lastProviderMetadata,
-                                        hasProviderMetadataFromResult: !!providerMetadataFromResult,
-                                        usingLastProviderMetadata: hasGroundingMetadata(lastProviderMetadata),
-                                        streamedTextLength: streamedText.length,
-                                    })
-
                                     const googleMetadata = hasGroundingMetadata(preferredProviderMetadata)
                                         ? preferredProviderMetadata.google
                                         : undefined
                                     const groundingMetadata = googleMetadata?.groundingMetadata
                                     const chunks = getGroundingChunks(groundingMetadata)
                                     const supports = getGroundingSupports(groundingMetadata)
-
-                                    console.log("[InlineCitations] Grounding present:", !!groundingMetadata, {
-                                        chunks: Array.isArray(chunks) ? chunks.length : 0,
-                                        supports: Array.isArray(supports) ? supports.length : 0,
-                                    })
 
                                     const usedChunkIndices = (() => {
                                         const out = new Set<number>()
@@ -1198,11 +1114,6 @@ Aturan:
                                     const textWithInlineCitations = insertInlineCitations(streamedText, sources, supports)
                                     const persistedSources = sources.length > 0 ? stripToPersistedSources(sources) : undefined
 
-                                    console.log("[InlineCitations] Computed:", {
-                                        sources: persistedSources ? persistedSources.length : 0,
-                                        inserted: /\[\d+(?:,\d+)*\]/.test(textWithInlineCitations),
-                                    })
-
                                     ensureStart()
                                     writer.write({
                                         type: "data-cited-text",
@@ -1220,10 +1131,6 @@ Aturan:
                                     }
 
                                     await saveAssistantMessage(textWithInlineCitations, persistedSources)
-
-                                    if (groundingMetadata) {
-                                        console.log("[Chat API] Grounding Metadata received:", JSON.stringify(groundingMetadata, null, 2))
-                                    }
 
                                     const minPairsForFinalTitle = Number.parseInt(
                                         process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
@@ -1267,10 +1174,9 @@ Aturan:
 
             return result.toUIMessageStreamResponse()
         } catch (error) {
-            console.error("Gateway stream failed, trying fallback...", error)
+            console.error("Gateway stream failed, trying fallback:", error)
             // Fallback: OpenRouter
             const fallbackModel = await getOpenRouterModel()
-            console.log("[Chat API] Using OpenRouter fallback")
             const result = streamText({
                 model: fallbackModel,
                 messages: fullMessagesBase,

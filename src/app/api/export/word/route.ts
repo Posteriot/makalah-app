@@ -29,20 +29,16 @@ export async function POST(request: NextRequest) {
     const { sessionId } = body
 
     if (!sessionId) {
-      console.log("[Word Export] Error: sessionId tidak diberikan")
       return NextResponse.json(
         { success: false, error: "sessionId is required" },
         { status: 400 }
       )
     }
 
-    console.log(`[Word Export] Starting export for sessionId: ${sessionId}`)
-
     // 2. Authenticate user via Clerk
     const { userId: clerkUserId } = await auth()
 
     if (!clerkUserId) {
-      console.log("[Word Export] Error: User tidak terautentikasi")
       return NextResponse.json(
         { success: false, error: "Unauthorized - please sign in" },
         { status: 401 }
@@ -55,7 +51,6 @@ export async function POST(request: NextRequest) {
     })
 
     if (!convexUser) {
-      console.log("[Word Export] Error: User tidak ditemukan di Convex")
       return NextResponse.json(
         { success: false, error: "User not found" },
         { status: 404 }
@@ -70,10 +65,6 @@ export async function POST(request: NextRequest) {
     // 5. Validate dan compile content
     // getExportableContent akan throw ExportValidationError jika ada masalah
     const content = getExportableContent(session, convexUser._id)
-
-    console.log(
-      `[Word Export] Content compiled successfully. Title: ${content.title}`
-    )
 
     // 6. Generate Word document stream
     const wordStream = await generateWordStream(content)
@@ -93,7 +84,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Handle ExportValidationError dengan specific status codes
     if (error instanceof ExportValidationError) {
-      console.log(`[Word Export] Validation error: ${error.message}`)
 
       const statusMap = {
         SESSION_NOT_FOUND: 404,

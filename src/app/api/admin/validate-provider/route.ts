@@ -72,8 +72,6 @@ export async function POST(request: NextRequest) {
       const targetModel =
         model.includes("gemini") && !model.includes("/") ? `google/${model}` : model
       testModel = vercel(targetModel)
-
-      console.log(`[ValidateProvider] Testing Vercel AI Gateway with model: ${targetModel}`)
     } else if (provider === "openrouter") {
       // OpenRouter: Test with provided API key
       const openRouterOpenAI = createOpenAI({
@@ -86,8 +84,6 @@ export async function POST(request: NextRequest) {
       })
 
       testModel = openRouterOpenAI(model)
-
-      console.log(`[ValidateProvider] Testing OpenRouter with model: ${model}`)
     } else {
       return NextResponse.json(
         { error: `Unknown provider: ${provider}. Supported: vercel-gateway, openrouter` },
@@ -101,8 +97,6 @@ export async function POST(request: NextRequest) {
       prompt: "Say 'OK' if you can read this.",
       temperature: 0.3,
     })
-
-    console.log(`[ValidateProvider] Success! Response: ${result.text}`)
 
     return NextResponse.json({
       success: true,

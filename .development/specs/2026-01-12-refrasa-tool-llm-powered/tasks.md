@@ -1,9 +1,20 @@
 # Task Breakdown: Refrasa Tool - LLM Powered
 
 ## Overview
-Total Tasks: 37 sub-tasks across 6 task groups
+Total Tasks: 40 sub-tasks across 6 task groups
 
-Tool "Refrasa" untuk memperbaiki gaya penulisan akademis Bahasa Indonesia, sepenuhnya ditenagai LLM dan dipandu oleh Style Constitution yang editable di admin panel.
+Tool "Refrasa" untuk memperbaiki gaya penulisan akademis Bahasa Indonesia, sepenuhnya ditenagai LLM.
+
+**Dual Goal:**
+1. **Humanize Writing Standard** - Standar penulisan akademis yang natural dan manusiawi
+2. **Target Anti-Deteksi LLM (upaya terbaik)** - Upaya mengurangi pola deteksi AI (tanpa jaminan lolos detektor)
+
+**Arsitektur: Two-Layer Evaluation**
+- **Layer 1: Core Naturalness Criteria (Hardcoded)** - Metrik anti-deteksi di prompt builder
+- **Layer 2: Style Constitution (Editable)** - Style rules yang bisa dikustomisasi admin
+
+**LLM Limitation Note:**
+- LLM buruk dalam counting → gunakan instruksi KUALITATIF, bukan kuantitatif
 
 ## Task List
 
@@ -64,42 +75,94 @@ convex/schema.ts  # Add styleConstitutions table
 
 - [ ] 1.0 Complete API endpoint untuk refrasa
   - [ ] 1.1 Write 3-5 focused tests untuk /api/refrasa endpoint
-    - Test successful refrasa returns structured output (score, issues, refrasedText, newScore)
+    - Test successful refrasa returns structured output (issues with category, refrasedText)
     - Test auth required (401 for unauthenticated)
     - Test validation (content required, minimum length)
     - Test fallback to OpenRouter when Gateway fails
+    - Test constitution fallback (proceed with Layer 1 only if no active constitution)
   - [ ] 1.2 Create type definitions di `src/lib/refrasa/types.ts`
-    - RefrasaIssue: { type, message, severity, suggestion? }
+    - RefrasaIssueType: union type for all issue types
+    - RefrasaIssueCategory: 'naturalness' | 'style'
+    - RefrasaIssue: { type, category, message, severity, suggestion? }
     - RefrasaRequest: { content, artifactId? }
-    - RefrasaResponse: { needsRefrasa, original, refrasad?, mode }
-    - OriginalAnalysis: { score }
-    - RefrasaResult: { score, issues, refrasedText }
+    - RefrasaResponse: { issues: RefrasaIssue[], refrasedText: string }
+    - **Note:** Score dihapus karena self-grading bias
   - [ ] 1.3 Create Zod schemas di `src/lib/refrasa/schemas.ts`
-    - RefrasaIssueSchema: type, message, severity (info|warning|critical), suggestion?
-    - RefrasaOutputSchema: score (0-100), newScore (0-100), issues[], refrasedText
+    - RefrasaIssueTypeSchema: enum of all issue types
+    - RefrasaIssueCategorySchema: 'naturalness' | 'style'
+    - RefrasaIssueSchema: type, category, message, severity (info|warning|critical), suggestion?
+    - RefrasaOutputSchema: issues[], refrasedText (tanpa score)
     - RequestBodySchema: content (min 50 chars), artifactId?
-  - [ ] 1.4 Create prompt builder di `src/lib/refrasa/prompt-builder.ts`
+  - [ ] 1.4 Create prompt builder dengan TWO-LAYER structure di `src/lib/refrasa/prompt-builder.ts`
     - Function buildRefrasaPrompt(constitution: string, content: string)
-    - System prompt dengan constitution sebagai guidelines
-    - Task instruction untuk analyze + rephrase
-    - Output format specification (JSON structure)
-  - [ ] 1.5 Create API route `src/app/api/refrasa/route.ts`
+    - **LAYER 1 (Hardcoded): Core Naturalness Criteria - QUALITATIVE INSTRUCTIONS**
+      - ⚠️ PENTING: Gunakan instruksi KUALITATIF, bukan kuantitatif (LLM buruk dalam counting)
+      - Vocabulary Diversity:
+        - ❌ JANGAN: "No word >3x per 500 words"
+        - ✅ GUNAKAN: "Strictly avoid repeating non-technical vocabulary close together. Use synonyms aggressively for common words."
+      - Sentence Pattern Variance:
+        - ❌ JANGAN: "Mix lengths (short <10, medium 10-20, long >20 words)"
+        - ✅ GUNAKAN: "Vary sentence structures naturally. Mix short punchy sentences with longer explanatory ones. Avoid starting consecutive sentences with the same word or phrase."
+      - Paragraph Rhythm:
+        - ❌ JANGAN: "Vary 2-6 sentences per paragraph"
+        - ✅ GUNAKAN: "Create natural paragraph flow. Some paragraphs should be brief for emphasis, others more developed for detailed explanation."
+      - Hedging Balance:
+        - ✅ GUNAKAN: "Include appropriate academic hedging language where claims are not absolute. Use markers like 'cenderung', 'kemungkinan', 'tampaknya', 'dapat diargumentasikan'."
+      - Burstiness:
+        - ✅ GUNAKAN: "Write with variable complexity like humans do. Mix technical precision with accessible explanations. Maintain academic formality throughout."
+    - **ACADEMIC ESCAPE CLAUSE (CRITICAL):**
+      ```
+      SELALU PERTAHANKAN:
+      - Technical terminology consistency (istilah teknis TIDAK diganti sinonim)
+      - Academic rigor and formality
+      - Markdown formatting structure (heading, list, bold/italic, link, code block, blockquote)
+      - Citation/reference formatting (e.g., "Menurut Smith (2020)...")
+      - Citation keys ([@...], [1], [2])
+      - Discipline-specific conventions
+      - Proper nouns and named entities
+      ```
+    - **Guidance tambahan:** Jika ragu apakah kata ini istilah teknis atau bukan, pilih untuk MENGULANG. Konsistensi > variasi.
+    - **LAYER 2 (Dynamic): Style Constitution**
+      - Injected dari database
+      - Additional style guidelines
+    - Output format specification dengan categorized issues
+    - **Instruksi bahasa output:** issues/suggestion/refrasedText harus Bahasa Indonesia (kecuali istilah teknis/rujukan)
+    - **CRITICAL: Layer 1 TIDAK BISA di-override oleh constitution**
+  - [ ] 1.5 Create educational loading messages di `src/lib/refrasa/loading-messages.ts`
+    - Array of rotating messages untuk loading UI
+    - Messages menjelaskan proses secara edukatif:
+      - "Menganalisis pola kalimat..."
+      - "Memeriksa variasi kosa kata..."
+      - "Menyesuaikan ritme paragraf..."
+      - "Memperbaiki gaya penulisan..."
+      - "Menyeimbangkan hedging akademik..."
+      - "Memastikan konsistensi terminologi..."
+    - Export constant LOADING_MESSAGES array
+    - Export LOADING_ROTATION_INTERVAL (2-3 seconds)
+  - [ ] 1.6 Create API route `src/app/api/refrasa/route.ts`
     - Auth: Clerk authentication required (getAuth dari @clerk/nextjs/server)
     - Request validation dengan Zod schema
     - Fetch active Style Constitution via `fetchQuery(api.styleConstitutions.getActive)`
+    - **Constitution fallback:** Jika tidak ada active constitution, proceed dengan Layer 1 only
+    - Build two-layer prompt dengan buildRefrasaPrompt() (constitution optional)
     - LLM call dengan `generateObject` dari ai package
     - Primary provider (getGatewayModel) dengan try-catch fallback (getOpenRouterModel)
-    - Return structured response
-  - [ ] 1.6 Ensure API layer tests pass
+    - Return structured response: `{ issues, refrasedText }`
+    - Set `export const maxDuration = 300` (Vercel Functions)
+  - [ ] 1.7 Ensure API layer tests pass
     - Run ONLY tests dari 1.1
-    - Verify endpoint returns correct schema
+    - Verify endpoint returns correct schema with categorized issues
     - Verify auth dan validation bekerja
 
 **Acceptance Criteria:**
 - Tests dari 1.1 pass
-- Endpoint returns { needsRefrasa, original: { score }, refrasad: { score, issues, refrasedText }, mode: 'full' }
+- Endpoint returns `{ issues: RefrasaIssue[], refrasedText: string }`
 - Auth required dan validation enforced
 - Fallback ke OpenRouter bekerja saat Gateway fail
+- Constitution fallback works (Layer 1 only if no active constitution)
+- **Issues properly categorized sebagai 'naturalness' atau 'style'**
+- **Bahasa output:** issues/suggestion/refrasedText Bahasa Indonesia (kecuali istilah teknis/rujukan)
+- `maxDuration = 300` diset di route
 
 **Files to Create:**
 ```
@@ -109,6 +172,7 @@ src/
 │       ├── types.ts
 │       ├── schemas.ts
 │       ├── prompt-builder.ts
+│       ├── loading-messages.ts    # Educational loading messages array
 │       └── index.ts
 └── app/
     └── api/
@@ -134,6 +198,7 @@ src/
     - Action buttons: Edit (creates new version), History, Activate/Deactivate, Delete
     - Loading state dengan skeleton animation
     - Empty state message
+    - **Add note: "Constitution hanya untuk style rules. Naturalness criteria hardcoded."**
   - [ ] 2.3 Create form dialog untuk create/edit
     - Reuse AlertDialog pattern dari SystemPromptsManager
     - Fields: name (text input), content (textarea), description (optional textarea)
@@ -180,41 +245,59 @@ src/app/(dashboard)/dashboard/page.tsx  # Add tab atau navigation
     - Test RefrasaButton disabled states (isEditing, null artifact, short content)
     - Test RefrasaConfirmDialog renders before/after comparison
     - Test "Terapkan" button triggers artifact update
+    - Test issues grouped by category (naturalness/style)
   - [ ] 3.2 Create `src/components/refrasa/RefrasaButton.tsx`
     - Icon: WandSparkles dari lucide-react
     - Props: onClick, disabled, isLoading
     - Disabled conditions: isEditing, artifact === null, content.length < 50
     - Loading state: Loader2 spinning icon
     - Tooltip dengan disabled reason
+    - Tooltip peringatan saat jumlah kata > 2.000 (tanpa hard block)
   - [ ] 3.3 Create `src/components/refrasa/RefrasaIssueItem.tsx`
-    - Props: issue (RefrasaIssue type)
+    - Props: issue (RefrasaIssue type dengan category)
     - Badge warna berdasarkan severity: info=blue, warning=yellow, critical=red
+    - **Category indicator: naturalness=purple badge, style=teal badge**
     - Display type, message, dan suggestion (if exists)
   - [ ] 3.4 Create `src/components/refrasa/RefrasaConfirmDialog.tsx`
     - Dialog dari shadcn/ui dengan max-w-3xl
     - Side-by-side layout: CSS grid dengan gap-4
-    - Left panel (Original): content dengan score badge
-    - Right panel (Refrasad): refrasedText dengan newScore badge
-    - Score badges: hijau >= 80, kuning 50-79, merah < 50
-    - Collapsible issues list (Accordion atau Collapsible)
+    - Left panel (Original): content dengan issues list
+    - Panel kanan (hasil refrasa): refrasedText (bersih)
+    - Improvement indicator: "X masalah terdeteksi → Tinjau hasil perbaikan"
+    - **Collapsible issues list GROUPED by category:**
+      - "Naturalness Issues" section
+      - "Style Issues" section
     - Buttons: "Terapkan" (primary) dan "Batal" (outline)
     - Responsive: stack vertikal pada mobile (md:grid-cols-2)
-  - [ ] 3.5 Create `src/lib/hooks/useRefrasa.ts`
-    - State: isLoading, result (RefrasaResponse | null), error
+  - [ ] 3.5 Create `src/components/refrasa/RefrasaLoadingIndicator.tsx`
+    - Component untuk educational loading states
+    - Import LOADING_MESSAGES dan LOADING_ROTATION_INTERVAL dari loading-messages.ts
+    - useState untuk currentMessageIndex
+    - useEffect dengan interval untuk rotate messages (2-3 detik per message)
+    - Centered layout dengan Loader2 spinning icon
+    - Display rotating educational message di bawah spinner
+    - Clean up interval on unmount
+  - [ ] 3.6 Create `src/lib/hooks/useRefrasa.ts`
+    - State: isLoading, result ({ issues, refrasedText } | null), error
     - Function: analyzeAndRefrasa(content: string, artifactId?: string)
     - Calls POST /api/refrasa
     - Handles loading dan error states
-  - [ ] 3.6 Create barrel export `src/components/refrasa/index.ts`
+    - Returns issueCount untuk UI indicator
+  - [ ] 3.7 Create barrel export `src/components/refrasa/index.ts`
     - Export all components
-  - [ ] 3.7 Ensure User UI tests pass
+  - [ ] 3.8 Ensure User UI tests pass
     - Run ONLY tests dari 3.1
     - Verify disabled states dan dialog render correctly
+    - Verify issues grouped by category
 
 **Acceptance Criteria:**
 - Tests dari 3.1 pass
 - RefrasaButton shows correct disabled states dengan tooltip
-- Dialog shows side-by-side comparison dengan score badges
-- Issues list collapsible untuk minimize visual noise
+- Tooltip peringatan muncul saat jumlah kata > 2.000 (tanpa hard block)
+- Dialog shows side-by-side comparison (original + issues vs refrasedText clean)
+- Improvement indicator shows issue count (bukan score)
+- **Issues list grouped by category (naturalness/style) untuk transparency**
+- Empty issues state ditangani dengan aman (UI tetap informatif)
 - Responsive design works
 
 **Files to Create:**
@@ -225,6 +308,7 @@ src/
 │       ├── RefrasaButton.tsx
 │       ├── RefrasaIssueItem.tsx
 │       ├── RefrasaConfirmDialog.tsx
+│       ├── RefrasaLoadingIndicator.tsx  # Educational loading states
 │       └── index.ts
 └── lib/
     └── hooks/
@@ -248,6 +332,7 @@ src/
     - Location: sejajar dengan Edit, Download, Copy buttons (line 376-410)
     - Use RefrasaButton component
     - Disabled conditions: isEditing, artifact === null, artifact.content.length < 50
+    - Hitung jumlah kata untuk tooltip peringatan (> 2.000 kata)
   - [ ] 4.3 Add context menu untuk right-click refrasa
     - Wrap artifact content area dengan ContextMenu dari Radix UI
     - Menu item "Refrasa" dengan icon WandSparkles
@@ -263,9 +348,15 @@ src/
     - Artifact versioning: creates new version (immutable pattern)
     - Close dialog setelah sukses
     - Toast success: "Tulisan berhasil diperbaiki ke v{version}"
-  - [ ] 4.6 Add loading states
-    - Loading spinner saat API call in progress
-    - Disable button dan show Loader2
+  - [ ] 4.6 Add educational loading states (FR-11)
+    - Use RefrasaLoadingIndicator component saat API call in progress
+    - Tujuan: User tidak bosan menunggu proses yang bisa 10-20+ detik untuk teks panjang
+    - Show rotating educational messages:
+      - "Menganalisis pola kalimat..."
+      - "Memeriksa variasi kosa kata..."
+      - "Menyesuaikan ritme paragraf..."
+      - "Memperbaiki gaya penulisan..."
+    - Disable button saat loading
     - Error toast jika API fails
   - [ ] 4.7 Ensure integration tests pass
     - Run ONLY tests dari 4.1
@@ -294,33 +385,37 @@ src/components/chat/ArtifactViewer.tsx
 - [ ] 5.0 Review existing tests and fill critical gaps only
   - [ ] 5.1 Review tests dari Task Groups 0-4
     - Review tests dari database layer (Task 0.1): ~4 tests
-    - Review tests dari API layer (Task 1.1): ~4 tests
+    - Review tests dari API layer (Task 1.1): ~5 tests
     - Review tests dari Admin UI (Task 2.1): ~3 tests
     - Review tests dari User UI (Task 3.1): ~4 tests
-    - Review tests dari Integration (Task 4.1): ~3 tests
-    - Total existing tests: approximately 18 tests
+    - Review tests dari Integration (Task 4.1): ~4 tests
+    - Total existing tests: approximately 20 tests
   - [ ] 5.2 Analyze test coverage gaps untuk Refrasa feature only
     - Identify critical user workflows yang lack test coverage
     - Focus ONLY on gaps related to Refrasa feature
     - Prioritize end-to-end workflows
+    - **Verify categorization works saat issues muncul**
   - [ ] 5.3 Write up to 8 additional strategic tests maximum
     - E2E test: Full flow dari button click sampai artifact update
     - Integration test: LLM provider fallback scenario
     - Edge case: Constitution not found (fallback behavior)
     - Edge case: LLM returns invalid schema
     - Admin flow: Create constitution -> activate -> verify used by API
+    - **Test: UI handle empty issues list tanpa error**
+    - **Test: Markdown structure preserved setelah refrasa**
     - Do NOT write exhaustive tests untuk semua scenarios
   - [ ] 5.4 Run feature-specific tests only
     - Run ONLY tests related to Refrasa feature
-    - Expected total: approximately 20-26 tests maximum
+    - Expected total: approximately 22-28 tests maximum
     - Do NOT run entire application test suite
     - Verify critical workflows pass
 
 **Acceptance Criteria:**
-- All feature-specific tests pass (~20-26 tests total)
+- All feature-specific tests pass (~22-28 tests total)
 - Critical user workflows untuk Refrasa feature covered
 - No more than 8 additional tests added
 - Testing focused exclusively on Refrasa feature
+- **Naturalness criteria evaluation verified**
 
 ---
 
@@ -334,8 +429,8 @@ Recommended implementation sequence:
    - Seed migration
 
 2. **Task Group 1: API Endpoint** - Core business logic
-   - Types dan schemas
-   - Prompt builder
+   - Types dan schemas (with category support)
+   - **Prompt builder dengan two-layer structure (CRITICAL)**
    - Route handler dengan fallback
 
 3. **Task Group 2: Admin UI** - Admin management
@@ -345,7 +440,7 @@ Recommended implementation sequence:
 
 4. **Task Group 3: User UI Components** - User-facing UI
    - RefrasaButton
-   - RefrasaConfirmDialog
+   - RefrasaConfirmDialog (with categorized issues)
    - useRefrasa hook
 
 5. **Task Group 4: Integration** - Connect everything
@@ -357,6 +452,7 @@ Recommended implementation sequence:
    - Review existing tests
    - Fill critical gaps
    - Verify end-to-end
+   - **Verifikasi kriteria naturalness selalu dievaluasi**
 
 ---
 
@@ -381,16 +477,18 @@ src/
 │   │   └── ArtifactViewer.tsx             # Modified: add Refrasa button
 │   └── refrasa/
 │       ├── RefrasaButton.tsx              # New
-│       ├── RefrasaIssueItem.tsx           # New
-│       ├── RefrasaConfirmDialog.tsx       # New
+│       ├── RefrasaIssueItem.tsx           # New (with category support)
+│       ├── RefrasaConfirmDialog.tsx       # New (with grouped issues)
+│       ├── RefrasaLoadingIndicator.tsx    # New: educational loading states
 │       └── index.ts                       # New: barrel export
 └── lib/
     ├── hooks/
     │   └── useRefrasa.ts                  # New: state management hook
     └── refrasa/
-        ├── types.ts                       # New: type definitions
-        ├── schemas.ts                     # New: Zod schemas
-        ├── prompt-builder.ts              # New: LLM prompt construction
+        ├── types.ts                       # New: type definitions (with category)
+        ├── schemas.ts                     # New: Zod schemas (with category)
+        ├── prompt-builder.ts              # New: TWO-LAYER prompt (QUALITATIVE)
+        ├── loading-messages.ts            # New: educational loading messages
         └── index.ts                       # New: barrel export
 ```
 
@@ -407,13 +505,51 @@ src/
 - Use `generateObject` dari ai package untuk structured output
 - Primary provider dengan try-catch fallback pattern dari `streaming.ts`
 - Zod schema untuk request validation dan LLM output parsing
+- **Two-layer prompt: Core Naturalness (hardcoded) + Style Constitution (dynamic)**
+
+### Prompt Builder (FR-10 Implementation)
+**CRITICAL - Two-Layer Architecture dengan QUALITATIVE Instructions:**
+
+⚠️ **LLM Limitation:** Gunakan instruksi KUALITATIF, bukan kuantitatif (LLM buruk dalam counting)
+
+```
+Layer 1 (Hardcoded - CANNOT be overridden):
+├── Vocabulary Diversity (QUALITATIVE: "avoid repeating close together")
+├── Sentence Pattern Variance (QUALITATIVE: "vary naturally, mix short and long")
+├── Paragraph Rhythm (QUALITATIVE: "some brief for emphasis, others developed")
+├── Hedging Balance (markers: cenderung, kemungkinan, tampaknya)
+└── Burstiness (mix technical precision with accessible explanations)
+
+ACADEMIC ESCAPE CLAUSE:
+└── SELALU pertahankan istilah teknis, sitasi, proper nouns
+
+Layer 2 (Dynamic - Admin editable):
+└── Style Constitution content
+```
 
 ### UI Components
 - Reuse Dialog, Button, Badge dari shadcn/ui
 - Follow existing admin UI patterns dari SystemPromptsManager
 - Responsive design dengan Tailwind breakpoints
+- **Issues grouped by category (naturalness/style)**
 
 ### Integration
 - Add button ke existing toolbar pattern di ArtifactViewer
 - Use `api.artifacts.update` mutation untuk apply changes
 - Toast notifications via sonner
+
+---
+
+## Known Limitations
+
+### 1. "Hardcoded" = Prompt Instructions, Bukan Enforcement
+- Core Naturalness Criteria di-hardcode di prompt, tapi tidak ada mekanisme yang memaksa LLM comply
+- Mitigasi: Accept limitation untuk v1
+
+### 2. Self-Grading Bias → Score Dihapus
+- Score dihapus karena model yang sama analyze + rewrite + re-analyze = bias
+    - UI menggunakan issue count sebagai gantinya: "X masalah terdeteksi → Tinjau hasil perbaikan"
+
+### 3. Constitution Fallback
+- Jika tidak ada active constitution, proceed dengan Layer 1 only
+- Style Constitution adalah enhancement, bukan requirement

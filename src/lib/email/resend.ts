@@ -15,7 +15,6 @@ export async function sendWelcomeEmail({
   to,
 }: BaseEmailParams): Promise<void> {
   if (!client || !fromEmail) {
-    console.warn("Resend client or FROM email not configured")
     return
   }
 
@@ -33,7 +32,6 @@ export async function sendBillingNotificationEmail({
   text,
 }: BaseEmailParams & { subject: string; text: string }): Promise<void> {
   if (!client || !fromEmail) {
-    console.warn("Resend client or FROM email not configured")
     return
   }
 
