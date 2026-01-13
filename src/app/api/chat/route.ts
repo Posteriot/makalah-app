@@ -313,26 +313,91 @@ export async function POST(req: Request) {
             ...(providerSettings.maxTokens !== undefined ? { maxTokens: providerSettings.maxTokens } : {}),
         }
 
+        // Helper: detect if previous turns already have search results (sources)
+        const hasPreviousSearchResults = (msgs: unknown[]): boolean => {
+            // Look at recent assistant messages for sources
+            const recentAssistantMsgs = msgs
+                .filter((m): m is { role: string; content?: string } =>
+                    typeof m === "object" && m !== null && "role" in m && (m as { role: string }).role === "assistant"
+                )
+                .slice(-3) // Check last 3 assistant messages
+
+            for (const msg of recentAssistantMsgs) {
+                const content = typeof msg.content === "string" ? msg.content : ""
+                // Check for inline citation markers [1], [2], etc.
+                if (/\[\d+\]/.test(content)) return true
+                // Check for common patterns indicating search was done
+                if (/berdasarkan hasil pencarian/i.test(content)) return true
+                if (/menurut .+\(\d{4}\)/i.test(content)) return true // APA citation pattern
+            }
+            return false
+        }
+
+        // Helper: detect if user message is a confirmation/approval (should prefer paper tools over search)
+        const isUserConfirmationMessage = (text: string): boolean => {
+            const normalized = text.toLowerCase().trim()
+            // Short confirmations
+            if (normalized.length < 50) {
+                const confirmationPatterns = [
+                    /^(ya|yes|ok|oke|okay|yup|yep|sip|siap|baik|boleh)\.?$/i,
+                    /^setuju\.?$/i,
+                    /^lanjut(kan)?\.?$/i,
+                    /^silakan\.?$/i,
+                    /^approve\.?$/i,
+                    /^simpan\.?$/i,
+                    /^save\.?$/i,
+                    /sudah (bagus|oke|ok|baik)/i,
+                    /tidak ada (revisi|perubahan)/i,
+                    /sudah sesuai/i,
+                    /sudah puas/i,
+                ]
+                if (confirmationPatterns.some(p => p.test(normalized))) return true
+            }
+            return false
+        }
+
         const decideWebSearchMode = async (options: {
             model: unknown
             recentMessages: unknown[]
             isPaperMode: boolean
+            searchAlreadyDone: boolean
+            isUserConfirmation: boolean
         }): Promise<{ enableWebSearch: boolean; confidence: number; reason: string }> => {
+            // CRITICAL: If user is confirming/approving, prefer paper tools for save/artifact
+            if (options.isUserConfirmation && options.isPaperMode) {
+                return {
+                    enableWebSearch: false,
+                    confidence: 0.95,
+                    reason: "user_confirmation_prefer_paper_tools"
+                }
+            }
+
+            // CRITICAL: If search was already done in previous turns, prefer paper tools
+            // This prevents the "stuck in search mode" bug
+            if (options.searchAlreadyDone && options.isPaperMode) {
+                return {
+                    enableWebSearch: false,
+                    confidence: 0.9,
+                    reason: "search_already_done_prefer_paper_tools"
+                }
+            }
+
             const paperModeContext = options.isPaperMode
                 ? `
 
 KONTEKS PENTING - PAPER MODE AKTIF:
 User sedang dalam mode penulisan paper akademik. Dalam konteks ini:
-- enableWebSearch = true WAJIB jika AI akan memberikan atau mendiskusikan referensi, jurnal, literatur, atau sumber akademik.
-- Referensi akademik HARUS diverifikasi melalui web search untuk menghindari halusinasi.
-- Jangan pernah mengarang referensi tanpa pencarian web terlebih dahulu.`
+- enableWebSearch = true HANYA jika user EKSPLISIT meminta pencarian/cari referensi di pesan TERBARU.
+- Jika AI sudah punya referensi dari pencarian sebelumnya, JANGAN search lagi - fokus menyimpan/memproses data.
+- Default ke false kecuali ada permintaan eksplisit pencarian baru.`
                 : ""
 
             const routerPrompt = `Anda adalah "router" yang memutuskan apakah jawaban untuk user WAJIB memakai pencarian web (tool google_search).
 
 Tujuan:
-- enableWebSearch = true HANYA jika (A) user meminta cek internet/pencarian secara eksplisit, ATAU (B) pertanyaan butuh data faktual terbaru/real-time sehingga tanpa internet berisiko salah, ATAU (C) AI akan memberikan referensi akademik/jurnal/literatur.
-- Jika pertanyaan bisa dijawab tanpa data terbaru DAN tidak memerlukan referensi akademik, set false.
+- enableWebSearch = true HANYA jika (A) user meminta cek internet/pencarian secara eksplisit di pesan TERAKHIR, ATAU (B) pertanyaan butuh data faktual terbaru/real-time sehingga tanpa internet berisiko salah.
+- Jika user sudah punya data/referensi dari diskusi sebelumnya dan tidak meminta pencarian baru, set false.
+- Default ke false untuk memungkinkan AI memproses/menyimpan data.
 ${paperModeContext}
 
 Aturan output:
@@ -652,10 +717,14 @@ Aturan:
             // Catatan penting: AI SDK tidak bisa mix provider-defined tools (google_search) dengan function tools dalam 1 request.
             // Jadi kita pilih salah satu tools set per request.
             const recentForRouter = modelMessages.slice(-8)
+            const searchAlreadyDone = hasPreviousSearchResults(modelMessages)
+            const isUserConfirmation = isUserConfirmationMessage(lastUserContent)
             const webSearchDecision = await decideWebSearchMode({
                 model,
                 recentMessages: recentForRouter,
                 isPaperMode: !!paperModePrompt,
+                searchAlreadyDone,
+                isUserConfirmation,
             })
 
             const routerFailed = ["router_invalid_json_shape", "router_json_parse_failed"].includes(
@@ -671,11 +740,21 @@ Aturan:
             const enableWebSearch = !!wrappedGoogleSearchTool
                 && !forcePaperToolsMode
                 && (webSearchDecision.enableWebSearch || explicitSearchFallback)
+            console.log("[WebSearchRouter] Decision:", {
+                enableWebSearch: webSearchDecision.enableWebSearch,
+                confidence: webSearchDecision.confidence,
+                reason: webSearchDecision.reason,
+                explicitSearchFallback,
+                forcePaperToolsMode,
+                searchAlreadyDone,
+                isUserConfirmation,
+                finalEnableWebSearch: enableWebSearch,
+            })
 
             const webSearchBehaviorSystemNote = `KETENTUAN PENCARIAN WEB (google_search):
 1) Gunakan tool google_search HANYA jika Anda memerlukan data faktual terbaru atau jika user memintanya secara eksplisit.
-2) Jika Anda melakukan pencarian, Anda TIDAK BOLEH memanggil tool createArtifact dalam langkah (turn) yang sama.
-3) Selesaikan pencarian dan diskusi data terlebih dahulu, baru kemudian buat artifact di langkah berikutnya jika diperlukan.
+2) Jika Anda melakukan pencarian, Anda TIDAK BOLEH memanggil tool createArtifact, updateStageData, submitStageForValidation, renameConversationTitle, atau tool paper lain dalam langkah (turn) yang sama.
+3) Selesaikan pencarian dan diskusi data terlebih dahulu, baru kemudian simpan draf/buat artifact di langkah berikutnya jika diperlukan.
 4) Hindari menjadikan halaman listing/tag/homepage sebagai sumber utama; utamakan URL artikel/siaran pers yang spesifik.
 5) Tulis klaim faktual secara ringkas per kalimat, dan hindari klaim yang tidak bisa didukung sumber.`
 
@@ -690,6 +769,10 @@ Aturan:
             const gatewayTools: ToolSet = enableWebSearch
                 ? ({ google_search: wrappedGoogleSearchTool } as unknown as ToolSet)
                 : tools
+            console.log("[Chat API] Gateway Tools Configured:", {
+                webSearchModeEnabled: enableWebSearch,
+                toolKeys: enableWebSearch ? ["google_search"] : Object.keys(tools),
+            })
 
             const result = streamText({
                 model,

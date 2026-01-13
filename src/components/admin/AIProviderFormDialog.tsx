@@ -24,7 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react"
+import { CheckCircle2, XCircle, Loader2, AlertTriangle, Shield, ShieldCheck, ShieldX } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Id } from "@convex/_generated/dataModel"
 
 // Model presets per provider
@@ -138,6 +139,35 @@ interface AIProviderConfig {
   version: number
 }
 
+// Compatibility verification result types
+interface CompatibilityResult {
+  test: string
+  passed: boolean
+  duration: number
+  error?: string
+  details?: string
+}
+
+interface CompatibilityVerificationResult {
+  success: boolean
+  model: string
+  compatibility: {
+    full: boolean
+    minimal: boolean
+    level: "full" | "partial" | "incompatible"
+  }
+  results: CompatibilityResult[]
+  supportedFeatures: {
+    chat: boolean
+    simpleTool: boolean
+    complexTool: boolean
+    structuredOutput: boolean
+  }
+  featureSupport: Record<string, boolean>
+  recommendation: string
+  totalDuration: number
+}
+
 interface AIProviderFormDialogProps {
   open: boolean
   config: AIProviderConfig | null
@@ -180,6 +210,10 @@ export function AIProviderFormDialog({
   const [isTestingFallback, setIsTestingFallback] = useState(false)
   const [primaryValidation, setPrimaryValidation] = useState<"idle" | "success" | "error">("idle")
   const [fallbackValidation, setFallbackValidation] = useState<"idle" | "success" | "error">("idle")
+
+  // Compatibility verification state (for fallback provider)
+  const [isVerifyingCompatibility, setIsVerifyingCompatibility] = useState(false)
+  const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityVerificationResult | null>(null)
 
   const createMutation = useMutation(api.aiProviderConfigs.createConfig)
   const updateMutation = useMutation(api.aiProviderConfigs.updateConfig)
@@ -229,6 +263,7 @@ export function AIProviderFormDialog({
       // Reset validation state
       setPrimaryValidation("idle")
       setFallbackValidation("idle")
+      setCompatibilityResult(null)
     }
   }, [open, config])
 
@@ -251,6 +286,7 @@ export function AIProviderFormDialog({
     setFallbackModel(defaultModel)
     setFallbackModelPreset(defaultModel)
     setFallbackValidation("idle") // Reset validation
+    setCompatibilityResult(null) // Reset compatibility
   }
 
   const handlePrimaryModelPresetChange = (value: string) => {
@@ -265,6 +301,7 @@ export function AIProviderFormDialog({
     if (value !== "custom") {
       setFallbackModel(value)
     }
+    setCompatibilityResult(null) // Reset compatibility when model changes
   }
 
   const handleTestPrimary = async () => {
@@ -340,6 +377,54 @@ export function AIProviderFormDialog({
       toast.error(error.message || "Terjadi kesalahan saat validasi")
     } finally {
       setIsTestingFallback(false)
+    }
+  }
+
+  // Verify model compatibility for tool calling (OpenRouter fallback)
+  const handleVerifyCompatibility = async () => {
+    if (!fallbackModel || !fallbackApiKey) {
+      toast.error("Lengkapi fallback model dan API key terlebih dahulu")
+      return
+    }
+
+    // Only verify for OpenRouter fallback (the provider that needs tool compatibility check)
+    if (fallbackProvider !== "openrouter") {
+      toast.info("Compatibility verification hanya diperlukan untuk OpenRouter fallback")
+      return
+    }
+
+    setIsVerifyingCompatibility(true)
+    setCompatibilityResult(null)
+
+    try {
+      const response = await fetch("/api/admin/verify-model-compatibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: fallbackModel,
+          apiKey: fallbackApiKey,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setCompatibilityResult(result)
+        if (result.compatibility.level === "full") {
+          toast.success("Model fully compatible! Semua fitur didukung.")
+        } else if (result.compatibility.level === "partial") {
+          toast.warning("Model partially compatible. Beberapa fitur mungkin tidak berfungsi.")
+        } else {
+          toast.error("Model NOT compatible. Tidak disarankan untuk fallback.")
+        }
+      } else {
+        toast.error(result.error || "Verification gagal")
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan saat verifikasi"
+      toast.error(errorMessage)
+    } finally {
+      setIsVerifyingCompatibility(false)
     }
   }
 
@@ -690,6 +775,85 @@ export function AIProviderFormDialog({
                 </Button>
               </div>
             </div>
+
+            {/* Tool Compatibility Verification (OpenRouter only) */}
+            {fallbackProvider === "openrouter" && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleVerifyCompatibility}
+                    disabled={isLoading || isVerifyingCompatibility || !fallbackApiKey.trim() || fallbackValidation !== "success"}
+                    className="w-full"
+                  >
+                    {isVerifyingCompatibility ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Verifying Tool Compatibility...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Verify Tool Compatibility
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {fallbackValidation === "success" && !compatibilityResult && !isVerifyingCompatibility && (
+                  <p className="text-xs text-muted-foreground">
+                    Klik tombol di atas untuk memverifikasi apakah model mendukung tool calling (createArtifact, Paper Tools, dll).
+                  </p>
+                )}
+
+                {/* Compatibility Results Panel */}
+                {compatibilityResult && (
+                  <Alert variant={
+                    compatibilityResult.compatibility.level === "full" ? "default" :
+                    compatibilityResult.compatibility.level === "partial" ? "default" : "destructive"
+                  } className={
+                    compatibilityResult.compatibility.level === "full" ? "border-green-500 bg-green-50 dark:bg-green-950" :
+                    compatibilityResult.compatibility.level === "partial" ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950" : ""
+                  }>
+                    {compatibilityResult.compatibility.level === "full" && (
+                      <ShieldCheck className="h-4 w-4 text-green-600" />
+                    )}
+                    {compatibilityResult.compatibility.level === "partial" && (
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                    )}
+                    {compatibilityResult.compatibility.level === "incompatible" && (
+                      <ShieldX className="h-4 w-4" />
+                    )}
+                    <AlertTitle className="flex items-center gap-2">
+                      {compatibilityResult.compatibility.level === "full" && "Fully Compatible"}
+                      {compatibilityResult.compatibility.level === "partial" && "Partially Compatible"}
+                      {compatibilityResult.compatibility.level === "incompatible" && "Not Compatible"}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        ({compatibilityResult.totalDuration}ms)
+                      </span>
+                    </AlertTitle>
+                    <AlertDescription className="mt-2">
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {Object.entries(compatibilityResult.featureSupport).map(([feature, supported]) => (
+                          <div key={feature} className="flex items-center gap-2">
+                            {supported ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5 text-red-500" />
+                            )}
+                            <span className={supported ? "" : "text-muted-foreground"}>{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {compatibilityResult.recommendation}
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
           </div>
 
           <Separator />

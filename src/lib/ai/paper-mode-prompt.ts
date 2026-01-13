@@ -91,6 +91,7 @@ ATURAN UMUM:
 - DISKUSI DULU sebelum drafting - jangan langsung generate output lengkap
 - Setelah diskusi matang, tulis paper utuh untuk tahap aktif sesuai konteks yang sudah disepakati
 - Gunakan google_search secara selektif jika membutuhkan literatur tambahan (opsional)
+- Jika memakai google_search, lakukan di turn terpisah: turn ini hanya untuk pencarian + rangkum temuan. Jangan panggil updateStageData/createArtifact/submitStageForValidation di turn yang sama.
 - Simpan progres dengan updateStageData() setelah diskusi matang
 - Buat artifact dengan createArtifact() untuk output yang sudah disepakati
 - submitStageForValidation() HANYA setelah user EKSPLISIT konfirmasi puas

@@ -70,7 +70,7 @@ Aturan pengisian initialIdea:
 AUTO-STAGE (PENTING!):
 ═══════════════════════════════════════════════════════════════════════════════
 Tool ini OTOMATIS menyimpan ke tahap yang sedang aktif (currentStage).
-Lo TIDAK PERLU dan TIDAK BISA specify stage - tool akan auto-fetch dari session.
+Kamu TIDAK PERLU dan TIDAK BISA specify stage - tool akan auto-fetch dari session.
 Ini mencegah error "Cannot update X while in Y".
 
 ═══════════════════════════════════════════════════════════════════════════════
