@@ -55,12 +55,12 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
     };
 
     return (
-        <Card className="m-4 p-4 bg-background-900/80 backdrop-blur-md border-primary-500/30 shadow-[0_0_20px_rgba(var(--primary-500),0.1)] animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <Card className="m-4 p-4 max-w-[80%] mx-auto bg-card border border-border shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-sm font-semibold text-foreground">Validasi Tahap: {stageLabel}</h3>
-                        <p className="text-xs text-muted-foreground">Cek dulu draf di atas. Udah oke belum?</p>
+                        <p className="text-xs text-muted-foreground">Periksa draft di artifact. Apakah sudah sesuai atau perlu revisi?</p>
                     </div>
                     <div className="flex gap-2">
                         {!showRevisionForm && (
@@ -103,7 +103,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             placeholder="Kasih tau AI yang mana yang kudu diganti..."
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
-                            className="resize-none min-h-[100px] text-xs bg-background-800/50"
+                            className="resize-none min-h-[100px] text-xs bg-background"
                         />
                         <Button
                             size="sm"

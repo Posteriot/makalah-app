@@ -120,6 +120,10 @@ export function MessageBubble({
     const extractInProgressTools = (uiMessage: UIMessage) => {
         const tools: { toolName: string; state: string; errorText?: string }[] = []
 
+        // DEBUG: Log all parts to understand tool state from different models
+        if (process.env.NODE_ENV === "development") {
+        }
+
         for (const part of uiMessage.parts ?? []) {
             const maybeToolPart = part as unknown as {
                 type?: string

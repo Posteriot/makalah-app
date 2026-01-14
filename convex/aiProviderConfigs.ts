@@ -5,6 +5,7 @@ import { requireRole } from "./permissions"
 /**
  * Get the currently active AI provider configuration
  * No auth required - used by chat API
+ * Returns config with default values for optional fields
  */
 export const getActiveConfig = query({
   args: {},
@@ -14,7 +15,18 @@ export const getActiveConfig = query({
       .withIndex("by_active", (q) => q.eq("isActive", true))
       .first()
 
-    return activeConfig
+    if (!activeConfig) {
+      return null
+    }
+
+    // Apply defaults for optional web search fields
+    return {
+      ...activeConfig,
+      primaryWebSearchEnabled: activeConfig.primaryWebSearchEnabled ?? true,
+      fallbackWebSearchEnabled: activeConfig.fallbackWebSearchEnabled ?? true,
+      fallbackWebSearchEngine: activeConfig.fallbackWebSearchEngine ?? "auto",
+      fallbackWebSearchMaxResults: activeConfig.fallbackWebSearchMaxResults ?? 5,
+    }
   },
 })
 
@@ -110,13 +122,19 @@ export const createConfig = mutation({
     description: v.optional(v.string()),
     primaryProvider: v.string(),
     primaryModel: v.string(),
-    primaryApiKey: v.string(), // Plain text
     fallbackProvider: v.string(),
     fallbackModel: v.string(),
-    fallbackApiKey: v.string(), // Plain text
+    // Provider API keys (global per provider)
+    gatewayApiKey: v.optional(v.string()),
+    openrouterApiKey: v.optional(v.string()),
     temperature: v.number(),
     topP: v.optional(v.number()),
     maxTokens: v.optional(v.number()),
+    // Web search settings
+    primaryWebSearchEnabled: v.optional(v.boolean()),
+    fallbackWebSearchEnabled: v.optional(v.boolean()),
+    fallbackWebSearchEngine: v.optional(v.string()),
+    fallbackWebSearchMaxResults: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
@@ -128,8 +146,11 @@ export const createConfig = mutation({
     if (args.temperature < 0 || args.temperature > 2) {
       throw new Error("Temperature harus antara 0 dan 2")
     }
-    if (!args.primaryApiKey.trim() || !args.fallbackApiKey.trim()) {
-      throw new Error("API key tidak boleh kosong")
+    if (
+      args.fallbackWebSearchMaxResults !== undefined &&
+      (args.fallbackWebSearchMaxResults < 1 || args.fallbackWebSearchMaxResults > 10)
+    ) {
+      throw new Error("Max search results harus antara 1 dan 10")
     }
 
     const now = Date.now()
@@ -139,13 +160,22 @@ export const createConfig = mutation({
       description: args.description?.trim(),
       primaryProvider: args.primaryProvider,
       primaryModel: args.primaryModel,
-      primaryApiKey: args.primaryApiKey, // Store plain text
       fallbackProvider: args.fallbackProvider,
       fallbackModel: args.fallbackModel,
-      fallbackApiKey: args.fallbackApiKey, // Store plain text
+      // Provider API keys (global per provider)
+      gatewayApiKey: args.gatewayApiKey?.trim() || "",
+      openrouterApiKey: args.openrouterApiKey?.trim() || "",
+      // Legacy slot-based keys (kept for compatibility)
+      primaryApiKey: "",
+      fallbackApiKey: "",
       temperature: args.temperature,
       topP: args.topP,
       maxTokens: args.maxTokens,
+      // Web search settings (store provided values, defaults applied in getActiveConfig)
+      primaryWebSearchEnabled: args.primaryWebSearchEnabled,
+      fallbackWebSearchEnabled: args.fallbackWebSearchEnabled,
+      fallbackWebSearchEngine: args.fallbackWebSearchEngine,
+      fallbackWebSearchMaxResults: args.fallbackWebSearchMaxResults,
       version: 1,
       isActive: false, // Not active by default
       parentId: undefined,
@@ -176,13 +206,21 @@ export const updateConfig = mutation({
     description: v.optional(v.string()),
     primaryProvider: v.optional(v.string()),
     primaryModel: v.optional(v.string()),
-    primaryApiKey: v.optional(v.string()), // Optional - uses existing if not provided
     fallbackProvider: v.optional(v.string()),
     fallbackModel: v.optional(v.string()),
-    fallbackApiKey: v.optional(v.string()), // Optional - uses existing if not provided
+    // Provider API keys (global per provider)
+    gatewayApiKey: v.optional(v.string()),
+    openrouterApiKey: v.optional(v.string()),
+    gatewayApiKeyClear: v.optional(v.boolean()),
+    openrouterApiKeyClear: v.optional(v.boolean()),
     temperature: v.optional(v.number()),
     topP: v.optional(v.number()),
     maxTokens: v.optional(v.number()),
+    // Web search settings
+    primaryWebSearchEnabled: v.optional(v.boolean()),
+    fallbackWebSearchEnabled: v.optional(v.boolean()),
+    fallbackWebSearchEngine: v.optional(v.string()),
+    fallbackWebSearchMaxResults: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
@@ -197,13 +235,38 @@ export const updateConfig = mutation({
     const description = args.description ?? oldConfig.description
     const primaryProvider = args.primaryProvider ?? oldConfig.primaryProvider
     const primaryModel = args.primaryModel ?? oldConfig.primaryModel
-    const primaryApiKey = args.primaryApiKey?.trim() || oldConfig.primaryApiKey
+    const deriveGatewayKey = () => {
+      if (args.gatewayApiKeyClear) return ""
+      if (args.gatewayApiKey?.trim()) return args.gatewayApiKey.trim()
+      if (oldConfig.gatewayApiKey !== undefined) return oldConfig.gatewayApiKey
+      if (oldConfig.primaryProvider === "vercel-gateway") return oldConfig.primaryApiKey ?? ""
+      if (oldConfig.fallbackProvider === "vercel-gateway") return oldConfig.fallbackApiKey ?? ""
+      return ""
+    }
+    const gatewayApiKey = deriveGatewayKey()
     const fallbackProvider = args.fallbackProvider ?? oldConfig.fallbackProvider
     const fallbackModel = args.fallbackModel ?? oldConfig.fallbackModel
-    const fallbackApiKey = args.fallbackApiKey?.trim() || oldConfig.fallbackApiKey
+    const deriveOpenRouterKey = () => {
+      if (args.openrouterApiKeyClear) return ""
+      if (args.openrouterApiKey?.trim()) return args.openrouterApiKey.trim()
+      if (oldConfig.openrouterApiKey !== undefined) return oldConfig.openrouterApiKey
+      if (oldConfig.primaryProvider === "openrouter") return oldConfig.primaryApiKey ?? ""
+      if (oldConfig.fallbackProvider === "openrouter") return oldConfig.fallbackApiKey ?? ""
+      return ""
+    }
+    const openrouterApiKey = deriveOpenRouterKey()
     const temperature = args.temperature ?? oldConfig.temperature
     const topP = args.topP ?? oldConfig.topP
     const maxTokens = args.maxTokens ?? oldConfig.maxTokens
+    // Web search settings - use provided value or preserve old config value
+    const primaryWebSearchEnabled =
+      args.primaryWebSearchEnabled ?? oldConfig.primaryWebSearchEnabled
+    const fallbackWebSearchEnabled =
+      args.fallbackWebSearchEnabled ?? oldConfig.fallbackWebSearchEnabled
+    const fallbackWebSearchEngine =
+      args.fallbackWebSearchEngine ?? oldConfig.fallbackWebSearchEngine
+    const fallbackWebSearchMaxResults =
+      args.fallbackWebSearchMaxResults ?? oldConfig.fallbackWebSearchMaxResults
 
     // Validate inputs
     if (!name.trim()) {
@@ -212,8 +275,11 @@ export const updateConfig = mutation({
     if (temperature < 0 || temperature > 2) {
       throw new Error("Temperature harus antara 0 dan 2")
     }
-    if (!primaryApiKey || !fallbackApiKey) {
-      throw new Error("API key tidak boleh kosong")
+    if (
+      fallbackWebSearchMaxResults !== undefined &&
+      (fallbackWebSearchMaxResults < 1 || fallbackWebSearchMaxResults > 10)
+    ) {
+      throw new Error("Max search results harus antara 1 dan 10")
     }
 
     const now = Date.now()
@@ -226,13 +292,21 @@ export const updateConfig = mutation({
       description: description?.trim(),
       primaryProvider,
       primaryModel,
-      primaryApiKey,
+      gatewayApiKey,
       fallbackProvider,
       fallbackModel,
-      fallbackApiKey,
+      openrouterApiKey,
+      // Legacy slot-based keys (kept for compatibility)
+      primaryApiKey: oldConfig.primaryApiKey ?? "",
+      fallbackApiKey: oldConfig.fallbackApiKey ?? "",
       temperature,
       topP,
       maxTokens,
+      // Web search settings
+      primaryWebSearchEnabled,
+      fallbackWebSearchEnabled,
+      fallbackWebSearchEngine,
+      fallbackWebSearchMaxResults,
       version: newVersion,
       isActive: false, // Not active yet
       parentId: args.configId,
@@ -297,6 +371,7 @@ export const activateConfig = mutation({
 /**
  * Swap primary and fallback providers (creates new version)
  * Admin only
+ * Note: Web search enabled flags are swapped, but engine/maxResults stay with fallback
  */
 export const swapProviders = mutation({
   args: {
@@ -314,6 +389,20 @@ export const swapProviders = mutation({
     const now = Date.now()
     const newVersion = config.version + 1
     const rootId = config.rootId ?? configId
+    const derivedGatewayKey = config.gatewayApiKey !== undefined
+      ? config.gatewayApiKey
+      : (config.primaryProvider === "vercel-gateway"
+        ? config.primaryApiKey ?? ""
+        : config.fallbackProvider === "vercel-gateway"
+          ? config.fallbackApiKey ?? ""
+          : "")
+    const derivedOpenRouterKey = config.openrouterApiKey !== undefined
+      ? config.openrouterApiKey
+      : (config.primaryProvider === "openrouter"
+        ? config.primaryApiKey ?? ""
+        : config.fallbackProvider === "openrouter"
+          ? config.fallbackApiKey ?? ""
+          : "")
 
     // Create new version with swapped providers
     const newConfigId = await ctx.db.insert("aiProviderConfigs", {
@@ -322,13 +411,23 @@ export const swapProviders = mutation({
       // Swap primary ↔ fallback
       primaryProvider: config.fallbackProvider,
       primaryModel: config.fallbackModel,
-      primaryApiKey: config.fallbackApiKey,
       fallbackProvider: config.primaryProvider,
       fallbackModel: config.primaryModel,
-      fallbackApiKey: config.primaryApiKey,
+      // Provider API keys (global per provider, do not swap)
+      gatewayApiKey: derivedGatewayKey,
+      openrouterApiKey: derivedOpenRouterKey,
+      // Legacy slot-based keys (kept as-is for backward compatibility)
+      primaryApiKey: config.primaryApiKey ?? "",
+      fallbackApiKey: config.fallbackApiKey ?? "",
       temperature: config.temperature,
       topP: config.topP,
       maxTokens: config.maxTokens,
+      // Swap web search enabled flags (they follow the provider)
+      primaryWebSearchEnabled: config.fallbackWebSearchEnabled,
+      fallbackWebSearchEnabled: config.primaryWebSearchEnabled,
+      // Engine and maxResults stay with fallback (specific to :online behavior)
+      fallbackWebSearchEngine: config.fallbackWebSearchEngine,
+      fallbackWebSearchMaxResults: config.fallbackWebSearchMaxResults,
       version: newVersion,
       isActive: false,
       parentId: configId,

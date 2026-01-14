@@ -152,6 +152,13 @@ export default defineSchema({
       v.literal("typescript")
     )),
 
+    // Web sources (from web search) - same structure as messages.sources
+    sources: v.optional(v.array(v.object({
+      url: v.string(),
+      title: v.string(),
+      publishedAt: v.optional(v.number()),
+    }))),
+
     // Versioning (pattern from systemPrompts)
     version: v.number(),
     parentId: v.optional(v.id("artifacts")), // Link to previous version
@@ -199,17 +206,31 @@ export default defineSchema({
     // Primary Provider Config
     primaryProvider: v.string(), // "vercel-gateway" | "openrouter"
     primaryModel: v.string(), // e.g., "google/gemini-2.5-flash-lite"
-    primaryApiKey: v.string(), // API key (stored as-is, DB is private)
 
     // Fallback Provider Config
     fallbackProvider: v.string(), // "openrouter" | "vercel-gateway"
     fallbackModel: v.string(), // e.g., "google/gemini-2.5-flash-lite"
-    fallbackApiKey: v.string(), // API key (stored as-is, DB is private)
+
+    // Provider API keys (global per provider)
+    gatewayApiKey: v.optional(v.string()), // Vercel AI Gateway key (stored as-is)
+    openrouterApiKey: v.optional(v.string()), // OpenRouter key (stored as-is)
+
+    // Legacy slot-based keys (kept for backward compatibility)
+    primaryApiKey: v.optional(v.string()),
+    fallbackApiKey: v.optional(v.string()),
 
     // AI Settings
     temperature: v.number(), // 0.0 - 2.0, default 0.7
     topP: v.optional(v.number()), // Optional: 0.0 - 1.0
     maxTokens: v.optional(v.number()), // Optional: max output tokens
+
+    // ════════════════════════════════════════════════════════════════
+    // Web Search Settings (Phase 4 - OpenRouter :online fallback)
+    // ════════════════════════════════════════════════════════════════
+    primaryWebSearchEnabled: v.optional(v.boolean()), // Enable web search for primary (default: true)
+    fallbackWebSearchEnabled: v.optional(v.boolean()), // Enable web search for fallback :online (default: true)
+    fallbackWebSearchEngine: v.optional(v.string()), // "native" | "exa" | "auto" (default: "auto")
+    fallbackWebSearchMaxResults: v.optional(v.number()), // Max search results (default: 5, range: 1-10)
 
     // Versioning & Activation (pattern from systemPrompts)
     version: v.number(), // 1, 2, 3, ...

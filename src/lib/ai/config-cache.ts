@@ -2,6 +2,7 @@ import type { Id } from "@convex/_generated/dataModel"
 
 /**
  * AI Provider Config structure from database
+ * Note: Web search fields have defaults applied in getActiveConfig query
  */
 export interface AIProviderConfig {
   _id: Id<"aiProviderConfigs">
@@ -9,13 +10,22 @@ export interface AIProviderConfig {
   description?: string
   primaryProvider: string
   primaryModel: string
-  primaryApiKey: string // Plain text
   fallbackProvider: string
   fallbackModel: string
-  fallbackApiKey: string // Plain text
+  // Provider API keys (global per provider)
+  gatewayApiKey?: string
+  openrouterApiKey?: string
+  // Legacy slot-based keys (backward compatibility)
+  primaryApiKey?: string
+  fallbackApiKey?: string
   temperature: number
   topP?: number
   maxTokens?: number
+  // Web search settings (with defaults from getActiveConfig)
+  primaryWebSearchEnabled: boolean // default: true
+  fallbackWebSearchEnabled: boolean // default: true
+  fallbackWebSearchEngine: string // default: "auto", options: "native" | "exa" | "auto"
+  fallbackWebSearchMaxResults: number // default: 5, range: 1-10
   version: number
   isActive: boolean
   createdBy: Id<"users">
@@ -50,7 +60,7 @@ class ConfigCache {
       const { fetchQuery } = await import("convex/nextjs")
       const { api } = await import("@convex/_generated/api")
 
-      const activeConfig = await fetchQuery(api.aiProviderConfigs.getActiveConfig)
+      const activeConfig = await fetchQuery(api.aiProviderConfigs.getActiveConfig) as AIProviderConfig | null
 
       // Update cache
       this.config = activeConfig

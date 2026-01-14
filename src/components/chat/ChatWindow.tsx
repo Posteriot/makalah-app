@@ -479,6 +479,15 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               components={{
                 Footer: () => (
                   <div className="pb-4">
+                    {/* Paper Validation Panel - renders before ThinkingIndicator */}
+                    {isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming' && (
+                      <PaperValidationPanel
+                        stageLabel={stageLabel}
+                        onApprove={handleApprove}
+                        onRevise={handleRevise}
+                        isLoading={isLoading}
+                      />
+                    )}
                     <ThinkingIndicator visible={status === 'submitted'} />
                     <div className="h-4" />
                   </div>
@@ -501,17 +510,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             </div>
           )}
 
-          {/* Paper Validation Panel Overlay */}
-          {isPaperMode && stageStatus === "pending_validation" && userId && (
-            <div className="absolute bottom-4 left-4 right-4 z-20">
-              <PaperValidationPanel
-                stageLabel={stageLabel}
-                onApprove={handleApprove}
-                onRevise={handleRevise}
-                isLoading={isLoading}
-              />
-            </div>
-          )}
         </div>
 
         {/* Input Area */}

@@ -96,6 +96,39 @@ export const updateMessage = mutation({
     },
 })
 
+// Get recent assistant messages with sources (for artifact creation context)
+// Returns sources from last N assistant messages that have sources
+export const getRecentSources = query({
+    args: {
+        conversationId: v.id("conversations"),
+        limit: v.optional(v.number()), // default 5
+    },
+    handler: async ({ db }, { conversationId, limit = 5 }) => {
+        const messages = await db
+            .query("messages")
+            .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+            .order("desc")
+            .collect()
+
+        // Filter to assistant messages with sources
+        const messagesWithSources = messages
+            .filter((m) => m.role === "assistant" && m.sources && m.sources.length > 0)
+            .slice(0, limit)
+
+        // Flatten and deduplicate sources by URL
+        const sourcesMap = new Map<string, { url: string; title: string; publishedAt?: number }>()
+        for (const msg of messagesWithSources) {
+            for (const source of msg.sources || []) {
+                if (!sourcesMap.has(source.url)) {
+                    sourcesMap.set(source.url, source)
+                }
+            }
+        }
+
+        return Array.from(sourcesMap.values())
+    },
+})
+
 // Truncate conversation from a specific message (delete it and all subsequent)
 // Used for edit-and-resend flow: delete the message, then sendMessage() creates new one
 export const editAndTruncateConversation = mutation({

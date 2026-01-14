@@ -27,6 +27,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { ArtifactEditor } from "./ArtifactEditor"
 import { VersionHistoryDialog } from "./VersionHistoryDialog"
 import { MarkdownRenderer } from "./MarkdownRenderer"
+import { SourcesIndicator } from "./SourcesIndicator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
@@ -445,7 +446,11 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                                         {artifact.content}
                                     </SyntaxHighlighter>
                                 ) : shouldRenderMarkdown ? (
-                                    <MarkdownRenderer markdown={artifact.content} className="space-y-2 text-sm" />
+                                    <MarkdownRenderer
+                                        markdown={artifact.content}
+                                        className="space-y-2 text-sm"
+                                        sources={artifact.sources}
+                                    />
                                 ) : (
                                     <pre className="whitespace-pre-wrap font-sans bg-muted p-4 rounded-lg text-sm">
                                         {artifact.content}
@@ -463,6 +468,13 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                             </ContextMenuItem>
                         </ContextMenuContent>
                     </ContextMenu>
+
+                    {/* Sources Indicator */}
+                    {artifact.sources && artifact.sources.length > 0 && (
+                        <div className="px-4 pb-2 border-b">
+                            <SourcesIndicator sources={artifact.sources} />
+                        </div>
+                    )}
 
                     {/* Actions */}
                     <div className="p-4 border-t flex justify-end gap-2 flex-wrap">

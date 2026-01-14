@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createOpenAI } from "@ai-sdk/openai"
-import { createVercel } from "@ai-sdk/vercel"
+import { createGateway } from "@ai-sdk/gateway"
 import { generateText } from "ai"
 import { fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   // Parse request body
   let provider: string
   let model: string
-  let apiKey: string
+  let apiKey: string | undefined
 
   try {
     const body = await request.json()
@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
     model = body.model
     apiKey = body.apiKey
 
-    if (!provider || !model || !apiKey) {
+    if (!provider || !model) {
       return NextResponse.json(
-        { error: "Missing required fields: provider, model, apiKey" },
+        { error: "Field wajib: provider, model" },
         { status: 400 }
       )
     }
@@ -68,14 +68,33 @@ export async function POST(request: NextRequest) {
         throw new Error("Invalid model ID format")
       }
 
-      const vercel = createVercel({ apiKey })
+      const resolvedApiKey =
+        apiKey?.trim() || process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_AI_GATEWAY_API_KEY
+
+      if (!resolvedApiKey) {
+        return NextResponse.json(
+          { error: "API key ENV tidak ditemukan untuk Vercel AI Gateway" },
+          { status: 400 }
+        )
+      }
+
+      const gateway = createGateway({ apiKey: resolvedApiKey })
       const targetModel =
         model.includes("gemini") && !model.includes("/") ? `google/${model}` : model
-      testModel = vercel(targetModel)
+      testModel = gateway(targetModel)
     } else if (provider === "openrouter") {
       // OpenRouter: Test with provided API key
+      const resolvedApiKey = apiKey?.trim() || process.env.OPENROUTER_API_KEY
+
+      if (!resolvedApiKey) {
+        return NextResponse.json(
+          { error: "API key ENV tidak ditemukan untuk OpenRouter" },
+          { status: 400 }
+        )
+      }
+
       const openRouterOpenAI = createOpenAI({
-        apiKey,
+        apiKey: resolvedApiKey,
         baseURL: "https://openrouter.ai/api/v1",
         headers: {
           "HTTP-Referer": process.env.APP_URL ?? "http://localhost:3000",

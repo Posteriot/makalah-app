@@ -1,5 +1,5 @@
 import { streamText, type CoreMessage } from "ai"
-import { createOpenAI } from "@ai-sdk/openai"
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createGateway } from "@ai-sdk/gateway"
 import { configCache } from "./config-cache"
 
@@ -45,20 +45,75 @@ async function getProviderConfig() {
   }
 
   // Use config from database (single source of truth)
-  return {
+  // IMPORTANT: When per-provider keys are undefined, prefer ENV vars over legacy slot-based keys
+  // because legacy keys can be WRONG after provider swap (keys don't swap with providers)
+  const normalizeKey = (value?: string) => value?.trim() || ""
+
+  // Resolve Gateway key: DB per-provider → ENV → legacy slot-based (last resort)
+  const gatewayKey = config.gatewayApiKey !== undefined
+    ? normalizeKey(config.gatewayApiKey)
+    : (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_AI_GATEWAY_API_KEY || "")
+
+  // Resolve OpenRouter key: DB per-provider → ENV → legacy slot-based (last resort)
+  const openrouterKey = config.openrouterApiKey !== undefined
+    ? normalizeKey(config.openrouterApiKey)
+    : (process.env.OPENROUTER_API_KEY || "")
+  const resolveKeyForProvider = (provider: string) => {
+    if (provider === "vercel-gateway") return gatewayKey
+    if (provider === "openrouter") return openrouterKey
+    return ""
+  }
+
+  const result = {
     primary: {
       provider: config.primaryProvider,
       model: config.primaryModel,
-      apiKey: config.primaryApiKey,
+      apiKey: resolveKeyForProvider(config.primaryProvider),
     },
     fallback: {
       provider: config.fallbackProvider,
       model: config.fallbackModel,
-      apiKey: config.fallbackApiKey,
+      apiKey: resolveKeyForProvider(config.fallbackProvider),
     },
     temperature: config.temperature,
     topP: config.topP,
     maxTokens: config.maxTokens,
+    // Web search settings
+    webSearch: {
+      primaryEnabled: config.primaryWebSearchEnabled,
+      fallbackEnabled: config.fallbackWebSearchEnabled,
+      fallbackEngine: config.fallbackWebSearchEngine,
+      fallbackMaxResults: config.fallbackWebSearchMaxResults,
+    },
+  }
+
+  return result
+}
+
+/**
+ * Get web search configuration from database
+ * Used by route.ts to determine if web search should be enabled
+ *
+ * @returns Web search config with defaults
+ */
+export async function getWebSearchConfig() {
+  const config = await configCache.get()
+
+  if (!config) {
+    // Return defaults if no config (fallback behavior)
+    return {
+      primaryEnabled: true,
+      fallbackEnabled: true,
+      fallbackEngine: "auto" as const,
+      fallbackMaxResults: 5,
+    }
+  }
+
+  return {
+    primaryEnabled: config.primaryWebSearchEnabled,
+    fallbackEnabled: config.fallbackWebSearchEnabled,
+    fallbackEngine: config.fallbackWebSearchEngine as "auto" | "native" | "exa",
+    fallbackMaxResults: config.fallbackWebSearchMaxResults,
   }
 }
 
@@ -68,8 +123,15 @@ async function getProviderConfig() {
 function createProviderModel(provider: string, model: string, apiKey: string) {
   if (provider === "vercel-gateway") {
     // Vercel AI Gateway (https://ai-gateway.vercel.sh/v1)
+    const resolvedApiKey =
+      apiKey || process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_AI_GATEWAY_API_KEY
+
+    if (!resolvedApiKey) {
+      throw new Error("API key ENV tidak ditemukan untuk Vercel AI Gateway")
+    }
+
     const gateway = createGateway({
-      apiKey: apiKey || process.env.AI_GATEWAY_API_KEY,
+      apiKey: resolvedApiKey,
     })
 
     // Ensure google prefix is present for Gemini models if missing.
@@ -79,16 +141,22 @@ function createProviderModel(provider: string, model: string, apiKey: string) {
 
     return gateway(targetModel)
   } else if (provider === "openrouter") {
-    // OpenRouter: createOpenAI with custom config
-    const openRouterOpenAI = createOpenAI({
-      apiKey,
-      baseURL: "https://openrouter.ai/api/v1",
-      headers: {
-        "HTTP-Referer": process.env.APP_URL ?? "http://localhost:3000",
-        "X-Title": "Makalah App",
-      },
+    // OpenRouter: Use official @openrouter/ai-sdk-provider
+    // IMPORTANT: This provider handles model ID correctly and doesn't have
+    // the reasoning model detection bug that @ai-sdk/openai has with prefixed
+    // model IDs like "openai/gpt-4o" (which gets incorrectly detected as reasoning model)
+    const resolvedApiKey = apiKey || process.env.OPENROUTER_API_KEY
+
+    if (!resolvedApiKey) {
+      throw new Error("API key ENV tidak ditemukan untuk OpenRouter")
+    }
+
+    const openrouter = createOpenRouter({
+      apiKey: resolvedApiKey,
     })
-    return openRouterOpenAI(model)
+
+    // Use .chat() method for chat models (recommended per documentation)
+    return openrouter.chat(model)
   } else {
     throw new Error(`Unknown provider: ${provider}`)
   }
@@ -162,12 +230,33 @@ export async function getGatewayModel() {
 
 /**
  * Get fallback model instance from active config.
+ *
+ * MODEL-AGNOSTIC WEB SEARCH:
+ * When `enableWebSearch` is true, appends `:online` suffix to the model ID.
+ * This works with ANY model on OpenRouter - the model ID comes from database config
+ * (Admin Panel), not hardcoded. Examples:
+ * - "openai/gpt-4o" → "openai/gpt-4o:online"
+ * - "google/gemini-2.5-flash-lite" → "google/gemini-2.5-flash-lite:online"
+ * - "anthropic/claude-3.5-sonnet" → "anthropic/claude-3.5-sonnet:online"
+ *
+ * @param options.enableWebSearch - If true, append `:online` suffix for web search capability
  */
-export async function getOpenRouterModel() {
+export async function getOpenRouterModel(options?: {
+  enableWebSearch?: boolean
+}) {
   const config = await getProviderConfig()
+
+  // Base model from database config (single source of truth)
+  const baseModel = config.fallback.model
+  const provider = config.fallback.provider
+
+  // Append :online suffix if web search enabled (model-agnostic)
+  const enableOnline = !!options?.enableWebSearch && provider === "openrouter"
+  const modelId = enableOnline ? `${baseModel}:online` : baseModel
+
   return createProviderModel(
-    config.fallback.provider,
-    config.fallback.model,
+    provider,
+    modelId,
     config.fallback.apiKey
   )
 }

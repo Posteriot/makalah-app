@@ -236,10 +236,16 @@ export const create = mutationGeneric({
     description: v.optional(v.string()),
     content: v.string(),
     format: artifactFormatValidator,
+    // Web sources from web search (same structure as messages.sources)
+    sources: v.optional(v.array(v.object({
+      url: v.string(),
+      title: v.string(),
+      publishedAt: v.optional(v.number()),
+    }))),
   },
   handler: async (
     { db },
-    { conversationId, userId, messageId, type, title, description, content, format }
+    { conversationId, userId, messageId, type, title, description, content, format, sources }
   ) => {
     // Verify conversation exists and user owns it
     const conversation = await db.get(conversationId)
@@ -272,6 +278,7 @@ export const create = mutationGeneric({
       description: description?.trim(),
       content: content.trim(),
       format,
+      sources: sources && sources.length > 0 ? sources : undefined,
       version: 1,
       parentId: undefined,
       createdAt: now,
@@ -294,8 +301,14 @@ export const update = mutationGeneric({
     description: v.optional(v.string()),
     content: v.string(),
     format: artifactFormatValidator,
+    // Optional: Update sources or preserve from old artifact
+    sources: v.optional(v.array(v.object({
+      url: v.string(),
+      title: v.string(),
+      publishedAt: v.optional(v.number()),
+    }))),
   },
-  handler: async ({ db }, { artifactId, userId, title, description, content, format }) => {
+  handler: async ({ db }, { artifactId, userId, title, description, content, format, sources }) => {
     const oldArtifact = await db.get(artifactId)
     if (!oldArtifact) {
       throw new Error("Artifact tidak ditemukan")
@@ -326,6 +339,10 @@ export const update = mutationGeneric({
       description: description?.trim() ?? oldArtifact.description,
       content: content.trim(),
       format: format ?? oldArtifact.format,
+      // Preserve sources from old artifact if not provided, or use new sources
+      sources: sources !== undefined
+        ? (sources.length > 0 ? sources : undefined)
+        : oldArtifact.sources,
       version: newVersion,
       parentId: artifactId, // Link to previous version
       createdAt: now,

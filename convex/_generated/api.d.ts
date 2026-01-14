@@ -17,6 +17,7 @@ import type * as conversations from "../conversations.js";
 import type * as files from "../files.js";
 import type * as messages from "../messages.js";
 import type * as migrations_addRoleToExistingUsers from "../migrations/addRoleToExistingUsers.js";
+import type * as migrations_backfillProviderKeys from "../migrations/backfillProviderKeys.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
 import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/fixAgentPersonaAndCapabilities.js";
 import type * as migrations_removeOldPaperWorkflowSection from "../migrations/removeOldPaperWorkflowSection.js";
@@ -25,6 +26,7 @@ import type * as migrations_seedDefaultStyleConstitution from "../migrations/see
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
 import type * as migrations_updateAIConfigForToolCalling from "../migrations/updateAIConfigForToolCalling.js";
 import type * as migrations_updatePromptWithArtifactGuidelines from "../migrations/updatePromptWithArtifactGuidelines.js";
+import type * as migrations_updatePromptWithArtifactSources from "../migrations/updatePromptWithArtifactSources.js";
 import type * as migrations_updatePromptWithPaperWorkflow from "../migrations/updatePromptWithPaperWorkflow.js";
 import type * as migrations_updateToGPT4oForToolCalling from "../migrations/updateToGPT4oForToolCalling.js";
 import type * as paperSessions from "../paperSessions.js";
@@ -53,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   messages: typeof messages;
   "migrations/addRoleToExistingUsers": typeof migrations_addRoleToExistingUsers;
+  "migrations/backfillProviderKeys": typeof migrations_backfillProviderKeys;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
   "migrations/fixAgentPersonaAndCapabilities": typeof migrations_fixAgentPersonaAndCapabilities;
   "migrations/removeOldPaperWorkflowSection": typeof migrations_removeOldPaperWorkflowSection;
@@ -61,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
   "migrations/updateAIConfigForToolCalling": typeof migrations_updateAIConfigForToolCalling;
   "migrations/updatePromptWithArtifactGuidelines": typeof migrations_updatePromptWithArtifactGuidelines;
+  "migrations/updatePromptWithArtifactSources": typeof migrations_updatePromptWithArtifactSources;
   "migrations/updatePromptWithPaperWorkflow": typeof migrations_updatePromptWithPaperWorkflow;
   "migrations/updateToGPT4oForToolCalling": typeof migrations_updateToGPT4oForToolCalling;
   paperSessions: typeof paperSessions;

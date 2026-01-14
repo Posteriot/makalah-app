@@ -70,16 +70,16 @@ export async function POST(request: NextRequest) {
 
   // Parse request body
   let model: string
-  let apiKey: string
+  let apiKey: string | undefined
 
   try {
     const body = await request.json()
     model = body.model
     apiKey = body.apiKey
 
-    if (!model || !apiKey) {
+    if (!model) {
       return NextResponse.json(
-        { error: "Missing required fields: model, apiKey" },
+        { error: "Field wajib: model" },
         { status: 400 }
       )
     }
@@ -87,9 +87,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
+  const resolvedApiKey = apiKey?.trim() || process.env.OPENROUTER_API_KEY
+
+  if (!resolvedApiKey) {
+    return NextResponse.json(
+      { error: "API key ENV tidak ditemukan untuk OpenRouter" },
+      { status: 400 }
+    )
+  }
+
   // Create OpenRouter model instance
   const openRouterClient = createOpenAI({
-    apiKey,
+    apiKey: resolvedApiKey,
     baseURL: "https://openrouter.ai/api/v1",
     headers: {
       "HTTP-Referer": process.env.APP_URL ?? "http://localhost:3000",

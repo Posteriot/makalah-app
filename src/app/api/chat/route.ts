@@ -10,10 +10,12 @@ import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
+import { normalizeCitations, type NormalizedCitation } from "@/lib/citations/normalizer"
 import { createPaperTools } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
+import { type PaperStageId } from "../../../../convex/paperSessions/constants"
 
 export async function POST(req: Request) {
     try {
@@ -130,6 +132,11 @@ export async function POST(req: Request) {
 
         // Task Group 3: Fetch paper mode system prompt if paper session exists
         const paperModePrompt = await getPaperModeSystemPrompt(currentConversationId as Id<"conversations">)
+        const paperSession = paperModePrompt
+            ? await fetchQuery(api.paperSessions.getByConversation, {
+                conversationId: currentConversationId as Id<"conversations">,
+            })
+            : null
 
         // Flow Detection: Auto-detect paper intent and inject reminder if no session
         const lastUserMessage = messages[messages.length - 1]
@@ -163,6 +170,31 @@ export async function POST(req: Request) {
                 /\bberita terbaru\b/,
             ]
             return patterns.some((pattern) => pattern.test(normalized))
+        }
+
+        const ACTIVE_SEARCH_STAGES: PaperStageId[] = [
+            "gagasan",
+            "topik",
+            "pendahuluan",
+            "tinjauan_literatur",
+            "metodologi",
+            "diskusi",
+        ]
+        const PASSIVE_SEARCH_STAGES: PaperStageId[] = [
+            "outline",
+            "abstrak",
+            "hasil",
+            "kesimpulan",
+            "daftar_pustaka",
+            "lampiran",
+            "judul",
+        ]
+
+        const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
+            if (!stage || stage === "completed") return "none"
+            if (ACTIVE_SEARCH_STAGES.includes(stage)) return "active"
+            if (PASSIVE_SEARCH_STAGES.includes(stage)) return "passive"
+            return "none"
         }
 
         // ════════════════════════════════════════════════════════════════
@@ -279,6 +311,32 @@ export async function POST(req: Request) {
             trimmedModelMessages = modelMessages.slice(-MAX_CHAT_HISTORY_PAIRS * 2)
         }
 
+        // ════════════════════════════════════════════════════════════════
+        // Artifact Sources Context: Fetch recent web search sources from database
+        // This enables AI to pass sources to createArtifact tool
+        // ════════════════════════════════════════════════════════════════
+        let sourcesContext = ""
+        try {
+            const recentSources = await fetchQuery(api.messages.getRecentSources, {
+                conversationId: currentConversationId as Id<"conversations">,
+                limit: 5,
+            })
+
+            if (recentSources && recentSources.length > 0) {
+                const sourcesJson = JSON.stringify(recentSources, null, 2)
+                sourcesContext = `
+AVAILABLE_WEB_SOURCES (dari hasil web search sebelumnya):
+${sourcesJson}
+
+PENTING: Jika kamu membuat artifact yang BERBASIS informasi dari sumber-sumber di atas,
+WAJIB pass array sources ini ke parameter 'sources' di tool createArtifact atau updateArtifact.
+Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
+            }
+        } catch (sourcesError) {
+            console.error("[route] Failed to fetch recent sources:", sourcesError)
+            // Non-blocking - continue without sources context
+        }
+
         // Task 6.4: Inject file context BEFORE user messages
         // Task Group 3: Inject paper mode prompt if paper session exists
         // Flow Detection: Inject paper workflow reminder if intent detected but no session
@@ -293,6 +351,9 @@ export async function POST(req: Request) {
             ...(fileContext
                 ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
                 : []),
+            ...(sourcesContext
+                ? [{ role: "system" as const, content: sourcesContext }]
+                : []),
             ...trimmedModelMessages,
         ]
 
@@ -303,6 +364,7 @@ export async function POST(req: Request) {
             getGoogleSearchTool,
             getProviderSettings,
             getModelNames,
+            getWebSearchConfig,
         } = await import("@/lib/ai/streaming")
         const { streamText } = await import("ai")
         const providerSettings = await getProviderSettings()
@@ -313,8 +375,71 @@ export async function POST(req: Request) {
             ...(providerSettings.maxTokens !== undefined ? { maxTokens: providerSettings.maxTokens } : {}),
         }
 
+        const getSearchEvidenceFromStageData = (session: {
+            currentStage?: string
+            stageData?: Record<string, unknown>
+        } | null): boolean | null => {
+            if (!session || !session.stageData || !session.currentStage) {
+                return null
+            }
+
+            const stageData = session.stageData as Record<string, unknown>
+            switch (session.currentStage) {
+                case "gagasan": {
+                    const data = stageData.gagasan as { referensiAwal?: unknown[] } | undefined
+                    return Array.isArray(data?.referensiAwal) && data?.referensiAwal.length > 0
+                }
+                case "topik": {
+                    const data = stageData.topik as { referensiPendukung?: unknown[] } | undefined
+                    return Array.isArray(data?.referensiPendukung) && data?.referensiPendukung.length > 0
+                }
+                case "tinjauan_literatur": {
+                    const data = stageData.tinjauan_literatur as { referensi?: unknown[] } | undefined
+                    return Array.isArray(data?.referensi) && data?.referensi.length > 0
+                }
+                case "pendahuluan": {
+                    const data = stageData.pendahuluan as { sitasiAPA?: unknown[] } | undefined
+                    return Array.isArray(data?.sitasiAPA) && data?.sitasiAPA.length > 0
+                }
+                case "diskusi": {
+                    const data = stageData.diskusi as { sitasiTambahan?: unknown[] } | undefined
+                    return Array.isArray(data?.sitasiTambahan) && data?.sitasiTambahan.length > 0
+                }
+                case "daftar_pustaka": {
+                    const data = stageData.daftar_pustaka as { entries?: unknown[] } | undefined
+                    return Array.isArray(data?.entries) && data?.entries.length > 0
+                }
+                default:
+                    return null
+            }
+        }
+
+        const hasStageRingkasan = (session: {
+            currentStage?: string
+            stageData?: Record<string, unknown>
+        } | null): boolean => {
+            if (!session || !session.stageData || !session.currentStage) {
+                return false
+            }
+            if (session.currentStage === "completed") {
+                return false
+            }
+
+            const stageKey = session.currentStage
+            const stageEntry = session.stageData[stageKey] as { ringkasan?: unknown } | undefined
+            return typeof stageEntry?.ringkasan === "string" && stageEntry.ringkasan.trim().length > 0
+        }
+
         // Helper: detect if previous turns already have search results (sources)
-        const hasPreviousSearchResults = (msgs: unknown[]): boolean => {
+        const hasPreviousSearchResults = (msgs: unknown[], session: {
+            currentStage?: string
+            stageData?: Record<string, unknown>
+        } | null): boolean => {
+            const stageEvidence = getSearchEvidenceFromStageData(session)
+            if (stageEvidence === true) {
+                return true
+            }
+
             // Look at recent assistant messages for sources
             const recentAssistantMsgs = msgs
                 .filter((m): m is { role: string; content?: string } =>
@@ -335,9 +460,12 @@ export async function POST(req: Request) {
 
         // Helper: detect if user message is a confirmation/approval (should prefer paper tools over search)
         const isUserConfirmationMessage = (text: string): boolean => {
+            if (isExplicitSearchRequest(text)) {
+                return false
+            }
             const normalized = text.toLowerCase().trim()
             // Short confirmations
-            if (normalized.length < 50) {
+            if (normalized.length <= 400) {
                 const confirmationPatterns = [
                     /^(ya|yes|ok|oke|okay|yup|yep|sip|siap|baik|boleh)\.?$/i,
                     /^setuju\.?$/i,
@@ -360,6 +488,8 @@ export async function POST(req: Request) {
             model: unknown
             recentMessages: unknown[]
             isPaperMode: boolean
+            currentStage: PaperStageId | "completed" | undefined | null
+            stagePolicy: "active" | "passive" | "none"
             searchAlreadyDone: boolean
             isUserConfirmation: boolean
         }): Promise<{ enableWebSearch: boolean; confidence: number; reason: string }> => {
@@ -386,18 +516,27 @@ export async function POST(req: Request) {
                 ? `
 
 KONTEKS PENTING - PAPER MODE AKTIF:
-User sedang dalam mode penulisan paper akademik. Dalam konteks ini:
-- enableWebSearch = true HANYA jika user EKSPLISIT meminta pencarian/cari referensi di pesan TERBARU.
-- Jika AI sudah punya referensi dari pencarian sebelumnya, JANGAN search lagi - fokus menyimpan/memproses data.
-- Default ke false kecuali ada permintaan eksplisit pencarian baru.`
+Current stage: ${options.currentStage ?? "unknown"}
+Stage policy: ${options.stagePolicy.toUpperCase()}
+
+Aturan stage policy (HARUS dipatuhi):
+- Jika policy = PASSIVE: enableWebSearch = true HANYA jika user EKSPLISIT minta search.
+- Jika policy = ACTIVE: enableWebSearch boleh true jika user minta search atau model butuh data faktual.
+
+Catatan tambahan:
+- Referensi dan data faktual HARUS dari web search, TIDAK BOLEH di-hallucinate.
+- Set false jika user meminta simpan/approve hasil yang sudah ada, ATAU semua data sudah tersedia dari pencarian sebelumnya.`
                 : ""
 
             const routerPrompt = `Anda adalah "router" yang memutuskan apakah jawaban untuk user WAJIB memakai pencarian web (tool google_search).
 
 Tujuan:
-- enableWebSearch = true HANYA jika (A) user meminta cek internet/pencarian secara eksplisit di pesan TERAKHIR, ATAU (B) pertanyaan butuh data faktual terbaru/real-time sehingga tanpa internet berisiko salah.
-- Jika user sudah punya data/referensi dari diskusi sebelumnya dan tidak meminta pencarian baru, set false.
-- Default ke false untuk memungkinkan AI memproses/menyimpan data.
+- enableWebSearch = true jika:
+  (A) user meminta cek internet/pencarian/referensi, ATAU
+  (B) AI akan menyertakan referensi/literatur/sumber dalam jawabannya, ATAU
+  (C) AI membutuhkan DATA FAKTUAL (statistik, angka, fakta, nama, tanggal, peristiwa) yang berisiko salah jika di-hallucinate.
+- PENTING: Untuk MENCEGAH HALUSINASI, selalu enableWebSearch = true jika jawaban memerlukan data faktual yang spesifik.
+- Set false HANYA jika: user meminta simpan/approve data yang sudah ada, ATAU jawaban murni opini/diskusi tanpa klaim faktual.
 ${paperModeContext}
 
 Aturan output:
@@ -536,7 +675,9 @@ DO NOT use this tool for:
 ✗ Short answers (less than 3 sentences)
 ✗ Updating existing/invalidated artifacts (use updateArtifact instead)
 
-When using this tool, always provide a clear, descriptive title (max 50 chars).`,
+When using this tool, always provide a clear, descriptive title (max 50 chars).
+
+📚 SOURCES: Jika konten artifact BERASAL dari hasil web search sebelumnya, WAJIB pass parameter 'sources' dengan URL dan judul dari referensi yang digunakan. Ini memastikan inline citations [1], [2] di artifact terhubung ke sumber yang benar.`,
                 inputSchema: z.object({
                     type: z.enum(["code", "outline", "section", "table", "citation", "formula"])
                         .describe("The type of artifact to create"),
@@ -548,8 +689,14 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                         .describe("Format of the content. Use 'markdown' for text, language name for code"),
                     description: z.string().optional()
                         .describe("Optional brief description of what the artifact contains"),
+                    sources: z.array(z.object({
+                        url: z.string(),
+                        title: z.string(),
+                        publishedAt: z.number().optional(),
+                    })).optional()
+                        .describe("Web sources from previous web search turn. Pass this if artifact content references web search results. Format: [{url, title, publishedAt?}]"),
                 }),
-                execute: async ({ type, title, content, format, description }) => {
+                execute: async ({ type, title, content, format, description, sources }) => {
                     try {
                         const result = await fetchMutation(api.artifacts.create, {
                             conversationId: currentConversationId as Id<"conversations">,
@@ -559,6 +706,7 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).`
                             content,
                             format,
                             description,
+                            sources,
                         })
 
                         return {
@@ -594,6 +742,8 @@ Tool ini akan:
 2. Versi baru otomatis bersih dari flag invalidation
 3. Versi lama tetap tersimpan sebagai history
 
+📚 SOURCES: Jika update konten BERASAL dari hasil web search, WAJIB pass parameter 'sources' dengan array sumber referensi. Sources dari versi sebelumnya akan otomatis dipertahankan jika tidak di-pass.
+
 PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan AI sebelumnya.`,
                 inputSchema: z.object({
                     artifactId: z.string()
@@ -602,14 +752,21 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                         .describe("Konten baru untuk artifact (akan menggantikan konten sebelumnya)"),
                     title: z.string().max(200).optional()
                         .describe("Judul baru (opsional). Jika tidak diisi, judul lama dipertahankan."),
+                    sources: z.array(z.object({
+                        url: z.string(),
+                        title: z.string(),
+                        publishedAt: z.number().optional(),
+                    })).optional()
+                        .describe("Web sources jika update berbasis web search. Jika tidak diisi, sources dari versi sebelumnya dipertahankan."),
                 }),
-                execute: async ({ artifactId, content, title }) => {
+                execute: async ({ artifactId, content, title, sources }) => {
                     try {
                         const result = await fetchMutation(api.artifacts.update, {
                             artifactId: artifactId as Id<"artifacts">,
                             userId: userId as Id<"users">,
                             content,
                             title,
+                            sources,
                         })
 
                         return {
@@ -706,6 +863,9 @@ Aturan:
         } satisfies ToolSet
 
         // 7. Stream AI Response - Dual Provider with Fallback
+        // Hoist enableWebSearch so it's accessible in catch block for fallback
+        let enableWebSearch = false
+
         try {
             const model = await getGatewayModel()
 
@@ -717,12 +877,16 @@ Aturan:
             // Catatan penting: AI SDK tidak bisa mix provider-defined tools (google_search) dengan function tools dalam 1 request.
             // Jadi kita pilih salah satu tools set per request.
             const recentForRouter = modelMessages.slice(-8)
-            const searchAlreadyDone = hasPreviousSearchResults(modelMessages)
+            const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
+            const stagePolicy = getStageSearchPolicy(currentStage)
+            const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
             const isUserConfirmation = isUserConfirmationMessage(lastUserContent)
             const webSearchDecision = await decideWebSearchMode({
                 model,
                 recentMessages: recentForRouter,
                 isPaperMode: !!paperModePrompt,
+                currentStage,
+                stagePolicy,
                 searchAlreadyDone,
                 isUserConfirmation,
             })
@@ -730,33 +894,54 @@ Aturan:
             const routerFailed = ["router_invalid_json_shape", "router_json_parse_failed"].includes(
                 webSearchDecision.reason
             )
-            const explicitSearchFallback = routerFailed && lastUserContent
+            const explicitSearchRequest = lastUserContent
                 ? isExplicitSearchRequest(lastUserContent)
                 : false
+            const explicitSearchFallback = routerFailed && explicitSearchRequest
+                ? true
+                : false
+
+            const stagePolicyAllowsSearch = !paperModePrompt
+                ? true
+                : (stagePolicy === "active"
+                    ? true
+                    : stagePolicy === "passive"
+                        ? explicitSearchRequest
+                        : explicitSearchRequest)
 
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
             const forcePaperToolsMode = !!paperWorkflowReminder && !paperModePrompt
-            const enableWebSearch = !!wrappedGoogleSearchTool
+            enableWebSearch = !!wrappedGoogleSearchTool
                 && !forcePaperToolsMode
-                && (webSearchDecision.enableWebSearch || explicitSearchFallback)
-            console.log("[WebSearchRouter] Decision:", {
-                enableWebSearch: webSearchDecision.enableWebSearch,
-                confidence: webSearchDecision.confidence,
-                reason: webSearchDecision.reason,
-                explicitSearchFallback,
-                forcePaperToolsMode,
-                searchAlreadyDone,
-                isUserConfirmation,
-                finalEnableWebSearch: enableWebSearch,
-            })
+                && stagePolicyAllowsSearch
+                && (webSearchDecision.enableWebSearch || explicitSearchFallback || explicitSearchRequest)
+            const shouldForceSubmitValidation = !enableWebSearch
+                && !!paperModePrompt
+                && isUserConfirmation
+                && paperSession?.stageStatus === "drafting"
+                && hasStageRingkasan(paperSession)
 
-            const webSearchBehaviorSystemNote = `KETENTUAN PENCARIAN WEB (google_search):
-1) Gunakan tool google_search HANYA jika Anda memerlukan data faktual terbaru atau jika user memintanya secara eksplisit.
-2) Jika Anda melakukan pencarian, Anda TIDAK BOLEH memanggil tool createArtifact, updateStageData, submitStageForValidation, renameConversationTitle, atau tool paper lain dalam langkah (turn) yang sama.
-3) Selesaikan pencarian dan diskusi data terlebih dahulu, baru kemudian simpan draf/buat artifact di langkah berikutnya jika diperlukan.
-4) Hindari menjadikan halaman listing/tag/homepage sebagai sumber utama; utamakan URL artikel/siaran pers yang spesifik.
-5) Tulis klaim faktual secara ringkas per kalimat, dan hindari klaim yang tidak bisa didukung sumber.`
+            const webSearchBehaviorSystemNote = `⚠️ MODE PENCARIAN WEB AKTIF - BACA INI DENGAN TELITI!
+
+CONSTRAINT TEKNIS PENTING:
+- Dalam mode ini, HANYA tool "google_search" yang tersedia.
+- Tool lain (createArtifact, updateArtifact, updateStageData, submitStageForValidation, renameConversationTitle) TIDAK TERSEDIA dan TIDAK BISA dipanggil.
+- Jika Anda mencoba memanggil tool selain google_search, panggilan akan GAGAL.
+
+YANG HARUS ANDA LAKUKAN DI TURN INI:
+1) Lakukan pencarian dengan google_search jika diperlukan
+2) Rangkum temuan dari pencarian
+3) AKHIRI respons Anda di sini - JANGAN coba menyimpan data atau membuat artifact
+
+YANG HARUS ANDA LAKUKAN DI TURN BERIKUTNYA (setelah user merespons):
+- Baru di turn berikutnya Anda bisa menyimpan draf (updateStageData) atau membuat artifact (createArtifact)
+- Tool-tool tersebut akan tersedia kembali setelah pencarian selesai
+
+TIPS PENCARIAN:
+- Hindari halaman listing/tag/homepage sebagai sumber utama
+- Utamakan URL artikel/siaran pers yang spesifik
+- Tulis klaim faktual secara ringkas per kalimat`
 
             const fullMessagesGateway = enableWebSearch
                 ? [
@@ -769,16 +954,18 @@ Aturan:
             const gatewayTools: ToolSet = enableWebSearch
                 ? ({ google_search: wrappedGoogleSearchTool } as unknown as ToolSet)
                 : tools
-            console.log("[Chat API] Gateway Tools Configured:", {
-                webSearchModeEnabled: enableWebSearch,
-                toolKeys: enableWebSearch ? ["google_search"] : Object.keys(tools),
-            })
+            // Web search mode: limit to 1 step to prevent AI from trying to call
+            // function tools (which don't exist in web search mode) after search
+            const maxToolSteps = enableWebSearch ? 1 : 5
 
             const result = streamText({
                 model,
                 messages: fullMessagesGateway,
                 tools: gatewayTools,
-                stopWhen: stepCountIs(5),
+                toolChoice: shouldForceSubmitValidation
+                    ? { type: "tool", toolName: "submitStageForValidation" }
+                    : undefined,
+                stopWhen: stepCountIs(maxToolSteps),
                 ...samplingOptions,
                 onFinish: enableWebSearch
                     ? undefined
@@ -1261,31 +1448,259 @@ Aturan:
             return result.toUIMessageStreamResponse()
         } catch (error) {
             console.error("Gateway stream failed, trying fallback:", error)
-            // Fallback: OpenRouter
-            const fallbackModel = await getOpenRouterModel()
-            const result = streamText({
-                model: fallbackModel,
-                messages: fullMessagesBase,
-                tools,
-                stopWhen: stepCountIs(5),
-                ...samplingOptions,
-                onFinish: async ({ text }) => {
-                    if (text) {
-                        await saveAssistantMessage(text, undefined, modelNames.fallback.model)
-                        const minPairsForFinalTitle = Number.parseInt(
-                            process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
-                            10
-                        )
-                        await maybeUpdateTitleFromAI({
-                            assistantText: text,
-                            minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
-                                ? minPairsForFinalTitle
-                                : 3,
+
+            // ════════════════════════════════════════════════════════════════
+            // FALLBACK: OpenRouter with optional web search
+            // Task 2.2-2.6: Enhanced fallback with :online web search support
+            // ════════════════════════════════════════════════════════════════
+
+            // Get web search config from database
+            const webSearchConfig = await getWebSearchConfig()
+
+            // Determine if web search should be enabled in fallback
+            // Requires: 1) primary path wanted web search, AND 2) fallback web search is enabled in config
+            const fallbackEnableWebSearch =
+                enableWebSearch
+                && webSearchConfig.fallbackEnabled
+                && modelNames.fallback.provider === "openrouter"
+
+            // Task 2.6: Helper to run fallback WITHOUT web search (for error recovery)
+            const runFallbackWithoutSearch = async () => {
+                const fallbackModel = await getOpenRouterModel({ enableWebSearch: false })
+                const result = streamText({
+                    model: fallbackModel,
+                    messages: fullMessagesBase,
+                    tools,
+                    stopWhen: stepCountIs(5),
+                    ...samplingOptions,
+                    onFinish: async ({ text }) => {
+                        if (text) {
+                            await saveAssistantMessage(text, undefined, modelNames.fallback.model)
+                            const minPairsForFinalTitle = Number.parseInt(
+                                process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                                10
+                            )
+                            await maybeUpdateTitleFromAI({
+                                assistantText: text,
+                                minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                                    ? minPairsForFinalTitle
+                                    : 3,
+                            })
+                        }
+                    },
+                })
+                return result.toUIMessageStreamResponse()
+            }
+
+            // Task 2.2: Non-web-search fallback (unchanged behavior)
+            if (!fallbackEnableWebSearch) {
+                return runFallbackWithoutSearch()
+            }
+
+            // Task 2.2: Web search mode in fallback
+            try {
+                const fallbackModel = await getOpenRouterModel({ enableWebSearch: true })
+
+                // Generate unique IDs for stream parts
+                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
+                const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
+                const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
+
+                const stream = createUIMessageStream({
+                    execute: async ({ writer }) => {
+                        let started = false
+                        let searchStatusClosed = false
+                        let streamedText = ""
+                        let lastProviderMetadata: unknown = null
+
+                        const ensureStart = () => {
+                            if (started) return
+                            started = true
+                            writer.write({ type: "start", messageId })
+                        }
+
+                        const closeSearchStatus = (finalStatus: "done" | "off" | "error") => {
+                            if (searchStatusClosed) return
+                            searchStatusClosed = true
+                            ensureStart()
+                            writer.write({
+                                type: "data-search",
+                                id: searchStatusId,
+                                data: { status: finalStatus },
+                            })
+                        }
+
+                        // Show searching indicator immediately
+                        ensureStart()
+                        writer.write({
+                            type: "data-search",
+                            id: searchStatusId,
+                            data: { status: "searching" },
                         })
-                    }
-                },
-            })
-            return result.toUIMessageStreamResponse()
+
+                        // Stream from OpenRouter with :online
+                        const result = streamText({
+                            model: fallbackModel,
+                            messages: fullMessagesBase,
+                            // Note: :online handles search internally, no tools needed
+                            ...samplingOptions,
+                        })
+
+                        for await (const chunk of result.toUIMessageStream({
+                            sendStart: false,
+                            generateMessageId: () => messageId,
+                        })) {
+                            // Capture provider metadata from chunks
+                            if (
+                                "providerMetadata" in chunk &&
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (chunk as any).providerMetadata
+                            ) {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                lastProviderMetadata = (chunk as any).providerMetadata
+                            }
+
+                            if (chunk.type === "text-delta") {
+                                streamedText += chunk.delta
+                            }
+
+                            if (chunk.type === "finish") {
+                                // Task 2.3: Extract OpenRouter annotations from response
+                                const providerMetadataFromResult = await (async () => {
+                                    try {
+                                        return await Promise.race([
+                                            result.providerMetadata,
+                                            new Promise<undefined>((resolve) =>
+                                                setTimeout(() => resolve(undefined), 8000)
+                                            ),
+                                        ])
+                                    } catch {
+                                        return undefined
+                                    }
+                                })()
+
+                                const preferredMetadata = lastProviderMetadata ?? providerMetadataFromResult
+
+                                // Task 2.4: Normalize citations using the normalization layer
+                                let normalizedCitations: NormalizedCitation[] = []
+
+                                if (preferredMetadata) {
+                                    // Try to extract annotations from OpenRouter response
+                                    // OpenRouter annotations can be at different paths
+                                    normalizedCitations = normalizeCitations(preferredMetadata, 'openrouter')
+                                }
+
+                                const hasAnyCitations = normalizedCitations.length > 0
+                                closeSearchStatus(hasAnyCitations ? "done" : "off")
+
+                                // Task 2.4: Insert inline citation markers
+                                let textWithCitations = streamedText
+                                if (hasAnyCitations) {
+                                    // Simple inline citation insertion
+                                    // For OpenRouter, citations typically come with position data
+                                    // Insert [1], [2] markers based on citation order
+                                    const insertions: { position: number; marker: string }[] = []
+                                    normalizedCitations.forEach((citation, idx) => {
+                                        if (citation.endIndex !== undefined) {
+                                            insertions.push({
+                                                position: citation.endIndex,
+                                                marker: ` [${idx + 1}]`,
+                                            })
+                                        }
+                                    })
+
+                                    // Sort by position descending to insert from end
+                                    insertions.sort((a, b) => b.position - a.position)
+                                    for (const ins of insertions) {
+                                        if (ins.position >= 0 && ins.position <= textWithCitations.length) {
+                                            textWithCitations =
+                                                textWithCitations.slice(0, ins.position) +
+                                                ins.marker +
+                                                textWithCitations.slice(ins.position)
+                                        }
+                                    }
+                                }
+
+                                // Send cited text
+                                ensureStart()
+                                writer.write({
+                                    type: "data-cited-text",
+                                    id: citedTextId,
+                                    data: { text: textWithCitations },
+                                })
+
+                                // Send cited sources if available
+                                if (hasAnyCitations) {
+                                    const persistedSources = normalizedCitations.map((c) => ({
+                                        url: c.url,
+                                        title: c.title,
+                                        ...(c.publishedAt ? { publishedAt: c.publishedAt } : {}),
+                                    }))
+
+                                    ensureStart()
+                                    writer.write({
+                                        type: "data-cited-sources",
+                                        id: citedSourcesId,
+                                        data: { sources: persistedSources },
+                                    })
+
+                                    // Task 2.5: Save to database with fallback metadata
+                                    await saveAssistantMessage(
+                                        textWithCitations,
+                                        persistedSources,
+                                        `${modelNames.fallback.model}:online`
+                                    )
+                                } else {
+                                    // No citations - save without sources
+                                    await saveAssistantMessage(
+                                        textWithCitations,
+                                        undefined,
+                                        `${modelNames.fallback.model}:online`
+                                    )
+                                }
+
+                                // Update title if needed
+                                const minPairsForFinalTitle = Number.parseInt(
+                                    process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                                    10
+                                )
+                                await maybeUpdateTitleFromAI({
+                                    assistantText: textWithCitations,
+                                    minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                                        ? minPairsForFinalTitle
+                                        : 3,
+                                })
+
+                                writer.write(chunk)
+                                break
+                            }
+
+                            if (chunk.type === "error") {
+                                closeSearchStatus("error")
+                                writer.write(chunk)
+                                break
+                            }
+
+                            if (chunk.type === "abort") {
+                                closeSearchStatus("off")
+                                writer.write(chunk)
+                                break
+                            }
+
+                            // Forward other chunks
+                            ensureStart()
+                            writer.write(chunk)
+                        }
+                    },
+                })
+
+                return createUIMessageStreamResponse({ stream })
+            } catch (onlineError) {
+                // Task 2.6: :online failed, graceful degradation to non-search mode
+                console.error("[Fallback] :online stream failed, retrying without search:", onlineError)
+                return runFallbackWithoutSearch()
+            }
         }
 
     } catch (error) {

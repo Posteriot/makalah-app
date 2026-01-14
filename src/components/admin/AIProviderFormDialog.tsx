@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
 import { CheckCircle2, XCircle, Loader2, AlertTriangle, Shield, ShieldCheck, ShieldX } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Id } from "@convex/_generated/dataModel"
@@ -133,9 +134,16 @@ interface AIProviderConfig {
   primaryModel: string
   fallbackProvider: string
   fallbackModel: string
+  gatewayApiKey?: string
+  openrouterApiKey?: string
   temperature: number
   topP?: number
   maxTokens?: number
+  // Web search settings (with defaults from getActiveConfig)
+  primaryWebSearchEnabled?: boolean
+  fallbackWebSearchEnabled?: boolean
+  fallbackWebSearchEngine?: string
+  fallbackWebSearchMaxResults?: number
   version: number
 }
 
@@ -191,18 +199,26 @@ export function AIProviderFormDialog({
   const [primaryProvider, setPrimaryProvider] = useState("vercel-gateway")
   const [primaryModel, setPrimaryModel] = useState("gemini-2.5-flash-lite")
   const [primaryModelPreset, setPrimaryModelPreset] = useState("gemini-2.5-flash-lite")
-  const [primaryApiKey, setPrimaryApiKey] = useState("")
 
   // Fallback provider (default: OpenRouter)
   const [fallbackProvider, setFallbackProvider] = useState("openrouter")
   const [fallbackModel, setFallbackModel] = useState("google/gemini-2.5-flash-lite")
   const [fallbackModelPreset, setFallbackModelPreset] = useState("google/gemini-2.5-flash-lite")
-  const [fallbackApiKey, setFallbackApiKey] = useState("")
+  const [gatewayApiKey, setGatewayApiKey] = useState("")
+  const [openrouterApiKey, setOpenrouterApiKey] = useState("")
+  const [gatewayUseEnvKey, setGatewayUseEnvKey] = useState(false)
+  const [openrouterUseEnvKey, setOpenrouterUseEnvKey] = useState(false)
 
   // AI settings
   const [temperature, setTemperature] = useState(0.7)
   const [topP, setTopP] = useState<number | undefined>(undefined)
   const [maxTokens, setMaxTokens] = useState<number | undefined>(undefined)
+
+  // Web search settings
+  const [primaryWebSearchEnabled, setPrimaryWebSearchEnabled] = useState(true)
+  const [fallbackWebSearchEnabled, setFallbackWebSearchEnabled] = useState(true)
+  const [fallbackWebSearchEngine, setFallbackWebSearchEngine] = useState("auto")
+  const [fallbackWebSearchMaxResults, setFallbackWebSearchMaxResults] = useState(5)
 
   // UI state
   const [isLoading, setIsLoading] = useState(false)
@@ -241,9 +257,16 @@ export function AIProviderFormDialog({
         setTemperature(config.temperature)
         setTopP(config.topP)
         setMaxTokens(config.maxTokens)
+        // Web search settings (use defaults if not set)
+        setPrimaryWebSearchEnabled(config.primaryWebSearchEnabled ?? true)
+        setFallbackWebSearchEnabled(config.fallbackWebSearchEnabled ?? true)
+        setFallbackWebSearchEngine(config.fallbackWebSearchEngine ?? "auto")
+        setFallbackWebSearchMaxResults(config.fallbackWebSearchMaxResults ?? 5)
         // API keys: tidak di-populate (security)
-        setPrimaryApiKey("")
-        setFallbackApiKey("")
+        setGatewayApiKey("")
+        setOpenrouterApiKey("")
+        setGatewayUseEnvKey(false)
+        setOpenrouterUseEnvKey(false)
       } else {
         // Create mode: reset to defaults
         setName("")
@@ -251,14 +274,21 @@ export function AIProviderFormDialog({
         setPrimaryProvider("vercel-gateway")
         setPrimaryModel("gemini-2.5-flash-lite") // Vercel Gateway format
         setPrimaryModelPreset("gemini-2.5-flash-lite")
-        setPrimaryApiKey("")
         setFallbackProvider("openrouter")
         setFallbackModel("google/gemini-2.5-flash-lite") // OpenRouter format
         setFallbackModelPreset("google/gemini-2.5-flash-lite")
-        setFallbackApiKey("")
+        setGatewayApiKey("")
+        setOpenrouterApiKey("")
+        setGatewayUseEnvKey(false)
+        setOpenrouterUseEnvKey(false)
         setTemperature(0.7)
         setTopP(undefined)
         setMaxTokens(undefined)
+        // Web search settings defaults
+        setPrimaryWebSearchEnabled(true)
+        setFallbackWebSearchEnabled(true)
+        setFallbackWebSearchEngine("auto")
+        setFallbackWebSearchMaxResults(5)
       }
       // Reset validation state
       setPrimaryValidation("idle")
@@ -304,12 +334,33 @@ export function AIProviderFormDialog({
     setCompatibilityResult(null) // Reset compatibility when model changes
   }
 
+  const handleGatewayUseEnvChange = (value: boolean) => {
+    setGatewayUseEnvKey(value)
+    if (value) {
+      setGatewayApiKey("")
+    }
+  }
+
+  const handleOpenRouterUseEnvChange = (value: boolean) => {
+    setOpenrouterUseEnvKey(value)
+    if (value) {
+      setOpenrouterApiKey("")
+    }
+  }
+
+  const getApiKeyForProvider = (provider: string) => {
+    if (provider === "vercel-gateway") return gatewayApiKey
+    if (provider === "openrouter") return openrouterApiKey
+    return ""
+  }
+
   const handleTestPrimary = async () => {
-    if (!primaryProvider || !primaryModel || !primaryApiKey) {
+    if (!primaryProvider || !primaryModel) {
       toast.error("Lengkapi semua field primary provider terlebih dahulu")
       return
     }
 
+    const apiKey = getApiKeyForProvider(primaryProvider)
     setIsTestingPrimary(true)
     setPrimaryValidation("idle")
 
@@ -320,7 +371,7 @@ export function AIProviderFormDialog({
         body: JSON.stringify({
           provider: primaryProvider,
           model: primaryModel,
-          apiKey: primaryApiKey,
+          apiKey,
         }),
       })
 
@@ -343,11 +394,12 @@ export function AIProviderFormDialog({
   }
 
   const handleTestFallback = async () => {
-    if (!fallbackProvider || !fallbackModel || !fallbackApiKey) {
+    if (!fallbackProvider || !fallbackModel) {
       toast.error("Lengkapi semua field fallback provider terlebih dahulu")
       return
     }
 
+    const apiKey = getApiKeyForProvider(fallbackProvider)
     setIsTestingFallback(true)
     setFallbackValidation("idle")
 
@@ -358,7 +410,7 @@ export function AIProviderFormDialog({
         body: JSON.stringify({
           provider: fallbackProvider,
           model: fallbackModel,
-          apiKey: fallbackApiKey,
+          apiKey,
         }),
       })
 
@@ -382,8 +434,8 @@ export function AIProviderFormDialog({
 
   // Verify model compatibility for tool calling (OpenRouter fallback)
   const handleVerifyCompatibility = async () => {
-    if (!fallbackModel || !fallbackApiKey) {
-      toast.error("Lengkapi fallback model dan API key terlebih dahulu")
+    if (!fallbackModel) {
+      toast.error("Lengkapi fallback model terlebih dahulu")
       return
     }
 
@@ -402,7 +454,7 @@ export function AIProviderFormDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: fallbackModel,
-          apiKey: fallbackApiKey,
+          apiKey: openrouterApiKey,
         }),
       })
 
@@ -437,16 +489,6 @@ export function AIProviderFormDialog({
       return
     }
 
-    if (!primaryApiKey.trim() && !isEditing) {
-      toast.error("Primary API key tidak boleh kosong")
-      return
-    }
-
-    if (!fallbackApiKey.trim() && !isEditing) {
-      toast.error("Fallback API key tidak boleh kosong")
-      return
-    }
-
     if (temperature < 0 || temperature > 2) {
       toast.error("Temperature harus antara 0 dan 2")
       return
@@ -459,6 +501,11 @@ export function AIProviderFormDialog({
 
     if (maxTokens !== undefined && maxTokens <= 0) {
       toast.error("Max Tokens harus lebih dari 0")
+      return
+    }
+
+    if (fallbackWebSearchMaxResults < 1 || fallbackWebSearchMaxResults > 10) {
+      toast.error("Max Search Results harus antara 1 dan 10")
       return
     }
 
@@ -485,8 +532,24 @@ export function AIProviderFormDialog({
         if (fallbackModel !== config.fallbackModel) updateArgs.fallbackModel = fallbackModel
 
         // API keys: only if changed (not empty)
-        if (primaryApiKey.trim()) updateArgs.primaryApiKey = primaryApiKey
-        if (fallbackApiKey.trim()) updateArgs.fallbackApiKey = fallbackApiKey
+        if (gatewayApiKey.trim()) updateArgs.gatewayApiKey = gatewayApiKey
+        if (openrouterApiKey.trim()) updateArgs.openrouterApiKey = openrouterApiKey
+        if (gatewayUseEnvKey) updateArgs.gatewayApiKeyClear = true
+        if (openrouterUseEnvKey) updateArgs.openrouterApiKeyClear = true
+
+        // Web search settings
+        if (primaryWebSearchEnabled !== (config.primaryWebSearchEnabled ?? true)) {
+          updateArgs.primaryWebSearchEnabled = primaryWebSearchEnabled
+        }
+        if (fallbackWebSearchEnabled !== (config.fallbackWebSearchEnabled ?? true)) {
+          updateArgs.fallbackWebSearchEnabled = fallbackWebSearchEnabled
+        }
+        if (fallbackWebSearchEngine !== (config.fallbackWebSearchEngine ?? "auto")) {
+          updateArgs.fallbackWebSearchEngine = fallbackWebSearchEngine
+        }
+        if (fallbackWebSearchMaxResults !== (config.fallbackWebSearchMaxResults ?? 5)) {
+          updateArgs.fallbackWebSearchMaxResults = fallbackWebSearchMaxResults
+        }
 
         const result = await updateMutation(updateArgs)
         toast.success(result.message)
@@ -498,13 +561,18 @@ export function AIProviderFormDialog({
           description: description.trim() || undefined,
           primaryProvider,
           primaryModel,
-          primaryApiKey,
           fallbackProvider,
           fallbackModel,
-          fallbackApiKey,
+          gatewayApiKey,
+          openrouterApiKey,
           temperature,
           topP,
           maxTokens,
+          // Web search settings
+          primaryWebSearchEnabled,
+          fallbackWebSearchEnabled,
+          fallbackWebSearchEngine,
+          fallbackWebSearchMaxResults,
         })
         toast.success(result.message)
       }
@@ -528,9 +596,15 @@ export function AIProviderFormDialog({
     temperature !== config.temperature ||
     topP !== config.topP ||
     maxTokens !== config.maxTokens ||
-    primaryApiKey.trim() !== "" ||
-    fallbackApiKey.trim() !== ""
-    : name.trim() !== "" && primaryApiKey.trim() !== "" && fallbackApiKey.trim() !== ""
+    primaryWebSearchEnabled !== (config.primaryWebSearchEnabled ?? true) ||
+    fallbackWebSearchEnabled !== (config.fallbackWebSearchEnabled ?? true) ||
+    fallbackWebSearchEngine !== (config.fallbackWebSearchEngine ?? "auto") ||
+    fallbackWebSearchMaxResults !== (config.fallbackWebSearchMaxResults ?? 5) ||
+    gatewayApiKey.trim() !== "" ||
+    openrouterApiKey.trim() !== "" ||
+    gatewayUseEnvKey ||
+    openrouterUseEnvKey
+    : name.trim() !== ""
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && !isLoading && onClose()}>
@@ -541,8 +615,8 @@ export function AIProviderFormDialog({
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update konfigurasi AI provider. API key kosong = gunakan key yang sudah ada."
-              : "Buat konfigurasi baru untuk AI provider. Wajib test connection sebelum save."}
+              ? "Update konfigurasi AI provider. API key per provider; kosong = tetap pakai key lama."
+              : "Buat konfigurasi baru untuk AI provider. API key boleh kosong, akan pakai ENV."}
           </DialogDescription>
         </DialogHeader>
 
@@ -646,33 +720,19 @@ export function AIProviderFormDialog({
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="primaryApiKey">
-                API Key {isEditing && "(kosongkan jika tidak ingin ubah)"}
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="primaryApiKey"
-                  type="password"
-                  value={primaryApiKey}
-                  onChange={(e) => setPrimaryApiKey(e.target.value)}
-                  placeholder={isEditing ? "Kosongkan untuk tetap pakai key lama" : "sk-..."}
-                  disabled={isLoading}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleTestPrimary}
-                  disabled={isLoading || isTestingPrimary || !primaryApiKey.trim()}
-                >
-                  {isTestingPrimary ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Test"
-                  )}
-                </Button>
-              </div>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleTestPrimary}
+                disabled={isLoading || isTestingPrimary}
+              >
+                {isTestingPrimary ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Test"
+                )}
+              </Button>
             </div>
           </div>
 
@@ -747,33 +807,19 @@ export function AIProviderFormDialog({
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="fallbackApiKey">
-                API Key {isEditing && "(kosongkan jika tidak ingin ubah)"}
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="fallbackApiKey"
-                  type="password"
-                  value={fallbackApiKey}
-                  onChange={(e) => setFallbackApiKey(e.target.value)}
-                  placeholder={isEditing ? "Kosongkan untuk tetap pakai key lama" : "sk-..."}
-                  disabled={isLoading}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleTestFallback}
-                  disabled={isLoading || isTestingFallback || !fallbackApiKey.trim()}
-                >
-                  {isTestingFallback ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Test"
-                  )}
-                </Button>
-              </div>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleTestFallback}
+                disabled={isLoading || isTestingFallback}
+              >
+                {isTestingFallback ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Test"
+                )}
+              </Button>
             </div>
 
             {/* Tool Compatibility Verification (OpenRouter only) */}
@@ -784,7 +830,7 @@ export function AIProviderFormDialog({
                     type="button"
                     variant="secondary"
                     onClick={handleVerifyCompatibility}
-                    disabled={isLoading || isVerifyingCompatibility || !fallbackApiKey.trim() || fallbackValidation !== "success"}
+                    disabled={isLoading || isVerifyingCompatibility || fallbackValidation !== "success"}
                     className="w-full"
                   >
                     {isVerifyingCompatibility ? (
@@ -858,6 +904,68 @@ export function AIProviderFormDialog({
 
           <Separator />
 
+          {/* Kunci Provider */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Kunci Provider</h3>
+            <p className="text-sm text-muted-foreground">
+              Kunci berlaku per provider, bukan per slot primary/fallback.
+            </p>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="gatewayApiKey">
+                  API Key Vercel AI Gateway {isEditing ? "(kosongkan jika tidak ingin ubah)" : "(boleh kosong untuk pakai ENV)"}
+                </Label>
+                <Input
+                  id="gatewayApiKey"
+                  type="password"
+                  value={gatewayApiKey}
+                  onChange={(e) => setGatewayApiKey(e.target.value)}
+                  placeholder={isEditing ? "Kosongkan untuk tetap pakai key lama" : "Kosongkan untuk pakai ENV"}
+                  disabled={isLoading || (isEditing && gatewayUseEnvKey)}
+                />
+                {isEditing && (
+                  <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Pakai ENV</p>
+                      <p className="text-xs text-muted-foreground">
+                        Hapus key tersimpan, pakai env var server.
+                      </p>
+                    </div>
+                    <Switch checked={gatewayUseEnvKey} onCheckedChange={handleGatewayUseEnvChange} />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="openrouterApiKey">
+                  API Key OpenRouter {isEditing ? "(kosongkan jika tidak ingin ubah)" : "(boleh kosong untuk pakai ENV)"}
+                </Label>
+                <Input
+                  id="openrouterApiKey"
+                  type="password"
+                  value={openrouterApiKey}
+                  onChange={(e) => setOpenrouterApiKey(e.target.value)}
+                  placeholder={isEditing ? "Kosongkan untuk tetap pakai key lama" : "Kosongkan untuk pakai ENV"}
+                  disabled={isLoading || (isEditing && openrouterUseEnvKey)}
+                />
+                {isEditing && (
+                  <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Pakai ENV</p>
+                      <p className="text-xs text-muted-foreground">
+                        Hapus key tersimpan, pakai env var server.
+                      </p>
+                    </div>
+                    <Switch checked={openrouterUseEnvKey} onCheckedChange={handleOpenRouterUseEnvChange} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
           {/* AI Settings */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">AI Settings</h3>
@@ -911,6 +1019,96 @@ export function AIProviderFormDialog({
                   disabled={isLoading}
                 />
               </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Web Search Settings */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Web Search Settings</h3>
+            <p className="text-sm text-muted-foreground">
+              Kontrol fitur web search untuk primary dan fallback provider.
+            </p>
+
+            <div className="space-y-4">
+              {/* Primary Web Search Toggle */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="primaryWebSearchEnabled" className="text-base">
+                    Enable Primary Web Search
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Aktifkan google_search tool untuk primary provider (Vercel AI Gateway)
+                  </p>
+                </div>
+                <Switch
+                  id="primaryWebSearchEnabled"
+                  checked={primaryWebSearchEnabled}
+                  onCheckedChange={setPrimaryWebSearchEnabled}
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Fallback Web Search Toggle */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="fallbackWebSearchEnabled" className="text-base">
+                    Enable Fallback Web Search
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Aktifkan :online suffix untuk fallback provider (OpenRouter)
+                  </p>
+                </div>
+                <Switch
+                  id="fallbackWebSearchEnabled"
+                  checked={fallbackWebSearchEnabled}
+                  onCheckedChange={setFallbackWebSearchEnabled}
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Fallback Search Engine + Max Results (only show if fallback enabled) */}
+              {fallbackWebSearchEnabled && (
+                <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-muted">
+                  <div className="space-y-2">
+                    <Label htmlFor="fallbackWebSearchEngine">Fallback Search Engine</Label>
+                    <Select
+                      value={fallbackWebSearchEngine}
+                      onValueChange={setFallbackWebSearchEngine}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="fallbackWebSearchEngine">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Auto (OpenRouter Default)</SelectItem>
+                        <SelectItem value="native">Native</SelectItem>
+                        <SelectItem value="exa">Exa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Engine untuk OpenRouter :online suffix
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fallbackWebSearchMaxResults">Max Search Results</Label>
+                    <Input
+                      id="fallbackWebSearchMaxResults"
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={fallbackWebSearchMaxResults}
+                      onChange={(e) => setFallbackWebSearchMaxResults(parseInt(e.target.value, 10) || 5)}
+                      disabled={isLoading}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Jumlah hasil pencarian (1-10)
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
