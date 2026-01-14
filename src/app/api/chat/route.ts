@@ -8,6 +8,7 @@ import { getSystemPrompt } from "@/lib/ai/chat-config"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
+import { retryMutation } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 import { normalizeCitations, type NormalizedCitation } from "@/lib/citations/normalizer"
@@ -49,10 +50,13 @@ export async function POST(req: Request) {
             // Initial placeholder title
             const title = "Percakapan baru"
 
-            currentConversationId = await fetchMutation(api.conversations.createConversation, {
-                userId,
-                title,
-            })
+            currentConversationId = await retryMutation(
+                () => fetchMutation(api.conversations.createConversation, {
+                    userId,
+                    title,
+                }),
+                "conversations.createConversation"
+            )
         }
 
         // Background Title Generation (Fire and Forget)
@@ -118,12 +122,15 @@ export async function POST(req: Request) {
                 ""
 
             if (userContent) {
-                await fetchMutation(api.messages.createMessage, {
-                    conversationId: currentConversationId as Id<"conversations">,
-                    role: "user",
-                    content: userContent,
-                    fileIds: fileIds ? (fileIds as Id<"files">[]) : undefined,
-                })
+                await retryMutation(
+                    () => fetchMutation(api.messages.createMessage, {
+                        conversationId: currentConversationId as Id<"conversations">,
+                        role: "user",
+                        content: userContent,
+                        fileIds: fileIds ? (fileIds as Id<"files">[]) : undefined,
+                    }),
+                    "messages.createMessage(user)"
+                )
             }
         }
 
@@ -636,15 +643,18 @@ JSON schema:
                         : {}),
                 }))
                 .filter((source) => source.url && source.title)
-            await fetchMutation(api.messages.createMessage, {
-                conversationId: currentConversationId as Id<"conversations">,
-                role: "assistant",
-                content: content,
-                metadata: {
-                    model: usedModel ?? modelNames.primary.model, // From database config
-                },
-                sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
-            })
+            await retryMutation(
+                () => fetchMutation(api.messages.createMessage, {
+                    conversationId: currentConversationId as Id<"conversations">,
+                    role: "assistant",
+                    content: content,
+                    metadata: {
+                        model: usedModel ?? modelNames.primary.model, // From database config
+                    },
+                    sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
+                }),
+                "messages.createMessage(assistant)"
+            )
         }
 
         // ============================================================
@@ -698,16 +708,19 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
-                        const result = await fetchMutation(api.artifacts.create, {
-                            conversationId: currentConversationId as Id<"conversations">,
-                            userId: userId as Id<"users">,
-                            type,
-                            title,
-                            content,
-                            format,
-                            description,
-                            sources,
-                        })
+                        const result = await retryMutation(
+                            () => fetchMutation(api.artifacts.create, {
+                                conversationId: currentConversationId as Id<"conversations">,
+                                userId: userId as Id<"users">,
+                                type,
+                                title,
+                                content,
+                                format,
+                                description,
+                                sources,
+                            }),
+                            "artifacts.create"
+                        )
 
                         return {
                             success: true,
@@ -761,13 +774,16 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 }),
                 execute: async ({ artifactId, content, title, sources }) => {
                     try {
-                        const result = await fetchMutation(api.artifacts.update, {
-                            artifactId: artifactId as Id<"artifacts">,
-                            userId: userId as Id<"users">,
-                            content,
-                            title,
-                            sources,
-                        })
+                        const result = await retryMutation(
+                            () => fetchMutation(api.artifacts.update, {
+                                artifactId: artifactId as Id<"artifacts">,
+                                userId: userId as Id<"users">,
+                                content,
+                                title,
+                                sources,
+                            }),
+                            "artifacts.update"
+                        )
 
                         return {
                             success: true,

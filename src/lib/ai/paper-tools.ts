@@ -3,6 +3,7 @@ import { z } from "zod"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
+import { retryMutation, retryQuery } from "../convex/retry"
 
 /**
  * Factory untuk membuat tools AI khusus alur penulisan paper.
@@ -28,11 +29,14 @@ Aturan pengisian initialIdea:
             }),
             execute: async ({ initialIdea }) => {
                 try {
-                    const sessionId = await fetchMutation(api.paperSessions.create, {
-                        userId: context.userId,
-                        conversationId: context.conversationId,
-                        initialIdea: initialIdea || undefined,
-                    });
+                    const sessionId = await retryMutation(
+                        () => fetchMutation(api.paperSessions.create, {
+                            userId: context.userId,
+                            conversationId: context.conversationId,
+                            initialIdea: initialIdea || undefined,
+                        }),
+                        "paperSessions.create"
+                    );
                     return {
                         success: true,
                         sessionId,
@@ -50,9 +54,12 @@ Aturan pengisian initialIdea:
             inputSchema: z.object({}),
             execute: async () => {
                 try {
-                    const session = await fetchQuery(api.paperSessions.getByConversation, {
-                        conversationId: context.conversationId
-                    });
+                    const session = await retryQuery(
+                        () => fetchQuery(api.paperSessions.getByConversation, {
+                            conversationId: context.conversationId
+                        }),
+                        "paperSessions.getByConversation"
+                    );
                     return session
                         ? { success: true, session }
                         : { success: false, error: "Tidak ada sesi paper aktif untuk percakapan ini." };
@@ -107,9 +114,12 @@ Contoh data untuk tahap 'gagasan':
             }),
             execute: async ({ ringkasan, data }) => {
                 try {
-                    const session = await fetchQuery(api.paperSessions.getByConversation, {
-                        conversationId: context.conversationId
-                    });
+                    const session = await retryQuery(
+                        () => fetchQuery(api.paperSessions.getByConversation, {
+                            conversationId: context.conversationId
+                        }),
+                        "paperSessions.getByConversation"
+                    );
                     if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
 
                     // Option B Fix: Auto-fetch stage from session.currentStage
@@ -119,11 +129,14 @@ Contoh data untuk tahap 'gagasan':
                     // Merge ringkasan (required by schema) into data object
                     const mergedData = { ...(data || {}), ringkasan };
 
-                    const result = await fetchMutation(api.paperSessions.updateStageData, {
-                        sessionId: session._id,
-                        stage,
-                        data: mergedData,
-                    });
+                    const result = await retryMutation(
+                        () => fetchMutation(api.paperSessions.updateStageData, {
+                            sessionId: session._id,
+                            stage,
+                            data: mergedData,
+                        }),
+                        "paperSessions.updateStageData"
+                    );
 
                     // Safety net: Parse warning from backend if ringkasan somehow missing
                     // (Should never happen now since ringkasan is required by Zod schema)
@@ -157,14 +170,20 @@ Contoh data untuk tahap 'gagasan':
             inputSchema: z.object({}),
             execute: async () => {
                 try {
-                    const session = await fetchQuery(api.paperSessions.getByConversation, {
-                        conversationId: context.conversationId
-                    });
+                    const session = await retryQuery(
+                        () => fetchQuery(api.paperSessions.getByConversation, {
+                            conversationId: context.conversationId
+                        }),
+                        "paperSessions.getByConversation"
+                    );
                     if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
 
-                    await fetchMutation(api.paperSessions.submitForValidation, {
-                        sessionId: session._id,
-                    });
+                    await retryMutation(
+                        () => fetchMutation(api.paperSessions.submitForValidation, {
+                            sessionId: session._id,
+                        }),
+                        "paperSessions.submitForValidation"
+                    );
                     return {
                         success: true,
                         message: "Draf telah dikirim ke user. Menunggu validasi (Approve/Revise) dari user sebelum bisa lanjut ke tahap berikutnya."
