@@ -17,6 +17,14 @@ import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
 import { type PaperStageId } from "../../../../convex/paperSessions/constants"
+import {
+    isStageResearchIncomplete,
+    aiIndicatedSearchIntent,
+    isExplicitSaveSubmitRequest,
+    getLastAssistantMessage,
+    PAPER_TOOLS_ONLY_NOTE,
+    getResearchIncompleteNote,
+} from "@/lib/ai/paper-search-helpers"
 
 export async function POST(req: Request) {
     try {
@@ -896,45 +904,101 @@ Aturan:
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
             const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
-            const isUserConfirmation = isUserConfirmationMessage(lastUserContent)
-            const webSearchDecision = await decideWebSearchMode({
-                model,
-                recentMessages: recentForRouter,
-                isPaperMode: !!paperModePrompt,
-                currentStage,
-                stagePolicy,
-                searchAlreadyDone,
-                isUserConfirmation,
-            })
-
-            const routerFailed = ["router_invalid_json_shape", "router_json_parse_failed"].includes(
-                webSearchDecision.reason
-            )
-            const explicitSearchRequest = lastUserContent
-                ? isExplicitSearchRequest(lastUserContent)
-                : false
-            const explicitSearchFallback = routerFailed && explicitSearchRequest
-                ? true
-                : false
-
-            const stagePolicyAllowsSearch = !paperModePrompt
-                ? true
-                : (stagePolicy === "active"
-                    ? true
-                    : stagePolicy === "passive"
-                        ? explicitSearchRequest
-                        : explicitSearchRequest)
 
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
             const forcePaperToolsMode = !!paperWorkflowReminder && !paperModePrompt
-            enableWebSearch = !!wrappedGoogleSearchTool
-                && !forcePaperToolsMode
-                && stagePolicyAllowsSearch
-                && (webSearchDecision.enableWebSearch || explicitSearchFallback || explicitSearchRequest)
+
+            // ════════════════════════════════════════════════════════════════
+            // ACTIVE STAGE OVERRIDE: Deterministic search decision
+            // Bypasses non-deterministic LLM router for ACTIVE stages
+            // 3-Layer Protection:
+            // 1. Task-based: Check stageData completion (referensi fields)
+            // 2. Intent-based: Check AI's previous promise to search
+            // 3. Language-based: Check explicit save/submit patterns
+            // ════════════════════════════════════════════════════════════════
+            let activeStageSearchReason = ""
+            let activeStageSearchNote = ""
+
+            if (stagePolicy === "active" && paperSession && !forcePaperToolsMode) {
+                // Layer 1: Task-based - check if research is incomplete
+                const { incomplete, requirement } = isStageResearchIncomplete(
+                    paperSession.stageData as Record<string, unknown> | undefined,
+                    currentStage as PaperStageId
+                )
+
+                // Layer 2: Intent-based - check if AI promised to search
+                const lastAssistantMsg = getLastAssistantMessage(modelMessages as Array<{ role: string; content?: string | unknown }>)
+                const aiPromisedSearch = lastAssistantMsg ? aiIndicatedSearchIntent(lastAssistantMsg) : false
+
+                // Layer 3: Language-based - check explicit save/submit
+                const userWantsToSave = isExplicitSaveSubmitRequest(lastUserContent)
+
+                // Decision logic (deterministic)
+                if (incomplete) {
+                    // Priority 1: Research incomplete → FORCE search
+                    enableWebSearch = !!wrappedGoogleSearchTool
+                    activeStageSearchReason = "research_incomplete"
+                    activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement!)
+                } else if (aiPromisedSearch) {
+                    // Priority 2: AI promised search → honor promise
+                    enableWebSearch = !!wrappedGoogleSearchTool
+                    activeStageSearchReason = "ai_promised_search"
+                } else if (userWantsToSave) {
+                    // Priority 3: Explicit save/submit → no search
+                    enableWebSearch = false
+                    activeStageSearchReason = "explicit_save_request"
+                } else {
+                    // Priority 4: Default for ACTIVE stage → enable search
+                    enableWebSearch = !!wrappedGoogleSearchTool
+                    activeStageSearchReason = "active_stage_default"
+                }
+
+                // Inject note when search is disabled in paper mode
+                if (!enableWebSearch && paperModePrompt) {
+                    activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+                }
+
+                console.log(`[SearchDecision] ACTIVE stage override: ${activeStageSearchReason}, enableWebSearch: ${enableWebSearch}`)
+            } else {
+                // PASSIVE/NONE stages OR no paper session: use existing LLM router logic
+                const isUserConfirmation = isUserConfirmationMessage(lastUserContent)
+                const webSearchDecision = await decideWebSearchMode({
+                    model,
+                    recentMessages: recentForRouter,
+                    isPaperMode: !!paperModePrompt,
+                    currentStage,
+                    stagePolicy,
+                    searchAlreadyDone,
+                    isUserConfirmation,
+                })
+
+                const routerFailed = ["router_invalid_json_shape", "router_json_parse_failed"].includes(
+                    webSearchDecision.reason
+                )
+                const explicitSearchRequest = lastUserContent
+                    ? isExplicitSearchRequest(lastUserContent)
+                    : false
+                const explicitSearchFallback = routerFailed && explicitSearchRequest
+
+                const stagePolicyAllowsSearch = !paperModePrompt
+                    ? true
+                    : (stagePolicy === "active"
+                        ? true
+                        : stagePolicy === "passive"
+                            ? explicitSearchRequest
+                            : explicitSearchRequest)
+
+                enableWebSearch = !!wrappedGoogleSearchTool
+                    && !forcePaperToolsMode
+                    && stagePolicyAllowsSearch
+                    && (webSearchDecision.enableWebSearch || explicitSearchFallback || explicitSearchRequest)
+            }
+            // For ACTIVE stages with explicit save request, force submit validation
+            // Use isExplicitSaveSubmitRequest since isUserConfirmation is now scoped to else block
             const shouldForceSubmitValidation = !enableWebSearch
                 && !!paperModePrompt
-                && isUserConfirmation
+                && (activeStageSearchReason === "explicit_save_request" || isExplicitSaveSubmitRequest(lastUserContent))
                 && paperSession?.stageStatus === "drafting"
                 && hasStageRingkasan(paperSession)
 
@@ -963,9 +1027,20 @@ TIPS PENCARIAN:
                 ? [
                     fullMessagesBase[0],
                     { role: "system" as const, content: webSearchBehaviorSystemNote },
+                    // Inject research incomplete note if applicable (ACTIVE stage override)
+                    ...(activeStageSearchNote && activeStageSearchReason === "research_incomplete"
+                        ? [{ role: "system" as const, content: activeStageSearchNote }]
+                        : []),
                     ...fullMessagesBase.slice(1),
                 ]
-                : fullMessagesBase
+                : [
+                    fullMessagesBase[0],
+                    // Inject paper tools only note when search disabled in paper mode (ACTIVE stage override)
+                    ...(activeStageSearchNote && paperModePrompt && !enableWebSearch
+                        ? [{ role: "system" as const, content: activeStageSearchNote }]
+                        : []),
+                    ...fullMessagesBase.slice(1),
+                ]
 
             const gatewayTools: ToolSet = enableWebSearch
                 ? ({ google_search: wrappedGoogleSearchTool } as unknown as ToolSet)
