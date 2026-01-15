@@ -10,8 +10,11 @@ import { Id } from "./_generated/dataModel"
 /**
  * Default Style Constitution content for Refrasa tool
  * Source: .development/knowledge-base/writing_style_tool/makalah-style-constitution.md
+ *
+ * Exported for use by migration script (seedDefaultStyleConstitution.ts)
+ * to ensure single source of truth.
  */
-const DEFAULT_CONSTITUTION_CONTENT = `# Konstitusi Gaya Penulisan Makalah (Makalah Style Constitution)
+export const DEFAULT_CONSTITUTION_CONTENT = `# Konstitusi Gaya Penulisan Makalah (Makalah Style Constitution)
 
 **Status**: Dokumen Induk (Living Document)
 **Sumber**: \`makalah-writing-style-master.txt\`

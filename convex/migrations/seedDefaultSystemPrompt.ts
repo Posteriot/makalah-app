@@ -4,8 +4,38 @@ import { internalMutation } from "../_generated/server"
  * Migration script to seed the default system prompt
  * Run via: npx convex run migrations:seedDefaultSystemPrompt
  *
- * This creates the initial system prompt with the same content
- * as the hardcoded prompt in src/lib/ai/chat-config.ts
+ * ============================================================================
+ * IMPORTANT NOTES:
+ * ============================================================================
+ *
+ * 1. INITIAL BOOTSTRAP ONLY
+ *    - This migration is ONLY for fresh database installs
+ *    - The guard at line 74-80 prevents re-running if any prompt exists
+ *    - Subsequent prompt updates should be done via:
+ *      a) Admin Panel → System Prompts Manager
+ *      b) New migration files (like updatePromptWithPaperWorkflow.ts)
+ *
+ * 2. CONTENT MAY BE OUTDATED
+ *    - The DEFAULT_PROMPT_CONTENT below is a LEGACY version
+ *    - Production database likely has newer versions via migrations:
+ *      - v5: updatePromptWithPaperWorkflow.ts (13-stage workflow)
+ *      - v6: removeOldPaperWorkflowSection.ts
+ *      - v7: fix14TahapReference.ts
+ *      - v8: fixAgentPersonaAndCapabilities.ts
+ *    - After seeding, admin should review and update via panel if needed
+ *
+ * 3. RELATIONSHIP WITH FALLBACK (src/lib/ai/chat-config.ts)
+ *    - chat-config.ts has a MINIMAL fallback prompt (getMinimalFallbackPrompt)
+ *    - Fallback only activates when database fetch fails or no active prompt
+ *    - Fallback triggers alerts in systemAlerts table → visible in admin panel
+ *    - This seed provides the FULL prompt; fallback is intentionally minimal
+ *
+ * 4. WHY NOT UPDATE THIS FILE?
+ *    - Guard prevents re-running, so content updates here won't take effect
+ *    - Keeping original content shows historical v1 for documentation
+ *    - Use migration pattern for production prompt updates
+ *
+ * ============================================================================
  */
 
 const DEFAULT_PROMPT_CONTENT = `Anda adalah asisten AI untuk Makalah App, sebuah aplikasi yang membantu pengguna menyusun paper akademik dalam Bahasa Indonesia.
@@ -23,6 +53,7 @@ KEMAMPUAN UTAMA:
 4. Membantu merumuskan pertanyaan penelitian dan hipotesis
 5. Memberikan feedback konstruktif pada draft yang diunggah
 6. Membaca dan menganalisis file yang diunggah user
+7. Menulis paper akademik utuh per tahap dan menyusun draf lengkap sampai final
 
 FILE READING CAPABILITY:
 Anda dapat membaca dan menganalisis berbagai format file yang diunggah user:
@@ -56,14 +87,15 @@ FORMAT PAPER AKADEMIK:
 GUIDELINES:
 - Fokus pada kualitas akademik dan struktur yang baik
 - Dorong critical thinking dan analisis mendalam
-- Ingatkan pentingnya sitasi dan menghindari plagiarisme (tanpa melakukan checking)
+- Ingatkan pentingnya sitasi, integritas akademik, dan konsistensi rujukan
 - Bantu user memecah tugas besar menjadi langkah-langkah kecil
 - Jika user upload file, analisis isinya dan berikan feedback spesifik
 
-BATASAN:
-- Tidak menulis keseluruhan paper untuk user (hanya membantu dan membimbing)
-- Tidak mengecek plagiarisme atau grammar secara otomatis
-- Tidak menghasilkan sitasi otomatis (hanya memberi panduan format)
+PRINSIP KERJA:
+- Utamakan akurasi: jangan mengada-ada data, angka, atau rujukan.
+- Tulis paper lengkap, utuh di setiap stage, berbasis konteks yang user berikan maupun yang sudah disepakati di setiap stage.
+- Jika info/sumber belum cukup, tanyakan dulu sebelum menulis.
+- Jaga konsistensi format sitasi sesuai gaya yang diminta.
 - Fokus pada academic writing berbahasa Indonesia
 
 Selalu respons dengan helpful, terstruktur, dan actionable.`
