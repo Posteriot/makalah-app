@@ -85,6 +85,16 @@ export const aiIndicatedSearchIntent = (previousAIMessage: string): boolean => {
         /\b(mari|ayo)\s*(kita\s*)?(mencari|cari)/i,
         // "...akan saya carikan..."
         /\bakan\s*(saya\s*)?(carikan|cari)/i,
+        // "akan memulai/melakukan pencarian" - common AI phrasing
+        /\bakan\s*(memulai|melakukan)\s*(dengan\s*)?(pencarian|search)/i,
+        // "saya akan memulai pencarian"
+        /\bsaya\s*akan\s*(memulai|melakukan).*(pencarian|search)/i,
+        // "melakukan pencarian literatur/referensi"
+        /\b(akan\s*)?(melakukan|memulai)\s*pencarian\s*(literatur|referensi|sumber)?/i,
+        // "tunggu sebentar selagi saya mencari/search"
+        /\btunggu.*(saya|selagi).*(mencari|cari|search|pencarian)/i,
+        // "mohon tunggu" + "pencarian/search"
+        /\bmohon\s*tunggu.*pencarian/i,
     ]
     return searchIntentPatterns.some(p => p.test(previousAIMessage))
 }
@@ -102,6 +112,80 @@ export const isExplicitSaveSubmitRequest = (text: string): boolean => {
         /\bselesai(kan)?\s*(tahap|stage)?\b/,
     ]
     return savePatterns.some(p => p.test(normalized))
+}
+
+/**
+ * Check if AI's previous response indicated intent to SAVE (not search)
+ * This is the opposite of aiIndicatedSearchIntent
+ */
+export const aiIndicatedSaveIntent = (previousAIMessage: string): boolean => {
+    const saveIntentPatterns = [
+        // "Saya akan menyimpan..."
+        /\bsaya\s*(akan|segera)\s*(menyimpan|simpan|save)/i,
+        // "akan saya simpan"
+        /\bakan\s*(saya\s*)?(simpan|menyimpan)/i,
+        // "membuat artifact"
+        /\b(akan|segera)\s*(membuat|buat)\s*artifact/i,
+        // "membuatkan artifact untuk Anda"
+        /\bmembuatkan\s*artifact/i,
+        // "menyimpan data/detail"
+        /\b(menyimpan|simpan)\s*(data|detail|informasi|ringkasan)/i,
+        // "update stage data"
+        /\b(akan\s*)?(update|mengupdate)\s*stage/i,
+        // "mengirimkan untuk validasi"
+        /\b(akan\s*)?(mengirim|kirim)\s*(untuk\s*)?validasi/i,
+    ]
+    return saveIntentPatterns.some(p => p.test(previousAIMessage))
+}
+
+/**
+ * Check if user message is a short confirmation (for following up on AI's proposal)
+ * This should be used together with aiIndicatedSaveIntent to detect:
+ * AI: "Saya akan menyimpan..." → User: "Lakukan" → function tools mode
+ */
+export const isUserConfirmation = (text: string): boolean => {
+    const normalized = text.toLowerCase().trim()
+    // Only match short confirmations (< 50 chars to avoid false positives)
+    if (normalized.length > 50) return false
+
+    const confirmationPatterns = [
+        /^(ya|yes|yup|yep|ok|oke|okay|sip|siap|baik|boleh)\.?$/i,
+        /^lakukan\.?$/i,
+        /^lanjut(kan)?\.?$/i,
+        /^silakan\.?$/i,
+        /^setuju\.?$/i,
+        /^proses\.?$/i,
+        /^eksekusi\.?$/i,
+        /^jalankan\.?$/i,
+        /^go\.?$/i,
+    ]
+    return confirmationPatterns.some(p => p.test(normalized))
+}
+
+/**
+ * Check if user explicitly wants MORE search (after search already done)
+ * More restrictive than isExplicitSearchRequest - requires explicit "more" patterns
+ *
+ * Use case: When searchAlreadyDone=true, we need to differentiate between:
+ * - "tampilkan hasil pencarian" → DISPLAY (no search)
+ * - "cari lagi tentang X" → MORE SEARCH (enable search)
+ */
+export const isExplicitMoreSearchRequest = (text: string): boolean => {
+    const normalized = text.toLowerCase()
+    const moreSearchPatterns = [
+        // "cari lagi", "carikan lagi"
+        /\bcari(kan)?\s+(lagi|tambahan|lebih)\b/,
+        // "cari referensi/sumber/literatur lagi"
+        /\bcari(kan)?\s+(referensi|sumber|literatur|data)\s*(lagi|tambahan|lebih)?\b/,
+        // "tambah referensi/sumber"
+        /\btambah(kan)?\s+(referensi|sumber|literatur|data)\b/,
+        // "search more", "search again"
+        /\bsearch\s+(more|again|lagi)\b/,
+        // Explicit command: "cari tentang X", "carikan X"
+        /\bcari(kan)?\s+tentang\b/,
+        /\bcari(kan)?\s+\w{3,}/,  // "cari [topic]" with at least 3 chars
+    ]
+    return moreSearchPatterns.some(p => p.test(normalized))
 }
 
 /**

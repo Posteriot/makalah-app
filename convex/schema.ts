@@ -275,6 +275,7 @@ export default defineSchema({
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
+          publishedAt: v.optional(v.number()), // Timestamp from google_search
         }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
@@ -291,6 +292,7 @@ export default defineSchema({
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
+          publishedAt: v.optional(v.number()), // Timestamp from google_search
         }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
@@ -338,6 +340,7 @@ export default defineSchema({
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
+          publishedAt: v.optional(v.number()), // Timestamp from google_search
           inTextCitation: v.string(),
           isFromPhase1: v.boolean(),
         }))),

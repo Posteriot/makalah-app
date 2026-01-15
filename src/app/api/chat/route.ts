@@ -20,7 +20,10 @@ import { type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
     isStageResearchIncomplete,
     aiIndicatedSearchIntent,
+    aiIndicatedSaveIntent,
     isExplicitSaveSubmitRequest,
+    isExplicitMoreSearchRequest,
+    isUserConfirmation,
     getLastAssistantMessage,
     PAPER_TOOLS_ONLY_NOTE,
     getResearchIncompleteNote,
@@ -447,16 +450,43 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
         }
 
         // Helper: detect if previous turns already have search results (sources)
+        // STAGE-AWARE logic:
+        // 1. stageData evidence is AUTHORITATIVE (if exists, search is definitely done)
+        // 2. For ACTIVE stages without stageData evidence, check RECENT messages (last 1 turn)
+        //    - This catches "search done but not yet saved" scenario
+        //    - Limited to 1 turn to avoid false positives from old stage citations
+        // 3. For PASSIVE stages, check more messages (last 3) as fallback
         const hasPreviousSearchResults = (msgs: unknown[], session: {
             currentStage?: string
             stageData?: Record<string, unknown>
         } | null): boolean => {
             const stageEvidence = getSearchEvidenceFromStageData(session)
+
+            // stageData has evidence → search done (authoritative)
             if (stageEvidence === true) {
                 return true
             }
 
-            // Look at recent assistant messages for sources
+            // For ACTIVE stages (stageEvidence === false), check ONLY the LAST assistant message
+            // This catches "AI just searched but hasn't saved yet" without false positives from old stages
+            if (stageEvidence === false) {
+                const lastAssistant = msgs
+                    .filter((m): m is { role: string; content?: string } =>
+                        typeof m === "object" && m !== null && "role" in m && (m as { role: string }).role === "assistant"
+                    )
+                    .slice(-1)[0] // ONLY last 1 assistant message
+
+                if (lastAssistant) {
+                    const content = typeof lastAssistant.content === "string" ? lastAssistant.content : ""
+                    // Check for citations in the LAST message only
+                    if (/\[\d+(?:,\s*\d+)*\]/.test(content)) return true
+                    if (/berdasarkan hasil pencarian/i.test(content)) return true
+                    if (/menurut .+\(\d{4}\)/i.test(content)) return true
+                }
+                return false
+            }
+
+            // PASSIVE/unknown stage (stageEvidence === null) → check more messages as fallback
             const recentAssistantMsgs = msgs
                 .filter((m): m is { role: string; content?: string } =>
                     typeof m === "object" && m !== null && "role" in m && (m as { role: string }).role === "assistant"
@@ -465,8 +495,8 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
 
             for (const msg of recentAssistantMsgs) {
                 const content = typeof msg.content === "string" ? msg.content : ""
-                // Check for inline citation markers [1], [2], etc.
-                if (/\[\d+\]/.test(content)) return true
+                // Check for inline citation markers [1], [2], [1,2], [1,2,3], etc.
+                if (/\[\d+(?:,\s*\d+)*\]/.test(content)) return true
                 // Check for common patterns indicating search was done
                 if (/berdasarkan hasil pencarian/i.test(content)) return true
                 if (/menurut .+\(\d{4}\)/i.test(content)) return true // APA citation pattern
@@ -922,45 +952,52 @@ Aturan:
             let activeStageSearchNote = ""
 
             if (stagePolicy === "active" && paperSession && !forcePaperToolsMode) {
-                // Check explicit search request FIRST (override all)
-                const userExplicitlyAsksSearch = isExplicitSearchRequest(lastUserContent)
-
                 // Layer 1: Task-based - check if research is incomplete
                 const { incomplete, requirement } = isStageResearchIncomplete(
                     paperSession.stageData as Record<string, unknown> | undefined,
                     currentStage as PaperStageId
                 )
 
-                // Layer 2: Intent-based - check if AI promised to search
+                // Layer 2: Intent-based - check AI's previous promise
                 const lastAssistantMsg = getLastAssistantMessage(modelMessages as Array<{ role: string; content?: string | unknown }>)
                 const aiPromisedSearch = lastAssistantMsg ? aiIndicatedSearchIntent(lastAssistantMsg) : false
+                const aiPromisedSave = lastAssistantMsg ? aiIndicatedSaveIntent(lastAssistantMsg) : false
 
-                // Layer 3: Language-based - check explicit save/submit
+                // Layer 3: Language-based - check user's explicit request
                 const userWantsToSave = isExplicitSaveSubmitRequest(lastUserContent)
+                const userConfirms = isUserConfirmation(lastUserContent)
 
-                // Decision logic (deterministic, with searchAlreadyDone)
-                if (userExplicitlyAsksSearch) {
-                    // Override: User explicitly asks for search → ALWAYS enable
+                // Decision logic (deterministic, prioritized)
+                // Key insight: User intent (save/search) should be respected over automatic decisions
+                if (searchAlreadyDone) {
+                    // Priority 1: Search already done - only enable if user EXPLICITLY wants MORE
+                    const wantsMoreSearch = isExplicitMoreSearchRequest(lastUserContent)
+                    if (wantsMoreSearch) {
+                        enableWebSearch = !!wrappedGoogleSearchTool
+                        activeStageSearchReason = "user_wants_more_search"
+                    } else {
+                        enableWebSearch = false
+                        activeStageSearchReason = "search_already_done"
+                        activeStageSearchNote = getFunctionToolsModeNote("Search selesai")
+                    }
+                } else if (userWantsToSave) {
+                    // Priority 2: User explicitly wants to save → no search
+                    enableWebSearch = false
+                    activeStageSearchReason = "explicit_save_request"
+                } else if (aiPromisedSave && userConfirms) {
+                    // Priority 3: AI promised to save AND user confirms → honor save intent
+                    // e.g., AI: "Saya akan menyimpan..." → User: "Lakukan"
+                    enableWebSearch = false
+                    activeStageSearchReason = "ai_promised_save_user_confirms"
+                } else if (aiPromisedSearch) {
+                    // Priority 4: AI promised search → honor search promise
                     enableWebSearch = !!wrappedGoogleSearchTool
-                    activeStageSearchReason = "user_explicit_search_request"
-                } else if (incomplete && !searchAlreadyDone) {
-                    // Priority 1: Research incomplete AND no search yet → FORCE search
+                    activeStageSearchReason = "ai_promised_search"
+                } else if (incomplete) {
+                    // Priority 5: Research incomplete → suggest search (but don't force if user doesn't want)
                     enableWebSearch = !!wrappedGoogleSearchTool
                     activeStageSearchReason = "research_incomplete"
                     activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement!)
-                } else if (aiPromisedSearch && !searchAlreadyDone) {
-                    // Priority 2: AI promised search AND no search yet → honor promise
-                    enableWebSearch = !!wrappedGoogleSearchTool
-                    activeStageSearchReason = "ai_promised_search"
-                } else if (userWantsToSave) {
-                    // Priority 3: Explicit save/submit → no search
-                    enableWebSearch = false
-                    activeStageSearchReason = "explicit_save_request"
-                } else if (searchAlreadyDone) {
-                    // Priority 4: Search already done → switch to function tools
-                    enableWebSearch = false
-                    activeStageSearchReason = "search_already_done"
-                    activeStageSearchNote = getFunctionToolsModeNote("Search selesai")
                 } else {
                     // Priority 5: Default → FUNCTION TOOLS (safer default)
                     enableWebSearch = false

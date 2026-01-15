@@ -23,6 +23,7 @@ export const GagasanData = v.object({
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
+        publishedAt: v.optional(v.number()), // Timestamp from google_search
     }))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
@@ -40,6 +41,7 @@ export const TopikData = v.object({
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
+        publishedAt: v.optional(v.number()), // Timestamp from google_search
     }))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
@@ -82,6 +84,7 @@ export const TinjauanLiteraturData = v.object({
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
+        publishedAt: v.optional(v.number()), // Timestamp from google_search
         inTextCitation: v.string(),
         isFromPhase1: v.boolean(),
     }))),
@@ -169,6 +172,7 @@ export const DaftarPustakaData = v.object({
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
+        publishedAt: v.optional(v.number()), // Timestamp from google_search
         doi: v.optional(v.string()),
         inTextCitation: v.optional(v.string()), // AI-generated: "(Supit, 2024)"
         fullReference: v.optional(v.string()), // AI-generated: APA 7th format
