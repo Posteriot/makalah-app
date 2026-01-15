@@ -169,3 +169,14 @@ INSTRUKSI WAJIB:
 
 JIKA ANDA SKIP PENCARIAN, ANDA MELANGGAR PROTOKOL PAPER WORKFLOW.
 ═══════════════════════════════════════════════════════════════════`
+
+/**
+ * Concise state note for function tools mode (after search is done)
+ * Informs AI that it should use function tools, not web search
+ */
+export const getFunctionToolsModeNote = (searchInfo: string): string => `
+══════════════════════════════════════════════════
+MODE: FUNCTION_TOOLS | ${searchInfo}
+TERSEDIA: createArtifact, updateStageData, submitStageForValidation
+TUGAS: Proses hasil dan lanjutkan workflow dengan user
+══════════════════════════════════════════════════`

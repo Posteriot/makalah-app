@@ -24,6 +24,7 @@ import {
     getLastAssistantMessage,
     PAPER_TOOLS_ONLY_NOTE,
     getResearchIncompleteNote,
+    getFunctionToolsModeNote,
 } from "@/lib/ai/paper-search-helpers"
 
 export async function POST(req: Request) {
@@ -921,6 +922,9 @@ Aturan:
             let activeStageSearchNote = ""
 
             if (stagePolicy === "active" && paperSession && !forcePaperToolsMode) {
+                // Check explicit search request FIRST (override all)
+                const userExplicitlyAsksSearch = isExplicitSearchRequest(lastUserContent)
+
                 // Layer 1: Task-based - check if research is incomplete
                 const { incomplete, requirement } = isStageResearchIncomplete(
                     paperSession.stageData as Record<string, unknown> | undefined,
@@ -934,32 +938,42 @@ Aturan:
                 // Layer 3: Language-based - check explicit save/submit
                 const userWantsToSave = isExplicitSaveSubmitRequest(lastUserContent)
 
-                // Decision logic (deterministic)
-                if (incomplete) {
-                    // Priority 1: Research incomplete → FORCE search
+                // Decision logic (deterministic, with searchAlreadyDone)
+                if (userExplicitlyAsksSearch) {
+                    // Override: User explicitly asks for search → ALWAYS enable
+                    enableWebSearch = !!wrappedGoogleSearchTool
+                    activeStageSearchReason = "user_explicit_search_request"
+                } else if (incomplete && !searchAlreadyDone) {
+                    // Priority 1: Research incomplete AND no search yet → FORCE search
                     enableWebSearch = !!wrappedGoogleSearchTool
                     activeStageSearchReason = "research_incomplete"
                     activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement!)
-                } else if (aiPromisedSearch) {
-                    // Priority 2: AI promised search → honor promise
+                } else if (aiPromisedSearch && !searchAlreadyDone) {
+                    // Priority 2: AI promised search AND no search yet → honor promise
                     enableWebSearch = !!wrappedGoogleSearchTool
                     activeStageSearchReason = "ai_promised_search"
                 } else if (userWantsToSave) {
                     // Priority 3: Explicit save/submit → no search
                     enableWebSearch = false
                     activeStageSearchReason = "explicit_save_request"
+                } else if (searchAlreadyDone) {
+                    // Priority 4: Search already done → switch to function tools
+                    enableWebSearch = false
+                    activeStageSearchReason = "search_already_done"
+                    activeStageSearchNote = getFunctionToolsModeNote("Search selesai")
                 } else {
-                    // Priority 4: Default for ACTIVE stage → enable search
-                    enableWebSearch = !!wrappedGoogleSearchTool
-                    activeStageSearchReason = "active_stage_default"
-                }
-
-                // Inject note when search is disabled in paper mode
-                if (!enableWebSearch && paperModePrompt) {
+                    // Priority 5: Default → FUNCTION TOOLS (safer default)
+                    enableWebSearch = false
+                    activeStageSearchReason = "active_stage_default_function_tools"
                     activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
                 }
 
-                console.log(`[SearchDecision] ACTIVE stage override: ${activeStageSearchReason}, enableWebSearch: ${enableWebSearch}`)
+                // Inject note when search is disabled in paper mode
+                if (!enableWebSearch && paperModePrompt && !activeStageSearchNote) {
+                    activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+                }
+
+                console.log(`[SearchDecision] ACTIVE stage override: ${activeStageSearchReason}, searchAlreadyDone: ${searchAlreadyDone}, enableWebSearch: ${enableWebSearch}`)
             } else {
                 // PASSIVE/NONE stages OR no paper session: use existing LLM router logic
                 const isUserConfirmation = isUserConfirmationMessage(lastUserContent)
