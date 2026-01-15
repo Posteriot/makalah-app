@@ -127,6 +127,9 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
         reset: resetRefrasa,
     } = useRefrasa()
 
+    // Refrasa tool visibility (admin toggle)
+    const isRefrasaEnabled = useQuery(api.aiProviderConfigs.getRefrasaEnabled)
+
     const updateArtifact = useMutation(api.artifacts.update)
 
     // Sync viewingVersionId with artifactId prop when it changes
@@ -459,13 +462,16 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                             </div>
                         </ContextMenuTrigger>
                         <ContextMenuContent>
-                            <ContextMenuItem
-                                onClick={handleRefrasaTrigger}
-                                disabled={isRefrasaLoading || artifact.content.length < 50}
-                            >
-                                <WandSparkles className="h-4 w-4 mr-2" />
-                                Refrasa
-                            </ContextMenuItem>
+                            {/* Refrasa menu item - hidden when disabled by admin */}
+                            {isRefrasaEnabled !== false && (
+                                <ContextMenuItem
+                                    onClick={handleRefrasaTrigger}
+                                    disabled={isRefrasaLoading || artifact.content.length < 50}
+                                >
+                                    <WandSparkles className="h-4 w-4 mr-2" />
+                                    Refrasa
+                                </ContextMenuItem>
+                            )}
                         </ContextMenuContent>
                     </ContextMenu>
 
@@ -486,15 +492,17 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                                 onSelectVersion={(versionId) => setViewingVersionId(versionId)}
                             />
                         )}
-                        {/* Refrasa Button */}
-                        <RefrasaButton
-                            onClick={handleRefrasaTrigger}
-                            isLoading={isRefrasaLoading}
-                            isEditing={isEditing}
-                            hasArtifact={!!artifact}
-                            contentLength={artifact.content.length}
-                            wordCount={getWordCount(artifact.content)}
-                        />
+                        {/* Refrasa Button - hidden when disabled by admin */}
+                        {isRefrasaEnabled !== false && (
+                            <RefrasaButton
+                                onClick={handleRefrasaTrigger}
+                                isLoading={isRefrasaLoading}
+                                isEditing={isEditing}
+                                hasArtifact={!!artifact}
+                                contentLength={artifact.content.length}
+                                wordCount={getWordCount(artifact.content)}
+                            />
+                        )}
                         <Button
                             variant="outline"
                             size="sm"

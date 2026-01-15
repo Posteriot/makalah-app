@@ -19,13 +19,14 @@ export const getActiveConfig = query({
       return null
     }
 
-    // Apply defaults for optional web search fields
+    // Apply defaults for optional fields
     return {
       ...activeConfig,
       primaryWebSearchEnabled: activeConfig.primaryWebSearchEnabled ?? true,
       fallbackWebSearchEnabled: activeConfig.fallbackWebSearchEnabled ?? true,
       fallbackWebSearchEngine: activeConfig.fallbackWebSearchEngine ?? "auto",
       fallbackWebSearchMaxResults: activeConfig.fallbackWebSearchMaxResults ?? 5,
+      isRefrasaEnabled: activeConfig.isRefrasaEnabled ?? true,
     }
   },
 })
@@ -525,6 +526,63 @@ export const deleteConfigChain = mutation({
 
     return {
       message: "Semua versi config berhasil dihapus",
+    }
+  },
+})
+
+// ============================================================================
+// REFRASA TOOL VISIBILITY
+// ============================================================================
+
+/**
+ * Get Refrasa tool enabled status
+ * No auth required - used by artifact viewer to check visibility
+ * Returns true if enabled or no config exists (default behavior)
+ */
+export const getRefrasaEnabled = query({
+  args: {},
+  handler: async (ctx) => {
+    const activeConfig = await ctx.db
+      .query("aiProviderConfigs")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .first()
+
+    // Default to true if no config or field not set
+    return activeConfig?.isRefrasaEnabled ?? true
+  },
+})
+
+/**
+ * Set Refrasa tool enabled status
+ * Admin only - for maintenance mode toggle
+ * Updates the active config directly (no version history for this toggle)
+ */
+export const setRefrasaEnabled = mutation({
+  args: {
+    requestorUserId: v.id("users"),
+    enabled: v.boolean(),
+  },
+  handler: async (ctx, { requestorUserId, enabled }) => {
+    await requireRole(ctx.db, requestorUserId, "admin")
+
+    const activeConfig = await ctx.db
+      .query("aiProviderConfigs")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .first()
+
+    if (!activeConfig) {
+      throw new Error("Tidak ada AI config yang aktif. Aktifkan config terlebih dahulu.")
+    }
+
+    await ctx.db.patch(activeConfig._id, {
+      isRefrasaEnabled: enabled,
+      updatedAt: Date.now(),
+    })
+
+    return {
+      message: enabled
+        ? "Refrasa tool berhasil diaktifkan"
+        : "Refrasa tool berhasil dinonaktifkan",
     }
   },
 })

@@ -36,6 +36,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import {
   Plus,
   Pencil,
@@ -45,6 +46,9 @@ import {
   Trash2,
   ScrollText,
   Info,
+  Download,
+  AlertCircle,
+  Settings2,
 } from "lucide-react"
 import type { Id } from "@convex/_generated/dataModel"
 import { StyleConstitutionVersionHistoryDialog } from "./StyleConstitutionVersionHistoryDialog"
@@ -78,6 +82,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
   const [activateConstitution, setActivateConstitution] = useState<StyleConstitution | null>(null)
   const [deactivateConstitution, setDeactivateConstitution] = useState<StyleConstitution | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSeedingDefault, setIsSeedingDefault] = useState(false)
 
   // Form state
   const [formName, setFormName] = useState("")
@@ -89,6 +94,12 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
   const deleteMutation = useMutation(api.styleConstitutions.deleteChain)
   const createMutation = useMutation(api.styleConstitutions.create)
   const updateMutation = useMutation(api.styleConstitutions.update)
+  const seedDefaultMutation = useMutation(api.styleConstitutions.seedDefault)
+
+  // Refrasa tool visibility toggle
+  const isRefrasaEnabled = useQuery(api.aiProviderConfigs.getRefrasaEnabled)
+  const setRefrasaEnabledMutation = useMutation(api.aiProviderConfigs.setRefrasaEnabled)
+  const [isTogglingRefrasa, setIsTogglingRefrasa] = useState(false)
 
   // Reset form when dialog opens/closes or editing constitution changes
   useEffect(() => {
@@ -175,6 +186,39 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
     }
   }
 
+  const handleSeedDefault = async () => {
+    setIsSeedingDefault(true)
+    try {
+      const result = await seedDefaultMutation({
+        requestorUserId: userId,
+      })
+      toast.success(result.message)
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Terjadi kesalahan"
+      toast.error(errorMessage)
+    } finally {
+      setIsSeedingDefault(false)
+    }
+  }
+
+  const handleToggleRefrasa = async (enabled: boolean) => {
+    setIsTogglingRefrasa(true)
+    try {
+      const result = await setRefrasaEnabledMutation({
+        requestorUserId: userId,
+        enabled,
+      })
+      toast.success(result.message)
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Terjadi kesalahan"
+      toast.error(errorMessage)
+    } finally {
+      setIsTogglingRefrasa(false)
+    }
+  }
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -246,16 +290,52 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
 
   return (
     <>
+      {/* Refrasa Tool Status Toggle */}
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Settings2 className="h-4 w-4" />
+            Status Tool Refrasa
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="refrasa-toggle" className="text-sm font-medium">
+                Aktifkan Refrasa Tool
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Jika dinonaktifkan, tombol Refrasa tidak akan muncul di artifact viewer untuk semua user.
+              </p>
+            </div>
+            <Switch
+              id="refrasa-toggle"
+              checked={isRefrasaEnabled ?? true}
+              onCheckedChange={handleToggleRefrasa}
+              disabled={isTogglingRefrasa || isRefrasaEnabled === undefined}
+            />
+          </div>
+          {isRefrasaEnabled === false && (
+            <div className="mt-3 p-2 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md">
+              <p className="text-xs text-orange-700 dark:text-orange-300">
+                <strong>Mode Maintenance:</strong> Tombol Refrasa saat ini disembunyikan dari semua user.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Style Constitution Manager */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <ScrollText className="h-5 w-5" />
-                Style Constitution
+                Refrasa - Style Constitution
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Kelola panduan gaya penulisan untuk Refrasa tool. Hanya satu constitution yang bisa aktif.
+                Kelola panduan gaya penulisan (Layer 2) untuk Refrasa tool. Hanya satu constitution yang bisa aktif.
               </p>
             </div>
             <Button onClick={() => setIsCreateDialogOpen(true)}>
@@ -289,11 +369,40 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
               <TableBody>
                 {constitutions.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center text-muted-foreground py-8"
-                    >
-                      Belum ada style constitution. Klik &quot;Buat Constitution Baru&quot; untuk memulai.
+                    <TableCell colSpan={6} className="py-0">
+                      {/* Empty State with Seed Default Option */}
+                      <div className="flex flex-col items-center justify-center py-12 px-4">
+                        <div className="rounded-full bg-orange-100 dark:bg-orange-900/30 p-3 mb-4">
+                          <AlertCircle className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">
+                          Belum Ada Style Constitution
+                        </h3>
+                        <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+                          Refrasa membutuhkan Style Constitution (Layer 2) untuk panduan gaya penulisan.
+                          Gunakan constitution default atau buat sendiri.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <Button
+                            onClick={handleSeedDefault}
+                            disabled={isSeedingDefault}
+                            className="gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            {isSeedingDefault ? "Memproses..." : "Gunakan Default Constitution"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsCreateDialogOpen(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Buat Sendiri
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-4">
+                          Default: &quot;Makalah Style Constitution&quot; - panduan gaya penulisan akademis Bahasa Indonesia
+                        </p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (

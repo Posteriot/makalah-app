@@ -47,7 +47,7 @@ export function AdminPanelContainer({
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="system-prompts">System Prompts</TabsTrigger>
           <TabsTrigger value="ai-providers">AI Providers</TabsTrigger>
-          <TabsTrigger value="style-constitution">Style Constitution</TabsTrigger>
+          <TabsTrigger value="refrasa">Refrasa</TabsTrigger>
           <TabsTrigger value="stats">Statistik</TabsTrigger>
         </TabsList>
 
@@ -64,7 +64,7 @@ export function AdminPanelContainer({
           <AIProviderManager userId={userId} />
         </TabsContent>
 
-        <TabsContent value="style-constitution" className="space-y-4">
+        <TabsContent value="refrasa" className="space-y-4">
           <StyleConstitutionManager userId={userId} />
         </TabsContent>
 

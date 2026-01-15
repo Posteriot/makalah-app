@@ -232,6 +232,11 @@ export default defineSchema({
     fallbackWebSearchEngine: v.optional(v.string()), // "native" | "exa" | "auto" (default: "auto")
     fallbackWebSearchMaxResults: v.optional(v.number()), // Max search results (default: 5, range: 1-10)
 
+    // ════════════════════════════════════════════════════════════════
+    // Tool Visibility Settings (Admin maintenance toggle)
+    // ════════════════════════════════════════════════════════════════
+    isRefrasaEnabled: v.optional(v.boolean()), // Show/hide Refrasa button in artifact (default: true)
+
     // Versioning & Activation (pattern from systemPrompts)
     version: v.number(), // 1, 2, 3, ...
     isActive: v.boolean(), // Only one active at a time
