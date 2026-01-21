@@ -68,7 +68,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     }
 
     return (
-        <div className="flex h-[calc(100vh-80px)]">
+        <div className="flex h-screen">
             {/* Desktop Sidebar */}
             <ChatSidebar
                 className="hidden md:flex"
