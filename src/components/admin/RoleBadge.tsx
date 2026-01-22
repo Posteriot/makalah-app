@@ -1,28 +1,33 @@
-import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 type Role = "superadmin" | "admin" | "user"
 
 interface RoleBadgeProps {
   role: Role
+  className?: string
 }
 
-export function RoleBadge({ role }: RoleBadgeProps) {
+export function RoleBadge({ role, className }: RoleBadgeProps) {
   const config = {
     superadmin: {
       label: "Superadmin",
-      variant: "destructive" as const,
+      className: "role-badge--superadmin",
     },
     admin: {
       label: "Admin",
-      variant: "default" as const,
+      className: "role-badge--admin",
     },
     user: {
       label: "User",
-      variant: "secondary" as const,
+      className: "role-badge--user",
     },
   }
 
-  const { label, variant } = config[role] || config.user
+  const { label, className: badgeClass } = config[role] || config.user
 
-  return <Badge variant={variant}>{label}</Badge>
+  return (
+    <span className={cn("role-badge", badgeClass, className)}>
+      {label}
+    </span>
+  )
 }

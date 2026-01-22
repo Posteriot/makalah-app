@@ -125,7 +125,6 @@ export async function extractDataFromXlsx(
     const maxRows = options?.maxRows ?? 1000
 
     let extractedText = ""
-    let totalRows = 0
 
     // Process each sheet (up to maxSheets)
     const sheetsToProcess = sheets.slice(0, maxSheets)
@@ -156,7 +155,6 @@ export async function extractDataFromXlsx(
         })
 
         extractedText += sheetToMarkdownTable(dataRows, sheetName)
-        totalRows += dataRows.length
       } else {
         extractedText += `## Sheet: ${sheetName}\n\n*Empty sheet*\n\n`
       }

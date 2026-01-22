@@ -22,7 +22,7 @@ export const getActivePlans = query({
  */
 export const getPlanBySlug = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async () => {
     // This is a placeholder - actual implementation would use args
     return null
   },

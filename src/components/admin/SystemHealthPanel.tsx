@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,8 +16,7 @@ import {
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { id as localeId } from "date-fns/locale"
-import type { Id } from "@convex/_generated/dataModel"
-import { useState } from "react"
+import { cn } from "@/lib/utils"
 
 interface SystemHealthPanelProps {
   userId: Id<"users">
@@ -87,20 +88,20 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
   // Loading state
   if (activePrompt === undefined || alertCount === undefined) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 animate-spin" />
-            System Health
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title-row">
+            <RefreshCw className="card-icon animate-spin" />
+            <h3 className="card-title">System Health</h3>
+          </div>
+        </div>
+        <div className="card-content">
           <div className="animate-pulse space-y-4">
             <div className="h-20 bg-muted rounded"></div>
             <div className="h-32 bg-muted rounded"></div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
@@ -108,190 +109,170 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
   const hasUnresolvedAlerts = (alertCount?.total ?? 0) > 0
 
   return (
-    <Card className={isFallbackMode ? "border-destructive" : ""}>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            {isFallbackMode ? (
-              <AlertCircle className="h-5 w-5 text-destructive" />
-            ) : (
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
-            )}
-            System Health
-          </span>
-          {hasUnresolvedAlerts && (
-            <Badge variant="destructive">
-              {alertCount.total} Alert{alertCount.total > 1 ? "s" : ""}
-            </Badge>
-          )}
-        </CardTitle>
-        <CardDescription>
-          Status system prompt dan alert monitoring
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* System Prompt Status */}
-        <div className="space-y-2">
-          <h4 className="font-medium text-sm">System Prompt Status</h4>
-          <div
-            className={`p-4 rounded-lg border ${
-              isFallbackMode
-                ? "bg-destructive/10 border-destructive"
-                : "bg-green-500/10 border-green-500"
-            }`}
-          >
-            {isFallbackMode ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-destructive font-medium">
-                  <AlertCircle className="h-4 w-4" />
-                  FALLBACK MODE AKTIF
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  System prompt utama tidak tersedia. Chat menggunakan prompt minimal.
-                </p>
-                {fallbackStatus?.lastActivation && (
-                  <p className="text-xs text-muted-foreground">
-                    Fallback aktif sejak:{" "}
-                    {formatDistanceToNow(fallbackStatus.lastActivation, {
-                      addSuffix: true,
-                      locale: localeId,
-                    })}
-                  </p>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleResolveAllFallback}
-                  disabled={isResolving === "all"}
-                  className="mt-2"
-                >
-                  {isResolving === "all" ? (
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                  )}
-                  Mark as Resolved
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-green-600 font-medium">
-                  <CheckCircle2 className="h-4 w-4" />
-                  NORMAL - Database Prompt Aktif
-                </div>
-                {activePrompt && (
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <p>
-                      <strong>Name:</strong> {activePrompt.name}
-                    </p>
-                    <p>
-                      <strong>Version:</strong> {activePrompt.version}
-                    </p>
-                    <p>
-                      <strong>Last Updated:</strong>{" "}
-                      {formatDistanceToNow(activePrompt.updatedAt, {
-                        addSuffix: true,
-                        locale: localeId,
-                      })}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+    <div className={cn("card overflow-hidden", !isFallbackMode && "card--health")}>
+      <div className="card-header border-b">
+        <div className="card-header-row">
+          <div>
+            <div className="card-title-row">
+              {isFallbackMode ? (
+                <AlertCircle className="card-icon text-destructive" />
+              ) : (
+                <CheckCircle2 className="card-icon card-icon--success" />
+              )}
+              <h3 className="card-title">System Health Monitoring</h3>
+            </div>
+            <p className="card-description">
+              Status real-time system prompt dan indikator alert monitoring
+            </p>
           </div>
+          {hasUnresolvedAlerts && (
+            <span className="status-badge bg-destructive text-white animate-pulse">
+              {alertCount.total} Unresolved Alert{alertCount.total > 1 ? "s" : ""}
+            </span>
+          )}
         </div>
+      </div>
 
-        {/* Alert Summary */}
-        {alertCount && alertCount.total > 0 && (
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm">Alert Summary</h4>
-            <div className="flex gap-4 text-sm">
-              {alertCount.critical > 0 && (
-                <span className="flex items-center gap-1 text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  {alertCount.critical} Critical
-                </span>
-              )}
-              {alertCount.warning > 0 && (
-                <span className="flex items-center gap-1 text-yellow-600">
-                  <AlertTriangle className="h-4 w-4" />
-                  {alertCount.warning} Warning
-                </span>
-              )}
-              {alertCount.info > 0 && (
-                <span className="flex items-center gap-1 text-blue-600">
-                  <Info className="h-4 w-4" />
-                  {alertCount.info} Info
-                </span>
+      <div className="card-content p-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x divide-border">
+          {/* Section: System Prompt Status */}
+          <div className="p-6 md:p-10 flex flex-col h-full">
+            <h4 className="health-label mb-8 flex items-center gap-2">
+              <RefreshCw className="h-3 w-3" />
+              System Prompt Status
+            </h4>
+
+            <div className="flex-1">
+              {isFallbackMode ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-destructive" />
+                    <span className="font-bold text-destructive text-lg">FALLBACK MODE AKTIF</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
+                    Sistem saat ini beroperasi menggunakan hardcoded minimal prompt karena database prompt tidak tersedia.
+                  </p>
+                  {fallbackStatus?.lastActivation && (
+                    <div className="text-[10px] text-muted-foreground bg-muted/30 px-2 py-1 rounded inline-block">
+                      Diterapkan: {formatDistanceToNow(fallbackStatus.lastActivation, { addSuffix: true, locale: localeId })}
+                    </div>
+                  )}
+                  <div className="pt-2">
+                    <button
+                      className="btn btn--secondary"
+                      onClick={handleResolveAllFallback}
+                      disabled={isResolving === "all"}
+                    >
+                      {isResolving === "all" ? (
+                        <RefreshCw className="btn-icon animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="btn-icon" />
+                      )}
+                      <span>Selesaikan Semua Fallback</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-6 w-6 text-success" />
+                    <span className="font-bold text-success text-xl uppercase tracking-tight">Normal</span>
+                  </div>
+
+                  {activePrompt && (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-4 text-sm">
+                        <span className="text-muted-foreground font-medium border-r border-border/10 pr-2">Database Prompt</span>
+                        <span className="text-foreground font-semibold uppercase">{activePrompt.name}</span>
+
+                        <span className="text-muted-foreground font-medium border-r border-border/10 pr-2">Versi Sistem</span>
+                        <span className="font-mono text-[11px] bg-muted px-2 py-0.5 rounded w-fit border border-border/50">v{activePrompt.version}</span>
+
+                        <span className="text-muted-foreground font-medium border-r border-border/10 pr-2">Update Terakhir</span>
+                        <span className="text-foreground text-xs">
+                          {formatDistanceToNow(activePrompt.updatedAt, {
+                            addSuffix: true,
+                            locale: localeId,
+                          })}
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground opacity-60 leading-relaxed italic border-t border-border/10 pt-4">
+                        * Prompt ini sedang aktif secara global untuk seluruh permintaan AI aplikasi.
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
-        )}
 
-        {/* Recent Alerts */}
-        <div className="space-y-2">
-          <h4 className="font-medium text-sm">Recent Alerts</h4>
-          {recentAlerts && recentAlerts.length > 0 ? (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {recentAlerts.map((alert) => (
-                <div
-                  key={alert._id}
-                  className={`p-3 rounded-lg border text-sm ${
-                    alert.resolved
-                      ? "bg-muted/50 opacity-60"
-                      : "bg-background"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2 flex-1">
-                      {getSeverityIcon(alert.severity)}
-                      <div className="space-y-1 flex-1">
+          {/* Section: Recent Alerts */}
+          <div className="p-6 md:p-10 flex flex-col h-full bg-accent/[0.01]">
+            <h4 className="health-label mb-8 flex items-center gap-2">
+              <AlertTriangle className="h-3 w-3" />
+              History Alert Terbaru
+            </h4>
+
+            <div className="flex-1 overflow-hidden">
+              {recentAlerts && recentAlerts.length > 0 ? (
+                <div className="space-y-6 overflow-y-auto pr-3 max-h-[400px] scrollbar-thin scrollbar-thumb-accent">
+                  {recentAlerts.map((alert) => (
+                    <div
+                      key={alert._id}
+                      className={cn(
+                        "group relative flex items-start gap-4 transition-all pb-6 border-b border-border/5 last:border-0",
+                        alert.resolved ? "opacity-30" : "opacity-100"
+                      )}
+                    >
+                      <div className="mt-1 shrink-0">{getSeverityIcon(alert.severity)}</div>
+                      <div className="space-y-2 flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          {getSeverityBadge(alert.severity)}
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-[9px] text-muted-foreground font-mono uppercase tracking-[0.2em] bg-muted/40 px-1.5 py-0.5 rounded">
                             {alert.source}
                           </span>
                           {alert.resolved && (
-                            <Badge variant="outline" className="text-xs">
-                              Resolved
-                            </Badge>
+                            <span className="text-[9px] text-success font-bold flex items-center gap-1 border border-success/30 px-1.5 rounded bg-success/[0.02]">
+                              RESOLVED
+                            </span>
                           )}
                         </div>
-                        <p className="text-muted-foreground">{alert.message}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-foreground text-sm leading-relaxed break-words">{alert.message}</p>
+                        <span className="text-[10px] text-muted-foreground block font-medium">
                           {formatDistanceToNow(alert.createdAt, {
                             addSuffix: true,
                             locale: localeId,
                           })}
-                        </p>
+                        </span>
                       </div>
+
+                      {!alert.resolved && (
+                        <button
+                          className="icon-btn shrink-0 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0"
+                          onClick={() => handleResolveAlert(alert._id)}
+                          disabled={isResolving === alert._id}
+                        >
+                          {isResolving === alert._id ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      )}
                     </div>
-                    {!alert.resolved && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleResolveAlert(alert._id)}
-                        disabled={isResolving === alert._id}
-                        className="shrink-0"
-                      >
-                        {isResolving === alert._id ? (
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="flex flex-col items-center justify-center p-12 text-center h-full opacity-10 border-2 border-dashed rounded-xl border-border">
+                  <CheckCircle2 className="h-16 w-16 mb-4" />
+                  <p className="text-lg font-bold tracking-widest">CLEAR</p>
+                  <p className="text-xs">Sistem beroperasi tanpa anomali.</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="p-4 text-center text-sm text-muted-foreground bg-muted/50 rounded-lg">
-              Tidak ada alert - sistem beroperasi normal
-            </div>
-          )}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

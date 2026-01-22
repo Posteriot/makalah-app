@@ -12,8 +12,10 @@ import type * as adminManualUserCreation from "../adminManualUserCreation.js";
 import type * as adminUserManagement from "../adminUserManagement.js";
 import type * as aiProviderConfigs from "../aiProviderConfigs.js";
 import type * as artifacts from "../artifacts.js";
+import type * as blog from "../blog.js";
 import type * as chatHelpers from "../chatHelpers.js";
 import type * as conversations from "../conversations.js";
+import type * as documentationSections from "../documentationSections.js";
 import type * as files from "../files.js";
 import type * as messages from "../messages.js";
 import type * as migrations_addRoleToExistingUsers from "../migrations/addRoleToExistingUsers.js";
@@ -24,6 +26,7 @@ import type * as migrations_removeOldPaperWorkflowSection from "../migrations/re
 import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultAIConfig.js";
 import type * as migrations_seedDefaultStyleConstitution from "../migrations/seedDefaultStyleConstitution.js";
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
+import type * as migrations_seedDocumentationSections from "../migrations/seedDocumentationSections.js";
 import type * as migrations_seedPricingPlans from "../migrations/seedPricingPlans.js";
 import type * as migrations_updateAIConfigForToolCalling from "../migrations/updateAIConfigForToolCalling.js";
 import type * as migrations_updatePromptWithArtifactGuidelines from "../migrations/updatePromptWithArtifactGuidelines.js";
@@ -52,8 +55,10 @@ declare const fullApi: ApiFromModules<{
   adminUserManagement: typeof adminUserManagement;
   aiProviderConfigs: typeof aiProviderConfigs;
   artifacts: typeof artifacts;
+  blog: typeof blog;
   chatHelpers: typeof chatHelpers;
   conversations: typeof conversations;
+  documentationSections: typeof documentationSections;
   files: typeof files;
   messages: typeof messages;
   "migrations/addRoleToExistingUsers": typeof migrations_addRoleToExistingUsers;
@@ -64,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedDefaultAIConfig": typeof migrations_seedDefaultAIConfig;
   "migrations/seedDefaultStyleConstitution": typeof migrations_seedDefaultStyleConstitution;
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
+  "migrations/seedDocumentationSections": typeof migrations_seedDocumentationSections;
   "migrations/seedPricingPlans": typeof migrations_seedPricingPlans;
   "migrations/updateAIConfigForToolCalling": typeof migrations_updateAIConfigForToolCalling;
   "migrations/updatePromptWithArtifactGuidelines": typeof migrations_updatePromptWithArtifactGuidelines;

@@ -10,6 +10,42 @@ import {
   OutlineData,
 } from "./paperSessions/types"
 
+const documentationListItem = v.object({
+  text: v.string(),
+  subItems: v.optional(v.array(v.string())),
+})
+
+const documentationList = v.object({
+  variant: v.union(v.literal("bullet"), v.literal("numbered")),
+  items: v.array(documentationListItem),
+})
+
+const documentationBlock = v.union(
+  v.object({
+    type: v.literal("infoCard"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    items: v.array(v.string()),
+  }),
+  v.object({
+    type: v.literal("ctaCards"),
+    items: v.array(v.object({
+      title: v.string(),
+      description: v.string(),
+      targetSection: v.string(),
+      ctaText: v.string(),
+      icon: v.optional(v.string()),
+    })),
+  }),
+  v.object({
+    type: v.literal("section"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    paragraphs: v.optional(v.array(v.string())),
+    list: v.optional(documentationList),
+  })
+)
+
 export default defineSchema({
   users: defineTable({
     clerkUserId: v.string(),
@@ -456,4 +492,48 @@ export default defineSchema({
   })
     .index("by_sortOrder", ["sortOrder"])
     .index("by_slug", ["slug"]),
+
+  // ════════════════════════════════════════════════════════════════
+  // Documentation Sections - Marketing documentation content
+  // ════════════════════════════════════════════════════════════════
+  documentationSections: defineTable({
+    slug: v.string(), // "welcome", "installation", etc.
+    title: v.string(),
+    group: v.string(), // "Mulai" | "Fitur Utama" | "Panduan Lanjutan"
+    order: v.number(),
+    icon: v.optional(v.string()), // Sidebar icon key
+    headerIcon: v.optional(v.string()), // Optional header icon key
+    summary: v.optional(v.string()), // Section intro text
+    blocks: v.array(documentationBlock),
+    searchText: v.string(),
+    isPublished: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order", ["order"])
+    .index("by_slug", ["slug"])
+    .index("by_published", ["isPublished", "order"]),
+
+  // ════════════════════════════════════════════════════════════════
+  // Blog Sections - Marketing blog content
+  // ════════════════════════════════════════════════════════════════
+  blogSections: defineTable({
+    slug: v.string(), // URL-safe identifier
+    title: v.string(),
+    excerpt: v.string(),
+    author: v.string(),
+    category: v.string(),
+    readTime: v.string(),
+    featured: v.boolean(),
+    isPublished: v.boolean(),
+    publishedAt: v.number(),
+    blocks: v.array(documentationBlock),
+    coverImage: v.optional(v.string()), // Optional cover image URL
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_published", ["isPublished", "publishedAt"])
+    .index("by_slug", ["slug"])
+    .index("by_category", ["category", "isPublished", "publishedAt"])
+    .index("by_featured", ["featured", "isPublished", "publishedAt"]),
 })

@@ -96,6 +96,7 @@ export async function extractTextFromImage(
   filename: string = "image"
 ): Promise<string> {
   try {
+    void filename
     // Validate buffer size
     const arrayBuffer = await blob.arrayBuffer()
     if (arrayBuffer.byteLength === 0) {

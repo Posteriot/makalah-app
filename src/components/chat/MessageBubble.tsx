@@ -32,7 +32,6 @@ interface PermissionMessage {
 
 interface MessageBubbleProps {
     message: UIMessage
-    conversationId: string | null
     onEdit?: (messageId: string, newContent: string) => void
     onArtifactSelect?: (artifactId: Id<"artifacts">) => void
     // Paper mode edit permissions
@@ -45,7 +44,6 @@ interface MessageBubbleProps {
 
 export function MessageBubble({
     message,
-    conversationId,
     onEdit,
     onArtifactSelect,
     isPaperMode = false,
@@ -423,7 +421,7 @@ export function MessageBubble({
 
             {/* Quick Actions for Assistant */}
             {!isEditing && message.role === 'assistant' && (
-                <QuickActions content={content} conversationId={conversationId} />
+                <QuickActions content={content} />
             )}
         </div>
     )

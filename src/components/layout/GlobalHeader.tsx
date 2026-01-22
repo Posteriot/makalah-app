@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "next-themes"
-import { Sun, Moon } from "lucide-react"
+import { Menu, Sun, Moon } from "lucide-react"
 import { SignedIn, SignedOut } from "@clerk/nextjs"
+import { usePathname } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
 import { cn } from "@/lib/utils"
 
@@ -20,10 +21,12 @@ const NAV_LINKS = [
 const SCROLL_THRESHOLD = 100 // px before header changes state
 
 export function GlobalHeader() {
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
+  const pathname = usePathname()
   const [isHidden, setIsHidden] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
-  const [lastScrollY, setLastScrollY] = useState(0)
+  const lastScrollYRef = useRef(0)
+  const isDocumentation = pathname === "/documentation"
 
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY
@@ -31,8 +34,8 @@ export function GlobalHeader() {
     // Determine if we're past the threshold (not at top/hero)
     const pastThreshold = currentScrollY > SCROLL_THRESHOLD
 
-    // Determine scroll direction
-    const isScrollingDown = currentScrollY > lastScrollY
+    // Determine scroll direction using ref (no re-render on update)
+    const isScrollingDown = currentScrollY > lastScrollYRef.current
 
     // Update states
     setIsScrolled(pastThreshold)
@@ -44,8 +47,9 @@ export function GlobalHeader() {
       setIsHidden(false)
     }
 
-    setLastScrollY(currentScrollY)
-  }, [lastScrollY])
+    // Update ref without triggering re-render
+    lastScrollYRef.current = currentScrollY
+  }, [])
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll, { passive: true })
@@ -53,7 +57,12 @@ export function GlobalHeader() {
   }, [handleScroll])
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+  }
+
+  const handleDocumentationMenu = () => {
+    if (!isDocumentation) return
+    window.dispatchEvent(new CustomEvent("documentation:toggle-sidebar"))
   }
 
   return (
@@ -74,7 +83,7 @@ export function GlobalHeader() {
             height={32}
             className="logo-img"
           />
-          {/* Light text (for dark mode) */}
+          {/* Light text (for dark mode) - CSS handles visibility */}
           <Image
             src="/makalah_brand_text.svg"
             alt="Makalah"
@@ -82,7 +91,7 @@ export function GlobalHeader() {
             height={18}
             className="logo-brand-text logo-brand-light"
           />
-          {/* Dark text (for light mode) */}
+          {/* Dark text (for light mode) - CSS handles visibility */}
           <Image
             src="/makalah_brand_text_dark.svg"
             alt="Makalah"
@@ -104,6 +113,19 @@ export function GlobalHeader() {
 
       {/* Header Right - Theme Toggle & Auth */}
       <div className="header-right">
+        <button
+          onClick={handleDocumentationMenu}
+          className={cn(
+            "md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background/80 text-foreground transition hover:bg-muted",
+            !isDocumentation && "cursor-not-allowed opacity-60"
+          )}
+          type="button"
+          aria-label="Buka menu dokumentasi"
+          disabled={!isDocumentation}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}

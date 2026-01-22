@@ -5,10 +5,9 @@ import { useState } from "react"
 
 interface QuickActionsProps {
     content: string
-    conversationId: string | null
 }
 
-export function QuickActions({ content, conversationId }: QuickActionsProps) {
+export function QuickActions({ content }: QuickActionsProps) {
     const [isCopied, setIsCopied] = useState(false)
 
     const handleCopy = async () => {

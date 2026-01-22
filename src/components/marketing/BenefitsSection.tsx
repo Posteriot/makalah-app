@@ -64,9 +64,10 @@ function BenefitCard({ benefit }: { benefit: (typeof BENEFITS)[0] }) {
         <span className="benefit-label">Benefit #{benefit.number}</span>
       </div>
       <h3 className="benefit-title">{benefit.title}</h3>
+      {/* TODO: When CMS integration is ready, each item should have unique ID */}
       <ul className="benefit-list">
         {benefit.items.map((item, index) => (
-          <li key={index}>{item}</li>
+          <li key={`${benefit.id}-item-${index}`}>{item}</li>
         ))}
       </ul>
     </div>
@@ -105,9 +106,10 @@ function BenefitsAccordion() {
               <ChevronDown className="accordion-chevron" />
             </button>
             <div className="accordion-content">
+              {/* TODO: When CMS integration is ready, each item should have unique ID */}
               <ul className="benefit-list">
                 {benefit.items.map((item, index) => (
-                  <li key={index}>{item}</li>
+                  <li key={`${benefit.id}-accordion-item-${index}`}>{item}</li>
                 ))}
               </ul>
             </div>

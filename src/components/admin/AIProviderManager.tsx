@@ -64,9 +64,15 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
   })
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingConfig, setEditingConfig] = useState<AIProviderConfig | null>(null)
-  const [deleteConfig, setDeleteConfig] = useState<AIProviderConfig | null>(null)
-  const [activateConfig, setActivateConfig] = useState<AIProviderConfig | null>(null)
+  const [editingConfig, setEditingConfig] = useState<AIProviderConfig | null>(
+    null
+  )
+  const [deleteConfig, setDeleteConfig] = useState<AIProviderConfig | null>(
+    null
+  )
+  const [activateConfig, setActivateConfig] = useState<AIProviderConfig | null>(
+    null
+  )
   const [swapConfig, setSwapConfig] = useState<AIProviderConfig | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -95,7 +101,8 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
       })
       toast.success(result.message)
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan"
+      const errorMessage =
+        error instanceof Error ? error.message : "Terjadi kesalahan"
       toast.error(errorMessage)
     } finally {
       setIsLoading(false)
@@ -114,7 +121,8 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
       })
       toast.success(result.message)
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan"
+      const errorMessage =
+        error instanceof Error ? error.message : "Terjadi kesalahan"
       toast.error(errorMessage)
     } finally {
       setIsLoading(false)
@@ -133,7 +141,8 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
       })
       toast.success(result.message)
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan"
+      const errorMessage =
+        error instanceof Error ? error.message : "Terjadi kesalahan"
       toast.error(errorMessage)
     } finally {
       setIsLoading(false)
@@ -142,197 +151,202 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
   }
 
   const handleReloadConfig = async () => {
-    // Call API to invalidate server-side cache
-    try {
-      // For now, just show success message
-      // In production, you might want to call an API endpoint to invalidate cache
-      toast.success("Config cache akan di-refresh otomatis dalam 5 menit, atau segera di request chat berikutnya")
-    } catch {
-      toast.error("Gagal reload config cache")
-    }
+    toast.success(
+      "Config cache akan di-refresh otomatis dalam 5 menit, atau segera di request chat berikutnya"
+    )
   }
 
   if (configs === undefined) {
     return (
-      <Card>
-        <CardContent className="pt-6">
+      <div className="card">
+        <div className="card-content">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-muted rounded w-1/3"></div>
             <div className="h-64 bg-muted rounded"></div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <div className="card">
+        <div className="card-header">
+          <div className="card-header-row">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Settings2 className="h-5 w-5" />
-                AI Provider Configuration
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Kelola provider AI, model, dan API keys. Hanya satu config yang bisa aktif.
+              <div className="card-title-row">
+                <Settings2 className="card-icon" />
+                <h3 className="card-title">AI Provider Configuration</h3>
+              </div>
+              <p className="card-description">
+                Kelola provider AI, model, dan API keys. Hanya satu config yang
+                bisa aktif untuk produksi.
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleReloadConfig}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Reload Cache
-              </Button>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Buat Config Baru
-              </Button>
+              <button
+                className="btn btn--secondary"
+                onClick={handleReloadConfig}
+              >
+                <RefreshCw className="btn-icon" />
+                <span>Reload Cache</span>
+              </button>
+              <button
+                className="btn btn--primary"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
+                <Plus className="btn-icon" />
+                <span>Buat Config Baru</span>
+              </button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Primary Provider</TableHead>
-                  <TableHead>Fallback Provider</TableHead>
-                  <TableHead>Temperature</TableHead>
-                  <TableHead>Versi</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Terakhir Update</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {configs.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="text-center text-muted-foreground py-8"
-                    >
-                      Belum ada config. Klik &quot;Buat Config Baru&quot; untuk memulai.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  configs.map((config) => (
-                    <TableRow key={config._id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div>{config.name}</div>
-                          {config.description && (
-                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                              {config.description}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="font-medium capitalize">
-                            {config.primaryProvider.replace("-", " ")}
-                          </div>
-                          <div className="text-muted-foreground text-xs">
-                            {config.primaryModel}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="font-medium capitalize">
-                            {config.fallbackProvider.replace("-", " ")}
-                          </div>
-                          <div className="text-muted-foreground text-xs">
-                            {config.fallbackModel}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{config.temperature}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">v{config.version}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {config.isActive ? (
-                          <Badge variant="default" className="bg-green-600">
-                            Aktif
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Tidak Aktif</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {formatDate(config.updatedAt)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingConfig(config)}
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setSwapConfig(config)}
-                            title="Tukar Primary ↔ Fallback"
-                            className="text-blue-600 hover:text-blue-700"
-                          >
-                            <ArrowLeftRight className="h-4 w-4" />
-                          </Button>
-                          {config.isActive ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              title="Config sedang aktif"
-                              disabled
-                            >
-                              <Power className="h-4 w-4 text-green-600" />
-                            </Button>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setActivateConfig(config)}
-                                title="Aktifkan"
-                                className="text-green-600 hover:text-green-700"
-                              >
-                                <Power className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setDeleteConfig(config)}
-                                title="Hapus"
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        </div>
 
-          {configs.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-4">
-              Catatan: Jika tidak ada config yang aktif, AI akan menggunakan
-              hardcoded fallback config. Config cache akan otomatis refresh setiap 5
-              menit.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        {/* Full-width content area */}
+        <div className="data-table-container border-b">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th className="w-[200px] pl-6">Konfigurasi</th>
+                <th>Primary Provider</th>
+                <th>Fallback Provider</th>
+                <th className="text-center">Temp</th>
+                <th className="text-center">Versi</th>
+                <th>Status</th>
+                <th>Update Terakhir</th>
+                <th className="text-right pr-6">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {configs.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="text-center text-muted-foreground py-16"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <Settings2 className="h-8 w-8 opacity-20" />
+                      <span>Belum ada config. Klik "Buat Config Baru" untuk memulai.</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                configs.map((config) => (
+                  <tr key={config._id}>
+                    <td className="cell-name pl-6">
+                      <div className="font-semibold">{config.name}</div>
+                      {config.description && (
+                        <div className="text-xs text-muted-foreground line-clamp-1 max-w-[180px]">
+                          {config.description}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium text-sm capitalize">
+                          {config.primaryProvider.replace("-", " ")}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded w-fit">
+                          {config.primaryModel}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium text-sm capitalize">
+                          {config.fallbackProvider.replace("-", " ")}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded w-fit">
+                          {config.fallbackModel}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="text-center font-mono text-sm">
+                      {config.temperature.toFixed(1)}
+                    </td>
+                    <td className="text-center">
+                      <span className="sub-badge">v{config.version}</span>
+                    </td>
+                    <td>
+                      {config.isActive ? (
+                        <span className="status-badge status-badge--verified">
+                          Aktif
+                        </span>
+                      ) : (
+                        <span className="status-badge status-badge--unverified">
+                          Nonaktif
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-xs text-muted-foreground">
+                      {formatDate(config.updatedAt)}
+                    </td>
+                    <td className="pr-6">
+                      <div className="action-icons justify-end">
+                        <button
+                          className="icon-btn"
+                          onClick={() => setEditingConfig(config)}
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          className="icon-btn text-blue-500"
+                          onClick={() => setSwapConfig(config)}
+                          title="Tukar Primary ↔ Fallback"
+                        >
+                          <ArrowLeftRight className="h-4 w-4" />
+                        </button>
+                        {config.isActive ? (
+                          <button
+                            className="icon-btn opacity-40 cursor-not-allowed"
+                            title="Config sedang aktif"
+                            disabled
+                          >
+                            <Power className="h-4 w-4 text-success" />
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              className="icon-btn text-success"
+                              onClick={() => setActivateConfig(config)}
+                              title="Aktifkan"
+                            >
+                              <Power className="h-4 w-4" />
+                            </button>
+                            <button
+                              className="icon-btn text-destructive"
+                              onClick={() => setDeleteConfig(config)}
+                              title="Hapus"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Note section - matching table width */}
+        <div className="p-6 bg-accent/30">
+          <div className="flex items-start gap-3">
+            <Settings2 className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div className="space-y-1">
+              <span className="font-medium text-sm text-foreground block">Sistem Fallback & Cache</span>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Jika tidak ada config yang aktif, AI akan menggunakan hardcoded fallback config.
+                Config cache akan otomatis refresh setiap 5 menit untuk menjaga performa sistem.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Create/Edit Dialog */}
       <AIProviderFormDialog
@@ -354,9 +368,9 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Aktifkan Config</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin mengaktifkan &quot;{activateConfig?.name}&quot; v
-              {activateConfig?.version}? Config lain yang sedang aktif akan
-              dinonaktifkan.
+              Apakah Anda yakin ingin mengaktifkan &quot;
+              {activateConfig?.name}&quot; v{activateConfig?.version}? Config
+              lain yang sedang aktif akan dinonaktifkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -377,8 +391,9 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Tukar Provider</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menukar primary ↔ fallback provider di config
-              &quot;{swapConfig?.name}&quot;? Ini akan membuat versi baru (v
+              Apakah Anda yakin ingin menukar primary ↔ fallback provider di
+              config &quot;{swapConfig?.name}&quot;? Ini akan membuat versi baru
+              (v
               {swapConfig && swapConfig.version + 1}).
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -400,8 +415,9 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Config</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus &quot;{deleteConfig?.name}&quot;
-              beserta seluruh riwayat versinya? Tindakan ini tidak dapat dibatalkan.
+              Apakah Anda yakin ingin menghapus &quot;{deleteConfig?.name}
+              &quot; beserta seluruh riwayat versinya? Tindakan ini tidak dapat
+              dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -299,6 +299,7 @@ export function normalizeOpenAIAnnotations(
 export function normalizeAnthropicCitations(
   _providerMetadata: unknown
 ): NormalizedCitation[] {
+  void _providerMetadata
   // TODO: Implement when Anthropic adds native citation support
   // Reference: https://docs.anthropic.com/
   return []

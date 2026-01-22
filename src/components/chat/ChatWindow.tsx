@@ -454,7 +454,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                     <MessageBubble
                       key={message.id}
                       message={displayMessage}
-                      conversationId={conversationId}
                       onEdit={handleEdit}
                       onArtifactSelect={onArtifactSelect}
                       // Paper mode edit permission props

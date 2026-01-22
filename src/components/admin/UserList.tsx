@@ -104,90 +104,81 @@ export function UserList({ users, currentUserRole }: UserListProps) {
 
   return (
     <>
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Email</TableHead>
-              <TableHead>Nama</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Subscription</TableHead>
-              <TableHead>Status Email</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="data-table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Nama</th>
+              <th>Role</th>
+              <th>Subscription</th>
+              <th>Status Email</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {users.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-center text-muted-foreground"
-                >
+              <tr>
+                <td colSpan={6} className="text-center text-muted-foreground py-8">
                   Tidak ada data pengguna
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               users.map((user) => (
-                <TableRow key={user._id}>
-                  <TableCell className="font-medium">{user.email}</TableCell>
-                  <TableCell>{getFullName(user)}</TableCell>
-                  <TableCell>
+                <tr key={user._id}>
+                  <td className="cell-email">{user.email}</td>
+                  <td className="cell-name">{getFullName(user)}</td>
+                  <td>
                     <RoleBadge
                       role={user.role as "superadmin" | "admin" | "user"}
                     />
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
+                  </td>
+                  <td>
+                    <span className="sub-badge capitalize">
                       {user.subscriptionStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
+                    </span>
+                  </td>
+                  <td>
                     {user.emailVerified ? (
-                      <Badge variant="default">Verified</Badge>
+                      <span className="status-badge status-badge--verified">Verified</span>
                     ) : (
-                      <Badge variant="secondary">Belum Verified</Badge>
+                      <span className="status-badge status-badge--unverified">Belum Verified</span>
                     )}
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td>
                     {currentUserRole === "superadmin" ? (
-                      <>
+                      <div className="flex items-center gap-2">
                         {user.role === "superadmin" ? (
-                          <span className="text-sm text-muted-foreground">
-                            Cannot modify
-                          </span>
+                          <span className="action-disabled">Cannot modify</span>
                         ) : user.role === "user" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
+                          <button
+                            className="action-btn action-btn--promote"
                             onClick={() => handlePromoteClick(user)}
                             disabled={isLoading}
                           >
-                            <ArrowUp className="h-4 w-4 mr-2" />
-                            Promote
-                          </Button>
+                            <ArrowUp className="action-icon" />
+                            <span>Promote</span>
+                          </button>
                         ) : user.role === "admin" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
+                          <button
+                            className="action-btn action-btn--demote"
                             onClick={() => handleDemoteClick(user)}
                             disabled={isLoading}
                           >
-                            <ArrowDown className="h-4 w-4 mr-2" />
-                            Demote
-                          </Button>
+                            <ArrowDown className="action-icon" />
+                            <span>Demote</span>
+                          </button>
                         ) : null}
-                      </>
+                      </div>
                     ) : (
-                      <span className="text-sm text-muted-foreground">
-                        View only
-                      </span>
+                      <span className="action-disabled text-sm">View only</span>
                     )}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       <AlertDialog

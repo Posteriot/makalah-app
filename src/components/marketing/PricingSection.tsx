@@ -5,6 +5,7 @@ import Link from "next/link"
 import { CheckCircle, ChevronRight } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 // Type for pricing plan from Convex
@@ -24,6 +25,10 @@ type PricingPlan = {
   sortOrder: number
 }
 
+type PricingSectionProps = {
+  showCta?: boolean
+}
+
 function PricingCard({ plan }: { plan: PricingPlan }) {
   return (
     <div
@@ -32,8 +37,9 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
         plan.isHighlighted && "pricing-card--highlight"
       )}
     >
-      <div className="pricing-header">
+      <div className="pricing-header flex items-center justify-between">
         <h3 className="pricing-name">{plan.name}</h3>
+        {plan.slug === "pro" && <Badge>Populer</Badge>}
       </div>
       <div className="pricing-price">
         <span
@@ -47,9 +53,10 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
         {plan.unit && <span className="price-unit">{plan.unit}</span>}
       </div>
       <p className="pricing-tagline">{plan.tagline}</p>
+      {/* TODO: When CMS integration is ready, each feature should have unique ID */}
       <ul className="pricing-features">
         {plan.features.map((feature, index) => (
-          <li key={index}>
+          <li key={`${plan._id}-feature-${index}`}>
             <CheckCircle />
             <span>{feature}</span>
           </li>
@@ -126,7 +133,17 @@ function PricingSkeleton() {
   )
 }
 
-export function PricingSection() {
+function PricingEmpty() {
+  return (
+    <div className="text-center py-12">
+      <p className="text-muted-foreground">
+        Paket harga sedang disiapkan. Silakan cek kembali nanti.
+      </p>
+    </div>
+  )
+}
+
+export function PricingSection({ showCta = true }: PricingSectionProps) {
   const plans = useQuery(api.pricingPlans.getActivePlans)
 
   return (
@@ -141,8 +158,11 @@ export function PricingSection() {
         {/* Loading state */}
         {plans === undefined && <PricingSkeleton />}
 
-        {/* Loaded state */}
-        {plans && (
+        {/* Empty state */}
+        {plans && plans.length === 0 && <PricingEmpty />}
+
+        {/* Loaded state with data */}
+        {plans && plans.length > 0 && (
           <>
             {/* Desktop: Grid */}
             <div className="pricing-grid hidden md:grid">
@@ -157,12 +177,14 @@ export function PricingSection() {
         )}
 
         {/* Link to full pricing page - centered below cards */}
-        <div className="section-cta-wrapper">
-          <Link href="/pricing" className="btn-brand">
-            Lihat detail paket lengkap
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
+        {showCta && (
+          <div className="section-cta-wrapper">
+            <Link href="/pricing" className="btn-brand">
+              Lihat detail paket lengkap
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   )

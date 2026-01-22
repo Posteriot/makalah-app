@@ -4,8 +4,10 @@ import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useUser, useClerk } from "@clerk/nextjs"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { Settings, LogOut, ChevronDown } from "lucide-react"
+import { Settings, LogOut, ChevronDown, Loader2, User } from "lucide-react"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { UserSettingsModal } from "@/components/settings/UserSettingsModal"
 
 type SegmentType = "gratis" | "bpp" | "pro" | "admin" | "superadmin"
 
@@ -33,6 +35,8 @@ export function UserDropdown() {
   const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
   const [isOpen, setIsOpen] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Get Convex user for role and subscription status
@@ -74,7 +78,16 @@ export function UserDropdown() {
   const isAdmin = segment === "admin" || segment === "superadmin"
 
   const handleSignOut = async () => {
-    await signOut()
+    if (isSigningOut) return
+
+    setIsSigningOut(true)
+    try {
+      await signOut()
+    } catch (error) {
+      console.error("Sign out failed:", error)
+      toast.error("Gagal keluar. Silakan coba lagi.")
+      setIsSigningOut(false)
+    }
   }
 
   return (
@@ -118,6 +131,18 @@ export function UserDropdown() {
       {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-48 py-1 bg-popover border border-border rounded-lg shadow-lg z-50">
+          <button
+            onClick={() => {
+              setIsOpen(false)
+              setIsSettingsOpen(true)
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors w-full"
+            type="button"
+          >
+            <User className="h-4 w-4" />
+            <span>Atur Akun</span>
+          </button>
+
           {/* Admin Panel Link (conditional) */}
           {isAdmin && (
             <Link
@@ -133,13 +158,28 @@ export function UserDropdown() {
           {/* Sign Out */}
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+            disabled={isSigningOut}
+            className={cn(
+              "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+              isSigningOut
+                ? "text-muted-foreground cursor-not-allowed"
+                : "text-destructive hover:bg-destructive/10"
+            )}
           >
-            <LogOut className="h-4 w-4" />
-            <span>Sign out</span>
+            {isSigningOut ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
+            <span>{isSigningOut ? "Keluar..." : "Sign out"}</span>
           </button>
         </div>
       )}
+
+      <UserSettingsModal
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+      />
     </div>
   )
 }

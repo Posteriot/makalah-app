@@ -37,7 +37,7 @@ export function ChatInputHeroMock() {
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach((timer) => clearTimeout(timer))
-    timersRef.current = []
+    timersRef.current.length = 0 // Reset array in-place to avoid reference issues
   }, [])
 
   const addTimer = useCallback((callback: () => void, delay: number) => {

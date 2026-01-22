@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
   switch (eventType) {
     case "user.created": {
-      const { email_addresses, first_name } = evt.data
+      const { email_addresses } = evt.data
 
       // Get primary email
       const primaryEmail = email_addresses?.find(

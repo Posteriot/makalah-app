@@ -67,7 +67,7 @@ export function Footer() {
             />
           </button>
           <div className="footer-copyright">
-            <span>&copy; 2026 Makalah AI</span>
+            <span>&copy; {new Date().getFullYear()} Makalah AI</span>
             <span>Semua hak cipta dilindungi.</span>
           </div>
         </div>

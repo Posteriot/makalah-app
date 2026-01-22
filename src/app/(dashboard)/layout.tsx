@@ -2,6 +2,8 @@ import type { ReactNode } from "react"
 import { currentUser } from "@clerk/nextjs/server"
 import { fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
+import { GlobalHeader } from "@/components/layout/GlobalHeader"
+import { Footer } from "@/components/layout/Footer"
 
 /**
  * Sync Clerk user ke Convex database.
@@ -58,7 +60,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-5xl px-6 py-8 sm:px-8">{children}</div>
+      <GlobalHeader />
+      <main className="dashboard-main">{children}</main>
+      <Footer />
     </div>
   )
 }
