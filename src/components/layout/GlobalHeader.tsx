@@ -1,11 +1,13 @@
 "use client"
 
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "next-themes"
 import { Sun, Moon } from "lucide-react"
 import { SignedIn, SignedOut } from "@clerk/nextjs"
 import { UserDropdown } from "./UserDropdown"
+import { cn } from "@/lib/utils"
 
 const NAV_LINKS = [
   { href: "/pricing", label: "Harga" },
@@ -15,15 +17,53 @@ const NAV_LINKS = [
   { href: "/about", label: "Tentang" },
 ]
 
+const SCROLL_THRESHOLD = 100 // px before header changes state
+
 export function GlobalHeader() {
   const { theme, setTheme } = useTheme()
+  const [isHidden, setIsHidden] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [lastScrollY, setLastScrollY] = useState(0)
+
+  const handleScroll = useCallback(() => {
+    const currentScrollY = window.scrollY
+
+    // Determine if we're past the threshold (not at top/hero)
+    const pastThreshold = currentScrollY > SCROLL_THRESHOLD
+
+    // Determine scroll direction
+    const isScrollingDown = currentScrollY > lastScrollY
+
+    // Update states
+    setIsScrolled(pastThreshold)
+
+    // Only hide/show after passing threshold
+    if (pastThreshold) {
+      setIsHidden(isScrollingDown)
+    } else {
+      setIsHidden(false)
+    }
+
+    setLastScrollY(currentScrollY)
+  }, [lastScrollY])
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [handleScroll])
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark")
   }
 
   return (
-    <header className="global-header">
+    <header
+      className={cn(
+        "global-header",
+        isScrolled && "header-scrolled",
+        isHidden && "header-hidden"
+      )}
+    >
       {/* Header Left - Logo & Brand */}
       <div className="header-left">
         <Link href="/" className="header-brand">

@@ -22,7 +22,7 @@ export default function MarketingHomePage() {
           <PawangBadge />
 
           {/* Hero Heading */}
-          <h1 className="text-[2.5rem] md:text-[4rem] font-bold leading-[1.1] tracking-[-0.02em]">
+          <h1 className="font-hero text-[2.5rem] md:text-[4rem] font-bold leading-[1.1] tracking-[-0.02em]">
             Ngobrol<span className="text-brand">+</span>Riset
             <br />
             <span className="text-brand">+</span>Brainstorming

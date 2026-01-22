@@ -233,13 +233,31 @@
     left: 0;
     right: 0;
     height: var(--header-h);
-    background-color: var(--background);
+    background-color: transparent;
     z-index: 100;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
     padding-bottom: 16px;
+    transition: transform 0.3s ease, background-color 0.3s ease, backdrop-filter 0.3s ease;
+  }
+
+  /* Header scrolled state: past hero section */
+  .global-header.header-scrolled {
+    background-color: rgba(255, 255, 255, 0.8); /* Light mode: 80% white */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Dark mode: dark transparent background */
+  .dark .global-header.header-scrolled {
+    background-color: rgba(9, 9, 11, 0.8); /* Dark mode: 80% dark */
+  }
+
+  /* Header hidden state: scrolling down */
+  .global-header.header-hidden {
+    transform: translateY(-100%);
   }
 
   .header-left {
@@ -427,16 +445,16 @@
 @layer components {
   /* Main content wrapper - adds padding for fixed header */
   .global-main {
-    padding-top: var(--header-h);
+    /* No padding-top - hero extends to top, header floats above */
   }
 
-  /* Full-screen section accounting for header */
+  /* Full-screen section (hero fills entire viewport) */
   .section-screen-with-header {
-    min-height: calc(100vh - var(--header-h));
-    min-height: calc(100dvh - var(--header-h));
+    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start; /* Start from top, padding handles header gap */
     position: relative;
   }
 
@@ -472,7 +490,7 @@
   .hero-section {
     position: relative;
     overflow: hidden;
-    padding: 2rem var(--section-padding-x);
+    padding: calc(var(--header-h) + 2rem) var(--section-padding-x) 2rem;
   }
 
   /* Hero content wrapper */
@@ -533,6 +551,8 @@
  * ========================================================================== */
 @layer components {
   .chat-input-hero-mock {
+    position: relative;
+    z-index: 2; /* Above hero bottom fade gradient */
     width: 100%;
     max-width: 896px;
     margin: 1.5rem auto 0;
