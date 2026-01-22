@@ -24,6 +24,7 @@ import type * as migrations_removeOldPaperWorkflowSection from "../migrations/re
 import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultAIConfig.js";
 import type * as migrations_seedDefaultStyleConstitution from "../migrations/seedDefaultStyleConstitution.js";
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
+import type * as migrations_seedPricingPlans from "../migrations/seedPricingPlans.js";
 import type * as migrations_updateAIConfigForToolCalling from "../migrations/updateAIConfigForToolCalling.js";
 import type * as migrations_updatePromptWithArtifactGuidelines from "../migrations/updatePromptWithArtifactGuidelines.js";
 import type * as migrations_updatePromptWithArtifactSources from "../migrations/updatePromptWithArtifactSources.js";
@@ -34,6 +35,7 @@ import type * as paperSessions_constants from "../paperSessions/constants.js";
 import type * as paperSessions_types from "../paperSessions/types.js";
 import type * as papers from "../papers.js";
 import type * as permissions from "../permissions.js";
+import type * as pricingPlans from "../pricingPlans.js";
 import type * as styleConstitutions from "../styleConstitutions.js";
 import type * as systemAlerts from "../systemAlerts.js";
 import type * as systemPrompts from "../systemPrompts.js";
@@ -62,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedDefaultAIConfig": typeof migrations_seedDefaultAIConfig;
   "migrations/seedDefaultStyleConstitution": typeof migrations_seedDefaultStyleConstitution;
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
+  "migrations/seedPricingPlans": typeof migrations_seedPricingPlans;
   "migrations/updateAIConfigForToolCalling": typeof migrations_updateAIConfigForToolCalling;
   "migrations/updatePromptWithArtifactGuidelines": typeof migrations_updatePromptWithArtifactGuidelines;
   "migrations/updatePromptWithArtifactSources": typeof migrations_updatePromptWithArtifactSources;
@@ -72,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   "paperSessions/types": typeof paperSessions_types;
   papers: typeof papers;
   permissions: typeof permissions;
+  pricingPlans: typeof pricingPlans;
   styleConstitutions: typeof styleConstitutions;
   systemAlerts: typeof systemAlerts;
   systemPrompts: typeof systemPrompts;

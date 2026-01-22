@@ -434,4 +434,26 @@ export default defineSchema({
   })
     .index("by_session", ["sessionId", "createdAt"])
     .index("by_user", ["userId", "createdAt"]),
+
+  // ════════════════════════════════════════════════════════════════
+  // Pricing Plans - Marketing page pricing tiers
+  // ════════════════════════════════════════════════════════════════
+  pricingPlans: defineTable({
+    name: v.string(), // Plan name (e.g., "Gratis", "Bayar Per Tugas", "Pro")
+    slug: v.string(), // URL-safe identifier (e.g., "gratis", "bpp", "pro")
+    price: v.string(), // Display price (e.g., "Rp.0", "Rpxx.xxx")
+    priceValue: v.optional(v.number()), // Numeric price value for sorting/comparison
+    unit: v.optional(v.string()), // Price unit (e.g., "per paper", "per bulan")
+    tagline: v.string(), // Short description
+    features: v.array(v.string()), // List of feature descriptions
+    isHighlighted: v.boolean(), // Highlight this plan (border brand)
+    isDisabled: v.boolean(), // Plan not yet available
+    ctaText: v.string(), // Button text (e.g., "Coba Gratis", "Belum Aktif")
+    ctaHref: v.optional(v.string()), // Button link (null for disabled)
+    sortOrder: v.number(), // Display order (1, 2, 3...)
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_sortOrder", ["sortOrder"])
+    .index("by_slug", ["slug"]),
 })
