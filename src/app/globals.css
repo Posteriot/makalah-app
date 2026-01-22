@@ -214,6 +214,13 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+
+  /* Headings use Nunito Sans (--font-heading) */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading), var(--font-sans), sans-serif;
+    font-weight: 700;
+    line-height: 1.2;
+  }
 }
 
 /* Hide Clerk internal dev badges and background patterns */
