@@ -5,17 +5,17 @@ import { Plus, Send } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const CONFIG = {
-  typingText: "Buatkan paper tentang ketahanan pangan...",
-  charDelayMin: 35,
-  charDelayMax: 58,
-  punctuationFactor: 1.8,
-  holdDuration: 1200,
-  cursorMoveDuration: 800,
-  hoverDuration: 150,
-  clickDuration: 200,
-  resetDuration: 500,
-  returnDuration: 800,
-  placeholderDuration: 2000,
+  typingText: "Ayo bikin paper. Tapi gue belum punya ide. Bisa, kan? Kita diskusi aja dulu. Sepakat?",
+  charDelayMin: 55,
+  charDelayMax: 95,
+  punctuationFactor: 2.5,
+  holdDuration: 1500,
+  cursorMoveDuration: 1400,
+  hoverDuration: 300,
+  clickDuration: 250,
+  resetDuration: 600,
+  returnDuration: 1200,
+  placeholderDuration: 2500,
 }
 
 type Phase = "placeholder" | "typing" | "hold" | "cursorMove" | "hover" | "click" | "reset" | "return"
