@@ -978,12 +978,18 @@
     gap: 0.25rem;
     font-size: 0.875rem;
     color: var(--brand);
-    margin-bottom: 2rem;
     transition: opacity 0.2s;
   }
 
   .pricing-link:hover {
     opacity: 0.8;
+  }
+
+  .pricing-link--center {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 2rem;
   }
 
   /* Pricing Grid (Desktop) */

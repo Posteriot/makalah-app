@@ -138,11 +138,6 @@ export function PricingSection() {
           sesuai kebutuhan
         </h2>
 
-        <Link href="/pricing" className="pricing-link">
-          Lihat detail paket lengkap
-          <ChevronRight className="w-4 h-4" />
-        </Link>
-
         {/* Loading state */}
         {plans === undefined && <PricingSkeleton />}
 
@@ -160,6 +155,12 @@ export function PricingSection() {
             <PricingCarousel plans={plans} />
           </>
         )}
+
+        {/* Link to full pricing page - centered below cards */}
+        <Link href="/pricing" className="pricing-link pricing-link--center">
+          Lihat detail paket lengkap
+          <ChevronRight className="w-4 h-4" />
+        </Link>
       </div>
     </section>
   )
