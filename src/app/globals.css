@@ -985,7 +985,7 @@
     opacity: 0.8;
   }
 
-  .pricing-link--center {
+  .pricing-link-wrapper {
     display: flex;
     justify-content: center;
     width: 100%;

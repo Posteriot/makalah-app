@@ -157,10 +157,12 @@ export function PricingSection() {
         )}
 
         {/* Link to full pricing page - centered below cards */}
-        <Link href="/pricing" className="pricing-link pricing-link--center">
-          Lihat detail paket lengkap
-          <ChevronRight className="w-4 h-4" />
-        </Link>
+        <div className="pricing-link-wrapper">
+          <Link href="/pricing" className="pricing-link">
+            Lihat detail paket lengkap
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
     </section>
   )
