@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback } from "react"
+import { Suspense, useEffect, useMemo, useState, useCallback } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   BookOpen,
@@ -14,6 +14,7 @@ import {
   Zap,
   ChevronRight,
   ChevronLeft,
+  Loader2,
 } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
@@ -195,7 +196,7 @@ const renderInline = (text: string) => {
   })
 }
 
-export default function DocumentationPage() {
+function DocumentationContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -716,5 +717,26 @@ export default function DocumentationPage() {
         </SheetContent>
       </Sheet>
     </div>
+  )
+}
+
+function DocumentationLoading() {
+  return (
+    <div className="min-h-screen pt-[var(--header-h)]">
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Memuat dokumentasi...</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function DocumentationPage() {
+  return (
+    <Suspense fallback={<DocumentationLoading />}>
+      <DocumentationContent />
+    </Suspense>
   )
 }
