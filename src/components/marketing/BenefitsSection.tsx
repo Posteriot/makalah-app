@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { User, MessageCircle, Shield, ClipboardList, ChevronDown } from "lucide-react"
+import Link from "next/link"
+import { User, MessageCircle, Shield, ClipboardList, ChevronDown, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const BENEFITS = [
@@ -132,6 +133,14 @@ export function BenefitsSection() {
 
         {/* Mobile: Accordion */}
         <BenefitsAccordion />
+
+        {/* CTA to about page */}
+        <div className="section-cta-wrapper">
+          <Link href="/about" className="btn-brand">
+            Pahami lebih lanjut
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
     </section>
   )

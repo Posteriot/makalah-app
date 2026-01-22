@@ -157,7 +157,7 @@ export function PricingSection() {
         )}
 
         {/* Link to full pricing page - centered below cards */}
-        <div className="pricing-link-wrapper">
+        <div className="section-cta-wrapper">
           <Link href="/pricing" className="btn-brand">
             Lihat detail paket lengkap
             <ChevronRight className="w-4 h-4" />
