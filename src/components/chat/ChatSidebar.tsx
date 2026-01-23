@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Loader2Icon, PlusIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
@@ -68,10 +69,13 @@ export function ChatSidebar({
   isCreating,
 }: ChatSidebarProps) {
   const { user } = useCurrentUser()
+  const router = useRouter()
 
   // Determine if user needs upgrade CTA (BPP or Gratis)
   const showUpgradeCTA =
     user &&
+    user.role !== "admin" &&
+    user.role !== "superadmin" &&
     (user.subscriptionStatus === "bpp" || user.subscriptionStatus === "free")
 
   // Render sidebar content based on active panel
@@ -152,8 +156,9 @@ export function ChatSidebar({
                 ? "bg-orange-500 hover:bg-orange-600"
                 : "bg-yellow-500 hover:bg-yellow-600 text-black"
             )}
+            onClick={() => router.push("/price")}
           >
-            Upgrade ke Pro
+            Upgrade
           </Button>
         </div>
       )}

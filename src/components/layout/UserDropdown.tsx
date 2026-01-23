@@ -40,7 +40,7 @@ export function UserDropdown() {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Get Convex user for role and subscription status
-  const { user: convexUser } = useCurrentUser()
+  const { user: convexUser, isLoading } = useCurrentUser()
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -75,6 +75,7 @@ export function UserDropdown() {
 
   const segment = getSegmentFromUser(convexUser?.role, convexUser?.subscriptionStatus)
   const segmentConfig = SEGMENT_CONFIG[segment]
+  const canRenderBadge = !isLoading && segment !== "superadmin"
   const isAdmin = segment === "admin" || segment === "superadmin"
 
   const handleSignOut = async () => {
@@ -109,15 +110,17 @@ export function UserDropdown() {
           {fullName}
         </span>
 
-        {/* Segment Badge */}
-        <span
-          className={cn(
-            "text-[10px] font-bold px-1.5 py-0.5 rounded",
-            segmentConfig.className
-          )}
-        >
-          {segmentConfig.label}
-        </span>
+        {/* Segment Badge (hide for superadmin, avoid flash before Convex ready) */}
+        {canRenderBadge && (
+          <span
+            className={cn(
+              "text-[10px] font-bold px-1.5 py-0.5 rounded",
+              segmentConfig.className
+            )}
+          >
+            {segmentConfig.label}
+          </span>
+        )}
 
         {/* Chevron */}
         <ChevronDown
