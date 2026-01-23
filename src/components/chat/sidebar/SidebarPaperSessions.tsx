@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useQuery } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
+import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FileTextIcon, FolderIcon, ChevronRightIcon } from "lucide-react"
@@ -12,7 +13,6 @@ import {
   getStageNumber,
   type PaperStageId,
 } from "../../../../convex/paperSessions/constants"
-import { formatRelativeTime } from "@/lib/date/formatters"
 import { useState } from "react"
 import { Id } from "../../../../convex/_generated/dataModel"
 
@@ -31,177 +31,305 @@ interface PaperSessionItem {
   updatedAt?: number
 }
 
+interface ArtifactItem {
+  _id: Id<"artifacts">
+  title: string
+  type: string
+  version: number
+  conversationId: Id<"conversations">
+  invalidatedAt?: number
+}
+
 /**
- * SidebarPaperSessions - Paper sessions list view
+ * SidebarPaperSessions - Paper session folder for ACTIVE conversation
  *
- * Shows all active (non-archived) paper sessions for the current user.
- * Each item displays:
- * - Paper title (or "Untitled Paper" if not set)
- * - Stage progress (e.g., "Stage 3/13 - Outline")
- * - Last update time
+ * Displays paper session for the currently active conversation only.
+ * Behavior matches SidebarProgress - shows content based on currentConversationId.
+ * Multi-tab support: automatically updates when user switches tabs.
  *
- * Click navigates to the conversation associated with the paper session.
+ * Matches mockup: Orange folder icons, blue status dots, artifact items with badges.
  */
 export function SidebarPaperSessions({
   currentConversationId,
   onCloseMobile,
 }: SidebarPaperSessionsProps) {
-  const { user, isLoading: isUserLoading } = useCurrentUser()
+  const { user } = useCurrentUser()
 
-  // Expanded state for folder tree (future enhancement)
-  const [expandedPapers, setExpandedPapers] = useState<Set<string>>(new Set())
+  // Single folder expanded state (default: expanded)
+  const [isExpanded, setIsExpanded] = useState(true)
 
-  // Query paper sessions for current user - filter for active only
-  const paperSessions = useQuery(
-    api.paperSessions.getByUser,
-    user ? { userId: user._id } : "skip"
-  ) as PaperSessionItem[] | undefined
-
-  // Filter to only show active sessions (not archived)
-  const activeSessions = paperSessions?.filter(
-    (session) => !("archivedAt" in session && session.archivedAt)
+  // Query paper session for ACTIVE conversation only (like SidebarProgress)
+  const { session, isPaperMode, currentStage, isLoading } = usePaperSession(
+    currentConversationId as Id<"conversations"> | undefined
   )
 
-  const toggleExpanded = (paperId: string) => {
-    setExpandedPapers((prev) => {
-      const next = new Set(prev)
-      if (next.has(paperId)) {
-        next.delete(paperId)
-      } else {
-        next.add(paperId)
-      }
-      return next
-    })
-  }
-
   // Loading state
-  if (isUserLoading || paperSessions === undefined) {
+  if (isLoading) {
     return (
-      <div className="p-4 space-y-3">
-        <div className="mb-4">
+      <div className="flex flex-col h-full">
+        {/* Header skeleton */}
+        <div className="pt-5 px-4 pb-3">
           <Skeleton className="h-5 w-32 mb-1" />
-          <Skeleton className="h-3 w-48" />
+          <Skeleton className="h-4 w-48" />
         </div>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-start gap-3 p-2">
-            <Skeleton className="h-5 w-5 rounded" />
-            <div className="flex-1 space-y-1">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
+        {/* Items skeleton */}
+        <div className="py-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-2 px-4 py-2">
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-2 w-2 rounded-full" />
+              <Skeleton className="h-[18px] w-[18px]" />
+              <Skeleton className="h-4 flex-1" />
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     )
   }
 
-  // Empty state
-  if (!activeSessions || activeSessions.length === 0) {
+  // Empty state - no paper session in this conversation (matches SidebarProgress)
+  if (!isPaperMode || !session) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
-        <FileTextIcon className="h-8 w-8 mb-2" />
-        <span className="text-sm font-medium mb-1">Belum ada paper</span>
-        <span className="text-xs">
-          Mulai percakapan dan bilang &quot;ayo mulai bikin paper&quot;
-        </span>
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="pt-5 px-4 pb-3">
+          <div className="text-base font-semibold">Paper Sessions</div>
+          <div className="text-[13px] text-muted-foreground">
+            Paper folders and artifacts
+          </div>
+        </div>
+        {/* Empty state - same messaging as SidebarProgress */}
+        <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
+          <FileTextIcon className="h-8 w-8 text-muted-foreground/50 mb-2" />
+          <span className="text-sm text-muted-foreground/70 font-medium mb-1">
+            Tidak ada paper aktif
+          </span>
+          <span className="text-xs text-muted-foreground/50">
+            Percakapan ini bukan sesi penulisan paper
+          </span>
+        </div>
       </div>
     )
+  }
+
+  // Build session item from usePaperSession data
+  const sessionItem: PaperSessionItem = {
+    _id: session._id as Id<"paperSessions">,
+    conversationId: session.conversationId as Id<"conversations">,
+    paperTitle: session.paperTitle,
+    currentStage: currentStage as string,
+    stageStatus: session.stageStatus as string,
+    _creationTime: session._creationTime,
+    updatedAt: session.updatedAt,
   }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b">
-        <div className="text-sm font-semibold">Paper Sessions</div>
-        <div className="text-xs text-muted-foreground">
+      {/* Header - matches mockup: padding 20px 16px 12px 16px, no border */}
+      <div className="pt-5 px-4 pb-3">
+        <div className="text-base font-semibold">Paper Sessions</div>
+        <div className="text-[13px] text-muted-foreground">
           Paper folders and artifacts
         </div>
       </div>
 
-      {/* Paper Session List */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {activeSessions.map((session) => {
-          const isSelected = currentConversationId === session.conversationId
-          const isExpanded = expandedPapers.has(session._id)
-          const stageNumber = getStageNumber(
-            session.currentStage as PaperStageId | "completed"
-          )
-          const stageLabel = getStageLabel(
-            session.currentStage as PaperStageId | "completed"
-          )
-          const paperTitle = session.paperTitle || "Paper Tanpa Judul"
-          const lastUpdate = session.updatedAt || session._creationTime
-
-          // Status indicator color
-          const statusColor =
-            session.stageStatus === "drafting"
-              ? "bg-info"
-              : session.stageStatus === "pending_validation"
-                ? "bg-warning"
-                : "bg-success"
-
-          return (
-            <div key={session._id} className="border-b last:border-b-0">
-              {/* Paper Folder Header */}
-              <div
-                className={cn(
-                  "flex items-start gap-2 p-3 cursor-pointer transition-colors",
-                  isSelected ? "bg-list-selected-bg" : "hover:bg-list-hover-bg"
-                )}
-                onClick={() => toggleExpanded(session._id)}
-              >
-                {/* Expand/Collapse Chevron */}
-                <ChevronRightIcon
-                  className={cn(
-                    "h-4 w-4 mt-0.5 text-muted-foreground transition-transform shrink-0",
-                    isExpanded && "rotate-90"
-                  )}
-                />
-
-                {/* Status Indicator */}
-                <div
-                  className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", statusColor)}
-                  title={session.stageStatus}
-                />
-
-                {/* Folder Icon */}
-                <FolderIcon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{paperTitle}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Stage {stageNumber}/13 - {stageLabel}
-                  </div>
-                </div>
-              </div>
-
-              {/* Expanded Content - Navigate Link */}
-              {isExpanded && (
-                <div className="pl-10 pb-2">
-                  <Link
-                    href={`/chat/${session.conversationId}`}
-                    onClick={() => onCloseMobile?.()}
-                    className={cn(
-                      "flex items-center gap-2 p-2 rounded-md text-sm transition-colors",
-                      "hover:bg-accent"
-                    )}
-                  >
-                    <FileTextIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">
-                      Buka Percakapan
-                    </span>
-                  </Link>
-                  <div className="px-2 py-1 text-xs text-muted-foreground">
-                    Diperbarui {formatRelativeTime(lastUpdate)}
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
+      {/* Paper Folder - Single session for active conversation */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
+        <PaperFolderItem
+          session={sessionItem}
+          isExpanded={isExpanded}
+          isSelected={true} // Always selected since it's the active conversation
+          onToggle={() => setIsExpanded(!isExpanded)}
+          onCloseMobile={onCloseMobile}
+          userId={user!._id}
+        />
       </div>
     </div>
+  )
+}
+
+/**
+ * PaperFolderItem - Individual paper folder with artifacts
+ */
+function PaperFolderItem({
+  session,
+  isExpanded,
+  isSelected,
+  onToggle,
+  onCloseMobile,
+  userId,
+}: {
+  session: PaperSessionItem
+  isExpanded: boolean
+  isSelected: boolean
+  onToggle: () => void
+  onCloseMobile?: () => void
+  userId: Id<"users">
+}) {
+  // Query artifacts for this paper session's conversation
+  const artifacts = useQuery(
+    api.artifacts.listByConversation,
+    isExpanded
+      ? { conversationId: session.conversationId, userId }
+      : "skip"
+  ) as ArtifactItem[] | undefined
+
+  const stageNumber = getStageNumber(
+    session.currentStage as PaperStageId | "completed"
+  )
+  const stageLabel = getStageLabel(
+    session.currentStage as PaperStageId | "completed"
+  )
+  const paperTitle = session.paperTitle || "Paper_Tanpa_Judul"
+  // Convert spaces to underscores for display (matching mockup style)
+  const displayTitle = paperTitle.replace(/\s+/g, "_")
+
+  // Status color - blue for in-progress, green for completed
+  const isCompleted = session.currentStage === "completed"
+  const statusColorClass = isCompleted ? "bg-success" : "bg-info"
+
+  // Group artifacts by type and get latest version of each
+  const latestArtifacts = artifacts
+    ? getLatestArtifactVersions(artifacts)
+    : []
+
+  return (
+    <div className="mb-0.5">
+      {/* Folder Header */}
+      <div
+        className={cn(
+          "flex items-center gap-2 py-2 px-4 cursor-pointer transition-colors",
+          "hover:bg-accent"
+        )}
+        onClick={onToggle}
+      >
+        {/* Chevron - rotates when expanded */}
+        <ChevronRightIcon
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform duration-150 shrink-0",
+            isExpanded && "rotate-90"
+          )}
+        />
+
+        {/* Status Dot - 8px, blue for in-progress */}
+        <div
+          className={cn(
+            "w-2 h-2 rounded-full shrink-0",
+            statusColorClass
+          )}
+        />
+
+        {/* Folder Icon - ORANGE color (warning) */}
+        <FolderIcon className="h-[18px] w-[18px] text-warning shrink-0" />
+
+        {/* Folder Name */}
+        <span className="text-[13px] font-medium truncate flex-1">
+          {displayTitle}
+        </span>
+      </div>
+
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="pl-6">
+          {/* Stage Info */}
+          <div className="text-[11px] text-muted-foreground py-1 px-4">
+            Stage {stageNumber}/13 - {stageLabel}
+          </div>
+
+          {/* Artifact Items */}
+          {latestArtifacts.length > 0 ? (
+            latestArtifacts.map((artifact) => (
+              <ArtifactTreeItem
+                key={artifact._id}
+                artifact={artifact}
+                conversationId={session.conversationId}
+                isSelected={isSelected}
+                onCloseMobile={onCloseMobile}
+              />
+            ))
+          ) : (
+            <div className="text-[11px] text-muted-foreground/70 italic py-2 px-4">
+              No artifacts yet
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * ArtifactTreeItem - Individual artifact item in the tree
+ */
+function ArtifactTreeItem({
+  artifact,
+  conversationId,
+  isSelected,
+  onCloseMobile,
+}: {
+  artifact: ArtifactItem
+  conversationId: Id<"conversations">
+  isSelected: boolean
+  onCloseMobile?: () => void
+}) {
+  // Determine if artifact is "final" (validated/not invalidated)
+  const isFinal = !artifact.invalidatedAt
+
+  return (
+    <Link
+      href={`/chat/${conversationId}`}
+      onClick={() => onCloseMobile?.()}
+      className={cn(
+        "flex items-center gap-2 py-1.5 px-4 cursor-pointer transition-colors",
+        "hover:bg-accent",
+        isSelected && "bg-primary/10"
+      )}
+    >
+      {/* Document Icon - green for final, muted otherwise */}
+      <FileTextIcon
+        className={cn(
+          "h-4 w-4 shrink-0",
+          isFinal ? "text-success" : "text-muted-foreground"
+        )}
+      />
+
+      {/* File Name */}
+      <span className="text-[13px] truncate flex-1">{artifact.title}</span>
+
+      {/* Version Badge */}
+      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+        v{artifact.version}
+      </span>
+
+      {/* FINAL Badge - only for validated artifacts */}
+      {isFinal && (
+        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-success text-white shrink-0 ml-1">
+          FINAL
+        </span>
+      )}
+    </Link>
+  )
+}
+
+/**
+ * Get latest version of each artifact (by title/type)
+ * Groups artifacts and returns only the highest version of each
+ */
+function getLatestArtifactVersions(artifacts: ArtifactItem[]): ArtifactItem[] {
+  const latestMap = new Map<string, ArtifactItem>()
+
+  for (const artifact of artifacts) {
+    const key = `${artifact.type}-${artifact.title}`
+    const existing = latestMap.get(key)
+
+    if (!existing || artifact.version > existing.version) {
+      latestMap.set(key, artifact)
+    }
+  }
+
+  // Sort by title for consistent display
+  return Array.from(latestMap.values()).sort((a, b) =>
+    a.title.localeCompare(b.title)
   )
 }
 

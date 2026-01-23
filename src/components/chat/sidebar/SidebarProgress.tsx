@@ -111,14 +111,12 @@ function MilestoneItem({
 }: MilestoneItemProps) {
   const label = getStageLabel(stageId)
 
-  // Status text based on state
+  // Status text based on state (matches mockup: English labels)
   const statusText =
     state === "completed"
-      ? canRewind
-        ? "Klik untuk kembali"
-        : "Selesai"
+      ? "Completed"
       : state === "current"
-        ? "Sedang dikerjakan"
+        ? "In Progress"
         : undefined
 
   // Milestone dot element
@@ -127,7 +125,8 @@ function MilestoneItem({
       className={cn(
         "w-3 h-3 rounded-full border-2 shrink-0 z-10 transition-all",
         state === "completed" && "bg-success border-success",
-        state === "current" && "bg-primary border-primary",
+        // Current state: solid fill + ring outline (matches mockup)
+        state === "current" && "bg-primary border-primary ring-2 ring-primary/30 ring-offset-1 ring-offset-sidebar",
         state === "pending" && "bg-transparent border-muted-foreground/50",
         // Rewind styles
         canRewind &&
@@ -201,8 +200,8 @@ function MilestoneItem({
           <div
             className={cn(
               "text-xs transition-colors",
-              state === "completed" && !canRewind && "text-success",
-              state === "completed" && canRewind && "text-muted-foreground group-hover:text-success",
+              // Mockup: Completed always green, In Progress always teal
+              state === "completed" && "text-success",
               state === "current" && "text-primary"
             )}
           >
@@ -378,11 +377,11 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
           <div className="space-y-1">
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary rounded-full transition-all duration-300"
+                className="h-full bg-success rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground text-right">
               {progressPercent}% &middot; Stage {stageNumber}/{totalStages}
             </div>
           </div>

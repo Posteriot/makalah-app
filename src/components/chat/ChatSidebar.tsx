@@ -114,30 +114,36 @@ export function ChatSidebar({
     >
       {/* Header - Only show New Chat for chat-history panel */}
       {activePanel === "chat-history" && (
-        <div className="p-3 border-b shrink-0">
+        <div className="pt-4 px-4 pb-3 border-b shrink-0">
           <Button
             onClick={() => {
               onNewChat()
               onCloseMobile?.()
             }}
-            className="w-full"
-            size="sm"
+            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-gray-900 font-medium rounded-[10px] gap-2 text-sm"
             aria-label="Start new chat"
             aria-busy={isCreating}
             disabled={isCreating}
           >
             {isCreating ? (
               <>
-                <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2Icon className="h-4 w-4 animate-spin" />
                 Membuat...
               </>
             ) : (
               <>
-                <PlusIcon className="h-4 w-4 mr-2" />
-                New Chat
+                <PlusIcon className="h-4 w-4" />
+                Percakapan Baru
               </>
             )}
           </Button>
+        </div>
+      )}
+
+      {/* Section Label - Only show for chat-history panel */}
+      {activePanel === "chat-history" && (
+        <div className="py-2 px-4 text-xs text-muted-foreground">
+          Conversations <span className="ml-2">{conversations.length}</span>
         </div>
       )}
 

@@ -64,7 +64,7 @@ function ActivityBarItem({
             "w-10 h-10 rounded-lg transition-all duration-150",
             "text-muted-foreground hover:text-foreground hover:bg-accent",
             "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-            isActive && "text-primary bg-accent"
+            isActive && "text-primary bg-primary/15"
           )}
           onClick={onClick}
           aria-label={`${label} panel`}

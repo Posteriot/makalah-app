@@ -70,7 +70,7 @@ const CSS_VARS = {
   "--panel-max-width": "50%",
   "--header-height": "72px",
   "--tab-bar-height": "36px",
-  "--shell-footer-h": "0px",
+  "--shell-footer-h": "32px",
 } as React.CSSProperties
 
 export function ChatLayout({
@@ -396,6 +396,15 @@ export function ChatLayout({
           />
         </SheetContent>
       </Sheet>
+
+      {/* App Footer - Fixed bottom bar */}
+      <footer className="fixed bottom-0 left-0 right-0 h-8 flex items-center justify-center gap-2 text-xs text-muted-foreground bg-background border-t z-10">
+        <span className="font-medium">Makalah AI</span>
+        <span className="opacity-50">·</span>
+        <span className="opacity-80">© 2026</span>
+        <span className="opacity-50">·</span>
+        <span className="opacity-80">v1.0</span>
+      </footer>
     </div>
   )
 }

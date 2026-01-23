@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 
 /**
@@ -124,13 +124,18 @@ export function useTabState(
   const [tabs, setTabs] = useState<Tab[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
 
+  // Ref to track pending navigation (avoids setState during render issue)
+  const pendingNavigationRef = useRef<string | null>(null)
+
   // Active tab ID derived from URL
   const activeTabId = getConversationIdFromPath(pathname)
 
   // Load tabs from localStorage after hydration (client-only)
+  // This is a valid pattern for hydrating client-only state from localStorage
   useEffect(() => {
     const storedTabs = loadTabsFromStorage()
     if (storedTabs.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Valid hydration pattern from localStorage
       setTabs(storedTabs)
     }
     setIsHydrated(true)
@@ -142,6 +147,15 @@ export function useTabState(
       saveTabsToStorage(tabs)
     }
   }, [tabs, isHydrated])
+
+  // Process pending navigation (deferred from closeTab to avoid setState during render)
+  useEffect(() => {
+    if (pendingNavigationRef.current !== null) {
+      const target = pendingNavigationRef.current
+      pendingNavigationRef.current = null
+      router.push(target)
+    }
+  })
 
   /**
    * Open a new tab or activate existing tab
@@ -183,6 +197,7 @@ export function useTabState(
   /**
    * Close a tab by ID
    * If closing active tab, navigate to next tab or /chat
+   * Navigation is deferred via ref + useEffect to avoid setState during render
    */
   const closeTab = useCallback(
     (id: string) => {
@@ -192,22 +207,22 @@ export function useTabState(
 
         const newTabs = [...prev.slice(0, index), ...prev.slice(index + 1)]
 
-        // If closing active tab, navigate to another
+        // If closing active tab, schedule navigation via ref (deferred to next render)
         if (activeTabId === id) {
           if (newTabs.length > 0) {
             // Navigate to next tab, or previous if closing last
             const nextIndex = Math.min(index, newTabs.length - 1)
-            router.push(`/chat/${newTabs[nextIndex].id}`)
+            pendingNavigationRef.current = `/chat/${newTabs[nextIndex].id}`
           } else {
             // No tabs left, go to landing
-            router.push("/chat")
+            pendingNavigationRef.current = "/chat"
           }
         }
 
         return newTabs
       })
     },
-    [activeTabId, router]
+    [activeTabId]
   )
 
   /**
@@ -216,8 +231,8 @@ export function useTabState(
    */
   const closeAllTabs = useCallback(() => {
     setTabs([])
-    router.push("/chat")
-  }, [router])
+    pendingNavigationRef.current = "/chat"
+  }, [])
 
   /**
    * Set active tab by ID
