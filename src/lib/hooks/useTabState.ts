@@ -105,6 +105,11 @@ function saveTabsToStorage(tabs: Tab[]): void {
  * - Remove tab when closed
  * - Max tabs limit (configurable, default 10)
  * - Auto-navigate when switching tabs
+ *
+ * Hydration Safety:
+ * - Initialize with empty array (server-safe)
+ * - Load from localStorage in useEffect (client-only)
+ * - Prevents hydration mismatch
  */
 export function useTabState(
   currentPath: string,
@@ -114,16 +119,29 @@ export function useTabState(
   const pathname = usePathname()
   const { maxTabs = DEFAULT_MAX_TABS } = options
 
-  // Initialize tabs from localStorage
-  const [tabs, setTabs] = useState<Tab[]>(() => loadTabsFromStorage())
+  // Initialize with empty array for hydration safety
+  // localStorage is loaded in useEffect below (client-only)
+  const [tabs, setTabs] = useState<Tab[]>([])
+  const [isHydrated, setIsHydrated] = useState(false)
 
   // Active tab ID derived from URL
   const activeTabId = getConversationIdFromPath(pathname)
 
-  // Persist tabs to localStorage whenever they change
+  // Load tabs from localStorage after hydration (client-only)
   useEffect(() => {
-    saveTabsToStorage(tabs)
-  }, [tabs])
+    const storedTabs = loadTabsFromStorage()
+    if (storedTabs.length > 0) {
+      setTabs(storedTabs)
+    }
+    setIsHydrated(true)
+  }, [])
+
+  // Persist tabs to localStorage whenever they change (after hydration)
+  useEffect(() => {
+    if (isHydrated) {
+      saveTabsToStorage(tabs)
+    }
+  }, [tabs, isHydrated])
 
   /**
    * Open a new tab or activate existing tab

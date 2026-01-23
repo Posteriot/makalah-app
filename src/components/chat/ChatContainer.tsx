@@ -2,9 +2,12 @@
 
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useQuery } from "convex/react"
+import { api } from "../../../convex/_generated/api"
 import { ChatLayout } from "./layout/ChatLayout"
 import { ChatWindow } from "./ChatWindow"
 import { ArtifactPanel } from "./ArtifactPanel"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { Id } from "../../../convex/_generated/dataModel"
 
 interface ChatContainerProps {
@@ -32,8 +35,18 @@ interface ChatContainerProps {
  */
 export function ChatContainer({ conversationId }: ChatContainerProps) {
   const router = useRouter()
+  const { user } = useCurrentUser()
   const [artifactPanelOpen, setArtifactPanelOpen] = useState(false)
   const [selectedArtifactId, setSelectedArtifactId] = useState<Id<"artifacts"> | null>(null)
+
+  // Query artifacts for count (used in header badge)
+  const artifacts = useQuery(
+    api.artifacts.listByConversation,
+    conversationId && user?._id
+      ? { conversationId: conversationId as Id<"conversations">, userId: user._id }
+      : "skip"
+  )
+  const artifactCount = artifacts?.length ?? 0
 
   // Handler when artifact is created or selected
   const handleArtifactSelect = useCallback((artifactId: Id<"artifacts">) => {
@@ -59,6 +72,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
       onArtifactPanelToggle={toggleArtifactPanel}
       selectedArtifactId={selectedArtifactId}
       onArtifactSelect={handleArtifactSelect}
+      artifactCount={artifactCount}
       artifactPanel={
         <ArtifactPanel
           key={conversationId ?? "no-conversation"}

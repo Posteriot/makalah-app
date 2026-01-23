@@ -48,6 +48,8 @@ interface ChatLayoutProps {
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
   /** Artifact panel content (passed from parent) */
   artifactPanel?: ReactNode
+  /** Number of artifacts (for header badge) */
+  artifactCount?: number
 }
 
 // Default dimensions
@@ -79,6 +81,7 @@ export function ChatLayout({
   onArtifactPanelToggle,
   onArtifactSelect,
   artifactPanel,
+  artifactCount = 0,
 }: ChatLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -292,6 +295,7 @@ export function ChatLayout({
       <ShellHeader
         isPanelCollapsed={!isArtifactPanelOpen}
         onExpandPanel={handleExpandPanel}
+        artifactCount={artifactCount}
       />
 
       {/* Row 2, Column 1: Activity Bar */}

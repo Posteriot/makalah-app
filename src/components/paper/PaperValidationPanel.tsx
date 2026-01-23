@@ -3,9 +3,9 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
 import { Check, Edit3, Send, X } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface PaperValidationPanelProps {
     stageLabel: string;
@@ -55,67 +55,111 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
     };
 
     return (
-        <Card className="m-4 p-4 max-w-[80%] mx-auto bg-card border border-border shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h3 className="text-sm font-semibold text-foreground">Validasi Tahap: {stageLabel}</h3>
-                        <p className="text-xs text-muted-foreground">Periksa draft di artifact. Apakah sudah sesuai atau perlu revisi?</p>
+        <div
+            className={cn(
+                // Container - centered card style like mockup
+                "max-w-[80%] mx-auto my-4",
+                "bg-card border border-border rounded-lg",
+                "shadow-none",
+                "animate-in fade-in slide-in-from-bottom-4 duration-500"
+            )}
+        >
+            <div
+                className={cn(
+                    "p-4",
+                    // Switch to column layout in revision mode
+                    showRevisionForm ? "flex flex-col gap-3" : "flex items-center justify-between gap-4"
+                )}
+            >
+                {/* Header Section */}
+                <div className="flex items-center justify-between gap-3 flex-1">
+                    <div className="flex flex-col gap-1">
+                        <h3 className="text-sm font-semibold text-foreground">
+                            Validasi Tahap: {stageLabel}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                            Periksa draft di artifact. Apakah sudah sesuai atau perlu revisi?
+                        </p>
                     </div>
-                    <div className="flex gap-2">
-                        {!showRevisionForm && (
-                            <>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowRevisionForm(true)}
-                                    disabled={isSubmitting || isLoading}
-                                    className="gap-2 border-red-500/50 text-red-500 hover:bg-red-500/10"
-                                >
-                                    <Edit3 size={14} /> Revisi
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    onClick={handleApprove}
-                                    disabled={isSubmitting || isLoading}
-                                    className="gap-2 bg-green-600 hover:bg-green-700 text-white"
-                                >
-                                    <Check size={14} /> Approve & Lanjut
-                                </Button>
-                            </>
-                        )}
-                        {showRevisionForm && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setShowRevisionForm(false)}
-                                className="text-muted-foreground hover:text-foreground"
-                            >
-                                <X size={18} />
-                            </Button>
-                        )}
-                    </div>
+
+                    {/* Close button for revision mode */}
+                    {showRevisionForm && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowRevisionForm(false)}
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground flex-shrink-0"
+                        >
+                            <X size={16} />
+                        </Button>
+                    )}
                 </div>
 
+                {/* Action Buttons - Inline mode */}
+                {!showRevisionForm && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowRevisionForm(true)}
+                            disabled={isSubmitting || isLoading}
+                            className={cn(
+                                "gap-2 h-9 px-4",
+                                "border-red-500/50 text-red-500",
+                                "hover:bg-red-500/10 hover:border-red-500"
+                            )}
+                        >
+                            <Edit3 size={14} />
+                            <span>Revisi</span>
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={handleApprove}
+                            disabled={isSubmitting || isLoading}
+                            className={cn(
+                                "gap-2 h-9 px-4",
+                                "bg-green-600 hover:bg-green-700",
+                                "text-white border-none"
+                            )}
+                        >
+                            <Check size={14} />
+                            <span>Approve & Lanjut</span>
+                        </Button>
+                    </div>
+                )}
+
+                {/* Revision Form */}
                 {showRevisionForm && (
                     <div className="flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
                         <Textarea
                             placeholder="Kasih tau AI yang mana yang kudu diganti..."
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
-                            className="resize-none min-h-[100px] text-xs bg-background"
+                            className={cn(
+                                "resize-none min-h-[100px]",
+                                "text-sm bg-muted",
+                                "border-border focus:border-primary",
+                                "placeholder:text-muted-foreground"
+                            )}
                         />
-                        <Button
-                            size="sm"
-                            onClick={handleRevise}
-                            disabled={isSubmitting || !feedback.trim()}
-                            className="w-full gap-2"
-                        >
-                            <Send size={14} /> Kirim Feedback
-                        </Button>
+                        <div className="flex justify-end">
+                            <Button
+                                size="sm"
+                                onClick={handleRevise}
+                                disabled={isSubmitting || !feedback.trim()}
+                                className={cn(
+                                    "gap-2 h-9 px-4",
+                                    "bg-primary text-primary-foreground",
+                                    "hover:bg-primary/90"
+                                )}
+                            >
+                                <Send size={14} />
+                                <span>Kirim Feedback</span>
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>
-        </Card>
+        </div>
     );
 };

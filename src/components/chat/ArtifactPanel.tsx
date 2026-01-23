@@ -8,12 +8,7 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { ArtifactViewer } from "./ArtifactViewer"
 import { ArtifactList } from "./ArtifactList"
 import { Button } from "@/components/ui/button"
-import {
-  XIcon,
-  ChevronLeftIcon,
-  FileTextIcon,
-  PanelRightCloseIcon,
-} from "lucide-react"
+import { FileTextIcon, PanelRightCloseIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Artifact type from Convex
@@ -38,10 +33,10 @@ interface ArtifactPanelProps {
  *
  * Features:
  * - Viewer-focused layout (no tools grid per mockup)
- * - Collapsed/expanded toggle
  * - Artifact list with type filter
  * - Selected artifact state management
  * - Width controlled by parent resizer
+ * - Collapse/expand trigger moved to ShellHeader
  *
  * Styling:
  * - Uses CSS variables for theme consistency
@@ -72,33 +67,9 @@ export function ArtifactPanel({
 
   const artifactCount = artifacts?.length ?? 0
 
-  // Collapsed state - show button on right edge
+  // Only render when panel is open (collapsed trigger moved to ShellHeader)
   if (!isOpen) {
-    // Don't show collapsed button if no artifacts
-    if (artifactCount === 0) return null
-
-    return (
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-10">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onToggle}
-          className={cn(
-            "rounded-l-lg rounded-r-none border-r-0",
-            "shadow-md px-2 py-6",
-            "flex flex-col items-center gap-1",
-            "bg-card hover:bg-accent",
-            "text-muted-foreground hover:text-foreground",
-            "transition-colors duration-150"
-          )}
-          aria-label={`Open artifacts panel (${artifactCount} artifacts)`}
-        >
-          <FileTextIcon className="h-4 w-4" />
-          <span className="text-xs font-medium">{artifactCount}</span>
-          <ChevronLeftIcon className="h-3 w-3" />
-        </Button>
-      </div>
-    )
+    return null
   }
 
   // Expanded state - show full panel

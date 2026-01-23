@@ -15,6 +15,8 @@ interface ShellHeaderProps {
   isPanelCollapsed: boolean
   /** Callback to expand the panel */
   onExpandPanel: () => void
+  /** Number of artifacts (for badge display) */
+  artifactCount?: number
 }
 
 /**
@@ -35,7 +37,7 @@ interface ShellHeaderProps {
  * - Horizontal line border below stripes
  * - Reuses existing UserDropdown component
  */
-export function ShellHeader({ isPanelCollapsed, onExpandPanel }: ShellHeaderProps) {
+export function ShellHeader({ isPanelCollapsed, onExpandPanel, artifactCount = 0 }: ShellHeaderProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const { user, isLoading } = useCurrentUser()
 
@@ -116,22 +118,36 @@ export function ShellHeader({ isPanelCollapsed, onExpandPanel }: ShellHeaderProp
           <MoonIcon className="h-5 w-5 block dark:hidden" />
         </button>
 
-        {/* Panel Expand Button (visible when panel is collapsed) */}
-        <button
-          onClick={onExpandPanel}
-          className={cn(
-            "flex items-center justify-center",
-            "w-9 h-9 rounded-lg",
-            "text-muted-foreground hover:text-foreground hover:bg-accent",
-            "transition-colors duration-150",
-            !isPanelCollapsed && "hidden"
-          )}
-          title="Expand panel"
-          aria-label="Expand panel"
-          data-testid="panel-expand-btn"
-        >
-          <PanelRightIcon className="h-5 w-5" />
-        </button>
+        {/* Panel Expand Button (visible when panel is collapsed AND has artifacts) */}
+        {isPanelCollapsed && artifactCount > 0 && (
+          <button
+            onClick={onExpandPanel}
+            className={cn(
+              "relative flex items-center justify-center",
+              "w-9 h-9 rounded-lg",
+              "text-muted-foreground hover:text-foreground hover:bg-accent",
+              "transition-colors duration-150"
+            )}
+            title={`Open artifacts panel (${artifactCount} artifacts)`}
+            aria-label={`Open artifacts panel (${artifactCount} artifacts)`}
+            data-testid="panel-expand-btn"
+          >
+            <PanelRightIcon className="h-5 w-5" />
+            {/* Artifact count badge */}
+            <span
+              className={cn(
+                "absolute -top-1 -right-1",
+                "min-w-[18px] h-[18px] px-1",
+                "flex items-center justify-center",
+                "text-[10px] font-semibold",
+                "bg-primary text-primary-foreground",
+                "rounded-full"
+              )}
+            >
+              {artifactCount}
+            </span>
+          </button>
+        )}
 
         {/* User Dropdown */}
         <UserDropdown />

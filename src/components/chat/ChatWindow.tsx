@@ -16,7 +16,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
-import { PaperStageProgress } from "../paper/PaperStageProgress"
 import { PaperValidationPanel } from "../paper/PaperValidationPanel"
 import { useUser } from "@clerk/nextjs"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
@@ -398,18 +397,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         <span className="font-semibold">Makalah Chat</span>
       </div>
 
-      {/* Messages Area (Using a flex container to handle stage progress bar) */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
-        {/* Paper Stage Progress Bar */}
-        {isPaperMode && currentStage && stageStatus && (
-          <div className="border-b bg-background/50 backdrop-blur-sm px-4 py-2 z-10">
-            <PaperStageProgress
-              currentStage={currentStage as string}
-              stageStatus={stageStatus || "drafting"}
-            />
-          </div>
-        )}
-
         {/* Message Container */}
         <div className="flex-1 overflow-hidden relative p-4">
           {(isHistoryLoading || isConversationLoading) && messages.length === 0 ? (
