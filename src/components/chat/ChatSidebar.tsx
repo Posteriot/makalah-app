@@ -148,7 +148,7 @@ export function ChatSidebar({
       )}
 
       {/* Content - Conditionally rendered based on activePanel */}
-      <div className="flex-1 overflow-hidden">{renderContent()}</div>
+      <div className="flex-1 flex flex-col overflow-hidden">{renderContent()}</div>
 
       {/* Footer - Upgrade CTA for BPP/Gratis users */}
       {showUpgradeCTA && (

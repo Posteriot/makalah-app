@@ -119,7 +119,7 @@ export function ArtifactList({
             </div>
 
             {/* Artifact list */}
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
                 {artifacts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
                         <FileTextIcon className="h-8 w-8 mb-2 opacity-50" />

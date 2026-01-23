@@ -1,8 +1,7 @@
-
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, ChevronUp, Globe } from "lucide-react"
+import { ChevronDownIcon, CheckCircleIcon, ExternalLinkIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -23,6 +22,14 @@ interface SourcesIndicatorProps {
     sources: Source[]
 }
 
+/**
+ * SourcesIndicator - Collapsible sources panel
+ *
+ * Mockup compliance:
+ * - "Found X sources" header with GREEN background + checkmark
+ * - Collapsible with chevron rotation
+ * - Source items: Title on top, URL below (text-xs, muted)
+ */
 export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [showAll, setShowAll] = useState(false)
@@ -35,76 +42,101 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
     const hasMore = sources.length > 5
 
     return (
-        <Collapsible
-            open={isOpen}
-            onOpenChange={setIsOpen}
-            className={cn(
-                "flex w-fit flex-col gap-2 rounded-lg border text-sm shadow-sm transition-all duration-200",
-                "border-blue-500/20 bg-blue-500/10", // Consistent tool state styling
-                isOpen ? "p-3" : "px-3 py-2"
-            )}
-        >
-            <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                    <Globe className="h-4 w-4" />
-                    <span className="font-medium">
-                        {sources.length} sumber ditemukan
-                    </span>
-                </div>
-                <CollapsibleTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                    >
-                        {isOpen ? (
-                            <ChevronUp className="h-4 w-4" />
-                        ) : (
-                            <ChevronDown className="h-4 w-4" />
-                        )}
-                        <span className="sr-only">Toggle sources</span>
-                    </Button>
-                </CollapsibleTrigger>
+        <div className="space-y-2">
+            {/* "Found X sources" Header - GREEN mockup style */}
+            <div
+                className={cn(
+                    "flex items-center gap-2.5 px-3 py-2 rounded-md",
+                    "bg-success/15 border-l-4 border-l-success",
+                    "text-sm"
+                )}
+            >
+                <CheckCircleIcon className="h-4 w-4 text-success flex-shrink-0" />
+                <span className="text-success font-medium">
+                    Found {sources.length} {sources.length === 1 ? "source" : "sources"}
+                </span>
             </div>
 
-            <CollapsibleContent className="space-y-3 pt-1">
-                <div className="flex flex-col gap-2">
-                    {displayedSources.map(({ source, idx }) => {
-                        const parts = getWebCitationDisplayParts(source)
-                        return (
-                            <div
-                                key={idx}
-                                className="group flex flex-col gap-1 rounded-md p-2 hover:bg-blue-500/5 hover:shadow-sm border border-transparent hover:border-blue-500/10 transition-all text-foreground/90 font-sans"
-                            >
-                                <a
-                                    href={parts.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="leading-snug hover:underline decoration-blue-500/50 underline-offset-4 text-xs block"
-                                >
-                                    <span className="font-medium">{parts.title}</span>
-                                    {parts.dateText ? (
-                                        <span className="text-muted-foreground">{" — "}{parts.dateText}</span>
-                                    ) : null}
-                                    <span className="text-muted-foreground">{" — "}</span>
-                                    <span className="text-muted-foreground break-all">{parts.url}</span>
-                                </a>
-                            </div>
-                        )
-                    })}
-                </div>
-
-                {hasMore && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowAll(!showAll)}
-                        className="h-7 w-full text-xs text-muted-foreground hover:text-foreground font-sans"
+            {/* Collapsible Sources List */}
+            <Collapsible
+                open={isOpen}
+                onOpenChange={setIsOpen}
+                className="rounded-lg border border-border bg-muted/30"
+            >
+                {/* Collapsed Header */}
+                <CollapsibleTrigger asChild>
+                    <button
+                        className={cn(
+                            "flex w-full items-center justify-between gap-3",
+                            "px-3 py-2 text-sm",
+                            "hover:bg-accent/50 transition-colors rounded-lg",
+                            isOpen && "border-b border-border rounded-b-none"
+                        )}
                     >
-                        {showAll ? "Sembunyikan" : `Tampilkan ${remainingCount} lainnya`}
-                    </Button>
-                )}
-            </CollapsibleContent>
-        </Collapsible>
+                        <span className="font-medium text-foreground">
+                            {sources.length} {sources.length === 1 ? "source" : "sources"}
+                        </span>
+                        <ChevronDownIcon
+                            className={cn(
+                                "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                                isOpen && "rotate-180"
+                            )}
+                        />
+                    </button>
+                </CollapsibleTrigger>
+
+                {/* Expanded Content */}
+                <CollapsibleContent className="px-3 py-2">
+                    <div className="flex flex-col divide-y divide-border">
+                        {displayedSources.map(({ source, idx }) => {
+                            const parts = getWebCitationDisplayParts(source)
+                            return (
+                                <SourceItem key={idx} parts={parts} />
+                            )
+                        })}
+                    </div>
+
+                    {/* Show More Button */}
+                    {hasMore && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowAll(!showAll)}
+                            className="h-7 w-full mt-2 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                            {showAll ? "Show less" : `Show ${remainingCount} more`}
+                        </Button>
+                    )}
+                </CollapsibleContent>
+            </Collapsible>
+        </div>
+    )
+}
+
+/**
+ * Individual source item
+ */
+function SourceItem({ parts }: { parts: ReturnType<typeof getWebCitationDisplayParts> }) {
+    return (
+        <a
+            href={parts.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+                "group flex flex-col gap-0.5 py-2",
+                "hover:bg-accent/30 -mx-1 px-1 rounded transition-colors"
+            )}
+        >
+            {/* Title */}
+            <span className="text-sm font-medium text-foreground group-hover:text-primary flex items-center gap-1">
+                {parts.title}
+                <ExternalLinkIcon className="h-3 w-3 opacity-0 group-hover:opacity-70 transition-opacity" />
+            </span>
+
+            {/* URL */}
+            <span className="text-xs text-muted-foreground truncate">
+                {parts.url}
+            </span>
+        </a>
     )
 }

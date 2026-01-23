@@ -41,6 +41,24 @@ interface MessageBubbleProps {
     currentStageStartIndex?: number
     allMessages?: PermissionMessage[]
     stageData?: Record<string, StageDataEntry>
+    // Optional timestamp for display
+    timestamp?: number
+}
+
+/**
+ * Format timestamp untuk display
+ * Format: "Jan 19, 2026 14:30" atau locale Indonesia
+ */
+function formatTimestamp(timestamp?: number): string {
+    if (!timestamp) return ""
+    const date = new Date(timestamp)
+    return date.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    })
 }
 
 export function MessageBubble({
@@ -52,6 +70,7 @@ export function MessageBubble({
     currentStageStartIndex = 0,
     allMessages = [],
     stageData,
+    timestamp,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -121,10 +140,6 @@ export function MessageBubble({
 
     const extractInProgressTools = (uiMessage: UIMessage) => {
         const tools: { toolName: string; state: string; errorText?: string }[] = []
-
-        // DEBUG: Log all parts to understand tool state from different models
-        if (process.env.NODE_ENV === "development") {
-        }
 
         for (const part of uiMessage.parts ?? []) {
             const maybeToolPart = part as unknown as {
@@ -274,205 +289,189 @@ export function MessageBubble({
     const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
     const sources = citedSources || sourcesFromAnnotation || messageSources || []
 
+    // Get timestamp from allMessages if available
+    const displayTimestamp = timestamp || (allMessages[messageIndex]?.createdAt)
+    const formattedTime = formatTimestamp(displayTimestamp)
+
     return (
-        <div
-            className={cn(
-                // Base styles
-                "group relative max-w-[80%] mb-3",
-                // User message: right-aligned, darker bg, primary colors
-                isUser && "ml-auto",
-                // Assistant message: left-aligned
-                isAssistant && "mr-auto"
-            )}
-        >
-            {/* Message bubble container */}
-            <div
-                className={cn(
-                    // Base bubble styles
-                    "px-4 py-3 rounded-2xl",
-                    // User message styling - darker bg, custom corners
-                    isUser && [
-                        "bg-primary text-primary-foreground",
-                        "rounded-br-md", // Flat bottom-right corner for user
-                    ],
-                    // Assistant message styling - subtle bg, custom corners
-                    isAssistant && [
-                        "bg-muted",
-                        "rounded-bl-md", // Flat bottom-left corner for assistant
-                    ]
-                )}
-            >
-                {/* File Attachments Indicator */}
-                {fileIds && fileIds.length > 0 && (
-                    <div className="mb-2 space-y-1">
-                        {fileIds.map((id: string) => (
-                            <div
-                                key={id}
-                                className={cn(
-                                    "flex items-center gap-2 text-xs py-1 px-2 rounded-md",
-                                    isUser
-                                        ? "bg-primary-foreground/10"
-                                        : "bg-background/60 border border-border"
-                                )}
-                            >
-                                <PaperclipIcon className="h-3 w-3 flex-shrink-0" />
-                                <span className="truncate">Attachment</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Tool State Indicators (non-search) */}
-                {nonSearchTools.length > 0 && (
-                    <div className="mb-2 space-y-1">
-                        {nonSearchTools.map((tool, index) => (
-                            <ToolStateIndicator
-                                key={index}
-                                toolName={tool.toolName}
-                                state={tool.state}
-                                errorText={tool.errorText}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {/* Message Content */}
-                {isEditing ? (
-                    <div className="flex flex-col gap-2 min-w-[300px]">
-                        <textarea
-                            ref={textareaRef}
-                            value={editContent}
-                            onChange={(e) => {
-                                setEditContent(e.target.value)
-                                e.target.style.height = 'auto'
-                                e.target.style.height = e.target.scrollHeight + 'px'
-                            }}
-                            onKeyDown={handleKeyDown}
-                            className={cn(
-                                "w-full rounded-lg p-2 text-sm focus:outline-none resize-none overflow-hidden",
-                                isUser
-                                    ? "bg-primary-foreground/10 border border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50"
-                                    : "bg-background border border-border text-foreground"
-                            )}
-                            rows={1}
-                            aria-label="Edit message content"
-                        />
-                        <div className="flex gap-2 justify-end">
-                            <button
-                                onClick={handleCancel}
-                                className={cn(
-                                    "px-2 py-1 rounded-md text-xs flex items-center gap-1 transition-colors",
-                                    isUser
-                                        ? "hover:bg-primary-foreground/10"
-                                        : "hover:bg-accent"
-                                )}
-                                aria-label="Batalkan edit"
-                            >
-                                <XIcon className="h-3 w-3" /> Batal
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                className={cn(
-                                    "px-2 py-1 rounded-md text-xs flex items-center gap-1 font-medium transition-colors",
-                                    isUser
-                                        ? "bg-primary-foreground/20 hover:bg-primary-foreground/30"
-                                        : "bg-primary text-primary-foreground hover:bg-primary/90"
-                                )}
-                                aria-label="Kirim pesan yang diedit"
-                            >
-                                <SendHorizontalIcon className="h-3 w-3" /> Kirim
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <MarkdownRenderer
-                        markdown={citedText ?? content}
-                        className="space-y-2 text-sm leading-relaxed"
-                        sources={sources}
-                    />
-                )}
-
-                {/* Search Status (data stream, below assistant text) */}
-                {!isEditing && isAssistant && searchStatus && (
-                    <div className="mt-3 space-y-1">
-                        <SearchStatusIndicator status={searchStatus} />
-                    </div>
-                )}
-
-                {/* Search Indicator (below assistant text) */}
-                {!isEditing && isAssistant && searchTools.length > 0 && (
-                    <div className="mt-3 space-y-1">
-                        {searchTools.map((tool, index) => (
-                            <ToolStateIndicator
-                                key={`search-${index}`}
-                                toolName={tool.toolName}
-                                state={tool.state}
-                                errorText={tool.errorText}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {/* Artifact Indicators */}
-                {createdArtifacts.length > 0 && onArtifactSelect && (
-                    <div className="mt-3 space-y-2">
-                        {createdArtifacts.map((created) => (
-                            <ArtifactIndicator
-                                key={created.artifactId}
-                                artifactId={created.artifactId}
-                                title={created.title}
-                                onSelect={onArtifactSelect}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {/* Sources Indicator (after Artifacts, before QuickActions) */}
-                {sources && sources.length > 0 && isAssistant && (
-                    <div className="mt-3">
-                        <SourcesIndicator sources={sources} />
-                    </div>
-                )}
-
-                {/* Quick Actions for Assistant */}
-                {!isEditing && isAssistant && (
-                    <QuickActions content={content} />
+        <div className="group relative mb-4">
+            {/* Role Label + Timestamp - Mockup compliance */}
+            <div className="flex items-center gap-2 mb-1.5 px-1">
+                <span
+                    className={cn(
+                        "text-sm font-medium",
+                        isUser ? "text-success" : "text-destructive"
+                    )}
+                >
+                    {isUser ? "User" : "Agent"}
+                </span>
+                {formattedTime && isUser && (
+                    <span className="text-xs text-muted-foreground">
+                        {formattedTime}
+                    </span>
                 )}
             </div>
 
-            {/* Edit Button - Floating outside bubble for user messages */}
-            {!isEditing && isUser && onEdit && (
-                <div className="absolute -left-8 top-1/2 -translate-y-1/2">
-                    {editPermission.allowed ? (
-                        <button
-                            onClick={startEditing}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground"
-                            title="Edit"
-                            aria-label="Edit message"
-                        >
-                            <PencilIcon className="h-3.5 w-3.5" />
-                        </button>
+            {/* Message Card Container - with colored left border */}
+            <div
+                className={cn(
+                    // Base card styles
+                    "relative rounded-lg",
+                    "bg-card border border-border",
+                    // Left border color based on role
+                    "border-l-4",
+                    isUser ? "border-l-warning" : "border-l-destructive"
+                )}
+            >
+                {/* Inner content with padding */}
+                <div className="px-4 py-3">
+                    {/* File Attachments Badge - Mockup: blue/teal badge */}
+                    {fileIds && fileIds.length > 0 && (
+                        <div className="mb-3">
+                            <span className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-md bg-info/20 text-info border border-info/30">
+                                <PaperclipIcon className="h-3 w-3" />
+                                <span>{fileIds.length} {fileIds.length === 1 ? "file" : "files"}</span>
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Tool State Indicators (non-search) */}
+                    {nonSearchTools.length > 0 && (
+                        <div className="mb-3 space-y-2">
+                            {nonSearchTools.map((tool, index) => (
+                                <ToolStateIndicator
+                                    key={index}
+                                    toolName={tool.toolName}
+                                    state={tool.state}
+                                    errorText={tool.errorText}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Message Content */}
+                    {isEditing ? (
+                        <div className="flex flex-col gap-2">
+                            <textarea
+                                ref={textareaRef}
+                                value={editContent}
+                                onChange={(e) => {
+                                    setEditContent(e.target.value)
+                                    e.target.style.height = 'auto'
+                                    e.target.style.height = e.target.scrollHeight + 'px'
+                                }}
+                                onKeyDown={handleKeyDown}
+                                className="w-full rounded-lg p-3 text-sm bg-background border border-border text-foreground focus:outline-none focus:border-primary resize-none overflow-hidden"
+                                rows={1}
+                                aria-label="Edit message content"
+                            />
+                            <div className="flex gap-2 justify-end">
+                                <button
+                                    onClick={handleCancel}
+                                    className="px-3 py-1.5 rounded-md text-xs flex items-center gap-1.5 hover:bg-accent transition-colors"
+                                    aria-label="Batalkan edit"
+                                >
+                                    <XIcon className="h-3.5 w-3.5" /> Batal
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="px-3 py-1.5 rounded-md text-xs flex items-center gap-1.5 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                    aria-label="Kirim pesan yang diedit"
+                                >
+                                    <SendHorizontalIcon className="h-3.5 w-3.5" /> Kirim
+                                </button>
+                            </div>
+                        </div>
                     ) : (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        disabled
-                                        className="opacity-0 group-hover:opacity-40 transition-opacity p-1.5 rounded-md text-muted-foreground cursor-not-allowed"
-                                        aria-label="Edit message"
-                                        aria-disabled="true"
-                                    >
-                                        <PencilIcon className="h-3.5 w-3.5" />
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" className="max-w-[250px]">
-                                    <p>{editPermission.reason}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                        <MarkdownRenderer
+                            markdown={citedText ?? content}
+                            className="space-y-2 text-sm leading-relaxed text-foreground"
+                            sources={sources}
+                        />
+                    )}
+
+                    {/* Search Status (data stream, below assistant text) */}
+                    {!isEditing && isAssistant && searchStatus && (
+                        <div className="mt-3">
+                            <SearchStatusIndicator status={searchStatus} />
+                        </div>
+                    )}
+
+                    {/* Search Tool Indicators (below assistant text) */}
+                    {!isEditing && isAssistant && searchTools.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                            {searchTools.map((tool, index) => (
+                                <ToolStateIndicator
+                                    key={`search-${index}`}
+                                    toolName={tool.toolName}
+                                    state={tool.state}
+                                    errorText={tool.errorText}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Sources Indicator (after search status) */}
+                    {sources && sources.length > 0 && isAssistant && (
+                        <div className="mt-3">
+                            <SourcesIndicator sources={sources} />
+                        </div>
+                    )}
+
+                    {/* Artifact Indicators */}
+                    {createdArtifacts.length > 0 && onArtifactSelect && (
+                        <div className="mt-3 space-y-2">
+                            {createdArtifacts.map((created) => (
+                                <ArtifactIndicator
+                                    key={created.artifactId}
+                                    artifactId={created.artifactId}
+                                    title={created.title}
+                                    onSelect={onArtifactSelect}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Quick Actions for Assistant */}
+                    {!isEditing && isAssistant && (
+                        <QuickActions content={content} />
                     )}
                 </div>
-            )}
+
+                {/* Edit Button - Inside card for user messages */}
+                {!isEditing && isUser && onEdit && (
+                    <div className="absolute top-2 right-2">
+                        {editPermission.allowed ? (
+                            <button
+                                onClick={startEditing}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground"
+                                title="Edit"
+                                aria-label="Edit message"
+                            >
+                                <PencilIcon className="h-3.5 w-3.5" />
+                            </button>
+                        ) : (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            disabled
+                                            className="opacity-0 group-hover:opacity-40 transition-opacity p-1.5 rounded-md text-muted-foreground cursor-not-allowed"
+                                            aria-label="Edit message"
+                                            aria-disabled="true"
+                                        >
+                                            <PencilIcon className="h-3.5 w-3.5" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="max-w-[250px]">
+                                        <p>{editPermission.reason}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

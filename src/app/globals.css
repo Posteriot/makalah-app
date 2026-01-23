@@ -180,10 +180,10 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  /* Scrollbar */
+  /* Scrollbar - subtle styling per mockup */
   --scrollbar-width: 6px;
-  --scrollbar-thumb: oklch(0.6 0 0 / 0.3);
-  --scrollbar-thumb-hover: oklch(0.6 0 0 / 0.5);
+  --scrollbar-thumb: oklch(0.5 0 0 / 0.3);
+  --scrollbar-thumb-hover: oklch(0.5 0 0 / 0.5);
   --scrollbar-track: transparent;
 }
 
@@ -235,9 +235,9 @@
   --sidebar-border: oklch(0.25 0 0);
   --sidebar-ring: oklch(0.556 0 0);
 
-  /* Scrollbar - Dark */
-  --scrollbar-thumb: oklch(0.6 0 0 / 0.5);
-  --scrollbar-thumb-hover: oklch(0.6 0 0 / 0.7);
+  /* Scrollbar - Dark (subtle per mockup) */
+  --scrollbar-thumb: oklch(0.6 0 0 / 0.3);
+  --scrollbar-thumb-hover: oklch(0.6 0 0 / 0.5);
 }
 
 /* ==========================================================================
@@ -2830,6 +2830,29 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-thumb-hover);
   }
+}
+
+/* Virtuoso scroll container styling */
+[data-virtuoso-scroller="true"] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+[data-virtuoso-scroller="true"]::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+}
+
+[data-virtuoso-scroller="true"]::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+[data-virtuoso-scroller="true"]::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: calc(var(--scrollbar-width) / 2);
+}
+
+[data-virtuoso-scroller="true"]::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* ==========================================================================

@@ -169,15 +169,10 @@ export function useTabState(
         const existingIndex = prev.findIndex((tab) => tab.id === id)
 
         if (existingIndex >= 0) {
-          // Update title if changed, move to end (most recent)
-          const existing = prev[existingIndex]
-          const updated = { ...existing, title }
-          const newTabs = [
-            ...prev.slice(0, existingIndex),
-            ...prev.slice(existingIndex + 1),
-            updated,
-          ]
-          return newTabs
+          // Update title only, keep tab in original position (VSCode-style)
+          return prev.map((tab, i) =>
+            i === existingIndex ? { ...tab, title } : tab
+          )
         }
 
         // Create new tab

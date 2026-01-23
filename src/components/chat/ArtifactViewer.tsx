@@ -427,7 +427,7 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                     {/* Content with Context Menu */}
                     <ContextMenu>
                         <ContextMenuTrigger asChild>
-                            <div className="flex-1 overflow-auto p-4 relative">
+                            <div className="flex-1 overflow-auto p-4 relative scrollbar-thin">
                                 {/* Loading indicator for Refrasa */}
                                 {isRefrasaLoading && (
                                     <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">

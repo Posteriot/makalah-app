@@ -8,7 +8,7 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { ArtifactViewer } from "./ArtifactViewer"
 import { ArtifactList } from "./ArtifactList"
 import { Button } from "@/components/ui/button"
-import { FileTextIcon, PanelRightCloseIcon } from "lucide-react"
+import { FileTextIcon, XIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Artifact type from Convex
@@ -104,14 +104,14 @@ export function ArtifactPanel({
             size="icon"
             onClick={onToggle}
             className={cn(
-              "h-6 w-6 rounded",
-              "text-muted-foreground hover:text-foreground",
-              "hover:bg-accent",
-              "transition-colors duration-150"
+              "h-7 w-7 rounded-md",
+              "text-muted-foreground",
+              "hover:bg-destructive hover:text-white",
+              "transition-all duration-150"
             )}
             aria-label="Minimize artifacts panel"
           >
-            <PanelRightCloseIcon className="h-4 w-4" />
+            <XIcon className="h-4 w-4" />
           </Button>
         </div>
       </div>

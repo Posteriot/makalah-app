@@ -7,7 +7,6 @@ import {
   XIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  XCircleIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Tab } from "@/lib/hooks/useTabState"
@@ -373,7 +372,7 @@ export function ChatTabs({
           )}
           aria-label="Close all tabs"
         >
-          <XCircleIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
     </div>

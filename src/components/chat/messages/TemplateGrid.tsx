@@ -1,43 +1,56 @@
 "use client"
 
-import { FileTextIcon, BookOpenIcon, SearchIcon, QuoteIcon } from "lucide-react"
+import { FileTextIcon, MessageCircleIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+export type TemplateType = "paper" | "dialog"
 
 export interface Template {
   id: string
+  type: TemplateType
+  badge: string
   title: string
   description: string
-  icon: React.ReactNode
   message: string
 }
 
+/**
+ * Template data sesuai mockup
+ * - 2 Paper templates (teal/primary color)
+ * - 2 Dialog templates (blue/info color)
+ */
 const templates: Template[] = [
   {
-    id: "start-paper",
-    title: "Mulai Paper Baru",
-    description: "Mulai menulis paper akademik dengan panduan AI",
-    icon: <FileTextIcon className="h-5 w-5" />,
-    message: "Saya ingin menulis paper akademik",
+    id: "dampak-ai-pendidikan",
+    type: "paper",
+    badge: "PAPER",
+    title: "Dampak AI dalam Pendidikan",
+    description: "Bantu saya menulis paper tentang dampak AI dalam pendidikan tinggi",
+    message: "Bantu saya menulis paper tentang dampak AI dalam pendidikan tinggi",
   },
   {
-    id: "apa-format",
-    title: "Tanya tentang Format APA",
-    description: "Pelajari cara format sitasi dan referensi APA",
-    icon: <BookOpenIcon className="h-5 w-5" />,
-    message: "Bagaimana cara format sitasi dan referensi menggunakan APA style?",
+    id: "ml-prediksi",
+    type: "paper",
+    badge: "PAPER",
+    title: "Machine Learning untuk Prediksi",
+    description: "Paper akademik tentang implementasi ML untuk prediksi cuaca",
+    message: "Saya ingin membuat paper akademik tentang implementasi machine learning untuk prediksi cuaca",
   },
   {
-    id: "explore-topic",
-    title: "Eksplorasi Topik Riset",
-    description: "Temukan dan eksplorasi topik riset yang menarik",
-    icon: <SearchIcon className="h-5 w-5" />,
-    message: "Bantu saya menemukan topik riset yang menarik untuk paper saya",
+    id: "metodologi-penelitian",
+    type: "dialog",
+    badge: "DIALOG",
+    title: "Metodologi Penelitian",
+    description: "Jelaskan perbedaan metodologi kualitatif dan kuantitatif",
+    message: "Jelaskan perbedaan antara metodologi penelitian kualitatif dan kuantitatif",
   },
   {
-    id: "citation-guide",
-    title: "Panduan Sitasi",
-    description: "Pelajari cara mengutip sumber dengan benar",
-    icon: <QuoteIcon className="h-5 w-5" />,
-    message: "Bagaimana cara mengutip sumber dengan benar dalam paper akademik?",
+    id: "thesis-disertasi-skripsi",
+    type: "dialog",
+    badge: "DIALOG",
+    title: "Thesis vs Disertasi vs Skripsi",
+    description: "Perbedaan thesis, disertasi, dan skripsi dalam konteks akademik",
+    message: "Apa perbedaan antara thesis, disertasi, dan skripsi dalam konteks akademik Indonesia?",
   },
 ]
 
@@ -45,44 +58,108 @@ interface TemplateGridProps {
   onTemplateSelect: (template: Template) => void
 }
 
+/**
+ * TemplateGrid - Empty state dengan template cards
+ *
+ * Mockup compliance:
+ * - Header: 24px title, 32px margin-bottom
+ * - Grid: 2 columns, 16px gap, max-width 640px
+ * - Cards: 16px padding, 14px gap, 10px radius
+ * - Badges: PAPER (teal), DIALOG (blue)
+ * - Icons: Paper=teal, Dialog=blue
+ */
 export function TemplateGrid({ onTemplateSelect }: TemplateGridProps) {
   return (
-    <div className="w-full max-w-2xl mx-auto px-4">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h2 className="text-lg font-semibold text-foreground mb-2">
-          Mulai percakapan baru
+    <div className="w-full max-w-[640px] mx-auto px-4">
+      {/* Header - mockup: 24px title, 32px margin-bottom */}
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-semibold text-foreground mb-2">
+          Mulai Interaksi Baru
         </h2>
         <p className="text-sm text-muted-foreground">
           Pilih template di bawah atau ketik pesan langsung
         </p>
       </div>
 
-      {/* Template Grid: 2 columns desktop, 1 column mobile */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Template Grid: 2 columns, 16px gap */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {templates.map((template) => (
-          <button
+          <TemplateCard
             key={template.id}
-            onClick={() => onTemplateSelect(template)}
-            className="flex items-start gap-4 p-4 text-left rounded-lg border border-border bg-card hover:bg-accent hover:border-primary/50 transition-all duration-150 group"
-          >
-            {/* Icon */}
-            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-              {template.icon}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm text-foreground mb-1">
-                {template.title}
-              </h3>
-              <p className="text-xs text-muted-foreground line-clamp-2">
-                {template.description}
-              </p>
-            </div>
-          </button>
+            template={template}
+            onSelect={onTemplateSelect}
+          />
         ))}
       </div>
     </div>
+  )
+}
+
+/**
+ * TemplateCard - Individual template card component
+ */
+function TemplateCard({
+  template,
+  onSelect,
+}: {
+  template: Template
+  onSelect: (template: Template) => void
+}) {
+  const isPaper = template.type === "paper"
+
+  return (
+    <button
+      onClick={() => onSelect(template)}
+      className={cn(
+        "flex items-start gap-3.5 p-4 text-left",
+        "rounded-[10px] border border-border bg-card",
+        "hover:bg-accent hover:border-primary",
+        "transition-all duration-150"
+      )}
+    >
+      {/* Icon - 40x40px, different colors for paper/dialog */}
+      <div
+        className={cn(
+          "flex-shrink-0 w-10 h-10 rounded-[10px]",
+          "flex items-center justify-center",
+          isPaper
+            ? "bg-primary/15 text-primary"
+            : "bg-info/15 text-info"
+        )}
+      >
+        {isPaper ? (
+          <FileTextIcon className="h-5 w-5" />
+        ) : (
+          <MessageCircleIcon className="h-5 w-5" />
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {/* Badge - PAPER (teal) or DIALOG (blue) */}
+        <span
+          className={cn(
+            "inline-block px-2 py-0.5 rounded",
+            "text-[11px] font-semibold uppercase tracking-wide",
+            "mb-1.5",
+            isPaper
+              ? "bg-primary/15 text-primary"
+              : "bg-info/15 text-info"
+          )}
+        >
+          {template.badge}
+        </span>
+
+        {/* Title */}
+        <h3 className="font-medium text-sm text-foreground mb-1">
+          {template.title}
+        </h3>
+
+        {/* Description */}
+        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+          {template.description}
+        </p>
+      </div>
+    </button>
   )
 }
