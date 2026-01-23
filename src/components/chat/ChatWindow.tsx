@@ -6,7 +6,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { MessageSquareIcon, MenuIcon, AlertCircleIcon, RotateCcwIcon, FileTextIcon, SearchXIcon } from "lucide-react"
+import { MenuIcon, AlertCircleIcon, RotateCcwIcon, SearchXIcon, MessageSquareIcon } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -19,6 +19,7 @@ import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { PaperStageProgress } from "../paper/PaperStageProgress"
 import { PaperValidationPanel } from "../paper/PaperValidationPanel"
 import { useUser } from "@clerk/nextjs"
+import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 
 interface ChatWindowProps {
   conversationId: string | null
@@ -338,6 +339,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
   }
 
+  // Handler for template selection
+  const handleTemplateSelect = (template: Template) => {
+    pendingScrollToBottomRef.current = true
+    sendMessage({ text: template.message })
+  }
+
+  // Landing page state (no conversation selected)
   if (!conversationId) {
     return (
       <div className="flex-1 flex flex-col h-full">
@@ -405,6 +413,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         {/* Message Container */}
         <div className="flex-1 overflow-hidden relative p-4">
           {(isHistoryLoading || isConversationLoading) && messages.length === 0 ? (
+            // Loading skeleton
             <div className="space-y-4">
               <div className="flex justify-start">
                 <Skeleton className="h-12 w-[60%] rounded-lg" />
@@ -417,23 +426,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               </div>
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <MessageSquareIcon className="h-12 w-12 mb-4 opacity-50" />
-              <p className="mb-6 opacity-50">Mulai percakapan baru...</p>
-              {/* Start Paper Quick Action */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 border-primary-500/50 text-primary-500 hover:bg-primary-500/10"
-                onClick={() => {
-                  sendMessage({ text: "Saya ingin menulis paper akademik" })
-                }}
-              >
-                <FileTextIcon className="h-4 w-4" />
-                Mulai Menulis Paper
-              </Button>
+            // Empty state with TemplateGrid
+            <div className="flex flex-col items-center justify-center h-full">
+              <TemplateGrid onTemplateSelect={handleTemplateSelect} />
             </div>
           ) : (
+            // Messages list
             <Virtuoso
               ref={virtuosoRef}
               data={messages}

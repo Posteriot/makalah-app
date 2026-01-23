@@ -65,6 +65,13 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
+  /* Colors - Chat specific */
+  --color-chat-background: var(--chat-background);
+  --color-chat-input: var(--chat-input);
+  --color-user-message-bg: var(--user-message-bg);
+  --color-list-hover-bg: var(--list-hover-bg);
+  --color-list-selected-bg: var(--list-selected-bg);
+
   /* Fonts */
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -140,6 +147,22 @@
   --section-padding-y: 4rem;
   --container-max-width: 1200px;
 
+  /* Chat Layout Dimensions */
+  --shell-header-h: 72px;
+  --shell-footer-h: 0px;
+  --shell-activity-bar-w: 48px;
+  --shell-sidebar-w: 280px;
+  --shell-panel-w: 360px;
+  --shell-tab-bar-h: 36px;
+  --shell-input-bar-h: 112px;
+
+  /* Chat Colors - Light Mode */
+  --chat-background: var(--background);
+  --chat-input: oklch(0.97 0 0);
+  --user-message-bg: oklch(0.94 0 0);
+  --list-hover-bg: oklch(0.35 0 0 / 0.12);
+  --list-selected-bg: oklch(0.35 0 0 / 0.20);
+
   /* Chart Colors */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -188,6 +211,13 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
 
+  /* Chat Colors - Dark Mode (multi-layer depth) */
+  --chat-background: oklch(0.165 0 0);
+  --chat-input: oklch(0.22 0 0);
+  --user-message-bg: oklch(0.22 0 0);
+  --list-hover-bg: oklch(0.62 0 0 / 0.15);
+  --list-selected-bg: oklch(0.62 0 0 / 0.25);
+
   /* Chart Colors - Dark */
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
@@ -196,13 +226,13 @@
   --chart-5: oklch(0.645 0.246 16.439);
 
   /* Sidebar Colors - Dark */
-  --sidebar: oklch(0.205 0 0);
+  --sidebar: oklch(0.12 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: oklch(0.25 0 0);
   --sidebar-ring: oklch(0.556 0 0);
 
   /* Scrollbar - Dark */
@@ -234,6 +264,47 @@
 .cl-internal-1fpq5at,
 .cl-internal-1dauvpw {
   display: none !important;
+}
+
+/* ==========================================================================
+ * CHAT LAYOUT STYLES
+ * ========================================================================== */
+@layer components {
+  /* Resizer styles */
+  .resizer {
+    width: 4px;
+    background: transparent;
+    cursor: col-resize;
+    position: relative;
+    z-index: 20;
+    flex-shrink: 0;
+    transition: background 150ms ease;
+  }
+
+  /* Larger hit area for easier grabbing */
+  .resizer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -4px;
+    right: -4px;
+  }
+
+  .resizer:hover,
+  .resizer.dragging {
+    background: var(--primary);
+  }
+
+  /* Disable text selection while dragging resizer */
+  body.resizing {
+    cursor: col-resize !important;
+    user-select: none;
+  }
+
+  body.resizing * {
+    cursor: col-resize !important;
+  }
 }
 
 /* ==========================================================================

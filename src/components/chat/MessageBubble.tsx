@@ -17,6 +17,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 // Types for paper permission checking
 interface StageDataEntry {
@@ -55,6 +56,9 @@ export function MessageBubble({
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+    const isUser = message.role === 'user'
+    const isAssistant = message.role === 'assistant'
 
     // Calculate edit permission for this message
     const editPermission = useMemo(() => {
@@ -257,7 +261,6 @@ export function MessageBubble({
     const fileIds = fileAnnotations?.fileIds ?? []
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
-    // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     const createdArtifacts = extractCreatedArtifacts(message)
     const inProgressTools = extractInProgressTools(message)
     const searchTools = inProgressTools.filter((t) => t.toolName === "google_search")
@@ -272,34 +275,194 @@ export function MessageBubble({
     const sources = citedSources || sourcesFromAnnotation || messageSources || []
 
     return (
-        <div className={`group p-2 mb-2 rounded ${message.role === 'user' ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted'} max-w-[80%] relative`}>
-            <div className="flex justify-between items-start">
-                <div className="font-bold text-xs mb-1">{message.role}</div>
+        <div
+            className={cn(
+                // Base styles
+                "group relative max-w-[80%] mb-3",
+                // User message: right-aligned, darker bg, primary colors
+                isUser && "ml-auto",
+                // Assistant message: left-aligned
+                isAssistant && "mr-auto"
+            )}
+        >
+            {/* Message bubble container */}
+            <div
+                className={cn(
+                    // Base bubble styles
+                    "px-4 py-3 rounded-2xl",
+                    // User message styling - darker bg, custom corners
+                    isUser && [
+                        "bg-primary text-primary-foreground",
+                        "rounded-br-md", // Flat bottom-right corner for user
+                    ],
+                    // Assistant message styling - subtle bg, custom corners
+                    isAssistant && [
+                        "bg-muted",
+                        "rounded-bl-md", // Flat bottom-left corner for assistant
+                    ]
+                )}
+            >
+                {/* File Attachments Indicator */}
+                {fileIds && fileIds.length > 0 && (
+                    <div className="mb-2 space-y-1">
+                        {fileIds.map((id: string) => (
+                            <div
+                                key={id}
+                                className={cn(
+                                    "flex items-center gap-2 text-xs py-1 px-2 rounded-md",
+                                    isUser
+                                        ? "bg-primary-foreground/10"
+                                        : "bg-background/60 border border-border"
+                                )}
+                            >
+                                <PaperclipIcon className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">Attachment</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
-                {/* Edit Button for User */}
-                {!isEditing && message.role === 'user' && onEdit && (
-                    editPermission.allowed ? (
-                        // Edit allowed - render normal button
+                {/* Tool State Indicators (non-search) */}
+                {nonSearchTools.length > 0 && (
+                    <div className="mb-2 space-y-1">
+                        {nonSearchTools.map((tool, index) => (
+                            <ToolStateIndicator
+                                key={index}
+                                toolName={tool.toolName}
+                                state={tool.state}
+                                errorText={tool.errorText}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* Message Content */}
+                {isEditing ? (
+                    <div className="flex flex-col gap-2 min-w-[300px]">
+                        <textarea
+                            ref={textareaRef}
+                            value={editContent}
+                            onChange={(e) => {
+                                setEditContent(e.target.value)
+                                e.target.style.height = 'auto'
+                                e.target.style.height = e.target.scrollHeight + 'px'
+                            }}
+                            onKeyDown={handleKeyDown}
+                            className={cn(
+                                "w-full rounded-lg p-2 text-sm focus:outline-none resize-none overflow-hidden",
+                                isUser
+                                    ? "bg-primary-foreground/10 border border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50"
+                                    : "bg-background border border-border text-foreground"
+                            )}
+                            rows={1}
+                            aria-label="Edit message content"
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <button
+                                onClick={handleCancel}
+                                className={cn(
+                                    "px-2 py-1 rounded-md text-xs flex items-center gap-1 transition-colors",
+                                    isUser
+                                        ? "hover:bg-primary-foreground/10"
+                                        : "hover:bg-accent"
+                                )}
+                                aria-label="Batalkan edit"
+                            >
+                                <XIcon className="h-3 w-3" /> Batal
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                className={cn(
+                                    "px-2 py-1 rounded-md text-xs flex items-center gap-1 font-medium transition-colors",
+                                    isUser
+                                        ? "bg-primary-foreground/20 hover:bg-primary-foreground/30"
+                                        : "bg-primary text-primary-foreground hover:bg-primary/90"
+                                )}
+                                aria-label="Kirim pesan yang diedit"
+                            >
+                                <SendHorizontalIcon className="h-3 w-3" /> Kirim
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <MarkdownRenderer
+                        markdown={citedText ?? content}
+                        className="space-y-2 text-sm leading-relaxed"
+                        sources={sources}
+                    />
+                )}
+
+                {/* Search Status (data stream, below assistant text) */}
+                {!isEditing && isAssistant && searchStatus && (
+                    <div className="mt-3 space-y-1">
+                        <SearchStatusIndicator status={searchStatus} />
+                    </div>
+                )}
+
+                {/* Search Indicator (below assistant text) */}
+                {!isEditing && isAssistant && searchTools.length > 0 && (
+                    <div className="mt-3 space-y-1">
+                        {searchTools.map((tool, index) => (
+                            <ToolStateIndicator
+                                key={`search-${index}`}
+                                toolName={tool.toolName}
+                                state={tool.state}
+                                errorText={tool.errorText}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* Artifact Indicators */}
+                {createdArtifacts.length > 0 && onArtifactSelect && (
+                    <div className="mt-3 space-y-2">
+                        {createdArtifacts.map((created) => (
+                            <ArtifactIndicator
+                                key={created.artifactId}
+                                artifactId={created.artifactId}
+                                title={created.title}
+                                onSelect={onArtifactSelect}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* Sources Indicator (after Artifacts, before QuickActions) */}
+                {sources && sources.length > 0 && isAssistant && (
+                    <div className="mt-3">
+                        <SourcesIndicator sources={sources} />
+                    </div>
+                )}
+
+                {/* Quick Actions for Assistant */}
+                {!isEditing && isAssistant && (
+                    <QuickActions content={content} />
+                )}
+            </div>
+
+            {/* Edit Button - Floating outside bubble for user messages */}
+            {!isEditing && isUser && onEdit && (
+                <div className="absolute -left-8 top-1/2 -translate-y-1/2">
+                    {editPermission.allowed ? (
                         <button
                             onClick={startEditing}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground"
                             title="Edit"
                             aria-label="Edit message"
                         >
-                            <PencilIcon className="h-3 w-3" />
+                            <PencilIcon className="h-3.5 w-3.5" />
                         </button>
                     ) : (
-                        // Edit disabled - render button with tooltip
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button
                                         disabled
-                                        className="opacity-0 group-hover:opacity-50 transition-opacity p-1 rounded cursor-not-allowed"
+                                        className="opacity-0 group-hover:opacity-40 transition-opacity p-1.5 rounded-md text-muted-foreground cursor-not-allowed"
                                         aria-label="Edit message"
                                         aria-disabled="true"
                                     >
-                                        <PencilIcon className="h-3 w-3" />
+                                        <PencilIcon className="h-3.5 w-3.5" />
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent side="left" className="max-w-[250px]">
@@ -307,121 +470,8 @@ export function MessageBubble({
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
-                    )
-                )}
-            </div>
-
-            {/* File Attachments Indicator */}
-            {fileIds && fileIds.length > 0 && (
-                <div className="mb-2 space-y-1">
-                    {fileIds.map((id: string) => (
-                        <div key={id} className={`flex items-center gap-2 text-xs p-1 rounded ${message.role === 'user' ? 'bg-primary-foreground/10' : 'bg-background/50'}`}>
-                            <PaperclipIcon className="h-3 w-3" />
-                            <span>Attachment</span>
-                        </div>
-                    ))}
+                    )}
                 </div>
-            )}
-
-            {/* Tool State Indicators (non-search) */}
-            {nonSearchTools.length > 0 && (
-                <div className="mb-2 space-y-1">
-                    {nonSearchTools.map((tool, index) => (
-                        <ToolStateIndicator
-                            key={index}
-                            toolName={tool.toolName}
-                            state={tool.state}
-                            errorText={tool.errorText}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {isEditing ? (
-                <div className="flex flex-col gap-2 min-w-[300px]">
-                    <textarea
-                        ref={textareaRef}
-                        value={editContent}
-                        onChange={(e) => {
-                            setEditContent(e.target.value)
-                            e.target.style.height = 'auto'
-                            e.target.style.height = e.target.scrollHeight + 'px'
-                        }}
-                        onKeyDown={handleKeyDown}
-                        className="w-full bg-background/10 border border-white/20 rounded p-2 text-inherit focus:outline-none resize-none overflow-hidden"
-                        rows={1}
-                        aria-label="Edit message content"
-                    />
-                    <div className="flex gap-2 justify-end">
-                        <button
-                            onClick={handleCancel}
-                            className="p-1 hover:bg-white/20 rounded text-xs flex items-center gap-1"
-                            aria-label="Batalkan edit"
-                        >
-                            <XIcon className="h-3 w-3" /> Batal
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            className="p-1 bg-white/20 hover:bg-white/30 rounded text-xs flex items-center gap-1"
-                            aria-label="Kirim pesan yang diedit"
-                        >
-                            <SendHorizontalIcon className="h-3 w-3" /> Kirim
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <MarkdownRenderer
-                    markdown={citedText ?? content}
-                    className="space-y-2"
-                    sources={sources}
-                />
-            )}
-
-            {/* Search Status (data stream, below assistant text) */}
-            {!isEditing && message.role === "assistant" && searchStatus && (
-                <div className="mt-2 space-y-1">
-                    <SearchStatusIndicator status={searchStatus} />
-                </div>
-            )}
-
-            {/* Search Indicator (below assistant text) */}
-            {!isEditing && message.role === "assistant" && searchTools.length > 0 && (
-                <div className="mt-2 space-y-1">
-                    {searchTools.map((tool, index) => (
-                        <ToolStateIndicator
-                            key={`search-${index}`}
-                            toolName={tool.toolName}
-                            state={tool.state}
-                            errorText={tool.errorText}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {/* Artifact Indicators */}
-            {createdArtifacts.length > 0 && onArtifactSelect && (
-                <div className="mt-2 space-y-2">
-                    {createdArtifacts.map((created) => (
-                        <ArtifactIndicator
-                            key={created.artifactId}
-                            artifactId={created.artifactId}
-                            title={created.title}
-                            onSelect={onArtifactSelect}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {/* Task 4.2: Sources Indicator (after Artifacts, before QuickActions) */}
-            {sources && sources.length > 0 && message.role === "assistant" && (
-                <div className="mt-2">
-                    <SourcesIndicator sources={sources} />
-                </div>
-            )}
-
-            {/* Quick Actions for Assistant */}
-            {!isEditing && message.role === 'assistant' && (
-                <QuickActions content={content} />
             )}
         </div>
     )
