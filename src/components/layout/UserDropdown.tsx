@@ -37,10 +37,16 @@ export function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Get Convex user for role and subscription status
   const { user: convexUser, isLoading } = useCurrentUser()
+
+  // Prevent hydration mismatch - only render after mount
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -66,7 +72,8 @@ export function UserDropdown() {
     return () => document.removeEventListener("keydown", handleEscape)
   }, [])
 
-  if (!clerkUser) return null
+  // Return null consistently on server and before mount to prevent hydration mismatch
+  if (!mounted || !clerkUser) return null
 
   const firstName = clerkUser.firstName || "User"
   const lastName = clerkUser.lastName || ""

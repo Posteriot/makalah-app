@@ -9,15 +9,18 @@ import "./globals.css"
 import { AppProviders } from "./providers"
 import { Toaster } from "@/components/ui/sonner"
 
-// Google Fonts
+// Google Fonts - Inter as primary font with all weights
 const inter = Inter({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
   display: "swap",
 })
 
+// Nunito Sans for headings with bold weights
 const nunitoSans = Nunito_Sans({
   subsets: ["latin"],
+  weight: ["400", "600", "700"],
   variable: "--font-heading",
   display: "swap",
 })

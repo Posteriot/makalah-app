@@ -490,3 +490,60 @@ export const clearInvalidation = mutationGeneric({
     }
   },
 })
+
+// ============================================================================
+// FINAL STATUS CHECK
+// ============================================================================
+
+/**
+ * Check if artifact is "final" (validated via paper session)
+ *
+ * An artifact is considered "final" when:
+ * - It belongs to a paper session
+ * - The corresponding stage has been validated (validatedAt exists)
+ *
+ * Returns { isFinal: boolean, validatedAt?: number }
+ */
+export const checkFinalStatus = queryGeneric({
+  args: {
+    artifactId: v.id("artifacts"),
+    userId: v.id("users"),
+  },
+  handler: async ({ db }, { artifactId, userId }) => {
+    const artifact = await db.get(artifactId)
+    if (!artifact) {
+      return { isFinal: false }
+    }
+
+    // Permission check
+    if (artifact.userId !== userId) {
+      return { isFinal: false }
+    }
+
+    // Get paper session for this conversation
+    const paperSession = await db
+      .query("paperSessions")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", artifact.conversationId))
+      .first()
+
+    if (!paperSession) {
+      // Not a paper session conversation - artifact can't be "final"
+      return { isFinal: false }
+    }
+
+    // Check stageData for this artifact
+    const stageData = paperSession.stageData as Record<string, { artifactId?: string; validatedAt?: number }>
+
+    // Find stage that has this artifactId
+    for (const [_stageName, data] of Object.entries(stageData)) {
+      if (data?.artifactId === artifactId && data?.validatedAt) {
+        return {
+          isFinal: true,
+          validatedAt: data.validatedAt,
+        }
+      }
+    }
+
+    return { isFinal: false }
+  },
+})

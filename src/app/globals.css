@@ -78,6 +78,17 @@
   --font-heading: var(--font-heading);
   --font-hero: var(--font-hero);
 
+  /* Font Sizes - Compact scale with clear hierarchy */
+  --font-size-xs: 0.625rem;    /* 10px - labels, badges */
+  --font-size-sm: 0.6875rem;   /* 11px - small text */
+  --font-size-base: 0.75rem;   /* 12px - body text */
+  --font-size-lg: 0.875rem;    /* 14px - h3, emphasis */
+  --font-size-xl: 1rem;        /* 16px - h2 */
+  --font-size-2xl: 1.25rem;    /* 20px - h1 */
+  --font-size-3xl: 1.5rem;     /* 24px - display */
+  --font-size-4xl: 1.875rem;   /* 30px - hero */
+  --font-size-5xl: 2.25rem;    /* 36px - hero large */
+
   /* Border Radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -251,9 +262,9 @@
     @apply bg-background text-foreground font-sans;
   }
 
-  /* Headings use Nunito Sans (--font-heading) */
+  /* Headings use Inter (same as body for consistency) */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading), var(--font-sans), sans-serif;
+    font-family: var(--font-sans), sans-serif;
     font-weight: 700;
     line-height: 1.2;
   }

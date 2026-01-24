@@ -19,8 +19,8 @@ import {
     ContextMenuItem,
     ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { CopyIcon, CheckIcon, FileTextIcon, CodeIcon, ListIcon, TableIcon, BookOpenIcon, FunctionSquareIcon, Loader2Icon, PencilIcon, DownloadIcon, HistoryIcon, AlertTriangle, WandSparkles } from "lucide-react"
-import { useState, useEffect } from "react"
+import { CopyIcon, CheckIcon, FileTextIcon, CodeIcon, ListIcon, TableIcon, BookOpenIcon, FunctionSquareIcon, Loader2Icon, PencilIcon, DownloadIcon, AlertTriangle, WandSparkles } from "lucide-react"
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { toast } from "sonner"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
@@ -43,6 +43,23 @@ interface ArtifactViewerProps {
     artifactId: Id<"artifacts"> | null
 }
 
+// Exposed methods via ref for parent component (ArtifactPanel)
+export interface ArtifactViewerRef {
+    download: () => void
+    copy: () => void
+    startEdit: () => void
+    triggerRefrasa: () => void
+    setDownloadFormat: (format: "docx" | "pdf" | "txt") => void
+    getState: () => {
+        copied: boolean
+        isEditing: boolean
+        downloadFormat: "docx" | "pdf" | "txt"
+        isRefrasaLoading: boolean
+        canRefrasa: boolean
+        hasArtifact: boolean
+    }
+}
+
 // Map artifact type to icon
 const typeIcons: Record<string, React.ElementType> = {
     code: CodeIcon,
@@ -63,16 +80,6 @@ const formatToLanguage: Record<string, string> = {
     markdown: "markdown",
 }
 
-// Map format to file extension for download
-const formatToExtension: Record<string, string> = {
-    python: ".py",
-    r: ".r",
-    javascript: ".js",
-    typescript: ".ts",
-    latex: ".tex",
-    markdown: ".md",
-}
-
 // Format short date for version dropdown
 function formatShortDate(timestamp: number): string {
     return new Date(timestamp).toLocaleDateString("id-ID", {
@@ -83,7 +90,7 @@ function formatShortDate(timestamp: number): string {
     })
 }
 
-// Format timestamp to readable date
+// Format timestamp to readable date (with time)
 function formatDate(timestamp: number): string {
     return new Date(timestamp).toLocaleDateString("id-ID", {
         day: "numeric",
@@ -109,7 +116,8 @@ function getStageLabelSafe(stageId: string | undefined): string {
     }
 }
 
-export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
+export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>(
+    function ArtifactViewer({ artifactId }, ref) {
     const [copied, setCopied] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -126,6 +134,10 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
         analyzeAndRefrasa,
         reset: resetRefrasa,
     } = useRefrasa()
+
+    // Download format state
+    type DownloadFormat = "docx" | "pdf" | "txt"
+    const [downloadFormat, setDownloadFormat] = useState<DownloadFormat>("docx")
 
     // Refrasa tool visibility (admin toggle)
     const isRefrasaEnabled = useQuery(api.aiProviderConfigs.getRefrasaEnabled)
@@ -152,6 +164,15 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
             ? { artifactId, userId: currentUser._id }
             : "skip"
     )
+
+    // Query FINAL status - check if artifact is validated in paper session
+    const finalStatus = useQuery(
+        api.artifacts.checkFinalStatus,
+        viewingVersionId && currentUser?._id
+            ? { artifactId: viewingVersionId, userId: currentUser._id }
+            : "skip"
+    )
+    const isFinal = finalStatus?.isFinal ?? false
 
     // Handle copy to clipboard
     const handleCopy = async () => {
@@ -188,25 +209,28 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
         }
     }
 
-    // Handle download
+    // Handle download with format selection
     const handleDownload = () => {
         if (!artifact) return
 
-        // Determine file extension
-        const extension = artifact.format
-            ? formatToExtension[artifact.format] || ".txt"
-            : ".txt"
+        // Map download format to extension and MIME type
+        // Note: For proper DOCX/PDF export, backend would be needed
+        // For now, we export as text-based formats
+        const formatConfig: Record<DownloadFormat, { ext: string; mime: string }> = {
+            docx: { ext: ".md", mime: "text/markdown" }, // Markdown for now (proper DOCX needs backend)
+            pdf: { ext: ".md", mime: "text/markdown" },   // Markdown for now (proper PDF needs backend)
+            txt: { ext: ".txt", mime: "text/plain" },
+        }
 
-        // Generate filename: {title}-v{version}.{ext}
-        // Sanitize title for filename (remove special chars)
+        const config = formatConfig[downloadFormat]
         const sanitizedTitle = artifact.title
             .replace(/[^a-zA-Z0-9\s-]/g, "")
             .replace(/\s+/g, "-")
             .toLowerCase()
-        const filename = `${sanitizedTitle}-v${artifact.version}${extension}`
+        const filename = `${sanitizedTitle}-v${artifact.version}${config.ext}`
 
         // Create blob and download
-        const blob = new Blob([artifact.content], { type: "text/plain;charset=utf-8" })
+        const blob = new Blob([artifact.content], { type: `${config.mime};charset=utf-8` })
         const url = URL.createObjectURL(blob)
         const link = document.createElement("a")
         link.href = url
@@ -282,6 +306,23 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
         return content.trim().split(/\s+/).filter(Boolean).length
     }
 
+    // Expose methods to parent via ref
+    useImperativeHandle(ref, () => ({
+        download: handleDownload,
+        copy: handleCopy,
+        startEdit: () => setIsEditing(true),
+        triggerRefrasa: handleRefrasaTrigger,
+        setDownloadFormat: (format: "docx" | "pdf" | "txt") => setDownloadFormat(format),
+        getState: () => ({
+            copied,
+            isEditing,
+            downloadFormat,
+            isRefrasaLoading,
+            canRefrasa: isRefrasaEnabled !== false && (artifact?.content?.length ?? 0) >= 50,
+            hasArtifact: !!artifact,
+        }),
+    }), [copied, isEditing, downloadFormat, isRefrasaLoading, isRefrasaEnabled, artifact, handleDownload, handleCopy, handleRefrasaTrigger])
+
     // Empty state - no artifact selected
     if (!artifactId) {
         return (
@@ -323,27 +364,52 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
 
     return (
         <div className="flex flex-col h-full">
-            {/* Header */}
-            <div className="p-4 border-b space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <TypeIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
-                        <h2 className="font-semibold truncate">{artifact.title}</h2>
-                    </div>
-                    {isInvalidated ? (
+            {/* Compact Header - Version selector + FINAL badge + Invalidation indicator */}
+            {(versionHistory && versionHistory.length > 1) || isFinal || isInvalidated ? (
+                <div className="px-4 py-2 flex items-center gap-2 border-b border-border">
+                    {/* Version selector - only if multiple versions */}
+                    {versionHistory && versionHistory.length > 1 && (
+                        <Select
+                            value={viewingVersionId ?? undefined}
+                            onValueChange={handleVersionChange}
+                        >
+                            <SelectTrigger
+                                size="sm"
+                                className="h-6 text-[11px] font-medium w-auto min-w-[60px] px-2 py-0 rounded bg-muted border-0"
+                            >
+                                <SelectValue placeholder="v1" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {versionHistory.map((v) => (
+                                    <SelectItem key={v._id} value={v._id}>
+                                        v{v.version} - {formatShortDate(v.createdAt)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+
+                    {/* FINAL Badge */}
+                    {isFinal && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500 text-white">
+                            FINAL
+                        </span>
+                    )}
+
+                    {/* Invalidation indicator with tooltip */}
+                    {isInvalidated && (
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Badge
-                                    data-testid="artifact-type-badge"
-                                    variant="secondary"
+                                <span
                                     className={cn(
-                                        "shrink-0 capitalize cursor-help",
-                                        "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                                        "px-2 py-0.5 rounded text-[11px] cursor-help",
+                                        "bg-amber-500/20 text-amber-500"
                                     )}
+                                    data-testid="artifact-type-badge"
                                 >
-                                    <AlertTriangle className="h-3 w-3 mr-1" data-testid="invalidation-indicator" />
-                                    {artifact.type}
-                                </Badge>
+                                    <AlertTriangle className="h-3 w-3 mr-1 inline-block" data-testid="invalidation-indicator" />
+                                    Perlu revisi
+                                </span>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-[250px]">
                                 <p className="text-xs">
@@ -356,47 +422,9 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                                 </p>
                             </TooltipContent>
                         </Tooltip>
-                    ) : (
-                        <Badge
-                            data-testid="artifact-type-badge"
-                            variant="secondary"
-                            className="shrink-0 capitalize"
-                        >
-                            {artifact.type}
-                        </Badge>
                     )}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {/* Version dropdown */}
-                    {versionHistory && versionHistory.length > 1 ? (
-                        <div className="flex items-center gap-1">
-                            <HistoryIcon className="h-3 w-3" />
-                            <Select
-                                value={viewingVersionId ?? undefined}
-                                onValueChange={handleVersionChange}
-                            >
-                                <SelectTrigger size="sm" className="h-6 text-xs w-auto min-w-[100px]">
-                                    <SelectValue placeholder="Version" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {versionHistory.map((v) => (
-                                        <SelectItem key={v._id} value={v._id}>
-                                            v{v.version} - {formatShortDate(v.createdAt)}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    ) : (
-                        <span>v{artifact.version}</span>
-                    )}
-                    <span>•</span>
-                    <span>{formatDate(artifact.updatedAt ?? artifact.createdAt)}</span>
-                </div>
-                {artifact.description && (
-                    <p className="text-sm text-muted-foreground">{artifact.description}</p>
-                )}
-            </div>
+            ) : null}
 
             {/* Invalidation Warning Banner */}
             {isInvalidated && (
@@ -424,10 +452,10 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                 />
             ) : (
                 <>
-                    {/* Content with Context Menu */}
+                    {/* Content with Context Menu - Mockup style: 14px, line-height 1.7 */}
                     <ContextMenu>
                         <ContextMenuTrigger asChild>
-                            <div className="flex-1 overflow-auto p-4 relative scrollbar-thin">
+                            <div className="flex-1 overflow-auto px-4 py-1 relative scrollbar-thin">
                                 {/* Loading indicator for Refrasa */}
                                 {isRefrasaLoading && (
                                     <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
@@ -442,7 +470,8 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                                         customStyle={{
                                             margin: 0,
                                             borderRadius: "0.5rem",
-                                            fontSize: "0.875rem",
+                                            fontSize: "0.625rem", // text-sm = 10px
+                                            lineHeight: "1.625", // leading-relaxed
                                         }}
                                         showLineNumbers
                                     >
@@ -451,11 +480,11 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                                 ) : shouldRenderMarkdown ? (
                                     <MarkdownRenderer
                                         markdown={artifact.content}
-                                        className="space-y-2 text-sm"
+                                        className="space-y-3 text-sm leading-relaxed"
                                         sources={artifact.sources}
                                     />
                                 ) : (
-                                    <pre className="whitespace-pre-wrap font-sans bg-muted p-4 rounded-lg text-sm">
+                                    <pre className="whitespace-pre-wrap font-sans bg-muted p-4 rounded-lg text-sm leading-relaxed">
                                         {artifact.content}
                                     </pre>
                                 )}
@@ -482,62 +511,7 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
                         </div>
                     )}
 
-                    {/* Actions */}
-                    <div className="p-4 border-t flex justify-end gap-2 flex-wrap">
-                        {/* Version History Dialog - only show if multiple versions */}
-                        {artifactId && (
-                            <VersionHistoryDialog
-                                artifactId={artifactId}
-                                currentVersionId={viewingVersionId}
-                                onSelectVersion={(versionId) => setViewingVersionId(versionId)}
-                            />
-                        )}
-                        {/* Refrasa Button - hidden when disabled by admin */}
-                        {isRefrasaEnabled !== false && (
-                            <RefrasaButton
-                                onClick={handleRefrasaTrigger}
-                                isLoading={isRefrasaLoading}
-                                isEditing={isEditing}
-                                hasArtifact={!!artifact}
-                                contentLength={artifact.content.length}
-                                wordCount={getWordCount(artifact.content)}
-                            />
-                        )}
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsEditing(true)}
-                        >
-                            <PencilIcon className="h-4 w-4 mr-1" />
-                            Edit
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleDownload}
-                        >
-                            <DownloadIcon className="h-4 w-4 mr-1" />
-                            Unduh
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCopy}
-                            disabled={copied}
-                        >
-                            {copied ? (
-                                <>
-                                    <CheckIcon className="h-4 w-4 mr-1" />
-                                    Disalin
-                                </>
-                            ) : (
-                                <>
-                                    <CopyIcon className="h-4 w-4 mr-1" />
-                                    Salin
-                                </>
-                            )}
-                        </Button>
-                    </div>
+                    {/* Actions Bar moved to ArtifactPanel header */}
                 </>
             )}
 
@@ -555,4 +529,4 @@ export function ArtifactViewer({ artifactId }: ArtifactViewerProps) {
             )}
         </div>
     )
-}
+})
