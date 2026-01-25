@@ -29,6 +29,12 @@ import {
     getResearchIncompleteNote,
     getFunctionToolsModeNote,
 } from "@/lib/ai/paper-search-helpers"
+import {
+    checkQuotaBeforeOperation,
+    recordUsageAfterOperation,
+    createQuotaExceededResponse,
+    type OperationType,
+} from "@/lib/billing/enforcement"
 
 export async function POST(req: Request) {
     try {
@@ -56,6 +62,44 @@ export async function POST(req: Request) {
         const firstUserContent = firstUserMsg?.content ||
             firstUserMsg?.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text ||
             ""
+
+        // ════════════════════════════════════════════════════════════════
+        // BILLING: Pre-flight quota check
+        // ════════════════════════════════════════════════════════════════
+        const lastMsgForQuota = messages[messages.length - 1]
+        const lastUserContentForQuota = lastMsgForQuota?.role === "user"
+            ? (lastMsgForQuota.content ||
+                lastMsgForQuota.parts?.find((p: { type: string; text?: string }) => p.type === "text")?.text ||
+                "")
+            : ""
+
+        // Determine operation type (will be refined later when we know paper session)
+        const initialOperationType: OperationType = "chat_message"
+
+        // Check quota before proceeding
+        const quotaCheck = await checkQuotaBeforeOperation(
+            userId,
+            lastUserContentForQuota,
+            initialOperationType
+        )
+
+        if (!quotaCheck.allowed) {
+            console.warn("[Billing] Quota check failed:", {
+                userId,
+                reason: quotaCheck.reason,
+                message: quotaCheck.message,
+                tier: quotaCheck.tier,
+            })
+            return createQuotaExceededResponse(quotaCheck)
+        }
+
+        // Store for later use in onFinish
+        const billingContext = {
+            userId,
+            quotaWarning: quotaCheck.warning,
+            operationType: initialOperationType as OperationType,
+        }
+        // ════════════════════════════════════════════════════════════════
 
         if (!currentConversationId) {
             isNewConversation = true
@@ -156,6 +200,11 @@ export async function POST(req: Request) {
                 conversationId: currentConversationId as Id<"conversations">,
             })
             : null
+
+        // Update billing context with paper session info
+        if (paperSession) {
+            billingContext.operationType = "paper_generation"
+        }
 
         // Flow Detection: Auto-detect paper intent and inject reminder if no session
         const lastUserMessage = messages[messages.length - 1]
@@ -1111,7 +1160,7 @@ TIPS PENCARIAN:
                 ...samplingOptions,
                 onFinish: enableWebSearch
                     ? undefined
-                    : async ({ text, providerMetadata }) => {
+                    : async ({ text, providerMetadata, usage }) => {
                         let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
 
                         const googleMetadata = providerMetadata?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
@@ -1143,6 +1192,21 @@ TIPS PENCARIAN:
                             }
 
                             await saveAssistantMessage(text, sources, modelNames.primary.model)
+
+                            // ═══ BILLING: Record token usage ═══
+                            if (usage) {
+                                await recordUsageAfterOperation({
+                                    userId: billingContext.userId,
+                                    conversationId: currentConversationId as Id<"conversations">,
+                                    sessionId: paperSession?._id,
+                                    inputTokens: usage.inputTokens ?? 0,
+                                    outputTokens: usage.outputTokens ?? 0,
+                                    totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+                                    model: modelNames.primary.model,
+                                    operationType: billingContext.operationType,
+                                }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                            }
+                            // ═══════════════════════════════════
 
                             const minPairsForFinalTitle = Number.parseInt(
                                 process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
@@ -1557,6 +1621,24 @@ TIPS PENCARIAN:
                                             ? minPairsForFinalTitle
                                             : 3,
                                     })
+
+                                    // ═══ BILLING: Record token usage (web search primary) ═══
+                                    // Extract usage from finish chunk if available
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const finishUsage = (chunk as any).usage
+                                    if (finishUsage) {
+                                        await recordUsageAfterOperation({
+                                            userId: billingContext.userId,
+                                            conversationId: currentConversationId as Id<"conversations">,
+                                            sessionId: paperSession?._id,
+                                            inputTokens: finishUsage.inputTokens ?? 0,
+                                            outputTokens: finishUsage.outputTokens ?? 0,
+                                            totalTokens: (finishUsage.inputTokens ?? 0) + (finishUsage.outputTokens ?? 0),
+                                            model: modelNames.primary.model,
+                                            operationType: "web_search",
+                                        }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                                    }
+                                    // ═══════════════════════════════════════════════════════════
                                 } catch (err) {
                                     console.error("[Chat API] Failed to compute inline citations:", err)
                                 }
@@ -1615,7 +1697,7 @@ TIPS PENCARIAN:
                     tools,
                     stopWhen: stepCountIs(5),
                     ...samplingOptions,
-                    onFinish: async ({ text }) => {
+                    onFinish: async ({ text, usage }) => {
                         if (text) {
                             await saveAssistantMessage(text, undefined, modelNames.fallback.model)
                             const minPairsForFinalTitle = Number.parseInt(
@@ -1628,6 +1710,21 @@ TIPS PENCARIAN:
                                     ? minPairsForFinalTitle
                                     : 3,
                             })
+
+                            // ═══ BILLING: Record token usage (fallback) ═══
+                            if (usage) {
+                                await recordUsageAfterOperation({
+                                    userId: billingContext.userId,
+                                    conversationId: currentConversationId as Id<"conversations">,
+                                    sessionId: paperSession?._id,
+                                    inputTokens: usage.inputTokens ?? 0,
+                                    outputTokens: usage.outputTokens ?? 0,
+                                    totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+                                    model: modelNames.fallback.model,
+                                    operationType: billingContext.operationType,
+                                }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                            }
+                            // ═══════════════════════════════════════════════
                         }
                     },
                 })
@@ -1813,6 +1910,23 @@ TIPS PENCARIAN:
                                         ? minPairsForFinalTitle
                                         : 3,
                                 })
+
+                                // ═══ BILLING: Record token usage (fallback web search) ═══
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                const finishUsage = (chunk as any).usage
+                                if (finishUsage) {
+                                    await recordUsageAfterOperation({
+                                        userId: billingContext.userId,
+                                        conversationId: currentConversationId as Id<"conversations">,
+                                        sessionId: paperSession?._id,
+                                        inputTokens: finishUsage.inputTokens ?? 0,
+                                        outputTokens: finishUsage.outputTokens ?? 0,
+                                        totalTokens: (finishUsage.inputTokens ?? 0) + (finishUsage.outputTokens ?? 0),
+                                        model: `${modelNames.fallback.model}:online`,
+                                        operationType: "web_search",
+                                    }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                                }
+                                // ═══════════════════════════════════════════════════════════
 
                                 writer.write(chunk)
                                 break

@@ -5,6 +5,14 @@ import { requireRole } from "./permissions"
 export type SubscriptionStatus = "free" | "pro" | "canceled"
 export type UserRole = "superadmin" | "admin" | "user"
 
+// USER-003: Get user by ID
+export const getById = queryGeneric({
+  args: { userId: v.id("users") },
+  handler: async ({ db }, { userId }) => {
+    return await db.get(userId)
+  },
+})
+
 // USER-004: Get user by Clerk ID
 export const getUserByClerkId = queryGeneric({
   args: { clerkUserId: v.string() },
@@ -89,8 +97,14 @@ export const createUser = mutationGeneric({
 
     const now = Date.now()
 
+    // Auto-promote superadmin by hardcoded email
+    const SUPERADMIN_EMAIL = "erik.supit@gmail.com"
+
     if (existing) {
-      // Update existing user (preserve role!)
+      // Update existing user
+      // Auto-promote to superadmin if email matches (in case user was created before this logic)
+      const shouldBeSuperadmin = email === SUPERADMIN_EMAIL && existing.role !== "superadmin"
+
       await db.patch(existing._id, {
         email,
         firstName,
@@ -98,6 +112,7 @@ export const createUser = mutationGeneric({
         emailVerified: emailVerified ?? existing.emailVerified,
         lastLoginAt: now,
         updatedAt: now,
+        ...(shouldBeSuperadmin ? { role: "superadmin" as UserRole } : {}),
       })
       return existing._id
     }
@@ -125,8 +140,7 @@ export const createUser = mutationGeneric({
       return pendingAdmin._id
     }
 
-    // Auto-promote superadmin by hardcoded email
-    const SUPERADMIN_EMAIL = "erik.supit@gmail.com"
+    // Determine role for new user
     const role: UserRole = email === SUPERADMIN_EMAIL ? "superadmin" : "user"
 
     // Create new regular user

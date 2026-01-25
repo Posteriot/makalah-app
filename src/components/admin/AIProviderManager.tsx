@@ -227,7 +227,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
                   >
                     <div className="flex flex-col items-center gap-2">
                       <Settings2 className="h-8 w-8 opacity-20" />
-                      <span>Belum ada config. Klik "Buat Config Baru" untuk memulai.</span>
+                      <span>Belum ada config. Klik &quot;Buat Config Baru&quot; untuk memulai.</span>
                     </div>
                   </td>
                 </tr>

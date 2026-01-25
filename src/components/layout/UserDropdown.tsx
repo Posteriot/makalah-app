@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useUser, useClerk } from "@clerk/nextjs"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { Settings, LogOut, ChevronDown, Loader2, User } from "lucide-react"
+import { Settings, LogOut, ChevronDown, Loader2, User, CreditCard } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { UserSettingsModal } from "@/components/settings/UserSettingsModal"
@@ -44,9 +44,11 @@ export function UserDropdown() {
   const { user: convexUser, isLoading } = useCurrentUser()
 
   // Prevent hydration mismatch - only render after mount
+  /* eslint-disable react-hooks/set-state-in-effect -- Standard pattern for hydration safety */
   useEffect(() => {
     setMounted(true)
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -152,6 +154,16 @@ export function UserDropdown() {
             <User className="h-4 w-4" />
             <span>Atur Akun</span>
           </button>
+
+          {/* Subscription Link */}
+          <Link
+            href="/subscription/overview"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+          >
+            <CreditCard className="h-4 w-4" />
+            <span>Subskripsi</span>
+          </Link>
 
           {/* Admin Panel Link (conditional) */}
           {isAdmin && (

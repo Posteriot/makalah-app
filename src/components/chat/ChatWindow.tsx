@@ -19,6 +19,7 @@ import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { PaperValidationPanel } from "../paper/PaperValidationPanel"
 import { useUser } from "@clerk/nextjs"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
+import { QuotaWarningBanner } from "./QuotaWarningBanner"
 
 interface ChatWindowProps {
   conversationId: string | null
@@ -396,6 +397,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         </Button>
         <span className="font-semibold">Makalah Chat</span>
       </div>
+
+      {/* Quota Warning Banner */}
+      <QuotaWarningBanner className="mx-4 mt-4" />
 
       {/* Messages Area */}
       <div className="flex-1 overflow-hidden p-0 relative flex flex-col">

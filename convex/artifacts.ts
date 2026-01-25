@@ -43,8 +43,9 @@ export const get = queryGeneric({
     }
 
     // Permission check: user must own the artifact
+    // Return null instead of throwing - graceful handling for query
     if (artifact.userId !== userId) {
-      throw new Error("Tidak memiliki akses ke artifact ini")
+      return null
     }
 
     return artifact
@@ -69,8 +70,10 @@ export const listByConversation = queryGeneric({
       // Ini handle race condition saat conversation dihapus sementara query sedang berjalan
       return []
     }
+    // Permission check: return empty instead of throwing
+    // Handles: user switch, direct URL access to other's conversation
     if (conversation.userId !== userId) {
-      throw new Error("Tidak memiliki akses ke conversation ini")
+      return []
     }
 
     // Query artifacts
@@ -134,8 +137,9 @@ export const getInvalidatedByConversation = queryGeneric({
     if (!conversation) {
       return []
     }
+    // Permission check: return empty instead of throwing
     if (conversation.userId !== userId) {
-      throw new Error("Tidak memiliki akses ke conversation ini")
+      return []
     }
 
     // Query all artifacts for the conversation
@@ -172,12 +176,12 @@ export const getVersionHistory = queryGeneric({
   handler: async ({ db }, { artifactId, userId }) => {
     const artifact = await db.get(artifactId)
     if (!artifact) {
-      throw new Error("Artifact tidak ditemukan")
+      return []
     }
 
-    // Permission check
+    // Permission check: return empty instead of throwing
     if (artifact.userId !== userId) {
-      throw new Error("Tidak memiliki akses ke artifact ini")
+      return []
     }
 
     // Find root artifact (traverse up parentId chain)

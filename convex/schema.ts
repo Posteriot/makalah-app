@@ -58,6 +58,8 @@ export default defineSchema({
     createdAt: v.number(),
     lastLoginAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
+    // Payment integration
+    xenditCustomerId: v.optional(v.string()), // Xendit customer reference
   })
     .index("by_clerkUserId", ["clerkUserId"])
     .index("by_role", ["role"])
@@ -536,4 +538,199 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_category", ["category", "isPublished", "publishedAt"])
     .index("by_featured", ["featured", "isPublished", "publishedAt"]),
+
+  // ════════════════════════════════════════════════════════════════
+  // Subscription & Billing System
+  // ════════════════════════════════════════════════════════════════
+
+  // Track setiap operasi token (granular usage events)
+  usageEvents: defineTable({
+    userId: v.id("users"),
+    conversationId: v.optional(v.id("conversations")),
+    sessionId: v.optional(v.id("paperSessions")),
+
+    // Token tracking
+    promptTokens: v.number(),
+    completionTokens: v.number(),
+    totalTokens: v.number(),
+
+    // Cost tracking (dalam Rupiah)
+    costIDR: v.number(),
+
+    // Metadata
+    model: v.string(),
+    operationType: v.union(
+      v.literal("chat_message"),
+      v.literal("paper_generation"),
+      v.literal("web_search"),
+      v.literal("refrasa") // Untuk tool refrasa
+    ),
+
+    createdAt: v.number(),
+  })
+    .index("by_user_time", ["userId", "createdAt"])
+    .index("by_session", ["sessionId", "createdAt"])
+    .index("by_conversation", ["conversationId", "createdAt"])
+    .index("by_user_type", ["userId", "operationType", "createdAt"]),
+
+  // User quota state (aggregate untuk fast lookup)
+  userQuotas: defineTable({
+    userId: v.id("users"),
+
+    // Period tracking (monthly billing cycle)
+    periodStart: v.number(), // Timestamp awal periode
+    periodEnd: v.number(), // Timestamp akhir periode
+
+    // Token quota
+    allottedTokens: v.number(), // Total quota untuk periode ini
+    usedTokens: v.number(), // Token yang sudah dipakai
+    remainingTokens: v.number(), // Sisa quota (computed = allotted - used)
+
+    // Paper quota (untuk Gratis tier)
+    allottedPapers: v.number(), // Max papers per bulan
+    completedPapers: v.number(), // Papers yang sudah selesai
+
+    // Daily tracking
+    dailyUsedTokens: v.number(), // Reset setiap hari
+    lastDailyReset: v.number(), // Timestamp reset terakhir
+
+    // Tier info (snapshot saat create period)
+    tier: v.union(
+      v.literal("gratis"),
+      v.literal("bpp"),
+      v.literal("pro")
+    ),
+
+    // Overage tracking (untuk Pro tier)
+    overageTokens: v.number(), // Tokens beyond monthly limit
+    overageCostIDR: v.number(), // Accumulated overage cost
+
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_period", ["userId", "periodStart"]),
+
+  // Credit balance (untuk BPP/pay-as-you-go tier)
+  creditBalances: defineTable({
+    userId: v.id("users"),
+
+    // Balance tracking
+    balanceIDR: v.number(), // Current balance dalam Rupiah
+    balanceTokens: v.number(), // Equivalent tokens (for UI display)
+
+    // Lifetime stats
+    totalTopUpIDR: v.number(), // Total top-up sepanjang waktu
+    totalSpentIDR: v.number(), // Total spent sepanjang waktu
+
+    // Top-up reference
+    lastTopUpAt: v.optional(v.number()),
+    lastTopUpAmount: v.optional(v.number()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"]),
+
+  // Payment records (Xendit transactions)
+  payments: defineTable({
+    userId: v.id("users"),
+    sessionId: v.optional(v.id("paperSessions")), // Untuk paper_completion payment
+
+    // Xendit reference
+    xenditPaymentRequestId: v.string(), // Xendit's payment request ID
+    xenditReferenceId: v.string(), // Our reference ID (untuk reconciliation)
+
+    // Payment details
+    amount: v.number(), // Amount in IDR
+    currency: v.literal("IDR"),
+    paymentMethod: v.union(
+      v.literal("QRIS"),
+      v.literal("VIRTUAL_ACCOUNT"),
+      v.literal("EWALLET"),
+      v.literal("DIRECT_DEBIT"),
+      v.literal("CREDIT_CARD")
+    ),
+    paymentChannel: v.optional(v.string()), // e.g., "BCA", "OVO", "DANA"
+
+    // Status tracking
+    status: v.union(
+      v.literal("PENDING"),
+      v.literal("SUCCEEDED"),
+      v.literal("FAILED"),
+      v.literal("EXPIRED"),
+      v.literal("REFUNDED")
+    ),
+
+    // Payment type
+    paymentType: v.union(
+      v.literal("credit_topup"),
+      v.literal("paper_completion"),
+      v.literal("subscription_initial"),
+      v.literal("subscription_renewal")
+    ),
+
+    // For subscription payments
+    subscriptionPeriodStart: v.optional(v.number()),
+    subscriptionPeriodEnd: v.optional(v.number()),
+
+    // Metadata
+    description: v.optional(v.string()),
+    metadata: v.optional(v.any()), // Extra data from Xendit
+
+    // Timestamps
+    createdAt: v.number(),
+    paidAt: v.optional(v.number()),
+    expiredAt: v.optional(v.number()),
+
+    // Idempotency (prevent double processing)
+    idempotencyKey: v.string(),
+  })
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_xendit_id", ["xenditPaymentRequestId"])
+    .index("by_reference", ["xenditReferenceId"])
+    .index("by_status", ["status", "createdAt"])
+    .index("by_user_type", ["userId", "paymentType", "createdAt"]),
+
+  // Subscription records (untuk Pro recurring billing)
+  subscriptions: defineTable({
+    userId: v.id("users"),
+
+    // Xendit recurring reference
+    xenditRecurringId: v.optional(v.string()), // Xendit recurring plan ID
+    xenditCustomerId: v.optional(v.string()), // Xendit customer ID
+
+    // Plan info
+    planType: v.union(
+      v.literal("pro_monthly"),
+      v.literal("pro_yearly")
+    ),
+    priceIDR: v.number(), // 99000 for monthly, 990000 for yearly
+
+    // Status
+    status: v.union(
+      v.literal("active"),
+      v.literal("canceled"),
+      v.literal("past_due"),
+      v.literal("expired")
+    ),
+
+    // Billing cycle
+    currentPeriodStart: v.number(),
+    currentPeriodEnd: v.number(),
+    nextBillingDate: v.optional(v.number()),
+
+    // Cancellation info
+    canceledAt: v.optional(v.number()),
+    cancelReason: v.optional(v.string()),
+    cancelAtPeriodEnd: v.optional(v.boolean()), // Cancel at end of current period
+
+    // Trial (jika ada)
+    trialEnd: v.optional(v.number()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_status", ["status", "nextBillingDate"])
+    .index("by_xendit_recurring", ["xenditRecurringId"]),
 })

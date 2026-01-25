@@ -1,0 +1,292 @@
+/**
+ * Payment Records Management
+ * Track Xendit payment transactions
+ */
+
+import { v } from "convex/values"
+import { mutation, query } from "../_generated/server"
+
+/**
+ * Create a new payment record
+ * Called when initiating a Xendit payment request
+ */
+export const createPayment = mutation({
+  args: {
+    userId: v.id("users"),
+    sessionId: v.optional(v.id("paperSessions")),
+    xenditPaymentRequestId: v.string(),
+    xenditReferenceId: v.string(),
+    amount: v.number(),
+    paymentMethod: v.union(
+      v.literal("QRIS"),
+      v.literal("VIRTUAL_ACCOUNT"),
+      v.literal("EWALLET"),
+      v.literal("DIRECT_DEBIT"),
+      v.literal("CREDIT_CARD")
+    ),
+    paymentChannel: v.optional(v.string()),
+    paymentType: v.union(
+      v.literal("credit_topup"),
+      v.literal("paper_completion"),
+      v.literal("subscription_initial"),
+      v.literal("subscription_renewal")
+    ),
+    description: v.optional(v.string()),
+    idempotencyKey: v.string(),
+    expiredAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now()
+
+    const paymentId = await ctx.db.insert("payments", {
+      userId: args.userId,
+      sessionId: args.sessionId,
+      xenditPaymentRequestId: args.xenditPaymentRequestId,
+      xenditReferenceId: args.xenditReferenceId,
+      amount: args.amount,
+      currency: "IDR",
+      paymentMethod: args.paymentMethod,
+      paymentChannel: args.paymentChannel,
+      status: "PENDING",
+      paymentType: args.paymentType,
+      description: args.description,
+      idempotencyKey: args.idempotencyKey,
+      createdAt: now,
+      expiredAt: args.expiredAt,
+    })
+
+    return paymentId
+  },
+})
+
+/**
+ * Update payment status after Xendit webhook
+ */
+export const updatePaymentStatus = mutation({
+  args: {
+    xenditPaymentRequestId: v.string(),
+    status: v.union(
+      v.literal("PENDING"),
+      v.literal("SUCCEEDED"),
+      v.literal("FAILED"),
+      v.literal("EXPIRED"),
+      v.literal("REFUNDED")
+    ),
+    paidAt: v.optional(v.number()),
+    metadata: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    // Find payment by Xendit ID
+    const payment = await ctx.db
+      .query("payments")
+      .withIndex("by_xendit_id", (q) =>
+        q.eq("xenditPaymentRequestId", args.xenditPaymentRequestId)
+      )
+      .first()
+
+    if (!payment) {
+      throw new Error(`Payment not found: ${args.xenditPaymentRequestId}`)
+    }
+
+    // Update status
+    await ctx.db.patch(payment._id, {
+      status: args.status,
+      paidAt: args.paidAt,
+      metadata: args.metadata,
+    })
+
+    return {
+      paymentId: payment._id,
+      userId: payment.userId,
+      paymentType: payment.paymentType,
+      amount: payment.amount,
+      previousStatus: payment.status,
+      newStatus: args.status,
+    }
+  },
+})
+
+/**
+ * Get payment by Xendit reference ID
+ * Used for reconciliation
+ */
+export const getPaymentByReference = query({
+  args: {
+    xenditReferenceId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("payments")
+      .withIndex("by_reference", (q) =>
+        q.eq("xenditReferenceId", args.xenditReferenceId)
+      )
+      .first()
+  },
+})
+
+/**
+ * Get payment by Xendit payment request ID
+ */
+export const getPaymentByXenditId = query({
+  args: {
+    xenditPaymentRequestId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("payments")
+      .withIndex("by_xendit_id", (q) =>
+        q.eq("xenditPaymentRequestId", args.xenditPaymentRequestId)
+      )
+      .first()
+  },
+})
+
+/**
+ * Get user's payment history
+ */
+export const getPaymentHistory = query({
+  args: {
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+    paymentType: v.optional(
+      v.union(
+        v.literal("credit_topup"),
+        v.literal("paper_completion"),
+        v.literal("subscription_initial"),
+        v.literal("subscription_renewal")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const limitCount = args.limit ?? 30
+
+    if (args.paymentType) {
+      return await ctx.db
+        .query("payments")
+        .withIndex("by_user_type", (q) =>
+          q.eq("userId", args.userId).eq("paymentType", args.paymentType!)
+        )
+        .order("desc")
+        .take(limitCount)
+    }
+
+    return await ctx.db
+      .query("payments")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .take(limitCount)
+  },
+})
+
+/**
+ * Get pending payments for user
+ * Useful for showing "awaiting payment" status
+ */
+export const getPendingPayments = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now()
+
+    const pendingPayments = await ctx.db
+      .query("payments")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("status"), "PENDING"))
+      .collect()
+
+    // Filter out expired ones
+    return pendingPayments.filter(
+      (p) => !p.expiredAt || p.expiredAt > now
+    )
+  },
+})
+
+/**
+ * Check for duplicate payment (idempotency)
+ */
+export const checkIdempotency = query({
+  args: {
+    idempotencyKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("payments")
+      .filter((q) => q.eq(q.field("idempotencyKey"), args.idempotencyKey))
+      .first()
+
+    return existing ? { exists: true, payment: existing } : { exists: false }
+  },
+})
+
+/**
+ * Get payment statistics for admin
+ */
+export const getPaymentStats = query({
+  args: {
+    periodStart: v.number(),
+    periodEnd: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const payments = await ctx.db
+      .query("payments")
+      .withIndex("by_status")
+      .filter((q) =>
+        q.and(
+          q.gte(q.field("createdAt"), args.periodStart),
+          q.lte(q.field("createdAt"), args.periodEnd)
+        )
+      )
+      .collect()
+
+    const stats = {
+      total: payments.length,
+      succeeded: 0,
+      failed: 0,
+      pending: 0,
+      expired: 0,
+      totalAmountSucceeded: 0,
+      byType: {
+        credit_topup: { count: 0, amount: 0 },
+        paper_completion: { count: 0, amount: 0 },
+        subscription_initial: { count: 0, amount: 0 },
+        subscription_renewal: { count: 0, amount: 0 },
+      },
+      byMethod: {} as Record<string, { count: number; amount: number }>,
+    }
+
+    for (const payment of payments) {
+      // Status counts
+      if (payment.status === "SUCCEEDED") {
+        stats.succeeded++
+        stats.totalAmountSucceeded += payment.amount
+      } else if (payment.status === "FAILED") {
+        stats.failed++
+      } else if (payment.status === "PENDING") {
+        stats.pending++
+      } else if (payment.status === "EXPIRED") {
+        stats.expired++
+      }
+
+      // By type
+      const type = payment.paymentType as keyof typeof stats.byType
+      if (stats.byType[type]) {
+        stats.byType[type].count++
+        if (payment.status === "SUCCEEDED") {
+          stats.byType[type].amount += payment.amount
+        }
+      }
+
+      // By method
+      if (!stats.byMethod[payment.paymentMethod]) {
+        stats.byMethod[payment.paymentMethod] = { count: 0, amount: 0 }
+      }
+      stats.byMethod[payment.paymentMethod].count++
+      if (payment.status === "SUCCEEDED") {
+        stats.byMethod[payment.paymentMethod].amount += payment.amount
+      }
+    }
+
+    return stats
+  },
+})
