@@ -1,6 +1,6 @@
 /**
  * Credit Balance Management
- * For BPP (pay-as-you-go) tier users
+ * For BPP (Bayar Per Paper) tier users
  */
 
 import { v } from "convex/values"

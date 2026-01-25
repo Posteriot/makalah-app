@@ -33,7 +33,7 @@ const TIER_CONFIG = {
   },
   bpp: {
     label: "BPP",
-    description: "Bayar sesuai pemakaian",
+    description: "Bayar Per Paper",
     color: "bg-segment-bpp",
     textColor: "text-segment-bpp",
   },
@@ -178,7 +178,7 @@ export default function SubscriptionOverviewPage() {
                 Rp {currentCreditBalance.toLocaleString("id-ID")}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                Untuk pembayaran per pemakaian
+                Saldo untuk tier Bayar Per Paper
               </p>
             </div>
             <CreditCard className="h-5 w-5 text-muted-foreground" />

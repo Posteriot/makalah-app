@@ -610,7 +610,7 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_period", ["userId", "periodStart"]),
 
-  // Credit balance (untuk BPP/pay-as-you-go tier)
+  // Credit balance (untuk BPP/Bayar Per Paper tier)
   creditBalances: defineTable({
     userId: v.id("users"),
 

@@ -312,7 +312,7 @@ export default function TopUpPage() {
           Top Up Credit
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Tambah saldo credit untuk pembayaran sesuai pemakaian
+          Tambah saldo credit untuk tier Bayar Per Paper
         </p>
       </div>
 

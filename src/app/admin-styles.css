@@ -1,132 +1,9 @@
 /* src/app/admin-styles.css */
-
-/* =========================================================================
- * COMPONENT: Admin Container
- * ========================================================================= */
-.admin-container {
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-.admin-header {
-    margin-bottom: 24px;
-}
-
-.admin-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--foreground);
-    margin: 0 0 1px 0;
-}
-
-.admin-title-icon {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-}
-
-.admin-description {
-    font-size: 14px;
-    color: var(--muted-foreground);
-    margin: 0;
-    padding-left: 34px;
-}
-
-/* Admin Body - Sidebar + Content Grid */
-.admin-body {
-    display: grid;
-    grid-template-columns: var(--sidebar-w) 1fr;
-    gap: 0;
-    min-height: calc(100vh - var(--header-h) - var(--footer-h) - 120px);
-    background: var(--card);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    overflow: hidden;
-}
-
-/* =========================================================================
- * COMPONENT: Admin Sidebar
- * ========================================================================= */
-.admin-sidebar {
-    background: var(--sidebar);
-    border-right: 1px solid var(--sidebar-border);
-    padding: 12px 8px;
-    height: 100%;
-}
-
-.sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    background: transparent !important;
-    border: none !important;
-    height: auto !important;
-    width: 100% !important;
-    padding: 0 !important;
-}
-
-.sidebar-nav-item {
-    display: flex !important;
-    align-items: center !important;
-    gap: 12px !important;
-    padding: 12px 16px !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    color: var(--muted-foreground) !important;
-    background: transparent !important;
-    border: none !important;
-    border-radius: 8px !important;
-    cursor: pointer !important;
-    text-align: left !important;
-    width: 100% !important;
-    transition: all 150ms ease !important;
-    position: relative !important;
-    justify-content: flex-start !important;
-}
-
-.sidebar-nav-item:hover {
-    color: var(--foreground) !important;
-    background-color: var(--accent) !important;
-}
-
-.sidebar-nav-item[data-state="active"] {
-    color: var(--foreground) !important;
-    background-color: var(--accent) !important;
-    box-shadow: none !important;
-}
-
-.sidebar-nav-item[data-state="active"]::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 8px;
-    bottom: 8px;
-    width: 3px;
-    background: var(--primary);
-    border-radius: 0 2px 2px 0;
-}
-
-.sidebar-icon {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-}
-
-/* =========================================================================
- * COMPONENT: Content Panels
- * ========================================================================= */
-.admin-content {
-    background: var(--card);
-    padding: 24px;
-    min-height: 400px;
-}
-
-.content-panel {
-    display: block;
-}
+/*
+ * Admin-specific component styles that are NOT covered by globals.css
+ * Layout styles (.admin-container, .admin-body, .admin-sidebar, etc.)
+ * are now in globals.css for consistency with subscription pattern.
+ */
 
 /* =========================================================================
  * COMPONENT: Data Table
@@ -452,21 +329,8 @@
 }
 
 /* =========================================================================
- * COMPONENT: Buttons
+ * COMPONENT: Buttons (Admin-specific)
  * ========================================================================= */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 150ms ease;
-    white-space: nowrap;
-}
-
 .btn--primary {
     background: var(--foreground);
     border: none;
