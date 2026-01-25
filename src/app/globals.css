@@ -819,25 +819,36 @@
 
   .cursor-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
     pointer-events: none;
     color: var(--brand);
-    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
     opacity: 0;
+    /* Start at text area position */
+    top: 55px;
+    left: 320px;
+    transition: top 1.8s cubic-bezier(0.4, 0, 0.2, 1),
+                left 1.8s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s,
+                transform 0.15s;
   }
 
   .cursor-overlay svg {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
   }
 
   .cursor-overlay.visible {
     opacity: 1;
   }
 
+  /* Target position: on the send button (input-area height=144px, button at bottom-right) */
+  .cursor-overlay.at-target {
+    top: 108px;
+    left: calc(100% - 36px);
+  }
+
   .cursor-overlay.clicking {
-    transform: scale(0.9);
+    transform: scale(0.85);
   }
 
   /* Caret blink animation */

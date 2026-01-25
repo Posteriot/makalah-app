@@ -4,30 +4,42 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { Plus, Send } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+// 3 different prompt examples that loop
+const PROMPTS = [
+  "Ayo bikin paper. Tapi gue belum punya ide. Bisa, kan? Kita diskusi aja dulu. Sepakat?",
+  "gue ada tugas paper nih tp blm tau mau bahas apa, bantuin mikir dong pleasee",
+  "Saya sedang mengerjakan paper dan butuh bantuan untuk menyusun argumen. Bisa kita diskusikan bersama?",
+]
+
 const CONFIG = {
-  typingText: "Ayo bikin paper. Tapi gue belum punya ide. Bisa, kan? Kita diskusi aja dulu. Sepakat?",
-  charDelayMin: 55,
-  charDelayMax: 95,
-  punctuationFactor: 2.5,
-  holdDuration: 1500,
-  cursorMoveDuration: 1400,
-  hoverDuration: 300,
-  clickDuration: 250,
-  resetDuration: 600,
-  returnDuration: 1200,
-  placeholderDuration: 2500,
+  // Typing speed (slower = more readable)
+  charDelayMin: 70,
+  charDelayMax: 120,
+  punctuationFactor: 3,
+  // Phase durations (all slowed down)
+  holdDuration: 2000,
+  cursorMoveDuration: 1800,
+  hoverDuration: 800,      // Longer pause before click
+  clickDuration: 350,
+  resetDuration: 800,
+  returnDuration: 1600,
+  placeholderDuration: 3000,
 }
 
 type Phase = "placeholder" | "typing" | "hold" | "cursorMove" | "hover" | "click" | "reset" | "return"
 
 export function ChatInputHeroMock() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputAreaRef = useRef<HTMLDivElement>(null)
   const sendIconRef = useRef<HTMLDivElement>(null)
   const timersRef = useRef<NodeJS.Timeout[]>([])
+  const isTypingRef = useRef(false) // Prevent duplicate typing loops
+  const promptIndexRef = useRef(0) // Track which prompt to show next
   const [phase, setPhase] = useState<Phase>("placeholder")
   const [typedText, setTypedText] = useState("")
   const [showPlaceholder, setShowPlaceholder] = useState(true)
-  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 })
+  // Cursor position: null = starting position (near text), {x,y} = target position
+  const [cursorAtTarget, setCursorAtTarget] = useState(false)
   const [cursorVisible, setCursorVisible] = useState(false)
   const [sendHovered, setSendHovered] = useState(false)
   const [sendClicked, setSendClicked] = useState(false)
@@ -47,10 +59,11 @@ export function ChatInputHeroMock() {
   }, [])
 
   const resetToPlaceholder = useCallback(() => {
+    isTypingRef.current = false
     setShowPlaceholder(true)
     setTypedText("")
     setCursorVisible(false)
-    setCursorPosition({ x: 0, y: 0 })
+    setCursorAtTarget(false)
     setSendHovered(false)
     setSendClicked(false)
     setCursorClicking(false)
@@ -103,6 +116,7 @@ export function ChatInputHeroMock() {
   useEffect(() => {
     if (!isInView || prefersReducedMotion) {
       clearTimers()
+      isTypingRef.current = false
       resetToPlaceholder()
       return
     }
@@ -112,16 +126,24 @@ export function ChatInputHeroMock() {
         case "placeholder":
           setShowPlaceholder(true)
           setTypedText("")
+          isTypingRef.current = false
           addTimer(() => setPhase("typing"), CONFIG.placeholderDuration)
           break
 
         case "typing":
+          // Prevent duplicate typing loops (React Strict Mode fix)
+          if (isTypingRef.current) return
+          isTypingRef.current = true
+
           setShowPlaceholder(false)
           setTypedText("")
           let index = 0
-          const text = CONFIG.typingText
+          const text = PROMPTS[promptIndexRef.current]
 
           const typeChar = () => {
+            // Stop if no longer in typing phase or component unmounted
+            if (!isTypingRef.current) return
+
             if (index < text.length) {
               const char = text[index]
               setTypedText((prev) => prev + char)
@@ -134,6 +156,7 @@ export function ChatInputHeroMock() {
               index++
               addTimer(typeChar, delay)
             } else {
+              isTypingRef.current = false
               setPhase("hold")
             }
           }
@@ -146,16 +169,14 @@ export function ChatInputHeroMock() {
           break
 
         case "cursorMove":
-          if (containerRef.current && sendIconRef.current) {
-            const containerRect = containerRef.current.getBoundingClientRect()
-            const sendRect = sendIconRef.current.getBoundingClientRect()
+          // Show cursor at starting position, then animate to target
+          setCursorVisible(true)
+          setCursorAtTarget(false)
 
-            const targetX = sendRect.left - containerRect.left + sendRect.width / 2
-            const targetY = sendRect.top - containerRect.top + sendRect.height / 2
-
-            setCursorVisible(true)
-            setCursorPosition({ x: targetX, y: targetY })
-          }
+          // Small delay to ensure starting position renders, then move to target
+          addTimer(() => {
+            setCursorAtTarget(true)
+          }, 50)
 
           addTimer(() => setPhase("hover"), CONFIG.cursorMoveDuration)
           break
@@ -183,13 +204,16 @@ export function ChatInputHeroMock() {
           break
 
         case "return":
-          setCursorPosition({ x: 0, y: 0 })
+          // Move cursor back to starting position
+          setCursorAtTarget(false)
 
           addTimer(() => {
             setCursorVisible(false)
           }, CONFIG.returnDuration - 300)
 
           addTimer(() => {
+            // Cycle to next prompt
+            promptIndexRef.current = (promptIndexRef.current + 1) % PROMPTS.length
             setPhase("placeholder")
           }, CONFIG.returnDuration)
           break
@@ -197,6 +221,12 @@ export function ChatInputHeroMock() {
     }
 
     runPhase()
+
+    // Cleanup: clear all timers when effect re-runs or unmounts
+    return () => {
+      clearTimers()
+      isTypingRef.current = false
+    }
   }, [phase, isInView, prefersReducedMotion, addTimer, clearTimers, resetToPlaceholder])
 
   // Start animation when coming into view
@@ -242,7 +272,7 @@ export function ChatInputHeroMock() {
       </div>
 
       {/* Input Area */}
-      <div className="input-area">
+      <div ref={inputAreaRef} className="input-area">
         {/* Placeholder */}
         <div
           className={cn(
@@ -279,27 +309,18 @@ export function ChatInputHeroMock() {
           <Send />
         </div>
 
-        {/* Cursor Overlay */}
+        {/* Cursor Overlay - positioned via CSS classes */}
         <div
           className={cn(
             "cursor-overlay",
             cursorVisible && "visible",
+            cursorAtTarget ? "at-target" : "at-start",
             cursorClicking && "clicking"
           )}
-          style={{
-            transform: `translate(${cursorPosition.x}px, ${cursorPosition.y}px)`,
-            transition: cursorVisible
-              ? `transform ${CONFIG.cursorMoveDuration}ms ease-in-out, opacity 300ms`
-              : "opacity 300ms",
-          }}
         >
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"
-            />
+          {/* Cursor pointer SVG - tip at top-left corner for accurate positioning */}
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M0 0 L0 20 L5.5 14.5 L9 22 L12 21 L8.5 13.5 L16 12 Z" />
           </svg>
         </div>
       </div>
