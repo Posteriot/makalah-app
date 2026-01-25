@@ -126,16 +126,18 @@ export function GlobalHeader() {
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="theme-toggle"
-          title="Toggle theme"
-          aria-label="Toggle theme"
-        >
-          <Sun className="icon sun-icon" />
-          <Moon className="icon moon-icon" />
-        </button>
+        {/* Theme Toggle - Only visible for logged-in users */}
+        <SignedIn>
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle"
+            title="Toggle theme"
+            aria-label="Toggle theme"
+          >
+            <Sun className="icon sun-icon" />
+            <Moon className="icon moon-icon" />
+          </button>
+        </SignedIn>
 
         {/* Auth State */}
         <SignedOut>
