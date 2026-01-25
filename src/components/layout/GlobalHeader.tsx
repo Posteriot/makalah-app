@@ -104,11 +104,18 @@ export function GlobalHeader() {
 
       {/* Navigation */}
       <nav className="header-nav">
-        {NAV_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} className="nav-link">
-            {link.label}
-          </Link>
-        ))}
+        {NAV_LINKS.map((link) => {
+          const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn("nav-link", isActive && "active")}
+            >
+              {link.label}
+            </Link>
+          )
+        })}
       </nav>
 
       {/* Header Right - Theme Toggle & Auth */}

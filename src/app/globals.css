@@ -337,20 +337,18 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    padding-bottom: 16px;
+    padding-bottom: 10px; /* Reserve space for diagonal stripes (10px height) */
     transition: transform 0.3s ease, background-color 0.3s ease, backdrop-filter 0.3s ease;
   }
 
   /* Header scrolled state: past hero section */
   .global-header.header-scrolled {
-    background-color: rgba(255, 255, 255, 0.8); /* Light mode: 80% white */
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background-color: rgb(255, 255, 255); /* Light mode: solid white */
   }
 
-  /* Dark mode: dark transparent background */
+  /* Dark mode: solid dark background */
   .dark .global-header.header-scrolled {
-    background-color: rgba(9, 9, 11, 0.8); /* Dark mode: 80% dark */
+    background-color: rgb(9, 9, 11); /* Dark mode: solid dark */
   }
 
   /* Header hidden state: scrolling down */
@@ -448,6 +446,16 @@
 
   .nav-link:hover::after {
     transform: scaleX(1);
+  }
+
+  /* Active nav link - current page */
+  .nav-link.active {
+    color: var(--brand);
+  }
+
+  .nav-link.active::after {
+    transform: scaleX(1);
+    border-bottom-color: var(--brand);
   }
 
   /* Header Right */
