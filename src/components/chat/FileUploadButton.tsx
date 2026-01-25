@@ -5,6 +5,7 @@ import { PaperclipIcon, Loader2 } from "lucide-react"
 import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 interface FileUploadButtonProps {
     conversationId: string | null
@@ -107,19 +108,24 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
                 onChange={handleFileSelect}
                 disabled={isUploading}
             />
-            <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="p-2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                title="Attach file"
-            >
-                {isUploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                    <PaperclipIcon className="h-5 w-5" />
-                )}
-            </button>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="p-2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                        aria-label="Attach file"
+                    >
+                        {isUploading ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                            <PaperclipIcon className="h-5 w-5" />
+                        )}
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent>Attach file</TooltipContent>
+            </Tooltip>
         </>
     )
 }

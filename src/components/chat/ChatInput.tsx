@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react"
 import { SendIcon, SquareIcon, FileIcon } from "lucide-react"
 import { FileUploadButton } from "./FileUploadButton"
 import { Id } from "../../../convex/_generated/dataModel"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 interface ChatInputProps {
     input: string
@@ -42,9 +43,9 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, stop, con
     }
 
     return (
-        <div className="p-3 md:p-4 border-t bg-background">
+        <div className="py-4 px-5 border-t bg-chat-input">
             {uploadedFileIds.length > 0 && (
-                <div className="flex gap-2 mb-2 overflow-x-auto pb-2">
+                <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
                     {uploadedFileIds.map((id) => (
                         <div key={id} className="flex items-center gap-2 bg-muted p-2 rounded text-xs text-muted-foreground whitespace-nowrap">
                             <FileIcon className="h-3 w-3" />
@@ -53,42 +54,50 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, stop, con
                     ))}
                 </div>
             )}
-            <form onSubmit={onSubmit} className="flex gap-2 items-end">
-                <div className="flex-none pb-2">
+            <form onSubmit={onSubmit} className="flex gap-3 items-start">
+                {/* Attachment Button */}
+                <div className="flex-none pt-3">
                     <FileUploadButton
                         conversationId={conversationId}
                         onFileUploaded={onFileUploaded}
                     />
                 </div>
-                <div className="flex-1 relative">
+
+                {/* Input Field */}
+                <div className="flex-1">
                     <textarea
                         ref={textareaRef}
-                        className="w-full border rounded-md p-3 pr-10 resize-none bg-background focus:outline-none focus:ring-2 focus:ring-ring min-h-[50px] md:min-h-[60px] text-base md:text-sm"
+                        className="w-full border border-border rounded-lg p-3 resize-none bg-background focus:outline-none focus:border-primary min-h-[88px] text-sm leading-relaxed"
                         value={input}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder="Ketik pertanyaan atau instruksi tentang paper Anda..."
                         disabled={isLoading && false}
-                        rows={1}
+                        rows={3}
                         aria-label="Message input"
                     />
                 </div>
 
+                {/* Send/Stop Button - Transparent style matching mockup */}
                 {isLoading ? (
-                    <button
-                        type="button"
-                        onClick={handleStop}
-                        className="bg-destructive text-destructive-foreground p-3 rounded-md hover:bg-destructive/90 transition-colors h-[50px] w-[50px] flex items-center justify-center mb-[2px]"
-                        title="Stop generating"
-                        aria-label="Stop generating response"
-                    >
-                        <SquareIcon className="h-5 w-5 fill-current" />
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                onClick={handleStop}
+                                className="w-10 h-10 flex items-center justify-center rounded-lg bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors mt-3"
+                                aria-label="Stop generating response"
+                            >
+                                <SquareIcon className="h-5 w-5" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Stop generating</TooltipContent>
+                    </Tooltip>
                 ) : (
                     <button
                         type="submit"
                         disabled={!input.trim() || isLoading}
-                        className="bg-primary text-primary-foreground p-3 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[50px] w-[50px] flex items-center justify-center mb-[2px]"
+                        className="w-10 h-10 flex items-center justify-center rounded-lg bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-3"
                         aria-label="Send message"
                     >
                         <SendIcon className="h-5 w-5" />

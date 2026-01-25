@@ -6,7 +6,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { MessageSquareIcon, MenuIcon, AlertCircleIcon, RotateCcwIcon, FileTextIcon, SearchXIcon } from "lucide-react"
+import { MenuIcon, AlertCircleIcon, RotateCcwIcon, SearchXIcon, MessageSquareIcon } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -16,9 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
-import { PaperStageProgress } from "../paper/PaperStageProgress"
 import { PaperValidationPanel } from "../paper/PaperValidationPanel"
 import { useUser } from "@clerk/nextjs"
+import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 
 interface ChatWindowProps {
   conversationId: string | null
@@ -338,6 +338,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
   }
 
+  // Handler for template selection
+  const handleTemplateSelect = (template: Template) => {
+    pendingScrollToBottomRef.current = true
+    sendMessage({ text: template.message })
+  }
+
+  // Landing page state (no conversation selected)
   if (!conversationId) {
     return (
       <div className="flex-1 flex flex-col h-full">
@@ -390,22 +397,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         <span className="font-semibold">Makalah Chat</span>
       </div>
 
-      {/* Messages Area (Using a flex container to handle stage progress bar) */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
-        {/* Paper Stage Progress Bar */}
-        {isPaperMode && currentStage && stageStatus && (
-          <div className="border-b bg-background/50 backdrop-blur-sm px-4 py-2 z-10">
-            <PaperStageProgress
-              currentStage={currentStage as string}
-              stageStatus={stageStatus || "drafting"}
-            />
-          </div>
-        )}
-
-        {/* Message Container */}
-        <div className="flex-1 overflow-hidden relative p-4">
+        {/* Message Container - padding handled at item level for Virtuoso compatibility */}
+        <div className="flex-1 overflow-hidden relative py-4">
           {(isHistoryLoading || isConversationLoading) && messages.length === 0 ? (
-            <div className="space-y-4">
+            // Loading skeleton - px-6 for consistent spacing
+            <div className="space-y-4 px-6">
               <div className="flex justify-start">
                 <Skeleton className="h-12 w-[60%] rounded-lg" />
               </div>
@@ -417,23 +415,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               </div>
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <MessageSquareIcon className="h-12 w-12 mb-4 opacity-50" />
-              <p className="mb-6 opacity-50">Mulai percakapan baru...</p>
-              {/* Start Paper Quick Action */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 border-primary-500/50 text-primary-500 hover:bg-primary-500/10"
-                onClick={() => {
-                  sendMessage({ text: "Saya ingin menulis paper akademik" })
-                }}
-              >
-                <FileTextIcon className="h-4 w-4" />
-                Mulai Menulis Paper
-              </Button>
+            // Empty state with TemplateGrid - px-6 for consistent spacing
+            <div className="flex flex-col items-center justify-center h-full px-6">
+              <TemplateGrid onTemplateSelect={handleTemplateSelect} />
             </div>
           ) : (
+            // Messages list
             <Virtuoso
               ref={virtuosoRef}
               data={messages}
@@ -450,7 +437,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 } as UIMessage
 
                 return (
-                  <div className="pb-4">
+                  <div className="pb-4 px-6">
                     <MessageBubble
                       key={message.id}
                       message={displayMessage}
@@ -477,7 +464,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               style={{ height: "100%" }}
               components={{
                 Footer: () => (
-                  <div className="pb-4">
+                  <div className="pb-4 px-6">
                     {/* Paper Validation Panel - renders before ThinkingIndicator */}
                     {isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming' && (
                       <PaperValidationPanel
@@ -495,9 +482,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             />
           )}
 
-          {/* Error State Overlay */}
+          {/* Error State Overlay - mx-6 matches message padding */}
           {error && (
-            <div className="absolute bottom-4 left-4 right-4 bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-lg flex items-center justify-between text-sm shadow-sm backdrop-blur-sm">
+            <div className="absolute bottom-4 left-6 right-6 bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-lg flex items-center justify-between text-sm shadow-sm backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <AlertCircleIcon className="h-4 w-4" />
                 <span>Gagal mengirim pesan.</span>

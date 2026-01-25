@@ -14,9 +14,9 @@ import { isEditAllowed } from "@/lib/utils/paperPermissions"
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 // Types for paper permission checking
 interface StageDataEntry {
@@ -40,6 +40,24 @@ interface MessageBubbleProps {
     currentStageStartIndex?: number
     allMessages?: PermissionMessage[]
     stageData?: Record<string, StageDataEntry>
+    // Optional timestamp for display
+    timestamp?: number
+}
+
+/**
+ * Format timestamp untuk display
+ * Format: "Jan 19, 2026 14:30" atau locale Indonesia
+ */
+function formatTimestamp(timestamp?: number): string {
+    if (!timestamp) return ""
+    const date = new Date(timestamp)
+    return date.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    })
 }
 
 export function MessageBubble({
@@ -51,10 +69,14 @@ export function MessageBubble({
     currentStageStartIndex = 0,
     allMessages = [],
     stageData,
+    timestamp,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+    const isUser = message.role === 'user'
+    const isAssistant = message.role === 'assistant'
 
     // Calculate edit permission for this message
     const editPermission = useMemo(() => {
@@ -117,10 +139,6 @@ export function MessageBubble({
 
     const extractInProgressTools = (uiMessage: UIMessage) => {
         const tools: { toolName: string; state: string; errorText?: string }[] = []
-
-        // DEBUG: Log all parts to understand tool state from different models
-        if (process.env.NODE_ENV === "development") {
-        }
 
         for (const part of uiMessage.parts ?? []) {
             const maybeToolPart = part as unknown as {
@@ -257,7 +275,6 @@ export function MessageBubble({
     const fileIds = fileAnnotations?.fileIds ?? []
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
-    // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     const createdArtifacts = extractCreatedArtifacts(message)
     const inProgressTools = extractInProgressTools(message)
     const searchTools = inProgressTools.filter((t) => t.toolName === "google_search")
@@ -271,158 +288,185 @@ export function MessageBubble({
     const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
     const sources = citedSources || sourcesFromAnnotation || messageSources || []
 
+    // Get timestamp from allMessages if available
+    const displayTimestamp = timestamp || (allMessages[messageIndex]?.createdAt)
+    const formattedTime = formatTimestamp(displayTimestamp)
+
     return (
-        <div className={`group p-2 mb-2 rounded ${message.role === 'user' ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted'} max-w-[80%] relative`}>
-            <div className="flex justify-between items-start">
-                <div className="font-bold text-xs mb-1">{message.role}</div>
-
-                {/* Edit Button for User */}
-                {!isEditing && message.role === 'user' && onEdit && (
-                    editPermission.allowed ? (
-                        // Edit allowed - render normal button
-                        <button
-                            onClick={startEditing}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded"
-                            title="Edit"
-                            aria-label="Edit message"
-                        >
-                            <PencilIcon className="h-3 w-3" />
-                        </button>
+        <div
+            className={cn(
+                "group relative mb-4",
+                // User messages aligned to right with edit button outside
+                isUser && "flex justify-end items-start gap-2"
+            )}
+        >
+            {/* Edit Button - Outside bubble, to the left (for user messages) */}
+            {!isEditing && isUser && onEdit && (
+                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity pt-2">
+                    {editPermission.allowed ? (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={startEditing}
+                                    className="p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                                    aria-label="Edit message"
+                                >
+                                    <PencilIcon className="h-4 w-4" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit</TooltipContent>
+                        </Tooltip>
                     ) : (
-                        // Edit disabled - render button with tooltip
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        disabled
-                                        className="opacity-0 group-hover:opacity-50 transition-opacity p-1 rounded cursor-not-allowed"
-                                        aria-label="Edit message"
-                                        aria-disabled="true"
-                                    >
-                                        <PencilIcon className="h-3 w-3" />
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" className="max-w-[250px]">
-                                    <p>{editPermission.reason}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    )
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    disabled
+                                    className="p-1.5 rounded-md text-muted-foreground/40 cursor-not-allowed"
+                                    aria-label="Edit message"
+                                    aria-disabled="true"
+                                >
+                                    <PencilIcon className="h-4 w-4" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-[250px]">
+                                <p>{editPermission.reason}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
+                </div>
+            )}
+
+            {/* Message Container - User: bubble on right, Agent: no bubble */}
+            <div
+                className={cn(
+                    "relative",
+                    // User: card style, max-width, text align left
+                    isUser && [
+                        "rounded-lg",
+                        "bg-user-message-bg",
+                        "max-w-[85%]",
+                    ],
+                    // Agent: no bubble, full width
+                    isAssistant && "w-full"
                 )}
-            </div>
-
-            {/* File Attachments Indicator */}
-            {fileIds && fileIds.length > 0 && (
-                <div className="mb-2 space-y-1">
-                    {fileIds.map((id: string) => (
-                        <div key={id} className={`flex items-center gap-2 text-xs p-1 rounded ${message.role === 'user' ? 'bg-primary-foreground/10' : 'bg-background/50'}`}>
-                            <PaperclipIcon className="h-3 w-3" />
-                            <span>Attachment</span>
+            >
+                {/* Inner content with padding */}
+                <div className={cn(
+                    isUser ? "px-4 py-3" : "py-1"
+                )}>
+                    {/* File Attachments Badge - Mockup: blue/teal badge */}
+                    {fileIds && fileIds.length > 0 && (
+                        <div className="mb-3">
+                            <span className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-md bg-info/20 text-info border border-info/30">
+                                <PaperclipIcon className="h-3 w-3" />
+                                <span>{fileIds.length} {fileIds.length === 1 ? "file" : "files"}</span>
+                            </span>
                         </div>
-                    ))}
-                </div>
-            )}
+                    )}
 
-            {/* Tool State Indicators (non-search) */}
-            {nonSearchTools.length > 0 && (
-                <div className="mb-2 space-y-1">
-                    {nonSearchTools.map((tool, index) => (
-                        <ToolStateIndicator
-                            key={index}
-                            toolName={tool.toolName}
-                            state={tool.state}
-                            errorText={tool.errorText}
+                    {/* Tool State Indicators (non-search) */}
+                    {nonSearchTools.length > 0 && (
+                        <div className="mb-3 space-y-2">
+                            {nonSearchTools.map((tool, index) => (
+                                <ToolStateIndicator
+                                    key={index}
+                                    toolName={tool.toolName}
+                                    state={tool.state}
+                                    errorText={tool.errorText}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Message Content */}
+                    {isEditing ? (
+                        <div className="flex flex-col gap-2">
+                            <textarea
+                                ref={textareaRef}
+                                value={editContent}
+                                onChange={(e) => {
+                                    setEditContent(e.target.value)
+                                    e.target.style.height = 'auto'
+                                    e.target.style.height = e.target.scrollHeight + 'px'
+                                }}
+                                onKeyDown={handleKeyDown}
+                                className="w-full rounded-lg p-3 text-sm bg-background border border-border text-foreground focus:outline-none focus:border-primary resize-none overflow-hidden"
+                                rows={1}
+                                aria-label="Edit message content"
+                            />
+                            <div className="flex gap-2 justify-end">
+                                <button
+                                    onClick={handleCancel}
+                                    className="px-3 py-1.5 rounded-md text-xs flex items-center gap-1.5 hover:bg-accent transition-colors"
+                                    aria-label="Batalkan edit"
+                                >
+                                    <XIcon className="h-3.5 w-3.5" /> Batal
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="px-3 py-1.5 rounded-md text-xs flex items-center gap-1.5 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                    aria-label="Kirim pesan yang diedit"
+                                >
+                                    <SendHorizontalIcon className="h-3.5 w-3.5" /> Kirim
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <MarkdownRenderer
+                            markdown={citedText ?? content}
+                            className="space-y-2 text-sm leading-relaxed text-foreground"
+                            sources={sources}
                         />
-                    ))}
-                </div>
-            )}
+                    )}
 
-            {isEditing ? (
-                <div className="flex flex-col gap-2 min-w-[300px]">
-                    <textarea
-                        ref={textareaRef}
-                        value={editContent}
-                        onChange={(e) => {
-                            setEditContent(e.target.value)
-                            e.target.style.height = 'auto'
-                            e.target.style.height = e.target.scrollHeight + 'px'
-                        }}
-                        onKeyDown={handleKeyDown}
-                        className="w-full bg-background/10 border border-white/20 rounded p-2 text-inherit focus:outline-none resize-none overflow-hidden"
-                        rows={1}
-                        aria-label="Edit message content"
-                    />
-                    <div className="flex gap-2 justify-end">
-                        <button
-                            onClick={handleCancel}
-                            className="p-1 hover:bg-white/20 rounded text-xs flex items-center gap-1"
-                            aria-label="Batalkan edit"
-                        >
-                            <XIcon className="h-3 w-3" /> Batal
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            className="p-1 bg-white/20 hover:bg-white/30 rounded text-xs flex items-center gap-1"
-                            aria-label="Kirim pesan yang diedit"
-                        >
-                            <SendHorizontalIcon className="h-3 w-3" /> Kirim
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <MarkdownRenderer
-                    markdown={citedText ?? content}
-                    className="space-y-2"
-                    sources={sources}
-                />
-            )}
+                    {/* Search Status (data stream, below assistant text) */}
+                    {!isEditing && isAssistant && searchStatus && (
+                        <div className="mt-3">
+                            <SearchStatusIndicator status={searchStatus} />
+                        </div>
+                    )}
 
-            {/* Search Status (data stream, below assistant text) */}
-            {!isEditing && message.role === "assistant" && searchStatus && (
-                <div className="mt-2 space-y-1">
-                    <SearchStatusIndicator status={searchStatus} />
-                </div>
-            )}
+                    {/* Search Tool Indicators (below assistant text) */}
+                    {!isEditing && isAssistant && searchTools.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                            {searchTools.map((tool, index) => (
+                                <ToolStateIndicator
+                                    key={`search-${index}`}
+                                    toolName={tool.toolName}
+                                    state={tool.state}
+                                    errorText={tool.errorText}
+                                />
+                            ))}
+                        </div>
+                    )}
 
-            {/* Search Indicator (below assistant text) */}
-            {!isEditing && message.role === "assistant" && searchTools.length > 0 && (
-                <div className="mt-2 space-y-1">
-                    {searchTools.map((tool, index) => (
-                        <ToolStateIndicator
-                            key={`search-${index}`}
-                            toolName={tool.toolName}
-                            state={tool.state}
-                            errorText={tool.errorText}
-                        />
-                    ))}
-                </div>
-            )}
+                    {/* Sources Indicator (after search status) */}
+                    {sources && sources.length > 0 && isAssistant && (
+                        <div className="mt-3">
+                            <SourcesIndicator sources={sources} />
+                        </div>
+                    )}
 
-            {/* Artifact Indicators */}
-            {createdArtifacts.length > 0 && onArtifactSelect && (
-                <div className="mt-2 space-y-2">
-                    {createdArtifacts.map((created) => (
-                        <ArtifactIndicator
-                            key={created.artifactId}
-                            artifactId={created.artifactId}
-                            title={created.title}
-                            onSelect={onArtifactSelect}
-                        />
-                    ))}
-                </div>
-            )}
+                    {/* Artifact Indicators */}
+                    {createdArtifacts.length > 0 && onArtifactSelect && (
+                        <div className="mt-3 space-y-2">
+                            {createdArtifacts.map((created) => (
+                                <ArtifactIndicator
+                                    key={created.artifactId}
+                                    artifactId={created.artifactId}
+                                    title={created.title}
+                                    onSelect={onArtifactSelect}
+                                />
+                            ))}
+                        </div>
+                    )}
 
-            {/* Task 4.2: Sources Indicator (after Artifacts, before QuickActions) */}
-            {sources && sources.length > 0 && message.role === "assistant" && (
-                <div className="mt-2">
-                    <SourcesIndicator sources={sources} />
+                    {/* Quick Actions for Assistant */}
+                    {!isEditing && isAssistant && (
+                        <QuickActions content={content} />
+                    )}
                 </div>
-            )}
-
-            {/* Quick Actions for Assistant */}
-            {!isEditing && message.role === 'assistant' && (
-                <QuickActions content={content} />
-            )}
+            </div>
         </div>
     )
 }

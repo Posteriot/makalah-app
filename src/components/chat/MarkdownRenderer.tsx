@@ -411,30 +411,33 @@ function renderBlocks(
     switch (block.type) {
       case "heading": {
         const content = renderInline(block.text, `${k}-h`, sources)
-        const common = "mt-3 mb-1 font-semibold"
+        // h1: Display title - largest
         if (block.level === 1)
           return (
-            <h1 key={k} className={`${common} text-lg`}>
+            <h1 key={k} className="mt-6 mb-2 text-2xl font-bold text-foreground">
               {content}
               {fallbackChip}
             </h1>
           )
+        // h2: Section heading - dominant, big top margin to separate sections
         if (block.level === 2)
           return (
-            <h2 key={k} className={`${common} text-base`}>
+            <h2 key={k} className="mt-8 mb-1 text-xl font-bold text-foreground first:mt-0">
               {content}
               {fallbackChip}
             </h2>
           )
+        // h3: Sub-section heading
         if (block.level === 3)
           return (
-            <h3 key={k} className={`${common} text-sm`}>
+            <h3 key={k} className="mt-5 mb-1 text-lg font-semibold text-foreground">
               {content}
               {fallbackChip}
             </h3>
           )
+        // h4+: Minor heading
         return (
-          <h4 key={k} className={`${common} text-sm`}>
+          <h4 key={k} className="mt-4 mb-1 text-base font-semibold text-foreground">
             {content}
             {fallbackChip}
           </h4>
@@ -443,7 +446,7 @@ function renderBlocks(
       case "paragraph": {
         const lines = block.lines
         return (
-          <p key={k} className="leading-relaxed">
+          <p key={k} className="mb-3 leading-relaxed text-foreground">
             {lines.map((line, lineIdx) => (
               <Fragment key={`${k}-p-${lineIdx}`}>
                 {renderInline(line, `${k}-pi-${lineIdx}`, sources)}
@@ -456,7 +459,7 @@ function renderBlocks(
       }
       case "ul":
         return (
-          <ul key={k} className="list-disc pl-5 space-y-1">
+          <ul key={k} className="list-disc pl-6 mb-3 space-y-1 text-foreground">
             {block.items.map((item, itemIdx) => (
               <li key={`${k}-li-${itemIdx}`} className="leading-relaxed">
                 {renderInline(item, `${k}-uli-${itemIdx}`, sources)}
@@ -467,7 +470,7 @@ function renderBlocks(
         )
       case "ol":
         return (
-          <ol key={k} className="list-decimal pl-5 space-y-1">
+          <ol key={k} className="list-decimal pl-6 mb-3 space-y-1 text-foreground">
             {block.items.map((item, itemIdx) => (
               <li key={`${k}-li-${itemIdx}`} className="leading-relaxed">
                 {renderInline(item.text, `${k}-oli-${itemIdx}`, sources)}
@@ -478,14 +481,14 @@ function renderBlocks(
         )
       case "outline":
         return (
-          <ol key={k} className="list-decimal pl-5 space-y-3">
+          <ol key={k} className="list-decimal pl-6 mb-3 space-y-2 text-foreground">
             {block.items.map((item, itemIdx) => (
               <li
                 key={`${k}-oli-${itemIdx}`}
                 className="leading-relaxed"
                 value={block.useOriginalNumbers ? item.number : undefined}
               >
-                <div className="font-semibold">
+                <div className="font-semibold text-foreground">
                   {renderInline(item.title, `${k}-ot-${itemIdx}`, sources)}
                   {item.children.length === 0 && itemIdx === block.items.length - 1 ? fallbackChip : null}
                 </div>

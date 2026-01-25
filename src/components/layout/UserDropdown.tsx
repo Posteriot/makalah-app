@@ -37,10 +37,16 @@ export function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Get Convex user for role and subscription status
-  const { user: convexUser } = useCurrentUser()
+  const { user: convexUser, isLoading } = useCurrentUser()
+
+  // Prevent hydration mismatch - only render after mount
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -66,7 +72,8 @@ export function UserDropdown() {
     return () => document.removeEventListener("keydown", handleEscape)
   }, [])
 
-  if (!clerkUser) return null
+  // Return null consistently on server and before mount to prevent hydration mismatch
+  if (!mounted || !clerkUser) return null
 
   const firstName = clerkUser.firstName || "User"
   const lastName = clerkUser.lastName || ""
@@ -75,6 +82,7 @@ export function UserDropdown() {
 
   const segment = getSegmentFromUser(convexUser?.role, convexUser?.subscriptionStatus)
   const segmentConfig = SEGMENT_CONFIG[segment]
+  const canRenderBadge = !isLoading && segment !== "superadmin"
   const isAdmin = segment === "admin" || segment === "superadmin"
 
   const handleSignOut = async () => {
@@ -109,15 +117,17 @@ export function UserDropdown() {
           {fullName}
         </span>
 
-        {/* Segment Badge */}
-        <span
-          className={cn(
-            "text-[10px] font-bold px-1.5 py-0.5 rounded",
-            segmentConfig.className
-          )}
-        >
-          {segmentConfig.label}
-        </span>
+        {/* Segment Badge (hide for superadmin, avoid flash before Convex ready) */}
+        {canRenderBadge && (
+          <span
+            className={cn(
+              "text-[10px] font-bold px-1.5 py-0.5 rounded",
+              segmentConfig.className
+            )}
+          >
+            {segmentConfig.label}
+          </span>
+        )}
 
         {/* Chevron */}
         <ChevronDown

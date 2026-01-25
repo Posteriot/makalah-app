@@ -2,13 +2,14 @@
 
 import { Id } from "../../../convex/_generated/dataModel"
 import { Badge } from "@/components/ui/badge"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+// Filter imports - hidden, not functional
+// import {
+//     Select,
+//     SelectContent,
+//     SelectItem,
+//     SelectTrigger,
+//     SelectValue,
+// } from "@/components/ui/select"
 import {
     FileTextIcon,
     CodeIcon,
@@ -16,7 +17,7 @@ import {
     TableIcon,
     BookOpenIcon,
     FunctionSquareIcon,
-    FilterIcon,
+    // FilterIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -59,16 +60,16 @@ const typeLabels: Record<ArtifactType, string> = {
     formula: "Formula",
 }
 
-// Filter options
-const filterOptions: { value: string; label: string }[] = [
-    { value: "all", label: "Semua" },
-    { value: "code", label: "Code" },
-    { value: "outline", label: "Outline" },
-    { value: "section", label: "Section" },
-    { value: "table", label: "Tabel" },
-    { value: "citation", label: "Sitasi" },
-    { value: "formula", label: "Formula" },
-]
+// Filter options - hidden, not functional
+// const filterOptions: { value: string; label: string }[] = [
+//     { value: "all", label: "Semua" },
+//     { value: "code", label: "Code" },
+//     { value: "outline", label: "Outline" },
+//     { value: "section", label: "Section" },
+//     { value: "table", label: "Tabel" },
+//     { value: "citation", label: "Sitasi" },
+//     { value: "formula", label: "Formula" },
+// ]
 
 // Format timestamp to readable date
 function formatDate(timestamp: number): string {
@@ -82,20 +83,21 @@ export function ArtifactList({
     artifacts,
     selectedId,
     onSelect,
-    typeFilter,
-    onFilterChange,
+    typeFilter: _typeFilter,      // Filter hidden - not functional
+    onFilterChange: _onFilterChange,  // Filter hidden - not functional
 }: ArtifactListProps) {
-    const handleFilterChange = (value: string) => {
-        if (value === "all") {
-            onFilterChange(null)
-        } else {
-            onFilterChange(value as ArtifactType)
-        }
-    }
+    // Filter handler - hidden, not functional
+    // const handleFilterChange = (value: string) => {
+    //     if (value === "all") {
+    //         onFilterChange(null)
+    //     } else {
+    //         onFilterChange(value as ArtifactType)
+    //     }
+    // }
 
     return (
         <div className="flex flex-col h-full">
-            {/* Header with filter */}
+            {/* Filter hidden - not functional
             <div className="p-3 border-b space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <FilterIcon className="h-4 w-4" />
@@ -117,17 +119,14 @@ export function ArtifactList({
                     </SelectContent>
                 </Select>
             </div>
+            */}
 
             {/* Artifact list */}
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
                 {artifacts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
                         <FileTextIcon className="h-8 w-8 mb-2 opacity-50" />
-                        <span className="text-xs">
-                            {typeFilter
-                                ? `Tidak ada artifact ${typeLabels[typeFilter]}`
-                                : "Belum ada artifact"}
-                        </span>
+                        <span className="text-xs">Belum ada artifact</span>
                     </div>
                 ) : (
                     <div className="space-y-1">
@@ -181,12 +180,7 @@ export function ArtifactList({
                 )}
             </div>
 
-            {/* Footer with count */}
-            {artifacts.length > 0 && (
-                <div className="p-2 border-t text-xs text-muted-foreground text-center">
-                    {artifacts.length} artifact{artifacts.length > 1 ? "s" : ""}
-                </div>
-            )}
+            {/* Footer removed - count shown in collapsible trigger */}
         </div>
     )
 }

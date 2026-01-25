@@ -1,7 +1,8 @@
 "use client"
 
-import { CheckCircleIcon, ArrowRightIcon } from "lucide-react"
+import { CheckCircleIcon, ChevronRightIcon } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
+import { cn } from "@/lib/utils"
 
 interface ArtifactIndicatorProps {
     artifactId: Id<"artifacts">
@@ -9,6 +10,15 @@ interface ArtifactIndicatorProps {
     onSelect: (id: Id<"artifacts">) => void
 }
 
+/**
+ * ArtifactIndicator - Shows when artifact is created
+ *
+ * Mockup compliance:
+ * - GREEN background with border
+ * - "ARTIFACT CREATED" badge (uppercase, green)
+ * - Artifact title
+ * - "View >" button on right
+ */
 export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndicatorProps) {
     const handleClick = () => {
         onSelect(artifactId)
@@ -25,20 +35,39 @@ export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndic
         <button
             onClick={handleClick}
             onKeyDown={handleKeyDown}
-            className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer w-full text-left"
-            aria-label={`Lihat artifact: ${title}`}
+            className={cn(
+                "flex items-center gap-3 w-full text-left",
+                "px-3 py-2.5 rounded-lg",
+                "bg-success/15 border border-success/30",
+                "hover:bg-success/25 hover:border-success/50",
+                "transition-all duration-150 cursor-pointer",
+                "group"
+            )}
+            aria-label={`View artifact: ${title}`}
             role="button"
             tabIndex={0}
         >
-            <CheckCircleIcon className="h-4 w-4 text-green-500 shrink-0" />
-            <div className="flex-1 min-w-0">
-                <span className="text-xs text-green-600 dark:text-green-400">Artifact dibuat</span>
-                <div className="font-medium text-sm truncate">{title}</div>
+            {/* Success Icon */}
+            <CheckCircleIcon className="h-5 w-5 text-success flex-shrink-0" />
+
+            {/* Content */}
+            <div className="flex-1 min-w-0 flex items-center gap-2">
+                {/* ARTIFACT CREATED Badge */}
+                <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-success/20 text-success border border-success/30">
+                    Artifact Created
+                </span>
+
+                {/* Title */}
+                <span className="text-sm font-medium text-foreground truncate">
+                    {title}
+                </span>
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                <span>Lihat</span>
-                <ArrowRightIcon className="h-3 w-3" />
-            </div>
+
+            {/* View Button */}
+            <span className="flex items-center gap-0.5 text-sm text-success font-medium flex-shrink-0 group-hover:underline">
+                View
+                <ChevronRightIcon className="h-4 w-4" />
+            </span>
         </button>
     )
 }
