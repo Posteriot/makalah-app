@@ -1,10 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { ArrowLeft, History, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react"
+import { History, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function formatDate(timestamp: number): string {
@@ -29,15 +28,7 @@ export default function TransactionHistoryPage() {
   // Loading state
   if (userLoading || transactions === undefined) {
     return (
-      <div className="space-y-6 max-w-3xl">
-        <Link
-          href="/subscription/overview"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Kembali ke Overview
-        </Link>
-
+      <div className="space-y-6">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <History className="h-5 w-5 text-primary" />
@@ -56,16 +47,7 @@ export default function TransactionHistoryPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      {/* Back Link */}
-      <Link
-        href="/subscription/overview"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Kembali ke Overview
-      </Link>
-
+    <div className="space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">

@@ -179,6 +179,14 @@ export function GlobalHeader() {
         </defs>
         <rect width="100%" height="100%" fill="url(#diagonal-stripes-header)" />
       </svg>
+
+      {/* Horizontal line border below stripes */}
+      <div
+        className={cn(
+          "absolute bottom-0 left-0 right-0",
+          "h-px bg-border"
+        )}
+      />
     </header>
   )
 }

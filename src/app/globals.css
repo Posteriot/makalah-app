@@ -1773,6 +1773,37 @@
 }
 
 /* ==========================================================================
+ * SUBSCRIPTION PANEL
+ * ========================================================================== */
+@layer components {
+  /* Override dashboard-main padding when subscription page is shown */
+  .dashboard-main:has(.subscription-container) {
+    padding-top: 0;
+  }
+
+  .subscription-container {
+    width: 100%;
+  }
+
+  .subscription-body {
+    background: var(--card);
+    /* Border on sides and bottom only - no top border to merge with header */
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    border-top: none;
+    /* Rounded corners only at bottom - top merges with header */
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden;
+  }
+
+  /* Sidebar navigation spacing from header */
+  .subscription-body > aside > nav {
+    padding-top: 0.75rem;
+  }
+}
+
+/* ==========================================================================
  * ADMIN PANEL
  * ========================================================================== */
 @layer components {

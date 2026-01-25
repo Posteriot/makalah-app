@@ -146,15 +146,7 @@ export default function TopUpPage() {
   // Loading state
   if (userLoading) {
     return (
-      <div className="space-y-6 max-w-2xl">
-        <Link
-          href="/subscription/overview"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Kembali ke Overview
-        </Link>
-
+      <div className="space-y-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/3" />
           <div className="h-48 bg-muted rounded" />
@@ -169,7 +161,7 @@ export default function TopUpPage() {
   // For ewallet: only show result if no redirect URL (OVO uses push notification)
   if (paymentResult && (selectedMethod !== "ewallet" || !paymentResult.redirectUrl)) {
     return (
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6">
         {/* Back Link */}
         <button
           onClick={resetPayment}
@@ -312,16 +304,7 @@ export default function TopUpPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      {/* Back Link */}
-      <Link
-        href="/subscription/overview"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Kembali ke Overview
-      </Link>
-
+    <div className="space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">

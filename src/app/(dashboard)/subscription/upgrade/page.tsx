@@ -1,11 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import {
-  ArrowLeft,
   ArrowUpCircle,
   Check,
   Sparkles,
@@ -68,15 +66,7 @@ export default function UpgradePage() {
   // Loading state
   if (userLoading || subscriptionStatus === undefined) {
     return (
-      <div className="space-y-6 max-w-2xl">
-        <Link
-          href="/subscription/overview"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Kembali ke Overview
-        </Link>
-
+      <div className="space-y-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/3" />
           <div className="h-64 bg-muted rounded" />
@@ -95,16 +85,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      {/* Back Link */}
-      <Link
-        href="/subscription/overview"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Kembali ke Overview
-      </Link>
-
+    <div className="space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">

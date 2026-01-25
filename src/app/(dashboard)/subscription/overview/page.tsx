@@ -118,7 +118,7 @@ export default function SubscriptionOverviewPage() {
   const currentCreditBalance = creditBalance?.balanceIDR ?? 0
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -130,7 +130,7 @@ export default function SubscriptionOverviewPage() {
         </p>
       </div>
 
-      {/* Top Cards: Tier + Credit */}
+      {/* Top Cards: Tier + Credit - 2 columns 50%/50% */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Tier Card */}
         <div className="bg-card border border-border rounded-lg p-4">
