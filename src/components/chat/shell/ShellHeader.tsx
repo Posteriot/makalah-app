@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useTheme } from "next-themes"
-import { SunIcon, MoonIcon, PanelRightIcon } from "lucide-react"
+import { SunIcon, MoonIcon, PanelRightIcon, PanelRightCloseIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SegmentBadge } from "./SegmentBadge"
 import { NotificationDropdown } from "./NotificationDropdown"
@@ -14,8 +14,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 interface ShellHeaderProps {
   /** Whether the artifact panel is collapsed */
   isPanelCollapsed: boolean
-  /** Callback to expand the panel */
-  onExpandPanel: () => void
+  /** Callback to toggle the panel (expand/collapse) */
+  onTogglePanel: () => void
   /** Number of artifacts (for badge display) */
   artifactCount?: number
 }
@@ -38,7 +38,7 @@ interface ShellHeaderProps {
  * - Horizontal line border below stripes
  * - Reuses existing UserDropdown component
  */
-export function ShellHeader({ isPanelCollapsed, onExpandPanel, artifactCount = 0 }: ShellHeaderProps) {
+export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0 }: ShellHeaderProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const { user, isLoading } = useCurrentUser()
 
@@ -50,9 +50,8 @@ export function ShellHeader({ isPanelCollapsed, onExpandPanel, artifactCount = 0
     <header
       className={cn(
         "relative flex items-center justify-between",
-        "h-[var(--shell-header-h,72px)] px-4 pb-4",
-        "bg-background",
-        "col-span-full"
+        "h-[var(--shell-header-h,72px)] px-4 pt-3 pb-4",
+        "bg-background"
       )}
       style={{
         // CSS variable for header height
@@ -123,23 +122,28 @@ export function ShellHeader({ isPanelCollapsed, onExpandPanel, artifactCount = 0
           <TooltipContent>Toggle theme</TooltipContent>
         </Tooltip>
 
-        {/* Panel Expand Button (visible when panel is collapsed AND has artifacts) */}
-        {isPanelCollapsed && artifactCount > 0 && (
+        {/* Panel Toggle Button (always visible when has artifacts) */}
+        {artifactCount > 0 && (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={onExpandPanel}
+                onClick={onTogglePanel}
                 className={cn(
                   "relative flex items-center justify-center",
                   "w-9 h-9 rounded-lg",
                   "text-muted-foreground hover:text-foreground hover:bg-accent",
                   "transition-colors duration-150"
                 )}
-                aria-label={`Open artifacts panel (${artifactCount} artifacts)`}
-                data-testid="panel-expand-btn"
+                aria-label={isPanelCollapsed ? `Open artifacts panel (${artifactCount} artifacts)` : "Close artifacts panel"}
+                data-testid="panel-toggle-btn"
               >
-                <PanelRightIcon className="h-5 w-5" />
-                {/* Artifact count badge */}
+                {/* Icon changes based on panel state */}
+                {isPanelCollapsed ? (
+                  <PanelRightIcon className="h-5 w-5" />
+                ) : (
+                  <PanelRightCloseIcon className="h-5 w-5" />
+                )}
+                {/* Artifact count badge - always rendered, visibility controlled */}
                 <span
                   className={cn(
                     "absolute -top-1 -right-1",
@@ -147,14 +151,18 @@ export function ShellHeader({ isPanelCollapsed, onExpandPanel, artifactCount = 0
                     "flex items-center justify-center",
                     "text-[10px] font-semibold",
                     "bg-primary text-primary-foreground",
-                    "rounded-full"
+                    "rounded-full",
+                    "transition-opacity duration-150",
+                    isPanelCollapsed ? "opacity-100" : "opacity-0 pointer-events-none"
                   )}
                 >
                   {artifactCount}
                 </span>
               </button>
             </TooltipTrigger>
-            <TooltipContent>{`Open artifacts panel (${artifactCount} artifacts)`}</TooltipContent>
+            <TooltipContent>
+              {isPanelCollapsed ? `Open artifacts panel (${artifactCount} artifacts)` : "Close artifacts panel"}
+            </TooltipContent>
           </Tooltip>
         )}
 

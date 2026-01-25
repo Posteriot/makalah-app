@@ -18,6 +18,9 @@ import { Id } from "../../../../convex/_generated/dataModel"
 
 interface SidebarPaperSessionsProps {
   currentConversationId: string | null
+  onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  isArtifactPanelOpen?: boolean
+  onArtifactPanelToggle?: () => void
   onCloseMobile?: () => void
 }
 
@@ -51,6 +54,9 @@ interface ArtifactItem {
  */
 export function SidebarPaperSessions({
   currentConversationId,
+  onArtifactSelect,
+  isArtifactPanelOpen,
+  onArtifactPanelToggle,
   onCloseMobile,
 }: SidebarPaperSessionsProps) {
   const { user } = useCurrentUser()
@@ -140,6 +146,9 @@ export function SidebarPaperSessions({
           isExpanded={isExpanded}
           isSelected={true} // Always selected since it's the active conversation
           onToggle={() => setIsExpanded(!isExpanded)}
+          onArtifactSelect={onArtifactSelect}
+          isArtifactPanelOpen={isArtifactPanelOpen}
+          onArtifactPanelToggle={onArtifactPanelToggle}
           onCloseMobile={onCloseMobile}
           userId={user!._id}
         />
@@ -156,6 +165,9 @@ function PaperFolderItem({
   isExpanded,
   isSelected,
   onToggle,
+  onArtifactSelect,
+  isArtifactPanelOpen,
+  onArtifactPanelToggle,
   onCloseMobile,
   userId,
 }: {
@@ -163,6 +175,9 @@ function PaperFolderItem({
   isExpanded: boolean
   isSelected: boolean
   onToggle: () => void
+  onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  isArtifactPanelOpen?: boolean
+  onArtifactPanelToggle?: () => void
   onCloseMobile?: () => void
   userId: Id<"users">
 }) {
@@ -244,6 +259,9 @@ function PaperFolderItem({
                 artifact={artifact}
                 conversationId={session.conversationId}
                 isSelected={isSelected}
+                onArtifactSelect={onArtifactSelect}
+                isArtifactPanelOpen={isArtifactPanelOpen}
+                onArtifactPanelToggle={onArtifactPanelToggle}
                 onCloseMobile={onCloseMobile}
               />
             ))
@@ -265,20 +283,39 @@ function ArtifactTreeItem({
   artifact,
   conversationId,
   isSelected,
+  onArtifactSelect,
+  isArtifactPanelOpen,
+  onArtifactPanelToggle,
   onCloseMobile,
 }: {
   artifact: ArtifactItem
   conversationId: Id<"conversations">
   isSelected: boolean
+  onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  isArtifactPanelOpen?: boolean
+  onArtifactPanelToggle?: () => void
   onCloseMobile?: () => void
 }) {
   // Determine if artifact is "final" (validated/not invalidated)
   const isFinal = !artifact.invalidatedAt
 
+  const handleClick = () => {
+    // Open artifact panel if not open
+    if (!isArtifactPanelOpen && onArtifactPanelToggle) {
+      onArtifactPanelToggle()
+    }
+    // Select this artifact
+    if (onArtifactSelect) {
+      onArtifactSelect(artifact._id)
+    }
+    // Close mobile menu
+    onCloseMobile?.()
+  }
+
   return (
     <Link
       href={`/chat/${conversationId}`}
-      onClick={() => onCloseMobile?.()}
+      onClick={handleClick}
       className={cn(
         "flex items-center gap-2 py-1.5 px-4 cursor-pointer transition-colors",
         "hover:bg-accent",

@@ -276,29 +276,32 @@ export function ChatLayout({
   return (
     <div
       data-testid="chat-layout"
-      className={cn(
-        "grid h-[calc(100dvh-var(--shell-footer-h))]",
-        // Disable transition during resize for smooth dragging
-        !isSidebarResizing &&
-          !isPanelResizing &&
-          "transition-[grid-template-columns] duration-300 ease-in-out",
-        isSidebarCollapsed && "sidebar-collapsed",
-        !isArtifactPanelOpen && "panel-collapsed"
-      )}
-      style={{
-        ...CSS_VARS,
-        gridTemplateColumns: getGridTemplateColumns(),
-        gridTemplateRows: "var(--header-height) 1fr",
-      }}
+      className="flex flex-col h-[calc(100dvh-var(--shell-footer-h))]"
+      style={CSS_VARS}
     >
-      {/* Row 1: Header (spans all columns) */}
+      {/* Header - Outside grid to prevent transition bounce */}
       <ShellHeader
         isPanelCollapsed={!isArtifactPanelOpen}
-        onExpandPanel={handleExpandPanel}
+        onTogglePanel={handleExpandPanel}
         artifactCount={artifactCount}
       />
 
-      {/* Row 2, Column 1: Activity Bar */}
+      {/* Grid Content - Below header */}
+      <div
+        className={cn(
+          "grid flex-1 min-h-0 overflow-hidden",
+          // Disable transition during resize for smooth dragging
+          !isSidebarResizing &&
+            !isPanelResizing &&
+            "transition-[grid-template-columns] duration-300 ease-in-out",
+          isSidebarCollapsed && "sidebar-collapsed",
+          !isArtifactPanelOpen && "panel-collapsed"
+        )}
+        style={{
+          gridTemplateColumns: getGridTemplateColumns(),
+        }}
+      >
+        {/* Column 1: Activity Bar */}
       <ActivityBar
         activePanel={activePanel}
         onPanelChange={handlePanelChange}
@@ -321,6 +324,9 @@ export function ChatLayout({
           onNewChat={handleNewChat}
           onDeleteConversation={handleDeleteConversation}
           onUpdateConversationTitle={handleUpdateConversationTitle}
+          onArtifactSelect={onArtifactSelect}
+          isArtifactPanelOpen={isArtifactPanelOpen}
+          onArtifactPanelToggle={onArtifactPanelToggle}
           isLoading={isLoading}
           isCreating={isCreating}
         />
@@ -365,18 +371,19 @@ export function ChatLayout({
       )}
       {!isArtifactPanelOpen && <div className="hidden md:block" />}
 
-      {/* Row 2, Column 6: Artifact Panel */}
-      <aside
-        className={cn(
-          "hidden md:flex flex-col overflow-hidden",
-          "border-l bg-card",
-          !isArtifactPanelOpen && "w-0 border-l-0"
-        )}
-      >
-        {artifactPanel}
-      </aside>
+        {/* Column 6: Artifact Panel */}
+        <aside
+          className={cn(
+            "hidden md:flex flex-col overflow-hidden",
+            "border-l bg-card",
+            !isArtifactPanelOpen && "w-0 border-l-0"
+          )}
+        >
+          {artifactPanel}
+        </aside>
+      </div>
 
-      {/* Mobile Sidebar (Sheet) */}
+      {/* Mobile Sidebar (Sheet) - Outside grid */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
         <SheetContent side="left" className="p-0 w-[300px]">
           <SheetHeader className="sr-only">
@@ -390,6 +397,9 @@ export function ChatLayout({
             onNewChat={handleNewChat}
             onDeleteConversation={handleDeleteConversation}
             onUpdateConversationTitle={handleUpdateConversationTitle}
+            onArtifactSelect={onArtifactSelect}
+            isArtifactPanelOpen={isArtifactPanelOpen}
+            onArtifactPanelToggle={onArtifactPanelToggle}
             onCloseMobile={() => setIsMobileOpen(false)}
             isLoading={isLoading}
             isCreating={isCreating}

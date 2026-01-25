@@ -34,6 +34,12 @@ interface ChatSidebarProps {
   onDeleteConversation: (id: Id<"conversations">) => void
   /** Callback to update conversation title */
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
+  /** Callback when artifact is selected */
+  onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  /** Whether artifact panel is open */
+  isArtifactPanelOpen?: boolean
+  /** Callback to toggle artifact panel */
+  onArtifactPanelToggle?: () => void
   /** Additional CSS classes */
   className?: string
   /** Callback to close mobile sidebar */
@@ -63,6 +69,9 @@ export function ChatSidebar({
   onNewChat,
   onDeleteConversation,
   onUpdateConversationTitle,
+  onArtifactSelect,
+  isArtifactPanelOpen,
+  onArtifactPanelToggle,
   className,
   onCloseMobile,
   isLoading,
@@ -85,6 +94,9 @@ export function ChatSidebar({
         return (
           <SidebarPaperSessions
             currentConversationId={currentConversationId}
+            onArtifactSelect={onArtifactSelect}
+            isArtifactPanelOpen={isArtifactPanelOpen}
+            onArtifactPanelToggle={onArtifactPanelToggle}
             onCloseMobile={onCloseMobile}
           />
         )
