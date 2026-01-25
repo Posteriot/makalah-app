@@ -9,6 +9,7 @@ import { SegmentBadge } from "./SegmentBadge"
 import { NotificationDropdown } from "./NotificationDropdown"
 import { UserDropdown } from "@/components/layout/UserDropdown"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 interface ShellHeaderProps {
   /** Whether the artifact panel is collapsed */
@@ -101,52 +102,60 @@ export function ShellHeader({ isPanelCollapsed, onExpandPanel, artifactCount = 0
         <NotificationDropdown />
 
         {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className={cn(
-            "flex items-center justify-center",
-            "w-9 h-9 rounded-lg",
-            "text-muted-foreground hover:text-foreground hover:bg-accent",
-            "transition-colors duration-150"
-          )}
-          title="Toggle theme"
-          aria-label="Toggle theme"
-        >
-          {/* Sun icon (visible in dark mode, clicking switches to light) */}
-          <SunIcon className="h-5 w-5 hidden dark:block" />
-          {/* Moon icon (visible in light mode, clicking switches to dark) */}
-          <MoonIcon className="h-5 w-5 block dark:hidden" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={toggleTheme}
+              className={cn(
+                "flex items-center justify-center",
+                "w-9 h-9 rounded-lg",
+                "text-muted-foreground hover:text-foreground hover:bg-accent",
+                "transition-colors duration-150"
+              )}
+              aria-label="Toggle theme"
+            >
+              {/* Sun icon (visible in dark mode, clicking switches to light) */}
+              <SunIcon className="h-5 w-5 hidden dark:block" />
+              {/* Moon icon (visible in light mode, clicking switches to dark) */}
+              <MoonIcon className="h-5 w-5 block dark:hidden" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Toggle theme</TooltipContent>
+        </Tooltip>
 
         {/* Panel Expand Button (visible when panel is collapsed AND has artifacts) */}
         {isPanelCollapsed && artifactCount > 0 && (
-          <button
-            onClick={onExpandPanel}
-            className={cn(
-              "relative flex items-center justify-center",
-              "w-9 h-9 rounded-lg",
-              "text-muted-foreground hover:text-foreground hover:bg-accent",
-              "transition-colors duration-150"
-            )}
-            title={`Open artifacts panel (${artifactCount} artifacts)`}
-            aria-label={`Open artifacts panel (${artifactCount} artifacts)`}
-            data-testid="panel-expand-btn"
-          >
-            <PanelRightIcon className="h-5 w-5" />
-            {/* Artifact count badge */}
-            <span
-              className={cn(
-                "absolute -top-1 -right-1",
-                "min-w-[18px] h-[18px] px-1",
-                "flex items-center justify-center",
-                "text-[10px] font-semibold",
-                "bg-primary text-primary-foreground",
-                "rounded-full"
-              )}
-            >
-              {artifactCount}
-            </span>
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onExpandPanel}
+                className={cn(
+                  "relative flex items-center justify-center",
+                  "w-9 h-9 rounded-lg",
+                  "text-muted-foreground hover:text-foreground hover:bg-accent",
+                  "transition-colors duration-150"
+                )}
+                aria-label={`Open artifacts panel (${artifactCount} artifacts)`}
+                data-testid="panel-expand-btn"
+              >
+                <PanelRightIcon className="h-5 w-5" />
+                {/* Artifact count badge */}
+                <span
+                  className={cn(
+                    "absolute -top-1 -right-1",
+                    "min-w-[18px] h-[18px] px-1",
+                    "flex items-center justify-center",
+                    "text-[10px] font-semibold",
+                    "bg-primary text-primary-foreground",
+                    "rounded-full"
+                  )}
+                >
+                  {artifactCount}
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{`Open artifacts panel (${artifactCount} artifacts)`}</TooltipContent>
+          </Tooltip>
         )}
 
         {/* User Dropdown */}

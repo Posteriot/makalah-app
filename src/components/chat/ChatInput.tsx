@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react"
 import { SendIcon, SquareIcon, FileIcon } from "lucide-react"
 import { FileUploadButton } from "./FileUploadButton"
 import { Id } from "../../../convex/_generated/dataModel"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 interface ChatInputProps {
     input: string
@@ -79,15 +80,19 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, stop, con
 
                 {/* Send/Stop Button - Transparent style matching mockup */}
                 {isLoading ? (
-                    <button
-                        type="button"
-                        onClick={handleStop}
-                        className="w-10 h-10 flex items-center justify-center rounded-lg bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors mt-3"
-                        title="Stop generating"
-                        aria-label="Stop generating response"
-                    >
-                        <SquareIcon className="h-5 w-5" />
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                onClick={handleStop}
+                                className="w-10 h-10 flex items-center justify-center rounded-lg bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors mt-3"
+                                aria-label="Stop generating response"
+                            >
+                                <SquareIcon className="h-5 w-5" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Stop generating</TooltipContent>
+                    </Tooltip>
                 ) : (
                     <button
                         type="submit"

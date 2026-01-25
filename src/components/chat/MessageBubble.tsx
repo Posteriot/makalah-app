@@ -14,7 +14,6 @@ import { isEditAllowed } from "@/lib/utils/paperPermissions"
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -294,37 +293,67 @@ export function MessageBubble({
     const formattedTime = formatTimestamp(displayTimestamp)
 
     return (
-        <div className="group relative mb-4">
-            {/* Role Label + Timestamp - Mockup compliance */}
-            <div className="flex items-center gap-2 mb-1.5 px-1">
-                <span
-                    className={cn(
-                        "text-sm font-medium",
-                        isUser ? "text-success" : "text-destructive"
+        <div
+            className={cn(
+                "group relative mb-4",
+                // User messages aligned to right with edit button outside
+                isUser && "flex justify-end items-start gap-2"
+            )}
+        >
+            {/* Edit Button - Outside bubble, to the left (for user messages) */}
+            {!isEditing && isUser && onEdit && (
+                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity pt-2">
+                    {editPermission.allowed ? (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={startEditing}
+                                    className="p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                                    aria-label="Edit message"
+                                >
+                                    <PencilIcon className="h-4 w-4" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit</TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    disabled
+                                    className="p-1.5 rounded-md text-muted-foreground/40 cursor-not-allowed"
+                                    aria-label="Edit message"
+                                    aria-disabled="true"
+                                >
+                                    <PencilIcon className="h-4 w-4" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-[250px]">
+                                <p>{editPermission.reason}</p>
+                            </TooltipContent>
+                        </Tooltip>
                     )}
-                >
-                    {isUser ? "User" : "Agent"}
-                </span>
-                {formattedTime && isUser && (
-                    <span className="text-xs text-muted-foreground">
-                        {formattedTime}
-                    </span>
-                )}
-            </div>
+                </div>
+            )}
 
-            {/* Message Card Container - with colored left border */}
+            {/* Message Container - User: bubble on right, Agent: no bubble */}
             <div
                 className={cn(
-                    // Base card styles
-                    "relative rounded-lg",
-                    "bg-card border border-border",
-                    // Left border color based on role
-                    "border-l-4",
-                    isUser ? "border-l-warning" : "border-l-destructive"
+                    "relative",
+                    // User: card style, max-width, text align left
+                    isUser && [
+                        "rounded-lg",
+                        "bg-user-message-bg",
+                        "max-w-[85%]",
+                    ],
+                    // Agent: no bubble, full width
+                    isAssistant && "w-full"
                 )}
             >
                 {/* Inner content with padding */}
-                <div className="px-4 py-3">
+                <div className={cn(
+                    isUser ? "px-4 py-3" : "py-1"
+                )}>
                     {/* File Attachments Badge - Mockup: blue/teal badge */}
                     {fileIds && fileIds.length > 0 && (
                         <div className="mb-3">
@@ -437,40 +466,6 @@ export function MessageBubble({
                         <QuickActions content={content} />
                     )}
                 </div>
-
-                {/* Edit Button - Inside card for user messages */}
-                {!isEditing && isUser && onEdit && (
-                    <div className="absolute top-2 right-2">
-                        {editPermission.allowed ? (
-                            <button
-                                onClick={startEditing}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground"
-                                title="Edit"
-                                aria-label="Edit message"
-                            >
-                                <PencilIcon className="h-3.5 w-3.5" />
-                            </button>
-                        ) : (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            disabled
-                                            className="opacity-0 group-hover:opacity-40 transition-opacity p-1.5 rounded-md text-muted-foreground cursor-not-allowed"
-                                            aria-label="Edit message"
-                                            aria-disabled="true"
-                                        >
-                                            <PencilIcon className="h-3.5 w-3.5" />
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="left" className="max-w-[250px]">
-                                        <p>{editPermission.reason}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
-                    </div>
-                )}
             </div>
         </div>
     )

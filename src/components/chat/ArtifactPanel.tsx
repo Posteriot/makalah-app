@@ -42,6 +42,7 @@ import {
   FunctionSquareIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { FullsizeArtifactModal } from "./FullsizeArtifactModal"
 
 // Artifact type from Convex
@@ -180,21 +181,26 @@ export function ArtifactPanel({
               <div className="hidden @[280px]/artifact:flex items-center gap-1.5">
                 {/* Download Dropdown */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        "h-7 w-7 rounded",
-                        "text-muted-foreground",
-                        "hover:bg-accent hover:text-foreground",
-                        "transition-all duration-150"
-                      )}
-                      title="Unduh"
-                    >
-                      <DownloadIcon className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-7 w-7 rounded",
+                            "text-muted-foreground",
+                            "hover:bg-accent hover:text-foreground",
+                            "transition-all duration-150"
+                          )}
+                          aria-label="Unduh"
+                        >
+                          <DownloadIcon className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Unduh</TooltipContent>
+                  </Tooltip>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       onClick={() => {
@@ -227,60 +233,75 @@ export function ArtifactPanel({
                 </DropdownMenu>
 
                 {/* Edit Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => viewerRef.current?.startEdit()}
-                  className={cn(
-                    "h-7 w-7 rounded",
-                    "text-muted-foreground",
-                    "hover:bg-accent hover:text-foreground",
-                    "transition-all duration-150"
-                  )}
-                  title="Edit"
-                >
-                  <PencilIcon className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => viewerRef.current?.startEdit()}
+                      className={cn(
+                        "h-7 w-7 rounded",
+                        "text-muted-foreground",
+                        "hover:bg-accent hover:text-foreground",
+                        "transition-all duration-150"
+                      )}
+                      aria-label="Edit"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
 
                 {/* Refrasa Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => viewerRef.current?.triggerRefrasa()}
-                  className={cn(
-                    "h-7 w-7 rounded",
-                    "text-muted-foreground",
-                    "hover:bg-accent hover:text-foreground",
-                    "transition-all duration-150"
-                  )}
-                  title="Refrasa"
-                >
-                  <WandSparkles className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => viewerRef.current?.triggerRefrasa()}
+                      className={cn(
+                        "h-7 w-7 rounded",
+                        "text-muted-foreground",
+                        "hover:bg-accent hover:text-foreground",
+                        "transition-all duration-150"
+                      )}
+                      aria-label="Refrasa"
+                    >
+                      <WandSparkles className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refrasa</TooltipContent>
+                </Tooltip>
 
                 {/* Copy Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    viewerRef.current?.copy()
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 2000)
-                  }}
-                  className={cn(
-                    "h-7 w-7 rounded",
-                    "text-muted-foreground",
-                    "hover:bg-accent hover:text-foreground",
-                    "transition-all duration-150"
-                  )}
-                  title="Salin"
-                >
-                  {copied ? (
-                    <CheckIcon className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <CopyIcon className="h-4 w-4" />
-                  )}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        viewerRef.current?.copy()
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 2000)
+                      }}
+                      className={cn(
+                        "h-7 w-7 rounded",
+                        "text-muted-foreground",
+                        "hover:bg-accent hover:text-foreground",
+                        "transition-all duration-150"
+                      )}
+                      aria-label="Salin"
+                    >
+                      {copied ? (
+                        <CheckIcon className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <CopyIcon className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Salin</TooltipContent>
+                </Tooltip>
 
                 {/* Separator */}
                 <div className="w-px h-4 bg-border mx-0.5" />
@@ -289,21 +310,26 @@ export function ArtifactPanel({
               {/* Narrow view: 3-dot menu (shown when narrow) */}
               <div className="flex @[280px]/artifact:hidden">
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        "h-7 w-7 rounded",
-                        "text-muted-foreground",
-                        "hover:bg-accent hover:text-foreground",
-                        "transition-all duration-150"
-                      )}
-                      title="Aksi"
-                    >
-                      <MoreVerticalIcon className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-7 w-7 rounded",
+                            "text-muted-foreground",
+                            "hover:bg-accent hover:text-foreground",
+                            "transition-all duration-150"
+                          )}
+                          aria-label="Aksi"
+                        >
+                          <MoreVerticalIcon className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Aksi</TooltipContent>
+                  </Tooltip>
                   <DropdownMenuContent align="end">
                     {/* Download submenu */}
                     <DropdownMenuSub>
@@ -377,41 +403,49 @@ export function ArtifactPanel({
           )}
 
           {/* Expand/Fullscreen Button (hidden in narrow, included in 3-dot menu) */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsFullsizeOpen(true)}
-            disabled={!selectedArtifactId}
-            className={cn(
-              "hidden @[280px]/artifact:flex",
-              "h-7 w-7 rounded",
-              "text-muted-foreground",
-              "hover:bg-accent hover:text-foreground",
-              "disabled:opacity-30 disabled:cursor-not-allowed",
-              "transition-all duration-150"
-            )}
-            aria-label="Expand artifact fullscreen"
-            title="Expand fullscreen"
-          >
-            <Maximize2Icon className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsFullsizeOpen(true)}
+                disabled={!selectedArtifactId}
+                className={cn(
+                  "hidden @[280px]/artifact:flex",
+                  "h-7 w-7 rounded",
+                  "text-muted-foreground",
+                  "hover:bg-accent hover:text-foreground",
+                  "disabled:opacity-30 disabled:cursor-not-allowed",
+                  "transition-all duration-150"
+                )}
+                aria-label="Expand artifact fullscreen"
+              >
+                <Maximize2Icon className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Expand fullscreen</TooltipContent>
+          </Tooltip>
 
           {/* Close Button - ALWAYS visible */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className={cn(
-              "h-7 w-7 rounded shrink-0",
-              "text-muted-foreground",
-              "hover:bg-accent hover:text-foreground",
-              "transition-all duration-150"
-            )}
-            aria-label="Close panel"
-            title="Close panel"
-          >
-            <XIcon className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggle}
+                className={cn(
+                  "h-7 w-7 rounded shrink-0",
+                  "text-muted-foreground",
+                  "hover:bg-accent hover:text-foreground",
+                  "transition-all duration-150"
+                )}
+                aria-label="Close panel"
+              >
+                <XIcon className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Close panel</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 

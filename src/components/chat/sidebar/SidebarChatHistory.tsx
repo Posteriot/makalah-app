@@ -30,6 +30,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 interface SidebarChatHistoryProps {
   conversations: Array<{
@@ -260,58 +261,66 @@ export function SidebarChatHistory({
                 <div className="flex items-center gap-0.5">
                   {/* Edit button - hidden untuk paper session */}
                   {!hasPaperSession && (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onMouseDown={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        handleStartEdit(conv._id, conv.title)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          handleStartEdit(conv._id, conv.title)
-                        }
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-accent rounded-md transition-all focus:opacity-100"
-                      title="Edit judul"
-                      aria-label="Edit judul"
-                    >
-                      <PencilIcon className="h-4 w-4" />
-                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleStartEdit(conv._id, conv.title)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleStartEdit(conv._id, conv.title)
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-accent rounded-md transition-all focus:opacity-100"
+                          aria-label="Edit judul"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit judul</TooltipContent>
+                    </Tooltip>
                   )}
                   {/* Delete button */}
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleDeleteClick(conv._id, conv.title)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        handleDeleteClick(conv._id, conv.title)
-                      }
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all focus:opacity-100"
-                    title="Hapus percakapan"
-                    aria-label="Hapus percakapan"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleDeleteClick(conv._id, conv.title)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleDeleteClick(conv._id, conv.title)
+                          }
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all focus:opacity-100"
+                        aria-label="Hapus percakapan"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Hapus percakapan</TooltipContent>
+                  </Tooltip>
                 </div>
               )}
               {/* Loading indicator saat updating */}

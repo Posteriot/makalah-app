@@ -24,6 +24,7 @@ import {
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
@@ -300,29 +301,39 @@ export function FullsizeArtifactModal({
                         </div>
                         <div className="flex items-center gap-1">
                             {/* Minimize Button */}
-                            <button
-                                onClick={onClose}
-                                className={cn(
-                                    "w-8 h-8 flex items-center justify-center rounded-md",
-                                    "text-muted-foreground hover:text-foreground",
-                                    "hover:bg-accent transition-colors"
-                                )}
-                                title="Minimize"
-                            >
-                                <Minimize2Icon className="h-4 w-4" />
-                            </button>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={onClose}
+                                        className={cn(
+                                            "w-8 h-8 flex items-center justify-center rounded-md",
+                                            "text-muted-foreground hover:text-foreground",
+                                            "hover:bg-accent transition-colors"
+                                        )}
+                                        aria-label="Minimize"
+                                    >
+                                        <Minimize2Icon className="h-4 w-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Minimize</TooltipContent>
+                            </Tooltip>
                             {/* Close Button */}
-                            <button
-                                onClick={onClose}
-                                className={cn(
-                                    "w-8 h-8 flex items-center justify-center rounded-md",
-                                    "text-muted-foreground",
-                                    "hover:bg-red-500/90 hover:text-white transition-colors"
-                                )}
-                                title="Close (ESC)"
-                            >
-                                <XIcon className="h-4 w-4" />
-                            </button>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={onClose}
+                                        className={cn(
+                                            "w-8 h-8 flex items-center justify-center rounded-md",
+                                            "text-muted-foreground",
+                                            "hover:bg-red-500/90 hover:text-white transition-colors"
+                                        )}
+                                        aria-label="Close (ESC)"
+                                    >
+                                        <XIcon className="h-4 w-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Close (ESC)</TooltipContent>
+                            </Tooltip>
                         </div>
                     </div>
 
