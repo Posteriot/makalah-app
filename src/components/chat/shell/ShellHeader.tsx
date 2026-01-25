@@ -100,27 +100,29 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
         {/* Notifications Dropdown */}
         <NotificationDropdown />
 
-        {/* Theme Toggle */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleTheme}
-              className={cn(
-                "flex items-center justify-center",
-                "w-9 h-9 rounded-lg",
-                "text-muted-foreground hover:text-foreground hover:bg-accent",
-                "transition-colors duration-150"
-              )}
-              aria-label="Toggle theme"
-            >
-              {/* Sun icon (visible in dark mode, clicking switches to light) */}
-              <SunIcon className="h-5 w-5 hidden dark:block" />
-              {/* Moon icon (visible in light mode, clicking switches to dark) */}
-              <MoonIcon className="h-5 w-5 block dark:hidden" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Toggle theme</TooltipContent>
-        </Tooltip>
+        {/* Theme Toggle - Only visible for logged-in users */}
+        {!isLoading && user && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleTheme}
+                className={cn(
+                  "flex items-center justify-center",
+                  "w-9 h-9 rounded-lg",
+                  "text-muted-foreground hover:text-foreground hover:bg-accent",
+                  "transition-colors duration-150"
+                )}
+                aria-label="Toggle theme"
+              >
+                {/* Sun icon (visible in dark mode, clicking switches to light) */}
+                <SunIcon className="h-5 w-5 hidden dark:block" />
+                {/* Moon icon (visible in light mode, clicking switches to dark) */}
+                <MoonIcon className="h-5 w-5 block dark:hidden" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Toggle theme</TooltipContent>
+          </Tooltip>
+        )}
 
         {/* Panel Toggle Button (always visible when has artifacts) */}
         {artifactCount > 0 && (
