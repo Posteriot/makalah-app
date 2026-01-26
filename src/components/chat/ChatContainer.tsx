@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { ChatLayout } from "./layout/ChatLayout"
@@ -13,6 +12,8 @@ import { Id } from "../../../convex/_generated/dataModel"
 interface ChatContainerProps {
   conversationId: string | null
 }
+
+type ArtifactState = { isOpen: boolean; selectedId: Id<"artifacts"> | null }
 
 /**
  * ChatContainer - Main container for chat page
@@ -34,49 +35,75 @@ interface ChatContainerProps {
  * - useConversations integration (handled by ChatLayout)
  */
 export function ChatContainer({ conversationId }: ChatContainerProps) {
-  const router = useRouter()
   const { user } = useCurrentUser()
-  const [artifactPanelOpen, setArtifactPanelOpen] = useState(false)
-  const [selectedArtifactId, setSelectedArtifactId] = useState<Id<"artifacts"> | null>(null)
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const isValidConvexId = (value: string | null): value is string =>
+    typeof value === "string" && /^[a-z0-9]{32}$/.test(value)
+  const safeConversationId = isValidConvexId(conversationId)
+    ? (conversationId as Id<"conversations">)
+    : null
+
+  const [artifactStateByConversation, setArtifactStateByConversation] = useState<
+    Record<string, ArtifactState>
+  >({})
+
+  const conversationKey = safeConversationId ?? "no-conversation"
+  const currentArtifactState = artifactStateByConversation[conversationKey] ?? {
+    isOpen: false,
+    selectedId: null,
+  }
+  const artifactPanelOpen = currentArtifactState.isOpen
+  const selectedArtifactId = currentArtifactState.selectedId
 
   // Query artifacts for count (used in header badge)
   const artifacts = useQuery(
     api.artifacts.listByConversation,
-    conversationId && user?._id
-      ? { conversationId: conversationId as Id<"conversations">, userId: user._id }
+    safeConversationId && user?._id
+      ? { conversationId: safeConversationId, userId: user._id }
       : "skip"
   )
   const artifactCount = artifacts?.length ?? 0
 
   // Handler when artifact is created or selected
-  const handleArtifactSelect = useCallback((artifactId: Id<"artifacts">) => {
-    setSelectedArtifactId(artifactId)
-    setArtifactPanelOpen(true)
-  }, [])
+  const updateArtifactState = (updater: (state: ArtifactState) => ArtifactState) => {
+    setArtifactStateByConversation((prev) => {
+      const prevState = prev[conversationKey] ?? { isOpen: false, selectedId: null }
+      return {
+        ...prev,
+        [conversationKey]: updater(prevState),
+      }
+    })
+  }
+
+  const handleArtifactSelect = (artifactId: Id<"artifacts">) => {
+    updateArtifactState((state) => ({
+      ...state,
+      selectedId: artifactId,
+      isOpen: true,
+    }))
+  }
 
   // Toggle artifact panel
-  const toggleArtifactPanel = useCallback(() => {
-    setArtifactPanelOpen((prev) => !prev)
-  }, [])
-
-  // Reset artifact state when conversation changes or is deleted
-  const resetArtifactState = useCallback(() => {
-    setArtifactPanelOpen(false)
-    setSelectedArtifactId(null)
-  }, [])
+  const toggleArtifactPanel = () => {
+    updateArtifactState((state) => ({
+      ...state,
+      isOpen: !state.isOpen,
+    }))
+  }
 
   return (
     <ChatLayout
       conversationId={conversationId}
       isArtifactPanelOpen={artifactPanelOpen}
       onArtifactPanelToggle={toggleArtifactPanel}
-      selectedArtifactId={selectedArtifactId}
       onArtifactSelect={handleArtifactSelect}
       artifactCount={artifactCount}
+      mobileSidebarOpen={isMobileOpen}
+      onMobileSidebarOpenChange={setIsMobileOpen}
       artifactPanel={
         <ArtifactPanel
           key={conversationId ?? "no-conversation"}
-          conversationId={conversationId as Id<"conversations"> | null}
+          conversationId={safeConversationId}
           isOpen={artifactPanelOpen}
           onToggle={toggleArtifactPanel}
           selectedArtifactId={selectedArtifactId}
@@ -87,10 +114,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
       <ChatWindow
         key={conversationId}
         conversationId={conversationId}
-        onMobileMenuClick={() => {
-          // Mobile menu is handled by ChatLayout's Sheet
-          // This is a no-op but kept for compatibility
-        }}
+        onMobileMenuClick={() => setIsMobileOpen(true)}
         onArtifactSelect={handleArtifactSelect}
       />
     </ChatLayout>

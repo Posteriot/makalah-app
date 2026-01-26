@@ -4,8 +4,6 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
     Select,
     SelectContent,
@@ -19,13 +17,12 @@ import {
     ContextMenuItem,
     ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { CopyIcon, CheckIcon, FileTextIcon, CodeIcon, ListIcon, TableIcon, BookOpenIcon, FunctionSquareIcon, Loader2Icon, PencilIcon, DownloadIcon, AlertTriangle, WandSparkles } from "lucide-react"
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
+import { FileTextIcon, Loader2Icon, AlertTriangle, WandSparkles } from "lucide-react"
+import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from "react"
 import { toast } from "sonner"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { ArtifactEditor } from "./ArtifactEditor"
-import { VersionHistoryDialog } from "./VersionHistoryDialog"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -34,7 +31,6 @@ import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/
 import { cn } from "@/lib/utils"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
 import {
-    RefrasaButton,
     RefrasaConfirmDialog,
     RefrasaLoadingIndicator,
 } from "@/components/refrasa"
@@ -58,16 +54,6 @@ export interface ArtifactViewerRef {
         canRefrasa: boolean
         hasArtifact: boolean
     }
-}
-
-// Map artifact type to icon
-const typeIcons: Record<string, React.ElementType> = {
-    code: CodeIcon,
-    outline: ListIcon,
-    section: FileTextIcon,
-    table: TableIcon,
-    citation: BookOpenIcon,
-    formula: FunctionSquareIcon,
 }
 
 // Map format to syntax highlighter language
@@ -175,7 +161,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     const isFinal = finalStatus?.isFinal ?? false
 
     // Handle copy to clipboard
-    const handleCopy = async () => {
+    const handleCopy = useCallback(async () => {
         if (!artifact) return
 
         try {
@@ -186,7 +172,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         } catch {
             toast.error("Gagal menyalin konten")
         }
-    }
+    }, [artifact])
 
     // Handle save edited content (creates new version)
     const handleSave = async (newContent: string) => {
@@ -210,7 +196,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     }
 
     // Handle download with format selection
-    const handleDownload = () => {
+    const handleDownload = useCallback(() => {
         if (!artifact) return
 
         // Map download format to extension and MIME type
@@ -241,7 +227,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         URL.revokeObjectURL(url)
 
         toast.success(`File "${filename}" berhasil diunduh`)
-    }
+    }, [artifact, downloadFormat])
 
     // Handle version change
     const handleVersionChange = (versionId: string) => {
@@ -249,7 +235,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     }
 
     // Handle refrasa trigger (from button or context menu)
-    const handleRefrasaTrigger = async () => {
+    const handleRefrasaTrigger = useCallback(async () => {
         if (!artifact) return
 
         // Reset previous state
@@ -257,7 +243,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
 
         // Start analysis
         await analyzeAndRefrasa(artifact.content, artifact._id)
-    }
+    }, [artifact, analyzeAndRefrasa, resetRefrasa])
 
     // Show dialog when result is ready
     useEffect(() => {
@@ -302,10 +288,6 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     }
 
     // Calculate word count for warning
-    const getWordCount = (content: string): number => {
-        return content.trim().split(/\s+/).filter(Boolean).length
-    }
-
     // Expose methods to parent via ref
     useImperativeHandle(ref, () => ({
         download: handleDownload,
@@ -353,7 +335,6 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         )
     }
 
-    const TypeIcon = typeIcons[artifact.type] || FileTextIcon
     const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
     const language = artifact.format ? formatToLanguage[artifact.format] : undefined
     const shouldRenderMarkdown = !isCodeArtifact

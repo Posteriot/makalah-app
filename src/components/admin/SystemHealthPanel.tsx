@@ -4,9 +4,6 @@ import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   AlertCircle,
   CheckCircle2,
@@ -71,17 +68,6 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />
       default:
         return <Info className="h-4 w-4 text-blue-500" />
-    }
-  }
-
-  const getSeverityBadge = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return <Badge variant="destructive">Critical</Badge>
-      case "warning":
-        return <Badge className="bg-yellow-500 hover:bg-yellow-600">Warning</Badge>
-      default:
-        return <Badge variant="secondary">Info</Badge>
     }
   }
 

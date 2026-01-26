@@ -24,6 +24,13 @@ import { generateWordStream, getWordFilename } from "@/lib/export/word-builder"
 
 export async function POST(request: NextRequest) {
   try {
+    const referer = request.headers.get("referer")
+    const fallbackPath = `${request.nextUrl.pathname}${request.nextUrl.search}`
+    const refererUrl = referer ? new URL(referer) : null
+    const redirectPath = refererUrl
+      ? `${refererUrl.pathname}${refererUrl.search}`
+      : fallbackPath
+
     // 1. Parse request body
     const body = await request.json()
     const { sessionId } = body
@@ -40,7 +47,11 @@ export async function POST(request: NextRequest) {
 
     if (!clerkUserId) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized - please sign in" },
+        {
+          success: false,
+          error: "Unauthorized - please sign in",
+          redirectUrl: `/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`,
+        },
         { status: 401 }
       )
     }

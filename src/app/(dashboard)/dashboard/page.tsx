@@ -6,15 +6,46 @@ import { AdminPanelContainer } from "@/components/admin/AdminPanelContainer"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
-export default async function DashboardPage() {
+type SearchParams = Record<string, string | string[] | undefined>
+
+function buildQueryString(searchParams?: SearchParams): string {
+  if (!searchParams) return ""
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (value === undefined) continue
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        params.append(key, item)
+      }
+    } else {
+      params.append(key, value)
+    }
+  }
+  const query = params.toString()
+  return query ? `?${query}` : ""
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>
+}) {
   const user = await currentUser()
-  if (!user) redirect("/sign-in")
+  if (!user) {
+    const resolvedSearchParams = searchParams ? await searchParams : undefined
+    const redirectPath = `/dashboard${buildQueryString(resolvedSearchParams)}`
+    redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)
+  }
 
   const convexUser = await fetchQuery(api.users.getUserByClerkId, {
     clerkUserId: user.id,
   })
 
-  if (!convexUser) redirect("/sign-in")
+  if (!convexUser) {
+    const resolvedSearchParams = searchParams ? await searchParams : undefined
+    const redirectPath = `/dashboard${buildQueryString(resolvedSearchParams)}`
+    redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)
+  }
 
   // Check if user is admin or superadmin
   const isAdmin = await fetchQuery(api.users.checkIsAdmin, {

@@ -27,7 +27,8 @@ export default clerkMiddleware(async (auth, request) => {
 
   if (!userId) {
     const signInUrl = new URL("/sign-in", request.url)
-    signInUrl.searchParams.set("redirect_url", request.url)
+    const redirectPath = `${request.nextUrl.pathname}${request.nextUrl.search}`
+    signInUrl.searchParams.set("redirect_url", redirectPath)
     return NextResponse.redirect(signInUrl)
   }
 
@@ -38,4 +39,3 @@ export default clerkMiddleware(async (auth, request) => {
 export const config = {
   matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
 }
-

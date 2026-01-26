@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import Link from "next/link"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"

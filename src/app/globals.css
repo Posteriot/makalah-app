@@ -79,15 +79,24 @@
   --font-hero: var(--font-hero);
 
   /* Font Sizes - Smaller scale for compact UI */
-  --font-size-xs: 0.5rem;      /* 8px - labels, badges */
-  --font-size-sm: 0.625rem;    /* 10px - small text */
-  --font-size-base: 0.75rem;   /* 12px - body text */
-  --font-size-lg: 0.875rem;    /* 14px - h3, emphasis */
-  --font-size-xl: 1rem;        /* 16px - h2 */
-  --font-size-2xl: 1.125rem;   /* 18px - h1 */
-  --font-size-3xl: 1.25rem;    /* 20px - display */
-  --font-size-4xl: 1.5rem;     /* 24px - hero */
-  --font-size-5xl: 1.75rem;    /* 28px - hero large */
+  --font-size-xs: 0.5rem;
+  /* 8px - labels, badges */
+  --font-size-sm: 0.625rem;
+  /* 10px - small text */
+  --font-size-base: 0.75rem;
+  /* 12px - body text */
+  --font-size-lg: 0.875rem;
+  /* 14px - h3, emphasis */
+  --font-size-xl: 1rem;
+  /* 16px - h2 */
+  --font-size-2xl: 1.125rem;
+  /* 18px - h1 */
+  --font-size-3xl: 1.25rem;
+  /* 20px - display */
+  --font-size-4xl: 1.5rem;
+  /* 24px - hero */
+  --font-size-5xl: 1.75rem;
+  /* 28px - hero large */
 
   /* Border Radius */
   --radius-sm: calc(var(--radius) - 4px);
@@ -158,9 +167,12 @@
      Upgrade Button: Gunakan warna --success (grass green) + text-white
      CSS: bg-[var(--success)] atau class .btn-upgrade
      ======================================== */
-  --segment-gratis: oklch(0.55 0.15 165); /* emerald-600 */
-  --segment-bpp: oklch(0.55 0.2 260);     /* blue-600 */
-  --segment-pro: oklch(0.65 0.18 70);     /* amber-600 */
+  --segment-gratis: oklch(0.55 0.15 165);
+  /* emerald-600 */
+  --segment-bpp: oklch(0.55 0.2 260);
+  /* blue-600 */
+  --segment-pro: oklch(0.65 0.18 70);
+  /* amber-600 */
   --segment-admin: oklch(0.55 0.18 250);
   --segment-superadmin: oklch(0.55 0.2 300);
 
@@ -275,12 +287,18 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground font-sans;
   }
 
   /* Headings use Inter (same as body for consistency) */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-sans), sans-serif;
     font-weight: 700;
     line-height: 1.2;
@@ -298,6 +316,7 @@
  * CHAT LAYOUT STYLES
  * ========================================================================== */
 @layer components {
+
   /* Resizer styles */
   .resizer {
     width: 4px;
@@ -351,27 +370,32 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    padding-bottom: 10px; /* Reserve space for diagonal stripes (10px height) */
+    padding-bottom: 10px;
+    /* Reserve space for diagonal stripes (10px height) */
     transition: transform 0.3s ease, background-color 0.3s ease, backdrop-filter 0.3s ease;
   }
 
   /* Header scrolled state: past hero section */
   .global-header.header-scrolled {
-    background-color: rgb(255, 255, 255); /* Light mode: solid white */
+    background-color: rgb(255, 255, 255);
+    /* Light mode: solid white */
   }
 
   /* Dark mode: solid dark background */
   .dark .global-header.header-scrolled {
-    background-color: rgb(9, 9, 11); /* Dark mode: solid dark */
+    background-color: rgb(9, 9, 11);
+    /* Dark mode: solid dark */
   }
 
   /* Header hover state: show background on hover (even when not scrolled) */
   .global-header:hover {
-    background-color: rgb(255, 255, 255); /* Light mode: solid white */
+    background-color: rgb(255, 255, 255);
+    /* Light mode: solid white */
   }
 
   .dark .global-header:hover {
-    background-color: rgb(9, 9, 11); /* Dark mode: solid dark */
+    background-color: rgb(9, 9, 11);
+    /* Dark mode: solid dark */
   }
 
   /* Header hidden state: scrolling down */
@@ -573,8 +597,10 @@
     background-color: var(--success);
     color: white;
   }
+
   .btn-upgrade:hover {
-    background-color: oklch(0.65 0.181 125.2); /* slightly darker */
+    background-color: oklch(0.65 0.181 125.2);
+    /* slightly darker */
   }
 }
 
@@ -582,13 +608,14 @@
  * SECTION LAYOUT CLASSES
  * ========================================================================== */
 @layer components {
+
   /* Main content wrapper - adds padding for fixed header */
   .global-main {
     /* No padding-top - hero extends to top, header floats above */
   }
 
   /* Section separator line for consecutive sections within global-main */
-  .global-main section + section::before {
+  .global-main section+section::before {
     content: "";
     position: absolute;
     left: 0;
@@ -607,7 +634,8 @@
     min-height: calc(100dvh - var(--header-h));
     display: flex;
     flex-direction: column;
-    justify-content: flex-start; /* Start from top, padding handles header gap */
+    justify-content: flex-start;
+    /* Start from top, padding handles header gap */
     position: relative;
   }
 
@@ -640,6 +668,7 @@
  * HERO SECTION STYLES
  * ========================================================================== */
 @layer components {
+
   /* Hero section container */
   .hero-section {
     position: relative;
@@ -744,7 +773,8 @@
 @layer components {
   .chat-input-hero-mock {
     position: relative;
-    z-index: 2; /* Above hero bottom fade gradient */
+    z-index: 2;
+    /* Above hero bottom fade gradient */
     width: 100%;
     max-width: 896px;
     margin: 1.5rem auto 0;
@@ -868,9 +898,9 @@
     top: 55px;
     left: 320px;
     transition: top 1.8s cubic-bezier(0.4, 0, 0.2, 1),
-                left 1.8s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.3s,
-                transform 0.15s;
+      left 1.8s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.3s,
+      transform 0.15s;
   }
 
   .cursor-overlay svg {
@@ -894,8 +924,15 @@
 
   /* Caret blink animation */
   @keyframes hero-caret-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0;
+    }
   }
 
   .hero-caret-blink {
@@ -907,6 +944,7 @@
  * BUTTON STYLES
  * ========================================================================== */
 @layer components {
+
   /* Brand button (orange CTA) */
   .btn-brand {
     display: inline-flex;
@@ -1448,6 +1486,7 @@
  * ABOUT PAGE - MANIFESTO SECTION
  * ========================================================================== */
 @layer components {
+
   /* Manifesto Section Container */
   .manifesto-section {
     position: relative;
@@ -1566,6 +1605,7 @@
  * ABOUT PAGE - CONTENT CARD COMPONENT
  * ========================================================================== */
 @layer components {
+
   /* Content Card - reusable card for About page sections */
   .content-card {
     position: relative;
@@ -1684,6 +1724,7 @@
  * ABOUT PAGE - ACCORDION STYLES
  * ========================================================================== */
 @layer components {
+
   /* Accordion About - one-at-a-time behavior */
   .accordion-about {
     border-top: 1px solid var(--border);
@@ -1809,6 +1850,7 @@
  * SUBSCRIPTION PANEL
  * ========================================================================== */
 @layer components {
+
   /* Override dashboard-main padding when subscription page is shown */
   .dashboard-main:has(.subscription-container) {
     padding-top: 0;
@@ -1831,7 +1873,7 @@
   }
 
   /* Sidebar navigation spacing from header */
-  .subscription-body > aside > nav {
+  .subscription-body>aside>nav {
     padding-top: 0.75rem;
   }
 }
@@ -1840,6 +1882,7 @@
  * ADMIN PANEL
  * ========================================================================== */
 @layer components {
+
   /* Override dashboard-main padding when admin page is shown */
   .dashboard-main:has(.admin-container) {
     padding-top: 0;
@@ -1875,8 +1918,8 @@
   }
 
   /* Sidebar navigation spacing from header */
-  .admin-sidebar > nav,
-  .admin-sidebar > .sidebar-nav {
+  .admin-sidebar>nav,
+  .admin-sidebar>.sidebar-nav {
     padding-top: 1.5rem;
   }
 
@@ -2004,6 +2047,7 @@
       opacity: 0;
       transform: scale(0.95);
     }
+
     to {
       opacity: 1;
       transform: scale(1);
@@ -2333,7 +2377,7 @@
     padding-top: 0;
   }
 
-  .settings-device + .settings-device {
+  .settings-device+.settings-device {
     border-top: 1px solid var(--border);
   }
 
@@ -2718,6 +2762,7 @@
 }
 
 @layer utilities {
+
   /* Brand color text */
   .text-brand {
     color: var(--brand);
@@ -2739,10 +2784,13 @@
  * ========================================================================== */
 @layer utilities {
   @keyframes thinking-dot {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 0.3;
       transform: scale(0.8);
     }
+
     50% {
       opacity: 1;
       transform: scale(1);
@@ -2766,9 +2814,12 @@
   }
 
   @keyframes cursor-blink {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
     }
+
     50% {
       opacity: 0;
     }
@@ -2783,12 +2834,16 @@
  * ANIMATIONS - Hero
  * ========================================================================== */
 @layer utilities {
+
   /* Badge dot blink animation */
   @keyframes badge-dot-blink {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
       transform: scale(1);
     }
+
     50% {
       opacity: 0.5;
       transform: scale(0.8);
@@ -2804,18 +2859,17 @@
     0% {
       background-position: -200% 0;
     }
+
     100% {
       background-position: 200% 0;
     }
   }
 
   .hero-text-shimmer {
-    background-image: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.35) 0%,
-      rgba(255, 255, 255, 0.85) 50%,
-      rgba(255, 255, 255, 0.35) 100%
-    );
+    background-image: linear-gradient(90deg,
+        rgba(255, 255, 255, 0.35) 0%,
+        rgba(255, 255, 255, 0.85) 50%,
+        rgba(255, 255, 255, 0.35) 100%);
     background-size: 200% 100%;
     background-clip: text;
     -webkit-background-clip: text;
@@ -2825,9 +2879,12 @@
 
   /* Hero caret blink animation */
   @keyframes hero-caret-blink {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
     }
+
     50% {
       opacity: 0;
     }
@@ -2847,6 +2904,7 @@
       height: 0;
       opacity: 0;
     }
+
     to {
       height: var(--radix-collapsible-content-height);
       opacity: 1;
@@ -2858,6 +2916,7 @@
       height: var(--radix-collapsible-content-height);
       opacity: 1;
     }
+
     to {
       height: 0;
       opacity: 0;
@@ -2869,6 +2928,7 @@
  * REDUCED MOTION - Accessibility Support
  * ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
+
   /* Disable all animations */
   .animate-thinking-dot,
   .animate-cursor-blink,
@@ -2974,13 +3034,75 @@
  * ========================================================================== */
 @layer components {
   .diagonal-stripes {
-    background-image: repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 8px,
-      var(--border) 8px,
-      var(--border) 9px
-    );
+    background-image: repeating-linear-gradient(-45deg,
+        transparent,
+        transparent 8px,
+        var(--border) 8px,
+        var(--border) 9px);
     opacity: 0.3;
+  }
+
+  /* Nuclear Clerk Overrides - High Specificity Absolute Minimalist */
+  [data-cl-element='rootBox'] .cl-formFieldLabel,
+  [data-cl-element='rootBox'] .cl-formFieldHintText,
+  [data-cl-element='rootBox'] .cl-optionalText,
+  [data-cl-element='rootBox'] [class*='socialButtonsBlockButtonBadge'],
+  [data-cl-element='rootBox'] [data-cl-element*='badge'],
+  [data-cl-element='rootBox'] [data-cl-element*='Badge'],
+  .cl-rootBox .cl-formFieldLabel,
+  .cl-rootBox .cl-formFieldHintText,
+  .cl-rootBox [class*='socialButtonsBlockButtonBadge'],
+  div[class*='cl-socialButtonsBlockButtonBadge'],
+  span[class*='cl-socialButtonsBlockButtonBadge'] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: absolute !important;
+    z-index: -9999 !important;
+  }
+
+  /* Hide "Terakhir digunakan" (Last used) badge on sign-in form */
+  [data-cl-element='rootBox'] [class*='identifierFieldInputOptionLastUsed'],
+  [data-cl-element='rootBox'] [class*='IdentifierFieldInputOptionLastUsed'],
+  [data-cl-element='rootBox'] [class*='lastUsed'],
+  [data-cl-element='rootBox'] [class*='LastUsed'],
+  .cl-rootBox [class*='identifierFieldInputOptionLastUsed'],
+  .cl-rootBox [class*='lastUsed'],
+  .cl-identifierFieldInputOptionLastUsed,
+  [class*='cl-identifierFieldInputOptionLastUsed'],
+  /* Alternative identifier method selectors */
+  .cl-alternativeMethodsBlockButton__lastUsed,
+  [class*='alternativeMethodsBlockButton__lastUsed'],
+  /* Form field related last used indicators */
+  .cl-formFieldInputGroup__lastUsed,
+  [class*='formFieldInputGroup__lastUsed'],
+  .cl-formFieldInputShowPasswordButton__lastUsed,
+  /* Badge/tag inside identifier field */
+  .cl-identifierField__emailAddress+span,
+  .cl-identifierField__phoneNumber+span,
+  .cl-formFieldInput__identifier+span,
+  /* Target the small tag/badge element near form field */
+  .cl-formField [class*='badge'],
+  .cl-formField [class*='Badge'],
+  .cl-formField [class*='tag'],
+  .cl-formField [class*='Tag'],
+  .cl-formField [class*='hint']:not(.cl-formFieldHintText),
+  /* Identifier preview related */
+  .cl-identifierPreview [class*='badge'],
+  .cl-identifierPreview [class*='Badge'] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: absolute !important;
+    z-index: -9999 !important;
   }
 }

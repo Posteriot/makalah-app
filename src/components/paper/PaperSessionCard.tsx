@@ -123,7 +123,11 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
       })
 
       if (!response.ok) {
-        const error = await response.json()
+        const error = await response.json().catch(() => ({}))
+        if (error?.redirectUrl) {
+          window.location.href = error.redirectUrl
+          return
+        }
         throw new Error(error.error || `Gagal export ke ${format.toUpperCase()}`)
       }
 

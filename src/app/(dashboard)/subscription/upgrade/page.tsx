@@ -10,7 +10,6 @@ import {
   Zap,
   Shield,
   HeadphonesIcon,
-  Loader2,
   Calendar,
 } from "lucide-react"
 import { cn } from "@/lib/utils"

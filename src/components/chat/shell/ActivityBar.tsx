@@ -39,10 +39,6 @@ interface ActivityBarItemProps {
   label: string
   isActive: boolean
   onClick: () => void
-  /** Index for keyboard navigation */
-  index: number
-  /** Total items count */
-  totalItems: number
 }
 
 function ActivityBarItem({
@@ -51,8 +47,6 @@ function ActivityBarItem({
   label,
   isActive,
   onClick,
-  index,
-  totalItems,
 }: ActivityBarItemProps) {
   return (
     <Tooltip>
@@ -237,7 +231,7 @@ export function ActivityBar({
           aria-orientation="vertical"
           className="flex flex-col items-center gap-1"
         >
-          {panelItems.map((item, index) => (
+          {panelItems.map((item) => (
             <ActivityBarItem
               key={item.panel}
               panel={item.panel}
@@ -245,8 +239,6 @@ export function ActivityBar({
               label={item.label}
               isActive={activePanel === item.panel}
               onClick={() => handlePanelClick(item.panel)}
-              index={index}
-              totalItems={panelItems.length}
             />
           ))}
         </div>

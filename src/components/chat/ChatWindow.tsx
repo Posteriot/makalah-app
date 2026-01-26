@@ -39,9 +39,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const { user: clerkUser } = useUser()
   const userId = useQuery(api.chatHelpers.getUserId, clerkUser?.id ? { clerkUserId: clerkUser.id } : "skip")
 
+  const isValidConvexId = (value: string | null): value is string =>
+    typeof value === "string" && /^[a-z0-9]{32}$/.test(value)
+  const safeConversationId = isValidConvexId(conversationId)
+    ? (conversationId as Id<"conversations">)
+    : null
+
   const {
     isPaperMode,
-    currentStage,
     stageStatus,
     stageLabel,
     stageData,
@@ -49,7 +54,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     requestRevision,
     markStageAsDirty,
     getStageStartIndex,
-  } = usePaperSession(conversationId as Id<"conversations">)
+  } = usePaperSession(safeConversationId ?? undefined)
 
   // Track which conversation has been synced to prevent infinite loops
   const syncedConversationRef = useRef<string | null>(null)
@@ -57,13 +62,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   // 0. Check if conversation exists (for invalid conversationId handling)
   const conversation = useQuery(
     api.conversations.getConversation,
-    conversationId ? { conversationId: conversationId as Id<"conversations"> } : "skip"
+    safeConversationId ? { conversationId: safeConversationId } : "skip"
   )
-  const isConversationLoading = conversationId !== null && conversation === undefined
-  const conversationNotFound = conversationId !== null && conversation === null
+  const isConversationLoading = safeConversationId !== null && conversation === undefined
+  const conversationNotFound =
+    conversationId !== null && (safeConversationId === null || conversation === null)
 
   // 1. Fetch history from Convex
-  const { messages: historyMessages, isLoading: isHistoryLoading } = useMessages(conversationId)
+  const { messages: historyMessages, isLoading: isHistoryLoading } = useMessages(
+    safeConversationId ? safeConversationId : null
+  )
 
   // Paper mode: Convert history messages to permission-compatible format
   const permissionMessages = useMemo(() => {
@@ -84,13 +92,17 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
 
   // Create transport with custom body for conversationId
-  const transport = useMemo(() => new DefaultChatTransport({
-    api: '/api/chat',
-    body: {
-      conversationId: conversationId,
-      fileIds: uploadedFileIds,
-    },
-  }), [conversationId, uploadedFileIds])
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: {
+          conversationId: safeConversationId,
+          fileIds: uploadedFileIds,
+        },
+      }),
+    [safeConversationId, uploadedFileIds]
+  )
 
   type CreatedArtifact = { artifactId: Id<"artifacts">; title?: string }
 
@@ -242,7 +254,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }
 
   const handleEdit = async (messageId: string, newContent: string) => {
-    if (!conversationId) return
+    if (!safeConversationId) return
 
     // Resolve the actual Convex ID
     // Client-generated IDs (from sendMessage) are ~16 chars, mixed case
@@ -276,7 +288,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       await editAndTruncate({
         messageId: actualMessageId,
         content: newContent, // Passed for backwards compat, but not used by mutation
-        conversationId: conversationId as Id<"conversations">
+        conversationId: safeConversationId,
       })
 
       // 2. Mark stage as dirty in paper mode
@@ -306,7 +318,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading || !safeConversationId) return
 
     pendingScrollToBottomRef.current = true
     sendMessage({ text: input })

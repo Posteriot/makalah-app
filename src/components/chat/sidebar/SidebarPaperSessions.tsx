@@ -59,7 +59,7 @@ export function SidebarPaperSessions({
   onArtifactPanelToggle,
   onCloseMobile,
 }: SidebarPaperSessionsProps) {
-  const { user } = useCurrentUser()
+  const { user, isLoading: isUserLoading } = useCurrentUser()
 
   // Single folder expanded state (default: expanded)
   const [isExpanded, setIsExpanded] = useState(true)
@@ -70,7 +70,7 @@ export function SidebarPaperSessions({
   )
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || isUserLoading || !user) {
     return (
       <div className="flex flex-col h-full">
         {/* Header skeleton */}
