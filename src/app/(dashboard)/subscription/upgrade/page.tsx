@@ -164,7 +164,7 @@ export default function UpgradePage() {
             onClick={handleUpgrade}
             className={cn(
               "w-full mt-6 py-3 rounded-lg font-medium transition-colors",
-              "bg-primary text-primary-foreground hover:bg-primary/90"
+              "bg-[var(--success)] text-white hover:bg-[oklch(0.65_0.181_125.2)]"
             )}
           >
             Upgrade Sekarang

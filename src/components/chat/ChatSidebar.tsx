@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Loader2Icon, PlusIcon } from "lucide-react"
+import { ArrowUpCircle, Loader2Icon, PlusIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
@@ -132,7 +132,7 @@ export function ChatSidebar({
               onNewChat()
               onCloseMobile?.()
             }}
-            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-gray-900 font-medium rounded-[10px] gap-2 text-sm"
+            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-white font-medium rounded-[10px] gap-2 text-sm"
             aria-label="Start new chat"
             aria-busy={isCreating}
             disabled={isCreating}
@@ -163,19 +163,16 @@ export function ChatSidebar({
       <div className="flex-1 flex flex-col overflow-hidden">{renderContent()}</div>
 
       {/* Footer - Upgrade CTA for BPP/Gratis users */}
+      {/* Standar: var(--success) grass green + text-white */}
       {showUpgradeCTA && (
         <div className="p-3 border-t shrink-0">
           <Button
             variant="default"
             size="sm"
-            className={cn(
-              "w-full font-semibold",
-              user.subscriptionStatus === "bpp"
-                ? "bg-orange-500 hover:bg-orange-600"
-                : "bg-yellow-500 hover:bg-yellow-600 text-black"
-            )}
-            onClick={() => router.push("/price")}
+            className="w-full font-semibold bg-[var(--success)] hover:bg-[oklch(0.65_0.181_125.2)] text-white"
+            onClick={() => router.push("/subscription/upgrade")}
           >
+            <ArrowUpCircle className="h-4 w-4 mr-1.5" />
             Upgrade
           </Button>
         </div>

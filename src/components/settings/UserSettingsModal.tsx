@@ -21,7 +21,7 @@ import { RoleBadge } from "@/components/admin/RoleBadge"
 
 // Tier configuration for subscription badges
 // Standar warna: GRATIS=emerald, BPP=blue, PRO=amber (semua text putih)
-// Upgrade button: warna PRO (amber)
+// Upgrade button: warna --success (grass green) + text-white
 type TierType = "gratis" | "free" | "bpp" | "pro"
 
 const TIER_CONFIG: Record<TierType, { label: string; className: string; showUpgrade: boolean }> = {
@@ -674,12 +674,12 @@ export function UserSettingsModal({
                             >
                               {tierConfig.label}
                             </span>
-                            {/* Upgrade button for Gratis and BPP - always use PRO color (amber) */}
+                            {/* Upgrade button - grass green (--success) + text-white */}
                             {tierConfig.showUpgrade && (
                               <Link
                                 href="/subscription/upgrade"
                                 onClick={() => onOpenChange(false)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors bg-amber-600 text-white hover:bg-amber-700"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors bg-[var(--success)] text-white hover:bg-[oklch(0.65_0.181_125.2)]"
                               >
                                 <ArrowUpCircle className="h-4 w-4" />
                                 Upgrade

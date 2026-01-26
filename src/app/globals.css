@@ -155,7 +155,8 @@
      | BPP    | bg-blue-600     | --segment-bpp       | white      |
      | PRO    | bg-amber-600    | --segment-pro       | white      |
 
-     Upgrade Button: Gunakan warna PRO (amber-600 / --segment-pro)
+     Upgrade Button: Gunakan warna --success (grass green) + text-white
+     CSS: bg-[var(--success)] atau class .btn-upgrade
      ======================================== */
   --segment-gratis: oklch(0.55 0.15 165); /* emerald-600 */
   --segment-bpp: oklch(0.55 0.2 260);     /* blue-600 */
@@ -364,6 +365,15 @@
     background-color: rgb(9, 9, 11); /* Dark mode: solid dark */
   }
 
+  /* Header hover state: show background on hover (even when not scrolled) */
+  .global-header:hover {
+    background-color: rgb(255, 255, 255); /* Light mode: solid white */
+  }
+
+  .dark .global-header:hover {
+    background-color: rgb(9, 9, 11); /* Dark mode: solid dark */
+  }
+
   /* Header hidden state: scrolling down */
   .global-header.header-hidden {
     transform: translateY(-100%);
@@ -555,6 +565,16 @@
   .btn-green-solid {
     background-color: var(--success);
     color: var(--success-foreground);
+  }
+
+  /* Upgrade button - grass green / lime green */
+  /* Standar untuk semua button upgrade di aplikasi */
+  .btn-upgrade {
+    background-color: var(--success);
+    color: white;
+  }
+  .btn-upgrade:hover {
+    background-color: oklch(0.65 0.181 125.2); /* slightly darker */
   }
 }
 

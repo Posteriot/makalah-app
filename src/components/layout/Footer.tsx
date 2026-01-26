@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { cn } from "@/lib/utils"
 
 const RESOURCE_LINKS = [
   { href: "/documentation", label: "Dokumentasi" },
@@ -20,35 +21,14 @@ export function Footer() {
   }
 
   return (
-    <footer className="site-footer">
-      {/* Diagonal Stripes Separator */}
-      <svg
-        className="diagonal-stripes-footer"
-        aria-hidden="true"
-        preserveAspectRatio="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <pattern
-            id="diagonal-stripes-footer"
-            x="0"
-            y="0"
-            width="10"
-            height="10"
-            patternUnits="userSpaceOnUse"
-          >
-            <line
-              x1="0"
-              y1="10"
-              x2="10"
-              y2="0"
-              stroke="currentColor"
-              strokeWidth="1"
-            />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#diagonal-stripes-footer)" />
-      </svg>
+    <footer className="site-footer relative">
+      {/* Horizontal line border at top - same style as header bottom line */}
+      <div
+        className={cn(
+          "absolute top-0 left-0 right-0",
+          "h-px bg-border"
+        )}
+      />
 
       <div className="footer-container">
         {/* Left: Brand + Copyright */}
