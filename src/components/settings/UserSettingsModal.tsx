@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { isClerkAPIResponseError } from "@clerk/nextjs/errors"
 import Image from "next/image"
+import Link from "next/link"
 import { toast } from "sonner"
 import {
+  ArrowUpCircle,
   BadgeCheck,
   Eye,
   EyeOff,
@@ -16,6 +18,18 @@ import {
 import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { RoleBadge } from "@/components/admin/RoleBadge"
+
+// Tier configuration for subscription badges
+// Standar warna: GRATIS=emerald, BPP=blue, PRO=amber (semua text putih)
+// Upgrade button: warna PRO (amber)
+type TierType = "gratis" | "free" | "bpp" | "pro"
+
+const TIER_CONFIG: Record<TierType, { label: string; className: string; showUpgrade: boolean }> = {
+  gratis: { label: "GRATIS", className: "bg-emerald-600 text-white", showUpgrade: true },
+  free: { label: "GRATIS", className: "bg-emerald-600 text-white", showUpgrade: true },
+  bpp: { label: "BPP", className: "bg-blue-600 text-white", showUpgrade: true },
+  pro: { label: "PRO", className: "bg-amber-600 text-white", showUpgrade: false },
+}
 
 interface UserSettingsModalProps {
   open: boolean
@@ -207,9 +221,9 @@ export function UserSettingsModal({
       >
         <div className="user-settings-header">
           <div className="user-settings-title-area">
-            <h2 className="user-settings-title">Akun</h2>
+            <h2 className="user-settings-title">Atur Akun</h2>
             <p className="user-settings-subtitle">
-              Kelola info akun lo di Makalah AI.
+              Kelola informasi akun Anda di Makalah AI.
             </p>
           </div>
           <button
@@ -266,36 +280,42 @@ export function UserSettingsModal({
                 activeTab === "profile" && "active"
               )}
             >
-              <h3 className="settings-content-title">Detail Profil</h3>
-              <p className="settings-content-subtitle">
-                Atur nama dan avatar akun lo.
-              </p>
+              {/* Header with icon like subscription page */}
+              <div className="settings-content-header">
+                <h3 className="settings-content-title">
+                  <UserIcon />
+                  Detail Profil
+                </h3>
+                <p className="settings-content-subtitle">
+                  Atur nama dan avatar akun Anda.
+                </p>
+              </div>
 
-              <div className="settings-section">
+              {/* Card wrapper like subscription page */}
+              <div className="settings-card">
+                <div className="settings-card-header">Profil</div>
+                <div className="settings-card-body">
                 {!isProfileEditing ? (
-                  <div className="settings-row">
-                    <span className="settings-row-label">Profil</span>
-                    <div className="settings-row-value">
-                      <div className="settings-profile-info">
-                        <div className="settings-avatar">
-                          {user?.imageUrl ? (
-                            <Image
-                              src={user.imageUrl}
-                              alt={fullName || "User"}
-                              width={40}
-                              height={40}
-                              className="h-full w-full object-cover"
-                              unoptimized
-                              loader={({ src }) => src}
-                            />
-                          ) : (
-                            <span>{userInitial}</span>
-                          )}
-                        </div>
-                        <span className="settings-profile-name">
-                          {fullName || primaryEmail || "-"}
-                        </span>
+                  <div className="flex items-center justify-between">
+                    <div className="settings-profile-info">
+                      <div className="settings-avatar">
+                        {user?.imageUrl ? (
+                          <Image
+                            src={user.imageUrl}
+                            alt={fullName || "User"}
+                            width={40}
+                            height={40}
+                            className="h-full w-full object-cover"
+                            unoptimized
+                            loader={({ src }) => src}
+                          />
+                        ) : (
+                          <span>{userInitial}</span>
+                        )}
                       </div>
+                      <span className="settings-profile-name">
+                        {fullName || primaryEmail || "-"}
+                      </span>
                     </div>
                     <button
                       className="settings-row-action"
@@ -400,20 +420,19 @@ export function UserSettingsModal({
                     </div>
                   </div>
                 )}
+                </div>
               </div>
 
-              <div className="settings-section">
-                <div className="settings-row">
-                  <span className="settings-row-label">Email</span>
-                  <div className="settings-row-value">
-                    <div className="settings-email-item">
-                      <span>{primaryEmail || "-"}</span>
-                      {primaryEmail && (
-                        <span className="settings-badge-primary">Utama</span>
-                      )}
-                    </div>
+              {/* Email card */}
+              <div className="settings-card">
+                <div className="settings-card-header">Email</div>
+                <div className="settings-card-body">
+                  <div className="settings-email-item">
+                    <span>{primaryEmail || "-"}</span>
+                    {primaryEmail && (
+                      <span className="settings-badge-primary">Utama</span>
+                    )}
                   </div>
-                  <div />
                 </div>
               </div>
             </div>
@@ -424,12 +443,21 @@ export function UserSettingsModal({
                 activeTab === "security" && "active"
               )}
             >
-              <h3 className="settings-content-title">Keamanan</h3>
-              <p className="settings-content-subtitle">
-                Update kata sandi dan kontrol sesi.
-              </p>
+              {/* Header with icon like subscription page */}
+              <div className="settings-content-header">
+                <h3 className="settings-content-title">
+                  <Shield />
+                  Keamanan
+                </h3>
+                <p className="settings-content-subtitle">
+                  Update kata sandi dan kontrol sesi.
+                </p>
+              </div>
 
-              <div className="settings-section">
+              {/* Password card */}
+              <div className="settings-card">
+                <div className="settings-card-header">Kata Sandi</div>
+                <div className="settings-card-body">
                 {!isPasswordEditing ? (
                   <div className="settings-row">
                     <span className="settings-row-label">Kata sandi</span>
@@ -567,6 +595,7 @@ export function UserSettingsModal({
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             </div>
 
@@ -576,48 +605,91 @@ export function UserSettingsModal({
                 activeTab === "status" && "active"
               )}
             >
-              <h3 className="settings-content-title">Status Akun</h3>
-              <p className="settings-content-subtitle">
-                Ringkasan akses akun lo di Makalah AI.
-              </p>
+              {/* Header with icon like subscription page */}
+              <div className="settings-content-header">
+                <h3 className="settings-content-title">
+                  <BadgeCheck />
+                  Status Akun
+                </h3>
+                <p className="settings-content-subtitle">
+                  Ringkasan akses akun Anda di Makalah AI.
+                </p>
+              </div>
 
-              <div className="settings-section">
-                <div className="settings-row">
-                  <span className="settings-row-label">Email</span>
-                  <div className="settings-row-value">{primaryEmail || "-"}</div>
-                  <div />
+              {/* Email info card */}
+              <div className="settings-card">
+                <div className="settings-card-header">Informasi Akun</div>
+                <div className="settings-card-body">
+                  <div className="settings-row">
+                    <span className="settings-row-label">Email</span>
+                    <div className="settings-row-value">{primaryEmail || "-"}</div>
+                    <div />
+                  </div>
                 </div>
               </div>
 
-              <div className="settings-section">
-                <div className="settings-row">
-                  <span className="settings-row-label">Role</span>
-                  <div className="settings-row-value">
-                    {isConvexLoading ? (
-                      <span className="text-sm text-muted-foreground">
-                        Memuat...
-                      </span>
-                    ) : convexUser ? (
-                      <RoleBadge
-                        role={convexUser.role as "superadmin" | "admin" | "user"}
-                      />
-                    ) : (
-                      "-"
-                    )}
+              {/* Role card */}
+              <div className="settings-card">
+                <div className="settings-card-header">Role & Akses</div>
+                <div className="settings-card-body">
+                  <div className="settings-row">
+                    <span className="settings-row-label">Role</span>
+                    <div className="settings-row-value">
+                      {isConvexLoading ? (
+                        <span className="text-sm text-muted-foreground">
+                          Memuat...
+                        </span>
+                      ) : convexUser ? (
+                        <RoleBadge
+                          role={convexUser.role as "superadmin" | "admin" | "user"}
+                        />
+                      ) : (
+                        "-"
+                      )}
+                    </div>
+                    <div />
                   </div>
-                  <div />
                 </div>
               </div>
 
-              <div className="settings-section">
-                <div className="settings-row">
-                  <span className="settings-row-label">Subscription</span>
-                  <div className="settings-row-value">
-                    {isConvexLoading
-                      ? "Memuat..."
-                      : convexUser?.subscriptionStatus || "Free"}
-                  </div>
-                  <div />
+              {/* Subscription card */}
+              <div className="settings-card">
+                <div className="settings-card-header">Subskripsi</div>
+                <div className="settings-card-body">
+                  {isConvexLoading ? (
+                    <span className="text-sm text-muted-foreground">Memuat...</span>
+                  ) : (
+                    <>
+                      {/* Tier badge */}
+                      {(() => {
+                        const tierKey = (convexUser?.subscriptionStatus || "free").toLowerCase() as TierType
+                        const tierConfig = TIER_CONFIG[tierKey] || TIER_CONFIG.free
+                        return (
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={cn(
+                                "inline-flex items-center px-3 py-1 rounded-md text-xs font-bold",
+                                tierConfig.className
+                              )}
+                            >
+                              {tierConfig.label}
+                            </span>
+                            {/* Upgrade button for Gratis and BPP - always use PRO color (amber) */}
+                            {tierConfig.showUpgrade && (
+                              <Link
+                                href="/subscription/upgrade"
+                                onClick={() => onOpenChange(false)}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors bg-amber-600 text-white hover:bg-amber-700"
+                              >
+                                <ArrowUpCircle className="h-4 w-4" />
+                                Upgrade
+                              </Link>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
