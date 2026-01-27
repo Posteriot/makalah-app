@@ -23,23 +23,111 @@
     <div class="grid-thin"></div>
 
     <!-- Navigation -->
-    <header class="navbar">
+    <header class="navbar" id="globalHeader">
         <div class="container">
-            <div class="brand">
-                <img src="../../public/favicon.ico" alt="Logo" class="logo-img-mock">
-                <span class="brand-text">MAKALAH<span class="brand-plus">AI</span></span>
-            </div>
+            <!-- Header Left - Logo & Brand -->
+            <a href="/" class="header-brand">
+                <img src="../../public/logo/makalah_logo_500x500.png" alt="Makalah" class="logo-img">
+                <!-- Light brand text (visible in dark mode) -->
+                <img src="../../public/makalah_brand_text.svg" alt="Makalah" class="logo-brand-text logo-brand-light">
+                <!-- Dark brand text (visible in light mode) -->
+                <img src="../../public/makalah_brand_text_dark.svg" alt="Makalah" class="logo-brand-text logo-brand-dark">
+            </a>
+
+            <!-- Navigation -->
             <nav class="nav-links">
-                <a href="#" class="nav-item active">Product</a>
-                <a href="#" class="nav-item">Enterprise</a>
-                <a href="#" class="nav-item">Pricing</a>
-                <a href="#" class="nav-item">Docs</a>
+                <a href="/pricing" class="nav-item">Harga</a>
+                <a href="/chat" class="nav-item active">Chat</a>
+                <a href="/blog" class="nav-item">Blog</a>
+                <a href="/documentation" class="nav-item">Dokumentasi</a>
+                <a href="/about" class="nav-item">Tentang</a>
             </nav>
+
+            <!-- Header Right - Theme Toggle & Auth -->
             <div class="nav-actions">
-                <button class="btn btn-ghost">Log In</button>
-                <button class="btn btn-primary">Get Started</button>
+                <!-- Theme Toggle (only visible when logged in) -->
+                <button class="theme-toggle auth-only" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
+                    <svg class="icon sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="icon moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+
+                <!-- Auth State: Logged Out -->
+                <div class="auth-logged-out" id="authLoggedOut">
+                    <a href="/sign-in" class="btn btn-green-solid">Masuk</a>
+                </div>
+
+                <!-- Auth State: Logged In -->
+                <div class="auth-logged-in" id="authLoggedIn">
+                    <div class="user-dropdown" id="userDropdown">
+                        <button class="user-dropdown-trigger" id="userDropdownTrigger">
+                            <div class="avatar">E</div>
+                            <span class="user-name">Erik Supit</span>
+                            <span class="segment-badge segment-gratis">GRATIS</span>
+                            <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <!-- Dropdown Menu -->
+                        <div class="user-dropdown-menu" id="userDropdownMenu">
+                            <a href="#" class="dropdown-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <span>Atur Akun</span>
+                            </a>
+                            <a href="/subscription/overview" class="dropdown-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                    <line x1="1" y1="10" x2="23" y2="10"></line>
+                                </svg>
+                                <span>Subskripsi</span>
+                            </a>
+                            <button class="dropdown-item dropdown-item-danger" id="signOutBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                <span>Sign out</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- Diagonal Stripes Separator (full width of header) -->
+        <svg
+            class="diagonal-stripes-header"
+            width="100%"
+            height="10"
+            aria-hidden="true"
+            preserveAspectRatio="none"
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <defs>
+                <pattern id="header-stripes-pattern" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="10" x2="10" y2="0" stroke="currentColor" stroke-width="1" />
+                </pattern>
+            </defs>
+            <rect x="0" y="0" width="100%" height="100%" fill="url(#header-stripes-pattern)" />
+        </svg>
+
+        <!-- Horizontal line border below stripes -->
+        <div class="header-bottom-line"></div>
     </header>
 
     <main>
@@ -82,7 +170,7 @@
                                     <div class="mock-dots">
                                         <span></span><span></span><span></span>
                                     </div>
-                                    <div class="mock-url">app.makalah.ai/new-research</div>
+                                    <div class="mock-url">makalah.ai/chat</div>
                                 </div>
                                 <div class="mock-content">
                                     <div class="code-block">
