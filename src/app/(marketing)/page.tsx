@@ -3,6 +3,7 @@ import Link from "next/link"
 import { UserPlus } from "lucide-react"
 import { PawangBadge } from "@/components/marketing/PawangBadge"
 import { ChatInputHeroMock } from "@/components/marketing/ChatInputHeroMock"
+import { HeroResearchMock } from "@/components/marketing/HeroResearchMock"
 import { BenefitsSection } from "@/components/marketing/BenefitsSection"
 import { PricingSection } from "@/components/marketing/PricingSection"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
@@ -15,41 +16,62 @@ export default function MarketingHomePage() {
         <WaitlistToast />
       </Suspense>
 
-      {/* Hero Section */}
-      <section className="hero-section section-screen-with-header hero-vivid hero-grid-thin">
-        <div className="hero-content">
-          {/* Pawang Badge */}
-          <PawangBadge />
+      {/* Hero Section - Two-column flex layout */}
+      <section className="hero-section hero-vivid hero-grid-thin">
+        {/* Diagonal Stripes Background */}
+        <div className="hero-diagonal-stripes" />
 
-          {/* Hero Heading */}
-          <h1 className="font-hero text-[2.5rem] md:text-[4rem] font-bold leading-[1.1] tracking-[-0.02em]">
-            Ngobrol<span className="text-brand">+</span>Riset
-            <br />
-            <span className="text-brand">+</span>Brainstorming
-            <br />
-            <span className="text-brand">=</span>Paper<span className="text-brand">_</span>Akademik
-          </h1>
+        {/* IDE Layout Lines (Decorative) */}
+        <div className="hero-ide-line-y hidden lg:block" style={{ left: "calc(50% - 600px)" }} />
+        <div className="hero-ide-line-y hidden lg:block" style={{ right: "calc(50% - 600px)" }} />
 
-          {/* Subheading */}
-          <p className="text-base md:text-lg text-muted-foreground max-w-[500px]">
-            Nggak perlu prompt ruwet, ide apapun bakal diolah Agen Makalah Ai menjadi paper utuh
-          </p>
+        {/* Hero Flex Container */}
+        <div className="hero-flex">
+          {/* Hero Left - Text Content */}
+          <div className="hero-left">
+            {/* Pawang Badge */}
+            <PawangBadge />
 
-          {/* CTA Button */}
-          <Link
-            href="/auth/waiting-list"
-            className="btn-brand text-base px-6 py-3 inline-flex items-center gap-2 mt-2"
-          >
-            <UserPlus className="w-5 h-5" />
-            <span>Daftarkan email untuk uji coba</span>
-          </Link>
+            {/* Hero Heading */}
+            <h1 className="hero-heading">
+              Ngobrol<span className="text-brand">+</span>Riset
+              <br />
+              <span className="text-brand">+</span>Brainstorming
+              <br />
+              <span className="text-brand">=</span>Paper<span className="text-brand">_</span>Akademik
+            </h1>
 
-          {/* ChatInputHeroMock (Desktop only) */}
-          <ChatInputHeroMock />
+            {/* Subheading */}
+            <p className="hero-subheading">
+              Nggak perlu prompt ruwet. Ide apapun bakal diolah Agen Makalah AI menjadi paper utuh yang akurat secara sitasi dan kaidah akademik.
+            </p>
+
+            {/* CTA Button */}
+            <div className="hero-actions">
+              <Link
+                href="/auth/waiting-list"
+                className="btn-brand text-base px-6 py-3 inline-flex items-center gap-2"
+              >
+                <UserPlus className="w-5 h-5" />
+                <span>Daftarkan email untuk uji coba</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Hero Right - Layered Mockup */}
+          <div className="hero-right">
+            <div className="mockup-layered-container">
+              {/* Back Layer - Research Code Mockup */}
+              <HeroResearchMock />
+
+              {/* Front Layer - Chat Input Mockup (animated) */}
+              <ChatInputHeroMock />
+            </div>
+          </div>
         </div>
 
         {/* Bottom Fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-[120px] bg-gradient-to-b from-transparent to-background pointer-events-none" />
+        <div className="hero-fade-bottom" />
       </section>
 
       {/* Benefits Section */}
