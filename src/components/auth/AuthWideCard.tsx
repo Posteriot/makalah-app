@@ -11,7 +11,32 @@ interface AuthWideCardProps {
     customLeftContent?: React.ReactNode
 }
 
-export function AuthWideCard({ children, title, subtitle, customLeftContent }: AuthWideCardProps) {
+export function AuthWideCard({
+    children,
+    title,
+    subtitle,
+    customLeftContent,
+}: AuthWideCardProps) {
+    const resolvedTitle = title || "Silakan masuk!"
+    const firstSpaceIndex = resolvedTitle.indexOf(" ")
+    const shouldBreakTitle = firstSpaceIndex > 0
+    const titleFirstWord = shouldBreakTitle
+        ? resolvedTitle.slice(0, firstSpaceIndex)
+        : resolvedTitle
+    const titleRest = shouldBreakTitle
+        ? resolvedTitle.slice(firstSpaceIndex + 1).trimStart()
+        : ""
+
+    const resolvedSubtitle = subtitle || "Susun Paper terbaikmu, tanpa ribet, tinggal ngobrol!"
+    const firstCommaIndex = resolvedSubtitle.indexOf(",")
+    const hasComma = firstCommaIndex >= 0
+    const subtitleLead = hasComma
+        ? resolvedSubtitle.slice(0, firstCommaIndex + 1)
+        : resolvedSubtitle
+    const subtitleEmphasis = hasComma
+        ? resolvedSubtitle.slice(firstCommaIndex + 1).trimStart()
+        : ""
+
     return (
         <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-2xl border border-border bg-card shadow-2xl relative">
             {/* Left Column: Branding & Personality */}
@@ -58,19 +83,24 @@ export function AuthWideCard({ children, title, subtitle, customLeftContent }: A
                         {/* Heading + Subheading - Bottom, aligns with bottom edge of Clerk card */}
                         <div className="space-y-4 mt-auto">
                             <h1 className="font-hero text-3xl md:text-5xl font-bold tracking-tighter text-foreground leading-[1.1]">
-                                {title && title.includes("Silakan masuk!") ? (
-                                    <>Silakan<br />Masuk!</>
+                                {shouldBreakTitle ? (
+                                    <>
+                                        <span className="block">{titleFirstWord}</span>
+                                        <span>{titleRest}</span>
+                                    </>
                                 ) : (
-                                    title || <>Silakan<br />Masuk!</>
+                                    resolvedTitle
                                 )}
                             </h1>
                             <p className="text-sm leading-relaxed max-w-[280px]">
                                 <span className="text-muted-foreground font-normal">
-                                    {subtitle ? subtitle.split(",")[0] + "," : "Susun Paper terbaikmu,"}
+                                    {subtitleLead}
                                 </span>{" "}
-                                <span className="text-brand font-bold">
-                                    {subtitle ? subtitle.split(",").slice(1).join(",") : "tanpa ribet, tinggal ngobrol!"}
-                                </span>
+                                {subtitleEmphasis && (
+                                    <span className="text-brand font-bold">
+                                        {subtitleEmphasis}
+                                    </span>
+                                )}
                             </p>
                         </div>
                     </div>

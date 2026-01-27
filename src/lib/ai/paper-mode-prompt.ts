@@ -43,9 +43,17 @@ INSTRUKSI PENTING:
  * Generate paper mode system prompt if conversation has active paper session.
  * Simplified approach: goal-oriented instructions + inline revision context.
  */
-export const getPaperModeSystemPrompt = async (conversationId: Id<"conversations">) => {
+export const getPaperModeSystemPrompt = async (
+    conversationId: Id<"conversations">,
+    convexToken?: string
+) => {
     try {
-        const session = await fetchQuery(api.paperSessions.getByConversation, { conversationId });
+        const convexOptions = convexToken ? { token: convexToken } : undefined;
+        const session = await fetchQuery(
+            api.paperSessions.getByConversation,
+            { conversationId },
+            convexOptions
+        );
         if (!session) return "";
 
         const stage = session.currentStage as PaperStageId | "completed";
@@ -74,7 +82,8 @@ export const getPaperModeSystemPrompt = async (conversationId: Id<"conversations
         try {
             const invalidatedArtifacts = await fetchQuery(
                 api.artifacts.getInvalidatedByConversation,
-                { conversationId, userId: session.userId }
+                { conversationId, userId: session.userId },
+                convexOptions
             );
             invalidatedArtifactsContext = getInvalidatedArtifactsContext(invalidatedArtifacts);
         } catch (err) {

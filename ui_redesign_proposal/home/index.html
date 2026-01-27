@@ -22,8 +22,8 @@
     <div class="hero-vignette"></div>
     <div class="grid-thin"></div>
 
-    <!-- Navigation -->
-    <header class="navbar" id="globalHeader">
+    <!-- START: global-header -->
+    <header class="navbar" id="global-header">
         <div class="container">
             <!-- Header Left - Logo & Brand -->
             <a href="/" class="header-brand">
@@ -31,7 +31,8 @@
                 <!-- Light brand text (visible in dark mode) -->
                 <img src="../../public/makalah_brand_text.svg" alt="Makalah" class="logo-brand-text logo-brand-light">
                 <!-- Dark brand text (visible in light mode) -->
-                <img src="../../public/makalah_brand_text_dark.svg" alt="Makalah" class="logo-brand-text logo-brand-dark">
+                <img src="../../public/makalah_brand_text_dark.svg" alt="Makalah"
+                    class="logo-brand-text logo-brand-dark">
             </a>
 
             <!-- Navigation -->
@@ -45,21 +46,23 @@
 
             <!-- Header Right - Theme Toggle & Auth -->
             <div class="nav-actions">
-                <!-- Theme Toggle (only visible when logged in) -->
-                <button class="theme-toggle auth-only" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
-                    <svg class="icon sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                <!-- Theme Toggle -->
+                <button class="theme-toggle" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
+                    <svg class="icon sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="4"></circle>
+                        <path d="M12 2v2"></path>
+                        <path d="M12 20v2"></path>
+                        <path d="m4.93 4.93 1.41 1.41"></path>
+                        <path d="m17.66 17.66 1.41 1.41"></path>
+                        <path d="M2 12h2"></path>
+                        <path d="M20 12h2"></path>
+                        <path d="m6.34 17.66-1.41 1.41"></path>
+                        <path d="m19.07 4.93-1.41 1.41"></path>
                     </svg>
-                    <svg class="icon moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    <svg class="icon moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
                     </svg>
                 </button>
 
@@ -75,7 +78,8 @@
                             <div class="avatar">E</div>
                             <span class="user-name">Erik Supit</span>
                             <span class="segment-badge segment-gratis">GRATIS</span>
-                            <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
                         </button>
@@ -110,14 +114,8 @@
         </div>
 
         <!-- Diagonal Stripes Separator (full width of header) -->
-        <svg
-            class="diagonal-stripes-header"
-            width="100%"
-            height="10"
-            aria-hidden="true"
-            preserveAspectRatio="none"
-            xmlns="http://www.w3.org/2000/svg"
-        >
+        <svg class="diagonal-stripes-header" width="100%" height="10" aria-hidden="true" preserveAspectRatio="none"
+            xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <pattern id="header-stripes-pattern" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
                     <line x1="0" y1="10" x2="10" y2="0" stroke="currentColor" stroke-width="1" />
@@ -129,10 +127,11 @@
         <!-- Horizontal line border below stripes -->
         <div class="header-bottom-line"></div>
     </header>
+    <!-- END: global-header -->
 
     <main>
-        <!-- Hero Section -->
-        <section class="hero">
+        <!-- START: hero-home -->
+        <section class="hero" id="hero-home">
             <div class="diagonal-stripes"></div>
             <!-- IDE Layout Lines (Decorative) -->
             <div class="ide-line-y" style="left: calc(50% - 600px);"></div>
@@ -142,10 +141,13 @@
             <div class="container">
                 <div class="hero-flex">
                     <div class="hero-left">
-                        <div class="badge-group">
-                            <span class="badge-dot"></span>
-                            <span class="badge-text uppercase">Vision 2026</span>
-                        </div>
+                        <!-- Badge ini adalah link menuju halaman Tentang/About -->
+                        <a href="/about" class="badge-link">
+                            <div class="badge-group">
+                                <span class="badge-dot"></span>
+                                <span class="badge-text uppercase">Anda Pawang, Ai Tukang</span>
+                            </div>
+                        </a>
                         <h1 class="hero-heading">
                             Ngobrol<span class="text-brand">+</span>Riset<br>
                             <span class="text-brand">+</span>Brainstorming<br>
@@ -195,9 +197,10 @@
                                     </div>
                                 </div>
                                 <div class="mock-content chat-mock">
+                                    <!-- INTEGRASI: Bagian di bawah ini (chat-text & chat-footer) saat integrasi dengan codebase nanti -->
+                                    <!-- akan diganti dengan mockup chat input animated dari src/components/marketing/ChatInputHeroMock.tsx -->
                                     <p class="chat-text">Ayo bikin paper. Tapi gue belum punya ide. Bisa, kan? Kita
-                                        diskusi aja
-                                        dulu. Se</p>
+                                        diskusi aja dulu. Se</p>
                                     <div class="chat-footer">
                                         <div class="chat-plus">+</div>
                                         <div class="chat-send">
@@ -216,7 +219,8 @@
         </section>
 
         <!-- Features Section (Bento Style) -->
-        <section class="features bg-luxe-darker" id="benefits">
+        <!-- START: kenapa-makalah-ai -->
+        <section class="features" id="kenapa-makalah-ai">
             <!-- Background Patterns -->
             <div class="bg-diagonal-stripes opacity-30"></div>
             <div class="bg-dot-grid"></div>
@@ -231,87 +235,218 @@
                         <span class="badge-dot"></span>
                         <span class="badge-text uppercase">Kenapa Makalah AI?</span>
                     </div>
-                    <h2 class="section-title">Hasil Orisinal,<br>Tanpa Prompt Ruwet.</h2>
+                    <h2 class="section-title">Karya kolaborasi dengan AI,<br>bukan dibuatkan AI.</h2>
                 </div>
 
                 <div class="bento-grid">
                     <!-- Feature 1: Sparring Partner (Large) -->
                     <div class="bento-item item-large">
                         <div class="technical-grid"></div>
-                        <div class="item-content">
-                            <div class="item-icon-box">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="12" cy="7" r="4"></circle>
+                        <div class="item-content flex-row-center">
+                            <div class="item-text-wrap">
+                                <div class="bento-header-flex">
+                                    <div class="item-icon-box">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                    </div>
+                                    <h3 class="no-margin">Sparring Partner</h3>
+                                </div>
+                                <ul class="item-checklist">
+                                    <li>Mendampingi riset dari awal</li>
+                                    <li>Juru tulis yang terampil</li>
+                                    <li>Paper akuntabel dan berkualitas</li>
+                                </ul>
+                            </div>
+                            <!-- Illustration -->
+                            <div class="bento-illustration-static">
+                                <svg viewBox="0 0 100 100" class="ilustrasi-paper">
+                                    <!-- Kertas Belakang -->
+                                    <path d="M35 15h35l15 15v55H35z" fill="none" stroke="currentColor"
+                                        stroke-width="1.5" stroke-linejoin="round" />
+                                    <path d="M70 15v15h15" fill="none" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linejoin="round" />
+
+                                    <!-- Kertas Depan -->
+                                    <path d="M20 25h35l15 15v50H20z" fill="none" stroke="currentColor"
+                                        stroke-width="1.5" stroke-linejoin="round" />
+                                    <path d="M55 25v15h15" fill="none" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linejoin="round" />
+
+                                    <!-- Garis-Garis di Kertas Depan -->
+                                    <path d="M30 50h25M30 60h25M30 70h25M30 80h15" fill="none" stroke="currentColor"
+                                        stroke-width="1.5" stroke-linecap="round" />
                                 </svg>
                             </div>
-                            <h3>Sparring Partner</h3>
-                            <p>Mendampingi riset dari awal hingga paper orisinal dan berkualitas jadi di tangan lo.</p>
-                            <ul class="item-checklist">
-                                <li>Mendampingi riset dari awal</li>
-                                <li>Juru tulis yang terampil</li>
-                                <li>Paper orisinal & berkualitas</li>
-                            </ul>
                         </div>
                         <div class="visual-glow"></div>
                     </div>
 
                     <!-- Feature 2: Percakapan Natural -->
                     <div class="bento-item">
-                        <div class="item-content">
-                            <div class="item-icon-box small">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                                </svg>
+                        <div class="technical-grid"></div>
+                        <div class="item-content flex-col-center">
+                            <div class="bento-header-flex">
+                                <div class="item-icon-box">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z">
+                                        </path>
+                                    </svg>
+                                </div>
+                                <h3 class="no-margin">Chat Natural</h3>
                             </div>
-                            <h3>Chat Natural</h3>
-                            <p>Ngobrol aja, gak perlu prompt rumit ala engineer. Pake Bahasa Indonesia santai.</p>
+                            <p class="no-margin">Ngobrol saja, tidak perlu prompt rumit, menggunakan Bahasa
+                                Indonesia sehari-hari</p>
                         </div>
+
+                        <!-- Decoration: Circuit/Neuron Background -->
+                        <div class="bento-illustration">
+                            <svg viewBox="0 0 100 100" class="ilustrasi-paper">
+                                <!-- Jalur 1 (Kiri) -->
+                                <path d="M15 0v25l-7 7v10" fill="none" stroke="currentColor" stroke-linejoin="round" />
+                                <circle cx="8" cy="42" r="3.5" fill="none" stroke="currentColor" />
+
+                                <!-- Jalur 2 -->
+                                <path d="M30 0v45l-8 8v12" fill="none" stroke="currentColor" stroke-linejoin="round" />
+                                <circle cx="22" cy="65" r="3.5" fill="none" stroke="currentColor" />
+
+                                <!-- Jalur 3 (Tengah) -->
+                                <path d="M45 0v30" fill="none" stroke="currentColor" stroke-linejoin="round" />
+                                <circle cx="45" cy="30" r="3.5" fill="none" stroke="currentColor" />
+
+                                <!-- Jalur 4 -->
+                                <path d="M60 0v55l10 10v15" fill="none" stroke="currentColor" stroke-linejoin="round" />
+                                <circle cx="70" cy="80" r="3.5" fill="none" stroke="currentColor" />
+
+                                <!-- Jalur 5 -->
+                                <path d="M75 0v35l8 8v10" fill="none" stroke="currentColor" stroke-linejoin="round" />
+                                <circle cx="83" cy="53" r="3.5" fill="none" stroke="currentColor" />
+
+                                <!-- Jalur 6 (Kanan) -->
+                                <path d="M90 0v20" fill="none" stroke="currentColor" stroke-linejoin="round" />
+                                <circle cx="90" cy="20" r="3.5" fill="none" stroke="currentColor" />
+                            </svg>
+                        </div>
+                        <div class="visual-glow"></div>
                     </div>
 
                     <!-- Feature 3: Sitasi Akurat -->
                     <div class="bento-item">
-                        <div class="item-content">
-                            <div class="item-icon-box small">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                                </svg>
+                        <div class="technical-grid"></div>
+                        <div class="item-content flex-col-center">
+                            <div class="bento-header-flex">
+                                <div class="item-icon-box">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                    </svg>
+                                </div>
+                                <h3 class="no-margin">Sitasi Akurat</h3>
                             </div>
-                            <h3>Sitasi Akurat</h3>
-                            <p>Sumber dari jurnal kredibel. Anti link mati, anti hoax, anti halusinasi AI.</p>
+                            <p class="no-margin">Sumber kredibel, dengan format sitasi sesuai preferensi, anti link mati
+                                dan hoax</p>
                         </div>
+                        <!-- Decoration: Consistent Schematic Document (Clean Style) -->
+                        <div class="bento-illustration">
+                            <svg viewBox="0 0 100 100" class="ilustrasi-paper">
+                                <!-- Background Sheet (Schematic) -->
+                                <rect x="45" y="15" width="40" height="60" rx="4" fill="none" stroke="currentColor"
+                                    stroke-width="1" opacity="0.5" />
+                                <!-- Main Document (Front) -->
+                                <rect x="55" y="25" width="40" height="60" rx="4" fill="none" stroke="currentColor"
+                                    stroke-width="1.2" />
+                                <!-- Text Lines on Main Document -->
+                                <line x1="65" y1="40" x2="85" y2="40" stroke="currentColor" stroke-width="1.2" />
+                                <line x1="65" y1="55" x2="85" y2="55" stroke="currentColor" stroke-width="1.2" />
+                                <line x1="65" y1="70" x2="85" y2="70" stroke="currentColor" stroke-width="1.2" />
+                                <!-- Geometric Accents (Matching other boxes) -->
+                                <circle cx="20" cy="20" r="3" fill="none" stroke="currentColor" stroke-width="1" />
+                            </svg>
+                        </div>
+                        <div class="visual-glow"></div>
                     </div>
 
                     <!-- Feature 4: Dipandu Bertahap (Row) -->
                     <div class="bento-item item-row">
-                        <div class="item-content flex-row">
-                            <div class="flex-main">
-                                <h3>Dipandu Bertahap</h3>
-                                <p>Sistem workflow 13 tahap yang ketat. Dari ide mentah sampai draft final yang siap
-                                    submit.</p>
-                            </div>
-                            <div class="flex-side">
-                                <div class="stage-pills">
-                                    <span class="pill active">Gagasan</span>
-                                    <span class="pill">Outline</span>
-                                    <span class="pill">Drafting</span>
+                        <div class="technical-grid"></div>
+                        <div class="item-content">
+                            <div class="bento-header-flex">
+                                <div class="item-icon-box">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                    </svg>
                                 </div>
+                                <h3 class="no-margin">Dipandu Bertahap</h3>
                             </div>
+                            <p class="no-margin">Workflow ketat dan terstruktur, mengolah ide hingga paper jadi. Apapun
+                                percakapannya, ujungnya pasti jadi paper</p>
                         </div>
+                        <!-- Decoration: Step-by-step Workflow Background (Based on Screenshot) -->
+                        <div class="bento-illustration">
+                            <svg viewBox="0 0 100 100" class="ilustrasi-paper">
+                                <!-- Gear (Top Left) -->
+                                <circle cx="28" cy="22" r="7" fill="none" stroke="currentColor" stroke-width="1.2" />
+                                <circle cx="28" cy="22" r="3" fill="none" stroke="currentColor" stroke-width="1" />
+                                <path
+                                    d="M28 12 v3 M28 29 v3 M18 22 h3 M35 22 h3 M21 15 l2 2 M33 27 l2 2 M21 29 l2 -2 M33 15 l2 -2"
+                                    fill="none" stroke="currentColor" stroke-width="1.2" />
+
+                                <!-- Box 1 (Top Right) -->
+                                <rect x="58" y="12" width="22" height="15" rx="3" fill="none" stroke="currentColor"
+                                    stroke-width="1.2" />
+                                <line x1="65" y1="19.5" x2="73" y2="19.5" stroke="currentColor" stroke-width="1.2" />
+
+                                <!-- Box 2 (Middle Left) -->
+                                <rect x="18" y="38" width="22" height="15" rx="3" fill="none" stroke="currentColor"
+                                    stroke-width="1.2" />
+                                <line x1="25" y1="45.5" x2="33" y2="45.5" stroke="currentColor" stroke-width="1.2" />
+
+                                <!-- Box 3 (Bottom Right) -->
+                                <rect x="58" y="65" width="22" height="15" rx="3" fill="none" stroke="currentColor"
+                                    stroke-width="1.2" />
+                                <line x1="65" y1="72.5" x2="73" y2="72.5" stroke="currentColor" stroke-width="1.2" />
+
+                                <!-- Connectors (Zigzag Pattern) -->
+                                <!-- Gear to Box 1 -->
+                                <line x1="38" y1="22" x2="58" y2="22" stroke="currentColor" stroke-width="1.2"
+                                    stroke-linejoin="round" />
+
+                                <!-- Box 1 to Box 2 -->
+                                <path d="M69 27 v8 h-40 v3" fill="none" stroke="currentColor" stroke-width="1.2"
+                                    stroke-linejoin="round" />
+
+                                <!-- Box 2 to Box 3 -->
+                                <path d="M29 53 v8 h40 v4" fill="none" stroke="currentColor" stroke-width="1.2"
+                                    stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <div class="visual-glow"></div>
                     </div>
                 </div>
             </div>
         </section>
+        <!-- END: kenapa-makalah-ai -->
 
-        <!-- Pricing Section -->
-        <section class="pricing" id="pricing">
+        <!-- START: pemakaian-harga -->
+        <section class="pricing" id="pemakaian-harga">
+            <div class="grid-thin"></div>
             <div class="bg-dot-grid opacity-50"></div>
             <!-- Removed ide-line-x to avoid double lines near footer -->
             <div class="container text-center">
                 <div class="section-header">
                     <div class="badge-group">
                         <span class="badge-dot"></span>
-                        <span class="badge-text uppercase">Pricing Plans</span>
+                        <span class="badge-text uppercase">Pemakaian & Harga</span>
                     </div>
                     <h2 class="section-title">Investasi untuk<br>Masa Depan Akademik.</h2>
                 </div>
@@ -324,49 +459,55 @@
                             <p class="price">Rp0<span class="unit">/bulan</span></p>
                         </div>
                         <ul class="price-features">
-                            <li>1 Paper per bulan</li>
-                            <li>Akses model basic</li>
-                            <li>Sitasi terbatas</li>
+                            <li>Menggunakan 13 tahap workflow</li>
+                            <li>Diskusi dan menyusun draft</li>
+                            <li>Pemakain harian terbatas</li>
                         </ul>
                         <button class="btn btn-outline full-width">Coba Sekarang</button>
+                        <div class="card-aurora"></div>
                     </div>
 
                     <!-- Pay Per Paper (Highlighted) -->
                     <div class="pricing-card highlighted">
                         <div class="popular-tag">SOLUSI TERBAIK</div>
                         <div class="card-header">
-                            <h3>Bayar Per Tugas</h3>
-                            <p class="price">Mulai Rp25rb<span class="unit">/paper</span></p>
+                            <h3>Bayar Per Paper</h3>
+                            <p class="price">Mulai Rp80rb<span class="unit">/paper</span></p>
                         </div>
                         <ul class="price-features">
-                            <li>Bayar cuma pas butuh</li>
+                            <li>Bayar per paper ketika butuh</li>
                             <li>Full 13 tahap workflow</li>
+                            <li>Draft hingga paper utuh</li>
+                            <li>Diskusi sesuai konteks paper</li>
                             <li>Export Word & PDF</li>
-                            <li>Web Search Aktif</li>
                         </ul>
                         <button class="btn btn-brand-vivid full-width">Pilih Paket</button>
+                        <div class="card-aurora"></div>
                     </div>
 
                     <!-- Pro -->
                     <div class="pricing-card">
                         <div class="card-header">
                             <h3>Pro</h3>
-                            <p class="price">Rp99rb<span class="unit">/bulan</span></p>
+                            <p class="price">Rp200rb<span class="unit">/bulan</span></p>
                         </div>
                         <ul class="price-features">
-                            <li>Unlimited Paper</li>
-                            <li>Model AI Tercepat</li>
-                            <li>Prioritas Web Search</li>
-                            <li>Support 24/7</li>
+                            <li>Menyusun 5-6 Paper</li>
+                            <li>Full 13 tahap workflow</li>
+                            <li>Draft hingga paper utuh</li>
+                            <li>Diskusi tak terbatas</li>
+                            <li>Export Word & PDF</li>
                         </ul>
                         <button class="btn btn-outline full-width">Langganan Pro</button>
+                        <div class="card-aurora"></div>
                     </div>
                 </div>
             </div>
         </section>
     </main>
 
-    <div class="luxe-footer-wrapper">
+    <!-- START: footer -->
+    <div class="luxe-footer-wrapper" id="footer">
         <footer class="footer-luxe">
             <!-- Subtle Background Pattern -->
             <div class="bg-diagonal-stripes"></div>
@@ -374,22 +515,21 @@
                 <div class="footer-grid">
                     <div class="footer-brand">
                         <div class="brand">
-                            <img src="../../public/favicon.ico" alt="Logo" class="logo-img-mock">
-                            <span class="brand-text">MAKALAH<span class="brand-plus">AI</span></span>
+                            <img src="../../public/logo/makalah_logo_white_500x500.png" alt="Logo"
+                                class="logo-img-mock">
                         </div>
-                        <p class="footer-desc">The only research agent that works everywhere you do.</p>
                     </div>
                     <div class="footer-links">
                         <div class="link-group">
-                            <h4>Resources</h4>
-                            <a href="#">News</a>
-                            <a href="#">Docs</a>
-                            <a href="#">Contact Sales</a>
+                            <h4>Sumber Daya</h4>
+                            <a href="#">Blog</a>
+                            <a href="#">Dokumentasi</a>
+                            <a href="#">Hubungi Sales</a>
                         </div>
                         <div class="link-group">
-                            <h4>Company</h4>
-                            <a href="#">Careers</a>
-                            <a href="#">Enterprise</a>
+                            <h4>Perusahaan</h4>
+                            <a href="#">Karier</a>
+                            <a href="#">Tentang kami</a>
                             <a href="#">Security</a>
                         </div>
                         <div class="link-group">
@@ -400,16 +540,40 @@
                     </div>
                 </div>
                 <div class="footer-bottom">
-                    <p>&copy; 2026 Makalah AI. All rights reserved.</p>
+                    <p>&copy; 2026 Makalah AI. Hak cipta dilindungi.</p>
                     <div class="socials">
-                        <a href="#">X (Twitter)</a>
-                        <a href="#">LinkedIn</a>
-                        <a href="#">GitHub</a>
+                        <a href="#" aria-label="X">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                            </svg>
+                        </a>
+                        <a href="#" aria-label="LinkedIn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                class="lucide lucide-linkedin">
+                                <path
+                                    d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+                                <rect width="4" height="12" x="2" y="9" />
+                                <circle cx="4" cy="4" r="2" />
+                            </svg>
+                        </a>
+                        <a href="#" aria-label="Instagram">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                class="lucide lucide-instagram">
+                                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                            </svg>
+                        </a>
                     </div>
                 </div>
             </div>
         </footer>
     </div>
+    <!-- END: footer -->
 
     <script src="script.js"></script>
 </body>

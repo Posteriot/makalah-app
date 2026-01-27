@@ -36,13 +36,19 @@ interface TopUpRequest {
 export async function POST(req: NextRequest) {
   try {
     // 1. Auth check
-    const { userId: clerkUserId } = await auth()
+    const { userId: clerkUserId, getToken } = await auth()
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const convexToken = await getToken({ template: "convex" })
+    if (!convexToken) {
+      return NextResponse.json({ error: "Convex token missing" }, { status: 500 })
+    }
+    const convexOptions = { token: convexToken }
+
     // 2. Get Convex user
-    const convexUser = await fetchQuery(api.users.getUserByClerkId, { clerkUserId })
+    const convexUser = await fetchQuery(api.users.getUserByClerkId, { clerkUserId }, convexOptions)
     if (!convexUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
     const idempotencyKey = randomUUID()
 
     // 6. Check for duplicate (idempotency)
-    const existing = await fetchQuery(api.billing.payments.checkIdempotency, { idempotencyKey })
+    const existing = await fetchQuery(api.billing.payments.checkIdempotency, { idempotencyKey }, convexOptions)
     if (existing.exists) {
       return NextResponse.json(
         { error: "Transaksi duplikat. Refresh halaman." },
@@ -196,7 +202,7 @@ export async function POST(req: NextRequest) {
       description: `Top Up Credit Rp ${amount.toLocaleString("id-ID")}`,
       idempotencyKey,
       expiredAt: expiresAt,
-    })
+    }, convexOptions)
 
     console.log("[TopUp] Payment created:", {
       paymentId,

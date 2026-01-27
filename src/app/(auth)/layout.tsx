@@ -12,7 +12,7 @@ export default function AuthLayout({
 
             {/* Grid Overlay */}
             <div
-                className="hero-grid-thin absolute inset-0 pointer-events-none opacity-20 z-1"
+                className="hero-grid-thin absolute inset-0 pointer-events-none opacity-20 z-[1]"
                 aria-hidden="true"
             />
 

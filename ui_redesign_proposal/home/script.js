@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // HEADER FUNCTIONALITY
     // ========================================
 
-    const header = document.getElementById('globalHeader');
+    // START: global-header
+    const header = document.getElementById('global-header');
     const themeToggle = document.getElementById('themeToggle');
     const userDropdown = document.getElementById('userDropdown');
     const userDropdownTrigger = document.getElementById('userDropdownTrigger');
@@ -78,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    // END: global-header
 
     // ========================================
     // DEMO: Auth State Toggle (for testing)
@@ -113,26 +115,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, observerOptions);
 
-    // Apply reveal to bento items and pricing cards
+    // START: pemakaian-harga animations (Scroll Reveal)
     document.querySelectorAll('.bento-item, .pricing-card, .section-header').forEach(item => {
-        item.style.opacity = '0';
-        item.style.transform = 'translateY(30px)';
-        item.style.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
+        item.classList.add('reveal-on-scroll');
         observer.observe(item);
     });
+    // END: pemakaian-harga animations (Scroll Reveal)
 
     // Add revealed class styles via JavaScript (safe, static content)
     const revealedStyle = document.createElement('style');
-    revealedStyle.textContent = '.revealed { opacity: 1 !important; transform: translateY(0) !important; }';
+    revealedStyle.textContent = '.revealed { opacity: 1 !important; transform: translateY(0); }';
     document.head.appendChild(revealedStyle);
 
     // ========================================
     // AURORA PARALLAX EFFECT
     // ========================================
 
+    // START: hero-home animations
     const mockContent = document.querySelector('.mock-content');
     if (mockContent) {
-        // Subtle move of aurora based on mouse
         document.addEventListener('mousemove', (e) => {
             const aurora = document.querySelector('.hero-vivid-bg');
             if (aurora) {
@@ -142,4 +143,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    // END: hero-home animations
+
+    // START: pemakaian-harga
+    document.querySelectorAll('.pricing-card').forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+            const aurora = card.querySelector('.card-aurora');
+            if (aurora) {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const moveX = (x - rect.width / 2) * 0.1;
+                const moveY = (y - rect.height / 2) * 0.1;
+
+                aurora.style.transform = `translate(${moveX}px, ${moveY}px) scale(1.1)`;
+            }
+        });
+
+        card.addEventListener('mouseleave', () => {
+            const aurora = card.querySelector('.card-aurora');
+            if (aurora) {
+                aurora.style.transform = '';
+            }
+        });
+    });
+    // END: pemakaian-harga
+
+    // START: footer
+    // Footer specific interactions can be added here
+    // END: footer
 });

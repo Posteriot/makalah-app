@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { currentUser } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import { fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { GlobalHeader } from "@/components/layout/GlobalHeader"
@@ -19,14 +19,25 @@ import { Footer } from "@/components/layout/Footer"
  */
 async function ensureConvexUser() {
   try {
+    const { userId: clerkUserId, getToken } = await auth()
+    if (!clerkUserId) return
+
+    const convexToken = await getToken({ template: "convex" })
+    if (!convexToken) {
+      console.warn("[ensureConvexUser] Convex token tidak tersedia")
+      return
+    }
+
     const user = await currentUser()
     if (!user) return
 
-    const primaryEmail = user.emailAddresses[0]?.emailAddress
+    const primaryEmailAddress =
+      user.primaryEmailAddress ?? user.emailAddresses[0]
+    const primaryEmail = primaryEmailAddress?.emailAddress
     if (!primaryEmail) return
 
     const emailVerified =
-      user.emailAddresses[0]?.verification?.status === "verified"
+      primaryEmailAddress?.verification?.status === "verified"
     const firstName = user.firstName ?? undefined
     const lastName = user.lastName ?? undefined
 
@@ -37,7 +48,7 @@ async function ensureConvexUser() {
       firstName,
       lastName,
       emailVerified,
-    })
+    }, { token: convexToken })
 
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Convex sync timeout (5s)")), 5000)

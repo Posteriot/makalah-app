@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Authenticate user via Clerk
-    const { userId: clerkUserId } = await auth()
+    const { userId: clerkUserId, getToken } = await auth()
 
     if (!clerkUserId) {
       return NextResponse.json(
@@ -57,10 +57,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const convexToken = await getToken({ template: "convex" })
+    if (!convexToken) {
+      return NextResponse.json(
+        { success: false, error: "Convex token missing" },
+        { status: 500 }
+      )
+    }
+    const convexOptions = { token: convexToken }
+
     // 3. Get Convex user by Clerk ID
     const convexUser = await fetchQuery(api.users.getUserByClerkId, {
       clerkUserId,
-    })
+    }, convexOptions)
 
     if (!convexUser) {
       return NextResponse.json(
@@ -72,7 +81,7 @@ export async function POST(request: NextRequest) {
     // 4. Fetch paper session dari Convex
     const session = await fetchQuery(api.paperSessions.getById, {
       sessionId: sessionId as Id<"paperSessions">,
-    })
+    }, convexOptions)
 
     // 5. Validate dan compile content
     // getExportableContent akan throw ExportValidationError jika ada masalah

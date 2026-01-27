@@ -12,6 +12,7 @@ import {
   TIER_LIMITS,
   type TierType,
 } from "./constants"
+import { requireAuthUserId } from "../auth"
 
 /**
  * Get or create user quota for current period
@@ -21,6 +22,7 @@ export const getUserQuota = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     // Get user for tier info
     const user = await ctx.db.get(args.userId)
     if (!user) return null
@@ -91,6 +93,7 @@ export const initializeQuota = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const user = await ctx.db.get(args.userId)
     if (!user) throw new Error("User not found")
 
@@ -159,6 +162,7 @@ export const deductQuota = mutation({
     tokens: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const user = await ctx.db.get(args.userId)
     if (!user) throw new Error("User not found")
 
@@ -257,6 +261,7 @@ export const incrementCompletedPapers = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const quota = await ctx.db
       .query("userQuotas")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -289,6 +294,7 @@ export const checkQuota = query({
     ),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const user = await ctx.db.get(args.userId)
     if (!user) {
       return { allowed: false, reason: "user_not_found", message: "User tidak ditemukan" }
@@ -408,6 +414,7 @@ export const getQuotaStatus = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const user = await ctx.db.get(args.userId)
     if (!user) return null
 

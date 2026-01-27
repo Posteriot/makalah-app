@@ -5,6 +5,13 @@
 
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
+import { requireAuthUser, requireAuthUserId } from "../auth"
+import { requireRole } from "../permissions"
+
+function isInternalKeyValid(internalKey?: string) {
+  const expected = process.env.CONVEX_INTERNAL_KEY
+  return Boolean(expected && internalKey === expected)
+}
 
 /**
  * Create a new payment record
@@ -36,6 +43,7 @@ export const createPayment = mutation({
     expiredAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const now = Date.now()
 
     const paymentId = await ctx.db.insert("payments", {
@@ -74,8 +82,12 @@ export const updatePaymentStatus = mutation({
     ),
     paidAt: v.optional(v.number()),
     metadata: v.optional(v.any()),
+    internalKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    if (!isInternalKeyValid(args.internalKey)) {
+      throw new Error("Unauthorized")
+    }
     // Find payment by Xendit ID
     const payment = await ctx.db
       .query("payments")
@@ -112,15 +124,21 @@ export const updatePaymentStatus = mutation({
  */
 export const getPaymentByReference = query({
   args: {
+    userId: v.id("users"),
     xenditReferenceId: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    await requireAuthUserId(ctx, args.userId)
+    const payment = await ctx.db
       .query("payments")
       .withIndex("by_reference", (q) =>
         q.eq("xenditReferenceId", args.xenditReferenceId)
       )
       .first()
+    if (!payment || payment.userId !== args.userId) {
+      return null
+    }
+    return payment
   },
 })
 
@@ -130,14 +148,29 @@ export const getPaymentByReference = query({
 export const getPaymentByXenditId = query({
   args: {
     xenditPaymentRequestId: v.string(),
+    internalKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    if (isInternalKeyValid(args.internalKey)) {
+      return await ctx.db
+        .query("payments")
+        .withIndex("by_xendit_id", (q) =>
+          q.eq("xenditPaymentRequestId", args.xenditPaymentRequestId)
+        )
+        .first()
+    }
+
+    const authUser = await requireAuthUser(ctx)
+    const payment = await ctx.db
       .query("payments")
       .withIndex("by_xendit_id", (q) =>
         q.eq("xenditPaymentRequestId", args.xenditPaymentRequestId)
       )
       .first()
+    if (!payment || payment.userId !== authUser._id) {
+      return null
+    }
+    return payment
   },
 })
 
@@ -158,6 +191,7 @@ export const getPaymentHistory = query({
     ),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const limitCount = args.limit ?? 30
 
     if (args.paymentType) {
@@ -187,6 +221,7 @@ export const getPendingPayments = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const now = Date.now()
 
     const pendingPayments = await ctx.db
@@ -210,6 +245,7 @@ export const checkIdempotency = query({
     idempotencyKey: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireAuthUser(ctx)
     const existing = await ctx.db
       .query("payments")
       .filter((q) => q.eq(q.field("idempotencyKey"), args.idempotencyKey))
@@ -224,10 +260,12 @@ export const checkIdempotency = query({
  */
 export const getPaymentStats = query({
   args: {
+    requestorUserId: v.id("users"),
     periodStart: v.number(),
     periodEnd: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx.db, args.requestorUserId, "admin")
     const payments = await ctx.db
       .query("payments")
       .withIndex("by_status")

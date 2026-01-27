@@ -74,6 +74,20 @@ export default function UpgradePage() {
     )
   }
 
+  if (!user) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <ArrowUpCircle className="h-5 w-5 text-primary" />
+          Upgrade ke Pro
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Sesi tidak aktif. Silakan login ulang.
+        </p>
+      </div>
+    )
+  }
+
   const currentTier = user?.subscriptionStatus || "free"
   const isAlreadyPro = currentTier === "pro" || subscriptionStatus.hasSubscription
   const isPendingCancel = subscriptionStatus.isPendingCancel

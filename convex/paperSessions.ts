@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getNextStage, PaperStageId, STAGE_ORDER } from "./paperSessions/constants";
+import {
+    requireAuthUser,
+    requireAuthUserId,
+    requireConversationOwner,
+    requirePaperSessionOwner,
+} from "./auth";
 
 // ═══════════════════════════════════════════════════════════
 // STAGE DATA KEY WHITELIST (Task 1.3.1)
@@ -190,7 +196,11 @@ function normalizeReferensiData(data: Record<string, unknown>): Record<string, u
 export const getById = query({
     args: { sessionId: v.id("paperSessions") },
     handler: async (ctx, args) => {
-        return await ctx.db.get(args.sessionId);
+        const authUser = await requireAuthUser(ctx);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) return null;
+        if (session.userId !== authUser._id) return null;
+        return session;
     },
 });
 
@@ -200,10 +210,14 @@ export const getById = query({
 export const getByConversation = query({
     args: { conversationId: v.id("conversations") },
     handler: async (ctx, args) => {
-        return await ctx.db
+        const { authUser } = await requireConversationOwner(ctx, args.conversationId);
+        const session = await ctx.db
             .query("paperSessions")
             .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
             .unique();
+        if (!session) return null;
+        if (session.userId !== authUser._id) return null;
+        return session;
     },
 });
 
@@ -213,6 +227,7 @@ export const getByConversation = query({
 export const getByUser = query({
     args: { userId: v.id("users") },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
         return await ctx.db
             .query("paperSessions")
             .withIndex("by_user_updated", (q) => q.eq("userId", args.userId))
@@ -243,6 +258,7 @@ export const getByUserWithFilter = query({
     },
     handler: async (ctx, args) => {
         const { userId, status = "all", includeArchived = false, sortBy = "updatedAt" } = args;
+        await requireAuthUserId(ctx, userId);
 
         let sessions;
 
@@ -286,10 +302,15 @@ export const getByUserWithFilter = query({
 export const getSessionWithConversation = query({
     args: { sessionId: v.id("paperSessions") },
     handler: async (ctx, args) => {
+        const authUser = await requireAuthUser(ctx);
         const session = await ctx.db.get(args.sessionId);
         if (!session) return null;
+        if (session.userId !== authUser._id) return null;
 
         const conversation = await ctx.db.get(session.conversationId);
+        if (!conversation || conversation.userId !== authUser._id) {
+            return null;
+        }
 
         return {
             ...session,
@@ -312,6 +333,11 @@ export const create = mutation({
         initialIdea: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
+        const { conversation } = await requireConversationOwner(ctx, args.conversationId);
+        if (conversation.userId !== args.userId) {
+            throw new Error("Unauthorized");
+        }
         const now = Date.now();
 
         // Check if session already exists for this conversation
@@ -349,8 +375,7 @@ export const updateStageData = mutation({
         data: v.any(), // Partial of the stage data (flexible for different stages)
     },
     handler: async (ctx, args) => {
-        const session = await ctx.db.get(args.sessionId);
-        if (!session) throw new Error("Session not found");
+        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
         if (!STAGE_ORDER.includes(args.stage as PaperStageId)) {
             throw new Error(`Unknown stage: ${args.stage}`);
         }
@@ -427,8 +452,7 @@ export const updateStageData = mutation({
 export const submitForValidation = mutation({
     args: { sessionId: v.id("paperSessions") },
     handler: async (ctx, args) => {
-        const session = await ctx.db.get(args.sessionId);
-        if (!session) throw new Error("Session not found");
+        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
 
         const currentStage = session.currentStage as PaperStageId;
 
@@ -596,6 +620,7 @@ export const requestRevision = mutation({
         feedback: v.string(),
     },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
@@ -642,6 +667,7 @@ export const archiveSession = mutation({
         userId: v.id("users"),
     },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
@@ -666,6 +692,7 @@ export const unarchiveSession = mutation({
         userId: v.id("users"),
     },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
@@ -689,6 +716,7 @@ export const deleteSession = mutation({
         userId: v.id("users"),
     },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
@@ -745,6 +773,7 @@ export const syncPaperTitle = mutation({
         userId: v.id("users"),
     },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
@@ -777,6 +806,7 @@ export const updatePaperTitle = mutation({
         title: v.string(),
     },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
@@ -804,10 +834,7 @@ export const markStageAsDirty = mutation({
         sessionId: v.id("paperSessions"),
     },
     handler: async (ctx, args) => {
-        const session = await ctx.db.get(args.sessionId);
-        if (!session) {
-            return { success: false, error: "Session not found" };
-        }
+        await requirePaperSessionOwner(ctx, args.sessionId);
 
         await ctx.db.patch(args.sessionId, {
             isDirty: true,
@@ -987,6 +1014,7 @@ export const rewindToStage = mutation({
         targetStage: v.string(),
     },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
@@ -1067,6 +1095,11 @@ export const rewindToStage = mutation({
 export const getRewindHistory = query({
     args: { sessionId: v.id("paperSessions") },
     handler: async (ctx, args) => {
+        const authUser = await requireAuthUser(ctx);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session || session.userId !== authUser._id) {
+            return [];
+        }
         return await ctx.db
             .query("rewindHistory")
             .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
