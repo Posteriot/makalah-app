@@ -43,7 +43,7 @@ export default function MarketingHomePage() {
 
             {/* Subheading */}
             <p className="hero-subheading">
-              Nggak perlu prompt ruwet. Ide apapun bakal diolah Agen Makalah AI menjadi paper utuh yang akurat secara sitasi dan kaidah akademik.
+              Nggak perlu prompt ruwet. Ide apapun bakal diolah Agen Makalah AI menjadi paper utuh
             </p>
 
             {/* CTA Button */}
