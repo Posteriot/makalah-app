@@ -779,7 +779,7 @@
       margin-inline: auto;
       text-align: left;
       align-items: flex-start;
-      gap: 1rem; /* Lebih compact */
+      gap: 0.75rem; /* Compact untuk mobile */
       box-sizing: border-box;
     }
 
@@ -793,7 +793,7 @@
       display: flex;
       justify-content: flex-start;
       align-self: flex-start;
-      margin-bottom: 0; /* Reset mb-6, pakai gap dari parent */
+      margin-bottom: 0 !important; /* Override Tailwind mb-6 */
     }
 
     .hero-actions {
@@ -831,12 +831,15 @@
       line-height: 1.5;
     }
 
-    .hero-actions .btn-brand,
-    .hero-actions .btn-outline {
+    .hero-actions .btn-brand {
       width: 100%;
       padding: 0.625rem 1rem; /* Compact tapi full-width */
       font-size: 0.8125rem; /* 13px */
       justify-content: center;
+    }
+
+    .hero-actions .btn-outline {
+      display: none !important; /* Sembunyikan di mobile - !important untuk override Tailwind inline-flex */
     }
   }
 
