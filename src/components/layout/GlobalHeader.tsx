@@ -73,8 +73,10 @@ export function GlobalHeader() {
         isHidden && "header-hidden"
       )}
     >
-      {/* Header Left - Logo & Brand */}
-      <div className="header-left">
+      {/* Inner container - matches hero max-width for alignment */}
+      <div className="header-inner">
+        {/* Header Left - Logo & Brand */}
+        <div className="header-left">
         <Link href="/" className="header-brand">
           <Image
             src="/logo/makalah_logo_500x500.png"
@@ -157,6 +159,7 @@ export function GlobalHeader() {
           <UserDropdown />
         </SignedIn>
       </div>
+      </div>{/* End header-inner */}
 
       {/* Diagonal Stripes Separator */}
       <svg
@@ -181,12 +184,7 @@ export function GlobalHeader() {
       </svg>
 
       {/* Horizontal line border below stripes */}
-      <div
-        className={cn(
-          "absolute bottom-0 left-0 right-0",
-          "h-px bg-border"
-        )}
-      />
+      <div className="header-bottom-line" />
     </header>
   )
 }

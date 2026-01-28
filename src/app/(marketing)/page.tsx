@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { UserPlus } from "lucide-react"
+import { UserPlus, FileText } from "lucide-react"
 import { PawangBadge } from "@/components/marketing/PawangBadge"
 import { ChatInputHeroMock } from "@/components/marketing/ChatInputHeroMock"
 import { HeroResearchMock } from "@/components/marketing/HeroResearchMock"
@@ -18,6 +18,9 @@ export default function MarketingHomePage() {
 
       {/* Hero Section - Two-column flex layout */}
       <section className="hero-section hero-vivid hero-grid-thin">
+        {/* Vignette overlay - darkens aurora edges */}
+        <div className="hero-vignette" />
+
         {/* Diagonal Stripes Background */}
         <div className="hero-diagonal-stripes" />
 
@@ -46,7 +49,7 @@ export default function MarketingHomePage() {
               Nggak perlu prompt ruwet. Ide apapun bakal diolah Agen Makalah AI menjadi paper utuh
             </p>
 
-            {/* CTA Button */}
+            {/* CTA Buttons */}
             <div className="hero-actions">
               <Link
                 href="/auth/waiting-list"
@@ -54,6 +57,13 @@ export default function MarketingHomePage() {
               >
                 <UserPlus className="w-5 h-5" />
                 <span>Daftarkan email untuk uji coba</span>
+              </Link>
+              <Link
+                href="/documentation"
+                className="btn-outline text-base px-6 py-3 inline-flex items-center gap-2"
+              >
+                <FileText className="w-5 h-5" />
+                <span>Lihat Dokumentasi</span>
               </Link>
             </div>
           </div>
