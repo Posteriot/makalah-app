@@ -1881,19 +1881,15 @@
       rgba(0, 0, 0, 0) 90%);
   }
 
-  /* Background: bg-dot-grid - persis mockup */
+  /* Background: bg-dot-grid - sama dengan benefits section */
   .pricing .bg-dot-grid {
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
     background-size: 24px 24px;
     pointer-events: none;
     z-index: 0;
-    mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
-  }
-
-  .pricing .bg-dot-grid.opacity-50 {
-    opacity: 0.5;
+    mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
   }
 
   /* Container - same as header-inner */
@@ -2220,9 +2216,10 @@
       linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
   }
 
-  /* Light mode - Dot grid */
+  /* Light mode - Dot grid (sama dengan benefits section) */
   :root .pricing .bg-dot-grid {
     background-image: radial-gradient(rgba(0, 0, 0, 0.12) 1px, transparent 1px);
+    mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
   }
 
   /* Light mode - Cards */
@@ -2287,9 +2284,10 @@
       linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
   }
 
-  /* Dark mode - Dot grid */
+  /* Dark mode - Dot grid (sama dengan benefits section) */
   .dark .pricing .bg-dot-grid {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
   }
 
   /* Dark mode - Cards */

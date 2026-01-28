@@ -150,7 +150,7 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
     <section className="pricing" id="pemakaian-harga">
       {/* Background patterns - persis mockup */}
       <div className="grid-thin" />
-      <div className="bg-dot-grid opacity-50" />
+      <div className="bg-dot-grid" />
 
       <div className="pricing-container">
         {/* Section Header */}
