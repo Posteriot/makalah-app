@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "next-themes"
-import { Menu, Sun, Moon } from "lucide-react"
+import { Menu, X, Sun, Moon } from "lucide-react"
 import { SignedIn, SignedOut } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
@@ -27,6 +27,7 @@ export function GlobalHeader() {
   const pathname = usePathname()
   const [isHidden, setIsHidden] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const lastScrollYRef = useRef(0)
   const isDocumentation = pathname === "/documentation"
 
@@ -64,12 +65,35 @@ export function GlobalHeader() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [handleScroll])
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [pathname])
+
+  // Close mobile menu on click outside
+  useEffect(() => {
+    if (!isMobileMenuOpen) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.global-header')) {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [isMobileMenuOpen])
+
   const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
 
-  const handleDocumentationMenu = () => {
-    if (!isDocumentation) return
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen((prev) => !prev)
+  }
+
+  const handleDocumentationSidebar = () => {
     window.dispatchEvent(new CustomEvent("documentation:toggle-sidebar"))
   }
 
@@ -77,7 +101,7 @@ export function GlobalHeader() {
     <header
       className={cn(
         "global-header",
-        isScrolled && "header-scrolled",
+        (isScrolled || isMobileMenuOpen) && "header-scrolled",
         isHidden && "header-hidden"
       )}
     >
@@ -130,17 +154,15 @@ export function GlobalHeader() {
 
       {/* Header Right - Theme Toggle & Auth */}
       <div className="header-right">
+        {/* Mobile Menu Toggle */}
         <button
-          onClick={handleDocumentationMenu}
-          className={cn(
-            "md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background/80 text-foreground transition hover:bg-muted",
-            !isDocumentation && "cursor-not-allowed opacity-60"
-          )}
+          onClick={toggleMobileMenu}
+          className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background/80 text-foreground transition hover:bg-muted"
           type="button"
-          aria-label="Buka menu dokumentasi"
-          disabled={!isDocumentation}
+          aria-label={isMobileMenuOpen ? "Tutup menu" : "Buka menu"}
+          aria-expanded={isMobileMenuOpen}
         >
-          <Menu className="h-5 w-5" />
+          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
         {/* Theme Toggle - Only visible for logged-in users */}
@@ -158,7 +180,7 @@ export function GlobalHeader() {
 
         {/* Auth State */}
         <SignedOut>
-          <Link href="/sign-in" className="btn btn-green-solid">
+          <Link href="/sign-in" className="btn btn-green-solid hidden md:inline-flex">
             Masuk
           </Link>
         </SignedOut>
@@ -168,6 +190,34 @@ export function GlobalHeader() {
         </SignedIn>
       </div>
       </div>{/* End header-inner */}
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <nav className="mobile-menu md:hidden">
+          {NAV_LINKS.map((link) => {
+            const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn("mobile-menu__link", isActive && "mobile-menu__link--active")}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
+          <SignedOut>
+            <Link
+              href="/sign-in"
+              className="mobile-menu__cta"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Masuk
+            </Link>
+          </SignedOut>
+        </nav>
+      )}
 
       {/* Diagonal Stripes Separator */}
       <svg

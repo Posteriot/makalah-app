@@ -598,6 +598,54 @@
     background: rgba(0, 0, 0, 0.12);
   }
 
+  /* Mobile Menu */
+  .mobile-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--background);
+    border-bottom: 1px solid var(--border-hairline);
+    padding: 8px 16px 16px;
+    z-index: 50;
+  }
+
+  .mobile-menu__link {
+    display: block;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--foreground);
+    border-radius: 8px;
+  }
+
+  .mobile-menu__link:hover {
+    background: var(--muted);
+  }
+
+  .mobile-menu__link--active {
+    color: var(--brand);
+    background: rgba(232, 102, 9, 0.1);
+  }
+
+  .mobile-menu__cta {
+    display: block;
+    margin-top: 8px;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    color: white;
+    background: #006d5b;
+    border-radius: 8px;
+  }
+
+  .mobile-menu__cta:hover {
+    background: #005a4b;
+  }
+
   /* Button base */
   .btn {
     display: inline-flex;
