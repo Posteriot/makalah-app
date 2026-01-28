@@ -1877,13 +1877,13 @@
     border-top-color: rgba(0, 0, 0, 0.08);
   }
 
-  /* Background Patterns */
+  /* Background Patterns - Grid lines like IDE */
   .pricing-bg-grid {
     position: absolute;
     inset: 0;
     background-image:
-      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
     background-size: 40px 40px;
     pointer-events: none;
     z-index: 0;
@@ -1892,14 +1892,14 @@
   :root:not(.dark) .pricing-bg-grid,
   .light .pricing-bg-grid {
     background-image:
-      linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+      linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
   }
 
   .pricing-bg-dots {
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
     background-size: 24px 24px;
     pointer-events: none;
     z-index: 0;
@@ -1908,7 +1908,7 @@
 
   :root:not(.dark) .pricing-bg-dots,
   .light .pricing-bg-dots {
-    background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
   }
 
   /* Container */
@@ -1920,17 +1920,17 @@
     padding: 0 24px;
   }
 
-  /* Section Header */
+  /* Section Header - LEFT ALIGNED like mockup */
   .pricing-header {
-    text-align: center;
+    text-align: left;
     margin-bottom: 3rem;
   }
 
   .pricing-badge {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
+    gap: 8px;
+    padding: 6px 14px;
     background-color: #006d5b;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50px;
@@ -1938,31 +1938,33 @@
   }
 
   .pricing-badge-dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     background-color: #ffffff;
     border-radius: 50%;
-    animation: pulse 2s infinite;
+    box-shadow: 0 0 6px #ffffff;
   }
 
   .pricing-badge-text {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     color: #ffffff;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.2em;
   }
 
   .pricing-title {
+    font-family: var(--font-mono, ui-monospace, monospace);
     font-size: 2.5rem;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.2;
+    letter-spacing: -0.02em;
     color: var(--foreground);
   }
 
   @media (min-width: 768px) {
     .pricing-title {
-      font-size: 3rem;
+      font-size: 2.625rem;
     }
   }
 
@@ -2045,25 +2047,32 @@
 
   /* Card Header */
   .pricing-card .card-header {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
   }
 
   .pricing-name {
-    font-size: 1.25rem;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--foreground);
-    margin-bottom: 0.5rem;
+    color: #a1a1aa; /* luxe-zinc-400 */
+    margin-bottom: 1rem;
+  }
+
+  :root:not(.dark) .pricing-name,
+  .light .pricing-name {
+    color: #71717a;
   }
 
   .pricing-price {
     display: flex;
     align-items: baseline;
-    gap: 4px;
+    gap: 2px;
   }
 
   .price-amount {
-    font-size: 1.75rem;
-    font-weight: 700;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     color: var(--foreground);
   }
 
@@ -2076,14 +2085,21 @@
   }
 
   .price-unit {
-    font-size: 0.875rem;
-    color: var(--muted-foreground);
+    font-size: 14px;
+    font-weight: 400;
+    color: #a1a1aa;
+    letter-spacing: 0;
+  }
+
+  :root:not(.dark) .price-unit,
+  .light .price-unit {
+    color: #71717a;
   }
 
   /* Features List */
   .price-features {
     list-style: none;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
     flex: 1;
   }
 
@@ -2126,18 +2142,20 @@
   /* Outline Button */
   .btn-outline {
     background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: var(--foreground);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
   }
 
   .btn-outline:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
   }
 
   :root:not(.dark) .btn-outline,
   .light .btn-outline {
     border-color: rgba(0, 0, 0, 0.2);
+    color: var(--foreground);
   }
 
   :root:not(.dark) .btn-outline:hover,
@@ -2151,12 +2169,12 @@
     background-color: var(--brand);
     border: 1px solid var(--brand);
     color: #ffffff;
+    box-shadow: 0 4px 20px rgba(232, 102, 9, 0.2);
   }
 
   .btn-brand-vivid:hover {
-    background-color: #d45a00;
-    border-color: #d45a00;
-    box-shadow: 0 8px 20px rgba(232, 102, 9, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(232, 102, 9, 0.4);
   }
 
   /* Aurora Background Effect */
@@ -2169,8 +2187,9 @@
     background:
       radial-gradient(circle at 20% 100%, rgba(232, 102, 9, 0.3) 0%, transparent 70%),
       radial-gradient(circle at 80% 100%, rgba(25, 196, 156, 0.2) 0%, transparent 60%);
+    filter: blur(40px);
     opacity: 0;
-    transition: all 0.5s ease;
+    transition: opacity 0.6s ease, transform 0.6s ease;
     pointer-events: none;
     z-index: 0;
   }
