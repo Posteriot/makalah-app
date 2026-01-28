@@ -2204,6 +2204,140 @@
       transform: translateY(-8px);
     }
   }
+
+  /* ========== LIGHT MODE SUPPORT ========== */
+
+  /* Light mode - Section background */
+  :root section.pricing {
+    background: #f8f8f8;
+    border-top-color: rgba(0, 0, 0, 0.1);
+  }
+
+  /* Light mode - Grid pattern */
+  :root .pricing .grid-thin {
+    background-image:
+      linear-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+  }
+
+  /* Light mode - Dot grid */
+  :root .pricing .bg-dot-grid {
+    background-image: radial-gradient(rgba(0, 0, 0, 0.12) 1px, transparent 1px);
+  }
+
+  /* Light mode - Cards */
+  :root .pricing .pricing-card {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  :root .pricing .pricing-card:hover {
+    border-color: rgba(0, 0, 0, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  }
+
+  :root .pricing .pricing-card.highlighted {
+    background: #ffffff;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Light mode - Card header */
+  :root .pricing .card-header h3 {
+    color: #71717a;
+  }
+
+  /* Light mode - Price unit */
+  :root .pricing .price .unit {
+    color: #71717a;
+  }
+
+  /* Light mode - Features list */
+  :root .pricing .price-features li {
+    color: #3f3f46;
+  }
+
+  /* Light mode - Outline button */
+  :root .pricing .btn-outline {
+    border-color: rgba(0, 0, 0, 0.2);
+    color: var(--foreground);
+  }
+
+  :root .pricing .btn-outline:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  /* Light mode - Disabled button */
+  :root .pricing .btn-disabled {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  /* ========== DARK MODE EXPLICIT ========== */
+
+  /* Dark mode - Section background */
+  .dark section.pricing {
+    background: #000000;
+    border-top-color: rgba(255, 255, 255, 0.14);
+  }
+
+  /* Dark mode - Grid pattern */
+  .dark .pricing .grid-thin {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+  }
+
+  /* Dark mode - Dot grid */
+  .dark .pricing .bg-dot-grid {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  }
+
+  /* Dark mode - Cards */
+  .dark .pricing .pricing-card {
+    background: #060608;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .dark .pricing .pricing-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .pricing .pricing-card.highlighted {
+    background: #111111;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Dark mode - Card header */
+  .dark .pricing .card-header h3 {
+    color: #a1a1aa;
+  }
+
+  /* Dark mode - Price unit */
+  .dark .pricing .price .unit {
+    color: #a1a1aa;
+  }
+
+  /* Dark mode - Features list */
+  .dark .pricing .price-features li {
+    color: #e4e4e7;
+  }
+
+  /* Dark mode - Outline button */
+  .dark .pricing .btn-outline {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+  }
+
+  .dark .pricing .btn-outline:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  /* Dark mode - Disabled button */
+  .dark .pricing .btn-disabled {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
 }
 
 /* ==========================================================================
