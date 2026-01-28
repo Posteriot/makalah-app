@@ -1497,6 +1497,7 @@
     background-color: var(--luxe-zinc-600, #1c1c21);
     border-bottom: 1px solid var(--border-hairline);
     overflow: hidden;
+    isolation: isolate; /* Create stacking context */
   }
 
   /* Light mode: lighter background */
@@ -1516,7 +1517,7 @@
       transparent 1px,
       transparent 10px
     );
-    z-index: 0;
+    z-index: 0; /* Layer paling belakang */
     pointer-events: none;
     opacity: 0.4;
     mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
@@ -1540,7 +1541,7 @@
     background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
     background-size: 24px 24px;
     pointer-events: none;
-    z-index: 0;
+    z-index: 1; /* Di atas stripes, di belakang content */
     mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
   }
 
@@ -1557,12 +1558,13 @@
     right: 0;
     height: 1px;
     background: var(--border-hairline);
+    z-index: 2;
   }
 
   /* Container */
   .benefits-container {
     position: relative;
-    z-index: 1;
+    z-index: 10;
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 24px;
@@ -1623,10 +1625,8 @@
 
   /* Bento Item - Base */
   .bento-item {
-    background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: #1c1c21; /* Solid dark background matching section */
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
     padding: 28px;
     position: relative;
@@ -1634,24 +1634,25 @@
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease;
+    z-index: 5; /* Di atas semua background patterns */
   }
 
   :root:not(.dark) .bento-item,
   .light .bento-item {
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
   }
 
   .bento-item:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: #242428;
     transform: translateY(-4px);
   }
 
   :root:not(.dark) .bento-item:hover,
   .light .bento-item:hover {
     border-color: rgba(232, 102, 9, 0.3);
-    background: rgba(255, 255, 255, 0.9);
+    background: #fafafa;
   }
 
   /* Bento Large - 2x2 */
@@ -1668,10 +1669,12 @@
     justify-content: center;
   }
 
-  /* Row item content - limit width so illustration has room */
+  /* Row item content - full width, illustration is background */
   .bento-row .bento-content {
-    max-width: 65%;
-    flex: none;
+    max-width: 100%;
+    flex: 1;
+    position: relative;
+    z-index: 2;
   }
 
   /* Bento Content */
@@ -1683,9 +1686,9 @@
 
   .bento-content-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 32px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
   }
 
   .bento-content-col {
@@ -1782,18 +1785,20 @@
     transition: all 0.5s ease;
   }
 
-  /* Sparring Partner - static illustration beside text */
+  /* Sparring Partner - illustration as background */
   .bento-illustration-static {
-    width: 220px;
-    height: 220px;
-    flex-shrink: 0;
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    width: 180px;
+    height: 180px;
     display: flex;
     align-items: center;
     justify-content: center;
     pointer-events: none;
     z-index: 1;
-    margin-right: -20px;
-    opacity: 0.5;
+    opacity: 0.4;
     transition: all 0.5s ease;
   }
 
@@ -1851,7 +1856,7 @@
 
   .bento-item:hover .bento-illustration-static {
     opacity: 0.75;
-    transform: scale(1.05) rotate(-2deg);
+    transform: translateY(-50%) scale(1.05) rotate(-2deg);
   }
 
   .bento-item:hover .bento-svg {
@@ -1907,11 +1912,6 @@
       grid-column: span 2;
     }
 
-    .bento-content-row {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
     .bento-illustration-static {
       display: none;
     }
@@ -1948,6 +1948,15 @@
 
     .benefits-title {
       font-size: 1.75rem;
+    }
+
+    .bento-illustration {
+      display: none; /* Sembunyikan SVG illustrations di mobile */
+    }
+
+    /* Hide line breaks for natural text flow on mobile */
+    .bento-item p br {
+      display: none;
     }
   }
 }
