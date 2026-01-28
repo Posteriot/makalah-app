@@ -619,10 +619,14 @@
     transform: scale(0.98);
   }
 
-  /* Green solid button (for login) */
+  /* Green solid button (for login) - Deep Emerald */
   .btn-green-solid {
-    background-color: var(--success);
-    color: var(--success-foreground);
+    background-color: #006d5b;
+    color: #ffffff;
+  }
+
+  .btn-green-solid:hover {
+    background-color: #005a4b;
   }
 
   /* Upgrade button - grass green / lime green */
