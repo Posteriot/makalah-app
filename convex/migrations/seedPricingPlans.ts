@@ -107,3 +107,50 @@ export const seedPricingPlans = internalMutation({
     }
   },
 })
+
+/**
+ * Migration to update highlighted plan from Gratis to BPP
+ * Run via: npx convex run migrations:updateHighlightedPlan
+ */
+export const updateHighlightedPlan = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+    const updates: string[] = []
+
+    // Find Gratis plan and set isHighlighted to false
+    const gratisPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "gratis"))
+      .first()
+
+    if (gratisPlan && gratisPlan.isHighlighted) {
+      await db.patch(gratisPlan._id, {
+        isHighlighted: false,
+        updatedAt: now,
+      })
+      updates.push("Gratis: isHighlighted → false")
+    }
+
+    // Find BPP plan and set isHighlighted to true
+    const bppPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "bpp"))
+      .first()
+
+    if (bppPlan && !bppPlan.isHighlighted) {
+      await db.patch(bppPlan._id, {
+        isHighlighted: true,
+        updatedAt: now,
+      })
+      updates.push("BPP: isHighlighted → true")
+    }
+
+    return {
+      success: true,
+      updates,
+      message: updates.length > 0
+        ? `Updated ${updates.length} plans: ${updates.join(", ")}`
+        : "No changes needed",
+    }
+  },
+})
