@@ -1,0 +1,16 @@
+<svg width="850" height="339" viewBox="0 0 850 339" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .t { font-family: 'Victor Mono', 'JetBrains Mono', 'Inter', monospace; font-size: 96px; font-weight: 400; letter-spacing: -0.02em; }
+    .w { fill: #f7f7f7; }
+    .a { fill: #e86609; }
+  </style>
+  <text class="t w" x="0" y="105" text-rendering="geometricPrecision">
+    Ngobrol<tspan class="a">+</tspan>Riset
+  </text>
+  <text class="t w" x="0" y="205" text-rendering="geometricPrecision">
+    <tspan class="a">+</tspan>Brainstorming
+  </text>
+  <text class="t w" x="0" y="305" text-rendering="geometricPrecision">
+    <tspan class="a">=</tspan>Paper<tspan class="a">_</tspan>Akademik
+  </text>
+</svg>

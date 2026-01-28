@@ -703,10 +703,9 @@
     overflow: hidden;
     padding: calc(var(--header-h) + 20px) var(--section-padding-x) 40px;
     text-align: left;
-    height: 100vh;
-    height: 100dvh;
-    max-height: 100vh;
-    max-height: 100dvh;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
     background-color: transparent;
     border-bottom: 1px solid var(--border-hairline);
     display: flex;
@@ -738,7 +737,7 @@
   /* Hero left (text content) */
   .hero-left {
     flex: 1;
-    min-width: 480px;
+    min-width: 440px;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -753,25 +752,90 @@
     min-height: 420px;
     max-height: 520px;
     position: relative;
-    min-width: 480px;
+    min-width: 440px;
   }
 
   /* Mobile: Stack vertically */
   @media (max-width: 1024px) {
+    .hero-section {
+      align-items: center;
+      justify-content: flex-start; /* Mulai dari atas, bukan center */
+      min-height: auto; /* Tidak perlu full height */
+      padding-top: calc(var(--header-h) + 16px); /* Header + minimal space */
+      padding-bottom: 48px;
+    }
+
     .hero-flex {
       flex-direction: column-reverse;
       align-items: center;
-      text-align: center;
+      text-align: left;
+      padding: 0; /* Remove padding, hero-section sudah punya */
     }
 
     .hero-left {
-      min-width: 100%;
-      text-align: center;
-      align-items: center;
+      min-width: 0; /* Reset dari 440px untuk mobile kecil */
+      width: 100%; /* Full width of container */
+      max-width: 520px;
+      margin-inline: auto;
+      text-align: left;
+      align-items: flex-start;
+      gap: 1rem; /* Lebih compact */
+      box-sizing: border-box;
     }
 
     .hero-right {
-      min-width: 100%;
+      display: none;
+    }
+
+    .hero-left .badge-link {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      justify-content: flex-start;
+      align-self: flex-start;
+      margin-bottom: 0; /* Reset mb-6, pakai gap dari parent */
+    }
+
+    .hero-actions {
+      width: 100%;
+      justify-content: flex-start;
+      flex-direction: column;
+      gap: 10px;
+      align-items: stretch; /* Full-width buttons */
+      margin-top: 0.5rem;
+    }
+
+    .hero-heading--svg {
+      width: 100%;
+      align-self: stretch; /* Full width */
+    }
+
+    .hero-heading-svg {
+      width: 100%;
+      max-width: none;
+      margin-inline: 0;
+      display: block;
+    }
+
+    .hero-heading-svg__img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .hero-subheading {
+      font-size: 0.8rem; /* Lebih kecil untuk mobile */
+      text-align: left;
+      max-width: 100%;
+      align-self: flex-start;
+      line-height: 1.5;
+    }
+
+    .hero-actions .btn-brand,
+    .hero-actions .btn-outline {
+      width: 100%;
+      padding: 0.625rem 1rem; /* Compact tapi full-width */
+      font-size: 0.8125rem; /* 13px */
       justify-content: center;
     }
   }
@@ -800,6 +864,22 @@
     margin-bottom: 0.5rem;
   }
 
+  .hero-heading--svg {
+    font-size: 0;
+    line-height: 0;
+  }
+
+  .hero-heading-svg {
+    display: block;
+    width: min(720px, 100%);
+    height: auto;
+  }
+
+  .hero-heading-svg__img {
+    width: 100%;
+    height: auto;
+  }
+
   @media (min-width: 768px) {
     .hero-heading {
       font-size: 3.5rem;
@@ -816,6 +896,13 @@
     .hero-heading {
       font-size: 2.625rem;
     }
+
+    .hero-heading-svg {
+      width: 100%;
+      margin-inline: 0;
+    }
+
+    /* Subheading styles moved to main mobile block above */
   }
 
   /* Hero subheading - theme-aware */
