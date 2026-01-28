@@ -2,10 +2,9 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { CheckCircle, ChevronRight } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 // Type for pricing plan from Convex
@@ -30,6 +29,12 @@ type PricingSectionProps = {
 }
 
 function PricingCard({ plan }: { plan: PricingPlan }) {
+  // Determine button style based on plan
+  const getButtonClass = () => {
+    if (plan.isHighlighted) return "btn-brand-vivid"
+    return "btn-outline"
+  }
+
   return (
     <div
       className={cn(
@@ -37,40 +42,49 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
         plan.isHighlighted && "pricing-card--highlight"
       )}
     >
-      <div className="pricing-header flex items-center justify-between">
+      {/* Popular tag for highlighted card */}
+      {plan.isHighlighted && (
+        <div className="popular-tag">SOLUSI TERBAIK</div>
+      )}
+
+      <div className="card-header">
         <h3 className="pricing-name">{plan.name}</h3>
-        {plan.slug === "pro" && <Badge>Populer</Badge>}
+        <p className="pricing-price">
+          <span
+            className={cn(
+              "price-amount",
+              plan.isDisabled && "price-amount--disabled"
+            )}
+          >
+            {plan.price}
+          </span>
+          {plan.unit && <span className="price-unit">{plan.unit}</span>}
+        </p>
       </div>
-      <div className="pricing-price">
-        <span
-          className={cn(
-            "price-amount",
-            plan.isDisabled && "price-amount--disabled"
-          )}
-        >
-          {plan.price}
-        </span>
-        {plan.unit && <span className="price-unit">{plan.unit}</span>}
-      </div>
-      <p className="pricing-tagline">{plan.tagline}</p>
-      {/* TODO: When CMS integration is ready, each feature should have unique ID */}
-      <ul className="pricing-features">
+
+      <ul className="price-features">
         {plan.features.map((feature, index) => (
           <li key={`${plan._id}-feature-${index}`}>
-            <CheckCircle />
-            <span>{feature}</span>
+            {feature}
           </li>
         ))}
       </ul>
+
       {plan.ctaHref ? (
-        <Link href={plan.ctaHref} className="btn btn-green-solid pricing-cta">
+        <Link
+          href={plan.ctaHref}
+          className={cn("pricing-cta", getButtonClass())}
+        >
           {plan.ctaText}
         </Link>
       ) : (
-        <button disabled className="btn-disabled pricing-cta">
+        <button disabled className="pricing-cta btn-disabled">
           {plan.ctaText}
         </button>
       )}
+
+      {/* Aurora glow effect */}
+      <div className="card-aurora" />
     </div>
   )
 }
@@ -114,19 +128,16 @@ function PricingSkeleton() {
     <div className="pricing-grid hidden md:grid">
       {[1, 2, 3].map((i) => (
         <div key={i} className="pricing-card animate-pulse">
-          <div className="pricing-header">
+          <div className="card-header">
             <div className="h-6 bg-muted rounded w-24" />
+            <div className="h-8 bg-muted rounded w-32 mt-2" />
           </div>
-          <div className="pricing-price">
-            <div className="h-8 bg-muted rounded w-32" />
-          </div>
-          <div className="h-4 bg-muted rounded w-full mt-4" />
-          <div className="h-4 bg-muted rounded w-3/4 mt-2" />
-          <ul className="pricing-features mt-4 space-y-2">
+          <ul className="price-features mt-4 space-y-3">
             <li className="h-4 bg-muted rounded w-full" />
             <li className="h-4 bg-muted rounded w-5/6" />
+            <li className="h-4 bg-muted rounded w-4/5" />
           </ul>
-          <div className="h-10 bg-muted rounded w-full mt-6" />
+          <div className="h-12 bg-muted rounded w-full mt-6" />
         </div>
       ))}
     </div>
@@ -147,13 +158,24 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
   const plans = useQuery(api.pricingPlans.getActivePlans)
 
   return (
-    <section className="pricing-section" id="pricing">
-      <div className="section-container">
-        <h2 className="section-heading">
-          Pilih paket penggunaan
-          <br />
-          sesuai kebutuhan
-        </h2>
+    <section className="pricing-section" id="pemakaian-harga">
+      {/* Background patterns */}
+      <div className="pricing-bg-grid" />
+      <div className="pricing-bg-dots" />
+
+      <div className="pricing-container">
+        {/* Section Header */}
+        <div className="pricing-header">
+          <div className="pricing-badge">
+            <span className="pricing-badge-dot" />
+            <span className="pricing-badge-text">Pemakaian & Harga</span>
+          </div>
+          <h2 className="pricing-title">
+            Investasi untuk
+            <br />
+            Masa Depan Akademik.
+          </h2>
+        </div>
 
         {/* Loading state */}
         {plans === undefined && <PricingSkeleton />}
@@ -178,7 +200,7 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
 
         {/* Link to full pricing page - centered below cards */}
         {showCta && (
-          <div className="section-cta-wrapper">
+          <div className="pricing-cta-wrapper">
             <Link href="/pricing" className="btn-brand">
               Lihat detail paket lengkap
               <ChevronRight className="w-4 h-4" />
