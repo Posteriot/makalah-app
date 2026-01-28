@@ -17,7 +17,7 @@ export function PawangBadge() {
         {/* Animated orange dot */}
         <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)] animate-[badge-dot-blink_1.5s_ease-in-out_infinite]" />
         {/* Badge text */}
-        <span className="text-[13px] font-medium tracking-wide text-white/95">
+        <span className="text-[13px] font-medium tracking-wide text-white/95 uppercase">
           Anda Pawang, Ai Tukang
         </span>
       </div>
