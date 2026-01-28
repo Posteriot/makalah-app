@@ -154,3 +154,92 @@ export const updateHighlightedPlan = internalMutation({
     }
   },
 })
+
+/**
+ * Migration to update all pricing plans content to match mockup
+ * Run via: npx convex run "migrations/seedPricingPlans:updatePricingContent"
+ */
+export const updatePricingContent = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+    const updates: string[] = []
+
+    // Update Gratis plan
+    const gratisPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "gratis"))
+      .first()
+
+    if (gratisPlan) {
+      await db.patch(gratisPlan._id, {
+        price: "Rp0",
+        unit: "/bulan",
+        features: [
+          "Menggunakan 13 tahap workflow",
+          "Diskusi dan menyusun draft",
+          "Pemakaian harian terbatas",
+        ],
+        ctaText: "Coba Sekarang",
+        ctaHref: "/chat",
+        updatedAt: now,
+      })
+      updates.push("Gratis updated")
+    }
+
+    // Update BPP plan
+    const bppPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "bpp"))
+      .first()
+
+    if (bppPlan) {
+      await db.patch(bppPlan._id, {
+        name: "Bayar Per Paper",
+        price: "Mulai Rp80rb",
+        unit: "/paper",
+        features: [
+          "Bayar per paper ketika butuh",
+          "Full 13 tahap workflow",
+          "Draft hingga paper utuh",
+          "Diskusi sesuai konteks paper",
+          "Export Word & PDF",
+        ],
+        isDisabled: false,
+        ctaText: "Pilih Paket",
+        ctaHref: "/subscription/topup",
+        updatedAt: now,
+      })
+      updates.push("BPP updated")
+    }
+
+    // Update Pro plan
+    const proPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "pro"))
+      .first()
+
+    if (proPlan) {
+      await db.patch(proPlan._id, {
+        price: "Rp200rb",
+        unit: "/bulan",
+        features: [
+          "Menyusun 5-6 Paper",
+          "Full 13 tahap workflow",
+          "Draft hingga paper utuh",
+          "Diskusi tak terbatas",
+          "Export Word & PDF",
+        ],
+        ctaText: "Langganan Pro",
+        ctaHref: "/subscription/upgrade",
+        updatedAt: now,
+      })
+      updates.push("Pro updated")
+    }
+
+    return {
+      success: true,
+      updates,
+      message: `Updated ${updates.length} plans`,
+    }
+  },
+})
