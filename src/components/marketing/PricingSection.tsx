@@ -152,12 +152,12 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
       <div className="grid-thin" />
       <div className="bg-dot-grid opacity-50" />
 
-      <div className="container text-center">
+      <div className="container">
         {/* Section Header */}
         <div className="section-header">
           <div className="badge-group">
             <span className="badge-dot" />
-            <span className="badge-text uppercase">Pemakaian & Harga</span>
+            <span className="badge-text">Pemakaian & Harga</span>
           </div>
           <h2 className="section-title">
             Investasi untuk
