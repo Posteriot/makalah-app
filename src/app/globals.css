@@ -1956,33 +1956,21 @@
     align-items: center;
   }
 
-  /* Pricing Card */
+  /* Pricing Card - outer container */
   .pricing .pricing-card {
-    background: #060608;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 24px;
-    padding: 32px;
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
     position: relative;
-    overflow: visible;
+    overflow: visible; /* For popular-tag */
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .pricing .pricing-card:hover {
     transform: translateY(-8px);
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   }
 
   /* Highlighted Card */
   .pricing .pricing-card.highlighted {
-    background: #111111;
-    border-color: var(--brand);
     position: relative;
     transform: scale(1.05);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
     z-index: 10;
   }
 
@@ -2004,6 +1992,32 @@
     border-radius: 100px;
     white-space: nowrap;
     z-index: 20;
+  }
+
+  /* Card Content - inner wrapper that clips aurora */
+  .pricing .card-content {
+    background: #060608;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 32px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden; /* Clips aurora blur */
+    height: 100%;
+    transition: border-color 0.4s, box-shadow 0.4s;
+  }
+
+  .pricing .pricing-card:hover .card-content {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .pricing .pricing-card.highlighted .card-content {
+    background: #111111;
+    border-color: var(--brand);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   }
 
   /* Card Header - tidak bold */
@@ -2101,13 +2115,14 @@
     opacity: 0.6;
   }
 
-  /* Card Aurora */
-  .pricing .card-aurora {
+  /* Card Aurora - inside card-content (clipped by overflow: hidden) */
+  .pricing .card-content::after {
+    content: "";
     position: absolute;
-    bottom: -50px;
-    left: -20px;
-    right: -20px;
-    height: 150px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 120px;
     background:
       radial-gradient(circle at 20% 100%, rgba(232, 102, 9, 0.5) 0%, transparent 70%),
       radial-gradient(circle at 80% 100%, rgba(25, 196, 156, 0.4) 0%, transparent 60%);
@@ -2118,12 +2133,12 @@
     z-index: 0;
   }
 
-  .pricing .pricing-card:hover .card-aurora {
+  .pricing .pricing-card:hover .card-content::after {
     opacity: 1;
-    transform: translateY(-10px) scale(1.1);
+    transform: translateY(-20px) scale(1.05);
   }
 
-  .pricing .pricing-card > *:not(.card-aurora) {
+  .pricing .card-content > * {
     position: relative;
     z-index: 1;
   }
@@ -2223,17 +2238,17 @@
   }
 
   /* Light mode - Cards */
-  :root .pricing .pricing-card {
+  :root .pricing .card-content {
     background: #ffffff;
     border-color: rgba(0, 0, 0, 0.1);
   }
 
-  :root .pricing .pricing-card:hover {
+  :root .pricing .pricing-card:hover .card-content {
     border-color: rgba(0, 0, 0, 0.2);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   }
 
-  :root .pricing .pricing-card.highlighted {
+  :root .pricing .pricing-card.highlighted .card-content {
     background: #ffffff;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   }
@@ -2291,17 +2306,17 @@
   }
 
   /* Dark mode - Cards */
-  .dark .pricing .pricing-card {
+  .dark .pricing .card-content {
     background: #060608;
     border-color: rgba(255, 255, 255, 0.08);
   }
 
-  .dark .pricing .pricing-card:hover {
+  .dark .pricing .pricing-card:hover .card-content {
     border-color: rgba(255, 255, 255, 0.2);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   }
 
-  .dark .pricing .pricing-card.highlighted {
+  .dark .pricing .pricing-card.highlighted .card-content {
     background: #111111;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   }

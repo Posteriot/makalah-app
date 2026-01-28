@@ -35,45 +35,45 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
         plan.isHighlighted && "highlighted"
       )}
     >
-      {/* Popular tag for highlighted card */}
+      {/* Popular tag for highlighted card - outside card-content for overflow */}
       {plan.isHighlighted && (
         <div className="popular-tag">Solusi Terbaik</div>
       )}
 
-      <div className="card-header">
-        <h3>{plan.name}</h3>
-        <p className="price">
-          {plan.price}
-          {plan.unit && <span className="unit">{plan.unit}</span>}
-        </p>
+      {/* Card content wrapper - clips aurora effect */}
+      <div className="card-content">
+        <div className="card-header">
+          <h3>{plan.name}</h3>
+          <p className="price">
+            {plan.price}
+            {plan.unit && <span className="unit">{plan.unit}</span>}
+          </p>
+        </div>
+
+        <ul className="price-features">
+          {plan.features.map((feature, index) => (
+            <li key={`${plan._id}-feature-${index}`}>
+              {feature}
+            </li>
+          ))}
+        </ul>
+
+        {plan.ctaHref ? (
+          <Link
+            href={plan.ctaHref}
+            className={cn(
+              "btn full-width",
+              plan.isHighlighted ? "btn-brand-vivid" : "btn-outline"
+            )}
+          >
+            {plan.ctaText}
+          </Link>
+        ) : (
+          <button disabled className="btn btn-disabled full-width">
+            {plan.ctaText}
+          </button>
+        )}
       </div>
-
-      <ul className="price-features">
-        {plan.features.map((feature, index) => (
-          <li key={`${plan._id}-feature-${index}`}>
-            {feature}
-          </li>
-        ))}
-      </ul>
-
-      {plan.ctaHref ? (
-        <Link
-          href={plan.ctaHref}
-          className={cn(
-            "btn full-width",
-            plan.isHighlighted ? "btn-brand-vivid" : "btn-outline"
-          )}
-        >
-          {plan.ctaText}
-        </Link>
-      ) : (
-        <button disabled className="btn btn-disabled full-width">
-          {plan.ctaText}
-        </button>
-      )}
-
-      {/* Aurora glow effect */}
-      <div className="card-aurora" />
     </div>
   )
 }
