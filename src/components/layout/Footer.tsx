@@ -2,80 +2,105 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { cn } from "@/lib/utils"
+import { Twitter, Linkedin, Instagram } from "lucide-react"
 
 const RESOURCE_LINKS = [
+  { href: "/blog", label: "Blog" },
   { href: "/documentation", label: "Dokumentasi" },
-  { href: "/faq", label: "FAQ" },
+  { href: "/about#kontak", label: "Hubungi Sales" },
 ]
 
 const COMPANY_LINKS = [
-  { href: "/about#bergabung-dengan-tim", label: "Karir" },
-  { href: "/about#hubungi-kami", label: "Kontak" },
-  { href: "/documentation#privacy-policy", label: "Kebijakan Privasi" },
+  { href: "/about#bergabung-dengan-tim", label: "Karier" },
+  { href: "/about", label: "Tentang kami" },
+  { href: "/about#security", label: "Security" },
+]
+
+const LEGAL_LINKS = [
+  { href: "/about#privacy-policy", label: "Privacy" },
+  { href: "/about#terms", label: "Terms" },
+]
+
+const SOCIAL_LINKS = [
+  { href: "#", label: "X", icon: Twitter },
+  { href: "#", label: "LinkedIn", icon: Linkedin },
+  { href: "#", label: "Instagram", icon: Instagram },
 ]
 
 export function Footer() {
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-
   return (
-    <footer className="site-footer relative">
-      {/* Horizontal line border at top - same style as header bottom line */}
-      <div
-        className={cn(
-          "absolute top-0 left-0 right-0",
-          "h-px bg-border"
-        )}
-      />
+    <div className="luxe-footer-wrapper" id="footer">
+      <footer className="footer-luxe">
+        {/* Subtle Background Pattern */}
+        <div className="bg-diagonal-stripes" />
 
-      <div className="footer-container">
-        {/* Left: Brand + Copyright */}
-        <div className="footer-brand-section">
-          <button
-            onClick={scrollToTop}
-            className="footer-logo-btn"
-            aria-label="Scroll to top"
-          >
-            <Image
-              src="/logo/makalah_logo_500x500.png"
-              alt="Makalah"
-              width={32}
-              height={32}
-              className="footer-logo"
-            />
-          </button>
-          <div className="footer-copyright">
-            <span>&copy; {new Date().getFullYear()} Makalah AI</span>
-            <span>Semua hak cipta dilindungi.</span>
+        <div className="container">
+          {/* Grid: Brand + Links */}
+          <div className="footer-grid">
+            {/* Brand */}
+            <div className="footer-brand">
+              <Image
+                src="/logo/makalah_logo_white_500x500.png"
+                alt="Makalah AI"
+                width={32}
+                height={32}
+                className="logo-img"
+              />
+            </div>
+
+            {/* Links */}
+            <div className="footer-links">
+              {/* Sumber Daya */}
+              <div className="link-group">
+                <h4>Sumber Daya</h4>
+                {RESOURCE_LINKS.map((link) => (
+                  <Link key={link.href} href={link.href}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Perusahaan */}
+              <div className="link-group">
+                <h4>Perusahaan</h4>
+                {COMPANY_LINKS.map((link) => (
+                  <Link key={link.href} href={link.href}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Legal */}
+              <div className="link-group">
+                <h4>Legal</h4>
+                {LEGAL_LINKS.map((link) => (
+                  <Link key={link.href} href={link.href}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom: Copyright + Socials */}
+          <div className="footer-bottom">
+            <p>&copy; {new Date().getFullYear()} Makalah AI. Hak cipta dilindungi.</p>
+            <div className="socials">
+              {SOCIAL_LINKS.map((social) => (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  aria-label={social.label}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <social.icon size={20} strokeWidth={2} />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
-
-        {/* Right: Links */}
-        <div className="footer-links">
-          <div className="footer-links-group">
-            <h4 className="footer-links-heading">Sumber Daya</h4>
-            <ul className="footer-links-list">
-              {RESOURCE_LINKS.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href}>{link.label}</Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="footer-links-group">
-            <h4 className="footer-links-heading">Perusahaan</h4>
-            <ul className="footer-links-list">
-              {COMPANY_LINKS.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href}>{link.label}</Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </footer>
+      </footer>
+    </div>
   )
 }
