@@ -648,20 +648,6 @@
     /* No padding-top - hero extends to top, header floats above */
   }
 
-  /* Section separator line for consecutive sections within global-main */
-  .global-main section+section::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--brand), transparent);
-    opacity: 0.55;
-    border-radius: 3px;
-    pointer-events: none;
-  }
-
   /* Full-screen section (hero fills viewport minus header) */
   .section-screen-with-header {
     min-height: calc(100vh - var(--header-h));
@@ -1396,194 +1382,457 @@
 }
 
 /* ==========================================================================
- * WHY MAKALAH / BENEFITS SECTION (from mockup)
+ * BENEFITS SECTION - BENTO GRID (Kenapa Makalah AI?)
  * ========================================================================== */
 @layer components {
-  .why-makalah-section {
+  /* Section container */
+  .benefits-section {
     position: relative;
-    padding: var(--section-padding-y) var(--section-padding-x);
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 3rem var(--section-padding-x);
+    background-color: var(--luxe-zinc-600, #1c1c21);
+    border-bottom: 1px solid var(--border-hairline);
+    overflow: hidden;
   }
 
-  .why-makalah-section::before {
-    content: "";
+  /* Light mode: lighter background */
+  :root:not(.dark) .benefits-section,
+  .light .benefits-section {
+    background-color: #f4f4f5;
+  }
+
+  /* Background patterns */
+  .benefits-bg-stripes {
     position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.08) 0,
+      rgba(255, 255, 255, 0.08) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  }
+
+  :root:not(.dark) .benefits-bg-stripes,
+  .light .benefits-bg-stripes {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(0, 0, 0, 0.07) 0,
+      rgba(0, 0, 0, 0.07) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+    opacity: 0.6;
+  }
+
+  .benefits-bg-dots {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+    z-index: 0;
+    mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
+  }
+
+  :root:not(.dark) .benefits-bg-dots,
+  .light .benefits-bg-dots {
+    background-image: radial-gradient(rgba(0, 0, 0, 0.12) 1px, transparent 1px);
+  }
+
+  /* Top border line */
+  .benefits-top-line {
+    position: absolute;
+    top: 0;
     left: 0;
     right: 0;
-    top: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--brand), transparent);
-    opacity: 0.55;
-    border-radius: 3px;
-    pointer-events: none;
+    height: 1px;
+    background: var(--border-hairline);
   }
 
-  .section-container {
-    max-width: var(--container-max-width);
+  /* Container */
+  .benefits-container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
     margin: 0 auto;
+    padding: 0 24px;
   }
 
-  .section-heading {
-    font-size: 1.75rem;
+  /* Section header */
+  .benefits-header {
+    margin-bottom: 2rem;
+  }
+
+  .benefits-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: #006d5b;
+    border-radius: 999px;
+    margin-bottom: 1.5rem;
+  }
+
+  .benefits-badge-dot {
+    width: 8px;
+    height: 8px;
+    background: #34d399;
+    border-radius: 50%;
+    animation: badge-dot-blink 1.5s ease-in-out infinite;
+  }
+
+  .benefits-badge-text {
+    font-size: 11px;
     font-weight: 700;
-    text-align: center;
-    margin-bottom: 2.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: white;
+  }
+
+  .benefits-title {
+    font-family: var(--font-mono), 'Victor Mono', monospace;
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--foreground);
   }
 
   @media (min-width: 768px) {
-    .section-heading {
-      font-size: 2.25rem;
+    .benefits-title {
+      font-size: 2.5rem;
     }
   }
 
-  .benefits-grid {
+  /* Bento Grid */
+  .bento-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 150px;
+    gap: 16px;
   }
 
-  .benefit-card {
-    padding: 1.5rem;
-    background-color: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  /* Bento Item - Base */
+  .bento-item {
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
   }
 
-  .benefit-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-    border-color: rgba(232, 102, 9, 0.5);
+  :root:not(.dark) .bento-item,
+  .light .bento-item {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
   }
 
-  .benefit-header {
+  .bento-item:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.4);
+    transform: translateY(-4px);
+  }
+
+  :root:not(.dark) .bento-item:hover,
+  .light .bento-item:hover {
+    border-color: rgba(232, 102, 9, 0.3);
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Bento Large - 2x2 */
+  .bento-large {
+    grid-column: span 2;
+    grid-row: span 2;
+    padding: 40px;
+  }
+
+  /* Bento Row - full width */
+  .bento-row {
+    grid-column: span 3;
+    grid-row: span 1;
+  }
+
+  /* Row item content - limit width so illustration has room */
+  .bento-row .bento-content {
+    max-width: 65%;
+  }
+
+  /* Bento Content */
+  .bento-content {
+    position: relative;
+    flex: 1;
+    z-index: 2;
+  }
+
+  .bento-content-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    gap: 32px;
   }
 
-  .benefit-icon {
-    width: 40px;
-    height: 40px;
+  .bento-content-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .bento-text-wrap {
+    flex: 1;
+  }
+
+  /* Bento Header */
+  .bento-header-flex {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .bento-content-col .bento-header-flex {
+    margin-bottom: 12px;
+  }
+
+  /* Icon Box */
+  .bento-icon-box {
+    width: 48px;
+    height: 48px;
+    background: rgba(232, 102, 9, 0.12);
+    border: 1px solid rgba(232, 102, 9, 0.25);
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--accent);
-    border-radius: var(--radius-sm);
     color: var(--brand);
+    flex-shrink: 0;
   }
 
-  .benefit-icon svg {
-    width: 24px;
-    height: 24px;
+  /* Titles */
+  .bento-item h3 {
+    font-family: var(--font-mono), 'Victor Mono', monospace;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--foreground);
   }
 
-  .benefit-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--muted-foreground);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+  .bento-large h3 {
+    font-size: 1.75rem;
   }
 
-  .benefit-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-  }
-
-  .benefit-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .benefit-list li {
+  /* Description */
+  .bento-item p {
     font-size: 0.875rem;
     color: var(--muted-foreground);
-    padding-left: 1rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* Checklist */
+  .bento-checklist {
+    list-style: none;
+    padding: 0;
+    margin: 24px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .bento-checklist li {
+    font-size: 0.9375rem;
+    color: var(--muted-foreground);
+    padding-left: 20px;
     position: relative;
   }
 
-  .benefit-list li::before {
-    content: "\2022";
+  .bento-checklist li::before {
+    content: "✓";
     position: absolute;
     left: 0;
     color: var(--brand);
-  }
-
-  /* Benefits Accordion (Mobile) */
-  .benefits-accordion {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .accordion-item {
-    background-color: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-
-  .accordion-trigger {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--foreground);
-    text-align: left;
-  }
-
-  .accordion-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .accordion-header .benefit-icon {
-    width: 32px;
-    height: 32px;
-  }
-
-  .accordion-header .benefit-icon svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .accordion-title {
-    font-size: 0.9375rem;
     font-weight: 600;
   }
 
-  .accordion-chevron {
-    width: 20px;
-    height: 20px;
+  /* Illustrations - positioned absolute in cards */
+  .bento-illustration {
+    position: absolute;
+    bottom: -10px;
+    right: -10px;
+    width: 180px;
+    height: 180px;
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 1;
+    transition: all 0.5s ease;
+  }
+
+  /* Sparring Partner - static illustration beside text */
+  .bento-illustration-static {
+    width: 220px;
+    height: 220px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 1;
+    margin-right: -20px;
+    opacity: 0.5;
+    transition: all 0.5s ease;
+  }
+
+  /* Row item (Dipandu Bertahap) - illustration on right side */
+  .bento-row .bento-illustration {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    bottom: auto;
+    transform: translateY(-50%);
+    width: 160px;
+    height: 160px;
+    opacity: 0.45;
+  }
+
+  .bento-svg {
+    width: 100%;
+    height: 100%;
     color: var(--muted-foreground);
-    transition: transform 0.2s;
+    stroke-width: 1.2;
+    opacity: 0.7;
+    transition: all 0.5s ease;
   }
 
-  .accordion-item.open .accordion-chevron {
-    transform: rotate(180deg);
+  .bento-svg path,
+  .bento-svg line,
+  .bento-svg rect,
+  .bento-svg circle {
+    stroke-width: 1.2;
   }
 
-  .accordion-content {
-    overflow: hidden;
-    max-height: 0;
-    transition: max-height 0.3s ease-out;
+  .bento-item:hover .bento-illustration {
+    opacity: 0.7;
+    transform: scale(1.08);
   }
 
-  .accordion-item.open .accordion-content {
-    max-height: 200px;
+  .bento-row:hover .bento-illustration {
+    opacity: 0.7;
+    transform: translateY(-50%) scale(1.08);
   }
 
-  .accordion-content .benefit-list {
-    padding: 0 1rem 1rem;
+  .bento-item:hover .bento-illustration-static {
+    opacity: 0.75;
+    transform: scale(1.05) rotate(-2deg);
+  }
+
+  .bento-item:hover .bento-svg {
+    color: var(--brand);
+    opacity: 1;
+  }
+
+  /* Visual Glow */
+  .bento-glow {
+    position: absolute;
+    bottom: -80px;
+    right: -80px;
+    width: 300px;
+    height: 300px;
+    background:
+      radial-gradient(circle at 70% 70%, rgba(232, 102, 9, 0.35) 0%, transparent 60%),
+      radial-gradient(circle at 30% 80%, rgba(25, 196, 156, 0.25) 0%, transparent 55%);
+    filter: blur(40px) saturate(1.5);
+    opacity: 0.5;
+    pointer-events: none;
+    transition: all 0.4s ease;
+    z-index: 0;
+  }
+
+  :root:not(.dark) .bento-glow,
+  .light .bento-glow {
+    opacity: 0.25;
+  }
+
+  .bento-item:hover .bento-glow {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+
+  :root:not(.dark) .bento-item:hover .bento-glow,
+  .light .bento-item:hover .bento-glow {
+    opacity: 0.4;
+  }
+
+  /* Responsive - Tablet */
+  @media (max-width: 1024px) {
+    .bento-grid {
+      grid-template-columns: repeat(2, 1fr);
+      grid-auto-rows: auto;
+    }
+
+    .bento-large {
+      grid-column: span 2;
+      grid-row: span 1;
+    }
+
+    .bento-row {
+      grid-column: span 2;
+    }
+
+    .bento-content-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .bento-illustration-static {
+      display: none;
+    }
+  }
+
+  /* Responsive - Mobile */
+  @media (max-width: 640px) {
+    .benefits-section {
+      height: auto; /* Allow natural height on mobile */
+      padding: 3rem var(--section-padding-x);
+    }
+
+    .bento-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .bento-large,
+    .bento-row {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .bento-item {
+      padding: 24px;
+    }
+
+    .bento-large {
+      padding: 24px;
+    }
+
+    .bento-large h3 {
+      font-size: 1.25rem;
+    }
+
+    .benefits-title {
+      font-size: 1.75rem;
+    }
   }
 }
 
@@ -1594,19 +1843,6 @@
   .pricing-section {
     position: relative;
     padding: var(--section-padding-y) var(--section-padding-x);
-  }
-
-  .pricing-section::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--brand), transparent);
-    opacity: 0.55;
-    border-radius: 3px;
-    pointer-events: none;
   }
 
   .pricing-section .section-heading {
@@ -1897,19 +2133,6 @@
   /* Manifesto Section Container */
   .manifesto-section {
     position: relative;
-  }
-
-  .manifesto-section::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--brand), transparent);
-    opacity: 0.55;
-    border-radius: 3px;
-    pointer-events: none;
   }
 
   .manifesto-container {
