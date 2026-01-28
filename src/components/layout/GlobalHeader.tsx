@@ -19,6 +19,8 @@ const NAV_LINKS = [
 ]
 
 const SCROLL_THRESHOLD = 100 // px before header changes state
+const SCROLL_DOWN_DELTA = 8  // px minimum to hide header (less sensitive)
+const SCROLL_UP_DELTA = 2    // px minimum to show header (more sensitive)
 
 export function GlobalHeader() {
   const { resolvedTheme, setTheme } = useTheme()
@@ -34,21 +36,27 @@ export function GlobalHeader() {
     // Determine if we're past the threshold (not at top/hero)
     const pastThreshold = currentScrollY > SCROLL_THRESHOLD
 
-    // Determine scroll direction using ref (no re-render on update)
-    const isScrollingDown = currentScrollY > lastScrollYRef.current
+    // Calculate scroll delta for direction detection
+    const scrollDelta = currentScrollY - lastScrollYRef.current
 
-    // Update states
+    // Update scrolled state (for background)
     setIsScrolled(pastThreshold)
 
-    // Only hide/show after passing threshold
     if (pastThreshold) {
-      setIsHidden(isScrollingDown)
+      // Asymmetric sensitivity: scroll up (show) more sensitive than scroll down (hide)
+      if (scrollDelta > SCROLL_DOWN_DELTA) {
+        // Scrolling down - hide header
+        setIsHidden(true)
+        lastScrollYRef.current = currentScrollY
+      } else if (scrollDelta < -SCROLL_UP_DELTA) {
+        // Scrolling up - show header (more sensitive)
+        setIsHidden(false)
+        lastScrollYRef.current = currentScrollY
+      }
     } else {
       setIsHidden(false)
+      lastScrollYRef.current = currentScrollY
     }
-
-    // Update ref without triggering re-render
-    lastScrollYRef.current = currentScrollY
   }, [])
 
   useEffect(() => {

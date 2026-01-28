@@ -379,7 +379,7 @@
     justify-content: center;
     padding-bottom: 10px;
     /* Reserve space for diagonal stripes (10px height) */
-    transition: transform 0.3s ease, background-color 0.3s ease, backdrop-filter 0.3s ease;
+    transition: transform 0.2s ease, background-color 0.2s ease, backdrop-filter 0.2s ease;
   }
 
   /* Header inner container - matches hero max-width for alignment */
@@ -942,10 +942,10 @@
       rgba(0, 0, 0, 0) 85%);
   }
 
-  /* IDE vertical lines */
+  /* IDE vertical lines - start below header */
   .hero-ide-line-y {
     position: absolute;
-    top: 0;
+    top: var(--header-h);
     bottom: 0;
     width: 1px;
     background: var(--border-hairline);
