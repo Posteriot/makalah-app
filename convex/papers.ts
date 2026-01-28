@@ -1,5 +1,6 @@
 import { mutationGeneric, queryGeneric } from "convex/server"
 import { v } from "convex/values"
+import { requireAuthUserId } from "./auth"
 
 export const createPaperMetadata = mutationGeneric({
   args: {
@@ -7,9 +8,10 @@ export const createPaperMetadata = mutationGeneric({
     title: v.string(),
     abstract: v.optional(v.string()),
   },
-  handler: async ({ db }, { userId, title, abstract }) => {
+  handler: async (ctx, { userId, title, abstract }) => {
+    await requireAuthUserId(ctx, userId)
     const now = Date.now()
-    const id = await db.insert("papers", {
+    const id = await ctx.db.insert("papers", {
       userId,
       title,
       abstract: abstract ?? "",
@@ -24,8 +26,9 @@ export const listPapersForUser = queryGeneric({
   args: {
     userId: v.id("users"),
   },
-  handler: async ({ db }, { userId }) => {
-    const results = await db
+  handler: async (ctx, { userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const results = await ctx.db
       .query("papers")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
@@ -34,4 +37,3 @@ export const listPapersForUser = queryGeneric({
     return results
   },
 })
-

@@ -39,17 +39,28 @@ import {
 export async function POST(req: Request) {
     try {
         // 1. Authenticate with Clerk
-        const { userId: clerkUserId } = await auth()
+        const { userId: clerkUserId, getToken } = await auth()
         if (!clerkUserId) {
             return new Response("Unauthorized", { status: 401 })
         }
+
+        // 1.1. Ambil token Clerk untuk Convex auth guard
+        const convexToken = await getToken({ template: "convex" })
+        if (!convexToken) {
+            return new Response("Convex auth token missing", { status: 500 })
+        }
+        const convexOptions = { token: convexToken }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fetchQueryWithToken = (ref: any, args: any) => fetchQuery(ref, args, convexOptions)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fetchMutationWithToken = (ref: any, args: any) => fetchMutation(ref, args, convexOptions)
 
         // 2. Parse request (AI SDK v5/v6 format)
         const body = await req.json()
         const { messages, conversationId, fileIds } = body
 
         // 3. Get Convex User ID
-        const userId = await fetchQuery(api.chatHelpers.getUserId, { clerkUserId })
+        const userId = await fetchQueryWithToken(api.chatHelpers.getUserId, { clerkUserId })
         if (!userId) {
             return new Response("User not found in database", { status: 404 })
         }
@@ -80,7 +91,8 @@ export async function POST(req: Request) {
         const quotaCheck = await checkQuotaBeforeOperation(
             userId,
             lastUserContentForQuota,
-            initialOperationType
+            initialOperationType,
+            convexToken
         )
 
         if (!quotaCheck.allowed) {
@@ -107,7 +119,7 @@ export async function POST(req: Request) {
             const title = "Percakapan baru"
 
             currentConversationId = await retryMutation(
-                () => fetchMutation(api.conversations.createConversation, {
+                () => fetchMutationWithToken(api.conversations.createConversation, {
                     userId,
                     title,
                 }),
@@ -120,7 +132,7 @@ export async function POST(req: Request) {
             // We don't await this to avoid blocking the response
             generateTitle({ userMessage: firstUserContent })
                 .then(async (generatedTitle) => {
-                    await fetchMutation(api.conversations.updateConversation, {
+                    await fetchMutationWithToken(api.conversations.updateConversation, {
                         conversationId: currentConversationId as Id<"conversations">,
                         title: generatedTitle
                     })
@@ -133,7 +145,7 @@ export async function POST(req: Request) {
             assistantText: string
             minPairsForFinalTitle: number
         }) => {
-            const conversation = await fetchQuery(api.conversations.getConversation, {
+            const conversation = await fetchQueryWithToken(api.conversations.getConversation, {
                 conversationId: currentConversationId as Id<"conversations">,
             })
 
@@ -154,7 +166,7 @@ export async function POST(req: Request) {
                     assistantMessage: options.assistantText,
                 })
 
-                await fetchMutation(api.conversations.updateConversationTitleFromAI, {
+                await fetchMutationWithToken(api.conversations.updateConversationTitleFromAI, {
                     conversationId: currentConversationId as Id<"conversations">,
                     userId,
                     title: generatedTitle,
@@ -179,7 +191,7 @@ export async function POST(req: Request) {
 
             if (userContent) {
                 await retryMutation(
-                    () => fetchMutation(api.messages.createMessage, {
+                    () => fetchMutationWithToken(api.messages.createMessage, {
                         conversationId: currentConversationId as Id<"conversations">,
                         role: "user",
                         content: userContent,
@@ -194,9 +206,12 @@ export async function POST(req: Request) {
         const systemPrompt = await getSystemPrompt()
 
         // Task Group 3: Fetch paper mode system prompt if paper session exists
-        const paperModePrompt = await getPaperModeSystemPrompt(currentConversationId as Id<"conversations">)
+        const paperModePrompt = await getPaperModeSystemPrompt(
+            currentConversationId as Id<"conversations">,
+            convexToken
+        )
         const paperSession = paperModePrompt
-            ? await fetchQuery(api.paperSessions.getByConversation, {
+            ? await fetchQueryWithToken(api.paperSessions.getByConversation, {
                 conversationId: currentConversationId as Id<"conversations">,
             })
             : null
@@ -274,7 +289,8 @@ export async function POST(req: Request) {
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
         if (fileIds && fileIds.length > 0) {
-            const files = await fetchQuery(api.files.getFilesByIds, {
+            const files = await fetchQueryWithToken(api.files.getFilesByIds, {
+                userId: userId as Id<"users">,
                 fileIds: fileIds as Id<"files">[],
             })
 
@@ -385,7 +401,7 @@ export async function POST(req: Request) {
         // ════════════════════════════════════════════════════════════════
         let sourcesContext = ""
         try {
-            const recentSources = await fetchQuery(api.messages.getRecentSources, {
+            const recentSources = await fetchQueryWithToken(api.messages.getRecentSources, {
                 conversationId: currentConversationId as Id<"conversations">,
                 limit: 5,
             })
@@ -732,7 +748,7 @@ JSON schema:
                 }))
                 .filter((source) => source.url && source.title)
             await retryMutation(
-                () => fetchMutation(api.messages.createMessage, {
+                () => fetchMutationWithToken(api.messages.createMessage, {
                     conversationId: currentConversationId as Id<"conversations">,
                     role: "assistant",
                     content: content,
@@ -797,7 +813,7 @@ When using this tool, always provide a clear, descriptive title (max 50 chars).
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
                         const result = await retryMutation(
-                            () => fetchMutation(api.artifacts.create, {
+                            () => fetchMutationWithToken(api.artifacts.create, {
                                 conversationId: currentConversationId as Id<"conversations">,
                                 userId: userId as Id<"users">,
                                 type,
@@ -863,7 +879,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 execute: async ({ artifactId, content, title, sources }) => {
                     try {
                         const result = await retryMutation(
-                            () => fetchMutation(api.artifacts.update, {
+                            () => fetchMutationWithToken(api.artifacts.update, {
                                 artifactId: artifactId as Id<"artifacts">,
                                 userId: userId as Id<"users">,
                                 content,
@@ -903,7 +919,7 @@ Aturan:
                 }),
                 execute: async ({ title }) => {
                     try {
-                        const conversation = await fetchQuery(api.conversations.getConversation, {
+                        const conversation = await fetchQueryWithToken(api.conversations.getConversation, {
                             conversationId: currentConversationId as Id<"conversations">,
                         })
 
@@ -933,7 +949,7 @@ Aturan:
                             ? minPairsForFinalTitle
                             : 3
 
-                        const counts = await fetchQuery(api.messages.countMessagePairsForConversation, {
+                        const counts = await fetchQueryWithToken(api.messages.countMessagePairsForConversation, {
                             conversationId: currentConversationId as Id<"conversations">,
                             userId,
                         })
@@ -945,7 +961,7 @@ Aturan:
                             }
                         }
 
-                        await fetchMutation(api.conversations.updateConversationTitleFromAI, {
+                        await fetchMutationWithToken(api.conversations.updateConversationTitleFromAI, {
                             conversationId: currentConversationId as Id<"conversations">,
                             userId,
                             title,
@@ -963,6 +979,7 @@ Aturan:
             ...createPaperTools({
                 userId: userId as Id<"users">,
                 conversationId: currentConversationId as Id<"conversations">,
+                convexToken,
             }),
         } satisfies ToolSet
 
@@ -1204,6 +1221,7 @@ TIPS PENCARIAN:
                                     totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
                                     model: modelNames.primary.model,
                                     operationType: billingContext.operationType,
+                                    convexToken,
                                 }).catch(err => console.error("[Billing] Failed to record usage:", err))
                             }
                             // ═══════════════════════════════════
@@ -1636,6 +1654,7 @@ TIPS PENCARIAN:
                                             totalTokens: (finishUsage.inputTokens ?? 0) + (finishUsage.outputTokens ?? 0),
                                             model: modelNames.primary.model,
                                             operationType: "web_search",
+                                            convexToken,
                                         }).catch(err => console.error("[Billing] Failed to record usage:", err))
                                     }
                                     // ═══════════════════════════════════════════════════════════
@@ -1722,6 +1741,7 @@ TIPS PENCARIAN:
                                     totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
                                     model: modelNames.fallback.model,
                                     operationType: billingContext.operationType,
+                                    convexToken,
                                 }).catch(err => console.error("[Billing] Failed to record usage:", err))
                             }
                             // ═══════════════════════════════════════════════
@@ -1924,6 +1944,7 @@ TIPS PENCARIAN:
                                         totalTokens: (finishUsage.inputTokens ?? 0) + (finishUsage.outputTokens ?? 0),
                                         model: `${modelNames.fallback.model}:online`,
                                         operationType: "web_search",
+                                        convexToken,
                                     }).catch(err => console.error("[Billing] Failed to record usage:", err))
                                 }
                                 // ═══════════════════════════════════════════════════════════

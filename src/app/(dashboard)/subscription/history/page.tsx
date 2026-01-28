@@ -46,6 +46,20 @@ export default function TransactionHistoryPage() {
     )
   }
 
+  if (!user) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <History className="h-5 w-5 text-primary" />
+          Riwayat Transaksi
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Sesi tidak aktif. Silakan login ulang.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}

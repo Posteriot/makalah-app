@@ -98,6 +98,17 @@ export default function SubscriptionOverviewPage() {
     )
   }
 
+  if (!user) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-xl font-semibold">Subskripsi</h1>
+        <p className="text-sm text-muted-foreground">
+          Sesi tidak aktif. Silakan login ulang.
+        </p>
+      </div>
+    )
+  }
+
   const tier = (user?.subscriptionStatus || "free") as keyof typeof TIER_CONFIG
   const tierConfig = TIER_CONFIG[tier] || TIER_CONFIG.gratis
 
@@ -107,7 +118,12 @@ export default function SubscriptionOverviewPage() {
   // Calculate usage percentage (for non-BPP)
   const usedTokens = quotaStatus?.usedTokens ?? 0
   const allottedTokens = quotaStatus?.allottedTokens ?? 100000
-  const usagePercentage = quotaStatus?.percentageUsed ?? Math.round((usedTokens / allottedTokens) * 100)
+  const rawUsagePercentage =
+    quotaStatus?.percentageUsed ??
+    (allottedTokens > 0 ? (usedTokens / allottedTokens) * 100 : 0)
+  const usagePercentage = Number.isFinite(rawUsagePercentage)
+    ? Math.max(0, Math.round(rawUsagePercentage))
+    : 0
   const isLowQuota = quotaStatus?.warningLevel === "warning" || quotaStatus?.warningLevel === "critical"
   const isBlocked = quotaStatus?.warningLevel === "blocked"
 

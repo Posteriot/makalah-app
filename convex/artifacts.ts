@@ -539,7 +539,7 @@ export const checkFinalStatus = queryGeneric({
     const stageData = paperSession.stageData as Record<string, { artifactId?: string; validatedAt?: number }>
 
     // Find stage that has this artifactId
-    for (const [_stageName, data] of Object.entries(stageData)) {
+    for (const [, data] of Object.entries(stageData)) {
       if (data?.artifactId === artifactId && data?.validatedAt) {
         return {
           isFinal: true,

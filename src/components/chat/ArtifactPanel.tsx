@@ -113,7 +113,6 @@ export function ArtifactPanel({
   selectedArtifactId,
   onSelectArtifact,
 }: ArtifactPanelProps) {
-  const [typeFilter, setTypeFilter] = useState<ArtifactType | null>(null)
   const [isFullsizeOpen, setIsFullsizeOpen] = useState(false)
   const [isArtifactListOpen, setIsArtifactListOpen] = useState(false)
   const { user: currentUser } = useCurrentUser()
@@ -122,7 +121,6 @@ export function ArtifactPanel({
   const viewerRef = useRef<ArtifactViewerRef>(null)
 
   // Local state for action icons (synced from viewer ref)
-  const [downloadFormat, setDownloadFormat] = useState<"docx" | "pdf" | "txt">("docx")
   const [copied, setCopied] = useState(false)
 
   // Fetch artifacts with optional type filter
@@ -132,7 +130,6 @@ export function ArtifactPanel({
       ? {
           conversationId,
           userId: currentUser._id,
-          type: typeFilter ?? undefined,
         }
       : "skip"
   )
@@ -204,7 +201,6 @@ export function ArtifactPanel({
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       onClick={() => {
-                        setDownloadFormat("docx")
                         viewerRef.current?.setDownloadFormat("docx")
                         viewerRef.current?.download()
                       }}
@@ -213,7 +209,6 @@ export function ArtifactPanel({
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        setDownloadFormat("pdf")
                         viewerRef.current?.setDownloadFormat("pdf")
                         viewerRef.current?.download()
                       }}
@@ -222,7 +217,6 @@ export function ArtifactPanel({
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        setDownloadFormat("txt")
                         viewerRef.current?.setDownloadFormat("txt")
                         viewerRef.current?.download()
                       }}
@@ -340,7 +334,6 @@ export function ArtifactPanel({
                       <DropdownMenuSubContent>
                         <DropdownMenuItem
                           onClick={() => {
-                            setDownloadFormat("docx")
                             viewerRef.current?.setDownloadFormat("docx")
                             viewerRef.current?.download()
                           }}
@@ -349,7 +342,6 @@ export function ArtifactPanel({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
-                            setDownloadFormat("pdf")
                             viewerRef.current?.setDownloadFormat("pdf")
                             viewerRef.current?.download()
                           }}
@@ -358,7 +350,6 @@ export function ArtifactPanel({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
-                            setDownloadFormat("txt")
                             viewerRef.current?.setDownloadFormat("txt")
                             viewerRef.current?.download()
                           }}
@@ -546,8 +537,6 @@ export function ArtifactPanel({
                       onSelectArtifact(id)
                       setIsArtifactListOpen(false) // Close after selection
                     }}
-                    typeFilter={typeFilter}
-                    onFilterChange={setTypeFilter}
                   />
                 </div>
               </CollapsibleContent>

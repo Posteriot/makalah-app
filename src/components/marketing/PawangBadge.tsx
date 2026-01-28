@@ -1,52 +1,26 @@
 "use client"
 
-import { useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
+/**
+ * PawangBadge - Hero badge linking to About page
+ * Displays "Anda Pawang, Ai Tukang" tagline with animated blinking orange dot
+ * Theme-aware: dark bg + light text in both modes for strong visibility
+ */
 export function PawangBadge() {
-  const [open, setOpen] = useState(false)
-
   return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-full bg-card text-sm font-medium cursor-pointer transition-all hover:scale-105 hover:shadow-lg"
-        aria-haspopup="dialog"
-      >
-        <span className="w-2 h-2 rounded-full bg-yellow-400 animate-[badge-dot-blink_1.2s_ease-in-out_infinite]" />
-        <span>Anda Pawang, Ai Tukang</span>
-      </button>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Manusia adalah pawang, Ai sebatas tukang</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 text-sm text-muted-foreground">
-            <p>
-              Kredo tersebut jadi pedoman kami dalam membangun Makalah AI. Kami percaya bahwa AI adalah alat bantu, bukan pengganti manusia.
-            </p>
-            <p>
-              Bagaimana dengan penggunaan detektor AI? Kami sadar bahwa detektor AI bukanlah solusi sempurna. Yang lebih penting adalah bagaimana kamu menggunakan AI secara bertanggung jawab.
-            </p>
-            <p>
-              Yang diperlukan saat ini adalah kolaborasi antara manusia dan AI, di mana manusia tetap memegang kendali penuh atas proses kreatif dan pengambilan keputusan.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setOpen(false)} className="btn-brand">
-              Tutup
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Link
+      href="/about"
+      className="badge-link inline-block mb-6"
+    >
+      <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-zinc-900/80 dark:bg-black/30 backdrop-blur-sm border border-[rgba(232,102,9,0.5)] dark:border-[rgba(232,102,9,0.4)] transition-all duration-300 hover:translate-y-[-2px] hover:bg-zinc-900/90 dark:hover:bg-black/40 hover:border-[rgba(232,102,9,0.7)] dark:hover:border-[rgba(232,102,9,0.6)] hover:shadow-[0_0_20px_rgba(232,102,9,0.25)]">
+        {/* Animated orange dot */}
+        <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)] animate-[badge-dot-blink_1.5s_ease-in-out_infinite]" />
+        {/* Badge text */}
+        <span className="text-[13px] font-medium tracking-wide text-white/95 uppercase">
+          Anda Pawang, Ai Tukang
+        </span>
+      </div>
+    </Link>
   )
 }

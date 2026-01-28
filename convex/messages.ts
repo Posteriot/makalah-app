@@ -1,11 +1,13 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { requireAuthUser, requireAuthUserId, requireConversationOwner } from "./auth"
 
 // Get messages for conversation
 export const getMessages = query({
     args: { conversationId: v.id("conversations") },
-    handler: async ({ db }, { conversationId }) => {
-        return await db
+    handler: async (ctx, { conversationId }) => {
+        await requireConversationOwner(ctx, conversationId)
+        return await ctx.db
             .query("messages")
             .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
             .order("asc")
@@ -20,8 +22,9 @@ export const countMessagePairsForConversation = query({
         conversationId: v.id("conversations"),
         userId: v.id("users"),
     },
-    handler: async ({ db }, { conversationId, userId }) => {
-        const conversation = await db.get(conversationId)
+    handler: async (ctx, { conversationId, userId }) => {
+        await requireAuthUserId(ctx, userId)
+        const conversation = await ctx.db.get(conversationId)
         if (!conversation) {
             throw new Error("Conversation tidak ditemukan")
         }
@@ -29,7 +32,7 @@ export const countMessagePairsForConversation = query({
             throw new Error("Tidak memiliki akses ke conversation ini")
         }
 
-        const messages = await db
+        const messages = await ctx.db
             .query("messages")
             .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
             .collect()
@@ -67,15 +70,16 @@ export const createMessage = mutation({
             publishedAt: v.optional(v.number()),
         }))),
     },
-    handler: async ({ db }, args) => {
+    handler: async (ctx, args) => {
+        await requireConversationOwner(ctx, args.conversationId)
         const now = Date.now()
-        const messageId = await db.insert("messages", {
+        const messageId = await ctx.db.insert("messages", {
             ...args,
             createdAt: now,
         })
 
         // Update conversation lastMessageAt
-        await db.patch(args.conversationId, {
+        await ctx.db.patch(args.conversationId, {
             lastMessageAt: now,
             updatedAt: now,
         })
@@ -91,8 +95,17 @@ export const updateMessage = mutation({
         messageId: v.id("messages"),
         content: v.string(),
     },
-    handler: async ({ db }, { messageId, content }) => {
-        await db.patch(messageId, { content })
+    handler: async (ctx, { messageId, content }) => {
+        const authUser = await requireAuthUser(ctx)
+        const message = await ctx.db.get(messageId)
+        if (!message) {
+            throw new Error("Message not found")
+        }
+        const conversation = await ctx.db.get(message.conversationId)
+        if (!conversation || conversation.userId !== authUser._id) {
+            throw new Error("Unauthorized")
+        }
+        await ctx.db.patch(messageId, { content })
     },
 })
 
@@ -103,8 +116,9 @@ export const getRecentSources = query({
         conversationId: v.id("conversations"),
         limit: v.optional(v.number()), // default 5
     },
-    handler: async ({ db }, { conversationId, limit = 5 }) => {
-        const messages = await db
+    handler: async (ctx, { conversationId, limit = 5 }) => {
+        await requireConversationOwner(ctx, conversationId)
+        const messages = await ctx.db
             .query("messages")
             .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
             .order("desc")
@@ -137,23 +151,31 @@ export const editAndTruncateConversation = mutation({
         content: v.string(), // Kept for backwards compatibility, but not used
         conversationId: v.id("conversations"),
     },
-    handler: async ({ db }, { messageId, conversationId }) => {
+    handler: async (ctx, { messageId, conversationId }) => {
+        const authUser = await requireAuthUser(ctx)
+        const conversation = await ctx.db.get(conversationId)
+        if (!conversation || conversation.userId !== authUser._id) {
+            throw new Error("Unauthorized")
+        }
         // 1. Get the message to define the split point
-        const message = await db.get(messageId)
+        const message = await ctx.db.get(messageId)
         if (!message) throw new Error("Message not found")
+        if (message.conversationId !== conversationId) {
+            throw new Error("Message tidak cocok dengan conversation")
+        }
 
         // 2. Find and delete all subsequent messages in this conversation
-        const subsequentMessages = await db
+        const subsequentMessages = await ctx.db
             .query("messages")
             .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
             .filter((q) => q.gt(q.field("createdAt"), message.createdAt))
             .collect()
 
         for (const msg of subsequentMessages) {
-            await db.delete(msg._id)
+            await ctx.db.delete(msg._id)
         }
 
         // 3. Delete the edited message itself - sendMessage() will create a new one
-        await db.delete(messageId)
+        await ctx.db.delete(messageId)
     },
 })

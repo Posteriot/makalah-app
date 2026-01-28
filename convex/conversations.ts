@@ -1,11 +1,13 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { requireAuthUserId, requireConversationOwner } from "./auth"
 
 // List conversations for user
 export const listConversations = query({
     args: { userId: v.id("users") },
-    handler: async ({ db }, { userId }) => {
-        return await db
+    handler: async (ctx, { userId }) => {
+        await requireAuthUserId(ctx, userId)
+        return await ctx.db
             .query("conversations")
             .withIndex("by_user", (q) => q.eq("userId", userId))
             .order("desc")
@@ -16,8 +18,9 @@ export const listConversations = query({
 // Get single conversation
 export const getConversation = query({
     args: { conversationId: v.id("conversations") },
-    handler: async ({ db }, { conversationId }) => {
-        return await db.get(conversationId)
+    handler: async (ctx, { conversationId }) => {
+        const { conversation } = await requireConversationOwner(ctx, conversationId)
+        return conversation
     },
 })
 
@@ -27,9 +30,10 @@ export const createConversation = mutation({
         userId: v.id("users"),
         title: v.optional(v.string()),
     },
-    handler: async ({ db }, { userId, title }) => {
+    handler: async (ctx, { userId, title }) => {
+        await requireAuthUserId(ctx, userId)
         const now = Date.now()
-        return await db.insert("conversations", {
+        return await ctx.db.insert("conversations", {
             userId,
             title: title ?? "Percakapan baru",
             titleUpdateCount: 0,
@@ -47,7 +51,8 @@ export const updateConversation = mutation({
         conversationId: v.id("conversations"),
         title: v.optional(v.string()),
     },
-    handler: async ({ db }, { conversationId, title }) => {
+    handler: async (ctx, { conversationId, title }) => {
+        await requireConversationOwner(ctx, conversationId)
         const now = Date.now()
         const updates: { updatedAt: number; lastMessageAt: number; title?: string } = {
             updatedAt: now,
@@ -56,7 +61,7 @@ export const updateConversation = mutation({
         if (title) {
             updates.title = title
         }
-        await db.patch(conversationId, updates)
+        await ctx.db.patch(conversationId, updates)
     },
 })
 
@@ -68,8 +73,9 @@ export const updateConversationTitleFromAI = mutation({
         title: v.string(),
         nextTitleUpdateCount: v.number(),
     },
-    handler: async ({ db }, { conversationId, userId, title, nextTitleUpdateCount }) => {
-        const conversation = await db.get(conversationId)
+    handler: async (ctx, { conversationId, userId, title, nextTitleUpdateCount }) => {
+        await requireAuthUserId(ctx, userId)
+        const conversation = await ctx.db.get(conversationId)
         if (!conversation) {
             throw new Error("Conversation tidak ditemukan")
         }
@@ -81,7 +87,7 @@ export const updateConversationTitleFromAI = mutation({
         }
 
         const now = Date.now()
-        await db.patch(conversationId, {
+        await ctx.db.patch(conversationId, {
             title: title.trim().slice(0, 50),
             titleUpdateCount: nextTitleUpdateCount,
             updatedAt: now,
@@ -99,8 +105,9 @@ export const updateConversationTitleFromUser = mutation({
         userId: v.id("users"),
         title: v.string(),
     },
-    handler: async ({ db }, { conversationId, userId, title }) => {
-        const conversation = await db.get(conversationId)
+    handler: async (ctx, { conversationId, userId, title }) => {
+        await requireAuthUserId(ctx, userId)
+        const conversation = await ctx.db.get(conversationId)
         if (!conversation) {
             throw new Error("Conversation tidak ditemukan")
         }
@@ -109,7 +116,7 @@ export const updateConversationTitleFromUser = mutation({
         }
 
         const now = Date.now()
-        await db.patch(conversationId, {
+        await ctx.db.patch(conversationId, {
             title: title.trim().slice(0, 50),
             titleLocked: true,
             updatedAt: now,
@@ -123,18 +130,19 @@ export const updateConversationTitleFromUser = mutation({
 // Delete conversation (cascade delete messages)
 export const deleteConversation = mutation({
     args: { conversationId: v.id("conversations") },
-    handler: async ({ db }, { conversationId }) => {
+    handler: async (ctx, { conversationId }) => {
+        await requireConversationOwner(ctx, conversationId)
         // Delete all messages first
-        const messages = await db
+        const messages = await ctx.db
             .query("messages")
             .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
             .collect()
 
         for (const message of messages) {
-            await db.delete(message._id)
+            await ctx.db.delete(message._id)
         }
 
         // Delete conversation
-        await db.delete(conversationId)
+        await ctx.db.delete(conversationId)
     },
 })

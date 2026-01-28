@@ -11,7 +11,9 @@ import { retryMutation, retryQuery } from "../convex/retry"
 export const createPaperTools = (context: {
     userId: Id<"users">,
     conversationId: Id<"conversations">
+    convexToken?: string
 }) => {
+    const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
         startPaperSession: tool({
             description: `Inisialisasi sesi penulisan paper baru untuk percakapan ini.
@@ -34,7 +36,7 @@ Aturan pengisian initialIdea:
                             userId: context.userId,
                             conversationId: context.conversationId,
                             initialIdea: initialIdea || undefined,
-                        }),
+                        }, convexOptions),
                         "paperSessions.create"
                     );
                     return {
@@ -57,7 +59,7 @@ Aturan pengisian initialIdea:
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
                             conversationId: context.conversationId
-                        }),
+                        }, convexOptions),
                         "paperSessions.getByConversation"
                     );
                     return session
@@ -117,7 +119,7 @@ Contoh data untuk tahap 'gagasan':
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
                             conversationId: context.conversationId
-                        }),
+                        }, convexOptions),
                         "paperSessions.getByConversation"
                     );
                     if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
@@ -134,7 +136,7 @@ Contoh data untuk tahap 'gagasan':
                             sessionId: session._id,
                             stage,
                             data: mergedData,
-                        }),
+                        }, convexOptions),
                         "paperSessions.updateStageData"
                     );
 
@@ -173,7 +175,7 @@ Contoh data untuk tahap 'gagasan':
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
                             conversationId: context.conversationId
-                        }),
+                        }, convexOptions),
                         "paperSessions.getByConversation"
                     );
                     if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
@@ -181,7 +183,7 @@ Contoh data untuk tahap 'gagasan':
                     await retryMutation(
                         () => fetchMutation(api.paperSessions.submitForValidation, {
                             sessionId: session._id,
-                        }),
+                        }, convexOptions),
                         "paperSessions.submitForValidation"
                     );
                     return {

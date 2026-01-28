@@ -36,8 +36,6 @@ interface ArtifactListProps {
     artifacts: Artifact[]
     selectedId: Id<"artifacts"> | null
     onSelect: (id: Id<"artifacts">) => void
-    typeFilter: ArtifactType | null
-    onFilterChange: (type: ArtifactType | null) => void
 }
 
 // Map artifact type to icon
@@ -83,8 +81,6 @@ export function ArtifactList({
     artifacts,
     selectedId,
     onSelect,
-    typeFilter: _typeFilter,      // Filter hidden - not functional
-    onFilterChange: _onFilterChange,  // Filter hidden - not functional
 }: ArtifactListProps) {
     // Filter handler - hidden, not functional
     // const handleFilterChange = (value: string) => {

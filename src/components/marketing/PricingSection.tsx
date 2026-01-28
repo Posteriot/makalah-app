@@ -2,10 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { CheckCircle, ChevronRight } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 // Type for pricing plan from Convex
@@ -34,43 +32,48 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
     <div
       className={cn(
         "pricing-card",
-        plan.isHighlighted && "pricing-card--highlight"
+        plan.isHighlighted && "highlighted"
       )}
     >
-      <div className="pricing-header flex items-center justify-between">
-        <h3 className="pricing-name">{plan.name}</h3>
-        {plan.slug === "pro" && <Badge>Populer</Badge>}
-      </div>
-      <div className="pricing-price">
-        <span
-          className={cn(
-            "price-amount",
-            plan.isDisabled && "price-amount--disabled"
-          )}
-        >
-          {plan.price}
-        </span>
-        {plan.unit && <span className="price-unit">{plan.unit}</span>}
-      </div>
-      <p className="pricing-tagline">{plan.tagline}</p>
-      {/* TODO: When CMS integration is ready, each feature should have unique ID */}
-      <ul className="pricing-features">
-        {plan.features.map((feature, index) => (
-          <li key={`${plan._id}-feature-${index}`}>
-            <CheckCircle />
-            <span>{feature}</span>
-          </li>
-        ))}
-      </ul>
-      {plan.ctaHref ? (
-        <Link href={plan.ctaHref} className="btn btn-green-solid pricing-cta">
-          {plan.ctaText}
-        </Link>
-      ) : (
-        <button disabled className="btn-disabled pricing-cta">
-          {plan.ctaText}
-        </button>
+      {/* Popular tag for highlighted card - outside card-content for overflow */}
+      {plan.isHighlighted && (
+        <div className="popular-tag">Solusi Terbaik</div>
       )}
+
+      {/* Card content wrapper - clips aurora effect */}
+      <div className="card-content">
+        <div className="card-header">
+          <h3>{plan.name}</h3>
+          <p className="price">
+            {plan.price}
+            {plan.unit && <span className="unit">{plan.unit}</span>}
+          </p>
+        </div>
+
+        <ul className="price-features">
+          {plan.features.map((feature, index) => (
+            <li key={`${plan._id}-feature-${index}`}>
+              {feature}
+            </li>
+          ))}
+        </ul>
+
+        {plan.ctaHref ? (
+          <Link
+            href={plan.ctaHref}
+            className={cn(
+              "btn full-width",
+              plan.isHighlighted ? "btn-brand-vivid" : "btn-outline"
+            )}
+          >
+            {plan.ctaText}
+          </Link>
+        ) : (
+          <button disabled className="btn btn-disabled full-width">
+            {plan.ctaText}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -114,19 +117,16 @@ function PricingSkeleton() {
     <div className="pricing-grid hidden md:grid">
       {[1, 2, 3].map((i) => (
         <div key={i} className="pricing-card animate-pulse">
-          <div className="pricing-header">
+          <div className="card-header">
             <div className="h-6 bg-muted rounded w-24" />
+            <div className="h-8 bg-muted rounded w-32 mt-2" />
           </div>
-          <div className="pricing-price">
-            <div className="h-8 bg-muted rounded w-32" />
-          </div>
-          <div className="h-4 bg-muted rounded w-full mt-4" />
-          <div className="h-4 bg-muted rounded w-3/4 mt-2" />
-          <ul className="pricing-features mt-4 space-y-2">
+          <ul className="price-features mt-4 space-y-3">
             <li className="h-4 bg-muted rounded w-full" />
             <li className="h-4 bg-muted rounded w-5/6" />
+            <li className="h-4 bg-muted rounded w-4/5" />
           </ul>
-          <div className="h-10 bg-muted rounded w-full mt-6" />
+          <div className="h-12 bg-muted rounded w-full mt-6" />
         </div>
       ))}
     </div>
@@ -147,13 +147,24 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
   const plans = useQuery(api.pricingPlans.getActivePlans)
 
   return (
-    <section className="pricing-section" id="pricing">
-      <div className="section-container">
-        <h2 className="section-heading">
-          Pilih paket penggunaan
-          <br />
-          sesuai kebutuhan
-        </h2>
+    <section className="pricing" id="pemakaian-harga">
+      {/* Background patterns - persis mockup */}
+      <div className="grid-thin" />
+      <div className="bg-dot-grid" />
+
+      <div className="pricing-container">
+        {/* Section Header */}
+        <div className="section-header">
+          <div className="badge-group">
+            <span className="badge-dot" />
+            <span className="badge-text">Pemakaian & Harga</span>
+          </div>
+          <h2 className="section-title">
+            Investasi untuk
+            <br />
+            Masa Depan Akademik.
+          </h2>
+        </div>
 
         {/* Loading state */}
         {plans === undefined && <PricingSkeleton />}
@@ -174,16 +185,6 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
             {/* Mobile: Carousel */}
             <PricingCarousel plans={plans} />
           </>
-        )}
-
-        {/* Link to full pricing page - centered below cards */}
-        {showCta && (
-          <div className="section-cta-wrapper">
-            <Link href="/pricing" className="btn-brand">
-              Lihat detail paket lengkap
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
         )}
       </div>
     </section>

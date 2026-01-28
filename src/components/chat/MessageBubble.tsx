@@ -40,24 +40,6 @@ interface MessageBubbleProps {
     currentStageStartIndex?: number
     allMessages?: PermissionMessage[]
     stageData?: Record<string, StageDataEntry>
-    // Optional timestamp for display
-    timestamp?: number
-}
-
-/**
- * Format timestamp untuk display
- * Format: "Jan 19, 2026 14:30" atau locale Indonesia
- */
-function formatTimestamp(timestamp?: number): string {
-    if (!timestamp) return ""
-    const date = new Date(timestamp)
-    return date.toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    })
 }
 
 export function MessageBubble({
@@ -69,7 +51,6 @@ export function MessageBubble({
     currentStageStartIndex = 0,
     allMessages = [],
     stageData,
-    timestamp,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -289,8 +270,6 @@ export function MessageBubble({
     const sources = citedSources || sourcesFromAnnotation || messageSources || []
 
     // Get timestamp from allMessages if available
-    const displayTimestamp = timestamp || (allMessages[messageIndex]?.createdAt)
-    const formattedTime = formatTimestamp(displayTimestamp)
 
     return (
         <div

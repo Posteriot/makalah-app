@@ -1,6 +1,7 @@
 import { mutationGeneric, queryGeneric } from "convex/server"
 import { v } from "convex/values"
 import { requireRole } from "./permissions"
+import { requireAuthUserId } from "./auth"
 
 export type SubscriptionStatus = "free" | "pro" | "canceled"
 export type UserRole = "superadmin" | "admin" | "user"
@@ -8,8 +9,9 @@ export type UserRole = "superadmin" | "admin" | "user"
 // USER-003: Get user by ID
 export const getById = queryGeneric({
   args: { userId: v.id("users") },
-  handler: async ({ db }, { userId }) => {
-    return await db.get(userId)
+  handler: async (ctx, { userId }) => {
+    await requireAuthUserId(ctx, userId)
+    return await ctx.db.get(userId)
   },
 })
 
@@ -28,8 +30,9 @@ export const getUserByClerkId = queryGeneric({
 // USER-005: Get user role
 export const getUserRole = queryGeneric({
   args: { userId: v.id("users") },
-  handler: async ({ db }, { userId }) => {
-    const user = await db.get(userId)
+  handler: async (ctx, { userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const user = await ctx.db.get(userId)
     return (user?.role as UserRole) ?? "user"
   },
 })
@@ -37,8 +40,9 @@ export const getUserRole = queryGeneric({
 // USER-006: Check if user is admin (admin or superadmin)
 export const checkIsAdmin = queryGeneric({
   args: { userId: v.id("users") },
-  handler: async ({ db }, { userId }) => {
-    const user = await db.get(userId)
+  handler: async (ctx, { userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const user = await ctx.db.get(userId)
     return user?.role === "admin" || user?.role === "superadmin"
   },
 })
@@ -46,8 +50,9 @@ export const checkIsAdmin = queryGeneric({
 // USER-007: Check if user is superadmin
 export const checkIsSuperAdmin = queryGeneric({
   args: { userId: v.id("users") },
-  handler: async ({ db }, { userId }) => {
-    const user = await db.get(userId)
+  handler: async (ctx, { userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const user = await ctx.db.get(userId)
     return user?.role === "superadmin"
   },
 })
@@ -86,9 +91,15 @@ export const createUser = mutationGeneric({
     subscriptionStatus: v.optional(v.string()),
   },
   handler: async (
-    { db },
+    ctx,
     { clerkUserId, email, firstName, lastName, emailVerified, subscriptionStatus }
   ): Promise<string> => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity || identity.subject !== clerkUserId) {
+      throw new Error("Unauthorized")
+    }
+
+    const { db } = ctx
     // Check if user exists by Clerk ID
     const existing = await db
       .query("users")
@@ -167,8 +178,9 @@ export const updateProfile = mutationGeneric({
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
   },
-  handler: async ({ db }, { userId, firstName, lastName }) => {
-    const user = await db.get(userId)
+  handler: async (ctx, { userId, firstName, lastName }) => {
+    await requireAuthUserId(ctx, userId)
+    const user = await ctx.db.get(userId)
     if (!user) {
       throw new Error("User tidak ditemukan")
     }
@@ -181,7 +193,7 @@ export const updateProfile = mutationGeneric({
     if (firstName !== undefined) updates.firstName = firstName
     if (lastName !== undefined) updates.lastName = lastName
 
-    await db.patch(userId, updates)
+    await ctx.db.patch(userId, updates)
     return { success: true }
   },
 })

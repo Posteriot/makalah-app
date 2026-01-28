@@ -10,7 +10,6 @@ import {
   Zap,
   Shield,
   HeadphonesIcon,
-  Loader2,
   Calendar,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -71,6 +70,20 @@ export default function UpgradePage() {
           <div className="h-8 bg-muted rounded w-1/3" />
           <div className="h-64 bg-muted rounded" />
         </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <ArrowUpCircle className="h-5 w-5 text-primary" />
+          Upgrade ke Pro
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Sesi tidak aktif. Silakan login ulang.
+        </p>
       </div>
     )
   }

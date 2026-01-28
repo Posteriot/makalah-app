@@ -6,6 +6,12 @@
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { calculateCostIDR, TOKENS_PER_IDR } from "./constants"
+import { requireAuthUserId } from "../auth"
+
+function isInternalKeyValid(internalKey?: string) {
+  const expected = process.env.CONVEX_INTERNAL_KEY
+  return Boolean(expected && internalKey === expected)
+}
 
 /**
  * Get user's credit balance
@@ -15,6 +21,7 @@ export const getCreditBalance = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const balance = await ctx.db
       .query("creditBalances")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -43,6 +50,7 @@ export const initializeCreditBalance = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     // Check if already exists
     const existing = await ctx.db
       .query("creditBalances")
@@ -79,8 +87,12 @@ export const addCredits = mutation({
     userId: v.id("users"),
     amountIDR: v.number(),
     paymentId: v.optional(v.id("payments")),
+    internalKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    if (!isInternalKeyValid(args.internalKey)) {
+      await requireAuthUserId(ctx, args.userId)
+    }
     const now = Date.now()
     const tokensToAdd = args.amountIDR * TOKENS_PER_IDR
 
@@ -152,6 +164,7 @@ export const deductCredits = mutation({
     tokensUsed: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const balance = await ctx.db
       .query("creditBalances")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -197,6 +210,7 @@ export const checkCredits = query({
     estimatedTokens: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const balance = await ctx.db
       .query("creditBalances")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -234,6 +248,7 @@ export const getCreditHistory = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const limitCount = args.limit ?? 30
 
     // Get top-up payments

@@ -6,6 +6,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { calculateCostIDR } from "./constants"
+import { requireAuthUserId } from "../auth"
 
 /**
  * Record a token usage event
@@ -28,6 +29,7 @@ export const recordUsage = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const costIDR = calculateCostIDR(args.totalTokens)
 
     const eventId = await ctx.db.insert("usageEvents", {
@@ -57,6 +59,7 @@ export const getUsageByPeriod = query({
     periodEnd: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     const events = await ctx.db
       .query("usageEvents")
       .withIndex("by_user_time", (q) =>
@@ -80,6 +83,7 @@ export const getMonthlyBreakdown = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireAuthUserId(ctx, args.userId)
     // Get current month boundaries
     const now = new Date()
     const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()

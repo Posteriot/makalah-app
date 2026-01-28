@@ -12,6 +12,7 @@ import type * as adminManualUserCreation from "../adminManualUserCreation.js";
 import type * as adminUserManagement from "../adminUserManagement.js";
 import type * as aiProviderConfigs from "../aiProviderConfigs.js";
 import type * as artifacts from "../artifacts.js";
+import type * as auth from "../auth.js";
 import type * as billing_constants from "../billing/constants.js";
 import type * as billing_credits from "../billing/credits.js";
 import type * as billing_index from "../billing/index.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   adminUserManagement: typeof adminUserManagement;
   aiProviderConfigs: typeof aiProviderConfigs;
   artifacts: typeof artifacts;
+  auth: typeof auth;
   "billing/constants": typeof billing_constants;
   "billing/credits": typeof billing_credits;
   "billing/index": typeof billing_index;

@@ -69,15 +69,17 @@ export function estimateTotalTokens(
 export async function checkQuotaBeforeOperation(
   userId: Id<"users">,
   inputText: string,
-  operationType: OperationType
+  operationType: OperationType,
+  convexToken?: string
 ): Promise<QuotaCheckResult> {
   const estimatedTokens = estimateTotalTokens(inputText, operationType)
+  const convexOptions = convexToken ? { token: convexToken } : undefined
 
   const result = await fetchQuery(api.billing.quotas.checkQuota, {
     userId,
     estimatedTokens,
     operationType: operationType === "paper_generation" ? "paper" : "chat",
-  })
+  }, convexOptions)
 
   return result as QuotaCheckResult
 }
@@ -97,8 +99,10 @@ export async function recordUsageAfterOperation(params: {
   totalTokens: number
   model: string
   operationType: OperationType
+  convexToken?: string
 }): Promise<UsageRecordResult | null> {
   try {
+    const convexOptions = params.convexToken ? { token: params.convexToken } : undefined
     // 1. Record the usage event (map to promptTokens/completionTokens for database)
     const recordResult = await fetchMutation(api.billing.usage.recordUsage, {
       userId: params.userId,
@@ -109,10 +113,10 @@ export async function recordUsageAfterOperation(params: {
       totalTokens: params.totalTokens,
       model: params.model,
       operationType: params.operationType,
-    })
+    }, convexOptions)
 
     // 2. Get user to check tier
-    const user = await fetchQuery(api.users.getById, { userId: params.userId })
+    const user = await fetchQuery(api.users.getById, { userId: params.userId }, convexOptions)
     if (!user) return null
 
     // 3. Deduct based on tier
@@ -124,7 +128,7 @@ export async function recordUsageAfterOperation(params: {
         await fetchMutation(api.billing.credits.deductCredits, {
           userId: params.userId,
           tokensUsed: params.totalTokens,
-        })
+        }, convexOptions)
       } catch (error) {
         // Log but don't fail - credit might be insufficient
         console.warn("[Billing] Credit deduction failed:", error)
@@ -134,7 +138,7 @@ export async function recordUsageAfterOperation(params: {
       await fetchMutation(api.billing.quotas.deductQuota, {
         userId: params.userId,
         tokens: params.totalTokens,
-      })
+      }, convexOptions)
     }
 
     return {
@@ -171,8 +175,9 @@ export function createQuotaExceededResponse(result: QuotaCheckResult): Response 
 /**
  * Check if user is admin (bypasses quota)
  */
-export async function isAdminUser(userId: Id<"users">): Promise<boolean> {
-  const user = await fetchQuery(api.users.getById, { userId })
+export async function isAdminUser(userId: Id<"users">, convexToken?: string): Promise<boolean> {
+  const convexOptions = convexToken ? { token: convexToken } : undefined
+  const user = await fetchQuery(api.users.getById, { userId }, convexOptions)
   return user?.role === "admin" || user?.role === "superadmin"
 }
 

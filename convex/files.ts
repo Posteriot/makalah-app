@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { requireAuthUser, requireAuthUserId, requireFileOwner } from "./auth"
 
 // Upload file mutation (returns file ID)
 // Upload file mutation (returns file ID)
@@ -44,8 +45,9 @@ export const updateFileStatus = mutation({
         status: v.string(),
         extractedText: v.optional(v.string()),
     },
-    handler: async ({ db }, { fileId, status, extractedText }) => {
-        await db.patch(fileId, { status, extractedText })
+    handler: async (ctx, { fileId, status, extractedText }) => {
+        await requireFileOwner(ctx, fileId)
+        await ctx.db.patch(fileId, { status, extractedText })
     },
 })
 
@@ -58,8 +60,9 @@ export const updateExtractionResult = mutation({
         extractionError: v.optional(v.string()),
         processedAt: v.number(),
     },
-    handler: async ({ db }, { fileId, extractedText, extractionStatus, extractionError, processedAt }) => {
-        await db.patch(fileId, {
+    handler: async (ctx, { fileId, extractedText, extractionStatus, extractionError, processedAt }) => {
+        await requireFileOwner(ctx, fileId)
+        await ctx.db.patch(fileId, {
             extractedText,
             extractionStatus,
             extractionError,
@@ -71,25 +74,38 @@ export const updateExtractionResult = mutation({
 // Get file by ID
 export const getFile = query({
     args: { fileId: v.id("files") },
-    handler: async ({ db }, { fileId }) => {
-        return await db.get(fileId)
+    handler: async (ctx, { fileId }) => {
+        const { file } = await requireFileOwner(ctx, fileId)
+        return file
     },
 })
 
 // Get file storage URL untuk download/processing
 export const getFileUrl = query({
     args: { storageId: v.string() },
-    handler: async ({ storage }, { storageId }) => {
-        return await storage.getUrl(storageId)
+    handler: async (ctx, { storageId }) => {
+        const authUser = await requireAuthUser(ctx)
+        const file = await ctx.db
+            .query("files")
+            .filter((q) => q.eq(q.field("storageId"), storageId))
+            .first()
+        if (!file || file.userId !== authUser._id) {
+            throw new Error("Unauthorized")
+        }
+        return await ctx.storage.getUrl(storageId)
     },
 })
 
 // Get multiple files by IDs (untuk chat context injection)
 export const getFilesByIds = query({
-    args: { fileIds: v.array(v.id("files")) },
-    handler: async ({ db }, { fileIds }) => {
-        const files = await Promise.all(fileIds.map((id) => db.get(id)))
-        return files.filter((file) => file !== null)
+    args: {
+        userId: v.id("users"),
+        fileIds: v.array(v.id("files")),
+    },
+    handler: async (ctx, { userId, fileIds }) => {
+        await requireAuthUserId(ctx, userId)
+        const files = await Promise.all(fileIds.map((id) => ctx.db.get(id)))
+        return files.filter((file) => file !== null && file.userId === userId)
     },
 })
 
@@ -97,6 +113,7 @@ export const getFilesByIds = query({
 export const generateUploadUrl = mutation({
     args: {},
     handler: async (ctx) => {
+        await requireAuthUser(ctx)
         return await ctx.storage.generateUploadUrl()
     },
 })

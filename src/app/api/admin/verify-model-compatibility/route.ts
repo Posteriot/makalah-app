@@ -46,16 +46,22 @@ interface VerificationResult {
 
 export async function POST(request: NextRequest) {
   // Auth check via Clerk
-  const { userId } = await auth()
+  const { userId, getToken } = await auth()
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  const convexToken = await getToken({ template: "convex" })
+  if (!convexToken) {
+    return NextResponse.json({ error: "Convex token missing" }, { status: 500 })
+  }
+  const convexOptions = { token: convexToken }
 
   // Permission check (admin only)
   try {
     const convexUser = await fetchQuery(api.users.getUserByClerkId, {
       clerkUserId: userId,
-    })
+    }, convexOptions)
 
     if (
       !convexUser ||

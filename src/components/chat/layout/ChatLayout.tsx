@@ -38,8 +38,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 interface ChatLayoutProps {
   conversationId: string | null
   children: ReactNode
-  /** Currently selected artifact ID for panel */
-  selectedArtifactId?: Id<"artifacts"> | null
   /** Whether artifact panel is open */
   isArtifactPanelOpen?: boolean
   /** Callback when artifact panel toggle is requested */
@@ -50,6 +48,10 @@ interface ChatLayoutProps {
   artifactPanel?: ReactNode
   /** Number of artifacts (for header badge) */
   artifactCount?: number
+  /** Mobile sidebar open state (controlled) */
+  mobileSidebarOpen?: boolean
+  /** Mobile sidebar open state change (controlled) */
+  onMobileSidebarOpenChange?: (open: boolean) => void
 }
 
 // Default dimensions
@@ -76,12 +78,13 @@ const CSS_VARS = {
 export function ChatLayout({
   conversationId,
   children,
-  selectedArtifactId,
   isArtifactPanelOpen = false,
   onArtifactPanelToggle,
   onArtifactSelect,
   artifactPanel,
   artifactCount = 0,
+  mobileSidebarOpen,
+  onMobileSidebarOpenChange,
 }: ChatLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -91,10 +94,11 @@ export function ChatLayout({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
-  const [isSidebarResizing, setIsSidebarResizing] = useState(false)
-  const [isPanelResizing, setIsPanelResizing] = useState(false)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+
+  const isMobileOpen = mobileSidebarOpen ?? internalMobileOpen
+  const setIsMobileOpen = onMobileSidebarOpenChange ?? setInternalMobileOpen
 
   // Tab state management
   const {
@@ -275,7 +279,6 @@ export function ChatLayout({
 
   return (
     <div
-      data-testid="chat-layout"
       className="flex flex-col h-[calc(100dvh-var(--shell-footer-h))]"
       style={CSS_VARS}
     >
@@ -288,12 +291,10 @@ export function ChatLayout({
 
       {/* Grid Content - Below header */}
       <div
+        data-testid="chat-layout"
         className={cn(
           "grid flex-1 min-h-0 overflow-hidden",
-          // Disable transition during resize for smooth dragging
-          !isSidebarResizing &&
-            !isPanelResizing &&
-            "transition-[grid-template-columns] duration-300 ease-in-out",
+          "transition-[grid-template-columns] duration-300 ease-in-out",
           isSidebarCollapsed && "sidebar-collapsed",
           !isArtifactPanelOpen && "panel-collapsed"
         )}
@@ -338,7 +339,6 @@ export function ChatLayout({
           position="left"
           onResize={handleSidebarResize}
           onDoubleClick={handleSidebarReset}
-          isDragging={isSidebarResizing}
           className="hidden md:flex"
         />
       )}
@@ -365,7 +365,6 @@ export function ChatLayout({
           position="right"
           onResize={handlePanelResize}
           onDoubleClick={handlePanelReset}
-          isDragging={isPanelResizing}
           className="hidden md:flex"
         />
       )}

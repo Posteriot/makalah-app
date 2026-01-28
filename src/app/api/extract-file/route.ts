@@ -12,6 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@clerk/nextjs/server"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
@@ -130,10 +131,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Auth check + Convex token
+    const { userId: clerkUserId, getToken } = await auth()
+    if (!clerkUserId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const convexToken = await getToken({ template: "convex" })
+    if (!convexToken) {
+      return NextResponse.json(
+        { success: false, error: "Convex token missing" },
+        { status: 500 }
+      )
+    }
+    const convexOptions = { token: convexToken }
+
     // 1. Fetch file record dari Convex database
     const file = await fetchQuery(api.files.getFile, {
       fileId: fileId as Id<"files">,
-    })
+    }, convexOptions)
 
     if (!file) {
       return NextResponse.json(
@@ -145,7 +164,7 @@ export async function POST(request: NextRequest) {
     // 2. Get storage URL dari Convex
     const fileUrl = await fetchQuery(api.files.getFileUrl, {
       storageId: file.storageId,
-    })
+    }, convexOptions)
 
     if (!fileUrl) {
       return NextResponse.json(
@@ -213,7 +232,7 @@ export async function POST(request: NextRequest) {
         extractionStatus: "success",
         extractionError: undefined,
         processedAt: Date.now(),
-      })
+      }, convexOptions)
 
       return NextResponse.json({
         success: true,
@@ -236,7 +255,7 @@ export async function POST(request: NextRequest) {
         extractionStatus: "failed",
         extractionError: errorMessage,
         processedAt: Date.now(),
-      })
+      }, convexOptions)
 
       // Return error info (graceful degradation - file still accessible)
       return NextResponse.json({

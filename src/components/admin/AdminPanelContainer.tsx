@@ -9,7 +9,7 @@ import { SystemPromptsManager } from "./SystemPromptsManager"
 import { SystemHealthPanel } from "./SystemHealthPanel"
 import { AIProviderManager } from "./AIProviderManager"
 import { StyleConstitutionManager } from "./StyleConstitutionManager"
-import { Monitor, Menu, X, LayoutDashboard, CheckCircle2, Shield, Crown, UserCog, ArrowRight } from "lucide-react"
+import { Monitor, Menu, X, LayoutDashboard, CheckCircle2, UserCog } from "lucide-react"
 import type { Id } from "@convex/_generated/dataModel"
 import type { LucideIcon } from "lucide-react"
 import {

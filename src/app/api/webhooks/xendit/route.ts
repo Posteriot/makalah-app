@@ -9,6 +9,8 @@ import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 import { verifyWebhookToken } from "@/lib/xendit/client"
 
+const internalKey = process.env.CONVEX_INTERNAL_KEY
+
 // Xendit webhook event types
 type XenditEventType =
   | "payment_request.succeeded"
@@ -45,6 +47,11 @@ interface XenditWebhookPayload {
 }
 
 export async function POST(req: NextRequest) {
+  if (!internalKey) {
+    console.error("[Xendit Webhook] CONVEX_INTERNAL_KEY belum diset")
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 })
+  }
+
   // 1. Verify webhook token
   const callbackToken = req.headers.get("x-callback-token")
 
@@ -75,15 +82,15 @@ export async function POST(req: NextRequest) {
   try {
     switch (type) {
       case "payment_request.succeeded":
-        await handlePaymentSuccess(data)
+        await handlePaymentSuccess(data, internalKey)
         break
 
       case "payment_request.failed":
-        await handlePaymentFailed(data)
+        await handlePaymentFailed(data, internalKey)
         break
 
       case "payment_request.expired":
-        await handlePaymentExpired(data)
+        await handlePaymentExpired(data, internalKey)
         break
 
       case "recurring.cycle.succeeded":
@@ -114,10 +121,11 @@ export async function POST(req: NextRequest) {
 /**
  * Handle successful payment
  */
-async function handlePaymentSuccess(data: XenditPaymentData) {
+async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string) {
   // 1. Get payment from database
   const payment = await fetchQuery(api.billing.payments.getPaymentByXenditId, {
     xenditPaymentRequestId: data.id,
+    internalKey,
   })
 
   if (!payment) {
@@ -140,6 +148,7 @@ async function handlePaymentSuccess(data: XenditPaymentData) {
       xenditStatus: data.status,
       paymentMethod: data.payment_method.type,
     },
+    internalKey,
   })
 
   console.log(`[Xendit] Payment status updated:`, {
@@ -158,6 +167,7 @@ async function handlePaymentSuccess(data: XenditPaymentData) {
         userId: payment.userId as Id<"users">,
         amountIDR: data.amount,
         paymentId: payment._id as Id<"payments">,
+        internalKey,
       })
 
       console.log(`[Xendit] Credits added:`, {
@@ -189,7 +199,7 @@ async function handlePaymentSuccess(data: XenditPaymentData) {
 /**
  * Handle failed payment
  */
-async function handlePaymentFailed(data: XenditPaymentData) {
+async function handlePaymentFailed(data: XenditPaymentData, internalKey: string) {
   // Update payment status
   await fetchMutation(api.billing.payments.updatePaymentStatus, {
     xenditPaymentRequestId: data.id,
@@ -198,6 +208,7 @@ async function handlePaymentFailed(data: XenditPaymentData) {
       failureReason: data.failure_reason,
       xenditStatus: data.status,
     },
+    internalKey,
   })
 
   console.log(`[Xendit] Payment marked as failed: ${data.id}`, {
@@ -208,7 +219,7 @@ async function handlePaymentFailed(data: XenditPaymentData) {
 /**
  * Handle expired payment
  */
-async function handlePaymentExpired(data: XenditPaymentData) {
+async function handlePaymentExpired(data: XenditPaymentData, internalKey: string) {
   // Update payment status
   await fetchMutation(api.billing.payments.updatePaymentStatus, {
     xenditPaymentRequestId: data.id,
@@ -216,6 +227,7 @@ async function handlePaymentExpired(data: XenditPaymentData) {
     metadata: {
       xenditStatus: data.status,
     },
+    internalKey,
   })
 
   console.log(`[Xendit] Payment marked as expired: ${data.id}`)
@@ -233,7 +245,7 @@ async function handleSubscriptionRenewal(data: XenditPaymentData) {
   }
 
   // TODO: Reset monthly quota
-  // await fetchMutation(api.billing.quotas.resetMonthly, { userId })
+  // await fetchMutation(api.billing.quotas.resetMonthly, { userId, internalKey })
 
   console.log(`[Xendit] Subscription renewed for user: ${userId}`)
 }
