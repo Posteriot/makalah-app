@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { cn } from "@/lib/utils"
@@ -29,17 +28,11 @@ type PricingSectionProps = {
 }
 
 function PricingCard({ plan }: { plan: PricingPlan }) {
-  // Determine button style based on plan
-  const getButtonClass = () => {
-    if (plan.isHighlighted) return "btn-brand-vivid"
-    return "btn-outline"
-  }
-
   return (
     <div
       className={cn(
         "pricing-card",
-        plan.isHighlighted && "pricing-card--highlight"
+        plan.isHighlighted && "highlighted"
       )}
     >
       {/* Popular tag for highlighted card */}
@@ -48,17 +41,10 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
       )}
 
       <div className="card-header">
-        <h3 className="pricing-name">{plan.name}</h3>
-        <p className="pricing-price">
-          <span
-            className={cn(
-              "price-amount",
-              plan.isDisabled && "price-amount--disabled"
-            )}
-          >
-            {plan.price}
-          </span>
-          {plan.unit && <span className="price-unit">{plan.unit}</span>}
+        <h3>{plan.name}</h3>
+        <p className="price">
+          {plan.price}
+          {plan.unit && <span className="unit">{plan.unit}</span>}
         </p>
       </div>
 
@@ -73,12 +59,15 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
       {plan.ctaHref ? (
         <Link
           href={plan.ctaHref}
-          className={cn("pricing-cta", getButtonClass())}
+          className={cn(
+            "btn full-width",
+            plan.isHighlighted ? "btn-brand-vivid" : "btn-outline"
+          )}
         >
           {plan.ctaText}
         </Link>
       ) : (
-        <button disabled className="pricing-cta btn-disabled">
+        <button disabled className="btn btn-disabled full-width">
           {plan.ctaText}
         </button>
       )}
@@ -158,19 +147,19 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
   const plans = useQuery(api.pricingPlans.getActivePlans)
 
   return (
-    <section className="pricing-section" id="pemakaian-harga">
-      {/* Background patterns */}
-      <div className="pricing-bg-grid" />
-      <div className="pricing-bg-dots" />
+    <section className="pricing" id="pemakaian-harga">
+      {/* Background patterns - persis mockup */}
+      <div className="grid-thin" />
+      <div className="bg-dot-grid opacity-50" />
 
-      <div className="pricing-container">
+      <div className="container text-center">
         {/* Section Header */}
-        <div className="pricing-header">
-          <div className="pricing-badge">
-            <span className="pricing-badge-dot" />
-            <span className="pricing-badge-text">Pemakaian & Harga</span>
+        <div className="section-header">
+          <div className="badge-group">
+            <span className="badge-dot" />
+            <span className="badge-text uppercase">Pemakaian & Harga</span>
           </div>
-          <h2 className="pricing-title">
+          <h2 className="section-title">
             Investasi untuk
             <br />
             Masa Depan Akademik.
@@ -196,16 +185,6 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
             {/* Mobile: Carousel */}
             <PricingCarousel plans={plans} />
           </>
-        )}
-
-        {/* Link to full pricing page - centered below cards */}
-        {showCta && (
-          <div className="pricing-cta-wrapper">
-            <Link href="/pricing" className="btn-brand">
-              Lihat detail paket lengkap
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
         )}
       </div>
     </section>
