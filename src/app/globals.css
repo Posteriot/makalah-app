@@ -1920,50 +1920,51 @@
     padding: 0 24px;
   }
 
-  /* Section Header - LEFT ALIGNED like mockup */
+  /* Section Header - CENTERED like mockup */
   .pricing-header {
-    text-align: left;
-    margin-bottom: 3rem;
+    text-align: center;
+    margin-bottom: 3vh;
   }
 
   .pricing-badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
+    gap: 8px;
+    padding: 6px 14px;
     background-color: #006d5b;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50px;
-    margin-bottom: 1.25rem;
+    border-radius: 100px;
+    margin-bottom: 24px;
   }
 
   .pricing-badge-dot {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     background-color: #ffffff;
     border-radius: 50%;
+    box-shadow: 0 0 6px #ffffff;
   }
 
   .pricing-badge-text {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
     color: #ffffff;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
   }
 
   .pricing-title {
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 2.25rem;
-    font-weight: 400;
-    font-style: italic;
+    font-size: 42px;
+    font-weight: 700;
     line-height: 1.2;
     letter-spacing: -0.02em;
     color: var(--foreground);
   }
 
-  @media (min-width: 768px) {
+  @media (max-width: 768px) {
     .pricing-title {
-      font-size: 2.625rem;
+      font-size: 32px;
     }
   }
 
@@ -1971,7 +1972,8 @@
   .pricing-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: 32px;
+    margin-top: 60px;
     align-items: center;
   }
 
@@ -2037,8 +2039,8 @@
     color: #ffffff;
     font-size: 11px;
     font-weight: 800;
-    letter-spacing: 0.1em;
-    padding: 6px 16px;
+    letter-spacing: 0.05em;
+    padding: 4px 12px;
     border-radius: 20px;
     white-space: nowrap;
     box-shadow: 0 4px 12px rgba(232, 102, 9, 0.4);
@@ -2046,14 +2048,14 @@
 
   /* Card Header */
   .pricing-card .card-header {
-    margin-bottom: 1.25rem;
+    margin-bottom: 20px;
   }
 
   .pricing-name {
     font-size: 18px;
     font-weight: 600;
     color: #a1a1aa; /* luxe-zinc-400 */
-    margin-bottom: 1rem;
+    margin-bottom: 20px;
   }
 
   :root:not(.dark) .pricing-name,
@@ -2065,6 +2067,7 @@
     display: flex;
     align-items: baseline;
     gap: 2px;
+    margin-bottom: 24px;
   }
 
   .price-amount {
@@ -2098,7 +2101,7 @@
   /* Features List */
   .price-features {
     list-style: none;
-    margin-bottom: 2.5rem;
+    margin-bottom: 40px;
     flex: 1;
   }
 
