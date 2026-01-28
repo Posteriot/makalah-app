@@ -37,7 +37,7 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
     >
       {/* Popular tag for highlighted card */}
       {plan.isHighlighted && (
-        <div className="popular-tag">SOLUSI TERBAIK</div>
+        <div className="popular-tag">Solusi Terbaik</div>
       )}
 
       <div className="card-header">
@@ -152,7 +152,7 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
       <div className="grid-thin" />
       <div className="bg-dot-grid opacity-50" />
 
-      <div className="container">
+      <div className="pricing-container">
         {/* Section Header */}
         <div className="section-header">
           <div className="badge-group">
