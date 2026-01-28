@@ -996,6 +996,11 @@
     transition: all 0.5s ease;
   }
 
+  /* Dark mode: glow putih subtle */
+  .dark .hero-mockup {
+    box-shadow: -25px 30px 0 rgba(255, 255, 255, 0.08);
+  }
+
   /* Back layer (research mockup) */
   .layer-back {
     z-index: 10;
@@ -1022,6 +1027,11 @@
     margin: 0;
     display: block;
     box-shadow: -25px 30px 0 rgba(0, 0, 0, 0.46);
+  }
+
+  /* Dark mode: glow putih subtle */
+  .dark .mockup-layered-container .chat-input-hero-mock {
+    box-shadow: -25px 30px 0 rgba(255, 255, 255, 0.08);
   }
 
   /* Mock header (browser bar) */
