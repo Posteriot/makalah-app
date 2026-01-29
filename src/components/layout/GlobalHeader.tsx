@@ -32,20 +32,29 @@ const SCROLL_THRESHOLD = 100 // px before header changes state
 const SCROLL_DOWN_DELTA = 8  // px minimum to hide header (less sensitive)
 const SCROLL_UP_DELTA = 2    // px minimum to show header (more sensitive)
 
-// Segment configuration for user badge
-type SegmentType = "gratis" | "bpp" | "pro" | "admin" | "superadmin"
+/**
+ * Segment configuration for user avatar and badge
+ *
+ * ATURAN WARNA:
+ * - Warna avatar dan badge berdasarkan SUBSCRIPTION TIER, bukan role
+ * - Admin dan Superadmin diperlakukan sebagai PRO (amber)
+ * - Tidak ada warna terpisah untuk role admin/superadmin
+ */
+type SegmentType = "gratis" | "bpp" | "pro"
 
 const SEGMENT_CONFIG: Record<SegmentType, { label: string; className: string }> = {
   gratis: { label: "GRATIS", className: "bg-segment-gratis text-white" },
   bpp: { label: "BPP", className: "bg-segment-bpp text-white" },
   pro: { label: "PRO", className: "bg-segment-pro text-white" },
-  admin: { label: "ADMIN", className: "bg-segment-admin text-white" },
-  superadmin: { label: "SUPERADMIN", className: "bg-segment-superadmin text-white" },
 }
 
+/**
+ * Determine subscription tier from user role and subscription status
+ * Admin/Superadmin always treated as PRO (full access)
+ */
 function getSegmentFromUser(role?: string, subscriptionStatus?: string): SegmentType {
-  if (role === "superadmin") return "superadmin"
-  if (role === "admin") return "admin"
+  // Admin and superadmin are always treated as PRO
+  if (role === "superadmin" || role === "admin") return "pro"
   if (subscriptionStatus === "pro") return "pro"
   if (subscriptionStatus === "bpp") return "bpp"
   return "gratis"
@@ -159,7 +168,8 @@ export function GlobalHeader() {
   const initial = firstName.charAt(0).toUpperCase()
   const segment = getSegmentFromUser(convexUser?.role, convexUser?.subscriptionStatus)
   const segmentConfig = SEGMENT_CONFIG[segment]
-  const isAdmin = segment === "admin" || segment === "superadmin"
+  // isAdmin berdasarkan ROLE (bukan segment), karena segment sekarang hanya subscription tier
+  const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
 
   return (
     <header
@@ -271,7 +281,7 @@ export function GlobalHeader() {
 
         {/* Auth State - Desktop only (mobile shows in panel) */}
         <SignedOut>
-          <Link href="/sign-in" className="btn btn-green-solid hidden md:inline-flex">
+          <Link href="/sign-in" className="btn btn-outline hidden md:inline-flex">
             Masuk
           </Link>
         </SignedOut>

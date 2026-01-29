@@ -9,25 +9,31 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { UserSettingsModal } from "@/components/settings/UserSettingsModal"
 
-type SegmentType = "gratis" | "bpp" | "pro" | "admin" | "superadmin"
+/**
+ * Segment configuration for user avatar and badge
+ *
+ * ATURAN WARNA:
+ * - Warna avatar dan badge berdasarkan SUBSCRIPTION TIER, bukan role
+ * - Admin dan Superadmin diperlakukan sebagai PRO (amber)
+ * - Tidak ada warna terpisah untuk role admin/superadmin
+ */
+type SegmentType = "gratis" | "bpp" | "pro"
 
 const SEGMENT_CONFIG: Record<SegmentType, { label: string; className: string }> = {
   gratis: { label: "GRATIS", className: "bg-segment-gratis text-white" },
   bpp: { label: "BPP", className: "bg-segment-bpp text-white" },
   pro: { label: "PRO", className: "bg-segment-pro text-white" },
-  admin: { label: "ADMIN", className: "bg-segment-admin text-white" },
-  superadmin: { label: "SUPERADMIN", className: "bg-segment-superadmin text-white" },
 }
 
+/**
+ * Determine subscription tier from user role and subscription status
+ * Admin/Superadmin always treated as PRO (full access)
+ */
 function getSegmentFromUser(role?: string, subscriptionStatus?: string): SegmentType {
-  // Check role first for admin/superadmin
-  if (role === "superadmin") return "superadmin"
-  if (role === "admin") return "admin"
-
-  // Then check subscription status
+  // Admin and superadmin are always treated as PRO
+  if (role === "superadmin" || role === "admin") return "pro"
   if (subscriptionStatus === "pro") return "pro"
   if (subscriptionStatus === "bpp") return "bpp"
-
   return "gratis"
 }
 
@@ -41,7 +47,7 @@ export function UserDropdown() {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Get Convex user for role and subscription status
-  const { user: convexUser, isLoading } = useCurrentUser()
+  const { user: convexUser } = useCurrentUser()
 
   // Prevent hydration mismatch - only render after mount
   /* eslint-disable react-hooks/set-state-in-effect -- Standard pattern for hydration safety */
@@ -84,8 +90,8 @@ export function UserDropdown() {
 
   const segment = getSegmentFromUser(convexUser?.role, convexUser?.subscriptionStatus)
   const segmentConfig = SEGMENT_CONFIG[segment]
-  const canRenderBadge = !isLoading && segment !== "superadmin"
-  const isAdmin = segment === "admin" || segment === "superadmin"
+  // isAdmin berdasarkan ROLE (bukan segment), karena segment sekarang hanya subscription tier
+  const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
 
   const handleSignOut = async () => {
     if (isSigningOut) return
@@ -109,8 +115,11 @@ export function UserDropdown() {
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        {/* Avatar */}
-        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
+        {/* Avatar - warna berdasarkan subscription tier */}
+        <div className={cn(
+          "w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium",
+          segmentConfig.className
+        )}>
           {initial}
         </div>
 
@@ -119,17 +128,7 @@ export function UserDropdown() {
           {fullName}
         </span>
 
-        {/* Segment Badge (hide for superadmin, avoid flash before Convex ready) */}
-        {canRenderBadge && (
-          <span
-            className={cn(
-              "text-[10px] font-bold px-1.5 py-0.5 rounded",
-              segmentConfig.className
-            )}
-          >
-            {segmentConfig.label}
-          </span>
-        )}
+        {/* Badge dihapus - sudah ada di samping logo (SegmentBadge di GlobalHeader) */}
 
         {/* Chevron */}
         <ChevronDown

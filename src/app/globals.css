@@ -164,17 +164,20 @@
      | BPP    | bg-blue-600     | --segment-bpp       | white      |
      | PRO    | bg-amber-600    | --segment-pro       | white      |
 
+     ATURAN WARNA AVATAR & BADGE:
+     - Avatar dan Badge menggunakan warna yang SAMA berdasarkan subscription tier
+     - Admin dan Superadmin diperlakukan sebagai PRO (amber) untuk avatar & badge
+     - Tidak ada warna terpisah untuk role (admin/superadmin)
+
      Upgrade Button: Gunakan warna --success (grass green) + text-white
      CSS: bg-[var(--success)] atau class .btn-upgrade
      ======================================== */
   --segment-gratis: oklch(0.55 0.15 165);
-  /* emerald-600 */
+  /* emerald-600 - untuk user GRATIS */
   --segment-bpp: oklch(0.55 0.2 260);
-  /* blue-600 */
+  /* blue-600 - untuk user BPP (Bayar Per Paper) */
   --segment-pro: oklch(0.65 0.18 70);
-  /* amber-600 */
-  --segment-admin: oklch(0.55 0.18 250);
-  --segment-superadmin: oklch(0.55 0.2 300);
+  /* amber-600 - untuk user PRO, Admin, dan Superadmin */
 
   /* Chat Bubble Colors */
   --user-message-bg: oklch(0.95 0 0);
@@ -630,6 +633,7 @@
     background: rgba(232, 102, 9, 0.1);
   }
 
+  /* Mobile Menu CTA - Outline style (netral, tidak pakai warna segment) */
   .mobile-menu__cta {
     display: block;
     margin-top: 8px;
@@ -637,13 +641,28 @@
     font-size: 15px;
     font-weight: 600;
     text-align: center;
-    color: white;
-    background: #006d5b;
+    color: var(--foreground);
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.5);
     border-radius: 8px;
+    transition: all 0.2s;
   }
 
   .mobile-menu__cta:hover {
-    background: #005a4b;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.8);
+  }
+
+  /* Light mode - darker border */
+  :root.light .mobile-menu__cta,
+  .light .mobile-menu__cta {
+    border-color: rgba(0, 0, 0, 0.4);
+  }
+
+  :root.light .mobile-menu__cta:hover,
+  .light .mobile-menu__cta:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.6);
   }
 
   /* Mobile Menu Divider (hairline) */
