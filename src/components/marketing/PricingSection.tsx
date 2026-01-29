@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
@@ -80,12 +80,55 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
 
 function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
   const [activeSlide, setActiveSlide] = useState(0)
+  const startXRef = useRef<number | null>(null)
+  const isDraggingRef = useRef(false)
+
+  const clampIndex = useCallback((index: number) => {
+    if (plans.length === 0) return 0
+    return Math.max(0, Math.min(index, plans.length - 1))
+  }, [plans.length])
+
+  const handleSwipe = useCallback((diff: number) => {
+    const threshold = 48
+    if (Math.abs(diff) < threshold) return
+    setActiveSlide((current) => {
+      const direction = diff > 0 ? 1 : -1
+      return clampIndex(current + direction)
+    })
+  }, [clampIndex])
+
+  const handlePointerDown = useCallback((event) => {
+    startXRef.current = event.clientX
+    isDraggingRef.current = true
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }, [])
+
+  const handlePointerUp = useCallback((event) => {
+    if (!isDraggingRef.current || startXRef.current === null) return
+    const diff = startXRef.current - event.clientX
+    handleSwipe(diff)
+    isDraggingRef.current = false
+    startXRef.current = null
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }, [handleSwipe])
+
+  const handlePointerCancel = useCallback((event) => {
+    if (!isDraggingRef.current || startXRef.current === null) return
+    const diff = startXRef.current - event.clientX
+    handleSwipe(diff)
+    isDraggingRef.current = false
+    startXRef.current = null
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }, [handleSwipe])
 
   return (
     <div className="pricing-carousel md:hidden">
       <div
         className="carousel-track"
         style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
       >
         {plans.map((plan) => (
           <div key={plan._id} className="carousel-slide">
@@ -99,7 +142,7 @@ function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
         {plans.map((_, index) => (
           <button
             key={index}
-            onClick={() => setActiveSlide(index)}
+            onClick={() => setActiveSlide(clampIndex(index))}
             className={cn(
               "carousel-dot",
               activeSlide === index && "carousel-dot--active"

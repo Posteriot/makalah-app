@@ -6,7 +6,7 @@
  */
 export function HeroResearchMock() {
   return (
-    <div className="hero-mockup layer-back">
+    <div className="hero-mockup layer-back hidden md:block">
       {/* Browser Header */}
       <div className="mock-header">
         <div className="mock-dots">

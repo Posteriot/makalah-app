@@ -4,6 +4,7 @@ import { UserPlus, FileText } from "lucide-react"
 import { PawangBadge } from "@/components/marketing/PawangBadge"
 import { ChatInputHeroMock } from "@/components/marketing/ChatInputHeroMock"
 import { HeroResearchMock } from "@/components/marketing/HeroResearchMock"
+import { HeroHeadingSvg } from "@/components/marketing/HeroHeadingSvg"
 import { BenefitsSection } from "@/components/marketing/BenefitsSection"
 import { PricingSection } from "@/components/marketing/PricingSection"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
@@ -36,12 +37,11 @@ export default function MarketingHomePage() {
             <PawangBadge />
 
             {/* Hero Heading */}
-            <h1 className="hero-heading">
-              Ngobrol<span className="text-brand">+</span>Riset
-              <br />
-              <span className="text-brand">+</span>Brainstorming
-              <br />
-              <span className="text-brand">=</span>Paper<span className="text-brand">_</span>Akademik
+            <h1 className="hero-heading hero-heading--svg">
+              <span className="sr-only">
+                Ngobrol+Riset +Brainstorming =Paper_Akademik
+              </span>
+              <HeroHeadingSvg />
             </h1>
 
             {/* Subheading */}
