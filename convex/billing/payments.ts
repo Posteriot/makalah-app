@@ -256,6 +256,31 @@ export const checkIdempotency = query({
 })
 
 /**
+ * Watch payment status for real-time updates
+ * Used by frontend to subscribe to payment status changes
+ * Auto-updates when webhook updates the payment record
+ */
+export const watchPaymentStatus = query({
+  args: {
+    paymentId: v.id("payments"),
+  },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.paymentId)
+    if (!payment) return null
+
+    return {
+      status: payment.status,
+      amount: payment.amount,
+      paidAt: payment.paidAt,
+      paymentMethod: payment.paymentMethod,
+      paymentChannel: payment.paymentChannel,
+      createdAt: payment.createdAt,
+      expiredAt: payment.expiredAt,
+    }
+  },
+})
+
+/**
  * Get payment statistics for admin
  */
 export const getPaymentStats = query({
@@ -328,3 +353,4 @@ export const getPaymentStats = query({
     return stats
   },
 })
+

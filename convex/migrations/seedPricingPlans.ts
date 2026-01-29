@@ -1,4 +1,5 @@
 import { internalMutation } from "../_generated/server"
+import { TOP_UP_PACKAGES } from "../billing/constants"
 
 /**
  * Migration script to seed default pricing plans for marketing page
@@ -240,6 +241,84 @@ export const updatePricingContent = internalMutation({
       success: true,
       updates,
       message: `Updated ${updates.length} plans`,
+    }
+  },
+})
+
+/**
+ * Migration to activate BPP Payment flow
+ * Run via: npx convex run "migrations/seedPricingPlans:activateBPPPayment"
+ *
+ * This migration:
+ * 1. Updates BPP plan: enabled, highlighted, adds topupOptions
+ * 2. Updates Gratis plan: removes highlight
+ * 3. Updates Pro plan: "Segera Hadir" text, stays disabled
+ */
+export const activateBPPPayment = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+    const updates: string[] = []
+
+    // Convert TOP_UP_PACKAGES to topupOptions format
+    const topupOptions = TOP_UP_PACKAGES.map((pkg) => ({
+      amount: pkg.amount,
+      tokens: pkg.tokens,
+      label: pkg.label,
+      popular: "popular" in pkg ? pkg.popular : false,
+    }))
+
+    // Update Gratis plan: remove highlight
+    const gratisPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "gratis"))
+      .first()
+
+    if (gratisPlan) {
+      await db.patch(gratisPlan._id, {
+        isHighlighted: false,
+        updatedAt: now,
+      })
+      updates.push("Gratis: isHighlighted → false")
+    }
+
+    // Update BPP plan: enable, highlight, add topupOptions
+    const bppPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "bpp"))
+      .first()
+
+    if (bppPlan) {
+      await db.patch(bppPlan._id, {
+        isDisabled: false,
+        isHighlighted: true,
+        ctaText: "Pilih Paket",
+        ctaHref: "/subscription/plans",
+        topupOptions,
+        updatedAt: now,
+      })
+      updates.push("BPP: enabled, highlighted, topupOptions added, ctaHref → /subscription/plans")
+    }
+
+    // Update Pro plan: "Segera Hadir", stays disabled
+    const proPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "pro"))
+      .first()
+
+    if (proPlan) {
+      await db.patch(proPlan._id, {
+        ctaText: "Segera Hadir",
+        isDisabled: true,
+        updatedAt: now,
+      })
+      updates.push("Pro: ctaText → 'Segera Hadir', stays disabled")
+    }
+
+    return {
+      success: true,
+      updates,
+      topupOptions,
+      message: `Activated BPP Payment. Updated ${updates.length} plans.`,
     }
   },
 })

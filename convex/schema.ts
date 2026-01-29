@@ -489,6 +489,13 @@ export default defineSchema({
     ctaText: v.string(), // Button text (e.g., "Coba Gratis", "Belum Aktif")
     ctaHref: v.optional(v.string()), // Button link (null for disabled)
     sortOrder: v.number(), // Display order (1, 2, 3...)
+    // BPP topup options (synced from TOP_UP_PACKAGES in billing/constants.ts)
+    topupOptions: v.optional(v.array(v.object({
+      amount: v.number(), // Price in IDR (e.g., 25000, 50000, 100000)
+      tokens: v.number(), // Equivalent tokens (e.g., 250000, 500000, 1000000)
+      label: v.string(), // Display label (e.g., "Rp 25.000")
+      popular: v.optional(v.boolean()), // Highlight as popular option
+    }))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

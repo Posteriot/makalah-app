@@ -92,6 +92,24 @@ export const getById = queryGeneric({
   },
 })
 
+// USER-003b: Get user by ID (internal use, no auth required)
+// Used by webhook handlers that need user email for notifications
+export const getUserById = queryGeneric({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId)
+    if (!user) return null
+    // Return only safe fields needed for email
+    return {
+      _id: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    }
+  },
+})
+
+
 // USER-004: Get user by Clerk ID
 export const getUserByClerkId = queryGeneric({
   args: { clerkUserId: v.string() },
@@ -271,3 +289,4 @@ export const updateProfile = mutationGeneric({
     return { success: true }
   },
 })
+
