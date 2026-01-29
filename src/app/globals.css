@@ -646,6 +646,89 @@
     background: #005a4b;
   }
 
+  /* Mobile Menu Divider (hairline) */
+  .mobile-menu__divider {
+    height: 1px;
+    background: var(--border-hairline);
+    margin: 12px 0;
+  }
+
+  /* Mobile Menu Theme Toggle */
+  .mobile-menu__theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+  }
+
+  /* Mobile Menu User Header */
+  .mobile-menu__user-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-top: 4px;
+  }
+
+  .mobile-menu__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--foreground);
+    flex-shrink: 0;
+  }
+
+  .mobile-menu__user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .mobile-menu__user-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-menu__badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    width: fit-content;
+  }
+
+  /* Mobile Menu User Links */
+  .mobile-menu__user-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Mobile Menu Sign Out */
+  .mobile-menu__signout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--destructive) !important;
+  }
+
+  .mobile-menu__signout:hover {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
   /* Button base */
   .btn {
     display: inline-flex;
@@ -1995,7 +2078,7 @@
     }
 
     .benefits-title {
-      font-size: 1.75rem;
+      font-size: 1.5rem;
     }
 
     .bento-illustration {
