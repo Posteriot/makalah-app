@@ -6,6 +6,83 @@ import { requireAuthUserId } from "./auth"
 export type SubscriptionStatus = "free" | "pro" | "canceled"
 export type UserRole = "superadmin" | "admin" | "user"
 
+// Hardcoded superadmin email
+const SUPERADMIN_EMAIL = "erik.supit@gmail.com"
+
+/**
+ * Public mutation untuk create user dari Clerk webhook.
+ * Dipanggil saat user.created event - tidak memerlukan JWT auth context.
+ *
+ * KEAMANAN:
+ * - Webhook sudah divalidasi via Svix signature sebelum memanggil ini
+ * - Operasi idempotent (tidak akan create duplicate)
+ * - Hanya bisa create user baru, tidak bisa modify existing dengan role berbeda
+ */
+export const createUserFromWebhook = mutationGeneric({
+  args: {
+    clerkUserId: v.string(),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+  },
+  handler: async (ctx, { clerkUserId, email, firstName, lastName }): Promise<string> => {
+    const { db } = ctx
+
+    // Check if user already exists by Clerk ID
+    const existing = await db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
+      .unique()
+
+    if (existing) {
+      return existing._id
+    }
+
+    // Check if pending admin exists with this email
+    const allUsersWithEmail = await db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect()
+
+    const pendingAdmin = allUsersWithEmail.find((u) =>
+      u.clerkUserId.startsWith("pending_")
+    )
+
+    const now = Date.now()
+
+    if (pendingAdmin) {
+      // Update pending admin with real Clerk ID, preserve role
+      await db.patch(pendingAdmin._id, {
+        clerkUserId,
+        firstName,
+        lastName,
+        emailVerified: false,
+        lastLoginAt: now,
+        updatedAt: now,
+      })
+      return pendingAdmin._id
+    }
+
+    // Determine role for new user
+    const role: UserRole = email === SUPERADMIN_EMAIL ? "superadmin" : "user"
+
+    // Create new user with default "free" subscription (GRATIS tier)
+    const userId = await db.insert("users", {
+      clerkUserId,
+      email,
+      firstName,
+      lastName,
+      role,
+      emailVerified: false,
+      subscriptionStatus: "free",
+      createdAt: now,
+      lastLoginAt: now,
+    })
+
+    return userId
+  },
+})
+
 // USER-003: Get user by ID
 export const getById = queryGeneric({
   args: { userId: v.id("users") },
@@ -107,9 +184,6 @@ export const createUser = mutationGeneric({
       .unique()
 
     const now = Date.now()
-
-    // Auto-promote superadmin by hardcoded email
-    const SUPERADMIN_EMAIL = "erik.supit@gmail.com"
 
     if (existing) {
       // Update existing user

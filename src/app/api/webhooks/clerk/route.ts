@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 
   switch (eventType) {
     case "user.created": {
-      const { email_addresses } = evt.data
+      const { id: clerkUserId, email_addresses, first_name, last_name } = evt.data
 
       // Get primary email
       const primaryEmail = email_addresses?.find(
@@ -74,7 +74,20 @@ export async function POST(req: Request) {
       if (primaryEmail?.email_address) {
         const email = primaryEmail.email_address
 
-        // Check if user came from waitlist and mark as registered
+        // 1. Create Convex user IMMEDIATELY (ensures badge shows on any page)
+        try {
+          await fetchMutation(api.users.createUserFromWebhook, {
+            clerkUserId,
+            email,
+            firstName: first_name ?? undefined,
+            lastName: last_name ?? undefined,
+          })
+        } catch (error) {
+          console.error("Failed to create Convex user:", error)
+          // Don't fail webhook - fallback sync will handle this
+        }
+
+        // 2. Check if user came from waitlist and mark as registered
         try {
           await fetchMutation(api.waitlist.markAsRegistered, { email })
         } catch (error) {
@@ -82,7 +95,7 @@ export async function POST(req: Request) {
           // Don't fail the webhook, just log the error
         }
 
-        // Send welcome email
+        // 3. Send welcome email
         try {
           await sendWelcomeEmail({ to: email })
         } catch (error) {

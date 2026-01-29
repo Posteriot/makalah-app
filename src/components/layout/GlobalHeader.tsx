@@ -210,12 +210,14 @@ export function GlobalHeader() {
         </Link>
         {/* Subscription Badge - shows when logged in */}
         <SignedIn>
-          {!isConvexLoading && convexUser && (
+          {isConvexLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : convexUser ? (
             <SegmentBadge
               role={convexUser.role}
               subscriptionStatus={convexUser.subscriptionStatus}
             />
-          )}
+          ) : null}
         </SignedIn>
       </div>
 

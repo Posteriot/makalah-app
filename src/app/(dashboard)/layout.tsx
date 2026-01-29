@@ -22,11 +22,15 @@ async function ensureConvexUser() {
     const { userId: clerkUserId, getToken } = await auth()
     if (!clerkUserId) return
 
-    const convexToken = await getToken({ template: "convex" })
-    if (!convexToken) {
-      console.warn("[ensureConvexUser] Convex token tidak tersedia")
+    // Wrap getToken in try-catch - dapat throw saat logout/session invalid
+    let convexToken: string | null = null
+    try {
+      convexToken = await getToken({ template: "convex" })
+    } catch {
+      // Session invalid (logout in progress), skip sync
       return
     }
+    if (!convexToken) return
 
     const user = await currentUser()
     if (!user) return
