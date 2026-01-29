@@ -15,6 +15,7 @@ import { SignedIn, SignedOut, useUser, useClerk } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
 import { UserSettingsModal } from "@/components/settings/UserSettingsModal"
+import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -158,7 +159,6 @@ export function GlobalHeader() {
   const initial = firstName.charAt(0).toUpperCase()
   const segment = getSegmentFromUser(convexUser?.role, convexUser?.subscriptionStatus)
   const segmentConfig = SEGMENT_CONFIG[segment]
-  const canRenderBadge = !isConvexLoading && segment !== "superadmin"
   const isAdmin = segment === "admin" || segment === "superadmin"
 
   return (
@@ -198,6 +198,15 @@ export function GlobalHeader() {
             className="logo-brand-text logo-brand-dark"
           />
         </Link>
+        {/* Subscription Badge - shows when logged in */}
+        <SignedIn>
+          {!isConvexLoading && convexUser && (
+            <SegmentBadge
+              role={convexUser.role}
+              subscriptionStatus={convexUser.subscriptionStatus}
+            />
+          )}
+        </SignedIn>
       </div>
 
       {/* Navigation */}
@@ -218,10 +227,28 @@ export function GlobalHeader() {
 
       {/* Header Right - Theme Toggle & Auth */}
       <div className="header-right">
+        {/* Theme Toggle - Mobile (icon only, left of hamburger) */}
+        <SignedIn>
+          <button
+            onClick={toggleTheme}
+            className="md:hidden inline-flex h-9 w-9 items-center justify-center text-foreground transition-opacity hover:opacity-70 mr-3"
+            type="button"
+            title="Toggle theme"
+            aria-label="Toggle theme"
+            disabled={!mounted}
+          >
+            {(mounted ? resolvedTheme : "dark") === "dark" ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+          </button>
+        </SignedIn>
+
         {/* Mobile Menu Toggle */}
         <button
           onClick={toggleMobileMenu}
-          className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background/80 text-foreground transition hover:bg-muted"
+          className="md:hidden inline-flex h-9 w-9 items-center justify-center text-foreground transition-opacity hover:opacity-70"
           type="button"
           aria-label={isMobileMenuOpen ? "Tutup menu" : "Buka menu"}
           aria-expanded={isMobileMenuOpen}
@@ -229,7 +256,7 @@ export function GlobalHeader() {
           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
-        {/* Theme Toggle - Desktop only for logged-in users (mobile shows in panel) */}
+        {/* Theme Toggle - Desktop only for logged-in users */}
         <SignedIn>
           <button
             onClick={toggleTheme}
@@ -295,39 +322,15 @@ export function GlobalHeader() {
 
               {/* Auth content */}
               <div className="mobile-menu__auth-content">
-                {/* Theme Toggle Row */}
-                <button
-                  onClick={toggleTheme}
-                  className="mobile-menu__auth-row"
-                  type="button"
-                  disabled={!mounted}
-                >
-                  <div className="mobile-menu__auth-icon">
-                    {(mounted ? resolvedTheme : "dark") === "dark" ? (
-                      <Sun className="h-4 w-4" />
-                    ) : (
-                      <Moon className="h-4 w-4" />
-                    )}
-                  </div>
-                  <span className="mobile-menu__auth-label">
-                    {(mounted ? resolvedTheme : "dark") === "dark" ? "Light Mode" : "Dark Mode"}
-                  </span>
-                </button>
-
                 {/* User Accordion */}
                 <Accordion type="single" collapsible className="mobile-menu__user-accordion">
                   <AccordionItem value="user" className="mobile-menu__user-accordion-item">
                     <AccordionTrigger className="mobile-menu__user-accordion-trigger">
                       <div className="mobile-menu__auth-row">
-                        <div className="mobile-menu__auth-avatar">
+                        <div className={cn("mobile-menu__auth-avatar", segmentConfig.className)}>
                           {initial}
                         </div>
                         <span className="mobile-menu__auth-label">{fullName}</span>
-                        {canRenderBadge && (
-                          <span className={cn("mobile-menu__auth-badge", segmentConfig.className)}>
-                            {segmentConfig.label}
-                          </span>
-                        )}
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="mobile-menu__user-accordion-content">

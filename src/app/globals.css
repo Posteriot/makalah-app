@@ -827,13 +827,13 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: var(--muted);
+    /* background now comes from segment className (bg-segment-gratis, etc.) */
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 12px;
     font-weight: 600;
-    color: var(--foreground);
+    /* color now comes from segment className (text-white) */
     flex-shrink: 0;
   }
 
@@ -843,15 +843,6 @@
     font-weight: 500;
     color: var(--foreground);
     flex: 1;
-  }
-
-  /* Auth badge */
-  .mobile-menu__auth-badge {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-left: auto;
   }
 
   /* User Accordion */
@@ -866,6 +857,7 @@
   .mobile-menu__user-accordion-trigger {
     padding: 0 !important;
     gap: 0 !important;
+    align-items: center !important; /* Center chevron vertically */
   }
 
   .mobile-menu__user-accordion-trigger:hover {
@@ -874,6 +866,7 @@
 
   .mobile-menu__user-accordion-trigger > .mobile-menu__auth-row {
     flex: 1;
+    margin-right: 16px; /* Space between hover container and chevron */
   }
 
   /* Accordion chevron */
@@ -881,7 +874,8 @@
     width: 16px;
     height: 16px;
     color: var(--muted-foreground);
-    margin-right: 12px;
+    margin-right: 20px; /* More spacing from right edge */
+    flex-shrink: 0;
     transition: transform 0.2s ease;
   }
 
