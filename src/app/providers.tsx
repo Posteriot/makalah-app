@@ -6,6 +6,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk"
 import { ClerkProvider, useAuth } from "@clerk/nextjs"
 import { idID } from "@clerk/localizations"
 import { ThemeProvider } from "next-themes"
+import { ThemeEnforcer } from "@/components/theme/ThemeEnforcer"
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
 
@@ -33,6 +34,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
         enableSystem={false}
         disableTransitionOnChange
       >
+        {/* Force dark mode for unauthenticated users */}
+        <ThemeEnforcer />
         {convexClient ? (
           <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
             {children}
