@@ -1075,14 +1075,17 @@
     min-width: 440px;
   }
 
-  /* Mobile: Stack vertically */
+  /* Mobile: Stack vertically, fit to viewport */
   @media (max-width: 1024px) {
     .hero-section {
       align-items: center;
-      justify-content: flex-start; /* Mulai dari atas, bukan center */
-      min-height: auto; /* Tidak perlu full height */
-      padding-top: calc(var(--header-h) + 16px); /* Header + minimal space */
-      padding-bottom: 48px;
+      justify-content: center; /* Center content vertically */
+      height: 100dvh; /* Exact viewport height */
+      min-height: auto;
+      max-height: 100dvh;
+      padding-top: var(--header-h); /* Account for fixed header */
+      padding-bottom: 24px;
+      box-sizing: border-box;
     }
 
     .hero-flex {
@@ -1099,8 +1102,11 @@
       margin-inline: auto;
       text-align: left;
       align-items: flex-start;
-      gap: 0.75rem; /* Compact untuk mobile */
+      gap: 0.625rem; /* Tighter gap for viewport fit */
       box-sizing: border-box;
+      /* Constrain height for viewport fit */
+      max-height: calc(100dvh - var(--header-h) - 48px);
+      justify-content: center;
     }
 
     .hero-right {
@@ -1140,6 +1146,8 @@
     .hero-heading-svg__img {
       width: 100%;
       height: auto;
+      max-height: 35vh; /* Limit heading height for smaller viewports */
+      object-fit: contain;
       display: block;
     }
 
