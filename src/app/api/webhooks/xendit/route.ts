@@ -8,6 +8,10 @@ import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 import { verifyWebhookToken } from "@/lib/xendit/client"
+import {
+  sendPaymentSuccessEmail,
+  sendPaymentFailedEmail,
+} from "@/lib/email/sendPaymentEmail"
 
 const internalKey = process.env.CONVEX_INTERNAL_KEY
 
@@ -159,9 +163,10 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
 
   // 4. Business logic based on payment type
   const paymentType = payment.paymentType
+  let newBalanceIDR: number | undefined
 
   switch (paymentType) {
-    case "credit_topup":
+    case "credit_topup": {
       // Add credits to user balance
       const creditResult = await fetchMutation(api.billing.credits.addCredits, {
         userId: payment.userId as Id<"users">,
@@ -170,12 +175,15 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
         internalKey,
       })
 
+      newBalanceIDR = creditResult.newBalanceIDR
+
       console.log(`[Xendit] Credits added:`, {
         userId: payment.userId,
         amount: data.amount,
         newBalance: creditResult.newBalanceIDR,
       })
       break
+    }
 
     case "paper_completion":
       // TODO: Unlock paper export
@@ -192,15 +200,44 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
       console.warn(`[Xendit] Unknown payment type: ${paymentType}`)
   }
 
-  // 5. TODO: Send confirmation email
-  // await sendPaymentConfirmationEmail(payment.userId, data.amount)
+  // 5. Send confirmation email
+  try {
+    // Fetch user to get email
+    const user = await fetchQuery(api.users.getUserById, {
+      userId: payment.userId as Id<"users">,
+    })
+
+    if (user?.email) {
+      const emailResult = await sendPaymentSuccessEmail({
+        to: user.email,
+        userName: user.firstName || undefined,
+        amount: data.amount,
+        newBalance: newBalanceIDR ?? data.amount,
+        transactionId: data.id,
+        paidAt: data.paid_at ? new Date(data.paid_at).getTime() : Date.now(),
+      })
+
+      console.log(`[Xendit] Email notification result:`, emailResult)
+    } else {
+      console.warn(`[Xendit] User email not found for userId: ${payment.userId}`)
+    }
+  } catch (emailError) {
+    // Email failure should not break webhook processing
+    console.error(`[Xendit] Email notification failed:`, emailError)
+  }
 }
 
 /**
  * Handle failed payment
  */
 async function handlePaymentFailed(data: XenditPaymentData, internalKey: string) {
-  // Update payment status
+  // 1. Get payment to retrieve userId
+  const payment = await fetchQuery(api.billing.payments.getPaymentByXenditId, {
+    xenditPaymentRequestId: data.id,
+    internalKey,
+  })
+
+  // 2. Update payment status
   await fetchMutation(api.billing.payments.updatePaymentStatus, {
     xenditPaymentRequestId: data.id,
     status: "FAILED",
@@ -214,6 +251,33 @@ async function handlePaymentFailed(data: XenditPaymentData, internalKey: string)
   console.log(`[Xendit] Payment marked as failed: ${data.id}`, {
     reason: data.failure_reason,
   })
+
+  // 3. Send failure email
+  if (payment) {
+    try {
+      // Fetch user to get email
+      const user = await fetchQuery(api.users.getUserById, {
+        userId: payment.userId as Id<"users">,
+      })
+
+      if (user?.email) {
+        const emailResult = await sendPaymentFailedEmail({
+          to: user.email,
+          userName: user.firstName || undefined,
+          amount: data.amount,
+          failureReason: data.failure_reason,
+          transactionId: data.id,
+        })
+
+        console.log(`[Xendit] Failed email notification result:`, emailResult)
+      } else {
+        console.warn(`[Xendit] User email not found for userId: ${payment.userId}`)
+      }
+    } catch (emailError) {
+      // Email failure should not break webhook processing
+      console.error(`[Xendit] Failed email notification failed:`, emailError)
+    }
+  }
 }
 
 /**

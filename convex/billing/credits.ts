@@ -116,6 +116,15 @@ export const addCredits = mutation({
         updatedAt: now,
       })
 
+      // Also update user subscriptionStatus to "bpp" if they were on "free"
+      const user = await ctx.db.get(args.userId)
+      if (user && user.subscriptionStatus === "free") {
+        await ctx.db.patch(args.userId, {
+          subscriptionStatus: "bpp",
+          updatedAt: now,
+        })
+      }
+
       return {
         balanceId,
         newBalanceIDR: args.amountIDR,
