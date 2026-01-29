@@ -116,9 +116,9 @@ Sumber CSS: `src/app/globals.css:942-949`
 Sumber CSS tambahan (pemakaian warna yang sama): `src/app/globals.css:1909-1915`, `src/app/globals.css:2522-2529`
 
 Digunakan pada:
-- Button "Masuk" di header (`.btn-green-solid`)
 - Badge "Kenapa Makalah AI" di benefits section (`.benefits-badge`)
 - Badge group "Pemakaian & Harga" di pricing (`.pricing .badge-group`)
+Catatan: tombol "Masuk" header sekarang memakai `.btn-outline` (desktop) dan `.mobile-menu__cta` (mobile).
 Catatan: tombol upgrade pakai `--success` (bukan #006d5b).
 Gunakan `.btn-upgrade` untuk styling standar.
 
@@ -137,21 +137,22 @@ Gunakan `.btn-upgrade` untuk styling standar.
 ```
 Sumber CSS: `src/app/globals.css:190-192` dan `src/app/globals.css:258-260`
 
-### Segment Colors (Subscription + Role Badges)
+### Segment Colors (Subscription Badge)
 
 | Label | CSS Variable | Tailwind | OKLCH |
 |------|--------------|----------|-------|
 | GRATIS | `--segment-gratis` | `bg-segment-gratis` | `oklch(0.55 0.15 165)` |
 | BPP | `--segment-bpp` | `bg-segment-bpp` | `oklch(0.55 0.2 260)` |
 | PRO | `--segment-pro` | `bg-segment-pro` | `oklch(0.65 0.18 70)` |
-| ADMIN | `--segment-admin` | `bg-segment-admin` | `oklch(0.55 0.18 250)` |
-| SUPERADMIN | `--segment-superadmin` | `bg-segment-superadmin` | `oklch(0.55 0.2 300)` |
 
 Sumber CSS: `src/app/globals.css:170-177`
 
 Catatan:
 - `SegmentBadge` menampilkan GRATIS/BPP/PRO.
-- Admin/Superadmin dipakai untuk badge avatar di mobile menu header.
+- Admin/Superadmin selalu dinormalisasi ke PRO di header dan `SegmentBadge`.
+- Avatar mobile menu memakai `.mobile-menu__auth-avatar` + class segment (`bg-segment-*`).
+Sumber TS: `src/components/layout/GlobalHeader.tsx:43-60`, `src/components/ui/SegmentBadge.tsx:47-55`
+Sumber CSS: `src/app/globals.css:845-856`
 
 ---
 
@@ -580,7 +581,11 @@ Sumber CSS: `src/app/globals.css:1732-1752`
 ```
 Sumber CSS: `src/app/globals.css:1755-1789`
 
-### Green Solid Button (Login/Masuk)
+Catatan pemakaian:
+- Header "Masuk" (desktop) memakai `.btn-outline`.
+Sumber TS: `src/components/layout/GlobalHeader.tsx:283-286`
+
+### Green Solid Button (Lama)
 
 ```css
 .btn-green-solid {
@@ -594,6 +599,46 @@ Sumber CSS: `src/app/globals.css:1755-1789`
 }
 ```
 Sumber CSS: `src/app/globals.css:942-949`
+
+Catatan pemakaian:
+- Tidak dipakai di header saat ini; header pakai `.btn-outline` (desktop) dan `.mobile-menu__cta` (mobile).
+Sumber TS: `src/components/layout/GlobalHeader.tsx:283-286`, `src/components/layout/GlobalHeader.tsx:315-323`
+
+### Mobile Menu CTA (Masuk - Mobile)
+
+```css
+.mobile-menu__cta {
+  display: block;
+  margin-top: 8px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--foreground);
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.mobile-menu__cta:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Light mode */
+:root.light .mobile-menu__cta,
+.light .mobile-menu__cta {
+  border-color: rgba(0, 0, 0, 0.4);
+}
+
+:root.light .mobile-menu__cta:hover,
+.light .mobile-menu__cta:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.6);
+}
+```
+Sumber CSS: `src/app/globals.css:636-666`
 
 ### Upgrade Button (Success)
 
@@ -745,11 +790,12 @@ Sumber CSS: `src/app/globals.css:1021-1555`, `src/app/globals.css:1817-2448`, `s
 
 ### Buttons
 - `.btn-brand` - Orange CTA
-- `.btn-outline` - Transparent with border
-- `.btn-green-solid` - Deep Emerald (login)
+- `.btn-outline` - Transparent with border (login desktop)
+- `.btn-green-solid` - Deep Emerald (lama; bukan login header)
 - `.btn-upgrade` - Success/upgrade CTA
 - `.btn-brand-vivid` - Orange solid (var(--brand))
 - `.btn-disabled` - Disabled state
+- `.mobile-menu__cta` - Masuk button (mobile menu)
 
 ### Cards
 - `.pricing-card` - Card container

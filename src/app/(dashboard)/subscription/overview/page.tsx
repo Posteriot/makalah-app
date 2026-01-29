@@ -393,7 +393,7 @@ export default function SubscriptionOverviewPage() {
           <li className="flex items-start gap-2">
             <span className="text-primary">3.</span>
             <span>
-              <strong>Pro:</strong> Rp 99.000/bulan untuk akses unlimited
+              <strong>Pro:</strong> Rp 200.000/bulan untuk menyusun 5-6 paper
             </span>
           </li>
         </ul>

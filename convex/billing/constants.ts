@@ -1,6 +1,14 @@
 /**
  * Billing Constants
  * Tier limits, pricing, dan config untuk subscription system
+ *
+ * PENTING: Nilai di sini HARUS sinkron dengan data di tabel `pricingPlans`
+ * yang ditampilkan di halaman marketing (/pricing) dan homepage.
+ *
+ * Pricing tiers (sinkron dengan pricingPlans DB):
+ * - Gratis: Rp 0/bulan, pemakaian harian terbatas
+ * - BPP (Bayar Per Paper): Mulai Rp 80.000/paper (~800K tokens)
+ * - Pro: Rp 200.000/bulan, menyusun 5-6 paper
  */
 
 // Token pricing (based on Gemini 2.5 Flash)
@@ -14,18 +22,26 @@ export const TOKEN_PRICE_PER_1K_IDR = 3
 // Rp 25,000 = 250,000 tokens
 export const TOKENS_PER_IDR = 10
 
+// BPP per-paper estimate (sinkron dengan pricingPlans: "Mulai Rp80rb/paper")
+// 1 paper (~15 halaman A4) ≈ 800,000 tokens
+// Rp 80,000 × 10 tokens/Rp = 800,000 tokens
+export const BPP_PAPER_TOKENS_ESTIMATE = 800_000
+export const BPP_PAPER_PRICE_IDR = 80_000
+
 // Tier limits configuration
 export const TIER_LIMITS = {
   gratis: {
+    // Sinkron dengan pricingPlans: "Pemakaian harian terbatas"
     monthlyTokens: 100_000,
-    dailyTokens: 50_000, // Increased from 5K - more realistic for chat usage
+    dailyTokens: 50_000,
     monthlyPapers: 2,
     hardLimit: true, // Block saat quota habis
     overageAllowed: false,
     creditBased: false,
   },
   bpp: {
-    // No monthly limit - credit based
+    // Sinkron dengan pricingPlans: "Bayar per paper ketika butuh"
+    // Credit-based, tidak ada limit bulanan
     monthlyTokens: Infinity,
     dailyTokens: Infinity,
     monthlyPapers: Infinity,
@@ -34,6 +50,8 @@ export const TIER_LIMITS = {
     creditBased: true,
   },
   pro: {
+    // Sinkron dengan pricingPlans: "Menyusun 5-6 Paper" per bulan
+    // 5-6 paper × 800K tokens = 4M-4.8M tokens, dibulatkan ke 5M
     monthlyTokens: 5_000_000,
     dailyTokens: 200_000,
     monthlyPapers: Infinity,
@@ -53,15 +71,15 @@ export const TOP_UP_PACKAGES = [
   { amount: 100_000, tokens: 1_000_000, label: "Rp 100.000" },
 ] as const
 
-// Subscription pricing
+// Subscription pricing (sinkron dengan pricingPlans: Pro = Rp200rb/bulan)
 export const SUBSCRIPTION_PRICING = {
   pro_monthly: {
-    priceIDR: 99_000,
+    priceIDR: 200_000,
     intervalMonths: 1,
     label: "Pro Bulanan",
   },
   pro_yearly: {
-    priceIDR: 990_000,
+    priceIDR: 2_000_000, // 10 bulan, hemat 2 bulan
     intervalMonths: 12,
     label: "Pro Tahunan (Hemat 2 bulan)",
   },

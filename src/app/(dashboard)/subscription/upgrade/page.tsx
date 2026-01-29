@@ -14,16 +14,17 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+// Sinkron dengan pricingPlans DB (Pro features)
 const PRO_FEATURES = [
   {
-    icon: Zap,
-    title: "5 Juta Tokens/Bulan",
-    description: "Kuota besar untuk kebutuhan intensif",
+    icon: Sparkles,
+    title: "Menyusun 5-6 Paper/Bulan",
+    description: "Full 13 tahap workflow untuk setiap paper",
   },
   {
-    icon: Sparkles,
-    title: "Unlimited Papers",
-    description: "Buat paper sebanyak yang Anda butuhkan",
+    icon: Zap,
+    title: "Diskusi Tak Terbatas",
+    description: "Chat dengan AI tanpa batas harian",
   },
   {
     icon: Shield,
@@ -37,11 +38,12 @@ const PRO_FEATURES = [
   },
 ]
 
+// Sinkron dengan pricingPlans DB
 const COMPARISON = [
-  { feature: "Token Bulanan", gratis: "100K", pro: "5 Juta" },
-  { feature: "Paper per Bulan", gratis: "2 draft", pro: "Unlimited" },
-  { feature: "Web Search", gratis: "Terbatas", pro: "Unlimited" },
-  { feature: "Export", gratis: "Watermark", pro: "Tanpa Watermark" },
+  { feature: "Workflow", gratis: "13 tahap", pro: "Full 13 tahap" },
+  { feature: "Paper per Bulan", gratis: "2 draft", pro: "5-6 paper" },
+  { feature: "Diskusi", gratis: "Terbatas harian", pro: "Tak terbatas" },
+  { feature: "Export", gratis: "Word & PDF", pro: "Word & PDF" },
   { feature: "Support", gratis: "Standard", pro: "Priority" },
 ]
 
@@ -166,11 +168,11 @@ export default function UpgradePage() {
           </div>
           <h2 className="text-2xl font-bold">Pro Plan</h2>
           <div className="flex items-baseline gap-1 mt-2">
-            <span className="text-3xl font-bold">Rp 99.000</span>
+            <span className="text-3xl font-bold">Rp 200.000</span>
             <span className="text-muted-foreground">/bulan</span>
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            Atau Rp 990.000/tahun (hemat 2 bulan)
+            Atau Rp 2.000.000/tahun (hemat 2 bulan)
           </p>
 
           <button

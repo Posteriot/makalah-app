@@ -5,24 +5,42 @@ description: Menulis konten pages aplikasi berdasarkan konteks UI/UX dan struktu
 
 # Content Writer
 
-## Garis Besar
+## Overview
 
-Skill ini membuat konten page yang konsisten dengan struktur page dan alur UI/UX. Fokus pada copy yang jelas, ringkas, dan actionable, serta memetakan konten ke section yang ada di page.
+Skill ini buat lo nulis **konten page/UI** (headline, subhead, section copy, empty state) yang nyambung sama struktur kode dan desain. Jangan asal nulis copy marketing kalau codenya nggak support fitur itu. Tulis copy yang *grounded* di reality codebase.
 
-## Alur Kerja
+## Workflow
 
-1) Validasi scope page yang diminta (marketing/dashboard/settings/empty state).
-2) Pemetaan struktur page dari kode: section, CTA, label, dan data flow copy.
-3) Tulis konten dengan format: headline + subheadline + section copy.
-4) Pastikan konsistensi istilah, tone, dan CTA. Ikuti `references/style-guide.md`.
-5) Selalu sertakan daftar file yang relevan di akhir output.
-6) Jangan ubah kode kecuali diminta eksplisit.
+1.  **Pahami Konteks & Scope**
+    *   Tanya user kejelasan page mana yang mau diisi/direvisi.
+    *   Pastikan dulu lo tau tujuan page-nya: Marketing? Dashboard? Error page?
 
-## Panduan Bahasa dan Struktur
+2.  **Audit Struktur Page (Code First)**
+    *   Baca file `page.tsx` atau component terkait di `src/app`.
+    *   Identifikasi slot konten yang tersedia:
+        *   Ada berapa section?
+        *   Ada card apa aja?
+        *   Butuh label tombol (CTA) apa aja?
+    *   Kalau pusing strukturnya, jalanin `scripts/scan_pages.py`.
 
-- Ikuti `references/style-guide.md` untuk aturan bahasa dan tone.
-- Ikuti `references/page-templates.md` untuk variasi template per jenis page.
+3.  **Drafting Konten**
+    *   Tulis copy pake format di `references/page-templates.md`.
+    *   Sesuaikan tone copy (Bukan tone lo ke user, tapi tone aplikasi ke end-user) pake `references/style-guide.md`.
+    *   **PENTING**: Copy harus actionable. Jangan bertele-tele.
 
-## Kapan Menjalankan Script
+4.  **Verifikasi & Evidence**
+    *   Pas lo ngasih output copy, kasih tau ini buat section mana di code.
+    *   Misal: "Buat Hero Section di `src/app/page.tsx`, ganti headlinenya jadi..."
 
-- Gunakan `scripts/scan_pages.py` untuk daftar semua pages saat scope luas atau user minta coverage menyeluruh.
+5.  **Output**
+    *   Kasih markdown yang gampang dicopas user.
+
+## Panduan & Resources
+
+*   `references/style-guide.md`: Kitab gaya bahasa aplikasi (ID + Inggris Teknis).
+*   `references/page-templates.md`: Contekan struktur konten per jenis page.
+
+## Tools
+
+*   `scripts/scan_pages.py`: Buat ngelist semua route/page yang ada di aplikasi biar lo tau peta lokasinya.
+    *   Usage: `python3 .agent/skills/content-writer/scripts/scan_pages.py --root .`

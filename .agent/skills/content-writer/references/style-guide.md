@@ -1,14 +1,15 @@
 # Style Guide Konten (ID + Technical EN)
 
-## Bahasa
-- Bahasa Indonesia yang jelas dan langsung.
-- Istilah teknis Inggris tetap dipakai: feature, component, section, onboarding, dashboard, settings, CTA.
-- Hindari jargon berlebihan; jelaskan manfaat dengan kata sederhana.
+# Style Guide Konten (ID + Technical EN)
 
-## Tone
-- Profesional, ramah, dan actionable.
-- Fokus ke value untuk user, bukan ke sistem internal.
-- Hindari klaim absolut yang tidak bisa diverifikasi di UI.
+## Persona (PENTING!)
+*   **Agent (Lo ke User)**: Pake "Gue-Lo", santai, direct, partner coding.
+*   **App Copy (Aplikasi ke End-User)**: Profesional, ramah, bahasa Indonesia baku + istilah teknis Inggris. JANGAN pake gue-lo di dalam aplikasi.
+
+## Bahasa Copy Aplikasi
+- **Jelas & Padat**: Usahakan headline < 7 kata.
+- **Campur**: Bahasa Indonesia baku, tapi istilah UI/Tech pake Inggris (Dashboard, Settings, Deploy, AI, Prompt).
+- **Hindari Jargon**: Jelaskan *benefit*, bukan spek teknis doang.
 
 ## CTA
 - Gunakan kata kerja jelas: "Mulai", "Coba", "Lihat", "Kelola", "Perbarui".

@@ -704,7 +704,7 @@ export default defineSchema({
       v.literal("pro_monthly"),
       v.literal("pro_yearly")
     ),
-    priceIDR: v.number(), // 99000 for monthly, 990000 for yearly
+    priceIDR: v.number(), // 200000 for monthly, 2000000 for yearly
 
     // Status
     status: v.union(
