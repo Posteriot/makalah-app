@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "next-themes"
-import { Menu, X, Sun, Moon, User, CreditCard, Settings, LogOut, Loader2, ChevronDown } from "lucide-react"
+import { Menu, X, Sun, Moon, User, CreditCard, Settings, LogOut, Loader2 } from "lucide-react"
 import {
   Accordion,
   AccordionContent,
@@ -65,22 +65,23 @@ export function GlobalHeader() {
   const pathname = usePathname()
   const [isHidden, setIsHidden] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [mobileMenuState, setMobileMenuState] = useState(() => ({
+    isOpen: false,
+    pathname,
+  }))
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const lastScrollYRef = useRef(0)
-  const isDocumentation = pathname === "/documentation"
+  const isThemeReady = resolvedTheme !== undefined
+
+  const isMobileMenuOpen = useMemo(() => {
+    return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
+  }, [mobileMenuState.isOpen, mobileMenuState.pathname, pathname])
 
   // Clerk and Convex user data for mobile menu
   const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
   const { user: convexUser, isLoading: isConvexLoading } = useCurrentUser()
-
-  // Prevent hydration mismatch for theme toggle
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY
@@ -116,11 +117,6 @@ export function GlobalHeader() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [handleScroll])
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setIsMobileMenuOpen(false)
-  }, [pathname])
-
   // Close mobile menu on click outside
   useEffect(() => {
     if (!isMobileMenuOpen) return
@@ -128,25 +124,24 @@ export function GlobalHeader() {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
       if (!target.closest('.global-header')) {
-        setIsMobileMenuOpen(false)
+        setMobileMenuState({ isOpen: false, pathname })
       }
     }
 
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
-  }, [isMobileMenuOpen])
+  }, [isMobileMenuOpen, pathname])
 
   const toggleTheme = () => {
-    if (!mounted) return // Prevent toggle before hydration
+    if (!isThemeReady) return // Prevent toggle before hydration
     setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen((prev) => !prev)
-  }
-
-  const handleDocumentationSidebar = () => {
-    window.dispatchEvent(new CustomEvent("documentation:toggle-sidebar"))
+    setMobileMenuState((prev) => ({
+      isOpen: !(prev.isOpen && prev.pathname === pathname),
+      pathname,
+    }))
   }
 
   const handleSignOut = async () => {
@@ -247,9 +242,9 @@ export function GlobalHeader() {
             type="button"
             title="Toggle theme"
             aria-label="Toggle theme"
-            disabled={!mounted}
+            disabled={!isThemeReady}
           >
-            {(mounted ? resolvedTheme : "dark") === "dark" ? (
+            {(resolvedTheme ?? "dark") === "dark" ? (
               <Sun className="h-5 w-5" />
             ) : (
               <Moon className="h-5 w-5" />
@@ -306,8 +301,8 @@ export function GlobalHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={cn("mobile-menu__link", isActive && "mobile-menu__link--active")}
-                onClick={() => setIsMobileMenuOpen(false)}
+              className={cn("mobile-menu__link", isActive && "mobile-menu__link--active")}
+                onClick={() => setMobileMenuState({ isOpen: false, pathname })}
               >
                 {link.label}
               </Link>
@@ -319,7 +314,7 @@ export function GlobalHeader() {
             <Link
               href="/sign-in"
               className="mobile-menu__cta"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => setMobileMenuState({ isOpen: false, pathname })}
             >
               Masuk
             </Link>
@@ -347,9 +342,9 @@ export function GlobalHeader() {
                     </AccordionTrigger>
                     <AccordionContent className="mobile-menu__user-accordion-content">
                       <button
-                        onClick={() => {
-                          setIsMobileMenuOpen(false)
-                          setIsSettingsOpen(true)
+                          onClick={() => {
+                            setMobileMenuState({ isOpen: false, pathname })
+                            setIsSettingsOpen(true)
                         }}
                         className="mobile-menu__user-menu-item"
                         type="button"
@@ -361,7 +356,7 @@ export function GlobalHeader() {
                       <Link
                         href="/subscription/overview"
                         className="mobile-menu__user-menu-item"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                       >
                         <CreditCard className="h-4 w-4" />
                         <span>Subskripsi</span>
@@ -371,7 +366,7 @@ export function GlobalHeader() {
                         <Link
                           href="/dashboard"
                           className="mobile-menu__user-menu-item"
-                          onClick={() => setIsMobileMenuOpen(false)}
+                          onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                         >
                           <Settings className="h-4 w-4" />
                           <span>Admin Panel</span>

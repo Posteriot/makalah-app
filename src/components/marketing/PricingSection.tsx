@@ -27,7 +27,7 @@ type PricingSectionProps = {
   showCta?: boolean
 }
 
-function PricingCard({ plan }: { plan: PricingPlan }) {
+function PricingCard({ plan, showCta }: { plan: PricingPlan; showCta: boolean }) {
   return (
     <div
       className={cn(
@@ -58,27 +58,31 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
           ))}
         </ul>
 
-        {plan.ctaHref ? (
-          <Link
-            href={plan.ctaHref}
-            className={cn(
-              "btn full-width",
-              plan.isHighlighted ? "btn-brand-vivid" : "btn-outline"
+        {showCta && (
+          <>
+            {plan.ctaHref ? (
+              <Link
+                href={plan.ctaHref}
+                className={cn(
+                  "btn full-width",
+                  plan.isHighlighted ? "btn-brand-vivid" : "btn-outline"
+                )}
+              >
+                {plan.ctaText}
+              </Link>
+            ) : (
+              <button disabled className="btn btn-disabled full-width">
+                {plan.ctaText}
+              </button>
             )}
-          >
-            {plan.ctaText}
-          </Link>
-        ) : (
-          <button disabled className="btn btn-disabled full-width">
-            {plan.ctaText}
-          </button>
+          </>
         )}
       </div>
     </div>
   )
 }
 
-function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
+function PricingCarousel({ plans, showCta }: { plans: PricingPlan[]; showCta: boolean }) {
   const [activeSlide, setActiveSlide] = useState(0)
   const startXRef = useRef<number | null>(null)
   const isDraggingRef = useRef(false)
@@ -132,7 +136,7 @@ function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
       >
         {plans.map((plan) => (
           <div key={plan._id} className="carousel-slide">
-            <PricingCard plan={plan} />
+            <PricingCard plan={plan} showCta={showCta} />
           </div>
         ))}
       </div>
@@ -221,12 +225,12 @@ export function PricingSection({ showCta = true }: PricingSectionProps) {
             {/* Desktop: Grid */}
             <div className="pricing-grid hidden md:grid">
               {plans.map((plan) => (
-                <PricingCard key={plan._id} plan={plan} />
+                <PricingCard key={plan._id} plan={plan} showCta={showCta} />
               ))}
             </div>
 
             {/* Mobile: Carousel */}
-            <PricingCarousel plans={plans} />
+            <PricingCarousel plans={plans} showCta={showCta} />
           </>
         )}
       </div>

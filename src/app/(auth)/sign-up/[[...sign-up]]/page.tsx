@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import Link from "next/link"
+import Image from "next/image"
 import { AlertCircle, CheckCircle, Mail } from "lucide-react"
 
 const SHOW_SOCIAL_SKELETON = Boolean(
@@ -50,7 +51,7 @@ function InvitedUserLeftContent({ email }: { email: string }) {
     <div className="flex flex-col justify-between h-full">
       <div className="flex flex-col">
         <Link href="/" className="inline-flex items-center gap-2 group w-fit">
-          <img
+          <Image
             src="/logo/makalah_logo_500x500.png"
             alt="Makalah"
             width={28}
