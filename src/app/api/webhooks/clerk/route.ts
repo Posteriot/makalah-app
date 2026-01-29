@@ -2,6 +2,8 @@ import { Webhook } from "svix"
 import { headers } from "next/headers"
 import { WebhookEvent } from "@clerk/nextjs/server"
 import { sendWelcomeEmail } from "@/lib/email/resend"
+import { fetchMutation } from "convex/nextjs"
+import { api } from "@convex/_generated/api"
 
 /**
  * Clerk Webhook Handler
@@ -70,10 +72,19 @@ export async function POST(req: Request) {
       )
 
       if (primaryEmail?.email_address) {
+        const email = primaryEmail.email_address
+
+        // Check if user came from waitlist and mark as registered
         try {
-          await sendWelcomeEmail({
-            to: primaryEmail.email_address,
-          })
+          await fetchMutation(api.waitlist.markAsRegistered, { email })
+        } catch (error) {
+          console.error("Failed to mark waitlist entry as registered:", error)
+          // Don't fail the webhook, just log the error
+        }
+
+        // Send welcome email
+        try {
+          await sendWelcomeEmail({ to: email })
         } catch (error) {
           console.error("Failed to send welcome email:", error)
           // Don't fail the webhook, just log the error

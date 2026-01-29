@@ -9,7 +9,8 @@ import { SystemPromptsManager } from "./SystemPromptsManager"
 import { SystemHealthPanel } from "./SystemHealthPanel"
 import { AIProviderManager } from "./AIProviderManager"
 import { StyleConstitutionManager } from "./StyleConstitutionManager"
-import { Monitor, Menu, X, LayoutDashboard, CheckCircle2, UserCog } from "lucide-react"
+import { WaitlistManager } from "./WaitlistManager"
+import { Monitor, Menu, X, LayoutDashboard, CheckCircle2, UserCog, UserPlus } from "lucide-react"
 import type { Id } from "@convex/_generated/dataModel"
 import type { LucideIcon } from "lucide-react"
 import {
@@ -75,6 +76,14 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
     headerTitle: "Refrasa",
     headerDescription: "Kelola style constitution untuk tool Refrasa",
     headerIcon: PencilLine,
+  },
+  {
+    id: "waitlist",
+    label: "Waiting List",
+    icon: UserPlus,
+    headerTitle: "Waiting List",
+    headerDescription: "Kelola pendaftar waiting list dan kirim undangan",
+    headerIcon: UserPlus,
   },
   {
     id: "stats",
@@ -464,6 +473,10 @@ export function AdminPanelContainer({
             <div className="space-y-6">
               <StyleConstitutionManager userId={userId} />
             </div>
+          )}
+
+          {activeTab === "waitlist" && (
+            <WaitlistManager userId={userId} />
           )}
 
           {activeTab === "stats" && (

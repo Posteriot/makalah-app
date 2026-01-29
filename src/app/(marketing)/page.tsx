@@ -52,7 +52,7 @@ export default function MarketingHomePage() {
             {/* CTA Buttons */}
             <div className="hero-actions">
               <Link
-                href="/auth/waiting-list"
+                href="/waiting-list"
                 className="btn-brand text-base px-6 py-3 inline-flex items-center gap-2"
               >
                 <UserPlus className="w-5 h-5" />

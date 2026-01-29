@@ -51,6 +51,7 @@ import type * as styleConstitutions from "../styleConstitutions.js";
 import type * as systemAlerts from "../systemAlerts.js";
 import type * as systemPrompts from "../systemPrompts.js";
 import type * as users from "../users.js";
+import type * as waitlist from "../waitlist.js";
 
 import type {
   ApiFromModules,
@@ -102,6 +103,7 @@ declare const fullApi: ApiFromModules<{
   systemAlerts: typeof systemAlerts;
   systemPrompts: typeof systemPrompts;
   users: typeof users;
+  waitlist: typeof waitlist;
 }>;
 
 /**

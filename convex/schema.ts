@@ -733,4 +733,24 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_status", ["status", "nextBillingDate"])
     .index("by_xendit_recurring", ["xenditRecurringId"]),
+
+  // ════════════════════════════════════════════════════════════════
+  // Waiting List - Pre-registration for early access
+  // ════════════════════════════════════════════════════════════════
+  waitlistEntries: defineTable({
+    email: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("invited"),
+      v.literal("registered")
+    ),
+    invitedAt: v.optional(v.number()),
+    registeredAt: v.optional(v.number()),
+    inviteToken: v.optional(v.string()),
+    inviteTokenExpiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_status", ["status", "createdAt"])
+    .index("by_invite_token", ["inviteToken"]),
 })

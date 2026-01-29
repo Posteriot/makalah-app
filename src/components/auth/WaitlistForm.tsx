@@ -1,0 +1,126 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useMutation } from "convex/react"
+import { api } from "@convex/_generated/api"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Loader2, Mail, CheckCircle } from "lucide-react"
+import { toast } from "sonner"
+import { sendConfirmationEmail } from "@/app/(auth)/waiting-list/actions"
+
+type FormState = "idle" | "loading" | "success"
+
+export function WaitlistForm() {
+  const [email, setEmail] = useState("")
+  const [formState, setFormState] = useState<FormState>("idle")
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  const registerMutation = useMutation(api.waitlist.register)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError("Format email tidak valid")
+      return
+    }
+
+    setFormState("loading")
+
+    try {
+      // Register to waitlist
+      await registerMutation({ email })
+
+      // Send confirmation email (fire-and-forget)
+      sendConfirmationEmail(email).catch((err) => {
+        console.error("Failed to send confirmation email:", err)
+      })
+
+      setFormState("success")
+
+      // Show success toast
+      toast.success("Berhasil terdaftar!", {
+        description: "Cek email kamu untuk konfirmasi.",
+      })
+
+      // Redirect after short delay
+      setTimeout(() => {
+        router.push("/?waitlist=success")
+      }, 1500)
+    } catch (err) {
+      setFormState("idle")
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError("Terjadi kesalahan. Silakan coba lagi.")
+      }
+    }
+  }
+
+  if (formState === "success") {
+    return (
+      <div className="w-full flex flex-col items-center justify-center py-8 text-center">
+        <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mb-4">
+          <CheckCircle className="w-8 h-8 text-brand" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">
+          Pendaftaran Berhasil!
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Mengalihkan ke halaman utama...
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full space-y-4">
+      <div className="space-y-2">
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="email"
+            placeholder="Masukkan email kamu"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              setError(null)
+            }}
+            disabled={formState === "loading"}
+            className="pl-10 h-11 rounded-lg border-border bg-background focus:ring-brand focus:border-brand"
+            aria-invalid={!!error}
+            required
+          />
+        </div>
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
+      </div>
+
+      <Button
+        type="submit"
+        disabled={formState === "loading" || !email}
+        className="w-full h-11 bg-brand hover:bg-brand/90 text-white font-semibold rounded-lg"
+      >
+        {formState === "loading" ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Mendaftar...</span>
+          </>
+        ) : (
+          <span>Daftar Waiting List</span>
+        )}
+      </Button>
+
+      <p className="text-xs text-center text-muted-foreground">
+        Dengan mendaftar, kamu akan menerima email undangan saat giliran kamu tiba.
+      </p>
+    </form>
+  )
+}

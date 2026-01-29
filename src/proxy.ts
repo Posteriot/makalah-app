@@ -11,7 +11,7 @@ const isPublicRoute = createRouteMatcher([
   "/pricing",
   "/blog(.*)",
   "/documentation(.*)",
-  "/auth/waiting-list",
+  "/waiting-list",
 ])
 
 // Note: Admin routes don't need special middleware handling
