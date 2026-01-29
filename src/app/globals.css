@@ -2303,7 +2303,9 @@
   /* Pricing Carousel (Mobile) */
   .pricing .pricing-carousel {
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: visible;
+    padding-top: 28px;
   }
 
   .pricing .carousel-track {
@@ -2311,6 +2313,7 @@
     transition: transform 0.3s ease-out;
     touch-action: pan-y;
     will-change: transform;
+    overflow: visible;
   }
 
   .pricing .carousel-slide {
@@ -2372,7 +2375,12 @@
     }
 
     .pricing .pricing-card.highlighted:hover {
-      transform: translateY(-8px);
+      transform: none;
+    }
+
+    /* Mobile tidak butuh hover lift (hindari clipping saat emulate hover) */
+    .pricing .pricing-card:hover {
+      transform: none;
     }
   }
 
