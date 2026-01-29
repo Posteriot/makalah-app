@@ -97,13 +97,13 @@ function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
     })
   }, [clampIndex])
 
-  const handlePointerDown = useCallback((event) => {
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     startXRef.current = event.clientX
     isDraggingRef.current = true
     event.currentTarget.setPointerCapture(event.pointerId)
   }, [])
 
-  const handlePointerUp = useCallback((event) => {
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current || startXRef.current === null) return
     const diff = startXRef.current - event.clientX
     handleSwipe(diff)
@@ -112,7 +112,7 @@ function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
     event.currentTarget.releasePointerCapture(event.pointerId)
   }, [handleSwipe])
 
-  const handlePointerCancel = useCallback((event) => {
+  const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current || startXRef.current === null) return
     const diff = startXRef.current - event.clientX
     handleSwipe(diff)
