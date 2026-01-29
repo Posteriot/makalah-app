@@ -717,16 +717,211 @@
     gap: 12px;
   }
 
-  /* Mobile Menu Sign Out */
-  .mobile-menu__signout {
+  /* ==========================================================================
+   * MOBILE MENU AUTH SECTION
+   * Benefits-like background with accordion for user menu
+   * ========================================================================== */
+  .mobile-menu__auth-section {
+    position: relative;
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    background-color: var(--luxe-zinc-600, #1c1c21);
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  :root:not(.dark) .mobile-menu__auth-section,
+  .light .mobile-menu__auth-section {
+    background-color: #f4f4f5;
+  }
+
+  /* Background stripes layer */
+  .mobile-menu__auth-bg-stripes {
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.08) 0,
+      rgba(255, 255, 255, 0.08) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  }
+
+  :root:not(.dark) .mobile-menu__auth-bg-stripes,
+  .light .mobile-menu__auth-bg-stripes {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(0, 0, 0, 0.07) 0,
+      rgba(0, 0, 0, 0.07) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+    opacity: 0.6;
+  }
+
+  /* Background dots layer */
+  .mobile-menu__auth-bg-dots {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+    z-index: 1;
+    mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
+  }
+
+  :root:not(.dark) .mobile-menu__auth-bg-dots,
+  .light .mobile-menu__auth-bg-dots {
+    background-image: radial-gradient(rgba(0, 0, 0, 0.12) 1px, transparent 1px);
+  }
+
+  /* Auth content container */
+  .mobile-menu__auth-content {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Auth row (theme toggle & user header) */
+  .mobile-menu__auth-row {
     display: flex;
     align-items: center;
     gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    width: 100%;
+    text-align: left;
+    transition: background 0.15s ease;
+  }
+
+  .mobile-menu__auth-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  :root:not(.dark) .mobile-menu__auth-row:hover,
+  .light .mobile-menu__auth-row:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  /* Auth icon (sun/moon) */
+  .mobile-menu__auth-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--foreground);
+    flex-shrink: 0;
+  }
+
+  /* Auth avatar */
+  .mobile-menu__auth-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--foreground);
+    flex-shrink: 0;
+  }
+
+  /* Auth label (text) */
+  .mobile-menu__auth-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--foreground);
+    flex: 1;
+  }
+
+  /* Auth badge */
+  .mobile-menu__auth-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: auto;
+  }
+
+  /* User Accordion */
+  .mobile-menu__user-accordion {
+    width: 100%;
+  }
+
+  .mobile-menu__user-accordion-item {
+    border: none !important;
+  }
+
+  .mobile-menu__user-accordion-trigger {
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  .mobile-menu__user-accordion-trigger:hover {
+    text-decoration: none !important;
+  }
+
+  .mobile-menu__user-accordion-trigger > .mobile-menu__auth-row {
+    flex: 1;
+  }
+
+  /* Accordion chevron */
+  .mobile-menu__user-accordion-trigger svg[class*="lucide-chevron"] {
+    width: 16px;
+    height: 16px;
+    color: var(--muted-foreground);
+    margin-right: 12px;
+    transition: transform 0.2s ease;
+  }
+
+  /* Accordion content */
+  .mobile-menu__user-accordion-content {
+    padding-top: 4px;
+    padding-left: 40px; /* Align with text after avatar */
+  }
+
+  /* User menu item */
+  .mobile-menu__user-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--foreground);
+    border-radius: 8px;
+    width: 100%;
+    text-align: left;
+    transition: background 0.15s ease;
+  }
+
+  .mobile-menu__user-menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  :root:not(.dark) .mobile-menu__user-menu-item:hover,
+  .light .mobile-menu__user-menu-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  /* Sign out item */
+  .mobile-menu__user-signout {
     color: var(--destructive) !important;
   }
 
-  .mobile-menu__signout:hover {
-    background: rgba(239, 68, 68, 0.1);
+  .mobile-menu__user-signout:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
   }
 
   /* Button base */

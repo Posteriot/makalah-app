@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "next-themes"
-import { Menu, X, Sun, Moon, User, CreditCard, Settings, LogOut, Loader2 } from "lucide-react"
+import { Menu, X, Sun, Moon, User, CreditCard, Settings, LogOut, Loader2, ChevronDown } from "lucide-react"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { SignedIn, SignedOut, useUser, useClerk } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
@@ -280,95 +286,104 @@ export function GlobalHeader() {
             </Link>
           </SignedOut>
 
-          {/* SignedIn: Show theme toggle + user section */}
+          {/* SignedIn: Auth section with benefits-like background */}
           <SignedIn>
-            {/* Hairline Divider */}
-            <div className="mobile-menu__divider" />
+            <div className="mobile-menu__auth-section">
+              {/* Background layers (like BenefitsSection) */}
+              <div className="mobile-menu__auth-bg-stripes" />
+              <div className="mobile-menu__auth-bg-dots" />
 
-            {/* Theme Toggle Row - use mounted check to prevent hydration mismatch */}
-            <button
-              onClick={toggleTheme}
-              className="mobile-menu__link mobile-menu__theme-toggle"
-              type="button"
-              disabled={!mounted}
-            >
-              {(mounted ? resolvedTheme : "dark") === "dark" ? (
-                <>
-                  <Sun className="h-4 w-4" />
-                  <span>Light Mode</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="h-4 w-4" />
-                  <span>Dark Mode</span>
-                </>
-              )}
-            </button>
-
-            {/* User Info Header */}
-            <div className="mobile-menu__user-header">
-              <div className="mobile-menu__avatar">
-                {initial}
-              </div>
-              <div className="mobile-menu__user-info">
-                <span className="mobile-menu__user-name">{fullName}</span>
-                {canRenderBadge && (
-                  <span className={cn("mobile-menu__badge", segmentConfig.className)}>
-                    {segmentConfig.label}
+              {/* Auth content */}
+              <div className="mobile-menu__auth-content">
+                {/* Theme Toggle Row */}
+                <button
+                  onClick={toggleTheme}
+                  className="mobile-menu__auth-row"
+                  type="button"
+                  disabled={!mounted}
+                >
+                  <div className="mobile-menu__auth-icon">
+                    {(mounted ? resolvedTheme : "dark") === "dark" ? (
+                      <Sun className="h-4 w-4" />
+                    ) : (
+                      <Moon className="h-4 w-4" />
+                    )}
+                  </div>
+                  <span className="mobile-menu__auth-label">
+                    {(mounted ? resolvedTheme : "dark") === "dark" ? "Light Mode" : "Dark Mode"}
                   </span>
-                )}
+                </button>
+
+                {/* User Accordion */}
+                <Accordion type="single" collapsible className="mobile-menu__user-accordion">
+                  <AccordionItem value="user" className="mobile-menu__user-accordion-item">
+                    <AccordionTrigger className="mobile-menu__user-accordion-trigger">
+                      <div className="mobile-menu__auth-row">
+                        <div className="mobile-menu__auth-avatar">
+                          {initial}
+                        </div>
+                        <span className="mobile-menu__auth-label">{fullName}</span>
+                        {canRenderBadge && (
+                          <span className={cn("mobile-menu__auth-badge", segmentConfig.className)}>
+                            {segmentConfig.label}
+                          </span>
+                        )}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="mobile-menu__user-accordion-content">
+                      <button
+                        onClick={() => {
+                          setIsMobileMenuOpen(false)
+                          setIsSettingsOpen(true)
+                        }}
+                        className="mobile-menu__user-menu-item"
+                        type="button"
+                      >
+                        <User className="h-4 w-4" />
+                        <span>Atur Akun</span>
+                      </button>
+
+                      <Link
+                        href="/subscription/overview"
+                        className="mobile-menu__user-menu-item"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        <span>Subskripsi</span>
+                      </Link>
+
+                      {isAdmin && (
+                        <Link
+                          href="/dashboard"
+                          className="mobile-menu__user-menu-item"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <Settings className="h-4 w-4" />
+                          <span>Admin Panel</span>
+                        </Link>
+                      )}
+
+                      <button
+                        onClick={handleSignOut}
+                        disabled={isSigningOut}
+                        className={cn(
+                          "mobile-menu__user-menu-item mobile-menu__user-signout",
+                          isSigningOut && "opacity-50 cursor-not-allowed"
+                        )}
+                        type="button"
+                      >
+                        {isSigningOut ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <LogOut className="h-4 w-4" />
+                        )}
+                        <span>{isSigningOut ? "Keluar..." : "Sign out"}</span>
+                      </button>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </div>
             </div>
-
-            {/* User Menu Items */}
-            <button
-              onClick={() => {
-                setIsMobileMenuOpen(false)
-                setIsSettingsOpen(true)
-              }}
-              className="mobile-menu__link mobile-menu__user-link"
-              type="button"
-            >
-              <User className="h-4 w-4" />
-              <span>Atur Akun</span>
-            </button>
-
-            <Link
-              href="/subscription/overview"
-              className="mobile-menu__link mobile-menu__user-link"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <CreditCard className="h-4 w-4" />
-              <span>Subskripsi</span>
-            </Link>
-
-            {isAdmin && (
-              <Link
-                href="/dashboard"
-                className="mobile-menu__link mobile-menu__user-link"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <Settings className="h-4 w-4" />
-                <span>Admin Panel</span>
-              </Link>
-            )}
-
-            <button
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              className={cn(
-                "mobile-menu__link mobile-menu__signout",
-                isSigningOut && "opacity-50 cursor-not-allowed"
-              )}
-              type="button"
-            >
-              {isSigningOut ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <LogOut className="h-4 w-4" />
-              )}
-              <span>{isSigningOut ? "Keluar..." : "Sign out"}</span>
-            </button>
           </SignedIn>
         </nav>
       )}
