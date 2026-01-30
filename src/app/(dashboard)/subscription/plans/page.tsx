@@ -33,10 +33,14 @@ import { toast } from "sonner"
 // Types
 // ════════════════════════════════════════════════════════════════
 
-interface TopupOption {
-  amount: number
+interface CreditPackage {
+  type: "paper" | "extension_s" | "extension_m"
+  credits: number
   tokens: number
+  priceIDR: number
   label: string
+  description?: string
+  ratePerCredit?: number
   popular?: boolean
 }
 
@@ -47,10 +51,17 @@ interface PaymentResult {
   status: string
   amount: number
   expiresAt: number
+  // Package info
+  packageType?: string
+  credits?: number
+  packageLabel?: string
+  // QRIS
   qrString?: string
   qrCodeUrl?: string
+  // VA
   vaNumber?: string
   vaChannel?: string
+  // E-Wallet
   redirectUrl?: string
 }
 
@@ -95,8 +106,8 @@ export default function PlansHubPage() {
   // Fetch plans from database
   const plans = useQuery(api.pricingPlans.getActivePlans)
 
-  // Fetch topup options for BPP
-  const topupOptionsResult = useQuery(api.pricingPlans.getTopupOptionsForPlan, { slug: "bpp" })
+  // Fetch credit packages for BPP
+  const creditPackagesResult = useQuery(api.pricingPlans.getCreditPackagesForPlan, { slug: "bpp" })
 
   // Get current credit balance
   const creditBalance = useQuery(
@@ -108,7 +119,7 @@ export default function PlansHubPage() {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // Payment state
-  const [selectedAmount, setSelectedAmount] = useState<TopupOption | null>(null)
+  const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("qris")
   const [selectedVAChannel, setSelectedVAChannel] = useState(VA_CHANNELS[0].code)
   const [selectedEWalletChannel, setSelectedEWalletChannel] = useState(EWALLET_CHANNELS[0].code)
@@ -125,11 +136,12 @@ export default function PlansHubPage() {
       : "skip"
   )
 
-  // Set default selected amount when topupOptions load
+  // Set default selected package when creditPackages load
   // Using flushSync alternative: derive initial state from props
-  const derivedSelectedAmount = selectedAmount ?? (
-    topupOptionsResult?.topupOptions
-      ? (topupOptionsResult.topupOptions.find((o) => o.popular) || topupOptionsResult.topupOptions[0])
+  const creditPackages = creditPackagesResult?.creditPackages ?? []
+  const derivedSelectedPackage = selectedPackage ?? (
+    creditPackages.length > 0
+      ? (creditPackages.find((p) => p.popular) || creditPackages[0])
       : null
   )
 
@@ -151,7 +163,7 @@ export default function PlansHubPage() {
   }, [handlePaymentStatusChange])
 
   const handleTopUp = useCallback(async () => {
-    if (isProcessing || !derivedSelectedAmount) return
+    if (isProcessing || !derivedSelectedPackage) return
 
     // Validate mobile number for OVO
     if (selectedMethod === "ewallet" && selectedEWalletChannel === "OVO") {
@@ -170,7 +182,7 @@ export default function PlansHubPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: derivedSelectedAmount.amount,
+          packageType: derivedSelectedPackage.type,
           paymentMethod: selectedMethod,
           vaChannel: selectedMethod === "va" ? selectedVAChannel : undefined,
           ewalletChannel: selectedMethod === "ewallet" ? selectedEWalletChannel : undefined,
@@ -197,7 +209,7 @@ export default function PlansHubPage() {
     } finally {
       setIsProcessing(false)
     }
-  }, [isProcessing, derivedSelectedAmount, selectedMethod, selectedVAChannel, selectedEWalletChannel, mobileNumber])
+  }, [isProcessing, derivedSelectedPackage, selectedMethod, selectedVAChannel, selectedEWalletChannel, mobileNumber])
 
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text)
@@ -238,8 +250,7 @@ export default function PlansHubPage() {
 
   const currentTier = (user.subscriptionStatus || "free") as keyof typeof TIER_BADGES
   const tierBadge = TIER_BADGES[currentTier] || TIER_BADGES.gratis
-  const currentBalance = creditBalance?.remainingCredits ?? 0
-  const topupOptions = topupOptionsResult?.topupOptions || []
+  const currentCredits = creditBalance?.remainingCredits ?? 0
 
   return (
     <div className="space-y-6">
@@ -264,7 +275,7 @@ export default function PlansHubPage() {
         </span>
         {currentTier === "bpp" && (
           <span className="ml-auto text-sm">
-            Saldo: <strong>Rp {currentBalance.toLocaleString("id-ID")}</strong>
+            Sisa: <strong>{currentCredits} kredit</strong>
           </span>
         )}
       </div>
@@ -377,7 +388,7 @@ export default function PlansHubPage() {
                             selectedEWalletChannel={selectedEWalletChannel}
                             onReset={resetPayment}
                             onCopy={copyToClipboard}
-                            currentBalance={currentBalance}
+                            currentCredits={currentCredits}
                           />
                         )}
 
@@ -392,35 +403,43 @@ export default function PlansHubPage() {
                               </div>
                             )}
 
-                            {/* Amount Selection */}
+                            {/* Package Selection */}
                             <div>
-                              <p className="text-sm font-medium mb-2">Pilih Nominal</p>
+                              <p className="text-sm font-medium mb-2">Pilih Paket Kredit</p>
                               <div className="grid grid-cols-1 gap-2">
-                                {topupOptions.map((option) => (
+                                {creditPackages.map((pkg) => (
                                   <button
-                                    key={option.amount}
-                                    onClick={() => setSelectedAmount(option)}
+                                    key={pkg.type}
+                                    onClick={() => setSelectedPackage(pkg)}
                                     disabled={isProcessing}
                                     className={cn(
                                       "relative p-3 border rounded-lg text-left transition-colors",
-                                      derivedSelectedAmount?.amount === option.amount
+                                      derivedSelectedPackage?.type === pkg.type
                                         ? "border-primary bg-primary/5"
                                         : "border-border hover:border-primary/50",
                                       isProcessing && "opacity-50 cursor-not-allowed"
                                     )}
                                   >
-                                    {option.popular && (
+                                    {pkg.popular && (
                                       <span className="absolute -top-2 right-2 text-[10px] font-medium bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
                                         Populer
                                       </span>
                                     )}
                                     <div className="flex items-center justify-between">
-                                      <span className="font-semibold">{option.label}</span>
-                                      <span className="text-sm text-muted-foreground">
-                                        = {option.tokens.toLocaleString("id-ID")} tokens
+                                      <div>
+                                        <span className="font-semibold">{pkg.label}</span>
+                                        <span className="text-sm text-muted-foreground ml-2">
+                                          ({pkg.credits} kredit)
+                                        </span>
+                                      </div>
+                                      <span className="text-sm font-medium">
+                                        Rp {pkg.priceIDR.toLocaleString("id-ID")}
                                       </span>
                                     </div>
-                                    {derivedSelectedAmount?.amount === option.amount && (
+                                    {pkg.description && (
+                                      <p className="text-xs text-muted-foreground mt-1">{pkg.description}</p>
+                                    )}
+                                    {derivedSelectedPackage?.type === pkg.type && (
                                       <CheckCircle2 className="absolute top-3 right-3 h-4 w-4 text-primary" />
                                     )}
                                   </button>
@@ -516,7 +535,7 @@ export default function PlansHubPage() {
                             {/* Pay Button */}
                             <button
                               onClick={handleTopUp}
-                              disabled={isProcessing || !derivedSelectedAmount}
+                              disabled={isProcessing || !derivedSelectedPackage}
                               className={cn(
                                 "w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
                                 "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -531,7 +550,7 @@ export default function PlansHubPage() {
                               ) : (
                                 <>
                                   <CreditCard className="h-4 w-4" />
-                                  Bayar {derivedSelectedAmount?.label}
+                                  Bayar {derivedSelectedPackage?.label}
                                 </>
                               )}
                             </button>
@@ -590,7 +609,7 @@ interface PaymentResultSectionProps {
   selectedEWalletChannel: string
   onReset: () => void
   onCopy: (text: string) => void
-  currentBalance: number
+  currentCredits: number
 }
 
 function PaymentResultSection({
@@ -600,9 +619,10 @@ function PaymentResultSection({
   selectedEWalletChannel,
   onReset,
   onCopy,
-  currentBalance,
+  currentCredits,
 }: PaymentResultSectionProps) {
   const status = paymentStatus?.status || paymentResult.status
+  const purchasedCredits = paymentResult.credits ?? 0
 
   // Success State
   if (status === "SUCCEEDED") {
@@ -614,7 +634,7 @@ function PaymentResultSection({
         <div>
           <p className="font-semibold text-green-700 dark:text-green-400">Pembayaran Berhasil!</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Saldo baru: <strong>Rp {(currentBalance + paymentResult.amount).toLocaleString("id-ID")}</strong>
+            +{purchasedCredits} kredit → Total: <strong>{currentCredits + purchasedCredits} kredit</strong>
           </p>
         </div>
         <Link
