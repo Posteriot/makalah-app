@@ -6,6 +6,7 @@
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
+// Note: tokensToCredits conversion handled internally by deductCredits mutation
 
 // Token estimation: ~4 chars = 1 token for English, ~2-3 chars for Indonesian
 const CHARS_PER_TOKEN = 3
@@ -23,6 +24,10 @@ export interface QuotaCheckResult {
   bypassed?: boolean
   currentBalance?: number
   requiredAmount?: number
+  // Credit-specific
+  currentCredits?: number
+  estimatedCredits?: number
+  isSoftBlocked?: boolean
 }
 
 export interface UsageRecordResult {
@@ -125,13 +130,26 @@ export async function recordUsageAfterOperation(params: {
     if (tier === "bpp") {
       // BPP: Deduct from credit balance
       try {
-        await fetchMutation(api.billing.credits.deductCredits, {
+        const deductResult = await fetchMutation(api.billing.credits.deductCredits, {
           userId: params.userId,
           tokensUsed: params.totalTokens,
+          sessionId: params.sessionId, // For soft-block tracking
         }, convexOptions)
+
+        console.log(`[Billing] Credits deducted:`, {
+          userId: params.userId,
+          tokensUsed: params.totalTokens,
+          creditsDeducted: deductResult.creditsDeducted,
+          remainingCredits: deductResult.remainingCredits,
+        })
       } catch (error) {
-        // Log but don't fail - credit might be insufficient
-        console.warn("[Billing] Credit deduction failed:", error)
+        // Check for insufficient credits (soft-block)
+        if (error instanceof Error && error.message.includes("Insufficient credits")) {
+          console.warn("[Billing] Soft-block triggered:", error.message)
+          // Don't throw - let the response complete, UI will show soft-block
+        } else {
+          console.warn("[Billing] Credit deduction failed:", error)
+        }
       }
     } else {
       // Gratis/Pro: Deduct from quota
@@ -164,6 +182,34 @@ export function createQuotaExceededResponse(result: QuotaCheckResult): Response 
       action: result.action,
       currentBalance: result.currentBalance,
       requiredAmount: result.requiredAmount,
+      currentCredits: result.currentCredits,
+      estimatedCredits: result.estimatedCredits,
+    }),
+    {
+      status: 402, // Payment Required
+      headers: { "Content-Type": "application/json" },
+    }
+  )
+}
+
+/**
+ * Create a soft-block response (credit exhausted mid-session)
+ */
+export function createSoftBlockResponse(result: {
+  reason: string
+  message: string
+  action?: "topup"
+  currentCredits?: number
+  estimatedCredits?: number
+}): Response {
+  return new Response(
+    JSON.stringify({
+      error: "credit_exhausted",
+      reason: result.reason,
+      message: result.message,
+      action: result.action ?? "topup",
+      currentCredits: result.currentCredits,
+      estimatedCredits: result.estimatedCredits,
     }),
     {
       status: 402, // Payment Required
