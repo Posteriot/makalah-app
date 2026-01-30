@@ -17,19 +17,14 @@ import {
   type EWalletChannel,
 } from "@/lib/xendit/client"
 import { randomUUID } from "crypto"
-
-// Valid top-up amounts
-const VALID_AMOUNTS = [25000, 50000, 100000]
+import { isValidPackageType, getPackageByType } from "@convex/billing/constants"
 
 // Request body type
 interface TopUpRequest {
-  amount: number
+  packageType: "paper" | "extension_s" | "extension_m"
   paymentMethod: "qris" | "va" | "ewallet"
-  // For VA
   vaChannel?: VAChannel
-  // For E-Wallet
   ewalletChannel?: EWalletChannel
-  // For OVO (requires mobile number)
   mobileNumber?: string
 }
 
@@ -55,15 +50,25 @@ export async function POST(req: NextRequest) {
 
     // 3. Parse request body
     const body = (await req.json()) as TopUpRequest
-    const { amount, paymentMethod, vaChannel, ewalletChannel, mobileNumber } = body
+    const { packageType, paymentMethod, vaChannel, ewalletChannel, mobileNumber } = body
 
-    // 4. Validate amount
-    if (!VALID_AMOUNTS.includes(amount)) {
+    // 4. Validate package type
+    if (!isValidPackageType(packageType)) {
       return NextResponse.json(
-        { error: `Nominal tidak valid. Pilih: ${VALID_AMOUNTS.join(", ")}` },
+        { error: `Paket tidak valid. Pilih: paper, extension_s, atau extension_m` },
         { status: 400 }
       )
     }
+
+    const pkg = getPackageByType(packageType)
+    if (!pkg) {
+      return NextResponse.json(
+        { error: "Paket tidak ditemukan" },
+        { status: 400 }
+      )
+    }
+
+    const { credits, priceIDR: amount, label: packageLabel } = pkg
 
     // 5. Generate unique reference ID and idempotency key
     const referenceId = `topup_${convexUser._id}_${Date.now()}`
@@ -97,7 +102,7 @@ export async function POST(req: NextRequest) {
         xenditResponse = await createQRISPayment({
           referenceId,
           amount,
-          description: `Top Up Credit Rp ${amount.toLocaleString("id-ID")}`,
+          description: `${packageLabel} (${credits} kredit)`,
           metadata,
           expiresMinutes: 30,
         })
@@ -116,7 +121,7 @@ export async function POST(req: NextRequest) {
           amount,
           channelCode: vaChannel,
           customerName: `${convexUser.firstName || ""} ${convexUser.lastName || ""}`.trim() || "Makalah User",
-          description: `Top Up Credit Rp ${amount.toLocaleString("id-ID")}`,
+          description: `${packageLabel} (${credits} kredit)`,
           metadata,
           expiresMinutes: 60 * 24, // 24 hours
         })
@@ -154,7 +159,7 @@ export async function POST(req: NextRequest) {
             referenceId,
             amount,
             mobileNumber: normalizedNumber,
-            description: `Top Up Credit Rp ${amount.toLocaleString("id-ID")}`,
+            description: `${packageLabel} (${credits} kredit)`,
             metadata,
           })
         } else if (ewalletChannel === "GOPAY") {
@@ -164,7 +169,7 @@ export async function POST(req: NextRequest) {
             successReturnUrl: `${appUrl}/subscription/topup/success`,
             failureReturnUrl: `${appUrl}/subscription/topup/failed`,
             cancelReturnUrl: `${appUrl}/subscription/topup`,
-            description: `Top Up Credit Rp ${amount.toLocaleString("id-ID")}`,
+            description: `${packageLabel} (${credits} kredit)`,
             metadata,
           })
         } else {
@@ -199,7 +204,9 @@ export async function POST(req: NextRequest) {
       paymentMethod: paymentMethodType,
       paymentChannel,
       paymentType: "credit_topup",
-      description: `Top Up Credit Rp ${amount.toLocaleString("id-ID")}`,
+      packageType,
+      credits,
+      description: `${packageLabel} (${credits} kredit)`,
       idempotencyKey,
       expiredAt: expiresAt,
     }, convexOptions)
@@ -209,6 +216,8 @@ export async function POST(req: NextRequest) {
       xenditId: xenditResponse.payment_request_id,
       method: paymentMethodType,
       amount,
+      packageType,
+      credits,
     })
 
     // 11. Build response based on payment method
@@ -219,6 +228,10 @@ export async function POST(req: NextRequest) {
       status: string
       amount: number
       expiresAt: number
+      // Package info
+      packageType: string
+      credits: number
+      packageLabel: string
       // QRIS specific
       qrString?: string
       qrCodeUrl?: string
@@ -234,6 +247,9 @@ export async function POST(req: NextRequest) {
       status: xenditResponse.status,
       amount,
       expiresAt,
+      packageType,
+      credits,
+      packageLabel,
     }
 
     // Add method-specific data from actions array (API v2024-11-11)
