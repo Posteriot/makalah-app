@@ -440,6 +440,15 @@ export default defineSchema({
     estimatedContentChars: v.optional(v.number()), // Total chars of validated content
     estimatedTokenUsage: v.optional(v.number()), // Estimated tokens (chars / 4)
 
+    // ════════════════════════════════════════════════════════════════
+    // Credit Soft Cap Tracking (per paper session)
+    // ════════════════════════════════════════════════════════════════
+    creditAllotted: v.optional(v.number()), // Kredit yang dialokasikan (default: 300)
+    creditUsed: v.optional(v.number()), // Kredit yang sudah terpakai di session ini
+    creditRemaining: v.optional(v.number()), // Sisa kredit session (computed)
+    isSoftBlocked: v.optional(v.boolean()), // True jika kredit habis
+    softBlockedAt: v.optional(v.number()), // Timestamp saat soft-blocked
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
