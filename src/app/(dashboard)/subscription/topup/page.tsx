@@ -22,11 +22,24 @@ import { toast } from "sonner"
 import Image from "next/image"
 import { QRCodeSVG } from "qrcode.react"
 
-const TOP_UP_OPTIONS = [
-  { amount: 25000, tokens: 250000, label: "Rp 25.000", popular: false },
-  { amount: 50000, tokens: 500000, label: "Rp 50.000", popular: true },
-  { amount: 100000, tokens: 1000000, label: "Rp 100.000", popular: false },
-]
+// ════════════════════════════════════════════════════════════════
+// Types
+// ════════════════════════════════════════════════════════════════
+
+interface CreditPackage {
+  type: "paper" | "extension_s" | "extension_m"
+  credits: number
+  tokens: number
+  priceIDR: number
+  label: string
+  description?: string
+  ratePerCredit?: number
+  popular?: boolean
+}
+
+// ════════════════════════════════════════════════════════════════
+// Constants
+// ════════════════════════════════════════════════════════════════
 
 const PAYMENT_METHODS = [
   { id: "qris" as const, label: "QRIS", icon: QrCode, description: "Scan dengan e-wallet" },
@@ -50,10 +63,15 @@ type PaymentMethod = "qris" | "va" | "ewallet"
 
 interface PaymentResult {
   paymentId: string
+  convexPaymentId?: string
   xenditId: string
   status: string
   amount: number
   expiresAt: number
+  // Package info
+  packageType?: string
+  credits?: number
+  packageLabel?: string
   // QRIS
   qrString?: string
   qrCodeUrl?: string
@@ -66,7 +84,18 @@ interface PaymentResult {
 
 export default function TopUpPage() {
   const { user, isLoading: userLoading } = useCurrentUser()
-  const [selectedAmount, setSelectedAmount] = useState(TOP_UP_OPTIONS[1])
+
+  // Fetch credit packages for BPP
+  const creditPackagesResult = useQuery(api.pricingPlans.getCreditPackagesForPlan, { slug: "bpp" })
+
+  // Get current credit balance
+  const creditBalance = useQuery(
+    api.billing.credits.getCreditBalance,
+    user?._id ? { userId: user._id } : "skip"
+  )
+
+  // Payment state
+  const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("qris")
   const [selectedVAChannel, setSelectedVAChannel] = useState(VA_CHANNELS[0].code)
   const [selectedEWalletChannel, setSelectedEWalletChannel] = useState(EWALLET_CHANNELS[0].code)
@@ -75,14 +104,16 @@ export default function TopUpPage() {
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Get current credit balance
-  const creditBalance = useQuery(
-    api.billing.credits.getCreditBalance,
-    user?._id ? { userId: user._id } : "skip"
+  // Derive selected package from query results
+  const creditPackages = creditPackagesResult?.creditPackages ?? []
+  const derivedSelectedPackage = selectedPackage ?? (
+    creditPackages.length > 0
+      ? (creditPackages.find((p) => p.popular) || creditPackages[0])
+      : null
   )
 
   const handleTopUp = useCallback(async () => {
-    if (isProcessing) return
+    if (isProcessing || !derivedSelectedPackage) return
 
     // Validate mobile number for OVO
     if (selectedMethod === "ewallet" && selectedEWalletChannel === "OVO") {
@@ -103,7 +134,7 @@ export default function TopUpPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: selectedAmount.amount,
+          packageType: derivedSelectedPackage.type,
           paymentMethod: selectedMethod,
           vaChannel: selectedMethod === "va" ? selectedVAChannel : undefined,
           ewalletChannel: selectedMethod === "ewallet" ? selectedEWalletChannel : undefined,
@@ -130,7 +161,7 @@ export default function TopUpPage() {
     } finally {
       setIsProcessing(false)
     }
-  }, [isProcessing, selectedAmount, selectedMethod, selectedVAChannel, selectedEWalletChannel, mobileNumber])
+  }, [isProcessing, derivedSelectedPackage, selectedMethod, selectedVAChannel, selectedEWalletChannel, mobileNumber])
 
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text)
@@ -143,7 +174,7 @@ export default function TopUpPage() {
   }, [])
 
   // Loading state
-  if (userLoading) {
+  if (userLoading || creditPackagesResult === undefined) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse space-y-4">
@@ -154,7 +185,7 @@ export default function TopUpPage() {
     )
   }
 
-  const currentBalance = creditBalance?.remainingCredits ?? 0
+  const currentCredits = creditBalance?.remainingCredits ?? 0
 
   // Show payment result (QR Code / VA Number / OVO notification)
   // For ewallet: only show result if no redirect URL (OVO uses push notification)
@@ -330,43 +361,53 @@ export default function TopUpPage() {
       <div className="bg-muted/30 border border-border rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Saldo saat ini</p>
+            <p className="text-sm text-muted-foreground">Saldo kredit saat ini</p>
             <p className="text-2xl font-semibold">
-              Rp {currentBalance.toLocaleString("id-ID")}
+              {currentCredits} <span className="text-base font-normal text-muted-foreground">kredit</span>
             </p>
           </div>
           <CreditCard className="h-8 w-8 text-muted-foreground/50" />
         </div>
       </div>
 
-      {/* Amount Selection */}
+      {/* Package Selection */}
       <div className="bg-card border border-border rounded-lg p-4">
-        <h2 className="font-medium mb-3">Pilih Nominal</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {TOP_UP_OPTIONS.map((option) => (
+        <h2 className="font-medium mb-3">Pilih Paket Kredit</h2>
+        <div className="grid grid-cols-1 gap-3">
+          {creditPackages.map((pkg) => (
             <button
-              key={option.amount}
-              onClick={() => setSelectedAmount(option)}
+              key={pkg.type}
+              onClick={() => setSelectedPackage(pkg)}
               disabled={isProcessing}
               className={cn(
                 "relative p-4 border rounded-lg text-left transition-colors",
-                selectedAmount.amount === option.amount
+                derivedSelectedPackage?.type === pkg.type
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/50",
                 isProcessing && "opacity-50 cursor-not-allowed"
               )}
             >
-              {option.popular && (
+              {pkg.popular && (
                 <span className="absolute -top-2 right-2 text-[10px] font-medium bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
                   Populer
                 </span>
               )}
-              <p className="font-semibold">{option.label}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                = {option.tokens.toLocaleString("id-ID")} tokens
-              </p>
-              {selectedAmount.amount === option.amount && (
-                <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-primary" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold">{pkg.label}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {pkg.credits} kredit
+                  </p>
+                </div>
+                <p className="text-lg font-semibold">
+                  Rp {pkg.priceIDR.toLocaleString("id-ID")}
+                </p>
+              </div>
+              {pkg.description && (
+                <p className="text-xs text-muted-foreground mt-2">{pkg.description}</p>
+              )}
+              {derivedSelectedPackage?.type === pkg.type && (
+                <CheckCircle2 className="absolute top-4 right-4 h-5 w-5 text-primary" />
               )}
             </button>
           ))}
@@ -502,17 +543,19 @@ export default function TopUpPage() {
       <div className="bg-card border border-border rounded-lg p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-muted-foreground">Total Pembayaran</span>
-          <span className="text-xl font-semibold">{selectedAmount.label}</span>
+          <span className="text-xl font-semibold">
+            Rp {(derivedSelectedPackage?.priceIDR ?? 0).toLocaleString("id-ID")}
+          </span>
         </div>
         <div className="flex items-center justify-between mb-4 text-sm">
-          <span className="text-muted-foreground">Saldo setelah top up</span>
+          <span className="text-muted-foreground">Kredit setelah top up</span>
           <span className="font-medium">
-            Rp {(currentBalance + selectedAmount.amount).toLocaleString("id-ID")}
+            {currentCredits + (derivedSelectedPackage?.credits ?? 0)} kredit
           </span>
         </div>
         <button
           onClick={handleTopUp}
-          disabled={isProcessing}
+          disabled={isProcessing || !derivedSelectedPackage}
           className={cn(
             "w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
             "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -530,7 +573,7 @@ export default function TopUpPage() {
               Lanjut ke {selectedEWalletChannel}
             </>
           ) : (
-            "Bayar Sekarang"
+            <>Bayar {derivedSelectedPackage?.label}</>
           )}
         </button>
         <p className="text-xs text-muted-foreground text-center mt-3">
