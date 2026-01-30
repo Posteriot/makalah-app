@@ -154,7 +154,7 @@ export default function TopUpPage() {
     )
   }
 
-  const currentBalance = creditBalance?.balanceIDR ?? 0
+  const currentBalance = creditBalance?.remainingCredits ?? 0
 
   // Show payment result (QR Code / VA Number / OVO notification)
   // For ewallet: only show result if no redirect URL (OVO uses push notification)

@@ -238,7 +238,7 @@ export default function PlansHubPage() {
 
   const currentTier = (user.subscriptionStatus || "free") as keyof typeof TIER_BADGES
   const tierBadge = TIER_BADGES[currentTier] || TIER_BADGES.gratis
-  const currentBalance = creditBalance?.balanceIDR ?? 0
+  const currentBalance = creditBalance?.remainingCredits ?? 0
   const topupOptions = topupOptionsResult?.topupOptions || []
 
   return (

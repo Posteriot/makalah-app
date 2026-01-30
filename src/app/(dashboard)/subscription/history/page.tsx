@@ -94,10 +94,10 @@ export default function TransactionHistoryPage() {
                 <div
                   className={cn(
                     "p-2 rounded-full",
-                    tx.type === "topup" ? "bg-green-100" : "bg-red-100"
+                    tx.type === "purchase" ? "bg-green-100" : "bg-red-100"
                   )}
                 >
-                  {tx.type === "topup" ? (
+                  {tx.type === "purchase" ? (
                     <ArrowDownRight className="h-4 w-4 text-green-600" />
                   ) : (
                     <ArrowUpRight className="h-4 w-4 text-red-600" />
@@ -112,16 +112,16 @@ export default function TransactionHistoryPage() {
                   </p>
                 </div>
 
-                {/* Amount */}
+                {/* Credits */}
                 <div className="text-right">
                   <p
                     className={cn(
                       "font-semibold tabular-nums",
-                      tx.type === "topup" ? "text-green-600" : "text-red-600"
+                      tx.type === "purchase" ? "text-green-600" : "text-red-600"
                     )}
                   >
-                    {tx.type === "topup" ? "+" : ""}
-                    Rp {Math.abs(tx.amount).toLocaleString("id-ID")}
+                    {tx.credits > 0 ? "+" : ""}
+                    {tx.credits} kredit
                   </p>
                 </div>
               </div>

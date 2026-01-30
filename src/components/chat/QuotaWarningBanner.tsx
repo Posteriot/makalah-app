@@ -81,23 +81,23 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
     // Credit-based tier
     if (!creditBalance) return null
 
-    const balanceIDR = creditBalance.balanceIDR ?? 0
+    const remainingCredits = creditBalance.remainingCredits ?? 0
 
-    if (balanceIDR <= 0) {
+    if (remainingCredits <= 0) {
       bannerType = "depleted"
-      message = "Saldo credit habis. Top up untuk melanjutkan."
-      actionText = "Top Up"
-      actionHref = "/subscription/topup"
-    } else if (balanceIDR < 5000) {
+      message = "Kredit habis. Beli kredit untuk melanjutkan."
+      actionText = "Beli Kredit"
+      actionHref = "/subscription/plans"
+    } else if (remainingCredits < 30) {
       bannerType = "critical"
-      message = `Saldo credit rendah: Rp ${balanceIDR.toLocaleString("id-ID")}. Segera top up.`
-      actionText = "Top Up"
-      actionHref = "/subscription/topup"
-    } else if (balanceIDR < 15000) {
+      message = `Kredit rendah: ${remainingCredits} kredit. Segera beli kredit.`
+      actionText = "Beli Kredit"
+      actionHref = "/subscription/plans"
+    } else if (remainingCredits < 100) {
       bannerType = "warning"
-      message = `Saldo credit: Rp ${balanceIDR.toLocaleString("id-ID")}. Pertimbangkan top up.`
-      actionText = "Top Up"
-      actionHref = "/subscription/topup"
+      message = `Sisa kredit: ${remainingCredits} kredit. Pertimbangkan beli kredit.`
+      actionText = "Beli Kredit"
+      actionHref = "/subscription/plans"
     }
   }
 

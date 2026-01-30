@@ -1,13 +1,10 @@
-version: 2.1.1
-last_compiled: 2025-12-13 06:37:19
+version: 3.0
+default_profile: default
 
-# ================================================
-# Compiled with the following settings:
-#
-# To change these settings, run ~/agent-os/scripts/project-update.sh to re-compile your project with the new settings.
-# ================================================
-profile: default
-claude_code_commands: true
-use_claude_code_subagents: true
-agent_os_commands: false
-standards_as_claude_code_skills: false
+# Optional: define inheritance relationships for profiles
+# Profiles not listed here still work, they just have no inheritance
+# profiles:
+#   profile-a:
+#     inherits_from: default
+#   profile-b:
+#     inherits_from: profile-a

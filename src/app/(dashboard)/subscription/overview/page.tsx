@@ -130,8 +130,8 @@ export default function SubscriptionOverviewPage() {
   // Reset date (end of current period)
   const resetDate = quotaStatus?.periodEnd ? formatDate(quotaStatus.periodEnd) : "-"
 
-  // Credit balance for BPP
-  const currentCreditBalance = creditBalance?.balanceIDR ?? 0
+  // Credit balance for BPP (now in credits, not IDR)
+  const currentCreditBalance = creditBalance?.remainingCredits ?? 0
 
   return (
     <div className="space-y-6">
@@ -297,10 +297,10 @@ export default function SubscriptionOverviewPage() {
             )}
           </div>
 
-          {creditBalance?.lastTopUpAt && (
+          {creditBalance?.lastPurchaseAt && (
             <p className="text-xs text-muted-foreground mt-3">
-              Top up terakhir: {formatDate(creditBalance.lastTopUpAt)}
-              (Rp {creditBalance.lastTopUpAmount?.toLocaleString("id-ID") ?? 0})
+              Pembelian terakhir: {formatDate(creditBalance.lastPurchaseAt)}
+              ({creditBalance.lastPurchaseCredits ?? 0} kredit)
             </p>
           )}
         </div>

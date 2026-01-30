@@ -79,6 +79,9 @@ const OPENROUTER_MODELS = [
   { value: "google/gemini-2.0-flash-001", label: "Google Gemini 2.0 Flash" },
   { value: "google/gemini-2.0-flash-lite-001", label: "Google Gemini 2.0 Flash Lite" },
   // OpenAI
+  { value: "openai/gpt-5.1", label: "OpenAI GPT-5.1 (Recommended)" },
+  { value: "openai/gpt-5.2", label: "OpenAI GPT-5.2" },
+  { value: "openai/o3", label: "OpenAI o3 (Reasoning)" },
   { value: "openai/gpt-4o", label: "OpenAI GPT-4o" },
   { value: "openai/gpt-4o-mini", label: "OpenAI GPT-4o Mini" },
   { value: "openai/gpt-4.1", label: "OpenAI GPT-4.1" },

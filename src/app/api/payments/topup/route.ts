@@ -214,6 +214,7 @@ export async function POST(req: NextRequest) {
     // 11. Build response based on payment method
     const responseData: {
       paymentId: string
+      convexPaymentId: string
       xenditId: string
       status: string
       amount: number
@@ -228,6 +229,7 @@ export async function POST(req: NextRequest) {
       redirectUrl?: string
     } = {
       paymentId,
+      convexPaymentId: paymentId,
       xenditId: xenditResponse.payment_request_id,
       status: xenditResponse.status,
       amount,

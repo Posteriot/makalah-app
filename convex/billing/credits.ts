@@ -1,11 +1,13 @@
 /**
  * Credit Balance Management
  * For BPP (Bayar Per Paper) tier users
+ *
+ * Credit System: 1 kredit = 1.000 tokens
  */
 
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
-import { calculateCostIDR, TOKENS_PER_IDR } from "./constants"
+import { tokensToCredits } from "./constants"
 import { requireAuthUserId } from "../auth"
 
 function isInternalKeyValid(internalKey?: string) {
@@ -29,16 +31,27 @@ export const getCreditBalance = query({
 
     if (!balance) {
       return {
-        balanceIDR: 0,
-        balanceTokens: 0,
-        totalTopUpIDR: 0,
-        totalSpentIDR: 0,
-        lastTopUpAt: null,
-        lastTopUpAmount: null,
+        totalCredits: 0,
+        usedCredits: 0,
+        remainingCredits: 0,
+        totalPurchasedCredits: 0,
+        totalSpentCredits: 0,
+        lastPurchaseAt: null,
+        lastPurchaseType: null,
+        lastPurchaseCredits: null,
       }
     }
 
-    return balance
+    return {
+      totalCredits: balance.totalCredits,
+      usedCredits: balance.usedCredits,
+      remainingCredits: balance.remainingCredits,
+      totalPurchasedCredits: balance.totalPurchasedCredits,
+      totalSpentCredits: balance.totalSpentCredits,
+      lastPurchaseAt: balance.lastPurchaseAt,
+      lastPurchaseType: balance.lastPurchaseType,
+      lastPurchaseCredits: balance.lastPurchaseCredits,
+    }
   },
 })
 
@@ -51,7 +64,7 @@ export const initializeCreditBalance = mutation({
   },
   handler: async (ctx, args) => {
     await requireAuthUserId(ctx, args.userId)
-    // Check if already exists
+
     const existing = await ctx.db
       .query("creditBalances")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -64,19 +77,11 @@ export const initializeCreditBalance = mutation({
     const now = Date.now()
     const balanceId = await ctx.db.insert("creditBalances", {
       userId: args.userId,
-      // New credit-based fields (required)
       totalCredits: 0,
       usedCredits: 0,
       remainingCredits: 0,
       totalPurchasedCredits: 0,
       totalSpentCredits: 0,
-      // Legacy fields (optional, for backward compat)
-      balanceIDR: 0,
-      balanceTokens: 0,
-      totalTopUpIDR: 0,
-      totalSpentIDR: 0,
-      lastTopUpAt: undefined,
-      lastTopUpAmount: undefined,
       createdAt: now,
       updatedAt: now,
     })
@@ -86,13 +91,14 @@ export const initializeCreditBalance = mutation({
 })
 
 /**
- * Add credits after successful top-up payment
+ * Add credits after successful payment
  * Called from payment webhook handler
  */
 export const addCredits = mutation({
   args: {
     userId: v.id("users"),
-    amountIDR: v.number(),
+    credits: v.number(),
+    packageType: v.string(),
     paymentId: v.optional(v.id("payments")),
     internalKey: v.optional(v.string()),
   },
@@ -100,8 +106,8 @@ export const addCredits = mutation({
     if (!isInternalKeyValid(args.internalKey)) {
       await requireAuthUserId(ctx, args.userId)
     }
+
     const now = Date.now()
-    const tokensToAdd = args.amountIDR * TOKENS_PER_IDR
 
     // Get or create balance
     const balance = await ctx.db
@@ -113,24 +119,19 @@ export const addCredits = mutation({
       // Create new balance
       const balanceId = await ctx.db.insert("creditBalances", {
         userId: args.userId,
-        // New credit-based fields (required)
-        totalCredits: 0,
+        totalCredits: args.credits,
         usedCredits: 0,
-        remainingCredits: 0,
-        totalPurchasedCredits: 0,
+        remainingCredits: args.credits,
+        totalPurchasedCredits: args.credits,
         totalSpentCredits: 0,
-        // Legacy fields (for backward compat during migration)
-        balanceIDR: args.amountIDR,
-        balanceTokens: tokensToAdd,
-        totalTopUpIDR: args.amountIDR,
-        totalSpentIDR: 0,
-        lastTopUpAt: now,
-        lastTopUpAmount: args.amountIDR,
+        lastPurchaseAt: now,
+        lastPurchaseType: args.packageType,
+        lastPurchaseCredits: args.credits,
         createdAt: now,
         updatedAt: now,
       })
 
-      // Also update user subscriptionStatus to "bpp" if they were on "free"
+      // Upgrade user to BPP tier if on free
       const user = await ctx.db.get(args.userId)
       if (user && user.subscriptionStatus === "free") {
         await ctx.db.patch(args.userId, {
@@ -141,25 +142,26 @@ export const addCredits = mutation({
 
       return {
         balanceId,
-        newBalanceIDR: args.amountIDR,
-        newBalanceTokens: tokensToAdd,
+        newTotalCredits: args.credits,
+        newRemainingCredits: args.credits,
       }
     }
 
-    // Update existing balance (use ?? 0 for optional legacy fields)
-    const newBalanceIDR = (balance.balanceIDR ?? 0) + args.amountIDR
-    const newBalanceTokens = (balance.balanceTokens ?? 0) + tokensToAdd
+    // Update existing balance
+    const newTotalCredits = balance.totalCredits + args.credits
+    const newRemainingCredits = balance.remainingCredits + args.credits
 
     await ctx.db.patch(balance._id, {
-      balanceIDR: newBalanceIDR,
-      balanceTokens: newBalanceTokens,
-      totalTopUpIDR: (balance.totalTopUpIDR ?? 0) + args.amountIDR,
-      lastTopUpAt: now,
-      lastTopUpAmount: args.amountIDR,
+      totalCredits: newTotalCredits,
+      remainingCredits: newRemainingCredits,
+      totalPurchasedCredits: balance.totalPurchasedCredits + args.credits,
+      lastPurchaseAt: now,
+      lastPurchaseType: args.packageType,
+      lastPurchaseCredits: args.credits,
       updatedAt: now,
     })
 
-    // Also update user subscriptionStatus to "bpp" if they were on "free"
+    // Upgrade user to BPP tier if on free
     const user = await ctx.db.get(args.userId)
     if (user && user.subscriptionStatus === "free") {
       await ctx.db.patch(args.userId, {
@@ -170,9 +172,9 @@ export const addCredits = mutation({
 
     return {
       balanceId: balance._id,
-      newBalanceIDR,
-      newBalanceTokens,
-      previousBalanceIDR: balance.balanceIDR,
+      newTotalCredits,
+      newRemainingCredits,
+      previousRemainingCredits: balance.remainingCredits,
     }
   },
 })
@@ -185,9 +187,13 @@ export const deductCredits = mutation({
   args: {
     userId: v.id("users"),
     tokensUsed: v.number(),
+    sessionId: v.optional(v.id("paperSessions")),
   },
   handler: async (ctx, args) => {
     await requireAuthUserId(ctx, args.userId)
+
+    const creditsToDeduct = tokensToCredits(args.tokensUsed)
+
     const balance = await ctx.db
       .query("creditBalances")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -197,29 +203,44 @@ export const deductCredits = mutation({
       throw new Error("Credit balance not found")
     }
 
-    const costIDR = calculateCostIDR(args.tokensUsed)
-    const currentBalanceIDR = balance.balanceIDR ?? 0
-
-    // Check if sufficient balance
-    if (currentBalanceIDR < costIDR) {
-      throw new Error(`Insufficient credit balance. Required: Rp ${costIDR}, Available: Rp ${currentBalanceIDR}`)
+    if (balance.remainingCredits < creditsToDeduct) {
+      throw new Error(
+        `Insufficient credits. Required: ${creditsToDeduct}, Available: ${balance.remainingCredits}`
+      )
     }
 
-    const newBalanceIDR = currentBalanceIDR - costIDR
-    const newBalanceTokens = Math.max(0, (balance.balanceTokens ?? 0) - args.tokensUsed)
+    const newUsedCredits = balance.usedCredits + creditsToDeduct
+    const newRemainingCredits = balance.remainingCredits - creditsToDeduct
 
     await ctx.db.patch(balance._id, {
-      balanceIDR: newBalanceIDR,
-      balanceTokens: newBalanceTokens,
-      totalSpentIDR: (balance.totalSpentIDR ?? 0) + costIDR,
+      usedCredits: newUsedCredits,
+      remainingCredits: newRemainingCredits,
+      totalSpentCredits: balance.totalSpentCredits + creditsToDeduct,
       updatedAt: Date.now(),
     })
 
+    // Update paper session credit tracking if provided
+    if (args.sessionId) {
+      const session = await ctx.db.get(args.sessionId)
+      if (session) {
+        const sessionCreditUsed = (session.creditUsed ?? 0) + creditsToDeduct
+        const sessionCreditRemaining =
+          (session.creditAllotted ?? 300) - sessionCreditUsed
+        const isSoftBlocked = sessionCreditRemaining <= 0
+
+        await ctx.db.patch(args.sessionId, {
+          creditUsed: sessionCreditUsed,
+          creditRemaining: sessionCreditRemaining,
+          isSoftBlocked,
+          ...(isSoftBlocked ? { softBlockedAt: Date.now() } : {}),
+        })
+      }
+    }
+
     return {
-      deductedIDR: costIDR,
-      deductedTokens: args.tokensUsed,
-      newBalanceIDR,
-      newBalanceTokens,
+      creditsDeducted: creditsToDeduct,
+      tokensUsed: args.tokensUsed,
+      remainingCredits: newRemainingCredits,
     }
   },
 })
@@ -235,36 +256,36 @@ export const checkCredits = query({
   },
   handler: async (ctx, args) => {
     await requireAuthUserId(ctx, args.userId)
+
     const balance = await ctx.db
       .query("creditBalances")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first()
 
-    const estimatedCost = calculateCostIDR(args.estimatedTokens)
-    const currentBalance = balance?.balanceIDR ?? 0
+    const estimatedCredits = tokensToCredits(args.estimatedTokens)
+    const currentCredits = balance?.remainingCredits ?? 0
 
-    if (currentBalance < estimatedCost) {
+    if (currentCredits < estimatedCredits) {
       return {
         sufficient: false,
-        currentBalanceIDR: currentBalance,
-        estimatedCostIDR: estimatedCost,
-        shortfallIDR: estimatedCost - currentBalance,
-        message: `Saldo tidak cukup. Estimasi: Rp ${estimatedCost.toLocaleString("id-ID")}, saldo: Rp ${currentBalance.toLocaleString("id-ID")}`,
+        currentCredits,
+        estimatedCredits,
+        shortfallCredits: estimatedCredits - currentCredits,
+        message: `Kredit tidak cukup. Estimasi: ${estimatedCredits} kredit, saldo: ${currentCredits} kredit`,
       }
     }
 
     return {
       sufficient: true,
-      currentBalanceIDR: currentBalance,
-      estimatedCostIDR: estimatedCost,
-      remainingAfterIDR: currentBalance - estimatedCost,
+      currentCredits,
+      estimatedCredits,
+      remainingAfter: currentCredits - estimatedCredits,
     }
   },
 })
 
 /**
  * Get credit transaction history
- * Top-ups and deductions
  */
 export const getCreditHistory = query({
   args: {
@@ -275,7 +296,7 @@ export const getCreditHistory = query({
     await requireAuthUserId(ctx, args.userId)
     const limitCount = args.limit ?? 30
 
-    // Get top-up payments
+    // Get purchases (payments with packageType)
     const payments = await ctx.db
       .query("payments")
       .withIndex("by_user_type", (q) =>
@@ -284,31 +305,29 @@ export const getCreditHistory = query({
       .order("desc")
       .take(limitCount)
 
-    // Get usage events for this user
+    // Get usage events
     const usageEvents = await ctx.db
       .query("usageEvents")
       .withIndex("by_user_time", (q) => q.eq("userId", args.userId))
       .order("desc")
       .take(limitCount)
 
-    // Combine and sort by date
+    // Combine and sort
     const transactions = [
       ...payments
         .filter((p) => p.status === "SUCCEEDED")
         .map((p) => ({
           id: p._id,
-          type: "topup" as const,
-          description: `Top Up via ${p.paymentMethod}`,
-          amount: p.amount,
-          balanceAfter: 0, // Will calculate if needed
+          type: "purchase" as const,
+          description: `Beli ${p.packageType ?? "Paket"}`,
+          credits: p.credits ?? 0,
           createdAt: p.paidAt ?? p.createdAt,
         })),
       ...usageEvents.map((e) => ({
         id: e._id,
-        type: "deduct" as const,
-        description: `${e.operationType === "chat_message" ? "Chat" : e.operationType === "paper_generation" ? "Paper" : e.operationType === "web_search" ? "Web Search" : "Refrasa"} - ${e.totalTokens.toLocaleString("id-ID")} tokens`,
-        amount: -e.costIDR,
-        balanceAfter: 0,
+        type: "usage" as const,
+        description: `${e.operationType === "chat_message" ? "Chat" : e.operationType === "paper_generation" ? "Paper" : e.operationType === "web_search" ? "Web Search" : "Refrasa"}`,
+        credits: -tokensToCredits(e.totalTokens),
         createdAt: e.createdAt,
       })),
     ].sort((a, b) => b.createdAt - a.createdAt)

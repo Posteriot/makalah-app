@@ -163,24 +163,37 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
 
   // 4. Business logic based on payment type
   const paymentType = payment.paymentType
-  let newBalanceIDR: number | undefined
+  let newCredits: number | undefined
+  let newTotalCredits: number | undefined
 
   switch (paymentType) {
     case "credit_topup": {
+      // Get credits from payment record
+      const creditsToAdd = payment.credits ?? 0
+      const packageType = payment.packageType ?? "paper"
+
+      if (creditsToAdd === 0) {
+        console.warn(`[Xendit] Payment has no credits: ${data.id}`)
+        break
+      }
+
       // Add credits to user balance
       const creditResult = await fetchMutation(api.billing.credits.addCredits, {
         userId: payment.userId as Id<"users">,
-        amountIDR: data.amount,
+        credits: creditsToAdd,
+        packageType,
         paymentId: payment._id as Id<"payments">,
         internalKey,
       })
 
-      newBalanceIDR = creditResult.newBalanceIDR
+      newCredits = creditsToAdd
+      newTotalCredits = creditResult.newTotalCredits
 
       console.log(`[Xendit] Credits added:`, {
         userId: payment.userId,
-        amount: data.amount,
-        newBalance: creditResult.newBalanceIDR,
+        credits: creditsToAdd,
+        packageType,
+        newTotalCredits: creditResult.newTotalCredits,
       })
       break
     }
@@ -212,7 +225,8 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
         to: user.email,
         userName: user.firstName || undefined,
         amount: data.amount,
-        newBalance: newBalanceIDR ?? data.amount,
+        credits: newCredits,
+        newTotalCredits: newTotalCredits,
         transactionId: data.id,
         paidAt: data.paid_at ? new Date(data.paid_at).getTime() : Date.now(),
       })
