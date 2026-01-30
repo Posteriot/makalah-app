@@ -60,6 +60,8 @@ export default defineSchema({
     updatedAt: v.optional(v.number()),
     // Payment integration
     xenditCustomerId: v.optional(v.string()), // Xendit customer reference
+    // Onboarding completion flag
+    hasCompletedOnboarding: v.optional(v.boolean()), // true after first-time onboarding flow
   })
     .index("by_clerkUserId", ["clerkUserId"])
     .index("by_role", ["role"])

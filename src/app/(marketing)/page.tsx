@@ -1,12 +1,13 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { UserPlus, FileText } from "lucide-react"
+import { FileText } from "lucide-react"
 import { PawangBadge } from "@/components/marketing/PawangBadge"
 import { ChatInputHeroMock } from "@/components/marketing/ChatInputHeroMock"
 import { HeroResearchMock } from "@/components/marketing/HeroResearchMock"
 import { HeroHeadingSvg } from "@/components/marketing/HeroHeadingSvg"
+import { HeroCTA } from "@/components/marketing/HeroCTA"
 import { BenefitsSection } from "@/components/marketing/BenefitsSection"
-import { PricingSection } from "@/components/marketing/PricingSection"
+import { PricingTeaser } from "@/components/marketing/PricingTeaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
 
 export default function MarketingHomePage() {
@@ -51,13 +52,7 @@ export default function MarketingHomePage() {
 
             {/* CTA Buttons */}
             <div className="hero-actions">
-              <Link
-                href="/waiting-list"
-                className="btn-brand text-base px-6 py-3 inline-flex items-center gap-2"
-              >
-                <UserPlus className="w-5 h-5" />
-                <span>Daftarkan email untuk uji coba</span>
-              </Link>
+              <HeroCTA />
               <Link
                 href="/documentation"
                 className="btn-outline text-base px-6 py-3 inline-flex items-center gap-2"
@@ -87,8 +82,8 @@ export default function MarketingHomePage() {
       {/* Benefits Section */}
       <BenefitsSection />
 
-      {/* Pricing Section */}
-      <PricingSection />
+      {/* Pricing Teaser - Simplified cards linking to /pricing */}
+      <PricingTeaser />
     </>
   )
 }

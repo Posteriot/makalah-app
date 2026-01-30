@@ -263,6 +263,62 @@ export const createUser = mutationGeneric({
   },
 })
 
+// ════════════════════════════════════════════════════════════════
+// Onboarding Status (untuk pricing flow redesign)
+// ════════════════════════════════════════════════════════════════
+
+// ONBOARDING-001: Get onboarding status for current user
+export const getOnboardingStatus = queryGeneric({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      return { hasCompleted: false, isAuthenticated: false }
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", identity.subject))
+      .unique()
+
+    if (!user) {
+      return { hasCompleted: false, isAuthenticated: true }
+    }
+
+    return {
+      hasCompleted: user.hasCompletedOnboarding ?? false,
+      isAuthenticated: true,
+    }
+  },
+})
+
+// ONBOARDING-002: Mark onboarding as completed for current user
+export const completeOnboarding = mutationGeneric({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error("Unauthorized")
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", identity.subject))
+      .unique()
+
+    if (!user) {
+      throw new Error("User not found")
+    }
+
+    await ctx.db.patch(user._id, {
+      hasCompletedOnboarding: true,
+      updatedAt: Date.now(),
+    })
+
+    return { success: true }
+  },
+})
+
 // USER-009: Update user profile (self-edit)
 export const updateProfile = mutationGeneric({
   args: {

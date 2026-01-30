@@ -9,6 +9,7 @@ import { api } from "@convex/_generated/api"
 import Link from "next/link"
 import Image from "next/image"
 import { AlertCircle, CheckCircle, Mail } from "lucide-react"
+import { getClerkRedirectUrl } from "@/lib/utils/redirectAfterAuth"
 
 const SHOW_SOCIAL_SKELETON = Boolean(
   process.env.NEXT_PUBLIC_CLERK_SOCIAL_PROVIDERS?.trim()
@@ -112,6 +113,9 @@ export default function SignUpPage() {
   const searchParams = useSearchParams()
   const inviteToken = searchParams.get("invite")
 
+  // Get validated redirect URL from search params (e.g., ?redirect=/checkout/bpp)
+  const redirectUrl = getClerkRedirectUrl(searchParams)
+
   // Only validate token if present
   const tokenValidation = useQuery(
     api.waitlist.getByToken,
@@ -192,7 +196,10 @@ export default function SignUpPage() {
         subtitle="Kamu diundang untuk bergabung"
         customLeftContent={<InvitedUserLeftContent email={tokenValidation.email!} />}
       >
-        <SignUp appearance={clerkAppearance} />
+        <SignUp
+          appearance={clerkAppearance}
+          forceRedirectUrl={redirectUrl}
+        />
       </AuthWideCard>
     )
   }
@@ -203,7 +210,10 @@ export default function SignUpPage() {
       title="Ayo bergabung!"
       subtitle="Kolaborasi kecerdasan manusia & Ai, dalam menyusun paper bermutu & akuntable"
     >
-      <SignUp appearance={clerkAppearance} />
+      <SignUp
+        appearance={clerkAppearance}
+        forceRedirectUrl={redirectUrl}
+      />
     </AuthWideCard>
   )
 }
