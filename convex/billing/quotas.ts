@@ -10,6 +10,7 @@ import {
   getPeriodBoundaries,
   isSameDay,
   TIER_LIMITS,
+  tokensToCredits,
   type TierType,
 } from "./constants"
 import { requireAuthUserId } from "../auth"
@@ -308,28 +309,28 @@ export const checkQuota = query({
     const tier = (user.subscriptionStatus === "free" ? "gratis" : user.subscriptionStatus) as TierType
     const limits = getTierLimits(tier)
 
-    // BPP: Check credit balance instead
+    // BPP: Check credit balance (credit-based system)
     if (limits.creditBased) {
       const balance = await ctx.db
         .query("creditBalances")
         .withIndex("by_user", (q) => q.eq("userId", args.userId))
         .first()
 
-      const estimatedCost = Math.ceil((args.estimatedTokens / 1000) * 3) // ~Rp 3/1K tokens
-      const currentBalance = balance?.balanceIDR ?? 0
+      const estimatedCredits = tokensToCredits(args.estimatedTokens)
+      const currentCredits = balance?.remainingCredits ?? 0
 
-      if (currentBalance < estimatedCost) {
+      if (currentCredits < estimatedCredits) {
         return {
           allowed: false,
           reason: "insufficient_credit",
-          message: `Saldo tidak cukup. Estimasi: Rp ${estimatedCost.toLocaleString("id-ID")}, saldo: Rp ${currentBalance.toLocaleString("id-ID")}`,
+          message: `Kredit tidak cukup. Estimasi: ${estimatedCredits} kredit, saldo: ${currentCredits} kredit`,
           action: "topup",
-          currentBalance,
-          requiredAmount: estimatedCost,
+          currentCredits,
+          estimatedCredits,
         }
       }
 
-      return { allowed: true, tier: "bpp", currentBalance }
+      return { allowed: true, tier: "bpp", currentCredits }
     }
 
     // Get quota
@@ -431,21 +432,23 @@ export const getQuotaStatus = query({
     const tier = (user.subscriptionStatus === "free" ? "gratis" : user.subscriptionStatus) as TierType
     const limits = getTierLimits(tier)
 
-    // BPP: Return credit balance status
+    // BPP: Return credit balance status (credit-based system)
     if (limits.creditBased) {
       const balance = await ctx.db
         .query("creditBalances")
         .withIndex("by_user", (q) => q.eq("userId", args.userId))
         .first()
 
-      const currentBalance = balance?.balanceIDR ?? 0
+      const currentCredits = balance?.remainingCredits ?? 0
+      const totalCredits = balance?.totalCredits ?? 0
 
       return {
         tier: "bpp",
         creditBased: true,
-        balanceIDR: currentBalance,
-        balanceTokens: balance?.balanceTokens ?? 0,
-        warningLevel: currentBalance < 5000 ? "critical" : currentBalance < 15000 ? "warning" : "none",
+        currentCredits,
+        totalCredits,
+        usedCredits: balance?.usedCredits ?? 0,
+        warningLevel: currentCredits < 30 ? "critical" : currentCredits < 100 ? "warning" : "none",
       }
     }
 
