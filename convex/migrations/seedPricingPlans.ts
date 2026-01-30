@@ -1,5 +1,5 @@
 import { internalMutation } from "../_generated/server"
-import { TOP_UP_PACKAGES } from "../billing/constants"
+import { TOP_UP_PACKAGES, CREDIT_PACKAGES } from "../billing/constants"
 
 /**
  * Migration script to seed default pricing plans for marketing page
@@ -319,6 +319,51 @@ export const activateBPPPayment = internalMutation({
       updates,
       topupOptions,
       message: `Activated BPP Payment. Updated ${updates.length} plans.`,
+    }
+  },
+})
+
+/**
+ * Migration to add credit packages to BPP plan
+ * Run via: npx convex run "migrations/seedPricingPlans:activateCreditPackages"
+ */
+export const activateCreditPackages = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+    const updates: string[] = []
+
+    // Convert CREDIT_PACKAGES to creditPackages format
+    const creditPackages = CREDIT_PACKAGES.map((pkg) => ({
+      type: pkg.type,
+      credits: pkg.credits,
+      tokens: pkg.tokens,
+      priceIDR: pkg.priceIDR,
+      label: pkg.label,
+      description: pkg.description,
+      ratePerCredit: pkg.ratePerCredit,
+      popular: pkg.type === "paper",
+    }))
+
+    // Update BPP plan
+    const bppPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "bpp"))
+      .first()
+
+    if (bppPlan) {
+      await db.patch(bppPlan._id, {
+        creditPackages,
+        ctaText: "Beli Paket Paper",
+        updatedAt: now,
+      })
+      updates.push("BPP: creditPackages added")
+    }
+
+    return {
+      success: true,
+      updates,
+      creditPackages,
+      message: `Activated credit packages. Updated ${updates.length} plans.`,
     }
   },
 })
