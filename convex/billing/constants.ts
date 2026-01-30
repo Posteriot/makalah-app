@@ -7,28 +7,137 @@
  *
  * Pricing tiers (sinkron dengan pricingPlans DB):
  * - Gratis: Rp 0/bulan, pemakaian harian terbatas
- * - BPP (Bayar Per Paper): Mulai Rp 80.000/paper (~800K tokens)
+ * - BPP (Bayar Per Paper): Mulai Rp 80.000/paper (300 kredit = 300K tokens)
  * - Pro: Rp 200.000/bulan, menyusun 5-6 paper
  */
 
-// Token pricing (based on Gemini 2.5 Flash)
-// Input: $0.075/1M = Rp 1.20/1K tokens
-// Output: $0.30/1M = Rp 4.80/1K tokens
-// Blended average: ~Rp 3/1K tokens
-export const TOKEN_PRICE_PER_1K_IDR = 3
+// ════════════════════════════════════════════════════════════════
+// Credit System (1 kredit = 1.000 tokens)
+// ════════════════════════════════════════════════════════════════
 
 // Credit conversion rate
-// Rp 1 = 10 tokens (simplified for UX)
-// Rp 25,000 = 250,000 tokens
+export const TOKENS_PER_CREDIT = 1_000
+
+// Paper soft cap
+export const PAPER_CREDITS = 300
+export const PAPER_TOKENS = 300_000 // 300 kredit × 1.000 tokens
+export const PAPER_PRICE_IDR = 80_000
+
+// Token pricing (based on Gemini 2.5 Flash - Jan 2026)
+// Input: $0.30/1M = Rp 4.80/1K tokens
+// Output: $2.50/1M = Rp 40.00/1K tokens
+// Blended average (50:50): ~Rp 22.40/1K tokens = ~Rp 22.40/kredit
+export const CREDIT_COST_IDR = 22.40 // Internal cost per credit (primary-only estimate)
+
+// Credit packages
+export const CREDIT_PACKAGES = [
+  {
+    type: "paper" as const,
+    credits: 300,
+    tokens: 300_000,
+    priceIDR: 80_000,
+    label: "Paket Paper",
+    description: "1 paper lengkap (~15 halaman)",
+    ratePerCredit: 267, // Rp 80.000 / 300 kredit
+  },
+  {
+    type: "extension_s" as const,
+    credits: 50,
+    tokens: 50_000,
+    priceIDR: 25_000,
+    label: "Extension S",
+    description: "Revisi ringan",
+    ratePerCredit: 500,
+  },
+  {
+    type: "extension_m" as const,
+    credits: 100,
+    tokens: 100_000,
+    priceIDR: 50_000,
+    label: "Extension M",
+    description: "Revisi berat",
+    ratePerCredit: 500,
+  },
+] as const
+
+export type CreditPackageType = (typeof CREDIT_PACKAGES)[number]["type"]
+
+// ════════════════════════════════════════════════════════════════
+// Credit Helper Functions
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Convert tokens to credits (ceiling)
+ */
+export function tokensToCredits(tokens: number): number {
+  return Math.ceil(tokens / TOKENS_PER_CREDIT)
+}
+
+/**
+ * Convert credits to tokens
+ */
+export function creditsToTokens(credits: number): number {
+  return credits * TOKENS_PER_CREDIT
+}
+
+/**
+ * Get package by type
+ */
+export function getPackageByType(type: CreditPackageType) {
+  return CREDIT_PACKAGES.find((p) => p.type === type)
+}
+
+/**
+ * Validate package type
+ */
+export function isValidPackageType(type: string): type is CreditPackageType {
+  return CREDIT_PACKAGES.some((p) => p.type === type)
+}
+
+// ════════════════════════════════════════════════════════════════
+// Token pricing untuk cost tracking (dipakai oleh usage.ts)
+// HARUS TETAP ADA - jangan hapus!
+//
+// Estimasi PRIMARY (Gemini 2.5 Flash) saja:
+// Input: $0.30/1M = Rp 4.80/1K tokens
+// Output: $2.50/1M = Rp 40.00/1K tokens
+// Blended average (50:50) = Rp 22,40/1K tokens
+// Catatan: fallback (GPT-5.1) lebih mahal, tidak dihitung di sini
+// ════════════════════════════════════════════════════════════════
+export const TOKEN_PRICE_PER_1K_IDR = 22.4
+
+/**
+ * Helper: Calculate cost from tokens
+ * PENTING: Dipakai oleh usage.ts untuk cost tracking di usageEvents table
+ */
+export function calculateCostIDR(totalTokens: number): number {
+  return Math.ceil((totalTokens / 1000) * TOKEN_PRICE_PER_1K_IDR)
+}
+
+// ════════════════════════════════════════════════════════════════
+// DEPRECATED - Legacy constants (remove after migration complete)
+// ════════════════════════════════════════════════════════════════
+
+/** @deprecated Use TOKENS_PER_CREDIT instead */
 export const TOKENS_PER_IDR = 10
 
-// BPP per-paper estimate (sinkron dengan pricingPlans: "Mulai Rp80rb/paper")
-// 1 paper (~15 halaman A4) ≈ 800,000 tokens
-// Rp 80,000 × 10 tokens/Rp = 800,000 tokens
+/** @deprecated Use PAPER_TOKENS instead */
 export const BPP_PAPER_TOKENS_ESTIMATE = 800_000
+
+/** @deprecated Use PAPER_PRICE_IDR instead */
 export const BPP_PAPER_PRICE_IDR = 80_000
 
-// Tier limits configuration
+/** @deprecated Use CREDIT_PACKAGES instead */
+export const TOP_UP_PACKAGES = [
+  { amount: 25_000, tokens: 250_000, label: "Rp 25.000" },
+  { amount: 50_000, tokens: 500_000, label: "Rp 50.000", popular: true },
+  { amount: 100_000, tokens: 1_000_000, label: "Rp 100.000" },
+] as const
+
+// ════════════════════════════════════════════════════════════════
+// Tier Limits Configuration
+// ════════════════════════════════════════════════════════════════
+
 export const TIER_LIMITS = {
   gratis: {
     // Sinkron dengan pricingPlans: "Pemakaian harian terbatas"
@@ -64,12 +173,9 @@ export const TIER_LIMITS = {
 
 export type TierType = keyof typeof TIER_LIMITS
 
-// Top-up package options
-export const TOP_UP_PACKAGES = [
-  { amount: 25_000, tokens: 250_000, label: "Rp 25.000" },
-  { amount: 50_000, tokens: 500_000, label: "Rp 50.000", popular: true },
-  { amount: 100_000, tokens: 1_000_000, label: "Rp 100.000" },
-] as const
+// ════════════════════════════════════════════════════════════════
+// Subscription Pricing
+// ════════════════════════════════════════════════════════════════
 
 // Subscription pricing (sinkron dengan pricingPlans: Pro = Rp200rb/bulan)
 export const SUBSCRIPTION_PRICING = {
@@ -85,12 +191,20 @@ export const SUBSCRIPTION_PRICING = {
   },
 } as const
 
+// ════════════════════════════════════════════════════════════════
+// Quota Warning Thresholds
+// ════════════════════════════════════════════════════════════════
+
 // Quota warning thresholds (percentage remaining)
 export const QUOTA_WARNING_THRESHOLDS = {
   warning: 20, // Show warning at 20% remaining
   critical: 10, // Show critical at 10% remaining
   blocked: 0, // Block at 0%
 } as const
+
+// ════════════════════════════════════════════════════════════════
+// Operation Cost Multipliers
+// ════════════════════════════════════════════════════════════════
 
 // Operation type cost multipliers (for estimation)
 export const OPERATION_COST_MULTIPLIERS = {
@@ -100,15 +214,13 @@ export const OPERATION_COST_MULTIPLIERS = {
   refrasa: 0.8, // Refrasa typically shorter
 } as const
 
-/**
- * Helper: Calculate cost from tokens
- */
-export function calculateCostIDR(totalTokens: number): number {
-  return Math.ceil((totalTokens / 1000) * TOKEN_PRICE_PER_1K_IDR)
-}
+// ════════════════════════════════════════════════════════════════
+// Helper Functions
+// ════════════════════════════════════════════════════════════════
 
 /**
  * Helper: Calculate tokens from IDR amount
+ * @deprecated Use credit system instead
  */
 export function calculateTokensFromIDR(amountIDR: number): number {
   return amountIDR * TOKENS_PER_IDR
