@@ -694,6 +694,16 @@ export default defineSchema({
       v.literal("subscription_renewal")
     ),
 
+    // Credit package info (for credit_topup payments)
+    packageType: v.optional(
+      v.union(
+        v.literal("paper"),
+        v.literal("extension_s"),
+        v.literal("extension_m")
+      )
+    ),
+    credits: v.optional(v.number()), // 300, 50, atau 100
+
     // For subscription payments
     subscriptionPeriodStart: v.optional(v.number()),
     subscriptionPeriodEnd: v.optional(v.number()),
