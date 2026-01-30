@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { query } from "./_generated/server"
-import { TOP_UP_PACKAGES } from "./billing/constants"
+import { TOP_UP_PACKAGES, CREDIT_PACKAGES } from "./billing/constants"
 
 /**
  * Query active pricing plans sorted by sortOrder
@@ -81,6 +81,61 @@ export const getTopupOptionsForPlan = query({
         tokens: pkg.tokens,
         label: pkg.label,
         popular: "popular" in pkg ? pkg.popular : false,
+      })),
+    }
+  },
+})
+
+/**
+ * Get credit packages for a specific plan (BPP)
+ * Returns creditPackages from database with fallback to hardcoded constants
+ */
+export const getCreditPackagesForPlan = query({
+  args: {
+    slug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const plan = await ctx.db
+      .query("pricingPlans")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first()
+
+    if (!plan) {
+      console.warn(`[pricingPlans] Plan not found: ${args.slug}, using fallback`)
+      return {
+        planExists: false,
+        creditPackages: CREDIT_PACKAGES.map(pkg => ({
+          type: pkg.type,
+          credits: pkg.credits,
+          tokens: pkg.tokens,
+          priceIDR: pkg.priceIDR,
+          label: pkg.label,
+          description: pkg.description,
+          ratePerCredit: pkg.ratePerCredit,
+          popular: pkg.type === "paper",
+        })),
+      }
+    }
+
+    if (plan.creditPackages && plan.creditPackages.length > 0) {
+      return {
+        planExists: true,
+        creditPackages: plan.creditPackages,
+      }
+    }
+
+    // Fallback to constants
+    return {
+      planExists: true,
+      creditPackages: CREDIT_PACKAGES.map(pkg => ({
+        type: pkg.type,
+        credits: pkg.credits,
+        tokens: pkg.tokens,
+        priceIDR: pkg.priceIDR,
+        label: pkg.label,
+        description: pkg.description,
+        ratePerCredit: pkg.ratePerCredit,
+        popular: pkg.type === "paper",
       })),
     }
   },
