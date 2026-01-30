@@ -499,12 +499,32 @@ export default defineSchema({
     ctaHref: v.optional(v.string()), // Button link (null for disabled)
     sortOrder: v.number(), // Display order (1, 2, 3...)
     // BPP topup options (synced from TOP_UP_PACKAGES in billing/constants.ts)
+    // @deprecated Use creditPackages instead
     topupOptions: v.optional(v.array(v.object({
       amount: v.number(), // Price in IDR (e.g., 25000, 50000, 100000)
       tokens: v.number(), // Equivalent tokens (e.g., 250000, 500000, 1000000)
       label: v.string(), // Display label (e.g., "Rp 25.000")
       popular: v.optional(v.boolean()), // Highlight as popular option
     }))),
+    // Credit packages (new system - replaces topupOptions)
+    creditPackages: v.optional(
+      v.array(
+        v.object({
+          type: v.union(
+            v.literal("paper"),
+            v.literal("extension_s"),
+            v.literal("extension_m")
+          ),
+          credits: v.number(),
+          tokens: v.number(),
+          priceIDR: v.number(),
+          label: v.string(),
+          description: v.optional(v.string()),
+          ratePerCredit: v.optional(v.number()),
+          popular: v.optional(v.boolean()),
+        })
+      )
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
