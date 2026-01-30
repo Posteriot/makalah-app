@@ -38,6 +38,13 @@ export const createPayment = mutation({
       v.literal("subscription_initial"),
       v.literal("subscription_renewal")
     ),
+    // Credit package info (for credit_topup payments)
+    packageType: v.optional(v.union(
+      v.literal("paper"),
+      v.literal("extension_s"),
+      v.literal("extension_m")
+    )),
+    credits: v.optional(v.number()),
     description: v.optional(v.string()),
     idempotencyKey: v.string(),
     expiredAt: v.optional(v.number()),
@@ -57,6 +64,8 @@ export const createPayment = mutation({
       paymentChannel: args.paymentChannel,
       status: "PENDING",
       paymentType: args.paymentType,
+      packageType: args.packageType,
+      credits: args.credits,
       description: args.description,
       idempotencyKey: args.idempotencyKey,
       createdAt: now,
@@ -111,6 +120,8 @@ export const updatePaymentStatus = mutation({
       paymentId: payment._id,
       userId: payment.userId,
       paymentType: payment.paymentType,
+      packageType: payment.packageType,
+      credits: payment.credits,
       amount: payment.amount,
       previousStatus: payment.status,
       newStatus: args.status,
