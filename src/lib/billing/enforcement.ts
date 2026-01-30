@@ -193,32 +193,6 @@ export function createQuotaExceededResponse(result: QuotaCheckResult): Response 
 }
 
 /**
- * Create a soft-block response (credit exhausted mid-session)
- */
-export function createSoftBlockResponse(result: {
-  reason: string
-  message: string
-  action?: "topup"
-  currentCredits?: number
-  estimatedCredits?: number
-}): Response {
-  return new Response(
-    JSON.stringify({
-      error: "credit_exhausted",
-      reason: result.reason,
-      message: result.message,
-      action: result.action ?? "topup",
-      currentCredits: result.currentCredits,
-      estimatedCredits: result.estimatedCredits,
-    }),
-    {
-      status: 402, // Payment Required
-      headers: { "Content-Type": "application/json" },
-    }
-  )
-}
-
-/**
  * Check if user is admin (bypasses quota)
  */
 export async function isAdminUser(userId: Id<"users">, convexToken?: string): Promise<boolean> {

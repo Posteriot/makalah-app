@@ -14,6 +14,7 @@ Dokumen ini menjelaskan implementasi BPP yang **compliant** dengan sistem kredit
 - Kredit berkurang seiring pemakaian AI (1 kredit = 1.000 tokens)
 - Soft-block saat kredit habis, user beli Extension untuk lanjut
 - Sisa kredit rollover ke paper berikutnya
+- **Legacy:** `topupOptions` tetap dipertahankan sementara (deprecated) untuk transisi, `creditPackages` menjadi field utama.
 
 ---
 
@@ -133,13 +134,15 @@ export function calculateCostIDR(totalTokens: number): number {
 
 **Perubahan yang Diperlukan pada `pricingPlans`:**
 ```typescript
-// Ganti topupOptions dengan creditPackages
+// Tambahkan creditPackages (topupOptions tetap ada tapi deprecated)
 creditPackages: v.optional(v.array(v.object({
   type: v.union(v.literal("paper"), v.literal("extension_s"), v.literal("extension_m")),
   credits: v.number(),      // 300, 50, atau 100
   tokens: v.number(),       // 300000, 50000, atau 100000
   priceIDR: v.number(),     // 80000, 25000, atau 50000
   label: v.string(),
+  description: v.optional(v.string()), // "Revisi ringan", "Revisi berat"
+  ratePerCredit: v.optional(v.number()), // Rp/kredit (267 atau 500)
   popular: v.optional(v.boolean()),
 }))),
 ```
@@ -175,6 +178,7 @@ creditAllotted: v.optional(v.number()),    // Kredit yang dialokasikan (300 untu
 creditUsed: v.optional(v.number()),        // Kredit yang sudah terpakai di session ini
 creditRemaining: v.optional(v.number()),   // Sisa kredit session (computed)
 isSoftBlocked: v.optional(v.boolean()),    // True jika kredit habis
+softBlockedAt: v.optional(v.number()),     // Timestamp saat soft-blocked
 ```
 
 **Catatan:** `payments.status` tetap mendukung `PENDING/SUCCEEDED/FAILED/EXPIRED/REFUNDED`.
@@ -185,21 +189,18 @@ isSoftBlocked: v.optional(v.boolean()),    // True jika kredit habis
 
 **Peran:** Mengaktifkan BPP di database dan mengisi `creditPackages`.
 
-**Perubahan pada `activateBPPPayment`:**
+**Perubahan pada `activateCreditPackages`:**
 ```typescript
-// Ganti topupOptions dengan creditPackages
+// Tambahkan creditPackages untuk plan BPP
 const creditPackages = [
-  { type: "paper", credits: 300, tokens: 300_000, priceIDR: 80_000, label: "Paket Paper", popular: true },
-  { type: "extension_s", credits: 50, tokens: 50_000, priceIDR: 25_000, label: "Extension S" },
-  { type: "extension_m", credits: 100, tokens: 100_000, priceIDR: 50_000, label: "Extension M" },
+  { type: "paper", credits: 300, tokens: 300_000, priceIDR: 80_000, label: "Paket Paper", description: "1 paper lengkap (~15 halaman)", ratePerCredit: 267, popular: true },
+  { type: "extension_s", credits: 50, tokens: 50_000, priceIDR: 25_000, label: "Extension S", description: "Revisi ringan", ratePerCredit: 500 },
+  { type: "extension_m", credits: 100, tokens: 100_000, priceIDR: 50_000, label: "Extension M", description: "Revisi berat", ratePerCredit: 500 },
 ]
 
 await db.patch(bppPlan._id, {
-  isDisabled: false,
-  isHighlighted: true,
-  ctaText: "Beli Paket Paper",
-  ctaHref: "/subscription/plans",
   creditPackages,
+  ctaText: "Beli Paket Paper",
   updatedAt: now,
 })
 ```
@@ -212,7 +213,7 @@ await db.patch(bppPlan._id, {
 
 **Peran:** Sumber opsi paket kredit BPP untuk UI.
 
-**Perubahan - Ganti `getTopupOptionsForPlan` dengan:**
+**Perubahan - Tambahkan `getCreditPackagesForPlan` (getTopupOptionsForPlan tetap ada tapi deprecated):**
 ```typescript
 export const getCreditPackagesForPlan = query({
   args: { slug: v.string() },
@@ -225,6 +226,7 @@ export const getCreditPackagesForPlan = query({
     if (!plan) {
       return {
         planExists: false,
+        // Fallback to constants (mapping for UI needs: popular, description, ratePerCredit)
         creditPackages: CREDIT_PACKAGES,
       }
     }
@@ -238,6 +240,7 @@ export const getCreditPackagesForPlan = query({
 
     return {
       planExists: true,
+      // Fallback to constants (mapping for UI needs: popular, description, ratePerCredit)
       creditPackages: CREDIT_PACKAGES,
     }
   },
@@ -284,31 +287,30 @@ export const getCreditPackagesForPlan = query({
 
 **Perubahan Validasi:**
 ```typescript
-// HAPUS
-const VALID_AMOUNTS = [25000, 50000, 100000]
-
-// GANTI DENGAN
-const VALID_PACKAGES = {
-  paper: { credits: 300, priceIDR: 80000 },
-  extension_s: { credits: 50, priceIDR: 25000 },
-  extension_m: { credits: 100, priceIDR: 50000 },
-}
+import { isValidPackageType, getPackageByType } from "@convex/billing/constants"
 
 // Validasi berdasarkan package type, bukan amount
-const packageType = body.packageType as keyof typeof VALID_PACKAGES
-if (!VALID_PACKAGES[packageType]) {
+const { packageType } = body
+if (!isValidPackageType(packageType)) {
   return NextResponse.json({ error: "Paket tidak valid" }, { status: 400 })
 }
-const { credits, priceIDR } = VALID_PACKAGES[packageType]
+
+const pkg = getPackageByType(packageType)
+if (!pkg) {
+  return NextResponse.json({ error: "Paket tidak ditemukan" }, { status: 400 })
+}
+
+const { credits, priceIDR: amount, label: packageLabel } = pkg
 ```
 
 **Response tambahan:**
 ```typescript
 responseData = {
   ...responseData,
+  amount,       // jumlah pembayaran (saat ini = priceIDR)
   packageType,
   credits,
-  priceIDR,
+  packageLabel,
 }
 ```
 
@@ -323,6 +325,9 @@ responseData = {
 **Perubahan pada `createPayment`:**
 ```typescript
 // Tambahkan field untuk tracking kredit
+// NOTE: packageType & credits bersifat "conditional required"
+// - WAJIB untuk paymentType = "credit_topup"
+// - OPSIONAL untuk paymentType lainnya
 packageType: v.union(
   v.literal("paper"),
   v.literal("extension_s"),
@@ -343,12 +348,18 @@ credits: v.number(),  // 300, 50, atau 100
 ```typescript
 case "credit_topup": {
   // Ambil credits dari payment record
-  const creditsToAdd = payment.credits  // 300, 50, atau 100
+  const creditsToAdd = payment.credits ?? 0  // 300, 50, atau 100
+  const packageType = payment.packageType ?? "paper"
+
+  if (creditsToAdd === 0) {
+    console.warn(`[Xendit] Payment has no credits: ${data.id}`)
+    break
+  }
 
   const creditResult = await fetchMutation(api.billing.credits.addCredits, {
     userId: payment.userId,
     credits: creditsToAdd,
-    packageType: payment.packageType,
+    packageType,
     paymentId: payment._id,
     internalKey,
   })
@@ -356,11 +367,14 @@ case "credit_topup": {
   console.log(`[Xendit] Credits added:`, {
     userId: payment.userId,
     credits: creditsToAdd,
+    packageType,
     newBalance: creditResult.newTotalCredits,
   })
   break
 }
 ```
+
+**Catatan Email:** Email sukses membawa `credits` dan `newTotalCredits` untuk konfirmasi saldo.
 
 **Dependensi:** `@/lib/xendit/client`, `convex/nextjs`, `@/lib/email/sendPaymentEmail`.
 

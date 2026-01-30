@@ -23,12 +23,6 @@ export const PAPER_CREDITS = 300
 export const PAPER_TOKENS = 300_000 // 300 kredit × 1.000 tokens
 export const PAPER_PRICE_IDR = 80_000
 
-// Token pricing (based on Gemini 2.5 Flash - Jan 2026)
-// Input: $0.30/1M = Rp 4.80/1K tokens
-// Output: $2.50/1M = Rp 40.00/1K tokens
-// Blended average (50:50): ~Rp 22.40/1K tokens = ~Rp 22.40/kredit
-export const CREDIT_COST_IDR = 22.40 // Internal cost per credit (primary-only estimate)
-
 // Credit packages
 export const CREDIT_PACKAGES = [
   {

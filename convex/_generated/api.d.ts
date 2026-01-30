@@ -27,6 +27,7 @@ import type * as documentationSections from "../documentationSections.js";
 import type * as files from "../files.js";
 import type * as messages from "../messages.js";
 import type * as migrations_addRoleToExistingUsers from "../migrations/addRoleToExistingUsers.js";
+import type * as migrations_backfillCreditBalances from "../migrations/backfillCreditBalances.js";
 import type * as migrations_backfillProviderKeys from "../migrations/backfillProviderKeys.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
 import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/fixAgentPersonaAndCapabilities.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   messages: typeof messages;
   "migrations/addRoleToExistingUsers": typeof migrations_addRoleToExistingUsers;
+  "migrations/backfillCreditBalances": typeof migrations_backfillCreditBalances;
   "migrations/backfillProviderKeys": typeof migrations_backfillProviderKeys;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
   "migrations/fixAgentPersonaAndCapabilities": typeof migrations_fixAgentPersonaAndCapabilities;

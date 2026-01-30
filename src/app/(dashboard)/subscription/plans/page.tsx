@@ -115,6 +115,12 @@ export default function PlansHubPage() {
     user?._id ? { userId: user._id } : "skip"
   )
 
+  // Get active paper sessions to check soft-block status
+  const activeSessions = useQuery(
+    api.paperSessions.getByUserWithFilter,
+    user?._id ? { userId: user._id, status: "in_progress" } : "skip"
+  )
+
   // BPP card expansion state
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -252,6 +258,13 @@ export default function PlansHubPage() {
   const tierBadge = TIER_BADGES[currentTier] || TIER_BADGES.gratis
   const currentCredits = creditBalance?.remainingCredits ?? 0
 
+  // Check if user has any soft-blocked paper session
+  const isSoftBlocked = activeSessions?.some((s) => s.softBlockedAt != null) ?? false
+
+  // Extension packages only shown if user has credits or is soft-blocked
+  // (so they can buy smaller package to continue their session)
+  const showExtensions = currentCredits > 0 || isSoftBlocked
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -368,7 +381,7 @@ export default function PlansHubPage() {
                           : "bg-muted hover:bg-muted/80"
                       )}
                     >
-                      {isCurrentTier ? "Top Up Saldo" : plan.ctaText}
+                      {isCurrentTier ? "Beli Paket" : plan.ctaText}
                       {isExpanded ? (
                         <ChevronUp className="h-4 w-4" />
                       ) : (
@@ -407,7 +420,9 @@ export default function PlansHubPage() {
                             <div>
                               <p className="text-sm font-medium mb-2">Pilih Paket Kredit</p>
                               <div className="grid grid-cols-1 gap-2">
-                                {creditPackages.map((pkg) => (
+                                {creditPackages
+                                  .filter((pkg) => pkg.type === "paper" || showExtensions)
+                                  .map((pkg) => (
                                   <button
                                     key={pkg.type}
                                     onClick={() => setSelectedPackage(pkg)}
@@ -612,6 +627,13 @@ interface PaymentResultSectionProps {
   currentCredits: number
 }
 
+// Helper function to format countdown as MM:SS
+function formatCountdown(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
 function PaymentResultSection({
   paymentResult,
   paymentStatus,
@@ -623,6 +645,54 @@ function PaymentResultSection({
 }: PaymentResultSectionProps) {
   const status = paymentStatus?.status || paymentResult.status
   const purchasedCredits = paymentResult.credits ?? 0
+
+  // Countdown timer state
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(() => {
+    const now = Date.now()
+    const remaining = Math.max(0, Math.floor((paymentResult.expiresAt - now) / 1000))
+    return remaining
+  })
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false)
+  const [statusCheckResult, setStatusCheckResult] = useState<'pending' | null>(null)
+
+  // Derived state
+  const isExpired = remainingSeconds <= 0
+
+  // Countdown effect
+  useEffect(() => {
+    if (remainingSeconds <= 0) return
+
+    const timer = setInterval(() => {
+      const now = Date.now()
+      const remaining = Math.max(0, Math.floor((paymentResult.expiresAt - now) / 1000))
+      setRemainingSeconds(remaining)
+
+      if (remaining <= 0) {
+        clearInterval(timer)
+      }
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [paymentResult.expiresAt, remainingSeconds])
+
+  // Handle check status when expired
+  const handleCheckStatus = async () => {
+    setIsCheckingStatus(true)
+    try {
+      // Add small delay for UX feedback ("sedang mengecek...")
+      await new Promise(resolve => setTimeout(resolve, 800))
+
+      // Check current subscription value (realtime updated)
+      if (paymentStatus?.status === 'SUCCEEDED') {
+        // Success handled by existing flow - UI will auto-update
+        return
+      }
+      // Still pending after expiry
+      setStatusCheckResult('pending')
+    } finally {
+      setIsCheckingStatus(false)
+    }
+  }
 
   // Success State
   if (status === "SUCCEEDED") {
@@ -677,6 +747,29 @@ function PaymentResultSection({
   }
 
   // Pending State - Show QR/VA/E-Wallet
+  // State 3 (post-check pending) replaces entire section
+  if (statusCheckResult === 'pending') {
+    return (
+      <div className="text-center space-y-4 py-4">
+        <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+          <AlertCircle className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="font-semibold">Pembayaran Tidak Ditemukan</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Silakan buat transaksi baru untuk melanjutkan.
+          </p>
+        </div>
+        <button
+          onClick={onReset}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
+        >
+          Buat Pembayaran Baru
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="text-center space-y-3">
       {/* Status */}
@@ -741,15 +834,38 @@ function PaymentResultSection({
         </div>
       )}
 
-      {/* Expiry */}
-      <p className="text-xs text-muted-foreground">
-        Berlaku sampai: {new Date(paymentResult.expiresAt).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}
-      </p>
-
-      {/* Reset */}
-      <button onClick={onReset} className="text-sm text-muted-foreground hover:text-foreground">
-        Batalkan & Pilih Ulang
-      </button>
+      {/* Expiry & Countdown */}
+      {isExpired ? (
+        // State 2: Expired, show check button
+        <div className="space-y-3">
+          <div className="flex items-center justify-center gap-2 text-yellow-500">
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">Waktu pembayaran habis</span>
+          </div>
+          <button
+            onClick={handleCheckStatus}
+            disabled={isCheckingStatus}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+          >
+            {isCheckingStatus && <Loader2 className="h-4 w-4 animate-spin" />}
+            Cek Status Pembayaran
+          </button>
+          <button onClick={onReset} className="block mx-auto text-sm text-muted-foreground hover:text-foreground">
+            Batalkan & Pilih Ulang
+          </button>
+        </div>
+      ) : (
+        // State 1: Countdown active
+        <>
+          <p className="text-xs text-muted-foreground">
+            Berlaku sampai: {new Date(paymentResult.expiresAt).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })} (sisa {formatCountdown(remainingSeconds)})
+          </p>
+          {/* Reset */}
+          <button onClick={onReset} className="text-sm text-muted-foreground hover:text-foreground">
+            Batalkan & Pilih Ulang
+          </button>
+        </>
+      )}
     </div>
   )
 }

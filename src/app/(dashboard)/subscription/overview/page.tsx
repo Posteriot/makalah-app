@@ -191,7 +191,7 @@ export default function SubscriptionOverviewPage() {
                 Saldo Credit
               </p>
               <p className="text-2xl font-semibold mt-1">
-                Rp {currentCreditBalance.toLocaleString("id-ID")}
+                {currentCreditBalance.toLocaleString("id-ID")} kredit
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 Saldo untuk tier Bayar Per Paper
@@ -284,13 +284,13 @@ export default function SubscriptionOverviewPage() {
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <p className="text-3xl font-bold">
-                Rp {currentCreditBalance.toLocaleString("id-ID")}
+                {currentCreditBalance.toLocaleString("id-ID")} kredit
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                ≈ {(currentCreditBalance * 10).toLocaleString("id-ID")} tokens tersedia
+                ≈ {(currentCreditBalance * 1000).toLocaleString("id-ID")} tokens tersedia
               </p>
             </div>
-            {creditBalance && currentCreditBalance < 10000 && (
+            {creditBalance && currentCreditBalance < 100 && (
               <div className="px-3 py-1.5 bg-amber-100 text-amber-800 text-sm rounded-md">
                 Saldo Rendah
               </div>
