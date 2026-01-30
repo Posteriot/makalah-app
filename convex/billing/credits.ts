@@ -64,6 +64,13 @@ export const initializeCreditBalance = mutation({
     const now = Date.now()
     const balanceId = await ctx.db.insert("creditBalances", {
       userId: args.userId,
+      // New credit-based fields (required)
+      totalCredits: 0,
+      usedCredits: 0,
+      remainingCredits: 0,
+      totalPurchasedCredits: 0,
+      totalSpentCredits: 0,
+      // Legacy fields (optional, for backward compat)
       balanceIDR: 0,
       balanceTokens: 0,
       totalTopUpIDR: 0,
@@ -106,6 +113,13 @@ export const addCredits = mutation({
       // Create new balance
       const balanceId = await ctx.db.insert("creditBalances", {
         userId: args.userId,
+        // New credit-based fields (required)
+        totalCredits: 0,
+        usedCredits: 0,
+        remainingCredits: 0,
+        totalPurchasedCredits: 0,
+        totalSpentCredits: 0,
+        // Legacy fields (for backward compat during migration)
         balanceIDR: args.amountIDR,
         balanceTokens: tokensToAdd,
         totalTopUpIDR: args.amountIDR,
@@ -132,14 +146,14 @@ export const addCredits = mutation({
       }
     }
 
-    // Update existing balance
-    const newBalanceIDR = balance.balanceIDR + args.amountIDR
-    const newBalanceTokens = balance.balanceTokens + tokensToAdd
+    // Update existing balance (use ?? 0 for optional legacy fields)
+    const newBalanceIDR = (balance.balanceIDR ?? 0) + args.amountIDR
+    const newBalanceTokens = (balance.balanceTokens ?? 0) + tokensToAdd
 
     await ctx.db.patch(balance._id, {
       balanceIDR: newBalanceIDR,
       balanceTokens: newBalanceTokens,
-      totalTopUpIDR: balance.totalTopUpIDR + args.amountIDR,
+      totalTopUpIDR: (balance.totalTopUpIDR ?? 0) + args.amountIDR,
       lastTopUpAt: now,
       lastTopUpAmount: args.amountIDR,
       updatedAt: now,
@@ -184,19 +198,20 @@ export const deductCredits = mutation({
     }
 
     const costIDR = calculateCostIDR(args.tokensUsed)
+    const currentBalanceIDR = balance.balanceIDR ?? 0
 
     // Check if sufficient balance
-    if (balance.balanceIDR < costIDR) {
-      throw new Error(`Insufficient credit balance. Required: Rp ${costIDR}, Available: Rp ${balance.balanceIDR}`)
+    if (currentBalanceIDR < costIDR) {
+      throw new Error(`Insufficient credit balance. Required: Rp ${costIDR}, Available: Rp ${currentBalanceIDR}`)
     }
 
-    const newBalanceIDR = balance.balanceIDR - costIDR
-    const newBalanceTokens = Math.max(0, balance.balanceTokens - args.tokensUsed)
+    const newBalanceIDR = currentBalanceIDR - costIDR
+    const newBalanceTokens = Math.max(0, (balance.balanceTokens ?? 0) - args.tokensUsed)
 
     await ctx.db.patch(balance._id, {
       balanceIDR: newBalanceIDR,
       balanceTokens: newBalanceTokens,
-      totalSpentIDR: balance.totalSpentIDR + costIDR,
+      totalSpentIDR: (balance.totalSpentIDR ?? 0) + costIDR,
       updatedAt: Date.now(),
     })
 

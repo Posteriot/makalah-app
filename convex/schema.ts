@@ -621,22 +621,31 @@ export default defineSchema({
   creditBalances: defineTable({
     userId: v.id("users"),
 
-    // Balance tracking
-    balanceIDR: v.number(), // Current balance dalam Rupiah
-    balanceTokens: v.number(), // Equivalent tokens (for UI display)
+    // Credit tracking (dalam kredit, bukan IDR)
+    totalCredits: v.number(), // Total kredit yang dibeli
+    usedCredits: v.number(), // Kredit yang sudah terpakai
+    remainingCredits: v.number(), // Sisa kredit (computed: total - used)
 
     // Lifetime stats
-    totalTopUpIDR: v.number(), // Total top-up sepanjang waktu
-    totalSpentIDR: v.number(), // Total spent sepanjang waktu
+    totalPurchasedCredits: v.number(), // Total kredit dibeli sepanjang waktu
+    totalSpentCredits: v.number(), // Total kredit dipakai sepanjang waktu
 
-    // Top-up reference
+    // Last purchase reference
+    lastPurchaseAt: v.optional(v.number()),
+    lastPurchaseType: v.optional(v.string()), // "paper" | "extension_s" | "extension_m"
+    lastPurchaseCredits: v.optional(v.number()),
+
+    // Legacy fields (deprecated - keep for migration)
+    balanceIDR: v.optional(v.number()),
+    balanceTokens: v.optional(v.number()),
+    totalTopUpIDR: v.optional(v.number()),
+    totalSpentIDR: v.optional(v.number()),
     lastTopUpAt: v.optional(v.number()),
     lastTopUpAmount: v.optional(v.number()),
 
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"]),
+  }).index("by_user", ["userId"]),
 
   // Payment records (Xendit transactions)
   payments: defineTable({
