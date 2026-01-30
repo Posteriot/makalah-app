@@ -651,13 +651,14 @@ export default defineSchema({
     userId: v.id("users"),
 
     // Credit tracking (dalam kredit, bukan IDR)
-    totalCredits: v.number(), // Total kredit yang dibeli
-    usedCredits: v.number(), // Kredit yang sudah terpakai
-    remainingCredits: v.number(), // Sisa kredit (computed: total - used)
+    // NOTE: Fields temporarily optional for migration, will be required after backfill
+    totalCredits: v.optional(v.number()), // Total kredit yang dibeli
+    usedCredits: v.optional(v.number()), // Kredit yang sudah terpakai
+    remainingCredits: v.optional(v.number()), // Sisa kredit (computed: total - used)
 
     // Lifetime stats
-    totalPurchasedCredits: v.number(), // Total kredit dibeli sepanjang waktu
-    totalSpentCredits: v.number(), // Total kredit dipakai sepanjang waktu
+    totalPurchasedCredits: v.optional(v.number()), // Total kredit dibeli sepanjang waktu
+    totalSpentCredits: v.optional(v.number()), // Total kredit dipakai sepanjang waktu
 
     // Last purchase reference
     lastPurchaseAt: v.optional(v.number()),

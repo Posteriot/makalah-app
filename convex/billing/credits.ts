@@ -147,14 +147,14 @@ export const addCredits = mutation({
       }
     }
 
-    // Update existing balance
-    const newTotalCredits = balance.totalCredits + args.credits
-    const newRemainingCredits = balance.remainingCredits + args.credits
+    // Update existing balance (use ?? 0 for migration safety)
+    const newTotalCredits = (balance.totalCredits ?? 0) + args.credits
+    const newRemainingCredits = (balance.remainingCredits ?? 0) + args.credits
 
     await ctx.db.patch(balance._id, {
       totalCredits: newTotalCredits,
       remainingCredits: newRemainingCredits,
-      totalPurchasedCredits: balance.totalPurchasedCredits + args.credits,
+      totalPurchasedCredits: (balance.totalPurchasedCredits ?? 0) + args.credits,
       lastPurchaseAt: now,
       lastPurchaseType: args.packageType,
       lastPurchaseCredits: args.credits,
@@ -174,7 +174,7 @@ export const addCredits = mutation({
       balanceId: balance._id,
       newTotalCredits,
       newRemainingCredits,
-      previousRemainingCredits: balance.remainingCredits,
+      previousRemainingCredits: balance.remainingCredits ?? 0,
     }
   },
 })
@@ -203,19 +203,20 @@ export const deductCredits = mutation({
       throw new Error("Credit balance not found")
     }
 
-    if (balance.remainingCredits < creditsToDeduct) {
+    const currentRemaining = balance.remainingCredits ?? 0
+    if (currentRemaining < creditsToDeduct) {
       throw new Error(
-        `Insufficient credits. Required: ${creditsToDeduct}, Available: ${balance.remainingCredits}`
+        `Insufficient credits. Required: ${creditsToDeduct}, Available: ${currentRemaining}`
       )
     }
 
-    const newUsedCredits = balance.usedCredits + creditsToDeduct
-    const newRemainingCredits = balance.remainingCredits - creditsToDeduct
+    const newUsedCredits = (balance.usedCredits ?? 0) + creditsToDeduct
+    const newRemainingCredits = currentRemaining - creditsToDeduct
 
     await ctx.db.patch(balance._id, {
       usedCredits: newUsedCredits,
       remainingCredits: newRemainingCredits,
-      totalSpentCredits: balance.totalSpentCredits + creditsToDeduct,
+      totalSpentCredits: (balance.totalSpentCredits ?? 0) + creditsToDeduct,
       updatedAt: Date.now(),
     })
 
