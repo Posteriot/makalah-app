@@ -1359,22 +1359,15 @@
     background-size: 48px 48px;
   }
 
-  /* Hero diagonal stripes pattern */
-  /* Hero diagonal stripes - dark mode (white stripes on dark bg) */
+  /* Hero diagonal stripes - single direction (45deg only) */
   .hero-diagonal-stripes {
     position: absolute;
     inset: 0;
-    background-image:
-      repeating-linear-gradient(45deg,
-        rgba(255, 255, 255, 0.12) 0,
-        rgba(255, 255, 255, 0.12) 1px,
-        transparent 1px,
-        transparent 8px),
-      repeating-linear-gradient(-45deg,
-        rgba(255, 255, 255, 0.06) 0,
-        rgba(255, 255, 255, 0.06) 1px,
-        transparent 1px,
-        transparent 24px);
+    background-image: repeating-linear-gradient(45deg,
+      rgba(255, 255, 255, 0.12) 0,
+      rgba(255, 255, 255, 0.12) 1px,
+      transparent 1px,
+      transparent 8px);
     z-index: 0;
     pointer-events: none;
     mask-image: linear-gradient(to bottom,
@@ -1383,20 +1376,14 @@
       rgba(0, 0, 0, 0) 90%);
   }
 
-  /* Light mode: dark diagonal stripes on light bg */
+  /* Light mode: dark diagonal stripes */
   :root:not(.dark) .hero-diagonal-stripes,
   .light .hero-diagonal-stripes {
-    background-image:
-      repeating-linear-gradient(45deg,
-        rgba(0, 0, 0, 0.10) 0,
-        rgba(0, 0, 0, 0.10) 1px,
-        transparent 1px,
-        transparent 8px),
-      repeating-linear-gradient(-45deg,
-        rgba(0, 0, 0, 0.05) 0,
-        rgba(0, 0, 0, 0.05) 1px,
-        transparent 1px,
-        transparent 24px);
+    background-image: repeating-linear-gradient(45deg,
+      rgba(0, 0, 0, 0.10) 0,
+      rgba(0, 0, 0, 0.10) 1px,
+      transparent 1px,
+      transparent 8px);
   }
 
   /* IDE vertical lines - start below header */
