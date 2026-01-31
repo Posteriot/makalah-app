@@ -3,6 +3,8 @@ import dynamic from "next/dynamic"
 import { dark } from "@clerk/themes"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
 import { useTheme } from "next-themes"
+import { useSearchParams } from "next/navigation"
+import { getClerkRedirectUrl } from "@/lib/utils/redirectAfterAuth"
 
 const SHOW_SOCIAL_SKELETON = Boolean(
   process.env.NEXT_PUBLIC_CLERK_SOCIAL_PROVIDERS?.trim()
@@ -40,6 +42,10 @@ const SignIn = dynamic(
 
 export default function SignInPage() {
   const { resolvedTheme } = useTheme()
+  const searchParams = useSearchParams()
+
+  // Get validated redirect URL from search params, default to /chat for returning users
+  const redirectUrl = getClerkRedirectUrl(searchParams, "/chat")
 
   const initialTheme =
     resolvedTheme ??
@@ -54,6 +60,7 @@ export default function SignInPage() {
       subtitle="Susun Paper terbaikmu, tanpa ribet, tinggal ngobrol!"
     >
       <SignIn
+        forceRedirectUrl={redirectUrl}
         appearance={{
           baseTheme: isDark ? dark : undefined,
           elements: {

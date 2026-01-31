@@ -57,18 +57,20 @@ export function isCheckoutRedirect(redirectUrl: string): boolean {
 
 /**
  * Gets the redirect URL from search params as a string (for Clerk prop).
- * Returns undefined if no valid redirect is found, allowing Clerk default behavior.
+ * Always returns a valid redirect URL.
  *
  * @param searchParams - URLSearchParams from the current URL
- * @returns Redirect URL string or undefined
+ * @param defaultRedirect - Default redirect path (default: /get-started for sign-up, /chat for sign-in)
+ * @returns Redirect URL string (never undefined)
  */
 export function getClerkRedirectUrl(
-  searchParams: URLSearchParams
-): string | undefined {
+  searchParams: URLSearchParams,
+  defaultRedirect: string = "/get-started"
+): string {
   const redirect = searchParams.get("redirect")
 
   if (!redirect) {
-    return undefined
+    return defaultRedirect
   }
 
   const decodedRedirect = decodeURIComponent(redirect)
@@ -81,5 +83,5 @@ export function getClerkRedirectUrl(
     return decodedRedirect
   }
 
-  return undefined
+  return defaultRedirect
 }
