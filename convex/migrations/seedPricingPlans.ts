@@ -196,7 +196,7 @@ export const updatePricingContent = internalMutation({
     if (bppPlan) {
       await db.patch(bppPlan._id, {
         name: "Bayar Per Paper",
-        price: "Mulai Rp80rb",
+        price: "Rp80rb",
         unit: "/paper",
         features: [
           "Bayar per paper ketika butuh",

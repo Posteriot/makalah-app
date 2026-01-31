@@ -17,7 +17,8 @@ type TeaserPlan = {
   price: string
   unit?: string
   isHighlighted: boolean
-  creditSummary: string
+  description: string
+  creditNote: string
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -44,7 +45,8 @@ function TeaserCard({ plan }: { plan: TeaserPlan }) {
           {plan.unit && <span className="unit">{plan.unit}</span>}
         </p>
         <div className="divider" />
-        <p className="credit-summary">{plan.creditSummary}</p>
+        <p className="description">{plan.description}</p>
+        <p className="credit-note">{plan.creditNote}</p>
       </div>
     </div>
   )
@@ -176,7 +178,8 @@ function TeaserSkeleton() {
                 <div className="h-5 bg-muted rounded w-24 mx-auto" />
                 <div className="h-7 bg-muted rounded w-28 mx-auto mt-3" />
                 <div className="divider" />
-                <div className="h-4 bg-muted rounded w-32 mx-auto" />
+                <div className="h-12 bg-muted rounded w-full mt-3" />
+                <div className="h-8 bg-muted rounded w-full mt-3" />
               </div>
             </div>
           ))}
@@ -190,18 +193,28 @@ function TeaserSkeleton() {
 // Helper Function
 // ════════════════════════════════════════════════════════════════
 
-function getCreditSummary(slug: string, features: string[]): string {
-  // Extract credit info based on slug (matching plan definitions)
+function getCardContent(slug: string): { description: string; creditNote: string } {
   switch (slug) {
     case "gratis":
-      return "50 kredit"
+      return {
+        description: "Cocok untuk mencoba 13 tahap workflow dan menyusun draft awal tanpa biaya.",
+        creditNote: "Mendapat 50 kredit ≈ 35–45 ribu kata pemakaian total (input + output).",
+      }
     case "bpp":
-      return "300 kredit (~15 halaman)"
+      return {
+        description: "Tepat untuk menyelesaikan satu paper utuh hingga ekspor Word/PDF.",
+        creditNote: "Mendapat 300 kredit ≈ 210–270 ribu kata pemakaian total (input + output).",
+      }
     case "pro":
-      return "2000 kredit (~5 paper)"
+      return {
+        description: "Ideal untuk penyusunan banyak paper dengan diskusi sepuasnya.",
+        creditNote: "Mendapat 2000 kredit ≈ 1,4–1,8 juta kata pemakaian total (input + output).",
+      }
     default:
-      // Fallback: try to extract from first feature
-      return features[0] || ""
+      return {
+        description: "",
+        creditNote: "",
+      }
   }
 }
 
@@ -213,14 +226,18 @@ export function PricingTeaser() {
   const plansData = useQuery(api.pricingPlans.getActivePlans)
 
   // Transform to teaser format (simplified)
-  const teaserPlans: TeaserPlan[] = (plansData || []).map((plan) => ({
-    _id: plan._id,
-    name: plan.name,
-    price: plan.price,
-    unit: plan.unit,
-    isHighlighted: plan.isHighlighted,
-    creditSummary: getCreditSummary(plan.slug, plan.features),
-  }))
+  const teaserPlans: TeaserPlan[] = (plansData || []).map((plan) => {
+    const content = getCardContent(plan.slug)
+    return {
+      _id: plan._id,
+      name: plan.name,
+      price: plan.price,
+      unit: plan.unit,
+      isHighlighted: plan.isHighlighted,
+      description: content.description,
+      creditNote: content.creditNote,
+    }
+  })
 
   // Loading state
   if (!plansData) {
@@ -264,7 +281,7 @@ export function PricingTeaser() {
 
         {/* Global CTA - Link to full pricing page */}
         <div className="teaser-cta">
-          <Link href="/pricing" className="btn-outline">
+          <Link href="/pricing" className="btn-brand">
             Lihat Detail Paket →
           </Link>
         </div>
