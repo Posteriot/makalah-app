@@ -33,6 +33,7 @@ export function Footer() {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Standard pattern for hydration safety */
   useEffect(() => {
     setMounted(true)
   }, [])
