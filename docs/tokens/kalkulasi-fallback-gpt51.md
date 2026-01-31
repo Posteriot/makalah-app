@@ -21,6 +21,19 @@ Fallback ke GPT-5.1 terjadi ketika:
 
 Secara normal, mayoritas request akan menggunakan primary provider (Gemini). Fallback hanya untuk kondisi darurat.
 
+### Visualisasi Alur Fallback
+
+```mermaid
+graph TD
+    A[User Request] --> B{Vercel AI Gateway}
+    B -- Success --> C[Gemini 2.5 Flash]
+    B -- Error / Timeout / Rate Limit --> D[Fallback Provider]
+    D --> E{OpenRouter}
+    E --> F[GPT-5.1]
+    F --> G[Streaming Response to User]
+    C --> G
+```
+
 ---
 
 ## Mengapa GPT-5.1?
@@ -62,6 +75,23 @@ GPT-5.2 punya output cost **40% lebih mahal** ($14 vs $10):
 |-------|----------|-----------|---------------|
 | **Gemini 2.5 Flash** (Primary) | $0.30 | $2.50 | 1x (baseline) |
 | **GPT-5.1** (Fallback) | $1.25 | $10.00 | **~4x input, ~4x output** |
+
+### Perbandingan Cost (per 1M Tokens)
+
+```mermaid
+---
+config:
+  theme: forest
+---
+barChart
+    title: Cost Comparison (USD per 1M Tokens)
+    x-axis: Model
+    y-axis: Price (USD)
+    "Gemini 2.5 (Input)": 0.30
+    "GPT-5.1 (Input)": 1.25
+    "Gemini 2.5 (Output)": 2.50
+    "GPT-5.1 (Output)": 10.00
+```
 
 > **Implikasi:** Jika fallback sering aktif, cost akan meningkat signifikan. Monitor fallback rate di logs.
 
