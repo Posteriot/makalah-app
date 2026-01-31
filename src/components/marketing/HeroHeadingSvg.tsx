@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 
 type HeroHeadingSvgProps = {
@@ -10,8 +11,17 @@ type HeroHeadingSvgProps = {
 
 export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
   const { resolvedTheme } = useTheme()
-  const theme = resolvedTheme ?? "dark"
-  const src = theme === "light" ? "/hero-heading-light.svg" : "/hero-heading-dark.svg"
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Render placeholder with same dimensions during SSR to prevent layout shift
+  // Use dark as default since it matches the fallback theme
+  const src = mounted && resolvedTheme === "light"
+    ? "/hero-heading-light.svg"
+    : "/hero-heading-dark.svg"
 
   return (
     <span className={cn("hero-heading-svg", className)} aria-hidden="true">
