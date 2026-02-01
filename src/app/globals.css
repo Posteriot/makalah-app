@@ -2270,8 +2270,11 @@
   /* Responsive - Mobile */
   @media (max-width: 640px) {
     .benefits-section {
-      height: auto; /* Allow natural height on mobile */
-      padding: 3rem var(--section-padding-x);
+      height: 100dvh; /* Fit to viewport like other sections */
+      min-height: auto;
+      max-height: 100dvh;
+      padding: 2rem var(--section-padding-x);
+      box-sizing: border-box;
     }
 
     .bento-grid {
@@ -2307,6 +2310,19 @@
     /* Hide line breaks for natural text flow on mobile */
     .bento-item p br {
       display: none;
+    }
+
+    /* Compact spacing for fit-to-viewport */
+    .benefits-header {
+      margin-bottom: 1.25rem;
+    }
+
+    .benefits-badge {
+      margin-bottom: 1rem;
+    }
+
+    .benefits-accordion {
+      gap: 8px;
     }
   }
 
