@@ -71,6 +71,24 @@ export async function requireConversationOwner(
 }
 
 /**
+ * Defensive version: Return conversation + authUser if owner, null otherwise.
+ * Use this for queries where unauthorized access should return null, not throw.
+ */
+export async function getConversationIfOwner(
+  ctx: AnyCtx,
+  conversationId: Id<"conversations">
+): Promise<{ authUser: Doc<"users">; conversation: Doc<"conversations"> } | null> {
+  const authUser = await getAuthUser(ctx)
+  if (!authUser) return null
+
+  const conversation = await ctx.db.get(conversationId)
+  if (!conversation) return null
+  if (conversation.userId !== authUser._id) return null
+
+  return { authUser, conversation }
+}
+
+/**
  * Validasi ownership paper session berdasarkan identity yang login.
  */
 export async function requirePaperSessionOwner(
