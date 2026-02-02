@@ -5,7 +5,7 @@
  */
 export function HeroSubheading() {
   return (
-    <p className="hero-subheading">
+    <p className="font-mono text-base md:text-lg font-medium text-zinc-600 dark:text-zinc-200 max-w-[520px] leading-relaxed">
       Nggak perlu prompt ruwet. Ide apapun bakal diolah Agen Makalah AI menjadi paper utuh
     </p>
   )
