@@ -15,8 +15,7 @@ benefits/
 ├── BenefitsBadge.tsx     # Badge label "Kenapa Makalah AI?"
 ├── BenefitsTitle.tsx     # Heading h2
 ├── BentoBenefitsGrid.tsx # Desktop: Bento grid layout dengan Tailwind utilities
-├── BenefitsAccordion.tsx # Mobile: Accordion dengan collapse behavior
-└── benefitsData.tsx      # Shared data structure untuk benefits items
+└── BenefitsAccordion.tsx # Mobile: Accordion dengan collapse behavior
 ```
 
 ## Usage
@@ -40,9 +39,8 @@ Integrasi utama ada di `src/app/(marketing)/page.tsx`.
 - `BenefitsSection.tsx`: wrapper section, menyisipkan background, header (badge + title), lalu render `BentoBenefitsGrid` (desktop) dan `BenefitsAccordion` (mobile).
 - `BenefitsBadge.tsx`: badge label kecil "Kenapa Makalah AI?" dengan dot animasi, styling inline (tanpa class `.benefits-badge*`).
 - `BenefitsTitle.tsx`: heading `h2` berisi copy utama section, memakai font `var(--font-geist-mono)` + `font-medium`.
-- `BentoBenefitsGrid.tsx`: layout bento untuk desktop, styling via Tailwind design tokens (bg-bento, text-bento-heading, dll).
-- `BenefitsAccordion.tsx`: accordion mobile yang membaca data dari `benefitsData.tsx`.
-- `benefitsData.tsx`: definisi `BenefitItem` dan array `benefits` untuk accordion.
+- `BentoBenefitsGrid.tsx`: layout bento untuk desktop, styling via Tailwind design tokens.
+- `BenefitsAccordion.tsx`: accordion mobile dengan design synced ke desktop (blinking dot, font-sans/mono).
 
 ## Responsive Behavior
 
@@ -57,13 +55,17 @@ Integrasi utama ada di `src/app/(marketing)/page.tsx`.
 
 ## Styling
 
-**Desktop (BentoBenefitsGrid)** - Tailwind design tokens di `globals.css` `@theme inline`:
-- Colors: `bg-bento`, `bg-bento-hover`, `border-bento-border`, `bg-dot`
-- Typography: `text-bento-heading`, `text-bento-paragraph`, `leading-bento-heading`
+**Shared Design Tokens** (dipakai desktop & mobile):
+- Dot: `bg-dot-light` (light), `bg-dot` (dark) + `animate-badge-dot` + glow shadow
 - Fonts: `font-sans` (Geist), `font-mono` (Geist Mono)
 
+**Desktop (BentoBenefitsGrid)** - Tailwind design tokens:
+- Colors: `bg-bento`, `bg-bento-hover`, `border-bento-border`
+- Typography: `text-bento-heading`, `text-bento-paragraph`, `leading-bento-heading`
+
 **Mobile (BenefitsAccordion)** - CSS classes di `globals.css`:
-- `.benefits-accordion`, `.benefits-accordion-item`, `.bento-icon-box`
+- `.benefits-accordion`, `.benefits-accordion-item`
+- `.benefits-accordion-trigger`, `.benefits-accordion-content`
 
 **Section wrapper** - CSS classes:
 - `.benefits-section`, `.benefits-container`, `.benefits-header`, `.benefits-title`
@@ -74,29 +76,15 @@ Catatan:
 
 ## Konten yang Ditampilkan
 
-Empat benefit yang muncul di UI (desktop dan mobile) adalah:
-- **Sparring Partner**: "Pendamping penulisan riset sekaligus mitra diskusi, dari tahap ide hingga paper jadi. Bukan sekadar alat, tapi juru tulis, pencari dan pengolah data, serta penimbang ide, yang memastikan setiap karya akuntabel dan berkualitas akademik."
-- **Chat Natural**: "Ngobrol saja, layaknya percakapan lazim. Tanggapi setiap respons maupun pertanyaan agent menggunakan Bahasa Indonesia sehari-hari. Seperti interview dengan kawan sejawat. Ungkapkan ide, jelaskan maksud dan konteks, tanpa prompt yang rumit."
-- **Bahasa Manusiawi**: "Gunakan fitur Refrasa untuk membentuk gaya penulisan bahasa Indonesia manusiawi, bukan khas robot, tanpa mengubah makna."
-- **Dipandu Bertahap**: "Workflow ketat dan terstruktur, mengolah ide hingga paper jadi, dengan sitasi kredibel dan format sesuai preferensi."
+Empat benefit (data di-hardcode di masing-masing komponen):
 
-## Data Structure
-
-```tsx
-type BenefitItem = {
-  id: string
-  title: string
-  icon: LucideIcon
-  content: React.ReactNode
-}
-```
-
-Catatan:
-- `benefitsData.tsx` dipakai oleh `BenefitsAccordion` (mobile).
-- `BentoBenefitsGrid` meng-hardcode konten sendiri (tidak pakai `benefitsData`).
-- 4 benefits items: Sparring Partner, Chat Natural, Bahasa Manusiawi, Dipandu Bertahap
+| ID | Title | Description |
+|----|-------|-------------|
+| sparring-partner | Sparring Partner | Pendamping penulisan riset sekaligus mitra diskusi... |
+| chat-natural | Chat Natural | Ngobrol saja, layaknya percakapan lazim... |
+| bahasa-manusiawi | Bahasa Manusiawi | Gunakan fitur "Refrasa" untuk membentuk gaya penulisan... |
+| dipandu-bertahap | Dipandu Bertahap | Workflow ketat dan terstruktur... |
 
 ## Dependencies
 
-- `lucide-react` untuk ikon pada bento dan accordion.
 - `@/components/ui/accordion` sebagai primitive accordion di mobile.

@@ -14,5 +14,3 @@ export { BenefitsTitle } from "./BenefitsTitle"
 export { BentoBenefitsGrid } from "./BentoBenefitsGrid"
 export { BenefitsAccordion } from "./BenefitsAccordion"
 
-// Data
-export { benefits, type BenefitItem } from "./benefitsData"
