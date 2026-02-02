@@ -7,6 +7,7 @@ import { ChatLayout } from "./layout/ChatLayout"
 import { ChatWindow } from "./ChatWindow"
 import { ArtifactPanel } from "./ArtifactPanel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { useCleanupEmptyConversations } from "@/lib/hooks/useCleanupEmptyConversations"
 import { Id } from "../../../convex/_generated/dataModel"
 
 interface ChatContainerProps {
@@ -36,6 +37,10 @@ type ArtifactState = { isOpen: boolean; selectedId: Id<"artifacts"> | null }
  */
 export function ChatContainer({ conversationId }: ChatContainerProps) {
   const { user } = useCurrentUser()
+
+  // Cleanup empty conversations on mount
+  useCleanupEmptyConversations(user?._id)
+
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const isValidConvexId = (value: string | null): value is string =>
     typeof value === "string" && /^[a-z0-9]{32}$/.test(value)
