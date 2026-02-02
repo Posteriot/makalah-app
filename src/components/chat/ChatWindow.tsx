@@ -37,6 +37,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
   const [awaitingRedirect, setAwaitingRedirect] = useState(false)
+  const [redirectTimestamp, setRedirectTimestamp] = useState<number | null>(null)
 
   const { user: clerkUser } = useUser()
   const userId = useQuery(api.chatHelpers.getUserId, clerkUser?.id ? { clerkUserId: clerkUser.id } : "skip")
@@ -57,14 +58,20 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const router = useRouter()
 
   // Redirect to newly created conversation after first message
-  // Using ref to track redirect state to avoid setState in effect (lint rule)
+  // Only redirect if conversation was created AFTER we triggered the redirect
   const redirectTriggeredRef = useRef(false)
   useEffect(() => {
-    if (awaitingRedirect && latestConversation?._id && !redirectTriggeredRef.current) {
+    if (
+      awaitingRedirect &&
+      latestConversation?._id &&
+      redirectTimestamp &&
+      latestConversation.createdAt >= redirectTimestamp &&
+      !redirectTriggeredRef.current
+    ) {
       redirectTriggeredRef.current = true
       router.push(`/chat/${latestConversation._id}`)
     }
-  }, [awaitingRedirect, latestConversation, router])
+  }, [awaitingRedirect, latestConversation, redirectTimestamp, router])
 
   const {
     isPaperMode,
@@ -343,6 +350,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
     // Trigger redirect flow for fresh chat
     if (!conversationId) {
+      setRedirectTimestamp(Date.now())
       setAwaitingRedirect(true)
     }
 
@@ -383,6 +391,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
     // Trigger redirect flow for fresh chat
     if (!conversationId) {
+      setRedirectTimestamp(Date.now())
       setAwaitingRedirect(true)
     }
 
