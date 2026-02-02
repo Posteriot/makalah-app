@@ -132,6 +132,12 @@
   --spacing-element-gap-md: 0.75rem;
   --spacing-element-gap-lg: 1rem;
   --spacing-element-gap-xl: 1.25rem;
+
+  /* Base Spacing Unit (Tailwind v4 uses calc(var(--spacing) * N) for all spacing utilities)
+   * pl-8 = calc(0.25rem * 8) = 2rem = 32px
+   * pl-11 = calc(0.25rem * 11) = 2.75rem = 44px
+   */
+  --spacing: 0.25rem;
 }
 
 /* ==========================================================================
@@ -2402,37 +2408,6 @@
     }
   }
 
-  /* Bento Card - base styling for grid items */
-  .bento-card {
-    background: #1c1c21;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.3s ease;
-    z-index: 5;
-  }
-
-  :root:not(.dark) .bento-card,
-  .light .bento-card {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-  }
-
-  .bento-card:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    background: #242428;
-    transform: translateY(-4px);
-  }
-
-  :root:not(.dark) .bento-card:hover,
-  .light .bento-card:hover {
-    border-color: rgba(232, 102, 9, 0.3);
-    background: #fafafa;
-  }
-
   /* Bento Icon Box - used by accordion */
   .bento-icon-box {
     width: 48px;
@@ -2470,33 +2445,6 @@
     left: 0;
     color: var(--brand);
     font-weight: 600;
-  }
-
-  /* Bento Glow - hover effect */
-  .bento-glow {
-    position: absolute;
-    bottom: -80px;
-    right: -80px;
-    width: 300px;
-    height: 300px;
-    background:
-      radial-gradient(circle at 70% 70%, rgba(232, 102, 9, 0.35) 0%, transparent 60%),
-      radial-gradient(circle at 30% 80%, rgba(25, 196, 156, 0.25) 0%, transparent 55%);
-    filter: blur(40px) saturate(1.5);
-    opacity: 0;
-    pointer-events: none;
-    transition: all 0.4s ease;
-    z-index: 0;
-  }
-
-  .group:hover .bento-glow {
-    opacity: 0.8;
-    transform: scale(1.1);
-  }
-
-  :root:not(.dark) .group:hover .bento-glow,
-  .light .group:hover .bento-glow {
-    opacity: 0.4;
   }
 
   /* Responsive - Mobile */
