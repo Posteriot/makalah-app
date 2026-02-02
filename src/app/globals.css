@@ -1459,6 +1459,185 @@
     box-shadow: -25px 30px 0 rgba(255, 255, 255, 0.08);
   }
 
+  /* Neo-Brutalist Card Style */
+  .neo-card {
+    position: relative;
+    background: var(--neo-card-bg);
+    border: 3px solid var(--neo-border);
+    border-radius: 12px;
+  }
+
+  .neo-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--neo-shadow);
+    border-radius: 12px;
+    transform: translate(6px, 6px);
+    z-index: -1;
+  }
+
+  /* Neo-Brutalist Browser Header */
+  .neo-header {
+    background: var(--neo-border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-radius: 9px 9px 0 0;
+  }
+
+  .neo-header .neo-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .neo-header .neo-dots span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--neo-shadow);
+  }
+
+  .neo-header .neo-dots span:nth-child(1) {
+    background: #ff5f56;
+  }
+
+  .neo-header .neo-dots span:nth-child(2) {
+    background: #ffbd2e;
+  }
+
+  .neo-header .neo-dots span:nth-child(3) {
+    background: #27c93f;
+  }
+
+  .neo-header .neo-url {
+    font-family: var(--font-mono), monospace;
+    font-size: 11px;
+    color: var(--muted-foreground);
+    background: var(--neo-card-bg);
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 2px solid var(--neo-shadow);
+  }
+
+  /* Neo-Brutalist Content Area */
+  .neo-content {
+    padding: 20px;
+  }
+
+  /* Neo-Brutalist Progress Bar */
+  .neo-progress-bar {
+    height: 8px;
+    background: var(--neo-muted);
+    border-radius: 4px;
+    border: 2px solid var(--neo-border);
+    overflow: hidden;
+  }
+
+  .neo-progress-bar .neo-progress-fill {
+    height: 100%;
+    background: var(--success);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  /* Neo-Brutalist Timeline */
+  .neo-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .neo-timeline-item {
+    display: flex;
+    gap: 12px;
+    position: relative;
+  }
+
+  .neo-timeline-item .neo-dot-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .neo-timeline-item .neo-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--neo-border);
+    background: transparent;
+    flex-shrink: 0;
+    z-index: 1;
+  }
+
+  .neo-timeline-item .neo-dot.completed {
+    background: var(--success);
+    border-color: var(--success);
+  }
+
+  .neo-timeline-item .neo-dot.current {
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--neo-card-bg), 0 0 0 5px oklch(0.72 0.14 175 / 0.3);
+  }
+
+  .neo-timeline-item .neo-line {
+    width: 2px;
+    flex: 1;
+    min-height: 20px;
+    background: var(--neo-border);
+  }
+
+  .neo-timeline-item .neo-line.completed {
+    background: var(--success);
+  }
+
+  .neo-timeline-item .neo-label-col {
+    padding-bottom: 16px;
+  }
+
+  .neo-timeline-item:last-child .neo-label-col {
+    padding-bottom: 0;
+  }
+
+  .neo-timeline-item .neo-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+
+  .neo-timeline-item .neo-label.current {
+    color: var(--primary);
+  }
+
+  .neo-timeline-item .neo-label.pending {
+    color: var(--muted-foreground);
+  }
+
+  .neo-timeline-item .neo-status {
+    font-size: 10px;
+    margin-top: 2px;
+  }
+
+  .neo-timeline-item .neo-status.completed {
+    color: var(--success);
+  }
+
+  .neo-timeline-item .neo-status.current {
+    color: var(--primary);
+  }
+
+  /* More stages indicator */
+  .neo-more-stages {
+    font-size: 11px;
+    color: var(--muted-foreground);
+    text-align: center;
+    padding-top: 8px;
+    border-top: 1px dashed var(--neo-border);
+    margin-top: 12px;
+  }
+
   /* Back layer (research mockup) */
   .layer-back {
     z-index: 10;
