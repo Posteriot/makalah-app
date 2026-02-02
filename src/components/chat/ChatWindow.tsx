@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react"
 import { UIMessage, DefaultChatTransport } from "ai"
 import { useEffect, useState, useRef, useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
@@ -35,9 +36,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
+  const [awaitingRedirect, setAwaitingRedirect] = useState(false)
 
   const { user: clerkUser } = useUser()
   const userId = useQuery(api.chatHelpers.getUserId, clerkUser?.id ? { clerkUserId: clerkUser.id } : "skip")
+
+  // Query latest conversation for redirect after lazy create
+  const latestConversation = useQuery(
+    api.conversations.getLatestForUser,
+    userId && awaitingRedirect ? { userId } : "skip"
+  )
 
   const isValidConvexId = (value: string | null): value is string =>
     typeof value === "string" && /^[a-z0-9]{32}$/.test(value)
@@ -46,6 +54,17 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     : null
 
   const { isAuthenticated } = useConvexAuth()
+  const router = useRouter()
+
+  // Redirect to newly created conversation after first message
+  // Using ref to track redirect state to avoid setState in effect (lint rule)
+  const redirectTriggeredRef = useRef(false)
+  useEffect(() => {
+    if (awaitingRedirect && latestConversation?._id && !redirectTriggeredRef.current) {
+      redirectTriggeredRef.current = true
+      router.push(`/chat/${latestConversation._id}`)
+    }
+  }, [awaitingRedirect, latestConversation, router])
 
   const {
     isPaperMode,
@@ -322,6 +341,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
+    // Trigger redirect flow for fresh chat
+    if (!conversationId) {
+      setAwaitingRedirect(true)
+    }
+
     pendingScrollToBottomRef.current = true
     sendMessage({ text: input })
     setInput("")
@@ -356,6 +380,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   // Handler for template selection
   const handleTemplateSelect = (template: Template) => {
     if (isLoading) return
+
+    // Trigger redirect flow for fresh chat
+    if (!conversationId) {
+      setAwaitingRedirect(true)
+    }
+
     pendingScrollToBottomRef.current = true
     sendMessage({ text: template.message })
   }
