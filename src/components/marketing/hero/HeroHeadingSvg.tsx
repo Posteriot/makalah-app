@@ -17,7 +17,7 @@ export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
     >
       {/* Dark mode heading (light text) */}
       <Image
-        src="/heading-dark-mode.svg"
+        src="/heading-light-color.svg"
         alt="Ngobrol+Riset +Brainstorming +Kolaboratif =Paper_Akademik"
         width={520}
         height={246}
@@ -26,7 +26,7 @@ export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
       />
       {/* Light mode heading (dark text) */}
       <Image
-        src="/heading-light-mode.svg"
+        src="/heading-dark-color.svg"
         alt="Ngobrol+Riset +Brainstorming +Kolaboratif =Paper_Akademik"
         width={520}
         height={246}
