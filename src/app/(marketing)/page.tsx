@@ -27,9 +27,6 @@ export default function MarketingHomePage() {
         {/* Diagonal Stripes Background */}
         <div className="hero-diagonal-stripes" />
 
-        {/* IDE Layout Lines (Decorative) */}
-        <div className="hero-ide-line-y hidden lg:block" style={{ left: "calc(50% - 600px)" }} />
-        <div className="hero-ide-line-y hidden lg:block" style={{ right: "calc(50% - 600px)" }} />
 
         {/* Hero Flex Container */}
         <div className="hero-flex">

@@ -1008,7 +1008,6 @@
     min-height: 100vh;
     min-height: 100dvh;
     background-color: transparent;
-    border-bottom: 1px solid var(--border-hairline);
     display: flex;
     align-items: center;
     box-sizing: border-box;
@@ -1414,7 +1413,6 @@
     justify-content: center;
     padding: 3rem var(--section-padding-x);
     background-color: var(--luxe-zinc-600, #1c1c21);
-    border-bottom: 1px solid var(--border-hairline);
     overflow: hidden;
     isolation: isolate; /* Create stacking context */
   }
@@ -1467,17 +1465,6 @@
   :root:not(.dark) .benefits-bg-dots,
   .light .benefits-bg-dots {
     background-image: radial-gradient(rgba(0, 0, 0, 0.12) 1px, transparent 1px);
-  }
-
-  /* Top border line */
-  .benefits-top-line {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: var(--border-hairline);
-    z-index: 2;
   }
 
   /* Container */
@@ -2510,9 +2497,9 @@
 
 /* ==========================================================================
  * FOOTER - Diagonal Stripes Pattern
- * Complex gradient pattern kept as CSS utility (not practical as inline Tailwind)
+ * Complex gradient pattern kept as CSS component (not practical as inline Tailwind)
  * ========================================================================== */
-@layer utilities {
+@layer components {
   .footer-diagonal-stripes {
     position: absolute;
     inset: 0;

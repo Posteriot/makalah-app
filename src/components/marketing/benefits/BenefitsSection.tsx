@@ -19,9 +19,6 @@ export function BenefitsSection() {
       <div className="benefits-bg-stripes" />
       <div className="benefits-bg-dots" />
 
-      {/* Top border line */}
-      <div className="benefits-top-line" />
-
       <div className="benefits-container">
         {/* Section Header */}
         <div className="benefits-header">
