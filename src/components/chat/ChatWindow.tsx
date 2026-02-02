@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { MenuIcon, AlertCircleIcon, RotateCcwIcon, SearchXIcon, MessageSquareIcon } from "lucide-react"
+import { MenuIcon, AlertCircleIcon, RotateCcwIcon, SearchXIcon, MessageSquarePlusIcon, SparklesIcon, FileTextIcon, SearchIcon } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -29,6 +29,7 @@ interface ChatWindowProps {
 }
 
 export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect }: ChatWindowProps) {
+  const router = useRouter()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
   const pendingScrollToBottomRef = useRef(false)
@@ -36,17 +37,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
-  const [awaitingRedirect, setAwaitingRedirect] = useState(false)
-  const [redirectTimestamp, setRedirectTimestamp] = useState<number | null>(null)
+  const [isCreatingChat, setIsCreatingChat] = useState(false)
 
   const { user: clerkUser } = useUser()
   const userId = useQuery(api.chatHelpers.getUserId, clerkUser?.id ? { clerkUserId: clerkUser.id } : "skip")
-
-  // Query latest conversation for redirect after lazy create
-  const latestConversation = useQuery(
-    api.conversations.getLatestForUser,
-    userId && awaitingRedirect ? { userId } : "skip"
-  )
+  const createConversation = useMutation(api.conversations.createConversation)
 
   const isValidConvexId = (value: string | null): value is string =>
     typeof value === "string" && /^[a-z0-9]{32}$/.test(value)
@@ -55,9 +50,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     : null
 
   const { isAuthenticated } = useConvexAuth()
-  const router = useRouter()
-
-  const redirectTriggeredRef = useRef(false)
 
   const {
     isPaperMode,
@@ -78,9 +70,19 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     api.conversations.getConversation,
     safeConversationId && isAuthenticated ? { conversationId: safeConversationId } : "skip"
   )
-  const isConversationLoading = safeConversationId !== null && conversation === undefined
+
+  // Auth is fully settled when userId query has resolved (not loading)
+  // This prevents showing "not found" during auth sync race condition
+  const isAuthSettled = !clerkUser?.id || userId !== undefined
+
+  // Loading if: query is loading OR auth is still settling (for newly created conversations)
+  const isConversationLoading =
+    safeConversationId !== null && (conversation === undefined || !isAuthSettled)
+  // Only show "not found" when auth is fully settled AND conversation query returned null
   const conversationNotFound =
-    conversationId !== null && (safeConversationId === null || conversation === null)
+    conversationId !== null &&
+    isAuthSettled &&
+    (safeConversationId === null || conversation === null)
 
   // 1. Fetch history from Convex
   const { messages: historyMessages, isLoading: isHistoryLoading } = useMessages(
@@ -169,24 +171,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
   })
 
-  // Redirect to newly created conversation after first message
-  // Only redirect if conversation was created AFTER we triggered the redirect
-  useEffect(() => {
-    // Only redirect after stream completes (not during streaming, which would cut off AI response)
-    // This ensures the POST request completes and both messages are saved before navigation
-    const streamComplete = status === 'ready'
-    if (
-      awaitingRedirect &&
-      streamComplete &&
-      latestConversation?._id &&
-      redirectTimestamp &&
-      latestConversation.createdAt >= redirectTimestamp &&
-      !redirectTriggeredRef.current
-    ) {
-      redirectTriggeredRef.current = true
-      router.push(`/chat/${latestConversation._id}`)
-    }
-  }, [awaitingRedirect, latestConversation, redirectTimestamp, router, status])
 
   // 3. Sync history messages to useChat state - only when conversation changes or history first loads
   useEffect(() => {
@@ -353,12 +337,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
-    // Trigger redirect flow for fresh chat
-    if (!conversationId) {
-      setRedirectTimestamp(Date.now())
-      setAwaitingRedirect(true)
-    }
-
     pendingScrollToBottomRef.current = true
     sendMessage({ text: input })
     setInput("")
@@ -394,20 +372,33 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const handleTemplateSelect = (template: Template) => {
     if (isLoading) return
 
-    // Trigger redirect flow for fresh chat
-    if (!conversationId) {
-      setRedirectTimestamp(Date.now())
-      setAwaitingRedirect(true)
-    }
-
     pendingScrollToBottomRef.current = true
     sendMessage({ text: template.message })
   }
 
-  // Fresh chat state (no conversation yet - lazy create on first message)
+  // Handler for starting new chat from empty state
+  const handleStartNewChat = async () => {
+    if (!userId || isCreatingChat) return
+    setIsCreatingChat(true)
+    try {
+      const newId = await createConversation({ userId })
+      if (newId) {
+        router.push(`/chat/${newId}`)
+      }
+    } catch (error) {
+      console.error("Failed to create conversation:", error)
+      toast.error("Gagal membuat percakapan baru")
+    } finally {
+      setIsCreatingChat(false)
+    }
+  }
+
+  // Landing page empty state (no conversation selected)
+  // Shows informational content + CTA to start new conversation
   if (!conversationId) {
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Mobile Header */}
         <div className="md:hidden p-4 border-b flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
             <MenuIcon className="h-5 w-5" />
@@ -416,27 +407,52 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <div className="w-9" />
         </div>
 
-        {/* Messages Area - Empty state with templates */}
-        <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
-          <div className="flex-1 overflow-hidden relative py-4">
-            <div className="flex flex-col items-center justify-center h-full px-6">
-              {!isGenerating && <TemplateGrid onTemplateSelect={handleTemplateSelect} />}
+        {/* Empty State - Informational */}
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-md text-center space-y-6">
+            {/* Icon */}
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <SparklesIcon className="w-8 h-8 text-primary" />
             </div>
+
+            {/* Title & Description */}
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold">Selamat Datang di Makalah Chat</h2>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Asisten AI untuk membantu riset, menulis makalah ilmiah, dan menjawab pertanyaan akademik.
+                Mulai percakapan baru atau pilih dari riwayat di sidebar.
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="grid grid-cols-1 gap-3 text-left text-sm">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <FileTextIcon className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium">Tulis Makalah</p>
+                  <p className="text-muted-foreground text-xs">Panduan step-by-step menulis paper akademik</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <SearchIcon className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium">Riset & Referensi</p>
+                  <p className="text-muted-foreground text-xs">Cari jurnal dan sumber ilmiah terpercaya</p>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            <Button
+              onClick={handleStartNewChat}
+              disabled={!userId || isCreatingChat}
+              className="w-full"
+              size="lg"
+            >
+              <MessageSquarePlusIcon className="w-5 h-5 mr-2" />
+              {isCreatingChat ? "Membuat..." : "Mulai Percakapan Baru"}
+            </Button>
           </div>
-
-          {/* Thinking Indicator - shown when AI is processing */}
-          <ThinkingIndicator visible={status === 'submitted'} />
-
-          {/* Input Area */}
-          <ChatInput
-            input={input}
-            onInputChange={handleInputChange}
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-            conversationId={null}
-            uploadedFileIds={uploadedFileIds}
-            onFileUploaded={handleFileUploaded}
-          />
         </div>
       </div>
     )

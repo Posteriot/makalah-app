@@ -38,8 +38,9 @@ type ArtifactState = { isOpen: boolean; selectedId: Id<"artifacts"> | null }
 export function ChatContainer({ conversationId }: ChatContainerProps) {
   const { user } = useCurrentUser()
 
-  // Cleanup empty conversations on mount
-  useCleanupEmptyConversations(user?._id)
+  // Cleanup empty conversations ONLY on landing page (/chat without ID)
+  // Don't cleanup when viewing a specific conversation - prevents deleting newly created ones
+  useCleanupEmptyConversations(conversationId === null ? user?._id : null)
 
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const isValidConvexId = (value: string | null): value is string =>

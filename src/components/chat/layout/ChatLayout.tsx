@@ -133,6 +133,17 @@ export function ChatLayout({
     }
   }, [conversationId, conversations, openTab])
 
+  // Auto-collapse sidebar in empty state, auto-expand when conversation is active
+  useEffect(() => {
+    if (conversationId === null) {
+      // Empty state: collapse sidebar to focus on welcome screen
+      setIsSidebarCollapsed(true)
+    } else {
+      // Active conversation: expand sidebar to show context
+      setIsSidebarCollapsed(false)
+    }
+  }, [conversationId])
+
   // Calculate max width (50% of viewport)
   const getMaxWidth = useCallback(() => {
     if (typeof window === "undefined") return 600
@@ -206,7 +217,7 @@ export function ChatLayout({
     [isSidebarCollapsed]
   )
 
-  // New chat handler
+  // New chat handler - create conversation and redirect
   const handleNewChat = async () => {
     if (isCreating) return
     setIsCreating(true)
