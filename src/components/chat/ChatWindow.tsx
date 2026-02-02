@@ -57,21 +57,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const { isAuthenticated } = useConvexAuth()
   const router = useRouter()
 
-  // Redirect to newly created conversation after first message
-  // Only redirect if conversation was created AFTER we triggered the redirect
   const redirectTriggeredRef = useRef(false)
-  useEffect(() => {
-    if (
-      awaitingRedirect &&
-      latestConversation?._id &&
-      redirectTimestamp &&
-      latestConversation.createdAt >= redirectTimestamp &&
-      !redirectTriggeredRef.current
-    ) {
-      redirectTriggeredRef.current = true
-      router.push(`/chat/${latestConversation._id}`)
-    }
-  }, [awaitingRedirect, latestConversation, redirectTimestamp, router])
 
   const {
     isPaperMode,
@@ -182,6 +168,25 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       toast.error("Terjadi kesalahan: " + (err.message || "Gagal memproses pesan"))
     }
   })
+
+  // Redirect to newly created conversation after first message
+  // Only redirect if conversation was created AFTER we triggered the redirect
+  useEffect(() => {
+    // Only redirect after stream has started (status changes from 'submitted' to 'streaming' or 'ready')
+    // This ensures the POST request completes and message is saved before navigation
+    const streamStarted = status === 'streaming' || status === 'ready'
+    if (
+      awaitingRedirect &&
+      streamStarted &&
+      latestConversation?._id &&
+      redirectTimestamp &&
+      latestConversation.createdAt >= redirectTimestamp &&
+      !redirectTriggeredRef.current
+    ) {
+      redirectTriggeredRef.current = true
+      router.push(`/chat/${latestConversation._id}`)
+    }
+  }, [awaitingRedirect, latestConversation, redirectTimestamp, router, status])
 
   // 3. Sync history messages to useChat state - only when conversation changes or history first loads
   useEffect(() => {
