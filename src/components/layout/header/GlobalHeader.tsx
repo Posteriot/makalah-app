@@ -179,24 +179,33 @@ export function GlobalHeader() {
         {/* Header Left - Logo & Brand */}
         <div className="header-left">
         <Link href="/" className="header-brand">
+          {/* Light logo icon (for dark mode) */}
           <Image
-            src="/logo/makalah_logo_500x500.png"
+            src="/logo/makalah_logo_light.svg"
             alt="Makalah"
-            width={32}
-            height={32}
-            className="logo-img"
+            width={24}
+            height={24}
+            className="logo-img logo-img-light"
           />
-          {/* Light text (for dark mode) - CSS handles visibility */}
+          {/* Dark logo icon (for light mode) */}
           <Image
-            src="/makalah_brand_text.svg"
+            src="/logo/makalah_logo_dark.svg"
+            alt="Makalah"
+            width={24}
+            height={24}
+            className="logo-img logo-img-dark"
+          />
+          {/* White brand text (for dark mode) */}
+          <Image
+            src="/logo-makalah-ai-white.svg"
             alt="Makalah"
             width={80}
             height={18}
             className="logo-brand-text logo-brand-light"
           />
-          {/* Dark text (for light mode) - CSS handles visibility */}
+          {/* Black brand text (for light mode) */}
           <Image
-            src="/makalah_brand_text_dark.svg"
+            src="/logo-makalah-ai-black.svg"
             alt="Makalah"
             width={80}
             height={18}
@@ -216,24 +225,23 @@ export function GlobalHeader() {
         </SignedIn>
       </div>
 
-      {/* Navigation */}
-      <nav className="header-nav">
-        {NAV_LINKS.map((link) => {
-          const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn("nav-link", isActive && "active")}
-            >
-              {link.label}
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* Header Right - Theme Toggle & Auth */}
+      {/* Header Right - Nav, Theme Toggle & Auth */}
       <div className="header-right">
+        {/* Navigation - Desktop only */}
+        <nav className="header-nav">
+          {NAV_LINKS.map((link) => {
+            const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn("nav-link", isActive && "active")}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
+        </nav>
         {/* Theme Toggle - Mobile (icon only, left of hamburger) */}
         <SignedIn>
           <button
@@ -398,29 +406,7 @@ export function GlobalHeader() {
         </nav>
       )}
 
-      {/* Diagonal Stripes Separator */}
-      <svg
-        className="diagonal-stripes-header"
-        aria-hidden="true"
-        preserveAspectRatio="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <pattern
-            id="diagonal-stripes-header"
-            x="0"
-            y="0"
-            width="10"
-            height="10"
-            patternUnits="userSpaceOnUse"
-          >
-            <line x1="0" y1="10" x2="10" y2="0" stroke="currentColor" strokeWidth="1" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#diagonal-stripes-header)" />
-      </svg>
-
-      {/* Horizontal line border below stripes */}
+      {/* Horizontal line border below header */}
       <div className="header-bottom-line" />
 
       {/* User Settings Modal (for mobile menu "Atur Akun") */}

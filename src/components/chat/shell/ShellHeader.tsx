@@ -7,7 +7,7 @@ import { SunIcon, MoonIcon, PanelRightIcon, PanelRightCloseIcon } from "lucide-r
 import { cn } from "@/lib/utils"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { NotificationDropdown } from "./NotificationDropdown"
-import { UserDropdown } from "@/components/layout/UserDropdown"
+import { UserDropdown } from "@/components/layout/header"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 

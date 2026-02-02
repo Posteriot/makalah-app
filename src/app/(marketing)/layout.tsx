@@ -1,4 +1,4 @@
-import { GlobalHeader } from "@/components/layout/GlobalHeader"
+import { GlobalHeader } from "@/components/layout/header"
 import { Footer } from "@/components/layout/Footer"
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { fetchMutation } from "convex/nextjs"

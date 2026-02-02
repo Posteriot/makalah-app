@@ -9,34 +9,6 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { UserSettingsModal } from "@/components/settings/UserSettingsModal"
 
-/**
- * Segment configuration for user avatar and badge
- *
- * ATURAN WARNA:
- * - Warna avatar dan badge berdasarkan SUBSCRIPTION TIER, bukan role
- * - Admin dan Superadmin diperlakukan sebagai PRO (amber)
- * - Tidak ada warna terpisah untuk role admin/superadmin
- */
-type SegmentType = "gratis" | "bpp" | "pro"
-
-const SEGMENT_CONFIG: Record<SegmentType, { label: string; className: string }> = {
-  gratis: { label: "GRATIS", className: "bg-segment-gratis text-white" },
-  bpp: { label: "BPP", className: "bg-segment-bpp text-white" },
-  pro: { label: "PRO", className: "bg-segment-pro text-white" },
-}
-
-/**
- * Determine subscription tier from user role and subscription status
- * Admin/Superadmin always treated as PRO (full access)
- */
-function getSegmentFromUser(role?: string, subscriptionStatus?: string): SegmentType {
-  // Admin and superadmin are always treated as PRO
-  if (role === "superadmin" || role === "admin") return "pro"
-  if (subscriptionStatus === "pro") return "pro"
-  if (subscriptionStatus === "bpp") return "bpp"
-  return "gratis"
-}
-
 export function UserDropdown() {
   const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
@@ -86,11 +58,8 @@ export function UserDropdown() {
   const firstName = clerkUser.firstName || "User"
   const lastName = clerkUser.lastName || ""
   const fullName = `${firstName} ${lastName}`.trim()
-  const initial = firstName.charAt(0).toUpperCase()
 
-  const segment = getSegmentFromUser(convexUser?.role, convexUser?.subscriptionStatus)
-  const segmentConfig = SEGMENT_CONFIG[segment]
-  // isAdmin berdasarkan ROLE (bukan segment), karena segment sekarang hanya subscription tier
+  // isAdmin berdasarkan ROLE untuk menampilkan Admin Panel link
   const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
 
   const handleSignOut = async () => {
@@ -111,18 +80,10 @@ export function UserDropdown() {
       {/* Trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-accent transition-colors"
+        className="flex items-center gap-2 px-3 py-1 rounded-lg border border-black/50 dark:border-white/50 hover:bg-accent transition-colors"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        {/* Avatar - warna berdasarkan subscription tier */}
-        <div className={cn(
-          "w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium",
-          segmentConfig.className
-        )}>
-          {initial}
-        </div>
-
         {/* Name (hidden on mobile) */}
         <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
           {fullName}

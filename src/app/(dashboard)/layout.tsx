@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
-import { GlobalHeader } from "@/components/layout/GlobalHeader"
+import { GlobalHeader } from "@/components/layout/header"
 import { Footer } from "@/components/layout/Footer"
 
 /**
