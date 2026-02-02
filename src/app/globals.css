@@ -179,6 +179,13 @@
   --segment-pro: oklch(0.65 0.18 70);
   /* amber-600 - untuk user PRO, Admin, dan Superadmin */
 
+  /* Neo-Brutalist Mockup Colors - Light Mode */
+  --neo-card-bg: oklch(0.96 0.02 70);
+  --neo-shadow: oklch(0.15 0 0);
+  --neo-border: oklch(0.20 0 0);
+  --neo-input-bg: oklch(0.95 0.02 180);
+  --neo-muted: oklch(0.90 0.04 75);
+
   /* Chat Bubble Colors */
   --user-message-bg: oklch(0.95 0 0);
 
@@ -261,6 +268,13 @@
   /* IDE hairlines - dark mode: light lines */
   --border-hairline: rgba(255, 255, 255, 0.2);
   --border-hairline-soft: rgba(255, 255, 255, 0.08);
+
+  /* Neo-Brutalist Mockup Colors - Dark Mode */
+  --neo-card-bg: oklch(0.18 0 0);
+  --neo-shadow: oklch(0.08 0 0);
+  --neo-border: oklch(0.35 0 0);
+  --neo-input-bg: oklch(0.22 0.01 180);
+  --neo-muted: oklch(0.30 0.02 75);
 
   /* Chat Colors - Dark Mode (multi-layer depth) */
   --chat-background: oklch(0.165 0 0);
