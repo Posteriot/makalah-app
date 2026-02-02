@@ -15,6 +15,20 @@ export const listConversations = query({
     },
 })
 
+// Get latest conversation for user (most recent by lastMessageAt)
+export const getLatestForUser = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, { userId }) => {
+        await requireAuthUserId(ctx, userId)
+        const conversation = await ctx.db
+            .query("conversations")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .order("desc")
+            .first()
+        return conversation
+    },
+})
+
 // Get single conversation (defensive - returns null if not owner or auth not ready)
 export const getConversation = query({
     args: { conversationId: v.id("conversations") },
