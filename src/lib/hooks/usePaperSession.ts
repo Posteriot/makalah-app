@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { useCallback } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -93,9 +93,11 @@ export function calculateCurrentStageStartIndex(
 }
 
 export const usePaperSession = (conversationId?: Id<"conversations">) => {
+    const { isAuthenticated } = useConvexAuth();
+
     const session = useQuery(
         api.paperSessions.getByConversation,
-        conversationId ? { conversationId } : "skip"
+        conversationId && isAuthenticated ? { conversationId } : "skip"
     );
 
     const approveStageMutation = useMutation(api.paperSessions.approveStage);
