@@ -72,8 +72,21 @@
   --color-list-hover-bg: var(--list-hover-bg);
   --color-list-selected-bg: var(--list-selected-bg);
 
-  /* Fonts */
+  /* Fonts
+   * --font-sans: Geist (primary UI font)
+   *   Weights: Thin 100 | ExtraLight 200 | Light 300 | Regular 400 | Medium 500
+   *            SemiBold 600 | Bold 700 | ExtraBold 800 | Black 900
+   *   Usage: font-thin, font-extralight, font-light, font-normal, font-medium,
+   *          font-semibold, font-bold, font-extrabold, font-black
+   * --font-geist-mono: Geist Mono (subheadings, technical text)
+   *   Weights: Thin 100 | ExtraLight 200 | Light 300 | Regular 400 | Medium 500
+   *            SemiBold 600 | Bold 700 | ExtraBold 800 | Black 900
+   * --font-mono: JetBrains Mono (code)
+   * --font-heading: Nunito Sans (headings)
+   * --font-hero: Victor Mono (hero mockups)
+   */
   --font-sans: var(--font-sans);
+  --font-geist-mono: var(--font-geist-mono);
   --font-mono: var(--font-mono);
   --font-heading: var(--font-heading);
   --font-hero: var(--font-hero);
@@ -180,11 +193,13 @@
   /* amber-600 - untuk user PRO, Admin, dan Superadmin */
 
   /* Neo-Brutalist Mockup Colors - Light Mode */
-  --neo-card-bg: oklch(0.96 0.02 70);
-  --neo-shadow: oklch(0.15 0 0);
-  --neo-border: oklch(0.20 0 0);
-  --neo-input-bg: oklch(0.95 0.02 180);
-  --neo-muted: oklch(0.90 0.04 75);
+  --neo-card-bg: oklch(0.99 0.01 70 / 0.85);
+  --neo-shadow: oklch(0.25 0 0 / 0.4);  /* Transparent dark-gray shadow */
+  --neo-border: oklch(0.15 0 0);
+  --neo-input-bg: oklch(0.96 0.01 180);
+  --neo-muted: oklch(0.92 0.03 75);
+  --neo-text: oklch(0.15 0 0);
+  --neo-text-muted: oklch(0.35 0 0);
 
   /* Chat Bubble Colors */
   --user-message-bg: oklch(0.95 0 0);
@@ -270,11 +285,13 @@
   --border-hairline-soft: rgba(255, 255, 255, 0.08);
 
   /* Neo-Brutalist Mockup Colors - Dark Mode */
-  --neo-card-bg: oklch(0.18 0 0);
-  --neo-shadow: oklch(0.08 0 0);
-  --neo-border: oklch(0.35 0 0);
+  --neo-card-bg: oklch(0.20 0 0 / 0.85);
+  --neo-shadow: oklch(0.75 0 0 / 0.35);  /* Transparent light-grey shadow */
+  --neo-border: oklch(0.45 0 0);
   --neo-input-bg: oklch(0.22 0.01 180);
   --neo-muted: oklch(0.30 0.02 75);
+  --neo-text: oklch(0.95 0 0);
+  --neo-text-muted: oklch(0.70 0 0);
 
   /* Chat Colors - Dark Mode (multi-layer depth) */
   --chat-background: oklch(0.165 0 0);
@@ -1186,6 +1203,7 @@
 
     .hero-subheading {
       font-size: 0.8rem; /* Lebih kecil untuk mobile */
+      font-weight: 600;
       text-align: left;
       max-width: 100%;
       align-self: flex-start;
@@ -1271,7 +1289,9 @@
 
   /* Hero subheading - theme-aware */
   .hero-subheading {
+    font-family: var(--font-geist-mono), monospace;
     font-size: 1rem;
+    font-weight: 500;  /* Medium */
     color: var(--muted-foreground);
     max-width: 520px;
     margin: 0 0 1rem;
@@ -1463,40 +1483,34 @@
   .neo-card {
     position: relative;
     background: var(--neo-card-bg);
-    border: 3px solid var(--neo-border);
-    border-radius: 12px;
-  }
-
-  .neo-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: var(--neo-shadow);
-    border-radius: 12px;
-    transform: translate(6px, 6px);
-    z-index: -1;
+    border: 4px solid var(--neo-border);
+    border-radius: 8px;
+    box-shadow: 8px 8px 0 var(--neo-shadow);
+    font-family: var(--font-mono), 'Victor Mono', monospace;
   }
 
   /* Neo-Brutalist Browser Header */
   .neo-header {
     background: var(--neo-border);
-    padding: 10px 16px;
+    padding: 12px 16px;
     display: flex;
     align-items: center;
     gap: 16px;
-    border-radius: 9px 9px 0 0;
+    border-radius: 4px 4px 0 0;
+    border-bottom: 3px solid var(--neo-shadow);
   }
 
   .neo-header .neo-dots {
     display: flex;
-    gap: 6px;
+    gap: 8px;
   }
 
   .neo-header .neo-dots span {
-    width: 10px;
-    height: 10px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    border: 2px solid var(--neo-shadow);
+    border: 3px solid var(--neo-shadow);
+    box-shadow: 2px 2px 0 var(--neo-shadow);
   }
 
   .neo-header .neo-dots span:nth-child(1) {
@@ -1512,33 +1526,56 @@
   }
 
   .neo-header .neo-url {
-    font-family: var(--font-mono), monospace;
-    font-size: 11px;
-    color: var(--muted-foreground);
-    background: var(--neo-card-bg);
-    padding: 4px 12px;
+    font-family: var(--font-mono), 'Victor Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--neo-text);
+    background: oklch(1 0 0 / 0.9);
+    padding: 6px 14px;
     border-radius: 4px;
-    border: 2px solid var(--neo-shadow);
+    border: 3px solid var(--neo-shadow);
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+  }
+
+  .dark .neo-header .neo-url {
+    background: oklch(0.25 0 0);
+    color: var(--neo-text);
   }
 
   /* Neo-Brutalist Content Area */
   .neo-content {
     padding: 20px;
+    font-family: var(--font-mono), 'Victor Mono', monospace;
+    color: var(--neo-text);
+  }
+
+  .neo-content .text-sm {
+    color: var(--neo-text);
+  }
+
+  .neo-content .text-xs,
+  .neo-content .text-muted-foreground {
+    color: var(--neo-text-muted);
   }
 
   /* Neo-Brutalist Progress Bar */
   .neo-progress-bar {
-    height: 8px;
+    height: 12px;
     background: var(--neo-muted);
-    border-radius: 4px;
-    border: 2px solid var(--neo-border);
+    border-radius: 0;
+    border: 3px solid var(--neo-border);
     overflow: hidden;
+    box-shadow: none;  /* No shadow in light mode */
+  }
+
+  .dark .neo-progress-bar {
+    box-shadow: 3px 3px 0 var(--neo-shadow);  /* Light-grey shadow in dark mode */
   }
 
   .neo-progress-bar .neo-progress-fill {
     height: 100%;
     background: var(--success);
-    border-radius: 2px;
+    border-radius: 0;
     transition: width 0.3s ease;
   }
 
@@ -1547,6 +1584,7 @@
     display: flex;
     flex-direction: column;
     gap: 0;
+    font-family: var(--font-mono), 'Victor Mono', monospace;
   }
 
   .neo-timeline-item {
@@ -1562,28 +1600,37 @@
   }
 
   .neo-timeline-item .neo-dot {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    border: 2px solid var(--neo-border);
+    border: 3px solid var(--neo-border);
     background: transparent;
     flex-shrink: 0;
     z-index: 1;
+    box-shadow: none;  /* No shadow in light mode */
+  }
+
+  .dark .neo-timeline-item .neo-dot {
+    box-shadow: 2px 2px 0 var(--neo-shadow);  /* Light-grey shadow in dark mode */
   }
 
   .neo-timeline-item .neo-dot.completed {
     background: var(--success);
-    border-color: var(--success);
+    border-color: var(--neo-border);
   }
 
   .neo-timeline-item .neo-dot.current {
     background: var(--primary);
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--neo-card-bg), 0 0 0 5px oklch(0.72 0.14 175 / 0.3);
+    border-color: var(--neo-border);
+    box-shadow: 0 0 0 4px oklch(0.72 0.14 175 / 0.3);  /* Ring only in light mode */
+  }
+
+  .dark .neo-timeline-item .neo-dot.current {
+    box-shadow: 2px 2px 0 var(--neo-shadow), 0 0 0 4px oklch(0.72 0.14 175 / 0.3);
   }
 
   .neo-timeline-item .neo-line {
-    width: 2px;
+    width: 3px;
     flex: 1;
     min-height: 20px;
     background: var(--neo-border);
@@ -1602,22 +1649,28 @@
   }
 
   .neo-timeline-item .neo-label {
+    font-family: var(--font-mono), 'Victor Mono', monospace;
     font-size: 12px;
-    font-weight: 500;
-    color: var(--foreground);
+    font-weight: 600;
+    color: var(--neo-text);
   }
 
   .neo-timeline-item .neo-label.current {
     color: var(--primary);
+    font-weight: 700;
   }
 
   .neo-timeline-item .neo-label.pending {
-    color: var(--muted-foreground);
+    color: var(--neo-text-muted);
   }
 
   .neo-timeline-item .neo-status {
+    font-family: var(--font-mono), 'Victor Mono', monospace;
     font-size: 10px;
+    font-weight: 500;
     margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .neo-timeline-item .neo-status.completed {
@@ -1630,56 +1683,213 @@
 
   /* More stages indicator */
   .neo-more-stages {
+    font-family: var(--font-mono), 'Victor Mono', monospace;
     font-size: 11px;
-    color: var(--muted-foreground);
+    font-weight: 600;
+    color: var(--neo-text-muted);
     text-align: center;
-    padding-top: 8px;
-    border-top: 1px dashed var(--neo-border);
+    padding: 10px 0 4px;
+    border-top: 3px dashed var(--neo-border);
     margin-top: 12px;
+  }
+
+  /* ==========================================================================
+   * NEO-BRUTALIST CHAT INPUT MOCK
+   * ========================================================================== */
+
+  /* Chat content area */
+  .neo-chat-content {
+    position: relative;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 20px;
+    padding-right: 60px;
+  }
+
+  /* Placeholder text */
+  .neo-chat-placeholder {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-family: var(--font-mono), 'Victor Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--neo-text-muted);
+    display: flex;
+    align-items: center;
+  }
+
+  /* Shimmer text effect */
+  .neo-shimmer-text {
+    background: linear-gradient(
+      90deg,
+      var(--neo-text-muted) 0%,
+      var(--neo-text) 50%,
+      var(--neo-text-muted) 100%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: neo-shimmer 2s ease-in-out infinite;
+  }
+
+  @keyframes neo-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Animated dots */
+  .neo-animated-dots {
+    display: inline-flex;
+    margin-left: 2px;
+  }
+
+  .neo-animated-dots span {
+    opacity: 0.3;
+    animation: neo-dot-pulse 1.4s ease-in-out infinite;
+  }
+
+  .neo-animated-dots span:nth-child(1) {
+    animation-delay: 0s;
+  }
+
+  .neo-animated-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .neo-animated-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  @keyframes neo-dot-pulse {
+    0%, 60%, 100% { opacity: 0.3; }
+    30% { opacity: 1; }
+  }
+
+  /* Typewriter text */
+  .neo-chat-typewriter {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 60px;
+    font-family: var(--font-mono), 'Victor Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--neo-text);
+    white-space: pre-wrap;
+    line-height: 1.5;
+  }
+
+  /* Blinking caret (vertical line following typing) */
+  .neo-chat-caret {
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    background: var(--neo-text);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+  }
+
+  /* Send button */
+  .neo-chat-send {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--neo-border);
+    border-radius: 6px;
+    background: var(--neo-card-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--neo-text);
+    transition: all 0.15s ease;
+  }
+
+  .neo-chat-send.hovered {
+    background: var(--brand);
+    border-color: var(--neo-border);
+    color: white;
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+  }
+
+  .neo-chat-send.clicked {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  /* Cursor pointer overlay */
+  .neo-chat-cursor {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    color: oklch(0.35 0 0);  /* Dark grey for light mode */
+    pointer-events: none;
+    opacity: 0;
+    z-index: 50;
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark .neo-chat-cursor {
+    color: oklch(0.70 0 0);  /* Light grey for dark mode */
+  }
+
+  .neo-chat-cursor.visible {
+    opacity: 1;
+  }
+
+  .neo-chat-cursor.at-start {
+    bottom: 70px;
+    right: 100px;
+  }
+
+  .neo-chat-cursor.at-target {
+    bottom: 28px;
+    right: 28px;
+  }
+
+  .neo-chat-cursor.clicking {
+    transform: scale(0.85);
   }
 
   /* Back layer (research mockup) - Neo-brutalist style */
   .layer-back {
     z-index: 10;
+    top: -40px;  /* Align top with PawangBadge */
     transform: scale(0.88) translateX(-60px);
     opacity: 1;
     filter: none;
   }
 
   /* Override hero-mockup dark background for neo-card */
+  /* Light mode: dark-gray shadow | Dark mode: light-grey shadow */
   .layer-back.neo-card {
+    position: absolute;  /* Override neo-card's position: relative */
     background: var(--neo-card-bg);
-    border: 3px solid var(--neo-border);
-    box-shadow: none; /* Remove default shadow, using ::before instead */
-  }
-
-  .dark .layer-back.neo-card {
-    box-shadow: none;
+    border: 4px solid var(--neo-border);
+    box-shadow: 10px 10px 0 var(--neo-shadow);
+    backdrop-filter: blur(8px);
   }
 
   /* Front layer (chat mockup) */
   .layer-front {
     z-index: 20;
-    max-width: 480px;
-    top: 180px;
-    right: 0;
-  }
-
-  /* ChatInputHeroMock as front layer in layered container */
-  .mockup-layered-container .chat-input-hero-mock {
-    position: absolute;
-    z-index: 20;
     max-width: 440px;
     top: 160px;
     right: 0;
-    margin: 0;
-    display: block;
-    box-shadow: -25px 30px 0 rgba(0, 0, 0, 0.46);
   }
 
-  /* Dark mode: glow putih subtle */
-  .dark .mockup-layered-container .chat-input-hero-mock {
-    box-shadow: -25px 30px 0 rgba(255, 255, 255, 0.08);
+  /* Front layer neo-brutalist style */
+  .layer-front.neo-card {
+    position: absolute;  /* Override neo-card's position: relative */
+    background: var(--neo-card-bg);
+    border: 4px solid var(--neo-border);
+    box-shadow: 10px 10px 0 var(--neo-shadow);
+    backdrop-filter: blur(8px);
   }
 
   /* Mock header (browser bar) */
@@ -1945,7 +2155,7 @@
   }
 
   .hero-caret-blink {
-    animation: hero-caret-blink 0.8s step-end infinite;
+    animation: hero-caret-blink 0.4s step-end infinite;
   }
 }
 
@@ -1963,18 +2173,30 @@
     padding: 0.75rem 1.5rem;
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--brand-foreground);
-    background-color: var(--brand);
-    border-radius: var(--radius);
-    transition: opacity 0.2s, transform 0.2s;
+    color: oklch(0.922 0 0);
+    background-color: oklch(0.205 0 0);
+    border-radius: var(--radius-sm);
+    transition: background-color 0.2s, transform 0.2s;
   }
 
   .btn-brand:hover {
-    opacity: 0.9;
+    background-color: oklch(0.35 0 0);
   }
 
   .btn-brand:active {
     transform: scale(0.98);
+  }
+
+  /* Dark mode btn-brand - invert colors */
+  .dark .btn-brand,
+  :root.dark .btn-brand {
+    color: oklch(0.205 0 0);
+    background-color: oklch(0.922 0 0);
+  }
+
+  .dark .btn-brand:hover,
+  :root.dark .btn-brand:hover {
+    background-color: oklch(0.75 0 0);
   }
 
   /* Outline button - transparent with border */
@@ -1989,13 +2211,13 @@
     color: var(--foreground);
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     transition: all 0.2s;
   }
 
   .btn-outline:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.6);
   }
 
   .btn-outline:active {
@@ -2011,8 +2233,8 @@
 
   .light .btn-outline:hover,
   :root.light .btn-outline:hover {
-    background: rgba(0, 0, 0, 0.05);
-    border-color: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.6);
   }
 
   /* Success button (green) */

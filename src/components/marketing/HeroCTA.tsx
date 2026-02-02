@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
-import { Rocket } from "lucide-react"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 
 /**
@@ -36,11 +35,10 @@ export function HeroCTA() {
   return (
     <Link
       href={getHref()}
-      className="btn-brand text-base px-6 py-3 inline-flex items-center gap-2"
+      className="btn-brand font-sans text-[12px] font-medium px-3 py-1.5 inline-flex items-center"
       aria-busy={isLoading}
     >
-      <Rocket className="w-5 h-5" />
-      <span>Ayo Mulai!</span>
+      AYO MULAI
     </Link>
   )
 }

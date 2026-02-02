@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import {
-  Inter,
+  Geist,
+  Geist_Mono,
   Nunito_Sans,
   JetBrains_Mono,
   Victor_Mono,
@@ -9,11 +10,23 @@ import "./globals.css"
 import { AppProviders } from "./providers"
 import { Toaster } from "@/components/ui/sonner"
 
-// Google Fonts - Inter as primary font with all weights
-const inter = Inter({
+// Google Fonts - Geist as primary font with all weights
+// Thin 100 | ExtraLight 200 | Light 300 | Regular 400 | Medium 500
+// SemiBold 600 | Bold 700 | ExtraBold 800 | Black 900
+const geist = Geist({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
   variable: "--font-sans",
+  display: "swap",
+})
+
+// Geist Mono for subheadings and technical text
+// Thin 100 | ExtraLight 200 | Light 300 | Regular 400 | Medium 500
+// SemiBold 600 | Bold 700 | ExtraBold 800 | Black 900
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-geist-mono",
   display: "swap",
 })
 
@@ -50,7 +63,7 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${nunitoSans.variable} ${jetbrainsMono.variable} ${victorMono.variable} antialiased`}
+        className={`${geist.variable} ${geistMono.variable} ${nunitoSans.variable} ${jetbrainsMono.variable} ${victorMono.variable} antialiased`}
       >
         <AppProviders>
           {children}

@@ -11,13 +11,13 @@ export function PawangBadge() {
   return (
     <Link
       href="/about"
-      className="badge-link inline-block mb-6"
+      className="badge-link inline-block mb-[18px]"
     >
-      <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-zinc-900/80 dark:bg-black/30 backdrop-blur-sm border border-[rgba(232,102,9,0.5)] dark:border-[rgba(232,102,9,0.4)] transition-all duration-300 hover:translate-y-[-2px] hover:bg-zinc-900/90 dark:hover:bg-black/40 hover:border-[rgba(232,102,9,0.7)] dark:hover:border-[rgba(232,102,9,0.6)] hover:shadow-[0_0_20px_rgba(232,102,9,0.25)]">
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2a7d6e] transition-all duration-300 hover:translate-y-[-2px] hover:bg-[#339485]">
         {/* Animated orange dot */}
-        <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)] animate-[badge-dot-blink_1.5s_ease-in-out_infinite]" />
+        <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)] animate-[badge-dot-blink_1.5s_ease-in-out_infinite]" />
         {/* Badge text */}
-        <span className="text-[13px] font-medium tracking-wide text-white/95 uppercase">
+        <span className="text-[10px] font-medium tracking-wide text-white/95 uppercase">
           Anda Pawang, Ai Tukang
         </span>
       </div>

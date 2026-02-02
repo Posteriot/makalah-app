@@ -1,11 +1,11 @@
 import { Suspense } from "react"
-import Link from "next/link"
-import { FileText } from "lucide-react"
 import { PawangBadge } from "@/components/marketing/PawangBadge"
 import { ChatInputHeroMock } from "@/components/marketing/ChatInputHeroMock"
 import { HeroResearchMock } from "@/components/marketing/HeroResearchMock"
-import { HeroHeadingSvg } from "@/components/marketing/HeroHeadingSvg"
+import { HeroHeading } from "@/components/marketing/HeroHeading"
+import { HeroSubheading } from "@/components/marketing/HeroSubheading"
 import { HeroCTA } from "@/components/marketing/HeroCTA"
+import { HeroDocsCTA } from "@/components/marketing/HeroDocsCTA"
 import { BenefitsSection } from "@/components/marketing/BenefitsSection"
 import { PricingTeaser } from "@/components/marketing/PricingTeaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
@@ -38,28 +38,15 @@ export default function MarketingHomePage() {
             <PawangBadge />
 
             {/* Hero Heading */}
-            <h1 className="hero-heading hero-heading--svg">
-              <span className="sr-only">
-                Ngobrol+Riset +Brainstorming =Paper_Akademik
-              </span>
-              <HeroHeadingSvg />
-            </h1>
+            <HeroHeading />
 
             {/* Subheading */}
-            <p className="hero-subheading">
-              Nggak perlu prompt ruwet. Ide apapun bakal diolah Agen Makalah AI menjadi paper utuh
-            </p>
+            <HeroSubheading />
 
             {/* CTA Buttons */}
             <div className="hero-actions">
               <HeroCTA />
-              <Link
-                href="/documentation"
-                className="btn-outline text-base px-6 py-3 inline-flex items-center gap-2"
-              >
-                <FileText className="w-5 h-5" />
-                <span>Lihat Dokumentasi</span>
-              </Link>
+              <HeroDocsCTA />
             </div>
           </div>
 

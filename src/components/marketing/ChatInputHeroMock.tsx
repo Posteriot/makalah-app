@@ -1,44 +1,47 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
-import { Plus, Send } from "lucide-react"
+import { Send } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+/**
+ * ChatInputHeroMock - Chat input simulation with Neo-Brutalist styling
+ * Front layer mockup showing typewriter animation and cursor interaction
+ * All fonts: Victor Mono (monospace)
+ */
 
 // 3 different prompt examples that loop
 const PROMPTS = [
-  "Ayo bikin paper. Tapi gue belum punya ide. Bisa, kan? Kita diskusi aja dulu. Sepakat?",
-  "gue ada tugas paper nih tp blm tau mau bahas apa, bantuin mikir dong pleasee",
-  "Saya sedang mengerjakan paper dan butuh bantuan untuk menyusun argumen. Bisa kita diskusikan bersama?",
+  "Ayo bikin paper. Tapi gue belum punya ide. Bisa, kan? Kita diskusi!",
+  "gue ada tugas paper nih tp blm tau mau bahas apa, bantuin mikir dong",
+  "Saya sedang mengerjakan paper dan butuh bantuan. Bisa kita diskusikan?",
 ]
 
 const CONFIG = {
-  // Typing speed (slower = more readable)
-  charDelayMin: 70,
-  charDelayMax: 120,
-  punctuationFactor: 3,
-  // Phase durations (all slowed down)
-  holdDuration: 2000,
-  cursorMoveDuration: 1800,
-  hoverDuration: 800,      // Longer pause before click
-  clickDuration: 350,
-  resetDuration: 800,
-  returnDuration: 1600,
-  placeholderDuration: 3000,
+  // Typing speed (faster for snappier feel)
+  charDelayMin: 50,
+  charDelayMax: 90,
+  punctuationFactor: 2,
+  // Phase durations (optimized for faster loop)
+  holdDuration: 1600,  // Longer to show blinking caret
+  cursorMoveDuration: 1200,
+  hoverDuration: 500,
+  clickDuration: 300,
+  resetDuration: 500,
+  returnDuration: 1000,
+  placeholderDuration: 1200,
 }
 
 type Phase = "placeholder" | "typing" | "hold" | "cursorMove" | "hover" | "click" | "reset" | "return"
 
 export function ChatInputHeroMock() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const inputAreaRef = useRef<HTMLDivElement>(null)
-  const sendIconRef = useRef<HTMLDivElement>(null)
   const timersRef = useRef<NodeJS.Timeout[]>([])
-  const isTypingRef = useRef(false) // Prevent duplicate typing loops
-  const promptIndexRef = useRef(0) // Track which prompt to show next
+  const isTypingRef = useRef(false)
+  const promptIndexRef = useRef(0)
   const [phase, setPhase] = useState<Phase>("placeholder")
   const [typedText, setTypedText] = useState("")
   const [showPlaceholder, setShowPlaceholder] = useState(true)
-  // Cursor position: null = starting position (near text), {x,y} = target position
   const [cursorAtTarget, setCursorAtTarget] = useState(false)
   const [cursorVisible, setCursorVisible] = useState(false)
   const [sendHovered, setSendHovered] = useState(false)
@@ -49,7 +52,7 @@ export function ChatInputHeroMock() {
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach((timer) => clearTimeout(timer))
-    timersRef.current.length = 0 // Reset array in-place to avoid reference issues
+    timersRef.current.length = 0
   }, [])
 
   const addTimer = useCallback((callback: () => void, delay: number) => {
@@ -94,6 +97,13 @@ export function ChatInputHeroMock() {
 
     if (containerRef.current) {
       observer.observe(containerRef.current)
+
+      // Check initial visibility (in case already in view on mount)
+      const rect = containerRef.current.getBoundingClientRect()
+      const isVisible = rect.top < window.innerHeight && rect.bottom > 0
+      if (isVisible) {
+        setIsInView(true)
+      }
     }
 
     return () => observer.disconnect()
@@ -131,7 +141,6 @@ export function ChatInputHeroMock() {
           break
 
         case "typing":
-          // Prevent duplicate typing loops (React Strict Mode fix)
           if (isTypingRef.current) return
           isTypingRef.current = true
 
@@ -141,7 +150,6 @@ export function ChatInputHeroMock() {
           const text = PROMPTS[promptIndexRef.current]
 
           const typeChar = () => {
-            // Stop if no longer in typing phase or component unmounted
             if (!isTypingRef.current) return
 
             if (index < text.length) {
@@ -169,11 +177,9 @@ export function ChatInputHeroMock() {
           break
 
         case "cursorMove":
-          // Show cursor at starting position, then animate to target
           setCursorVisible(true)
           setCursorAtTarget(false)
 
-          // Small delay to ensure starting position renders, then move to target
           addTimer(() => {
             setCursorAtTarget(true)
           }, 50)
@@ -204,7 +210,6 @@ export function ChatInputHeroMock() {
           break
 
         case "return":
-          // Move cursor back to starting position
           setCursorAtTarget(false)
 
           addTimer(() => {
@@ -212,7 +217,6 @@ export function ChatInputHeroMock() {
           }, CONFIG.returnDuration - 300)
 
           addTimer(() => {
-            // Cycle to next prompt
             promptIndexRef.current = (promptIndexRef.current + 1) % PROMPTS.length
             setPhase("placeholder")
           }, CONFIG.returnDuration)
@@ -222,7 +226,6 @@ export function ChatInputHeroMock() {
 
     runPhase()
 
-    // Cleanup: clear all timers when effect re-runs or unmounts
     return () => {
       clearTimers()
       isTypingRef.current = false
@@ -236,22 +239,26 @@ export function ChatInputHeroMock() {
     }
   }, [isInView, prefersReducedMotion])
 
-  // If reduced motion, show static placeholder
+  // Reduced motion fallback - static placeholder
   if (prefersReducedMotion) {
     return (
-      <div className="chat-input-hero-mock hidden md:block" aria-hidden="true">
-        <div className="browser-bar">
-          <div className="traffic-light traffic-light--red" />
-          <div className="traffic-light traffic-light--gray" />
-          <div className="traffic-light traffic-light--green" />
-        </div>
-        <div className="input-area">
-          <div className="placeholder-text">Ketik obrolan</div>
-          <div className="input-icon input-icon--plus">
-            <Plus />
+      <div className="hero-mockup layer-front neo-card hidden md:block" aria-hidden="true">
+        {/* Neo-Brutalist Header */}
+        <div className="neo-header">
+          <div className="neo-dots">
+            <span></span>
+            <span></span>
+            <span></span>
           </div>
-          <div className="input-icon input-icon--send">
-            <Send />
+        </div>
+
+        {/* Content */}
+        <div className="neo-content neo-chat-content">
+          <div className="neo-chat-placeholder">
+            <span>Ketik obrolan...</span>
+          </div>
+          <div className="neo-chat-send">
+            <Send size={18} />
           </div>
         </div>
       </div>
@@ -261,64 +268,64 @@ export function ChatInputHeroMock() {
   return (
     <div
       ref={containerRef}
-      className="chat-input-hero-mock hidden md:block"
+      className="hero-mockup layer-front neo-card hidden md:block"
       aria-hidden="true"
     >
-      {/* Browser Bar */}
-      <div className="browser-bar">
-        <div className="traffic-light traffic-light--red" />
-        <div className="traffic-light traffic-light--gray" />
-        <div className="traffic-light traffic-light--green" />
+      {/* Neo-Brutalist Header */}
+      <div className="neo-header">
+        <div className="neo-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
       </div>
 
-      {/* Input Area */}
-      <div ref={inputAreaRef} className="input-area">
-        {/* Placeholder */}
+      {/* Content */}
+      <div className="neo-content neo-chat-content">
+        {/* Placeholder with shimmer and animated dots */}
         <div
           className={cn(
-            "placeholder-text hero-text-shimmer transition-opacity",
+            "neo-chat-placeholder transition-opacity",
             showPlaceholder ? "opacity-100" : "opacity-0"
           )}
         >
-          Ketik obrolan
+          <span className="neo-shimmer-text">Ketik obrolan</span>
+          <span className="neo-animated-dots">
+            <span>.</span><span>.</span><span>.</span>
+          </span>
         </div>
 
-        {/* Typewriter Text */}
+        {/* Typewriter Text with caret */}
         <div
           className={cn(
-            "typewriter-text transition-opacity",
+            "neo-chat-typewriter transition-opacity",
             !showPlaceholder ? "opacity-100" : "opacity-0"
           )}
         >
           <span>{typedText}</span>
-          <span className={cn("caret", phase === "typing" && "hero-caret-blink")} />
+          <span className={cn("neo-chat-caret", phase === "hold" && "hero-caret-blink")} />
         </div>
 
-        {/* Corner Icons */}
-        <div className="input-icon input-icon--plus">
-          <Plus />
-        </div>
+        {/* Send Button */}
         <div
-          ref={sendIconRef}
           className={cn(
-            "input-icon input-icon--send",
+            "neo-chat-send",
             sendHovered && "hovered",
             sendClicked && "clicked"
           )}
         >
-          <Send />
+          <Send size={18} />
         </div>
 
-        {/* Cursor Overlay - positioned via CSS classes */}
+        {/* Cursor Overlay */}
         <div
           className={cn(
-            "cursor-overlay",
+            "neo-chat-cursor",
             cursorVisible && "visible",
             cursorAtTarget ? "at-target" : "at-start",
             cursorClicking && "clicking"
           )}
         >
-          {/* Cursor pointer SVG - tip at top-left corner for accurate positioning */}
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M0 0 L0 20 L5.5 14.5 L9 22 L12 21 L8.5 13.5 L16 12 Z" />
           </svg>

@@ -1,16 +1,1 @@
-<svg width="850" height="339" viewBox="0 0 850 339" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    .t { font-family: 'Victor Mono', 'JetBrains Mono', 'Inter', monospace; font-size: 96px; font-weight: 400; letter-spacing: -0.02em; }
-    .w { fill: #f7f7f7; }
-    .a { fill: #e86609; }
-  </style>
-  <text class="t w" x="0" y="105" text-rendering="geometricPrecision">
-    Ngobrol<tspan class="a">+</tspan>Riset
-  </text>
-  <text class="t w" x="0" y="205" text-rendering="geometricPrecision">
-    <tspan class="a">+</tspan>Brainstorming
-  </text>
-  <text class="t w" x="0" y="305" text-rendering="geometricPrecision">
-    <tspan class="a">=</tspan>Paper<tspan class="a">_</tspan>Akademik
-  </text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260.23 97.97"><defs><style>.cls-1{font-size:31.24px;font-family:GeistMono-Medium, Geist Mono;font-weight:500;letter-spacing:-0.05em;}.cls-1,.cls-3{fill:#e6e7e8;}.cls-2{fill:#ee4036;}.cls-4{fill:none;}</style></defs><g id="Layer_2" data-name="Layer 2"><g id="Layer_1-2" data-name="Layer 1"><text class="cls-1" transform="translate(1.11 28.48)">Ngobrol<tspan class="cls-2" x="120.27" y="0">+</tspan><tspan x="137.46" y="0">Riset</tspan><tspan class="cls-2"><tspan x="0" y="30">+</tspan><tspan class="cls-3" x="17.18" y="30">Brainstorming</tspan></tspan><tspan x="0" y="60">=Paper</tspan><tspan class="cls-2" x="103.09" y="60">_</tspan><tspan x="120.27" y="60">Akademik</tspan></text><rect class="cls-4" width="260.23" height="97.97"/></g></g></svg>

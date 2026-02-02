@@ -3,6 +3,7 @@
 /**
  * HeroResearchMock - Paper Progress Preview with Neo-Brutalist styling
  * Back layer mockup showing paper writing progress timeline
+ * All fonts: Victor Mono (monospace)
  */
 
 type StageState = "completed" | "current" | "pending"
@@ -40,8 +41,8 @@ export function HeroResearchMock() {
       <div className="neo-content">
         {/* Progress Header */}
         <div className="mb-4">
-          <div className="text-sm font-semibold mb-1">Progress</div>
-          <div className="text-xs text-muted-foreground truncate mb-3">
+          <div className="text-sm font-bold mb-1">Progress</div>
+          <div className="text-xs truncate mb-3">
             Dampak AI pada Pendidikan Tinggi
           </div>
 
@@ -52,7 +53,7 @@ export function HeroResearchMock() {
               style={{ width: `${MOCK_PROGRESS.percent}%` }}
             />
           </div>
-          <div className="text-[10px] text-muted-foreground text-right mt-1">
+          <div className="text-[10px] text-right mt-1">
             {MOCK_PROGRESS.percent}% &middot; Stage {MOCK_PROGRESS.current}/{MOCK_PROGRESS.total}
           </div>
         </div>
@@ -63,9 +64,9 @@ export function HeroResearchMock() {
             const isLast = index === MOCK_STAGES.length - 1
             const statusText =
               stage.state === "completed"
-                ? "Completed"
+                ? "DONE"
                 : stage.state === "current"
-                  ? "In Progress"
+                  ? "IN PROGRESS"
                   : undefined
 
             return (
