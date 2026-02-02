@@ -146,3 +146,36 @@ export const deleteConversation = mutation({
         await ctx.db.delete(conversationId)
     },
 })
+
+// Cleanup empty conversations (0 messages) for a user
+// Called when user enters /chat to prevent clutter
+export const cleanupEmptyConversations = mutation({
+    args: { userId: v.id("users") },
+    handler: async (ctx, { userId }) => {
+        await requireAuthUserId(ctx, userId)
+
+        // Get all conversations for user
+        const conversations = await ctx.db
+            .query("conversations")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .collect()
+
+        let deletedCount = 0
+
+        for (const conv of conversations) {
+            // Check if conversation has any messages
+            const firstMessage = await ctx.db
+                .query("messages")
+                .withIndex("by_conversation", (q) => q.eq("conversationId", conv._id))
+                .first()
+
+            // If no messages, delete the conversation
+            if (!firstMessage) {
+                await ctx.db.delete(conv._id)
+                deletedCount++
+            }
+        }
+
+        return { deletedCount }
+    },
+})
