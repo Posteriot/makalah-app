@@ -2509,194 +2509,17 @@
 }
 
 /* ==========================================================================
- * FOOTER COMPONENT (Luxe Redesign)
+ * FOOTER - Diagonal Stripes Pattern
+ * Complex gradient pattern kept as CSS utility (not practical as inline Tailwind)
  * ========================================================================== */
-@layer components {
-  /* Outer wrapper with black background */
-  .luxe-footer-wrapper {
-    padding: 0 24px 24px;
-    background-color: #000000;
-  }
-
-  /* Main footer container - bordered, rounded */
-  .footer-luxe {
-    background-color: #0c0c0e;
-    border: 1px solid var(--border-hairline);
-    border-radius: 24px;
-    padding: 80px 0 40px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* Diagonal stripes background pattern */
-  .footer-luxe .bg-diagonal-stripes {
+@layer utilities {
+  .footer-diagonal-stripes {
     position: absolute;
     inset: 0;
-    background-image: repeating-linear-gradient(
-      45deg,
-      rgba(255, 255, 255, 0.1) 0,
-      rgba(255, 255, 255, 0.1) 1px,
-      transparent 1px,
-      transparent 10px
-    );
     z-index: 0;
     pointer-events: none;
     mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
-  }
-
-  /* Container inside footer */
-  .footer-luxe .container {
-    max-width: var(--container-max-width);
-    margin: 0 auto;
-    padding: 0 24px;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Grid layout: brand left, links right */
-  .footer-grid {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 80px;
-    margin-bottom: 64px;
-  }
-
-  /* Brand section with logo */
-  .footer-brand {
-    display: flex;
-    align-items: center;
-  }
-
-  .footer-brand .logo-img {
-    width: 32px;
-    height: 32px;
-    object-fit: contain;
-  }
-
-  /* Links container */
-  .footer-links {
-    display: flex;
-    gap: 64px;
-  }
-
-  /* Individual link group - center aligned */
-  .link-group {
-    min-width: 120px;
-    text-align: center;
-  }
-
-  .link-group h4 {
-    font-size: 14px;
-    font-weight: 400;
-    margin-bottom: 24px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-
-  .link-group a {
-    display: block;
-    text-decoration: none;
-    color: var(--muted-foreground);
-    font-size: 14px;
-    margin-bottom: 12px;
-    transition: color 0.2s;
-  }
-
-  .link-group a:hover {
-    color: #ffffff;
-  }
-
-  /* Footer bottom: copyright + socials */
-  .footer-bottom {
-    padding-top: 32px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    color: var(--muted-foreground);
-  }
-
-  .footer-bottom p {
-    margin: 0;
-  }
-
-  /* Social icons */
-  .socials {
-    display: flex;
-    gap: 24px;
-  }
-
-  .socials a {
-    color: var(--muted-foreground);
-    text-decoration: none;
-    transition: color 0.2s, transform 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .socials a:hover {
-    color: #ffffff;
-    transform: translateY(-2px);
-  }
-
-  /* Responsive: Mobile */
-  @media (max-width: 768px) {
-    .luxe-footer-wrapper {
-      padding: 0 12px 12px;
-    }
-
-    .footer-luxe {
-      border-radius: 20px;
-      padding: 48px 0 32px;
-    }
-
-    .footer-grid {
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 40px;
-    }
-
-    .footer-brand {
-      justify-content: center;
-    }
-
-    .footer-links {
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 32px;
-    }
-
-    .link-group {
-      text-align: center;
-    }
-
-    .footer-bottom {
-      flex-direction: column;
-      gap: 24px;
-      text-align: center;
-    }
-
-    .socials {
-      justify-content: center;
-    }
-  }
-
-  /* Light mode adjustments */
-  :root .luxe-footer-wrapper {
-    background-color: #f8f8f8;
-  }
-
-  :root .footer-luxe {
-    background-color: #ffffff;
-    border-color: var(--border-hairline);
-  }
-
-  :root .footer-luxe .bg-diagonal-stripes {
+    /* Light mode: subtle dark stripes */
     background-image: repeating-linear-gradient(
       45deg,
       rgba(0, 0, 0, 0.06) 0,
@@ -2706,28 +2529,8 @@
     );
   }
 
-  :root .link-group a:hover {
-    color: var(--foreground);
-  }
-
-  :root .footer-bottom {
-    border-top-color: rgba(0, 0, 0, 0.08);
-  }
-
-  :root .socials a:hover {
-    color: var(--foreground);
-  }
-
-  /* Dark mode overrides */
-  .dark .luxe-footer-wrapper {
-    background-color: #000000;
-  }
-
-  .dark .footer-luxe {
-    background-color: #0c0c0e;
-  }
-
-  .dark .footer-luxe .bg-diagonal-stripes {
+  /* Dark mode: subtle light stripes */
+  .dark .footer-diagonal-stripes {
     background-image: repeating-linear-gradient(
       45deg,
       rgba(255, 255, 255, 0.1) 0,
@@ -2735,18 +2538,6 @@
       transparent 1px,
       transparent 10px
     );
-  }
-
-  .dark .link-group a:hover {
-    color: #ffffff;
-  }
-
-  .dark .footer-bottom {
-    border-top-color: rgba(255, 255, 255, 0.05);
-  }
-
-  .dark .socials a:hover {
-    color: #ffffff;
   }
 }
 

@@ -29,16 +29,19 @@ const SOCIAL_LINKS = [
 
 export function Footer() {
   return (
-    <div className="luxe-footer-wrapper" id="footer">
-      <footer className="footer-luxe">
-        {/* Subtle Background Pattern */}
-        <div className="bg-diagonal-stripes" />
+    <div
+      id="footer"
+      className="px-3 pb-3 bg-[#f8f8f8] md:px-6 md:pb-6 dark:bg-black"
+    >
+      <footer className="relative overflow-hidden rounded-[20px] border border-border-hairline bg-white py-12 md:rounded-3xl md:py-20 md:pb-10 dark:bg-[#0c0c0e]">
+        {/* Subtle Background Pattern - kept as CSS utility for complex gradient */}
+        <div className="footer-diagonal-stripes" />
 
-        <div className="container">
+        <div className="relative z-[1] mx-auto max-w-[var(--container-max-width)] px-6">
           {/* Grid: Brand + Links */}
-          <div className="footer-grid">
+          <div className="mb-10 flex flex-col items-center gap-10 text-center md:mb-16 md:flex-row md:items-start md:justify-between md:gap-20 md:text-left">
             {/* Brand */}
-            <div className="footer-brand">
+            <div className="flex items-center justify-center md:justify-start">
               {/* Light logo (for dark mode) */}
               <Image
                 src="/logo/makalah_logo_light.svg"
@@ -58,32 +61,50 @@ export function Footer() {
             </div>
 
             {/* Links */}
-            <div className="footer-links">
+            <div className="flex flex-col items-center gap-8 text-center md:flex-row md:gap-16">
               {/* Sumber Daya */}
-              <div className="link-group">
-                <h4>Sumber Daya</h4>
+              <div className="min-w-[120px] text-center">
+                <h4 className="mb-6 text-sm font-normal uppercase tracking-[0.1em]">
+                  Sumber Daya
+                </h4>
                 {RESOURCE_LINKS.map((link) => (
-                  <Link key={link.href} href={link.href}>
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="mb-3 block text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground dark:hover:text-white"
+                  >
                     {link.label}
                   </Link>
                 ))}
               </div>
 
               {/* Perusahaan */}
-              <div className="link-group">
-                <h4>Perusahaan</h4>
+              <div className="min-w-[120px] text-center">
+                <h4 className="mb-6 text-sm font-normal uppercase tracking-[0.1em]">
+                  Perusahaan
+                </h4>
                 {COMPANY_LINKS.map((link) => (
-                  <Link key={link.href} href={link.href}>
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="mb-3 block text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground dark:hover:text-white"
+                  >
                     {link.label}
                   </Link>
                 ))}
               </div>
 
               {/* Legal */}
-              <div className="link-group">
-                <h4>Legal</h4>
+              <div className="min-w-[120px] text-center">
+                <h4 className="mb-6 text-sm font-normal uppercase tracking-[0.1em]">
+                  Legal
+                </h4>
                 {LEGAL_LINKS.map((link) => (
-                  <Link key={link.href} href={link.href}>
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="mb-3 block text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground dark:hover:text-white"
+                  >
                     {link.label}
                   </Link>
                 ))}
@@ -92,9 +113,11 @@ export function Footer() {
           </div>
 
           {/* Bottom: Copyright + Socials */}
-          <div className="footer-bottom">
-            <p>&copy; {new Date().getFullYear()} Makalah AI. Hak cipta dilindungi.</p>
-            <div className="socials">
+          <div className="flex flex-col items-center gap-6 border-t border-black/[0.08] pt-8 text-center text-xs text-muted-foreground md:flex-row md:justify-between dark:border-white/[0.05]">
+            <p className="m-0">
+              &copy; {new Date().getFullYear()} Makalah AI. Hak cipta dilindungi.
+            </p>
+            <div className="flex justify-center gap-6">
               {SOCIAL_LINKS.map((social) => (
                 <a
                   key={social.label}
@@ -102,6 +125,7 @@ export function Footer() {
                   aria-label={social.label}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="flex items-center justify-center text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:text-foreground dark:hover:text-white"
                 >
                   <social.icon size={20} strokeWidth={2} />
                 </a>
