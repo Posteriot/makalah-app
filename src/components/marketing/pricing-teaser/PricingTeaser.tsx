@@ -73,7 +73,7 @@ export function PricingTeaser() {
 
   return (
     <section
-      className="relative h-dvh min-h-[700px] flex flex-col justify-center px-4 md:px-6 overflow-hidden bg-muted/30 dark:bg-black"
+      className="relative h-dvh min-h-[580px] md:min-h-[700px] flex flex-col justify-center px-4 md:px-6 overflow-hidden bg-muted/30 dark:bg-black"
       id="pemakaian-harga"
     >
       {/* Background patterns - light mode */}
@@ -95,9 +95,9 @@ export function PricingTeaser() {
         style={dotsStyleDark}
       />
 
-      <div className="relative z-10 max-w-[var(--container-max-width)] mx-auto">
+      <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto">
         {/* Section Header */}
-        <div className="flex flex-col items-start gap-4 mb-8">
+        <div className="flex flex-col items-start gap-3 md:gap-4 mb-4 md:mb-8">
           <PricingTeaserBadge />
           <PricingTeaserTitle />
         </div>

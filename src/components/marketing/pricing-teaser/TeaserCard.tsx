@@ -24,7 +24,7 @@ export function TeaserCard({ plan }: { plan: TeaserPlan }) {
 
       <div
         className={cn(
-          "group relative overflow-hidden h-full min-h-[280px] flex flex-col p-6 md:p-8 rounded-lg",
+          "group relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-4 md:p-8 rounded-lg",
           "border border-black/20 dark:border-white/25",
           "hover:bg-bento-light-hover dark:hover:bg-bento-hover",
           "hover:border-black/30 dark:hover:border-white/35",
@@ -56,7 +56,7 @@ export function TeaserCard({ plan }: { plan: TeaserPlan }) {
         </div>
 
         {/* Credit note */}
-        <p className="font-mono text-xs leading-relaxed text-muted-foreground mt-auto pt-6">
+        <p className="font-mono text-xs leading-relaxed text-muted-foreground mt-auto pt-3 md:pt-6">
           {plan.creditNote}
         </p>
       </div>

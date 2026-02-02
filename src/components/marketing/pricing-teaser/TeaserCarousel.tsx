@@ -68,7 +68,7 @@ export function TeaserCarousel({ plans }: { plans: TeaserPlan[] }) {
   )
 
   return (
-    <div className="relative overflow-visible touch-pan-y pt-4 md:hidden">
+    <div className="relative overflow-hidden touch-pan-y pt-6 md:hidden">
       <div
         className="flex transition-transform duration-300 ease-out touch-pan-y"
         style={{ transform: `translateX(-${activeSlide * 100}%)` }}
@@ -77,8 +77,8 @@ export function TeaserCarousel({ plans }: { plans: TeaserPlan[] }) {
         onPointerCancel={handlePointerCancel}
       >
         {plans.map((plan) => (
-          <div key={plan._id} className="flex-shrink-0 w-full px-4 box-border">
-            <div className="w-full max-w-xs mx-auto">
+          <div key={plan._id} className="flex-shrink-0 w-full px-2 box-border">
+            <div className="w-full max-w-[300px] mx-auto">
               <TeaserCard plan={plan} />
             </div>
           </div>
@@ -96,7 +96,7 @@ export function TeaserCarousel({ plans }: { plans: TeaserPlan[] }) {
               "transition-all duration-200",
               activeSlide === index
                 ? "bg-brand scale-125"
-                : "bg-muted hover:scale-110"
+                : "bg-black/20 dark:bg-white/30 hover:scale-110"
             )}
             aria-label={`Slide ${index + 1}`}
           />
