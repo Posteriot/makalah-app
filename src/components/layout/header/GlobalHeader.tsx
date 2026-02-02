@@ -195,7 +195,7 @@ export function GlobalHeader() {
             height={24}
             className="logo-img logo-img-dark"
           />
-          {/* White logo (for dark mode) - CSS handles visibility */}
+          {/* White brand text (for dark mode) */}
           <Image
             src="/logo-makalah-ai-white.svg"
             alt="Makalah"
@@ -203,7 +203,7 @@ export function GlobalHeader() {
             height={18}
             className="logo-brand-text logo-brand-light"
           />
-          {/* Black logo (for light mode) - CSS handles visibility */}
+          {/* Black brand text (for light mode) */}
           <Image
             src="/logo-makalah-ai-black.svg"
             alt="Makalah"
