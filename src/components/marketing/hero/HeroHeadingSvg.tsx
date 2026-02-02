@@ -10,11 +10,14 @@ type HeroHeadingSvgProps = {
  */
 export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
   return (
-    <span className={cn("hero-heading-svg", className)} aria-hidden="true">
+    <span
+      className={cn("block w-full max-w-[720px] h-auto", className)}
+      aria-hidden="true"
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 260.23 97.97"
-        className="hero-heading-svg__img"
+        className="w-full h-auto max-h-[35vh] object-contain lg:max-h-none"
         style={{
           fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
           fontSize: "31.24px",
