@@ -651,20 +651,6 @@
   .dark .theme-toggle .moon-icon {
     display: block;
   }
-
-  /* Diagonal Stripes Header */
-  .diagonal-stripes-header {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: 10px;
-    color: var(--muted-foreground);
-    opacity: 0.3;
-    pointer-events: none;
-  }
-
   /* Header bottom line - theme-aware */
   .header-bottom-line {
     position: absolute;
@@ -743,77 +729,6 @@
   .light .mobile-menu__cta:hover {
     background: rgba(0, 0, 0, 0.05);
     border-color: rgba(0, 0, 0, 0.6);
-  }
-
-  /* Mobile Menu Divider (hairline) */
-  .mobile-menu__divider {
-    height: 1px;
-    background: var(--border-hairline);
-    margin: 12px 0;
-  }
-
-  /* Mobile Menu Theme Toggle */
-  .mobile-menu__theme-toggle {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    text-align: left;
-  }
-
-  /* Mobile Menu User Header */
-  .mobile-menu__user-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    margin-top: 4px;
-  }
-
-  .mobile-menu__avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--foreground);
-    flex-shrink: 0;
-  }
-
-  .mobile-menu__user-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .mobile-menu__user-name {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--foreground);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mobile-menu__badge {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 4px;
-    width: fit-content;
-  }
-
-  /* Mobile Menu User Links */
-  .mobile-menu__user-link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
   }
 
   /* ==========================================================================
@@ -908,17 +823,6 @@
   :root:not(.dark) .mobile-menu__auth-row:hover,
   .light .mobile-menu__auth-row:hover {
     background: rgba(0, 0, 0, 0.05);
-  }
-
-  /* Auth icon (sun/moon) */
-  .mobile-menu__auth-icon {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--foreground);
-    flex-shrink: 0;
   }
 
   /* Auth avatar */
@@ -1036,28 +940,6 @@
 
   .btn:active {
     transform: scale(0.98);
-  }
-
-  /* Green solid button (for login) - Deep Emerald */
-  .btn-green-solid {
-    background-color: #006d5b;
-    color: #ffffff;
-  }
-
-  .btn-green-solid:hover {
-    background-color: #005a4b;
-  }
-
-  /* Upgrade button - grass green / lime green */
-  /* Standar untuk semua button upgrade di aplikasi */
-  .btn-upgrade {
-    background-color: var(--success);
-    color: white;
-  }
-
-  .btn-upgrade:hover {
-    background-color: oklch(0.65 0.181 125.2);
-    /* slightly darker */
   }
 }
 

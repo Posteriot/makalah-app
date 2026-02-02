@@ -64,7 +64,6 @@ export function GlobalHeader() {
   const { resolvedTheme, setTheme } = useTheme()
   const pathname = usePathname()
   const [isHidden, setIsHidden] = useState(false)
-  const [isScrolled, setIsScrolled] = useState(false)
   const [mobileMenuState, setMobileMenuState] = useState(() => ({
     isOpen: false,
     pathname,
@@ -91,9 +90,6 @@ export function GlobalHeader() {
 
     // Calculate scroll delta for direction detection
     const scrollDelta = currentScrollY - lastScrollYRef.current
-
-    // Update scrolled state (for background)
-    setIsScrolled(pastThreshold)
 
     if (pastThreshold) {
       // Asymmetric sensitivity: scroll up (show) more sensitive than scroll down (hide)
@@ -170,7 +166,6 @@ export function GlobalHeader() {
     <header
       className={cn(
         "global-header",
-        (isScrolled || isMobileMenuOpen) && "header-scrolled",
         isHidden && "header-hidden"
       )}
     >
