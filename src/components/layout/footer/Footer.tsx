@@ -33,7 +33,7 @@ export function Footer() {
       id="footer"
       className="px-3 pb-3 bg-[#f8f8f8] md:px-6 md:pb-6 dark:bg-black"
     >
-      <footer className="relative overflow-hidden rounded-[20px] border border-border-hairline bg-white py-12 md:rounded-3xl md:py-20 md:pb-10 dark:bg-[#0c0c0e]">
+      <footer className="relative overflow-hidden rounded-[20px] border border-[var(--border-hairline)] bg-white py-12 md:rounded-3xl md:py-20 md:pb-10 dark:bg-[#0c0c0e]">
         {/* Subtle Background Pattern - kept as CSS utility for complex gradient */}
         <div className="footer-diagonal-stripes" />
 
