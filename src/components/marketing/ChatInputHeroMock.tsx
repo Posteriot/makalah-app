@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 /**
  * ChatInputHeroMock - Chat input simulation with Neo-Brutalist styling
  * Front layer mockup showing typewriter animation and cursor interaction
- * All fonts: Victor Mono (monospace)
+ * All fonts: Geist Mono (monospace)
  */
 
 // 3 different prompt examples that loop
@@ -29,7 +29,7 @@ const CONFIG = {
   clickDuration: 300,
   resetDuration: 500,
   returnDuration: 1000,
-  placeholderDuration: 1200,
+  placeholderDuration: 2800,  // Longer to show shimmer + animated dots
 }
 
 type Phase = "placeholder" | "typing" | "hold" | "cursorMove" | "hover" | "click" | "reset" | "return"
@@ -48,6 +48,7 @@ export function ChatInputHeroMock() {
   const [sendClicked, setSendClicked] = useState(false)
   const [cursorClicking, setCursorClicking] = useState(false)
   const [isInView, setIsInView] = useState(false)
+  const [isDocumentVisible, setIsDocumentVisible] = useState(true)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
 
   const clearTimers = useCallback(() => {
@@ -109,12 +110,17 @@ export function ChatInputHeroMock() {
     return () => observer.disconnect()
   }, [prefersReducedMotion])
 
-  // Visibility change handler
+  // Visibility change handler - track document visibility state
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        // Document hidden - stop animation
         clearTimers()
         resetToPlaceholder()
+        setIsDocumentVisible(false)
+      } else {
+        // Document visible again - trigger animation restart
+        setIsDocumentVisible(true)
       }
     }
 
@@ -122,122 +128,141 @@ export function ChatInputHeroMock() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
   }, [clearTimers, resetToPlaceholder])
 
-  // Phase runner
+  // Main animation loop - self-scheduling approach
   useEffect(() => {
-    if (!isInView || prefersReducedMotion) {
+    if (!isInView || !isDocumentVisible || prefersReducedMotion) {
       clearTimers()
       isTypingRef.current = false
       resetToPlaceholder()
+      setPhase("placeholder")
       return
     }
 
-    const runPhase = () => {
-      switch (phase) {
-        case "placeholder":
-          setShowPlaceholder(true)
-          setTypedText("")
-          isTypingRef.current = false
-          addTimer(() => setPhase("typing"), CONFIG.placeholderDuration)
-          break
+    let cancelled = false
 
-        case "typing":
-          if (isTypingRef.current) return
-          isTypingRef.current = true
+    const runAnimationCycle = () => {
+      if (cancelled) return
 
-          setShowPlaceholder(false)
-          setTypedText("")
-          let index = 0
-          const text = PROMPTS[promptIndexRef.current]
+      // Reset state for new cycle
+      isTypingRef.current = false
+      setShowPlaceholder(true)
+      setTypedText("")
+      setPhase("placeholder")
 
-          const typeChar = () => {
-            if (!isTypingRef.current) return
+      // Phase 1: Placeholder
+      addTimer(() => {
+        if (cancelled) return
 
-            if (index < text.length) {
-              const char = text[index]
-              setTypedText((prev) => prev + char)
+        // Phase 2: Typing
+        setShowPlaceholder(false)
+        setTypedText("")
+        setPhase("typing")
+        isTypingRef.current = true
 
-              let delay = Math.random() * (CONFIG.charDelayMax - CONFIG.charDelayMin) + CONFIG.charDelayMin
-              if (".,:;!?".includes(char)) {
-                delay *= CONFIG.punctuationFactor
-              }
+        let charIndex = 0
+        const currentPrompt = PROMPTS[promptIndexRef.current]
 
-              index++
-              addTimer(typeChar, delay)
-            } else {
-              isTypingRef.current = false
-              setPhase("hold")
+        const typeNextChar = () => {
+          if (cancelled || !isTypingRef.current) return
+
+          if (charIndex < currentPrompt.length) {
+            const char = currentPrompt[charIndex]
+            setTypedText(currentPrompt.substring(0, charIndex + 1))
+
+            let delay = Math.random() * (CONFIG.charDelayMax - CONFIG.charDelayMin) + CONFIG.charDelayMin
+            if (".,:;!?".includes(char)) {
+              delay *= CONFIG.punctuationFactor
             }
+
+            charIndex++
+            addTimer(typeNextChar, delay)
+          } else {
+            // Typing complete
+            isTypingRef.current = false
+            setPhase("hold")
+
+            // Phase 3: Hold (blinking caret)
+            addTimer(() => {
+              if (cancelled) return
+
+              // Phase 4: Cursor move
+              setPhase("cursorMove")
+              setCursorVisible(true)
+              setCursorAtTarget(false)
+              addTimer(() => setCursorAtTarget(true), 50)
+
+              addTimer(() => {
+                if (cancelled) return
+
+                // Phase 5: Hover
+                setPhase("hover")
+                setSendHovered(true)
+
+                addTimer(() => {
+                  if (cancelled) return
+
+                  // Phase 6: Click
+                  setPhase("click")
+                  setCursorClicking(true)
+                  setSendClicked(true)
+
+                  addTimer(() => {
+                    if (cancelled) return
+
+                    // Phase 7: Reset
+                    setPhase("reset")
+                    setCursorClicking(false)
+                    setSendClicked(false)
+                    setSendHovered(false)
+                    setTypedText("")
+
+                    addTimer(() => {
+                      if (cancelled) return
+
+                      // Phase 8: Return cursor
+                      setPhase("return")
+                      setCursorAtTarget(false)
+
+                      addTimer(() => {
+                        if (!cancelled) setCursorVisible(false)
+                      }, CONFIG.returnDuration - 300)
+
+                      addTimer(() => {
+                        if (cancelled) return
+
+                        // Move to next prompt and restart cycle
+                        promptIndexRef.current = (promptIndexRef.current + 1) % PROMPTS.length
+
+                        // Restart the animation cycle
+                        runAnimationCycle()
+                      }, CONFIG.returnDuration)
+
+                    }, CONFIG.resetDuration)
+
+                  }, CONFIG.clickDuration)
+
+                }, CONFIG.hoverDuration)
+
+              }, CONFIG.cursorMoveDuration)
+
+            }, CONFIG.holdDuration)
           }
+        }
 
-          typeChar()
-          break
+        typeNextChar()
 
-        case "hold":
-          addTimer(() => setPhase("cursorMove"), CONFIG.holdDuration)
-          break
-
-        case "cursorMove":
-          setCursorVisible(true)
-          setCursorAtTarget(false)
-
-          addTimer(() => {
-            setCursorAtTarget(true)
-          }, 50)
-
-          addTimer(() => setPhase("hover"), CONFIG.cursorMoveDuration)
-          break
-
-        case "hover":
-          setSendHovered(true)
-          addTimer(() => setPhase("click"), CONFIG.hoverDuration)
-          break
-
-        case "click":
-          setCursorClicking(true)
-          setSendClicked(true)
-
-          addTimer(() => {
-            setCursorClicking(false)
-            setSendClicked(false)
-            setSendHovered(false)
-            setPhase("reset")
-          }, CONFIG.clickDuration)
-          break
-
-        case "reset":
-          setTypedText("")
-          addTimer(() => setPhase("return"), CONFIG.resetDuration)
-          break
-
-        case "return":
-          setCursorAtTarget(false)
-
-          addTimer(() => {
-            setCursorVisible(false)
-          }, CONFIG.returnDuration - 300)
-
-          addTimer(() => {
-            promptIndexRef.current = (promptIndexRef.current + 1) % PROMPTS.length
-            setPhase("placeholder")
-          }, CONFIG.returnDuration)
-          break
-      }
+      }, CONFIG.placeholderDuration)
     }
 
-    runPhase()
+    // Start the animation
+    runAnimationCycle()
 
     return () => {
+      cancelled = true
       clearTimers()
       isTypingRef.current = false
     }
-  }, [phase, isInView, prefersReducedMotion, addTimer, clearTimers, resetToPlaceholder])
-
-  // Start animation when coming into view
-  useEffect(() => {
-    if (isInView && !prefersReducedMotion) {
-      setPhase("placeholder")
-    }
-  }, [isInView, prefersReducedMotion])
+  }, [isInView, isDocumentVisible, prefersReducedMotion, addTimer, clearTimers, resetToPlaceholder])
 
   // Reduced motion fallback - static placeholder
   if (prefersReducedMotion) {
