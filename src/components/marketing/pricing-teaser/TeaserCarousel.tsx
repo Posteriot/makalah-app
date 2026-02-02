@@ -1,0 +1,107 @@
+"use client"
+
+import { useState, useRef, useCallback } from "react"
+import { cn } from "@/lib/utils"
+import type { TeaserPlan } from "./types"
+import { TeaserCard } from "./TeaserCard"
+
+export function TeaserCarousel({ plans }: { plans: TeaserPlan[] }) {
+  // Start at highlighted plan (BPP) for better UX
+  const highlightedIndex = plans.findIndex((p) => p.isHighlighted)
+  const [activeSlide, setActiveSlide] = useState(
+    highlightedIndex >= 0 ? highlightedIndex : 0
+  )
+  const startXRef = useRef<number | null>(null)
+  const isDraggingRef = useRef(false)
+
+  const clampIndex = useCallback(
+    (index: number) => {
+      if (plans.length === 0) return 0
+      return Math.max(0, Math.min(index, plans.length - 1))
+    },
+    [plans.length]
+  )
+
+  const handleSwipe = useCallback(
+    (diff: number) => {
+      const threshold = 48
+      if (Math.abs(diff) < threshold) return
+      setActiveSlide((current) => {
+        const direction = diff > 0 ? 1 : -1
+        return clampIndex(current + direction)
+      })
+    },
+    [clampIndex]
+  )
+
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      startXRef.current = event.clientX
+      isDraggingRef.current = true
+      event.currentTarget.setPointerCapture(event.pointerId)
+    },
+    []
+  )
+
+  const handlePointerUp = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDraggingRef.current || startXRef.current === null) return
+      const diff = startXRef.current - event.clientX
+      handleSwipe(diff)
+      isDraggingRef.current = false
+      startXRef.current = null
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    },
+    [handleSwipe]
+  )
+
+  const handlePointerCancel = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDraggingRef.current || startXRef.current === null) return
+      const diff = startXRef.current - event.clientX
+      handleSwipe(diff)
+      isDraggingRef.current = false
+      startXRef.current = null
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    },
+    [handleSwipe]
+  )
+
+  return (
+    <div className="relative overflow-visible touch-pan-y pt-4 md:hidden">
+      <div
+        className="flex transition-transform duration-300 ease-out touch-pan-y"
+        style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      >
+        {plans.map((plan) => (
+          <div key={plan._id} className="flex-shrink-0 w-full px-4 box-border">
+            <div className="w-full max-w-xs mx-auto">
+              <TeaserCard plan={plan} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Navigation Dots */}
+      <div className="flex justify-center gap-2 mt-6">
+        {plans.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setActiveSlide(clampIndex(index))}
+            className={cn(
+              "w-2 h-2 rounded-full border-none cursor-pointer",
+              "transition-all duration-200",
+              activeSlide === index
+                ? "bg-brand scale-125"
+                : "bg-muted hover:scale-110"
+            )}
+            aria-label={`Slide ${index + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}

@@ -8,7 +8,7 @@ import {
   HeroCTA,
 } from "@/components/marketing/hero"
 import { BenefitsSection } from "@/components/marketing/benefits"
-import { PricingTeaser } from "@/components/marketing/PricingTeaser"
+import { PricingTeaser } from "@/components/marketing/pricing-teaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
 
 export default function MarketingHomePage() {
