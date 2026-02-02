@@ -8,7 +8,7 @@ import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
 import { MenuIcon, AlertCircleIcon, RotateCcwIcon, SearchXIcon, MessageSquareIcon } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
@@ -45,6 +45,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     ? (conversationId as Id<"conversations">)
     : null
 
+  const { isAuthenticated } = useConvexAuth()
+
   const {
     isPaperMode,
     stageStatus,
@@ -62,7 +64,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   // 0. Check if conversation exists (for invalid conversationId handling)
   const conversation = useQuery(
     api.conversations.getConversation,
-    safeConversationId ? { conversationId: safeConversationId } : "skip"
+    safeConversationId && isAuthenticated ? { conversationId: safeConversationId } : "skip"
   )
   const isConversationLoading = safeConversationId !== null && conversation === undefined
   const conversationNotFound =
