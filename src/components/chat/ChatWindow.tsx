@@ -320,7 +320,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!input.trim() || isLoading || !safeConversationId) return
+    if (!input.trim() || isLoading) return
 
     pendingScrollToBottomRef.current = true
     sendMessage({ text: input })
@@ -355,14 +355,15 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   // Handler for template selection
   const handleTemplateSelect = (template: Template) => {
+    if (isLoading) return
     pendingScrollToBottomRef.current = true
     sendMessage({ text: template.message })
   }
 
-  // Landing page state (no conversation selected)
+  // Fresh chat state (no conversation yet - lazy create on first message)
   if (!conversationId) {
     return (
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         <div className="md:hidden p-4 border-b flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
             <MenuIcon className="h-5 w-5" />
@@ -370,11 +371,26 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <span className="font-semibold">Makalah Chat</span>
           <div className="w-9" />
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <MessageSquareIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Pilih chat atau mulai chat baru</p>
+
+        {/* Messages Area - Empty state with templates */}
+        <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
+          <div className="flex-1 overflow-hidden relative py-4">
+            <div className="flex flex-col items-center justify-center h-full px-6">
+              <TemplateGrid onTemplateSelect={handleTemplateSelect} />
+            </div>
           </div>
+
+          {/* Input Area */}
+          <ChatInput
+            input={input}
+            onInputChange={handleInputChange}
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            stop={stop}
+            conversationId={null}
+            uploadedFileIds={uploadedFileIds}
+            onFileUploaded={handleFileUploaded}
+          />
         </div>
       </div>
     )
