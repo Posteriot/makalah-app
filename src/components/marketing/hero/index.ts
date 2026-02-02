@@ -1,7 +1,17 @@
-export { ChatInputHeroMock } from "./ChatInputHeroMock"
-export { HeroCTA } from "./HeroCTA"
+/**
+ * Hero Section Components
+ *
+ * Komponen untuk hero section di marketing page.
+ * Lihat README.md untuk dokumentasi lengkap.
+ */
+
+// Main layout pieces
+export { PawangBadge } from "./PawangBadge"
 export { HeroHeading } from "./HeroHeading"
 export { HeroHeadingSvg } from "./HeroHeadingSvg"
-export { HeroResearchMock } from "./HeroResearchMock"
 export { HeroSubheading } from "./HeroSubheading"
-export { PawangBadge } from "./PawangBadge"
+export { HeroCTA } from "./HeroCTA"
+
+// Visual mockups (layered)
+export { HeroResearchMock } from "./HeroResearchMock"
+export { ChatInputHeroMock } from "./ChatInputHeroMock"
