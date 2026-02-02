@@ -6,6 +6,7 @@ import {
     requireAuthUserId,
     requireConversationOwner,
     requirePaperSessionOwner,
+    getConversationIfOwner,
 } from "./auth";
 
 // ═══════════════════════════════════════════════════════════
@@ -206,11 +207,16 @@ export const getById = query({
 
 /**
  * Mendapatkan paper session berdasarkan conversation ID.
+ * Returns null if conversation not found, not owned, or auth not ready.
  */
 export const getByConversation = query({
     args: { conversationId: v.id("conversations") },
     handler: async (ctx, args) => {
-        const { authUser } = await requireConversationOwner(ctx, args.conversationId);
+        // Defensive: return null if auth not ready or not owner
+        const result = await getConversationIfOwner(ctx, args.conversationId);
+        if (!result) return null;
+
+        const { authUser } = result;
         const session = await ctx.db
             .query("paperSessions")
             .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
