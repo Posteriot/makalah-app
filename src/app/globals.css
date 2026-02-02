@@ -72,6 +72,15 @@
   --color-list-hover-bg: var(--list-hover-bg);
   --color-list-selected-bg: var(--list-selected-bg);
 
+  /* Neo-Brutalist Design System */
+  --color-neo-card: var(--neo-card-bg);
+  --color-neo-border: var(--neo-border);
+  --color-neo-shadow: var(--neo-shadow);
+  --color-neo-muted: var(--neo-muted);
+  --color-neo-text: var(--neo-text);
+  --color-neo-text-muted: var(--neo-text-muted);
+  --color-neo-input: var(--neo-input-bg);
+
   /* Font Families (Tailwind utilities: font-sans, font-mono, font-heading, font-hero)
    * --font-geist-sans: Geist (primary UI font) - weights 100-900
    * --font-geist-mono: Geist Mono (subheadings, technical text) - weights 100-900
@@ -125,6 +134,12 @@
   --spacing-element-gap-md: 0.75rem;
   --spacing-element-gap-lg: 1rem;
   --spacing-element-gap-xl: 1.25rem;
+
+  /* Neo-Brutalist Spacing */
+  --spacing-neo-border: 4px;
+  --spacing-neo-border-sm: 3px;
+  --spacing-neo-shadow-x: -8px;
+  --spacing-neo-shadow-y: 8px;
 
   /* Base Spacing Unit (Tailwind v4 uses calc(var(--spacing) * N) for all spacing utilities)
    * pl-8 = calc(0.25rem * 8) = 2rem = 32px
