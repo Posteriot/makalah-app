@@ -2437,6 +2437,7 @@
       max-height: 100dvh;
       padding: 2rem var(--section-padding-x);
       box-sizing: border-box;
+      overflow-y: auto; /* Allow scroll when accordion expands */
     }
 
     .benefits-title {

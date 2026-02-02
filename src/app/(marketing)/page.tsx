@@ -5,7 +5,6 @@ import { HeroResearchMock } from "@/components/marketing/HeroResearchMock"
 import { HeroHeading } from "@/components/marketing/HeroHeading"
 import { HeroSubheading } from "@/components/marketing/HeroSubheading"
 import { HeroCTA } from "@/components/marketing/HeroCTA"
-import { HeroDocsCTA } from "@/components/marketing/HeroDocsCTA"
 import { BenefitsSection } from "@/components/marketing/benefits"
 import { PricingTeaser } from "@/components/marketing/PricingTeaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
@@ -43,10 +42,9 @@ export default function MarketingHomePage() {
             {/* Subheading */}
             <HeroSubheading />
 
-            {/* CTA Buttons */}
+            {/* CTA Button */}
             <div className="hero-actions">
               <HeroCTA />
-              <HeroDocsCTA />
             </div>
           </div>
 

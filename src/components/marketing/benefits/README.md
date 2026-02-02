@@ -4,18 +4,20 @@ Section "Kenapa Makalah AI?" di marketing page (`/`).
 
 ## Scope
 
-README ini untuk dev internal/agent agar paham struktur, perilaku, dan sumber konten tanpa baca semua file satu per satu.
+README ini untuk dev internal/agent agar paham struktur, perilaku, dan sumber konten tanpa baca semua file satu per satu. Semua poin di bawah ini sesuai dengan isi file di `src/components/marketing/benefits`.
 
 ## Structure
 
 ```
 benefits/
-├── index.ts              # Re-exports semua komponen
+├── index.ts              # Re-exports semua komponen + data
 ├── BenefitsSection.tsx   # Main wrapper & orchestrator
 ├── BenefitsBadge.tsx     # Badge label "Kenapa Makalah AI?"
 ├── BenefitsTitle.tsx     # Heading h2
-├── BentoBenefitsGrid.tsx # Desktop: Bento grid layout dengan Tailwind utilities
-└── BenefitsAccordion.tsx # Mobile: Accordion dengan collapse behavior
+├── BentoBenefitsGrid.tsx # Desktop: bento grid + SVG illustration
+├── BenefitsAccordion.tsx # Mobile: accordion
+├── benefitsData.tsx      # Data benefits untuk accordion
+└── README.md             # Dokumentasi ini
 ```
 
 ## Usage
@@ -29,62 +31,94 @@ import { BenefitsSection } from "@/components/marketing/benefits"
 
 Integrasi utama ada di `src/app/(marketing)/page.tsx`.
 
+## Exports (index.ts)
+
+- `BenefitsSection`
+- `BenefitsBadge`
+- `BenefitsTitle`
+- `BentoBenefitsGrid`
+- `BenefitsAccordion`
+- `benefits`
+- `BenefitItem`
+
 ## Section Anatomy
 
-- `section.benefits-section` punya `id="kenapa-makalah-ai"` untuk anchor.
-- Background dekoratif: `benefits-bg-stripes`, `benefits-bg-dots`, dan `benefits-top-line` ada di dalam `BenefitsSection`.
+- Wrapper utama: `section.benefits-section` dengan `id="kenapa-makalah-ai"` untuk anchor.
+- Background dekoratif di dalam section: `benefits-bg-stripes`, `benefits-bg-dots`, `benefits-top-line`.
+- Header section: `BenefitsBadge` + `BenefitsTitle`.
+- Konten responsive: `BentoBenefitsGrid` (desktop) dan `BenefitsAccordion` (mobile).
 
 ## Komponen dan Tanggung Jawab
 
-- `BenefitsSection.tsx`: wrapper section, menyisipkan background, header (badge + title), lalu render `BentoBenefitsGrid` (desktop) dan `BenefitsAccordion` (mobile).
-- `BenefitsBadge.tsx`: badge label kecil "Kenapa Makalah AI?" dengan dot animasi, styling inline (tanpa class `.benefits-badge*`).
-- `BenefitsTitle.tsx`: heading `h2` berisi copy utama section, memakai font `var(--font-geist-mono)` + `font-medium`.
-- `BentoBenefitsGrid.tsx`: layout bento untuk desktop, styling via Tailwind design tokens.
-- `BenefitsAccordion.tsx`: accordion mobile dengan design synced ke desktop (blinking dot, font-sans/mono).
+- `BenefitsSection.tsx`: menyusun layout section, background, header, dan dua varian konten (desktop + mobile).
+- `BenefitsBadge.tsx`: badge kecil "Kenapa Makalah AI?" dengan dot animasi, styling inline (tanpa class `.benefits-badge*`).
+- `BenefitsTitle.tsx`: heading `h2`, class `benefits-title` + `font-medium`, font `var(--font-geist-mono)`.
+- `BentoBenefitsGrid.tsx`: layout bento untuk desktop (`hidden md:grid`), konten hardcode + SVG illustration per card.
+- `BenefitsAccordion.tsx`: accordion mobile (`md:hidden`), konten diambil dari `benefitsData.tsx`, single-open + click-outside to close.
+- `benefitsData.tsx`: definisi `BenefitItem` dan array `benefits` untuk accordion.
 
 ## Responsive Behavior
 
-- **Desktop (md+)**: `BentoBenefitsGrid` - 2x2 grid dengan Tailwind utilities + design tokens
-- **Mobile (<md)**: `BenefitsAccordion` - Single-open accordion, click outside to close
+- **Desktop (md+)**: `BentoBenefitsGrid` tampil, `BenefitsAccordion` disembunyikan.
+- **Mobile (<md)**: `BenefitsAccordion` tampil, `BentoBenefitsGrid` disembunyikan.
 
 ## Behavior Ringkas (Mobile Accordion)
 
 - Default semua item tertutup (state awal `openItem = ""`).
 - Hanya satu item bisa terbuka (single + collapsible).
-- Klik/tap di luar area accordion akan menutup item yang sedang terbuka.
+- Klik/tap di luar area accordion menutup item yang terbuka.
 
-## Styling
+## Data Structure (benefitsData.tsx)
 
-**Shared Design Tokens** (dipakai desktop & mobile):
-- Dot: `bg-dot-light` (light), `bg-dot` (dark) + `animate-badge-dot` + glow shadow
-- Fonts: `font-sans` (Geist), `font-mono` (Geist Mono)
+```tsx
+type BenefitItem = {
+  id: string
+  title: string
+  icon: LucideIcon
+  content: React.ReactNode
+  checklistItems?: string[]
+}
+```
 
-**Desktop (BentoBenefitsGrid)** - Tailwind design tokens:
-- Colors: `bg-bento`, `bg-bento-hover`, `border-bento-border`
-- Typography: `text-bento-heading`, `text-bento-paragraph`, `leading-bento-heading`
-
-**Mobile (BenefitsAccordion)** - CSS classes di `globals.css`:
-- `.benefits-accordion`, `.benefits-accordion-item`
-- `.benefits-accordion-trigger`, `.benefits-accordion-content`
-
-**Section wrapper** - CSS classes:
-- `.benefits-section`, `.benefits-container`, `.benefits-header`, `.benefits-title`
-
-Catatan:
-- `BenefitsBadge` memakai utility classes inline, bukan `.benefits-badge*`.
-- `BenefitsTitle` memakai font `var(--font-geist-mono)` + `font-medium`.
+Catatan data:
+- `sparring-partner` memakai `checklistItems` dan `content` di-set `null`.
+- Tiga item lain memakai `content` (string atau React fragment dengan `<br />`).
 
 ## Konten yang Ditampilkan
 
-Empat benefit (data di-hardcode di masing-masing komponen):
+Empat benefit yang muncul di UI (desktop dan mobile):
 
-| ID | Title | Description |
-|----|-------|-------------|
-| sparring-partner | Sparring Partner | Pendamping penulisan riset sekaligus mitra diskusi... |
-| chat-natural | Chat Natural | Ngobrol saja, layaknya percakapan lazim... |
-| bahasa-manusiawi | Bahasa Manusiawi | Gunakan fitur "Refrasa" untuk membentuk gaya penulisan... |
-| dipandu-bertahap | Dipandu Bertahap | Workflow ketat dan terstruktur... |
+1) **Sparring Partner** (`sparring-partner`)
+   - Mendampingi riset dari awal
+   - Juru tulis yang terampil
+   - Paper akuntabel dan berkualitas
+2) **Chat Natural** (`chat-natural`)
+   - "Ngobrol saja, tidak perlu prompt rumit, menggunakan Bahasa Indonesia sehari-hari"
+3) **Sitasi Akurat** (`sitasi-akurat`)
+   - "Sumber kredibel, dengan format sitasi sesuai preferensi, anti link mati dan hoax"
+4) **Dipandu Bertahap** (`dipandu-bertahap`)
+   - "Workflow ketat dan terstruktur, mengolah ide hingga paper jadi."
+   - "Apapun percakapannya, ujungnya pasti jadi paper"
+
+Catatan konsistensi:
+- Konten desktop (bento) dan mobile (accordion) saat ini disalin manual.
+- Kalau ada perubahan copy, update keduanya agar tetap sinkron.
+
+## Styling
+
+Kelas utama yang dipakai komponen ini ada di `src/app/globals.css`:
+
+- Section + background: `.benefits-section`, `.benefits-container`, `.benefits-header`, `.benefits-bg-stripes`, `.benefits-bg-dots`, `.benefits-top-line`
+- Title: `.benefits-title`
+- Bento (desktop): `.bento-grid`, `.bento-item`, `.bento-large`, `.bento-row`, `.bento-content`, `.bento-content-row`, `.bento-content-col`, `.bento-text-wrap`, `.bento-header-flex`, `.bento-icon-box`, `.bento-checklist`, `.bento-illustration`, `.bento-illustration-static`, `.bento-illustration-tall`, `.bento-svg`, `.bento-glow`
+- Accordion (mobile): `.benefits-accordion`, `.benefits-accordion-item`, `.benefits-accordion-trigger`, `.benefits-accordion-header`, `.benefits-accordion-content`
+
+Catatan:
+- `BenefitsBadge` memakai utility classes inline, bukan `.benefits-badge*`.
+- `globals.css` punya definisi `.benefits-badge*`, tapi saat ini tidak dipakai oleh komponen.
+- `bento-checklist` dipakai di desktop dan juga di accordion ketika ada `checklistItems`.
 
 ## Dependencies
 
+- `lucide-react` untuk ikon pada bento dan accordion.
 - `@/components/ui/accordion` sebagai primitive accordion di mobile.

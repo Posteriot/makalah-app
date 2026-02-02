@@ -83,7 +83,7 @@ export function BenefitsAccordion() {
           <AccordionItem
             key={benefit.id}
             value={benefit.id}
-            className="group relative overflow-hidden rounded-lg border border-bento-border-light dark:border-bento-border bg-transparent hover:bg-bento-light-hover dark:hover:bg-bento-hover hover:border-bento-border-light-hover dark:hover:border-bento-border-hover hover:-translate-y-1 transition-all duration-300"
+            className="group relative overflow-hidden rounded-lg !border border-bento-border-light dark:border-bento-border bg-transparent hover:bg-bento-light-hover dark:hover:bg-bento-hover hover:border-bento-border-light-hover dark:hover:border-bento-border-hover hover:-translate-y-1 transition-all duration-300"
           >
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3">
