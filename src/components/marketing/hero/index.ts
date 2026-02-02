@@ -1,0 +1,7 @@
+export { ChatInputHeroMock } from "./ChatInputHeroMock"
+export { HeroCTA } from "./HeroCTA"
+export { HeroHeading } from "./HeroHeading"
+export { HeroHeadingSvg } from "./HeroHeadingSvg"
+export { HeroResearchMock } from "./HeroResearchMock"
+export { HeroSubheading } from "./HeroSubheading"
+export { PawangBadge } from "./PawangBadge"
