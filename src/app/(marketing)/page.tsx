@@ -6,7 +6,7 @@ import { HeroHeading } from "@/components/marketing/HeroHeading"
 import { HeroSubheading } from "@/components/marketing/HeroSubheading"
 import { HeroCTA } from "@/components/marketing/HeroCTA"
 import { HeroDocsCTA } from "@/components/marketing/HeroDocsCTA"
-import { BenefitsSection } from "@/components/marketing/BenefitsSection"
+import { BenefitsSection } from "@/components/marketing/benefits"
 import { PricingTeaser } from "@/components/marketing/PricingTeaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
 
