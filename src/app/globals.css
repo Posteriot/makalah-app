@@ -256,7 +256,7 @@
   --user-message-bg: oklch(0.95 0 0);
 
   /* Layout Dimensions */
-  --header-h: 72px;
+  --header-h: 54px;
   --footer-h: 32px;
   --sidebar-w: 220px;
   --section-padding-x: 1.5rem;
@@ -457,14 +457,17 @@
     left: 0;
     right: 0;
     height: var(--header-h);
-    background-color: transparent;
+    background-color: rgb(255, 255, 255);
     z-index: 100;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding-bottom: 10px;
-    /* Reserve space for diagonal stripes (10px height) */
-    transition: transform 0.2s ease, background-color 0.2s ease, backdrop-filter 0.2s ease;
+    transition: transform 0.2s ease;
+  }
+
+  /* Dark mode background */
+  .dark .global-header {
+    background-color: rgb(9, 9, 11);
   }
 
   /* Header inner container - matches hero max-width for alignment */
@@ -475,30 +478,7 @@
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 24px;
-  }
-
-  /* Header scrolled state: past hero section */
-  .global-header.header-scrolled {
-    background-color: rgb(255, 255, 255);
-    /* Light mode: solid white */
-  }
-
-  /* Dark mode: solid dark background */
-  .dark .global-header.header-scrolled {
-    background-color: rgb(9, 9, 11);
-    /* Dark mode: solid dark */
-  }
-
-  /* Header hover state: show background on hover (even when not scrolled) */
-  .global-header:hover {
-    background-color: rgb(255, 255, 255);
-    /* Light mode: solid white */
-  }
-
-  .dark .global-header:hover {
-    background-color: rgb(9, 9, 11);
-    /* Dark mode: solid dark */
+    padding: 12px 24px; /* py-3 equivalent (12px vertical) */
   }
 
   /* Header hidden state: scrolling down */
@@ -525,9 +505,26 @@
   }
 
   .logo-img {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+  }
+
+  /* Theme-adaptive logo icon - light icon shown in dark mode */
+  .logo-img-light {
+    display: none;
+  }
+
+  .logo-img-dark {
+    display: block;
+  }
+
+  .dark .logo-img-light {
+    display: block;
+  }
+
+  .dark .logo-img-dark {
+    display: none;
   }
 
   .logo-brand-text {
@@ -556,8 +553,8 @@
   .header-nav {
     display: none;
     align-items: center;
-    gap: 8px;
-    font-family: var(--font-geist-mono), monospace;
+    gap: 2px;
+    font-family: var(--font-geist-sans), sans-serif;
   }
 
   @media (min-width: 768px) {
@@ -567,12 +564,13 @@
   }
 
   .nav-link {
-    font-family: var(--font-geist-mono), monospace;
-    font-size: 14px;
+    font-family: var(--font-geist-sans), sans-serif;
+    font-size: var(--font-size-base);
     font-weight: 500;
+    text-transform: uppercase;
     color: var(--foreground);
     position: relative;
-    padding: 8px 16px;
+    padding: 6px 10px;
     border-radius: 6px;
     transition: color 200ms ease;
   }
@@ -581,8 +579,8 @@
     content: '';
     position: absolute;
     bottom: 4px;
-    left: 16px;
-    right: 16px;
+    left: 10px;
+    right: 10px;
     height: 1px;
     border-bottom: 1px dotted currentColor;
     transform: scaleX(0);

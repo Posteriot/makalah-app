@@ -3,8 +3,6 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Twitter, Linkedin, Instagram } from "lucide-react"
-import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
 
 const RESOURCE_LINKS = [
   { href: "/blog", label: "Blog" },
@@ -30,20 +28,6 @@ const SOCIAL_LINKS = [
 ]
 
 export function Footer() {
-  const { resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  /* eslint-disable react-hooks/set-state-in-effect -- Standard pattern for hydration safety */
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // White logo for dark mode, grey logo for light mode
-  // Default to white (dark mode) during SSR to prevent hydration mismatch
-  const logoSrc = mounted && resolvedTheme === "light"
-    ? "/logo/makalah_logo_grey_500x500.png"
-    : "/logo/makalah_logo_white_500x500.png"
-
   return (
     <div className="luxe-footer-wrapper" id="footer">
       <footer className="footer-luxe">
@@ -55,12 +39,21 @@ export function Footer() {
           <div className="footer-grid">
             {/* Brand */}
             <div className="footer-brand">
+              {/* Light logo (for dark mode) */}
               <Image
-                src={logoSrc}
+                src="/logo/makalah_logo_light.svg"
                 alt="Makalah AI"
                 width={32}
                 height={32}
-                className="logo-img"
+                className="logo-img logo-img-light"
+              />
+              {/* Dark logo (for light mode) */}
+              <Image
+                src="/logo/makalah_logo_dark.svg"
+                alt="Makalah AI"
+                width={32}
+                height={32}
+                className="logo-img logo-img-dark"
               />
             </div>
 
