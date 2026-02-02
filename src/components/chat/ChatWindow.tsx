@@ -155,7 +155,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     return created
   }
 
-  const { messages, sendMessage, status, stop, setMessages, regenerate, error } = useChat({
+  const { messages, sendMessage, status, setMessages, regenerate, error } = useChat({
     transport,
     onFinish: ({ message }) => {
       const createdArtifacts = extractCreatedArtifacts(message)
@@ -433,7 +433,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             onInputChange={handleInputChange}
             onSubmit={handleSubmit}
             isLoading={isLoading}
-            stop={stop}
             conversationId={null}
             uploadedFileIds={uploadedFileIds}
             onFileUploaded={handleFileUploaded}
@@ -585,7 +584,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
           isLoading={isLoading}
-          stop={stop}
           conversationId={conversationId}
           uploadedFileIds={uploadedFileIds}
           onFileUploaded={handleFileUploaded}
