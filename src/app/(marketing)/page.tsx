@@ -1,10 +1,12 @@
 import { Suspense } from "react"
-import { PawangBadge } from "@/components/marketing/PawangBadge"
-import { ChatInputHeroMock } from "@/components/marketing/ChatInputHeroMock"
-import { HeroResearchMock } from "@/components/marketing/HeroResearchMock"
-import { HeroHeading } from "@/components/marketing/HeroHeading"
-import { HeroSubheading } from "@/components/marketing/HeroSubheading"
-import { HeroCTA } from "@/components/marketing/HeroCTA"
+import {
+  PawangBadge,
+  ChatInputHeroMock,
+  HeroResearchMock,
+  HeroHeading,
+  HeroSubheading,
+  HeroCTA,
+} from "@/components/marketing/hero"
 import { BenefitsSection } from "@/components/marketing/benefits"
 import { PricingTeaser } from "@/components/marketing/PricingTeaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"

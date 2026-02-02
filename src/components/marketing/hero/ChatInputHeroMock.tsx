@@ -7,10 +7,8 @@ import { cn } from "@/lib/utils"
 /**
  * ChatInputHeroMock - Chat input simulation with Neo-Brutalist styling
  * Front layer mockup showing typewriter animation and cursor interaction
- * All fonts: Geist Mono (monospace)
  */
 
-// 3 different prompt examples that loop
 const PROMPTS = [
   "Ayo bikin paper. Tapi gue belum punya ide. Bisa, kan? Kita diskusi!",
   "gue ada tugas paper nih tp blm tau mau bahas apa, bantuin mikir dong",
@@ -18,18 +16,16 @@ const PROMPTS = [
 ]
 
 const CONFIG = {
-  // Typing speed (faster for snappier feel)
   charDelayMin: 50,
   charDelayMax: 90,
   punctuationFactor: 2,
-  // Phase durations (optimized for faster loop)
-  holdDuration: 1600,  // Longer to show blinking caret
+  holdDuration: 1600,
   cursorMoveDuration: 1200,
   hoverDuration: 500,
   clickDuration: 300,
   resetDuration: 500,
   returnDuration: 1000,
-  placeholderDuration: 2800,  // Longer to show shimmer + animated dots
+  placeholderDuration: 2800,
 }
 
 type Phase = "placeholder" | "typing" | "hold" | "cursorMove" | "hover" | "click" | "reset" | "return"
@@ -73,62 +69,45 @@ export function ChatInputHeroMock() {
     setCursorClicking(false)
   }, [])
 
-  // Check for reduced motion preference
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
     setPrefersReducedMotion(mediaQuery.matches)
-
     const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
     mediaQuery.addEventListener("change", handler)
     return () => mediaQuery.removeEventListener("change", handler)
   }, [])
 
-  // IntersectionObserver
   useEffect(() => {
     if (prefersReducedMotion) return
-
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          setIsInView(entry.isIntersecting)
-        })
+        entries.forEach((entry) => setIsInView(entry.isIntersecting))
       },
       { threshold: 0.3 }
     )
-
     if (containerRef.current) {
       observer.observe(containerRef.current)
-
-      // Check initial visibility (in case already in view on mount)
       const rect = containerRef.current.getBoundingClientRect()
       const isVisible = rect.top < window.innerHeight && rect.bottom > 0
-      if (isVisible) {
-        setIsInView(true)
-      }
+      if (isVisible) setIsInView(true)
     }
-
     return () => observer.disconnect()
   }, [prefersReducedMotion])
 
-  // Visibility change handler - track document visibility state
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // Document hidden - stop animation
         clearTimers()
         resetToPlaceholder()
         setIsDocumentVisible(false)
       } else {
-        // Document visible again - trigger animation restart
         setIsDocumentVisible(true)
       }
     }
-
     document.addEventListener("visibilitychange", handleVisibilityChange)
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
   }, [clearTimers, resetToPlaceholder])
 
-  // Main animation loop - self-scheduling approach
   useEffect(() => {
     if (!isInView || !isDocumentVisible || prefersReducedMotion) {
       clearTimers()
@@ -142,18 +121,13 @@ export function ChatInputHeroMock() {
 
     const runAnimationCycle = () => {
       if (cancelled) return
-
-      // Reset state for new cycle
       isTypingRef.current = false
       setShowPlaceholder(true)
       setTypedText("")
       setPhase("placeholder")
 
-      // Phase 1: Placeholder
       addTimer(() => {
         if (cancelled) return
-
-        // Phase 2: Typing
         setShowPlaceholder(false)
         setTypedText("")
         setPhase("typing")
@@ -164,125 +138,89 @@ export function ChatInputHeroMock() {
 
         const typeNextChar = () => {
           if (cancelled || !isTypingRef.current) return
-
           if (charIndex < currentPrompt.length) {
             const char = currentPrompt[charIndex]
             setTypedText(currentPrompt.substring(0, charIndex + 1))
-
             let delay = Math.random() * (CONFIG.charDelayMax - CONFIG.charDelayMin) + CONFIG.charDelayMin
-            if (".,:;!?".includes(char)) {
-              delay *= CONFIG.punctuationFactor
-            }
-
+            if (".,:;!?".includes(char)) delay *= CONFIG.punctuationFactor
             charIndex++
             addTimer(typeNextChar, delay)
           } else {
-            // Typing complete
             isTypingRef.current = false
             setPhase("hold")
-
-            // Phase 3: Hold (blinking caret)
             addTimer(() => {
               if (cancelled) return
-
-              // Phase 4: Cursor move
               setPhase("cursorMove")
               setCursorVisible(true)
               setCursorAtTarget(false)
               addTimer(() => setCursorAtTarget(true), 50)
-
               addTimer(() => {
                 if (cancelled) return
-
-                // Phase 5: Hover
                 setPhase("hover")
                 setSendHovered(true)
-
                 addTimer(() => {
                   if (cancelled) return
-
-                  // Phase 6: Click
                   setPhase("click")
                   setCursorClicking(true)
                   setSendClicked(true)
-
                   addTimer(() => {
                     if (cancelled) return
-
-                    // Phase 7: Reset
                     setPhase("reset")
                     setCursorClicking(false)
                     setSendClicked(false)
                     setSendHovered(false)
                     setTypedText("")
-
                     addTimer(() => {
                       if (cancelled) return
-
-                      // Phase 8: Return cursor
                       setPhase("return")
                       setCursorAtTarget(false)
-
-                      addTimer(() => {
-                        if (!cancelled) setCursorVisible(false)
-                      }, CONFIG.returnDuration - 300)
-
+                      addTimer(() => { if (!cancelled) setCursorVisible(false) }, CONFIG.returnDuration - 300)
                       addTimer(() => {
                         if (cancelled) return
-
-                        // Move to next prompt and restart cycle
                         promptIndexRef.current = (promptIndexRef.current + 1) % PROMPTS.length
-
-                        // Restart the animation cycle
                         runAnimationCycle()
                       }, CONFIG.returnDuration)
-
                     }, CONFIG.resetDuration)
-
                   }, CONFIG.clickDuration)
-
                 }, CONFIG.hoverDuration)
-
               }, CONFIG.cursorMoveDuration)
-
             }, CONFIG.holdDuration)
           }
         }
-
         typeNextChar()
-
       }, CONFIG.placeholderDuration)
     }
 
-    // Start the animation
     runAnimationCycle()
-
-    return () => {
-      cancelled = true
-      clearTimers()
-      isTypingRef.current = false
-    }
+    return () => { cancelled = true; clearTimers(); isTypingRef.current = false }
   }, [isInView, isDocumentVisible, prefersReducedMotion, addTimer, clearTimers, resetToPlaceholder])
 
-  // Reduced motion fallback - static placeholder
+  // Neo-brutalist card styles
+  const cardStyles = cn(
+    "hidden md:block absolute w-full max-w-[440px] font-mono",
+    "bg-neo-card border-[4px] border-neo-border rounded-lg",
+    "shadow-[-10px_10px_0_var(--neo-shadow)]",
+    "backdrop-blur-sm",
+    // layer-front positioning
+    "z-20 top-40 right-0"
+  )
+
+  // Reduced motion fallback
   if (prefersReducedMotion) {
     return (
-      <div className="hero-mockup layer-front neo-card hidden md:block" aria-hidden="true">
-        {/* Neo-Brutalist Header */}
-        <div className="neo-header">
-          <div className="neo-dots">
-            <span></span>
-            <span></span>
-            <span></span>
+      <div className={cardStyles} aria-hidden="true">
+        <div className="flex items-center gap-4 p-3 rounded-t bg-neo-border border-b-[3px] border-neo-shadow">
+          <div className="flex gap-2">
+            <span className="w-3.5 h-3.5 rounded-full bg-[#ff5f56] border-[3px] border-neo-shadow" />
+            <span className="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] border-[3px] border-neo-shadow" />
+            <span className="w-3.5 h-3.5 rounded-full bg-[#27c93f] border-[3px] border-neo-shadow" />
           </div>
         </div>
-
-        {/* Content */}
-        <div className="neo-content neo-chat-content">
-          <div className="neo-chat-placeholder">
+        <div className="relative min-h-[120px] flex flex-col justify-start p-5 pr-[60px]">
+          <div className="absolute top-5 left-5 font-mono text-sm font-medium text-neo-text-muted">
             <span>Ketik obrolan...</span>
           </div>
-          <div className="neo-chat-send">
+          <div className="absolute bottom-4 right-4 w-10 h-10 border-[3px] border-neo-border rounded-md bg-neo-card flex items-center justify-center text-neo-text">
             <Send size={18} />
           </div>
         </div>
@@ -291,64 +229,67 @@ export function ChatInputHeroMock() {
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="hero-mockup layer-front neo-card hidden md:block"
-      aria-hidden="true"
-    >
-      {/* Neo-Brutalist Header */}
-      <div className="neo-header">
-        <div className="neo-dots">
-          <span></span>
-          <span></span>
-          <span></span>
+    <div ref={containerRef} className={cardStyles} aria-hidden="true">
+      {/* Header */}
+      <div className="flex items-center gap-4 p-3 rounded-t bg-neo-border border-b-[3px] border-neo-shadow">
+        <div className="flex gap-2">
+          <span className="w-3.5 h-3.5 rounded-full bg-[#ff5f56] border-[3px] border-neo-shadow" />
+          <span className="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] border-[3px] border-neo-shadow" />
+          <span className="w-3.5 h-3.5 rounded-full bg-[#27c93f] border-[3px] border-neo-shadow" />
         </div>
       </div>
 
       {/* Content */}
-      <div className="neo-content neo-chat-content">
-        {/* Placeholder with shimmer and animated dots */}
+      <div className="relative min-h-[120px] flex flex-col justify-start p-5 pr-[60px]">
+        {/* Placeholder */}
         <div
           className={cn(
-            "neo-chat-placeholder transition-opacity",
+            "absolute top-5 left-5 font-mono text-sm font-medium text-neo-text-muted flex items-center transition-opacity",
             showPlaceholder ? "opacity-100" : "opacity-0"
           )}
         >
-          <span className="neo-shimmer-text">Ketik obrolan</span>
-          <span className="neo-animated-dots">
-            <span>.</span><span>.</span><span>.</span>
+          <span className="bg-gradient-to-r from-neo-text-muted via-neo-text to-neo-text-muted bg-[length:200%_100%] bg-clip-text text-transparent animate-[neo-shimmer_2s_ease-in-out_infinite]">
+            Ketik obrolan
+          </span>
+          <span className="inline-flex ml-0.5">
+            <span className="opacity-30 animate-[neo-dot-pulse_1.4s_ease-in-out_infinite]">.</span>
+            <span className="opacity-30 animate-[neo-dot-pulse_1.4s_ease-in-out_infinite_0.2s]">.</span>
+            <span className="opacity-30 animate-[neo-dot-pulse_1.4s_ease-in-out_infinite_0.4s]">.</span>
           </span>
         </div>
 
-        {/* Typewriter Text with caret */}
+        {/* Typewriter */}
         <div
           className={cn(
-            "neo-chat-typewriter transition-opacity",
+            "absolute top-5 left-5 right-[60px] font-mono text-sm font-medium text-neo-text whitespace-pre-wrap leading-relaxed transition-opacity",
             !showPlaceholder ? "opacity-100" : "opacity-0"
           )}
         >
           <span>{typedText}</span>
-          <span className={cn("neo-chat-caret", phase === "hold" && "hero-caret-blink")} />
+          <span className={cn(
+            "inline-block w-0.5 h-[1.1em] bg-neo-text ml-0.5 align-text-bottom",
+            phase === "hold" && "animate-[hero-caret-blink_0.4s_step-end_infinite]"
+          )} />
         </div>
 
         {/* Send Button */}
         <div
           className={cn(
-            "neo-chat-send",
-            sendHovered && "hovered",
-            sendClicked && "clicked"
+            "absolute bottom-4 right-4 w-10 h-10 border-[3px] border-neo-border rounded-md bg-neo-card flex items-center justify-center text-neo-text transition-all duration-150",
+            sendHovered && "bg-[#006d5b] text-white shadow-[-3px_3px_0_var(--neo-shadow)]",
+            sendClicked && "translate-x-[-2px] translate-y-[2px] shadow-none"
           )}
         >
           <Send size={18} />
         </div>
 
-        {/* Cursor Overlay */}
+        {/* Cursor */}
         <div
           className={cn(
-            "neo-chat-cursor",
-            cursorVisible && "visible",
-            cursorAtTarget ? "at-target" : "at-start",
-            cursorClicking && "clicking"
+            "absolute w-6 h-6 text-zinc-500 dark:text-zinc-400 pointer-events-none z-50 transition-all duration-800 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            cursorVisible ? "opacity-100" : "opacity-0",
+            cursorAtTarget ? "bottom-7 right-7" : "bottom-[70px] right-[100px]",
+            cursorClicking && "scale-[0.85]"
           )}
         >
           <svg viewBox="0 0 24 24" fill="currentColor">

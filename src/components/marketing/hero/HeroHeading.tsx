@@ -1,6 +1,4 @@
-"use client"
-
-import { HeroHeadingSvg } from "@/components/marketing/HeroHeadingSvg"
+import { HeroHeadingSvg } from "@/components/marketing/hero/HeroHeadingSvg"
 
 /**
  * HeroHeading Component
@@ -9,7 +7,7 @@ import { HeroHeadingSvg } from "@/components/marketing/HeroHeadingSvg"
  */
 export function HeroHeading() {
   return (
-    <h1 className="hero-heading hero-heading--svg">
+    <h1 className="text-[0px] leading-[0]">
       <span className="sr-only">
         Ngobrol+Riset +Brainstorming =Paper_Akademik
       </span>
