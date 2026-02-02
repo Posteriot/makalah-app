@@ -72,24 +72,17 @@
   --color-list-hover-bg: var(--list-hover-bg);
   --color-list-selected-bg: var(--list-selected-bg);
 
-  /* Fonts
-   * --font-sans: Geist (primary UI font)
-   *   Weights: Thin 100 | ExtraLight 200 | Light 300 | Regular 400 | Medium 500
-   *            SemiBold 600 | Bold 700 | ExtraBold 800 | Black 900
-   *   Usage: font-thin, font-extralight, font-light, font-normal, font-medium,
-   *          font-semibold, font-bold, font-extrabold, font-black
-   * --font-geist-mono: Geist Mono (subheadings, technical text)
-   *   Weights: Thin 100 | ExtraLight 200 | Light 300 | Regular 400 | Medium 500
-   *            SemiBold 600 | Bold 700 | ExtraBold 800 | Black 900
+  /* Font Families (Tailwind utilities: font-sans, font-mono, font-heading, font-hero)
+   * --font-geist-sans: Geist (primary UI font) - weights 100-900
+   * --font-geist-mono: Geist Mono (subheadings, technical text) - weights 100-900
    * --font-mono: JetBrains Mono (code)
    * --font-heading: Nunito Sans (headings)
    * --font-hero: Geist Mono (hero mockups)
    */
-  --font-sans: var(--font-sans);
-  --font-geist-mono: var(--font-geist-mono);
-  --font-mono: var(--font-mono);
-  --font-heading: var(--font-heading);
-  --font-hero: var(--font-hero);
+  --font-family-sans: var(--font-geist-sans);
+  --font-family-mono: var(--font-geist-mono);
+  --font-family-heading: var(--font-heading);
+  --font-family-hero: var(--font-hero);
 
   /* Font Sizes - Smaller scale for compact UI */
   --font-size-xs: 0.5rem;
@@ -138,6 +131,34 @@
    * pl-11 = calc(0.25rem * 11) = 2.75rem = 44px
    */
   --spacing: 0.25rem;
+
+  /* ==========================================================================
+   * COMPONENT COLORS
+   * Semantic colors for specific components (usage: bg-bento, text-dot, etc.)
+   * ========================================================================== */
+
+  /* Bento Card */
+  --color-bento: #2a2a2e;
+  --color-bento-hover: #3a3a3e;
+  --color-bento-light: #ffffff;
+  --color-bento-light-hover: #fafafa;
+  --color-bento-border: rgba(255, 255, 255, 0.15);
+  --color-bento-border-hover: rgba(255, 255, 255, 0.25);
+  --color-bento-border-light: rgba(0, 0, 0, 0.1);
+  --color-bento-border-light-hover: rgba(0, 0, 0, 0.15);
+
+  /* Dot Bullet */
+  --color-dot: #EE4036;
+  --color-dot-light: #10b981;
+
+  /* ==========================================================================
+   * COMPONENT TYPOGRAPHY
+   * Font sizes for specific components (usage: text-bento-heading, etc.)
+   * ========================================================================== */
+
+  --font-size-bento-heading: 2rem;
+  --font-size-bento-paragraph: 0.9375rem;
+  --line-height-bento-heading: 1.1;
 }
 
 /* ==========================================================================
@@ -2422,31 +2443,6 @@
     flex-shrink: 0;
   }
 
-  /* Bento Checklist - used by accordion */
-  .bento-checklist {
-    list-style: none;
-    padding: 0;
-    margin: 24px 0 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .bento-checklist li {
-    font-size: 0.9375rem;
-    color: var(--muted-foreground);
-    padding-left: 20px;
-    position: relative;
-  }
-
-  .bento-checklist li::before {
-    content: "✓";
-    position: absolute;
-    left: 0;
-    color: var(--brand);
-    font-weight: 600;
-  }
-
   /* Responsive - Mobile */
   @media (max-width: 640px) {
     .benefits-section {
@@ -2556,27 +2552,6 @@
     color: var(--muted-foreground);
     line-height: 1.6;
     margin: 0;
-  }
-
-  /* Checklist in accordion - proper spacing for checkmark */
-  .benefits-accordion-content .bento-checklist {
-    margin: 0;
-    padding-left: 0;
-    gap: 8px;
-  }
-
-  .benefits-accordion-content .bento-checklist li {
-    font-size: 0.875rem;
-    padding: 6px 0 6px 24px; /* Left padding for checkmark spacing */
-    position: relative;
-  }
-
-  .benefits-accordion-content .bento-checklist li::before {
-    content: "✓";
-    position: absolute;
-    left: 0;
-    color: var(--brand);
-    font-weight: 600;
   }
 
   /* ==========================================================================
