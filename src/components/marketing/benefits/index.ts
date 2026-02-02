@@ -13,4 +13,5 @@ export { BenefitsBadge } from "./BenefitsBadge"
 export { BenefitsTitle } from "./BenefitsTitle"
 export { BentoBenefitsGrid } from "./BentoBenefitsGrid"
 export { BenefitsAccordion } from "./BenefitsAccordion"
+export { DocsCTA } from "./DocsCTA"
 

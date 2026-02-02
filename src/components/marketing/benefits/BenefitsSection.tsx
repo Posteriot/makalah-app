@@ -2,7 +2,7 @@ import { BenefitsBadge } from "./BenefitsBadge"
 import { BenefitsTitle } from "./BenefitsTitle"
 import { BentoBenefitsGrid } from "./BentoBenefitsGrid"
 import { BenefitsAccordion } from "./BenefitsAccordion"
-import { DocsCTA } from "../DocsCTA"
+import { DocsCTA } from "./DocsCTA"
 
 /**
  * BenefitsSection - "Kenapa Makalah AI?" section
@@ -36,9 +36,7 @@ export function BenefitsSection() {
         <BenefitsAccordion />
 
         {/* Documentation CTA - Bottom Center */}
-        <div className="flex justify-center mt-8">
-          <DocsCTA />
-        </div>
+        <DocsCTA />
       </div>
     </section>
   )
