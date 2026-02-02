@@ -1,25 +1,14 @@
-"use client"
-
-import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 
 type HeroHeadingSvgProps = {
   className?: string
 }
 
+/**
+ * HeroHeadingSvg - SVG heading with theme-aware colors
+ * Uses CSS variables for theme switching to avoid hydration issues
+ */
 export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
-  const { resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Text color based on theme
-  const textColor = mounted && resolvedTheme === "light" ? "#191921" : "#e6e7e8"
-  const accentColor = "#ee4036" // Red for + = _
-
   return (
     <span className={cn("hero-heading-svg", className)} aria-hidden="true">
       <svg
@@ -33,19 +22,20 @@ export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
           letterSpacing: "-0.05em",
         }}
       >
-        <text x="1.11" y="28.48" fill={textColor}>
+        {/* Theme-aware text color via CSS variable */}
+        <text x="1.11" y="28.48" className="fill-foreground">
           Ngobrol
-          <tspan fill={accentColor}>+</tspan>
+          <tspan className="fill-[#ee4036]">+</tspan>
           Riset
         </text>
-        <text x="1.11" y="58.48" fill={textColor}>
-          <tspan fill={accentColor}>+</tspan>
+        <text x="1.11" y="58.48" className="fill-foreground">
+          <tspan className="fill-[#ee4036]">+</tspan>
           Brainstorming
         </text>
-        <text x="1.11" y="88.48" fill={textColor}>
-          <tspan fill={accentColor}>=</tspan>
+        <text x="1.11" y="88.48" className="fill-foreground">
+          <tspan className="fill-[#ee4036]">=</tspan>
           Paper
-          <tspan fill={accentColor}>_</tspan>
+          <tspan className="fill-[#ee4036]">_</tspan>
           Akademik
         </text>
       </svg>
