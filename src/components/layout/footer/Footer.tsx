@@ -31,13 +31,14 @@ export function Footer() {
   return (
     <div
       id="footer"
-      className="px-3 pb-3 bg-[#f8f8f8] md:px-6 md:pb-6 dark:bg-black"
+      className="bg-[#f8f8f8] dark:bg-black"
     >
-      <footer className="relative overflow-hidden rounded-[20px] border border-[var(--border-hairline)] bg-white py-12 md:rounded-3xl md:py-20 md:pb-10 dark:bg-[#0c0c0e]">
+      <footer className="relative overflow-hidden bg-white dark:bg-[#0c0c0e]">
         {/* Subtle Background Pattern - kept as CSS utility for complex gradient */}
         <div className="footer-diagonal-stripes" />
 
-        <div className="relative z-[1] mx-auto max-w-[var(--container-max-width)] px-6">
+        {/* Content container - same alignment as header (max-width 1200px, 24px padding) */}
+        <div className="relative z-[1] mx-auto max-w-[1200px] px-6 py-12 md:py-16">
           {/* Grid: Brand + Links */}
           <div className="mb-10 flex flex-col items-center gap-10 text-center md:mb-16 md:flex-row md:items-start md:justify-between md:gap-20 md:text-left">
             {/* Brand */}
@@ -60,10 +61,10 @@ export function Footer() {
               />
             </div>
 
-            {/* Links */}
-            <div className="flex flex-col items-center gap-8 text-center md:flex-row md:gap-16">
+            {/* Links - right side, left-aligned text */}
+            <div className="flex flex-col items-center gap-8 md:flex-row md:items-start md:gap-16">
               {/* Sumber Daya */}
-              <div className="min-w-[120px] text-center">
+              <div className="text-center md:text-left">
                 <h4 className="mb-6 text-sm font-normal uppercase tracking-[0.1em]">
                   Sumber Daya
                 </h4>
@@ -79,7 +80,7 @@ export function Footer() {
               </div>
 
               {/* Perusahaan */}
-              <div className="min-w-[120px] text-center">
+              <div className="text-center md:text-left">
                 <h4 className="mb-6 text-sm font-normal uppercase tracking-[0.1em]">
                   Perusahaan
                 </h4>
@@ -95,7 +96,7 @@ export function Footer() {
               </div>
 
               {/* Legal */}
-              <div className="min-w-[120px] text-center">
+              <div className="text-center md:text-left">
                 <h4 className="mb-6 text-sm font-normal uppercase tracking-[0.1em]">
                   Legal
                 </h4>
