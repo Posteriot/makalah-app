@@ -172,12 +172,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   // Redirect to newly created conversation after first message
   // Only redirect if conversation was created AFTER we triggered the redirect
   useEffect(() => {
-    // Only redirect after stream has started (status changes from 'submitted' to 'streaming' or 'ready')
-    // This ensures the POST request completes and message is saved before navigation
-    const streamStarted = status === 'streaming' || status === 'ready'
+    // Only redirect after stream completes (not during streaming, which would cut off AI response)
+    // This ensures the POST request completes and both messages are saved before navigation
+    const streamComplete = status === 'ready'
     if (
       awaitingRedirect &&
-      streamStarted &&
+      streamComplete &&
       latestConversation?._id &&
       redirectTimestamp &&
       latestConversation.createdAt >= redirectTimestamp &&
