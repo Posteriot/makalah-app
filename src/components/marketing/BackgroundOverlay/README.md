@@ -46,15 +46,28 @@ import { TintOverlay } from "@/components/marketing/BackgroundOverlay"
 - Overlay selalu menutup penuh area parent: `absolute inset-0`.
 - Tidak menangkap input: `pointer-events-none`.
 - Warna overlay:
-  - Default/dark mode: `bg-black` + `dark:bg-black`.
-  - Light mode: `light:bg-white`.
+  - Light mode: `bg-white` (white overlay → lightens content below)
+  - Dark mode: `dark:bg-black` (black overlay → darkens content below)
 
 ## Styling
 
 Class utama yang selalu dipakai:
 - `absolute inset-0 pointer-events-none`
-- `bg-black dark:bg-black`
-- `light:bg-white`
+- `bg-white dark:bg-black` (light mode = white overlay, dark mode = black overlay)
+
+## Penggunaan dengan PageBackground
+
+TintOverlay adalah **single source of truth** untuk adaptasi dark/light mode.
+Selalu gunakan bersama dengan AuroraBackground dan VignetteOverlay:
+
+```tsx
+<AuroraBackground />      {/* z-index: -2, theme-agnostic */}
+<VignetteOverlay />       {/* z-index: -1, theme-agnostic */}
+<TintOverlay intensity={15} className="z-0" />  {/* brightness control */}
+```
+
+**PENTING:** AuroraBackground dan VignetteOverlay adalah theme-agnostic.
+TintOverlay yang menangani semua adaptasi brightness untuk dark/light mode.
 
 ## Aksesibilitas
 
