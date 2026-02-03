@@ -1,8 +1,8 @@
 "use client"
 
-import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
+import { SectionCTA } from "@/components/ui/section-cta"
 
 /**
  * HeroCTA Component
@@ -34,13 +34,9 @@ export function HeroCTA() {
 
   return (
     <div className="flex justify-center lg:justify-start w-full">
-      <Link
-        href={getHref()}
-        className="btn-brand font-sans text-[12px] font-medium px-3 py-1.5 inline-flex items-center"
-        aria-busy={isLoading}
-      >
+      <SectionCTA href={getHref()} isLoading={isLoading}>
         AYO MULAI
-      </Link>
+      </SectionCTA>
     </div>
   )
 }
