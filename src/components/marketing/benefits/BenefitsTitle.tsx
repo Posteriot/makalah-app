@@ -4,10 +4,7 @@
  */
 export function BenefitsTitle() {
   return (
-    <h2
-      className="benefits-title font-medium"
-      style={{ fontFamily: 'var(--font-geist-mono), monospace' }}
-    >
+    <h2 className="benefits-title font-mono font-medium">
       Karya kolaborasi dengan AI,
       <br />
       bukan dibuatkan AI.
