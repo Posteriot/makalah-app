@@ -1,5 +1,4 @@
-"use client"
-
+import { memo } from "react"
 import { cn } from "@/lib/utils"
 
 interface AuroraBackgroundProps {
@@ -11,11 +10,17 @@ interface AuroraBackgroundProps {
  * AuroraBackground - Multi-color radial gradient background
  *
  * Creates 4 layered radial gradients with blur effect.
- * Adapts intensity for dark/light mode.
+ * Theme-agnostic: renders identically in dark/light mode.
+ * Use TintOverlay as sibling for brightness adaptation.
  *
  * Layer order: z-index -2 (behind everything)
+ *
+ * Performance: Wrapped in React.memo to prevent re-renders
+ * when parent state changes (e.g., ChatInputHeroMock animation).
  */
-export function AuroraBackground({ className }: AuroraBackgroundProps) {
+export const AuroraBackground = memo(function AuroraBackground({
+  className
+}: AuroraBackgroundProps) {
   return (
     <div
       className={cn(
@@ -34,13 +39,10 @@ export function AuroraBackground({ className }: AuroraBackgroundProps) {
       }}
       aria-hidden="true"
     >
-      {/* Dark mode: intense blur */}
+      {/* Blur layer - theme-agnostic, TintOverlay handles brightness */}
+      {/* will-change:filter hints browser to optimize GPU layer for heavy blur */}
       <div
-        className={cn(
-          "absolute inset-0",
-          "dark:opacity-100 dark:[filter:blur(60px)_saturate(2.0)_brightness(1.4)]",
-          "opacity-50 [filter:blur(80px)_saturate(1.2)_brightness(1.1)]"
-        )}
+        className="absolute inset-0 [filter:blur(60px)_saturate(1.8)_brightness(1.3)] [will-change:filter]"
         style={{
           background: 'inherit',
           backgroundAttachment: 'inherit'
@@ -48,4 +50,4 @@ export function AuroraBackground({ className }: AuroraBackgroundProps) {
       />
     </div>
   )
-}
+})

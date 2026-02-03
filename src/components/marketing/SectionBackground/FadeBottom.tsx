@@ -1,5 +1,4 @@
-"use client"
-
+import { memo, useMemo } from "react"
 import { cn } from "@/lib/utils"
 
 interface FadeBottomProps {
@@ -16,8 +15,15 @@ interface FadeBottomProps {
  * Uses CSS variable --background for theme-aware fade.
  *
  * Layer order: z-index 1 (above patterns, below content)
+ *
+ * Performance: Wrapped in React.memo with memoized style.
  */
-export function FadeBottom({ height = 120, className }: FadeBottomProps) {
+export const FadeBottom = memo(function FadeBottom({
+  height = 120,
+  className
+}: FadeBottomProps) {
+  const style = useMemo(() => ({ height: `${height}px` }), [height])
+
   return (
     <div
       className={cn(
@@ -25,8 +31,8 @@ export function FadeBottom({ height = 120, className }: FadeBottomProps) {
         "[background:linear-gradient(to_bottom,transparent,var(--background))]",
         className
       )}
-      style={{ height: `${height}px` }}
+      style={style}
       aria-hidden="true"
     />
   )
-}
+})

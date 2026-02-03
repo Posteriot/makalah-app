@@ -1,4 +1,4 @@
-import { gridStyleDark } from "./backgroundPatterns"
+import { GridPattern } from "@/components/marketing/SectionBackground"
 
 export function TeaserSkeleton() {
   return (
@@ -7,10 +7,7 @@ export function TeaserSkeleton() {
       id="pemakaian-harga"
     >
       {/* Background pattern */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none"
-        style={gridStyleDark}
-      />
+      <GridPattern size={48} className="z-0" />
 
       <div className="relative z-10 max-w-[var(--container-max-width)] mx-auto">
         {/* Section Header Skeleton */}

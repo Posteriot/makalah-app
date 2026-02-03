@@ -3,6 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Twitter, Linkedin, Instagram } from "lucide-react"
+import { DiagonalStripes } from "@/components/marketing/SectionBackground"
 
 const RESOURCE_LINKS = [
   { href: "/blog", label: "Blog" },
@@ -34,8 +35,8 @@ export function Footer() {
       className="bg-[#f8f8f8] dark:bg-black"
     >
       <footer className="relative overflow-hidden bg-white dark:bg-[#0c0c0e]">
-        {/* Subtle Background Pattern - kept as CSS utility for complex gradient */}
-        <div className="footer-diagonal-stripes" />
+        {/* Subtle Background Pattern - using memoized React component */}
+        <DiagonalStripes withFadeMask={true} className="opacity-60" />
 
         {/* Content container - same alignment as header (max-width 1200px, 24px padding) */}
         <div className="relative z-[1] mx-auto max-w-[1200px] px-6 py-12 md:py-16">

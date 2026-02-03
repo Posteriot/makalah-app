@@ -1,5 +1,4 @@
-"use client"
-
+import { memo } from "react"
 import { cn } from "@/lib/utils"
 
 interface VignetteOverlayProps {
@@ -11,23 +10,27 @@ interface VignetteOverlayProps {
  * VignetteOverlay - Edge darkening effect
  *
  * Creates radial gradient that darkens edges.
- * Lighter in light mode, stronger in dark mode.
+ * Theme-agnostic: renders identically in dark/light mode.
+ * Use TintOverlay as sibling for brightness adaptation.
  *
- * Layer order: z-index -1 (above aurora, below content)
+ * Layer order: z-index -1 (above aurora, below TintOverlay)
+ *
+ * Performance: Wrapped in React.memo to prevent re-renders
+ * when parent state changes.
  */
-export function VignetteOverlay({ className }: VignetteOverlayProps) {
+export const VignetteOverlay = memo(function VignetteOverlay({
+  className
+}: VignetteOverlayProps) {
   return (
     <div
       className={cn(
         "absolute inset-0 pointer-events-none",
         "[z-index:-1]",
-        // Dark mode: stronger vignette
-        "dark:[background:radial-gradient(circle_at_50%_40%,rgba(0,0,0,0.15)_20%,rgba(0,0,0,0.35)_55%,rgba(0,0,0,0.55)_100%)]",
-        // Light mode: subtle vignette
-        "[background:radial-gradient(circle_at_50%_40%,transparent_30%,rgba(0,0,0,0.05)_60%,rgba(0,0,0,0.12)_100%)]",
+        // Theme-agnostic vignette (~20% opacity middle ground)
+        "[background:radial-gradient(circle_at_50%_40%,transparent_25%,rgba(0,0,0,0.12)_55%,rgba(0,0,0,0.25)_100%)]",
         className
       )}
       aria-hidden="true"
     />
   )
-}
+})

@@ -18,11 +18,3 @@ export { TeaserCTA } from "./TeaserCTA"
 
 // Types
 export type { TeaserPlan } from "./types"
-
-// Background patterns (untuk reuse)
-export {
-  gridStyle,
-  gridStyleDark,
-  dotsStyle,
-  dotsStyleDark,
-} from "./backgroundPatterns"

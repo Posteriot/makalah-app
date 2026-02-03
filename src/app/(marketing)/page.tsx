@@ -13,6 +13,7 @@ import { WaitlistToast } from "@/components/marketing/WaitlistToast"
 
 // New background components
 import { AuroraBackground, VignetteOverlay } from "@/components/marketing/PageBackground"
+import { TintOverlay } from "@/components/marketing/BackgroundOverlay"
 import { GridPattern, DiagonalStripes, FadeBottom } from "@/components/marketing/SectionBackground"
 
 export default function MarketingHomePage() {
@@ -28,6 +29,7 @@ export default function MarketingHomePage() {
         {/* Background Layers (bottom to top) */}
         <AuroraBackground />
         <VignetteOverlay />
+        <TintOverlay intensity={50} className="z-0" />
         <GridPattern />
         <DiagonalStripes />
 

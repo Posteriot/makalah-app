@@ -1,5 +1,4 @@
-"use client"
-
+import { memo, useMemo } from "react"
 import { cn } from "@/lib/utils"
 
 interface GridPatternProps {
@@ -16,26 +15,31 @@ interface GridPatternProps {
  *
  * Creates a subtle grid pattern overlay.
  * Default: 48px cells with slate-400 lines at 15% opacity.
+ *
+ * Performance: Wrapped in React.memo with memoized style object.
  */
-export function GridPattern({
+export const GridPattern = memo(function GridPattern({
   size = 48,
   color = "rgba(148, 163, 184, 0.15)",
   className
 }: GridPatternProps) {
+  // Memoize style object to prevent recreation on parent re-renders
+  const style = useMemo(() => ({
+    backgroundImage: `
+      linear-gradient(${color} 1px, transparent 1px),
+      linear-gradient(90deg, ${color} 1px, transparent 1px)
+    `.trim(),
+    backgroundSize: `${size}px ${size}px`,
+  }), [size, color])
+
   return (
     <div
       className={cn(
         "absolute inset-0 pointer-events-none",
         className
       )}
-      style={{
-        backgroundImage: `
-          linear-gradient(${color} 1px, transparent 1px),
-          linear-gradient(90deg, ${color} 1px, transparent 1px)
-        `.trim(),
-        backgroundSize: `${size}px ${size}px`,
-      }}
+      style={style}
       aria-hidden="true"
     />
   )
-}
+})
