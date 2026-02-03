@@ -1,0 +1,265 @@
+accordion-about: (unused)
+accordion-about-chevron: (unused)
+accordion-about-content: (unused)
+accordion-about-content-inner: (unused)
+accordion-about-item: (unused)
+accordion-about-title: (unused)
+accordion-about-trigger: (unused)
+accordion-about-trigger-content: (unused)
+accordion-avatar: src/components/settings/UserSettingsModal.tsx
+accordion-avatar-info: (unused)
+accordion-avatar-row: (unused)
+accordion-badge: (unused)
+accordion-cancel-btn: src/components/settings/UserSettingsModal.tsx
+accordion-checkbox: src/components/settings/UserSettingsModal.tsx
+accordion-checkbox-content: (unused)
+accordion-checkbox-hint: (unused)
+accordion-checkbox-label: (unused)
+accordion-checkbox-row: (unused)
+accordion-eye-btn: src/components/settings/UserSettingsModal.tsx
+accordion-field: src/components/settings/UserSettingsModal.tsx
+accordion-field-full: (unused)
+accordion-fields-row: src/components/settings/UserSettingsModal.tsx
+accordion-fw-body: src/components/settings/UserSettingsModal.tsx
+accordion-fw-footer: src/components/settings/UserSettingsModal.tsx
+accordion-fw-header: src/components/settings/UserSettingsModal.tsx
+accordion-icon: (unused)
+accordion-icon-wrapper: (unused)
+accordion-input: src/components/settings/UserSettingsModal.tsx
+accordion-input-wrapper: (unused)
+accordion-label: src/components/settings/UserSettingsModal.tsx
+accordion-save-btn: src/components/settings/UserSettingsModal.tsx
+accordion-upload-btn: src/components/settings/UserSettingsModal.tsx
+accordion-upload-hint: src/components/settings/UserSettingsModal.tsx
+action-btn: src/components/admin/UserList.tsx
+action-btn--demote: (unused)
+action-btn--promote: (unused)
+action-disabled: src/components/admin/UserList.tsx
+action-icon: src/components/admin/UserList.tsx
+action-icons: src/components/admin/AIProviderManager.tsx
+active: src/app/(dashboard)/subscription/plans/page.tsx, src/app/(marketing)/blog/page.tsx, src/app/(marketing)/pricing/page.tsx, src/app/api/chat/route.ts, src/app/api/refrasa/route.ts, src/components/admin/SystemHealthPanel.tsx, src/components/chat/ChatSidebar.tsx, src/components/chat/layout/ChatLayout.tsx, src/components/chat/shell/ActivityBar.tsx, src/components/chat/shell/ChatTabs.tsx, src/components/chat/sidebar/SidebarPaperSessions.tsx, src/components/chat/sidebar/SidebarProgress.tsx, src/components/layout/header/GlobalHeader.tsx, src/components/marketing/PricingSection.tsx, src/components/paper/PaperStageProgress.tsx, src/components/settings/UserSettingsModal.tsx, src/components/theme/ThemeEnforcer.tsx, src/components/ui/tabs.tsx, src/lib/ai/chat-config.ts, src/lib/ai/config-cache.ts, src/lib/ai/paper-mode-prompt.ts, src/lib/ai/paper-workflow-reminder.ts, src/lib/ai/streaming.ts, src/lib/hooks/useTabState.ts
+admin-body: src/components/admin/AdminPanelContainer.tsx
+admin-container: src/components/admin/AdminPanelContainer.tsx
+admin-content: (unused)
+admin-description: (unused)
+admin-sidebar: (unused)
+admin-title: (unused)
+admin-title-icon: (unused)
+animate-badge-dot: src/components/marketing/benefits/BenefitsAccordion.tsx, src/components/marketing/benefits/BentoBenefitsGrid.tsx, src/components/marketing/pricing-teaser/TeaserCard.tsx
+animate-cursor-blink: (unused)
+animate-thinking-dot: src/components/chat/ThinkingIndicator.tsx
+badge-dot: src/components/marketing/PricingSection.tsx, src/components/marketing/benefits/BenefitsBadge.tsx, src/components/marketing/hero/PawangBadge.tsx, src/components/marketing/pricing-teaser/PricingTeaserBadge.tsx
+badge-group: src/components/marketing/PricingSection.tsx
+badge-text: src/components/marketing/PricingSection.tsx
+benefits-badge: (unused)
+benefits-badge-dot: (unused)
+benefits-badge-text: (unused)
+benefits-bg-dots: src/components/marketing/benefits/BenefitsSection.tsx
+benefits-bg-stripes: src/components/marketing/benefits/BenefitsSection.tsx
+benefits-container: src/components/marketing/benefits/BenefitsSection.tsx
+benefits-header: src/components/marketing/benefits/BenefitsSection.tsx
+benefits-section: src/components/marketing/benefits/BenefitsSection.tsx
+benefits-title: src/components/marketing/benefits/BenefitsTitle.tsx
+bg-dot-grid: src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx
+btn: src/app/(marketing)/pricing/page.tsx, src/components/about/HeroSection.tsx, src/components/admin/AIProviderManager.tsx, src/components/admin/SystemHealthPanel.tsx, src/components/chat/shell/ShellHeader.tsx, src/components/layout/header/GlobalHeader.tsx, src/components/marketing/PricingSection.tsx, src/components/marketing/benefits/DocsCTA.tsx, src/components/marketing/hero/HeroCTA.tsx, src/components/marketing/pricing-teaser/TeaserCTA.tsx, src/components/settings/UserSettingsModal.tsx
+btn--primary: (unused)
+btn--secondary: (unused)
+btn-brand: (unused)
+btn-brand-vivid: (unused)
+btn-disabled: (unused)
+btn-icon: (unused)
+btn-outline: (unused)
+btn-success: (unused)
+card: src/app/(auth)/sign-in/[[...sign-in]]/page.tsx, src/app/(auth)/sign-up/[[...sign-up]]/page.tsx, src/app/(dashboard)/subscription/history/page.tsx, src/app/(dashboard)/subscription/overview/page.tsx, src/app/(dashboard)/subscription/plans/page.tsx, src/app/(marketing)/blog/page.tsx, src/app/(marketing)/documentation/page.tsx, src/app/(marketing)/pricing/page.tsx, src/app/(onboarding)/checkout/bpp/page.tsx, src/app/(onboarding)/checkout/pro/page.tsx, src/app/(onboarding)/get-started/page.tsx, src/components/about/ContentCard.tsx, src/components/admin/AIProviderManager.tsx, src/components/admin/AdminPanelContainer.tsx, src/components/admin/StyleConstitutionManager.tsx, src/components/admin/StyleConstitutionVersionHistoryDialog.tsx, src/components/admin/SystemHealthPanel.tsx, src/components/admin/SystemPromptsManager.tsx, src/components/admin/VersionHistoryDialog.tsx, src/components/admin/WaitlistManager.tsx, src/components/ai-elements/inline-citation.tsx, src/components/auth/AuthWideCard.tsx, src/components/chat/ArtifactPanel.tsx, src/components/chat/FullsizeArtifactModal.tsx, src/components/chat/MessageBubble.tsx, src/components/chat/layout/ChatLayout.tsx, src/components/chat/messages/TemplateGrid.tsx, src/components/marketing/PricingSection.tsx, src/components/marketing/benefits/BenefitsSection.tsx, src/components/marketing/hero/ChatInputHeroMock.tsx, src/components/marketing/hero/HeroResearchMock.tsx, src/components/marketing/pricing-teaser/TeaserCard.tsx, src/components/marketing/pricing-teaser/TeaserSkeleton.tsx, src/components/paper/PaperSessionCard.tsx, src/components/paper/PaperValidationPanel.tsx, src/components/settings/UserSettingsModal.tsx, src/components/ui/alert.tsx, src/components/ui/card.tsx, src/lib/hooks/useAnchorScroll.ts
+card--health: (unused)
+card--placeholder: (unused)
+card-badge: (unused)
+card-content: (unused)
+card-description: (unused)
+card-header: (unused)
+card-header-row: (unused)
+card-icon: (unused)
+card-icon--success: (unused)
+card-icon-wrapper: (unused)
+card-note: (unused)
+card-subtitle: (unused)
+card-text: (unused)
+card-title: (unused)
+card-title-row: (unused)
+cards-grid: (unused)
+carousel-dot: src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx
+carousel-dot--active: (unused)
+carousel-dots: src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx
+carousel-slide: src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx
+carousel-track: src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx
+cell-email: src/components/admin/UserList.tsx
+cell-name: src/components/admin/AIProviderManager.tsx, src/components/admin/UserList.tsx
+cl-identifierPreview: (unused)
+cl-internal-1dauvpw: (unused)
+container-narrow: (unused)
+content-card: src/components/about/ContentCard.tsx
+content-panel: (unused)
+dark: src/app/(auth)/sign-in/[[...sign-in]]/page.tsx, src/app/(auth)/sign-up/[[...sign-up]]/page.tsx, src/app/(dashboard)/subscription/plans/page.tsx, src/app/(dashboard)/subscription/topup/failed/page.tsx, src/app/(dashboard)/subscription/topup/success/page.tsx, src/app/(onboarding)/checkout/bpp/page.tsx, src/app/(onboarding)/checkout/pro/page.tsx, src/app/providers.tsx, src/components/admin/AIProviderFormDialog.tsx, src/components/admin/StyleConstitutionManager.tsx, src/components/auth/AuthWideCard.tsx, src/components/chat/QuotaWarningBanner.tsx, src/components/chat/shell/ShellHeader.tsx, src/components/layout/footer/Footer.tsx, src/components/layout/header/GlobalHeader.tsx, src/components/layout/header/UserDropdown.tsx, src/components/marketing/benefits/BenefitsAccordion.tsx, src/components/marketing/benefits/BentoBenefitsGrid.tsx, src/components/marketing/benefits/DocsCTA.tsx, src/components/marketing/hero/ChatInputHeroMock.tsx, src/components/marketing/hero/HeroHeadingSvg.tsx, src/components/marketing/hero/HeroResearchMock.tsx, src/components/marketing/hero/HeroSubheading.tsx, src/components/marketing/hero/PawangBadge.tsx, src/components/marketing/pricing-teaser/PricingTeaser.tsx, src/components/marketing/pricing-teaser/TeaserCTA.tsx, src/components/marketing/pricing-teaser/TeaserCard.tsx, src/components/marketing/pricing-teaser/TeaserCarousel.tsx, src/components/onboarding/OnboardingHeader.tsx, src/components/refrasa/RefrasaConfirmDialog.tsx, src/components/refrasa/RefrasaIssueItem.tsx, src/components/theme/ThemeEnforcer.tsx, src/components/ui/badge.tsx, src/components/ui/button.tsx, src/components/ui/context-menu.tsx, src/components/ui/dropdown-menu.tsx, src/components/ui/input.tsx, src/components/ui/select.tsx, src/components/ui/switch.tsx, src/components/ui/tabs.tsx, src/components/ui/textarea.tsx
+dashboard-main: src/app/(dashboard)/layout.tsx
+data-table: src/components/admin/AIProviderManager.tsx, src/components/admin/UserList.tsx
+data-table-container: (unused)
+diagonal-stripes: src/components/chat/shell/ShellHeader.tsx
+dragging: src/components/chat/layout/PanelResizer.tsx, src/components/chat/layout/useResizer.ts
+font-heading: src/app/(marketing)/documentation/page.tsx, src/app/layout.tsx
+font-hero: src/app/(auth)/sign-up/[[...sign-up]]/page.tsx, src/app/(marketing)/blog/page.tsx, src/app/(marketing)/documentation/page.tsx, src/app/layout.tsx, src/components/auth/AuthWideCard.tsx
+footer-diagonal-stripes: src/components/layout/footer/Footer.tsx
+full-width: src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx
+global-header: src/components/layout/header/GlobalHeader.tsx
+global-main: src/app/(marketing)/about/page.tsx, src/app/(marketing)/blog/page.tsx, src/app/(marketing)/layout.tsx
+grid-thin: src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx
+header-bottom-line: src/components/layout/header/GlobalHeader.tsx
+header-brand: src/components/layout/header/GlobalHeader.tsx
+header-hidden: src/components/layout/header/GlobalHeader.tsx
+header-inner: src/components/layout/header/GlobalHeader.tsx
+header-left: src/components/layout/header/GlobalHeader.tsx
+header-nav: src/components/layout/header/GlobalHeader.tsx
+header-right: src/components/layout/header/GlobalHeader.tsx
+health-alerts-empty: (unused)
+health-detail: (unused)
+health-label: src/components/admin/SystemHealthPanel.tsx
+health-section: (unused)
+health-status: (unused)
+health-status--fallback: (unused)
+health-status--normal: (unused)
+health-status-details: (unused)
+health-status-header: (unused)
+health-status-icon: (unused)
+health-status-text: (unused)
+hero-actions: src/app/(marketing)/page.tsx
+hero-diagonal-stripes: src/components/marketing/hero/HeroWaveBackground.tsx
+hero-fade-bottom: src/app/(marketing)/page.tsx, src/components/marketing/hero/HeroWaveBackground.tsx
+hero-flex: src/app/(marketing)/page.tsx
+hero-grid-thin: src/app/(auth)/layout.tsx, src/app/(marketing)/blog/page.tsx, src/app/(marketing)/page.tsx, src/app/(marketing)/pricing/page.tsx, src/components/about/HeroSection.tsx, src/components/auth/AuthWideCard.tsx, src/components/marketing/hero/HeroWaveBackground.tsx
+hero-ide-line-y: (unused)
+hero-left: src/app/(marketing)/page.tsx
+hero-mockup: (unused)
+hero-right: src/app/(marketing)/page.tsx
+hero-section: src/app/(marketing)/blog/page.tsx, src/app/(marketing)/page.tsx, src/app/(marketing)/pricing/page.tsx, src/components/about/HeroSection.tsx
+hero-text-shimmer: (unused)
+hero-vignette: src/components/marketing/hero/HeroWaveBackground.tsx
+hero-vivid: src/app/(auth)/layout.tsx, src/app/(marketing)/blog/page.tsx, src/app/(marketing)/page.tsx, src/app/(marketing)/pricing/page.tsx, src/components/about/HeroSection.tsx
+highlighted: src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx, src/components/marketing/pricing-teaser/TeaserCard.tsx, src/components/marketing/pricing-teaser/TeaserCarousel.tsx
+icon: src/app/(dashboard)/subscription/layout.tsx, src/app/(dashboard)/subscription/overview/page.tsx, src/app/(dashboard)/subscription/plans/page.tsx, src/app/(marketing)/documentation/page.tsx, src/app/(onboarding)/checkout/bpp/page.tsx, src/components/about/AccordionAbout.tsx, src/components/about/AgentsSection.tsx, src/components/about/CareerContactSection.tsx, src/components/about/ContentCard.tsx, src/components/about/ManifestoSection.tsx, src/components/about/ProblemsSection.tsx, src/components/about/icons.ts, src/components/admin/AIProviderManager.tsx, src/components/admin/AdminPanelContainer.tsx, src/components/admin/SystemHealthPanel.tsx, src/components/admin/WaitlistManager.tsx, src/components/chat/ArtifactList.tsx, src/components/chat/ArtifactPanel.tsx, src/components/chat/ArtifactViewer.tsx, src/components/chat/ChatWindow.tsx, src/components/chat/SearchStatusIndicator.tsx, src/components/chat/shell/ActivityBar.tsx, src/components/chat/shell/ChatTabs.tsx, src/components/chat/shell/NotificationDropdown.tsx, src/components/chat/shell/ShellHeader.tsx, src/components/layout/footer/Footer.tsx, src/components/layout/header/GlobalHeader.tsx, src/components/paper/PaperSessionCard.tsx, src/components/paper/PaperValidationPanel.tsx, src/components/settings/UserSettingsModal.tsx, src/components/ui/button.tsx
+icon-btn: (unused)
+light: src/app/(auth)/sign-in/[[...sign-in]]/page.tsx, src/app/(auth)/sign-up/[[...sign-up]]/page.tsx, src/components/auth/AuthWideCard.tsx, src/components/chat/shell/ShellHeader.tsx, src/components/layout/footer/Footer.tsx, src/components/layout/header/GlobalHeader.tsx, src/components/marketing/benefits/BenefitsAccordion.tsx, src/components/marketing/benefits/BentoBenefitsGrid.tsx, src/components/marketing/benefits/DocsCTA.tsx, src/components/marketing/hero/HeroHeadingSvg.tsx, src/components/marketing/hero/PawangBadge.tsx, src/components/marketing/pricing-teaser/PricingTeaser.tsx, src/components/marketing/pricing-teaser/TeaserCTA.tsx, src/components/marketing/pricing-teaser/TeaserCard.tsx, src/components/onboarding/OnboardingHeader.tsx, src/components/theme/ThemeEnforcer.tsx
+logo-brand-dark: src/components/auth/AuthWideCard.tsx, src/components/layout/header/GlobalHeader.tsx
+logo-brand-light: src/components/auth/AuthWideCard.tsx, src/components/layout/header/GlobalHeader.tsx
+logo-brand-text: src/components/layout/header/GlobalHeader.tsx
+logo-img: src/components/layout/footer/Footer.tsx, src/components/layout/header/GlobalHeader.tsx
+logo-img-dark: (unused)
+logo-img-light: (unused)
+manifesto-container: src/components/about/ManifestoSection.tsx
+manifesto-content-inner: src/components/about/ManifestoSection.tsx
+manifesto-content-radix: src/components/about/ManifestoSection.tsx
+manifesto-section: src/components/about/ManifestoSection.tsx
+manifesto-trigger: src/components/about/ManifestoSection.tsx
+manifesto-trigger-wrapper: (unused)
+mobile-menu: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__auth-avatar: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__auth-bg-dots: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__auth-bg-stripes: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__auth-content: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__auth-label: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__auth-row: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__auth-section: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__cta: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__link: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__link--active: (unused)
+mobile-menu__user-accordion: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__user-accordion-content: (unused)
+mobile-menu__user-accordion-item: (unused)
+mobile-menu__user-accordion-trigger: (unused)
+mobile-menu__user-menu-item: src/components/layout/header/GlobalHeader.tsx
+mobile-menu__user-signout: src/components/layout/header/GlobalHeader.tsx
+mockup-layered-container: src/app/(marketing)/page.tsx
+moon-icon: src/components/layout/header/GlobalHeader.tsx
+nav-link: src/components/layout/header/GlobalHeader.tsx
+onboarding-bg: src/app/(onboarding)/layout.tsx
+onboarding-btn-disabled: src/app/(onboarding)/get-started/page.tsx
+onboarding-btn-primary: src/app/(onboarding)/checkout/bpp/page.tsx, src/app/(onboarding)/get-started/page.tsx
+open: src/app/(dashboard)/subscription/plans/page.tsx, src/app/(marketing)/documentation/page.tsx, src/components/about/AccordionAbout.tsx, src/components/about/ManifestoSection.tsx, src/components/admin/AIProviderFormDialog.tsx, src/components/admin/AIProviderManager.tsx, src/components/admin/StyleConstitutionManager.tsx, src/components/admin/StyleConstitutionVersionHistoryDialog.tsx, src/components/admin/SystemPromptFormDialog.tsx, src/components/admin/SystemPromptsManager.tsx, src/components/admin/UserList.tsx, src/components/admin/VersionHistoryDialog.tsx, src/components/admin/WaitlistManager.tsx, src/components/chat/ArtifactPanel.tsx, src/components/chat/ArtifactViewer.tsx, src/components/chat/ChatContainer.tsx, src/components/chat/ChatSidebar.tsx, src/components/chat/ChatWindow.tsx, src/components/chat/FullsizeArtifactModal.tsx, src/components/chat/SourcesIndicator.tsx, src/components/chat/layout/ChatLayout.tsx, src/components/chat/shell/ChatTabs.tsx, src/components/chat/sidebar/SidebarChatHistory.tsx, src/components/chat/sidebar/SidebarPaperSessions.tsx, src/components/chat/sidebar/SidebarProgress.tsx, src/components/layout/header/GlobalHeader.tsx, src/components/layout/header/UserDropdown.tsx, src/components/marketing/benefits/BenefitsAccordion.tsx, src/components/marketing/benefits/BenefitsSection.tsx, src/components/paper/PaperSessionCard.tsx, src/components/paper/PaperStageProgress.tsx, src/components/paper/RewindConfirmationDialog.tsx, src/components/refrasa/RefrasaConfirmDialog.tsx, src/components/settings/UserSettingsModal.tsx, src/components/ui/accordion.tsx, src/components/ui/alert-dialog.tsx, src/components/ui/context-menu.tsx, src/components/ui/dialog.tsx, src/components/ui/dropdown-menu.tsx, src/components/ui/hover-card.tsx, src/components/ui/select.tsx, src/components/ui/sheet.tsx, src/lib/hooks/useTabState.ts
+popular-tag: src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx
+price: src/app/(dashboard)/subscription/plans/page.tsx, src/app/(marketing)/pricing/page.tsx, src/components/marketing/PricingSection.tsx, src/components/marketing/pricing-teaser/PricingTeaser.tsx, src/components/marketing/pricing-teaser/TeaserCard.tsx, src/components/marketing/pricing-teaser/types.ts
+price-features: (unused)
+pricing: src/app/(dashboard)/subscription/topup/page.tsx, src/app/(marketing)/page.tsx, src/app/(marketing)/pricing/page.tsx, src/app/(onboarding)/checkout/bpp/page.tsx, src/app/(onboarding)/checkout/pro/page.tsx, src/components/layout/header/GlobalHeader.tsx, src/components/marketing/PricingSection.tsx, src/components/marketing/pricing-teaser/PricingTeaser.tsx, src/components/marketing/pricing-teaser/PricingTeaserTitle.tsx, src/components/marketing/pricing-teaser/TeaserCTA.tsx, src/components/marketing/pricing-teaser/TeaserCard.tsx, src/components/marketing/pricing-teaser/index.ts, src/components/onboarding/OnboardingHeader.tsx, src/components/ui/SegmentBadge.tsx, src/lib/hooks/useOnboardingStatus.ts, src/proxy.ts
+pricing-card: (unused)
+pricing-carousel: (unused)
+pricing-container: (unused)
+pricing-grid: (unused)
+prose: src/components/about/ManifestoSection.tsx, src/components/chat/FullsizeArtifactModal.tsx
+prose-invert: (unused)
+resizer: src/components/chat/ArtifactPanel.tsx, src/components/chat/layout/PanelResizer.tsx, src/components/chat/layout/useResizer.ts
+resizing: src/components/chat/layout/ChatLayout.tsx, src/components/chat/layout/PanelResizer.tsx, src/components/chat/layout/useResizer.ts
+role-badge: src/components/admin/RoleBadge.tsx
+role-badge--admin: (unused)
+role-badge--superadmin: (unused)
+role-badge--user: src/components/admin/RoleBadge.tsx
+scrollbar-thin: src/components/admin/SystemHealthPanel.tsx, src/components/chat/ArtifactList.tsx, src/components/chat/ArtifactViewer.tsx, src/components/chat/sidebar/SidebarChatHistory.tsx, src/components/chat/sidebar/SidebarPaperSessions.tsx, src/components/chat/sidebar/SidebarProgress.tsx
+section-full: src/app/(marketing)/blog/page.tsx, src/components/about/AgentsSection.tsx, src/components/about/CareerContactSection.tsx, src/components/about/ManifestoSection.tsx, src/components/about/ProblemsSection.tsx
+section-header: src/components/marketing/PricingSection.tsx
+section-padded: (unused)
+section-screen: (unused)
+section-screen-with-header: (unused)
+section-title: src/components/marketing/PricingSection.tsx
+settings-accordion-fullwidth: src/components/settings/UserSettingsModal.tsx
+settings-avatar: src/components/settings/UserSettingsModal.tsx
+settings-badge-current: (unused)
+settings-badge-primary: src/components/settings/UserSettingsModal.tsx
+settings-card: src/components/settings/UserSettingsModal.tsx
+settings-card-body: (unused)
+settings-card-header: (unused)
+settings-content-header: src/components/settings/UserSettingsModal.tsx
+settings-content-subtitle: src/components/settings/UserSettingsModal.tsx
+settings-content-title: src/components/settings/UserSettingsModal.tsx
+settings-device: (unused)
+settings-device-action: (unused)
+settings-device-detail: (unused)
+settings-device-header: (unused)
+settings-device-icon: (unused)
+settings-device-info: (unused)
+settings-device-name: (unused)
+settings-email-item: src/components/settings/UserSettingsModal.tsx
+settings-password-dots: src/components/settings/UserSettingsModal.tsx
+settings-profile-info: src/components/settings/UserSettingsModal.tsx
+settings-profile-name: src/components/settings/UserSettingsModal.tsx
+settings-row: src/components/settings/UserSettingsModal.tsx
+settings-row-action: (unused)
+settings-row-action-icon: (unused)
+settings-row-label: (unused)
+settings-row-top: (unused)
+settings-row-value: (unused)
+settings-section: (unused)
+sidebar-icon: (unused)
+sidebar-nav: (unused)
+sidebar-nav-item: (unused)
+status-badge: src/components/admin/AIProviderManager.tsx, src/components/admin/SystemHealthPanel.tsx, src/components/admin/UserList.tsx
+status-badge--unverified: (unused)
+status-badge--verified: (unused)
+sub-badge: src/components/admin/AIProviderManager.tsx, src/components/admin/UserList.tsx
+subscription-body: src/app/(dashboard)/subscription/layout.tsx
+subscription-container: src/app/(dashboard)/subscription/layout.tsx
+sun-icon: src/components/layout/header/GlobalHeader.tsx
+text-brand: src/app/(auth)/sign-in/[[...sign-in]]/page.tsx, src/app/(auth)/sign-up/[[...sign-up]]/page.tsx, src/app/(marketing)/blog/page.tsx, src/components/about/AccordionAbout.tsx, src/components/about/AgentsSection.tsx, src/components/about/CareerContactSection.tsx, src/components/about/ProblemsSection.tsx, src/components/auth/AuthWideCard.tsx, src/components/auth/WaitlistForm.tsx
+theme-toggle: src/components/layout/header/GlobalHeader.tsx
+thinking-dot-1: src/components/chat/ThinkingIndicator.tsx
+thinking-dot-2: src/components/chat/ThinkingIndicator.tsx
+thinking-dot-3: src/components/chat/ThinkingIndicator.tsx
+unit: src/app/(dashboard)/subscription/plans/page.tsx, src/app/(marketing)/pricing/page.tsx, src/components/about/data.ts, src/components/marketing/PricingSection.tsx, src/components/marketing/pricing-teaser/PricingTeaser.tsx, src/components/marketing/pricing-teaser/TeaserCard.tsx, src/components/marketing/pricing-teaser/types.ts, src/lib/ai/paper-stages/formatStageData.ts, src/lib/export/pdf-builder.ts, src/lib/export/word-builder.ts, src/lib/paper/stage-types.ts
+user-settings-backdrop: src/components/settings/UserSettingsModal.tsx
+user-settings-body: src/components/settings/UserSettingsModal.tsx
+user-settings-close-btn: src/components/settings/UserSettingsModal.tsx
+user-settings-container: src/components/settings/UserSettingsModal.tsx
+user-settings-content: src/components/settings/UserSettingsModal.tsx
+user-settings-header: src/components/settings/UserSettingsModal.tsx
+user-settings-modal: src/components/settings/UserSettingsModal.tsx
+user-settings-nav: src/components/settings/UserSettingsModal.tsx
+user-settings-nav-item: (unused)
+user-settings-subtitle: src/components/settings/UserSettingsModal.tsx
+user-settings-tab: src/components/settings/UserSettingsModal.tsx
+user-settings-title: src/components/settings/UserSettingsModal.tsx
+user-settings-title-area: (unused)

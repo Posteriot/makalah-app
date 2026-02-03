@@ -1,0 +1,20 @@
+:root {
+  /* Primitives (Base Values) */
+  --color-grey-50: #F9FAFB;
+  --color-grey-900: #111827;
+  --color-blue-500: #3B82F6;
+  
+  /* Semantic Tokens (How primitives are used) */
+  --surface-primary: var(--color-grey-50);
+  --text-primary: var(--color-grey-900);
+  --brand-primary: var(--color-blue-500);
+  
+  /* Spacing Primitives */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-4: 16px;
+  
+  /* Semantic Spacing */
+  --padding-page: var(--space-4);
+  --gap-component: var(--space-2);
+}
