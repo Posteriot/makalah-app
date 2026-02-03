@@ -1422,49 +1422,10 @@
     background-color: #f4f4f5;
   }
 
-  /* Background patterns */
-  .benefits-bg-stripes {
-    position: absolute;
-    inset: 0;
-    background-image: repeating-linear-gradient(
-      45deg,
-      rgba(255, 255, 255, 0.08) 0,
-      rgba(255, 255, 255, 0.08) 1px,
-      transparent 1px,
-      transparent 10px
-    );
-    z-index: 0; /* Layer paling belakang */
-    pointer-events: none;
-    opacity: 0.4;
-    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
-  }
-
-  :root:not(.dark) .benefits-bg-stripes,
-  .light .benefits-bg-stripes {
-    background-image: repeating-linear-gradient(
-      45deg,
-      rgba(0, 0, 0, 0.07) 0,
-      rgba(0, 0, 0, 0.07) 1px,
-      transparent 1px,
-      transparent 10px
-    );
-    opacity: 0.6;
-  }
-
-  .benefits-bg-dots {
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
-    background-size: 24px 24px;
-    pointer-events: none;
-    z-index: 1; /* Di atas stripes, di belakang content */
-    mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
-  }
-
-  :root:not(.dark) .benefits-bg-dots,
-  .light .benefits-bg-dots {
-    background-image: radial-gradient(rgba(0, 0, 0, 0.12) 1px, transparent 1px);
-  }
+  /* Background patterns now rendered by React components:
+     - DiagonalStripes from SectionBackground
+     - DottedPattern from SectionBackground
+     See: src/components/marketing/benefits/BenefitsSection.tsx */
 
   /* Container */
   .benefits-container {
