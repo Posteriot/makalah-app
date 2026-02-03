@@ -11,6 +11,10 @@ import { BenefitsSection } from "@/components/marketing/benefits"
 import { PricingTeaser } from "@/components/marketing/pricing-teaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
 
+// New background components
+import { AuroraBackground, VignetteOverlay } from "@/components/marketing/PageBackground"
+import { GridPattern, DiagonalStripes, FadeBottom } from "@/components/marketing/SectionBackground"
+
 export default function MarketingHomePage() {
   return (
     <>
@@ -19,29 +23,21 @@ export default function MarketingHomePage() {
         <WaitlistToast />
       </Suspense>
 
-      {/* Hero Section - Two-column flex layout */}
-      <section className="hero-section hero-vivid hero-grid-thin">
-        {/* Vignette overlay - darkens aurora edges */}
-        <div className="hero-vignette" />
-
-        {/* Diagonal Stripes Background */}
-        <div className="hero-diagonal-stripes" />
-
+      {/* Hero Section */}
+      <section className="hero-section relative isolate overflow-hidden">
+        {/* Background Layers (bottom to top) */}
+        <AuroraBackground />
+        <VignetteOverlay />
+        <GridPattern />
+        <DiagonalStripes />
 
         {/* Hero Flex Container */}
         <div className="hero-flex">
           {/* Hero Left - Text Content */}
           <div className="hero-left">
-            {/* Pawang Badge */}
             <PawangBadge />
-
-            {/* Hero Heading */}
             <HeroHeading />
-
-            {/* Subheading */}
             <HeroSubheading />
-
-            {/* CTA Button */}
             <div className="hero-actions">
               <HeroCTA />
             </div>
@@ -50,23 +46,20 @@ export default function MarketingHomePage() {
           {/* Hero Right - Layered Mockup */}
           <div className="hero-right">
             <div className="mockup-layered-container">
-              {/* Back Layer - Research Code Mockup */}
               <HeroResearchMock />
-
-              {/* Front Layer - Chat Input Mockup (animated) */}
               <ChatInputHeroMock />
             </div>
           </div>
         </div>
 
         {/* Bottom Fade */}
-        <div className="hero-fade-bottom" />
+        <FadeBottom />
       </section>
 
       {/* Benefits Section */}
       <BenefitsSection />
 
-      {/* Pricing Teaser - Simplified cards linking to /pricing */}
+      {/* Pricing Teaser */}
       <PricingTeaser />
     </>
   )
