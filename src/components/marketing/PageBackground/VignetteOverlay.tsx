@@ -1,5 +1,4 @@
-"use client"
-
+import { memo } from "react"
 import { cn } from "@/lib/utils"
 
 interface VignetteOverlayProps {
@@ -15,8 +14,13 @@ interface VignetteOverlayProps {
  * Use TintOverlay as sibling for brightness adaptation.
  *
  * Layer order: z-index -1 (above aurora, below TintOverlay)
+ *
+ * Performance: Wrapped in React.memo to prevent re-renders
+ * when parent state changes.
  */
-export function VignetteOverlay({ className }: VignetteOverlayProps) {
+export const VignetteOverlay = memo(function VignetteOverlay({
+  className
+}: VignetteOverlayProps) {
   return (
     <div
       className={cn(
@@ -29,4 +33,4 @@ export function VignetteOverlay({ className }: VignetteOverlayProps) {
       aria-hidden="true"
     />
   )
-}
+})

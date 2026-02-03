@@ -1,5 +1,4 @@
-"use client"
-
+import { memo, useMemo } from "react"
 import { cn } from "@/lib/utils"
 
 interface TintOverlayProps {
@@ -15,8 +14,17 @@ interface TintOverlayProps {
  * Provides a semi-transparent overlay that adapts to theme.
  * Dark mode: darkens with black overlay
  * Light mode: lightens with white overlay
+ *
+ * Performance: Wrapped in React.memo to prevent re-renders.
+ * Opacity is memoized to avoid recalculation.
  */
-export function TintOverlay({ intensity = 20, className }: TintOverlayProps) {
+export const TintOverlay = memo(function TintOverlay({
+  intensity = 20,
+  className
+}: TintOverlayProps) {
+  // Memoize opacity calculation to prevent style object recreation
+  const style = useMemo(() => ({ opacity: intensity / 100 }), [intensity])
+
   return (
     <div
       className={cn(
@@ -24,8 +32,8 @@ export function TintOverlay({ intensity = 20, className }: TintOverlayProps) {
         "bg-white dark:bg-black",
         className
       )}
-      style={{ opacity: intensity / 100 }}
+      style={style}
       aria-hidden="true"
     />
   )
-}
+})
