@@ -9,7 +9,7 @@ export function HeroHeading() {
   return (
     <h1 className="text-[0px] leading-[0]">
       <span className="sr-only">
-        Ngobrol+Riset +Brainstorming =Paper_Akademik
+        Ngobrol+Riset+Brainstorming=Paper_Akademik
       </span>
       <HeroHeadingSvg />
     </h1>
