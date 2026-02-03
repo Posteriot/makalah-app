@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import {
   Accordion,
   AccordionContent,
@@ -14,7 +14,6 @@ import {
  *
  * - Single item open at a time (mutual exclusive)
  * - All collapsed by default
- * - Click outside closes any open accordion
  * - Blinking dot matching desktop design
  * - Design tokens: bg-dot, font-sans, font-mono
  */
@@ -48,30 +47,9 @@ const benefits = [
 
 export function BenefitsAccordion() {
   const [openItem, setOpenItem] = useState<string>("")
-  const accordionRef = useRef<HTMLDivElement>(null)
-
-  // Close accordion when clicking/touching outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (
-        accordionRef.current &&
-        !accordionRef.current.contains(event.target as Node)
-      ) {
-        setOpenItem("")
-      }
-    }
-
-    document.addEventListener("click", handleClickOutside)
-    document.addEventListener("touchstart", handleClickOutside)
-
-    return () => {
-      document.removeEventListener("click", handleClickOutside)
-      document.removeEventListener("touchstart", handleClickOutside)
-    }
-  }, [])
 
   return (
-    <div ref={accordionRef} className="md:hidden">
+    <div className="md:hidden">
       <Accordion
         type="single"
         collapsible
