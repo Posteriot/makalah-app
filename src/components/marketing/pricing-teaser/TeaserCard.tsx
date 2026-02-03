@@ -33,12 +33,12 @@ export function TeaserCard({ plan }: { plan: TeaserPlan }) {
         )}
       >
         {/* Plan name */}
-        <h3 className="font-sans font-light text-xl md:text-2xl text-foreground mb-3 text-center">
+        <h3 className="font-sans font-light text-xl md:text-2xl text-foreground mb-3 text-center mt-4 md:mt-0">
           {plan.name}
         </h3>
 
         {/* Price */}
-        <p className="font-mono text-3xl md:text-5xl tracking-tight text-foreground text-center mb-6">
+        <p className="font-mono text-3xl md:text-5xl mt-tracking-tight text-foreground text-center mb-6">
           {plan.price}
           {plan.unit && (
             <span className="text-sm font-normal text-muted-foreground ml-1">
@@ -56,7 +56,7 @@ export function TeaserCard({ plan }: { plan: TeaserPlan }) {
         </div>
 
         {/* Credit note */}
-        <p className="font-mono text-xs leading-relaxed text-muted-foreground mt-auto pt-3 md:pt-6">
+        <p className="font-mono text-xs leading-relaxed text-muted-foreground mt-6 md:mt-0 pt-3 md:pt-6 mb-6 md:md-0">
           {plan.creditNote}
         </p>
       </div>

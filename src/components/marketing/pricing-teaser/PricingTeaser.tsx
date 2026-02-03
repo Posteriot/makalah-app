@@ -20,17 +20,17 @@ function getCardContent(slug: string): { description: string; creditNote: string
     case "gratis":
       return {
         description: "Cocok untuk mencoba 13 tahap workflow dan menyusun draft awal tanpa biaya.",
-        creditNote: "Mendapat 50 kredit ≈ 35–45 ribu kata pemakaian total (input + output).",
+        creditNote: "Mendapat 50 kredit, untuk diksusi dan membentuk draft",
       }
     case "bpp":
       return {
         description: "Tepat untuk menyelesaikan satu paper utuh hingga ekspor Word/PDF.",
-        creditNote: "Mendapat 300 kredit ≈ 210–270 ribu kata pemakaian total (input + output).",
+        creditNote: "Mendapat 300 kredit, untuk menyusun 1 paper setara 15 halaman A4 dan dikusi kontekstual.",
       }
     case "pro":
       return {
         description: "Ideal untuk penyusunan banyak paper dengan diskusi sepuasnya.",
-        creditNote: "Mendapat 2000 kredit ≈ 1,4–1,8 juta kata pemakaian total (input + output).",
+        creditNote: "Mendapat 2000 kredit, untuk menyusun 5-6 paper setara @15 halaman dan diskusi mendalam",
       }
     default:
       return {
