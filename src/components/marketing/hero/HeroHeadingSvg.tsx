@@ -12,7 +12,7 @@ type HeroHeadingSvgProps = {
 export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
   return (
     <span
-      className={cn("block w-full max-w-[520px] h-auto", className)}
+      className={cn("block w-full lg:max-w-[520px] h-auto", className)}
       aria-hidden="true"
     >
       {/* Dark mode heading (light text) */}
@@ -21,7 +21,7 @@ export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
         alt="Ngobrol+Riset +Brainstorming +Kolaboratif =Paper_Akademik"
         width={520}
         height={246}
-        className="hidden dark:block w-full h-auto max-h-[35vh] object-contain lg:max-h-none"
+        className="hidden dark:block w-full h-auto object-contain"
         priority
       />
       {/* Light mode heading (dark text) */}
@@ -30,7 +30,7 @@ export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
         alt="Ngobrol+Riset +Brainstorming +Kolaboratif =Paper_Akademik"
         width={520}
         height={246}
-        className="block dark:hidden w-full h-auto max-h-[35vh] object-contain lg:max-h-none"
+        className="block dark:hidden w-full h-auto object-contain"
         priority
       />
     </span>

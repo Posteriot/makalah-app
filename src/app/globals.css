@@ -1070,7 +1070,7 @@
 
     .hero-flex {
       flex-direction: column-reverse;
-      align-items: center;
+      align-items: stretch; /* Stretch children to full width */
       text-align: left;
       padding: 0; /* Remove padding, hero-section sudah punya */
     }
@@ -1078,10 +1078,10 @@
     .hero-left {
       min-width: 0; /* Reset dari 440px untuk mobile kecil */
       width: 100%; /* Full width of container */
-      max-width: 520px;
-      margin-inline: auto;
+      max-width: none; /* Allow heading to reach viewport edge */
+      margin-inline: 0;
       text-align: left;
-      align-items: flex-start;
+      align-items: stretch; /* Stretch children to full width */
       gap: 0.625rem; /* Tighter gap for viewport fit */
       box-sizing: border-box;
       /* Constrain height for viewport fit */
@@ -1098,15 +1098,14 @@
       justify-content: flex-start;
       flex-direction: column;
       gap: 10px;
-      align-items: stretch; /* Full-width buttons */
+      align-items: center; /* Center buttons on mobile */
       margin-top: 0.5rem;
     }
 
     .hero-actions .btn-brand {
-      width: 100%;
-      padding: 0.625rem 1rem; /* Compact tapi full-width */
+      width: auto;
+      padding: 0.625rem 1rem;
       font-size: 0.8125rem; /* 13px */
-      justify-content: center;
     }
 
     .hero-actions .btn-outline {
