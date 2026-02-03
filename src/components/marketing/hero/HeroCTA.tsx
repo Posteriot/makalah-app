@@ -33,7 +33,7 @@ export function HeroCTA() {
   const isLoading = !isUserLoaded || (isSignedIn && isOnboardingLoading)
 
   return (
-    <div className="flex justify-center lg:justify-start w-full">
+    <div className="flex justify-center lg:justify-start w-full mt-8">
       <SectionCTA href={getHref()} isLoading={isLoading}>
         AYO MULAI
       </SectionCTA>

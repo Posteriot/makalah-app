@@ -1099,7 +1099,6 @@
       flex-direction: column;
       gap: 10px;
       align-items: center; /* Center buttons on mobile */
-      margin-top: 0.5rem;
     }
   }
 

@@ -6,7 +6,7 @@ import { SectionBadge } from "@/components/ui/section-badge"
  */
 export function PawangBadge() {
   return (
-    <SectionBadge href="/about" className="mb-[18px] lg:mb-0">
+    <SectionBadge href="/about">
       Anda Pawang, Ai Tukang
     </SectionBadge>
   )
