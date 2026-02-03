@@ -11,7 +11,8 @@ interface AuroraBackgroundProps {
  * AuroraBackground - Multi-color radial gradient background
  *
  * Creates 4 layered radial gradients with blur effect.
- * Adapts intensity for dark/light mode.
+ * Theme-agnostic: renders identically in dark/light mode.
+ * Use TintOverlay as sibling for brightness adaptation.
  *
  * Layer order: z-index -2 (behind everything)
  */
@@ -34,13 +35,9 @@ export function AuroraBackground({ className }: AuroraBackgroundProps) {
       }}
       aria-hidden="true"
     >
-      {/* Dark mode: intense blur */}
+      {/* Blur layer - theme-agnostic, TintOverlay handles brightness */}
       <div
-        className={cn(
-          "absolute inset-0",
-          "dark:opacity-100 dark:[filter:blur(60px)_saturate(2.0)_brightness(1.4)]",
-          "opacity-50 [filter:blur(80px)_saturate(1.2)_brightness(1.1)]"
-        )}
+        className="absolute inset-0 [filter:blur(60px)_saturate(1.8)_brightness(1.3)]"
         style={{
           background: 'inherit',
           backgroundAttachment: 'inherit'
