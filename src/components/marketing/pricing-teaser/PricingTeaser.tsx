@@ -9,7 +9,7 @@ import { TeaserCard } from "./TeaserCard"
 import { TeaserCarousel } from "./TeaserCarousel"
 import { TeaserSkeleton } from "./TeaserSkeleton"
 import { TeaserCTA } from "./TeaserCTA"
-import { gridStyle, gridStyleDark, dotsStyle, dotsStyleDark } from "./backgroundPatterns"
+import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
 
 // ════════════════════════════════════════════════════════════════
 // Helper Function
@@ -76,24 +76,9 @@ export function PricingTeaser() {
       className="relative h-dvh min-h-[580px] md:min-h-[700px] flex flex-col justify-center px-4 md:px-6 overflow-hidden bg-muted/30 dark:bg-black"
       id="pemakaian-harga"
     >
-      {/* Background patterns - light mode */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none dark:hidden"
-        style={gridStyle}
-      />
-      <div
-        className="absolute inset-0 z-0 pointer-events-none dark:hidden"
-        style={dotsStyle}
-      />
-      {/* Background patterns - dark mode */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none hidden dark:block"
-        style={gridStyleDark}
-      />
-      <div
-        className="absolute inset-0 z-0 pointer-events-none hidden dark:block"
-        style={dotsStyleDark}
-      />
+      {/* Background patterns - using memoized React components */}
+      <GridPattern size={48} className="z-0" />
+      <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
       <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto">
         {/* Section Header */}
