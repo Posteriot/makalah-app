@@ -2063,37 +2063,10 @@
 }
 
 /* ==========================================================================
- * FOOTER - Diagonal Stripes Pattern
- * Complex gradient pattern kept as CSS component (not practical as inline Tailwind)
+ * FOOTER - Background Pattern
+ * Now rendered by React component: DiagonalStripes from SectionBackground
+ * See: src/components/layout/footer/Footer.tsx
  * ========================================================================== */
-@layer components {
-  .footer-diagonal-stripes {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
-    /* Light mode: subtle dark stripes */
-    background-image: repeating-linear-gradient(
-      45deg,
-      rgba(0, 0, 0, 0.06) 0,
-      rgba(0, 0, 0, 0.06) 1px,
-      transparent 1px,
-      transparent 10px
-    );
-  }
-
-  /* Dark mode: subtle light stripes */
-  .dark .footer-diagonal-stripes {
-    background-image: repeating-linear-gradient(
-      45deg,
-      rgba(255, 255, 255, 0.1) 0,
-      rgba(255, 255, 255, 0.1) 1px,
-      transparent 1px,
-      transparent 10px
-    );
-  }
-}
 
 /* ==========================================================================
  * ABOUT PAGE - MANIFESTO SECTION
