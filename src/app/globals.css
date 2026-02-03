@@ -1101,16 +1101,6 @@
       align-items: center; /* Center buttons on mobile */
       margin-top: 0.5rem;
     }
-
-    .hero-actions .btn-brand {
-      width: auto;
-      padding: 0.625rem 1rem;
-      font-size: 0.8125rem; /* 13px */
-    }
-
-    .hero-actions .btn-outline {
-      display: none !important; /* Sembunyikan di mobile - !important untuk override Tailwind inline-flex */
-    }
   }
 
   /* Hero actions (buttons) */
