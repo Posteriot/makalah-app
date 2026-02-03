@@ -493,8 +493,11 @@ export default defineSchema({
     price: v.string(), // Display price (e.g., "Rp.0", "Rpxx.xxx")
     priceValue: v.optional(v.number()), // Numeric price value for sorting/comparison
     unit: v.optional(v.string()), // Price unit (e.g., "per paper", "per bulan")
-    tagline: v.string(), // Short description
-    features: v.array(v.string()), // List of feature descriptions
+    tagline: v.string(), // Short description (used in full pricing page)
+    features: v.array(v.string()), // List of feature descriptions (used in full pricing page)
+    // Teaser-specific content (for home page preview)
+    teaserDescription: v.optional(v.string()), // Short description for teaser card
+    teaserCreditNote: v.optional(v.string()), // Credit note for teaser card
     isHighlighted: v.boolean(), // Highlight this plan (border brand)
     isDisabled: v.boolean(), // Plan not yet available
     ctaText: v.string(), // Button text (e.g., "Coba Gratis", "Belum Aktif")

@@ -470,3 +470,65 @@ export const updatePricingPageContent = internalMutation({
     }
   },
 })
+
+/**
+ * Migration to add teaser-specific content fields
+ * Run via: npx convex run "migrations/seedPricingPlans:addTeaserContent"
+ */
+export const addTeaserContent = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+    const updates: string[] = []
+
+    // Update Gratis plan
+    const gratisPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "gratis"))
+      .first()
+
+    if (gratisPlan) {
+      await db.patch(gratisPlan._id, {
+        teaserDescription: "Cocok untuk mencoba 13 tahap workflow dan menyusun draft awal tanpa biaya.",
+        teaserCreditNote: "Mendapat 50 kredit, untuk diskusi dan membentuk draft",
+        updatedAt: now,
+      })
+      updates.push("Gratis teaser content added")
+    }
+
+    // Update BPP plan
+    const bppPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "bpp"))
+      .first()
+
+    if (bppPlan) {
+      await db.patch(bppPlan._id, {
+        teaserDescription: "Tepat untuk menyelesaikan satu paper utuh hingga ekspor Word/PDF.",
+        teaserCreditNote: "Mendapat 300 kredit, untuk menyusun 1 paper setara 15 halaman A4 dan diskusi kontekstual.",
+        updatedAt: now,
+      })
+      updates.push("BPP teaser content added")
+    }
+
+    // Update Pro plan
+    const proPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "pro"))
+      .first()
+
+    if (proPlan) {
+      await db.patch(proPlan._id, {
+        teaserDescription: "Ideal untuk penyusunan banyak paper dengan diskusi sepuasnya.",
+        teaserCreditNote: "Mendapat 2000 kredit, untuk menyusun 5-6 paper setara @15 halaman dan diskusi mendalam",
+        updatedAt: now,
+      })
+      updates.push("Pro teaser content added")
+    }
+
+    return {
+      success: true,
+      updates,
+      message: `Added teaser content to ${updates.length} plans.`,
+    }
+  },
+})
