@@ -21,8 +21,7 @@ export function TintOverlay({ intensity = 20, className }: TintOverlayProps) {
     <div
       className={cn(
         "absolute inset-0 pointer-events-none",
-        "bg-black dark:bg-black",
-        "light:bg-white",
+        "bg-white dark:bg-black",
         className
       )}
       style={{ opacity: intensity / 100 }}
