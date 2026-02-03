@@ -42,7 +42,7 @@
 }
 
 .cell-email {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono), monospace;
     font-size: 13px;
 }
 

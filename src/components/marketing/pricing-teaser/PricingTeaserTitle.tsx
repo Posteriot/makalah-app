@@ -4,7 +4,7 @@
  */
 export function PricingTeaserTitle() {
   return (
-    <h2 className="font-mono text-2xl sm:text-[2rem] md:text-[2.5rem] font-semibold leading-[1.3] text-foreground">
+    <h2 className="font-mono text-2xl sm:text-[2rem] md:text-[2.5rem] font-medium leading-[1.3] text-foreground">
       Investasi untuk
       <br />
       Masa Depan Akademik.

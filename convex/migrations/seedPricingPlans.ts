@@ -367,3 +367,168 @@ export const activateCreditPackages = internalMutation({
     }
   },
 })
+
+/**
+ * Migration to update pricing plans content for redesigned pricing page
+ * Run via: npx convex run "migrations/seedPricingPlans:updatePricingPageContent"
+ */
+export const updatePricingPageContent = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+    const updates: string[] = []
+
+    // Update Gratis plan
+    const gratisPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "gratis"))
+      .first()
+
+    if (gratisPlan) {
+      await db.patch(gratisPlan._id, {
+        name: "Gratis",
+        price: "Rp0",
+        unit: undefined,
+        tagline: "Cocok untuk mencoba workflow dan menyusun draft awal tanpa biaya.",
+        features: [
+          "Mendapat 50 kredit",
+          "Brainstorming hingga draft",
+          "Pencarian literatur terbatas",
+        ],
+        ctaText: "Coba",
+        isHighlighted: false,
+        isDisabled: false,
+        ctaHref: "/chat",
+        updatedAt: now,
+      })
+      updates.push("Gratis updated")
+    }
+
+    // Update BPP plan
+    const bppPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "bpp"))
+      .first()
+
+    if (bppPlan) {
+      await db.patch(bppPlan._id, {
+        name: "Bayar Per Paper",
+        price: "Rp80ribu",
+        unit: "/paper",
+        tagline: "Tepat untuk menyelesaikan satu paper utuh hingga ekspor Word/PDF.",
+        features: [
+          "Mendapat 300 kredit",
+          "Menyusun 1 paper setara 15 halaman A4",
+          "Diskusi sesuai topik paper",
+          "Pencarian literatur sesuai kebutuhan paper",
+          "Editing draft di tiap tahapan workflow",
+          "Penggunaan tool refrasa untuk konversi ke bahasa manusiawi",
+          "Ekspor ke .docx (word) & .pdf",
+        ],
+        ctaText: "Beli Kredit",
+        isHighlighted: true,
+        isDisabled: false,
+        ctaHref: "/subscription/plans",
+        updatedAt: now,
+      })
+      updates.push("BPP updated")
+    }
+
+    // Update Pro plan
+    const proPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "pro"))
+      .first()
+
+    if (proPlan) {
+      await db.patch(proPlan._id, {
+        name: "Pro",
+        price: "Rp200ribu",
+        unit: "/bulan",
+        tagline: "Ideal untuk penyusunan banyak paper",
+        features: [
+          "Mendapat 2000 kredit",
+          "Menyusun 5-6 paper, dengan @paper setara 15 halaman A4",
+          "Diskusi sepuasnya",
+          "Pencarian literatur dengan frekuensi banyak",
+          "Editing draft di tiap tahapan workflow",
+          "Penggunaan tool refrasa untuk konversi ke bahasa manusiawi",
+          "Ekspor ke .docx (word) & .pdf",
+        ],
+        ctaText: "Langganan",
+        isHighlighted: false,
+        isDisabled: true,
+        ctaHref: "/subscription/upgrade",
+        updatedAt: now,
+      })
+      updates.push("Pro updated")
+    }
+
+    return {
+      success: true,
+      updates,
+      message: `Updated ${updates.length} pricing plans for redesigned page.`,
+    }
+  },
+})
+
+/**
+ * Migration to add teaser-specific content fields
+ * Run via: npx convex run "migrations/seedPricingPlans:addTeaserContent"
+ */
+export const addTeaserContent = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+    const updates: string[] = []
+
+    // Update Gratis plan
+    const gratisPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "gratis"))
+      .first()
+
+    if (gratisPlan) {
+      await db.patch(gratisPlan._id, {
+        teaserDescription: "Cocok untuk mencoba 13 tahap workflow dan menyusun draft awal tanpa biaya.",
+        teaserCreditNote: "Mendapat 50 kredit, untuk diskusi dan membentuk draft",
+        updatedAt: now,
+      })
+      updates.push("Gratis teaser content added")
+    }
+
+    // Update BPP plan
+    const bppPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "bpp"))
+      .first()
+
+    if (bppPlan) {
+      await db.patch(bppPlan._id, {
+        teaserDescription: "Tepat untuk menyelesaikan satu paper utuh hingga ekspor Word/PDF.",
+        teaserCreditNote: "Mendapat 300 kredit, untuk menyusun 1 paper setara 15 halaman A4 dan diskusi kontekstual.",
+        updatedAt: now,
+      })
+      updates.push("BPP teaser content added")
+    }
+
+    // Update Pro plan
+    const proPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "pro"))
+      .first()
+
+    if (proPlan) {
+      await db.patch(proPlan._id, {
+        teaserDescription: "Ideal untuk penyusunan banyak paper dengan diskusi sepuasnya.",
+        teaserCreditNote: "Mendapat 2000 kredit, untuk menyusun 5-6 paper setara @15 halaman dan diskusi mendalam",
+        updatedAt: now,
+      })
+      updates.push("Pro teaser content added")
+    }
+
+    return {
+      success: true,
+      updates,
+      message: `Added teaser content to ${updates.length} plans.`,
+    }
+  },
+})

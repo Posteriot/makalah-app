@@ -1,18 +1,10 @@
 import type { Metadata } from "next"
-import {
-  Geist,
-  Geist_Mono,
-  Nunito_Sans,
-  JetBrains_Mono,
-  Victor_Mono,
-} from "next/font/google"
+import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { AppProviders } from "./providers"
 import { Toaster } from "@/components/ui/sonner"
 
-// Google Fonts - Geist as primary font with all weights
-// Thin 100 | ExtraLight 200 | Light 300 | Regular 400 | Medium 500
-// SemiBold 600 | Bold 700 | ExtraBold 800 | Black 900
+// Geist - Primary UI font
 const geist = Geist({
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
@@ -20,33 +12,11 @@ const geist = Geist({
   display: "swap",
 })
 
-// Geist Mono for subheadings and technical text
-// Thin 100 | ExtraLight 200 | Light 300 | Regular 400 | Medium 500
-// SemiBold 600 | Bold 700 | ExtraBold 800 | Black 900
+// Geist Mono - For technical text, prices, code
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-  variable: "--font-geist-mono",
-  display: "swap",
-})
-
-// Nunito Sans for headings with bold weights
-const nunitoSans = Nunito_Sans({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-  variable: "--font-heading",
-  display: "swap",
-})
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
   variable: "--font-mono",
-  display: "swap",
-})
-
-const victorMono = Victor_Mono({
-  subsets: ["latin"],
-  variable: "--font-hero",
   display: "swap",
 })
 
@@ -63,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body
-        className={`${geist.variable} ${geistMono.variable} ${nunitoSans.variable} ${jetbrainsMono.variable} ${victorMono.variable} antialiased`}
+        className={`${geist.variable} ${geistMono.variable} antialiased`}
       >
         <AppProviders>
           {children}

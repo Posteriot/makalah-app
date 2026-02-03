@@ -12,54 +12,22 @@ import { TeaserCTA } from "./TeaserCTA"
 import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
 
 // ════════════════════════════════════════════════════════════════
-// Helper Function
-// ════════════════════════════════════════════════════════════════
-
-function getCardContent(slug: string): { description: string; creditNote: string } {
-  switch (slug) {
-    case "gratis":
-      return {
-        description: "Cocok untuk mencoba 13 tahap workflow dan menyusun draft awal tanpa biaya.",
-        creditNote: "Mendapat 50 kredit, untuk diksusi dan membentuk draft",
-      }
-    case "bpp":
-      return {
-        description: "Tepat untuk menyelesaikan satu paper utuh hingga ekspor Word/PDF.",
-        creditNote: "Mendapat 300 kredit, untuk menyusun 1 paper setara 15 halaman A4 dan dikusi kontekstual.",
-      }
-    case "pro":
-      return {
-        description: "Ideal untuk penyusunan banyak paper dengan diskusi sepuasnya.",
-        creditNote: "Mendapat 2000 kredit, untuk menyusun 5-6 paper setara @15 halaman dan diskusi mendalam",
-      }
-    default:
-      return {
-        description: "",
-        creditNote: "",
-      }
-  }
-}
-
-// ════════════════════════════════════════════════════════════════
 // Main Component
 // ════════════════════════════════════════════════════════════════
 
 export function PricingTeaser() {
   const plansData = useQuery(api.pricingPlans.getActivePlans)
 
-  // Transform to teaser format (simplified)
-  const teaserPlans: TeaserPlan[] = (plansData || []).map((plan) => {
-    const content = getCardContent(plan.slug)
-    return {
-      _id: plan._id,
-      name: plan.name,
-      price: plan.price,
-      unit: plan.unit,
-      isHighlighted: plan.isHighlighted,
-      description: content.description,
-      creditNote: content.creditNote,
-    }
-  })
+  // Transform to teaser format using database fields
+  const teaserPlans: TeaserPlan[] = (plansData || []).map((plan) => ({
+    _id: plan._id,
+    name: plan.name,
+    price: plan.price,
+    unit: plan.unit,
+    isHighlighted: plan.isHighlighted,
+    description: plan.teaserDescription || "",
+    creditNote: plan.teaserCreditNote || "",
+  }))
 
   // Loading state
   if (!plansData) {
