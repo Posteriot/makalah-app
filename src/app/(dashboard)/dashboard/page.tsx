@@ -5,7 +5,7 @@ import { fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { AdminPanelContainer } from "@/components/admin/AdminPanelContainer"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { WarningCircle } from "iconoir-react"
 
 type SearchParams = Record<string, string | string[] | undefined>
 
@@ -49,7 +49,7 @@ export default async function DashboardPage({
     return (
       <div className="max-w-2xl mx-auto p-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <WarningCircle className="h-4 w-4" />
           <AlertTitle>Konfigurasi Auth Bermasalah</AlertTitle>
           <AlertDescription>
             Token Convex tidak tersedia. Cek template JWT Clerk untuk Convex.
@@ -68,7 +68,7 @@ export default async function DashboardPage({
     return (
       <div className="max-w-2xl mx-auto p-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <WarningCircle className="h-4 w-4" />
           <AlertTitle>Sinkronisasi User Bermasalah</AlertTitle>
           <AlertDescription>
             Data user di Convex belum tersedia.
@@ -95,7 +95,7 @@ export default async function DashboardPage({
     return (
       <div className="max-w-2xl mx-auto p-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <WarningCircle className="h-4 w-4" />
           <AlertTitle>Akses Ditolak</AlertTitle>
           <AlertDescription>
             Anda tidak memiliki izin untuk mengakses Dashboard.

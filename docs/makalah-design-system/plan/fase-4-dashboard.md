@@ -3,7 +3,7 @@
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 > **Parent Document**: [MASTER-PLAN.md](./MASTER-PLAN.md)
-> **Status**: ⏳ Pending
+> **Status**: 🔄 In Progress (Task 4.1 ✅)
 > **Total Tasks**: 4
 > **Prerequisite**: FASE 3 (Auth & Onboarding) completed
 

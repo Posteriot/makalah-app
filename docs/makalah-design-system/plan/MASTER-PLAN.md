@@ -344,8 +344,8 @@ Jika terjadi visual breakage parah:
 | 0 - Foundation | ✅ Done | 2026-02-04 | 2026-02-04 |
 | 1 - Global Shell | ✅ Done | 2026-02-04 | 2026-02-04 |
 | 2 - Marketing | ✅ Done | 2026-02-04 | 2026-02-04 |
-| 3 - Auth & Onboarding | ⏳ Pending | - | - |
-| 4 - Dashboard | ⏳ Pending | - | - |
+| 3 - Auth & Onboarding | ✅ Done | 2026-02-04 | 2026-02-04 |
+| 4 - Dashboard | 🔄 In Progress | 2026-02-04 | - |
 | 5 - Chat Shell | ⏳ Pending | - | - |
 | 6 - Chat Interaction | ⏳ Pending | - | - |
 | 7 - Chat Artifacts | ⏳ Pending | - | - |
@@ -355,4 +355,4 @@ Jika terjadi visual breakage parah:
 
 ---
 
-> **Next Step**: Start FASE 3 → `plan/fase-3-auth-onboarding.md`
+> **Next Step**: Start FASE 4 → `plan/fase-4-dashboard.md`
