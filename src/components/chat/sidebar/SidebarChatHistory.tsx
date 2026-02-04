@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
-import { Loader2Icon, MessageSquareIcon, TrashIcon, PencilIcon } from "lucide-react"
+import { RefreshDouble, ChatBubble, Trash, EditPencil } from "iconoir-react"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery } from "convex/react"
@@ -187,7 +187,7 @@ export function SidebarChatHistory({
   if (conversations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
-        <MessageSquareIcon className="h-8 w-8 mb-2" />
+        <ChatBubble className="h-8 w-8 mb-2" />
         <span className="text-xs">Belum ada percakapan</span>
       </div>
     )
@@ -285,7 +285,7 @@ export function SidebarChatHistory({
                           className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-accent rounded-md transition-all focus:opacity-100"
                           aria-label="Edit judul"
                         >
-                          <PencilIcon className="h-4 w-4" />
+                          <EditPencil className="h-4 w-4" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>Edit judul</TooltipContent>
@@ -316,7 +316,7 @@ export function SidebarChatHistory({
                         className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all focus:opacity-100"
                         aria-label="Hapus percakapan"
                       >
-                        <TrashIcon className="h-4 w-4" />
+                        <Trash className="h-4 w-4" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>Hapus percakapan</TooltipContent>
@@ -325,7 +325,7 @@ export function SidebarChatHistory({
               )}
               {/* Loading indicator saat updating */}
               {isEditing && isUpdating && (
-                <Loader2Icon className="h-4 w-4 animate-spin text-muted-foreground" />
+                <RefreshDouble className="h-4 w-4 animate-spin text-muted-foreground" />
               )}
             </>
           )
@@ -353,7 +353,7 @@ export function SidebarChatHistory({
                   onClick={() => handleStartEdit(conv._id, conv.title)}
                   disabled={hasPaperSession}
                 >
-                  <PencilIcon className="h-4 w-4 mr-2" />
+                  <EditPencil className="h-4 w-4 mr-2" />
                   Edit Judul
                 </ContextMenuItem>
                 <ContextMenuSeparator />
@@ -361,7 +361,7 @@ export function SidebarChatHistory({
                   onClick={() => handleDeleteClick(conv._id, conv.title)}
                   className="text-destructive focus:text-destructive"
                 >
-                  <TrashIcon className="h-4 w-4 mr-2" />
+                  <Trash className="h-4 w-4 mr-2" />
                   Hapus
                 </ContextMenuItem>
               </ContextMenuContent>
