@@ -10,11 +10,11 @@ import {
   ArrowUpCircle,
   BadgeCheck,
   Eye,
-  EyeOff,
+  EyeClosed,
   Shield,
   User as UserIcon,
-  X,
-} from "lucide-react"
+  Xmark,
+} from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { RoleBadge } from "@/components/admin/RoleBadge"
@@ -232,7 +232,7 @@ export function UserSettingsModal({
             aria-label="Tutup modal"
             type="button"
           >
-            <X className="h-4 w-4" />
+            <Xmark className="h-4 w-4" />
           </button>
         </div>
 
@@ -496,7 +496,7 @@ export function UserSettingsModal({
                             aria-label="Tampilkan kata sandi"
                           >
                             {showCurrentPassword ? (
-                              <EyeOff className="h-4 w-4" />
+                              <EyeClosed className="h-4 w-4" />
                             ) : (
                               <Eye className="h-4 w-4" />
                             )}
@@ -519,7 +519,7 @@ export function UserSettingsModal({
                             aria-label="Tampilkan kata sandi baru"
                           >
                             {showNewPassword ? (
-                              <EyeOff className="h-4 w-4" />
+                              <EyeClosed className="h-4 w-4" />
                             ) : (
                               <Eye className="h-4 w-4" />
                             )}
@@ -546,7 +546,7 @@ export function UserSettingsModal({
                             aria-label="Tampilkan konfirmasi kata sandi"
                           >
                             {showConfirmPassword ? (
-                              <EyeOff className="h-4 w-4" />
+                              <EyeClosed className="h-4 w-4" />
                             ) : (
                               <Eye className="h-4 w-4" />
                             )}
