@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { NavArrowDown } from "iconoir-react"
 import {
   Collapsible,
   CollapsibleContent,
@@ -83,7 +83,7 @@ export function ManifestoSection() {
                   )}
                   aria-label={isOpen ? "Tutup manifesto" : "Baca selengkapnya"}
                 >
-                  <ChevronDown
+                  <NavArrowDown
                     className={cn(
                       "w-4 h-4 text-muted-foreground transition-transform duration-300",
                       isOpen && "rotate-180"

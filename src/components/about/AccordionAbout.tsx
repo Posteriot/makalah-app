@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown } from "lucide-react"
+import { NavArrowDown } from "iconoir-react"
 
 import { cn } from "@/lib/utils"
 import {
@@ -114,7 +114,7 @@ const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
               </div>
 
               {/* Chevron */}
-              <ChevronDown
+              <NavArrowDown
                 className={cn(
                   "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300",
                   isOpen && "rotate-180"
