@@ -1,59 +1,75 @@
 "use client"
 
-import { PROBLEMS_ITEMS, SECTION_HEADINGS } from "./data"
+import { SectionBadge } from "@/components/ui/section-badge"
+import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
+import { PROBLEMS_ITEMS } from "./data"
 import { getIcon } from "./icons"
 import { AccordionAbout } from "./AccordionAbout"
-import { ContentCard } from "./ContentCard"
+import { cn } from "@/lib/utils"
 
-// =============================================================================
-// PROBLEMS SECTION COMPONENT
-// =============================================================================
-
-/**
- * ProblemsSection - Displays problems/challenges that Makalah addresses.
- *
- * Features dual view:
- * - Mobile (< 768px): Accordion view with one-at-a-time behavior
- * - Desktop (>= 768px): 2-column grid of ContentCards with icons
- *
- * @example
- * ```tsx
- * <ProblemsSection />
- * ```
- */
 export function ProblemsSection() {
-  // Transform PROBLEMS_ITEMS to AccordionItemData format for mobile view
-  // Note: Problems accordion does NOT show icons (per spec: title + chevron only)
+  // Transform items for accordion (mobile)
   const accordionItems = PROBLEMS_ITEMS.map((item) => ({
     id: item.id,
     title: item.title,
     content: item.description,
-    // NO icon for problems accordion - per spec
   }))
 
   return (
-    <section className="section-full">
-      <div className="max-w-[72rem] mx-auto">
-        {/* Section Heading */}
-        <h2 className="section-heading">{SECTION_HEADINGS.problems}</h2>
+    <section
+      className="relative px-4 md:px-6 py-16 md:py-24 overflow-hidden bg-muted/30 dark:bg-black"
+      id="problems"
+    >
+      {/* Background patterns */}
+      <GridPattern size={48} className="z-0" />
+      <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
-        {/* Mobile View: Accordion */}
+      <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto">
+        {/* Section Header */}
+        <div className="flex flex-col items-start gap-3 md:gap-4 mb-8 md:mb-12">
+          <SectionBadge>Persoalan</SectionBadge>
+          <h2 className="font-mono text-2xl md:text-3xl lg:text-4xl font-normal tracking-tight text-foreground leading-tight">
+            Apa Saja Persoalan Yang Dijawab?
+          </h2>
+        </div>
+
+        {/* Mobile: Accordion */}
         <div className="md:hidden">
           <AccordionAbout items={accordionItems} />
         </div>
 
-        {/* Desktop View: Cards Grid (2 columns) */}
-        <div className="hidden md:grid grid-cols-2 gap-8">
+        {/* Desktop: 2-column grid */}
+        <div className="hidden md:grid grid-cols-2 gap-6">
           {PROBLEMS_ITEMS.map((item) => {
             const Icon = getIcon(item.iconName)
             return (
-              <ContentCard
+              <div
                 key={item.id}
-                title={item.title}
-                icon={Icon && <Icon className="w-6 h-6 text-brand" />}
+                className={cn(
+                  "group relative overflow-hidden h-full min-h-[180px] flex flex-col p-6 md:p-8 rounded-lg",
+                  "border border-black/20 dark:border-white/25",
+                  "hover:bg-bento-light-hover dark:hover:bg-bento-hover",
+                  "hover:border-black/30 dark:hover:border-white/35",
+                  "hover:-translate-y-1 transition-all duration-300"
+                )}
               >
-                {item.description}
-              </ContentCard>
+                {/* Icon + Title row */}
+                <div className="flex items-start gap-4 mb-4">
+                  {Icon && (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand/10">
+                      <Icon className="h-5 w-5 text-brand" />
+                    </div>
+                  )}
+                  <h3 className="font-mono text-lg font-medium text-foreground leading-tight pt-2">
+                    {item.title}
+                  </h3>
+                </div>
+
+                {/* Description */}
+                <p className="font-mono text-sm leading-relaxed text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
             )
           })}
         </div>

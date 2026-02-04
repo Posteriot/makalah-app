@@ -13,7 +13,7 @@ export {
   type AgentItem,
   type ContactContent,
   type CareerContactItem,
-  // Hero
+  // Hero (kept for CTA data)
   HERO_CONTENT,
   // Manifesto
   MANIFESTO_CONTENT,
@@ -39,10 +39,7 @@ export {
   type AccordionBadgeVariant,
 } from "./AccordionAbout"
 
-export { ContentCard, type ContentCardProps } from "./ContentCard"
-
 // Section components
-export { HeroSection } from "./HeroSection"
 export { ManifestoSection } from "./ManifestoSection"
 export { ProblemsSection } from "./ProblemsSection"
 export { AgentsSection } from "./AgentsSection"
