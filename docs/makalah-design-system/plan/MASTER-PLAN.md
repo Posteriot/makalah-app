@@ -343,7 +343,7 @@ Jika terjadi visual breakage parah:
 |------|--------|---------------|-----------------|
 | 0 - Foundation | ✅ Done | 2026-02-04 | 2026-02-04 |
 | 1 - Global Shell | ✅ Done | 2026-02-04 | 2026-02-04 |
-| 2 - Marketing | ⏳ Pending | - | - |
+| 2 - Marketing | ✅ Done | 2026-02-04 | 2026-02-04 |
 | 3 - Auth & Onboarding | ⏳ Pending | - | - |
 | 4 - Dashboard | ⏳ Pending | - | - |
 | 5 - Chat Shell | ⏳ Pending | - | - |
@@ -355,4 +355,4 @@ Jika terjadi visual breakage parah:
 
 ---
 
-> **Next Step**: Start FASE 2 → `plan/fase-2-marketing.md`
+> **Next Step**: Start FASE 3 → `plan/fase-3-auth-onboarding.md`
