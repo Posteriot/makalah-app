@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { CheckCircle2, ArrowRight } from "lucide-react"
+import { CheckCircle, ArrowRight } from "iconoir-react"
 
 export default function TopUpSuccessPage() {
   return (
@@ -9,7 +9,7 @@ export default function TopUpSuccessPage() {
       {/* Success Icon */}
       <div className="flex justify-center">
         <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-          <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
+          <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400" />
         </div>
       </div>
 

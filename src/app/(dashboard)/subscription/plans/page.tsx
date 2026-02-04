@@ -11,21 +11,21 @@ import { QRCodeSVG } from "qrcode.react"
 import {
   CreditCard,
   Check,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
+  NavArrowDown,
+  NavArrowUp,
+  Sparks,
   QrCode,
-  Building2,
+  Building,
   Wallet,
-  CheckCircle2,
-  Loader2,
+  CheckCircle,
+  RefreshDouble,
   Copy,
-  ExternalLink,
+  OpenNewWindow,
   Clock,
-  AlertCircle,
+  WarningCircle,
   ArrowRight,
-  RefreshCw,
-} from "lucide-react"
+  Refresh,
+} from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -73,7 +73,7 @@ type PaymentMethod = "qris" | "va" | "ewallet"
 
 const PAYMENT_METHODS = [
   { id: "qris" as const, label: "QRIS", icon: QrCode, description: "Scan dengan e-wallet" },
-  { id: "va" as const, label: "Virtual Account", icon: Building2, description: "Transfer bank" },
+  { id: "va" as const, label: "Virtual Account", icon: Building, description: "Transfer bank" },
   { id: "ewallet" as const, label: "E-Wallet", icon: Wallet, description: "OVO, GoPay" },
 ]
 
@@ -270,7 +270,7 @@ export default function PlansHubPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
+          <Sparks className="h-5 w-5 text-primary" />
           Pilih Paket
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -383,9 +383,9 @@ export default function PlansHubPage() {
                     >
                       {isCurrentTier ? "Beli Paket" : plan.ctaText}
                       {isExpanded ? (
-                        <ChevronUp className="h-4 w-4" />
+                        <NavArrowUp className="h-4 w-4" />
                       ) : (
-                        <ChevronDown className="h-4 w-4" />
+                        <NavArrowDown className="h-4 w-4" />
                       )}
                     </button>
 
@@ -411,7 +411,7 @@ export default function PlansHubPage() {
                             {/* Error Banner */}
                             {error && (
                               <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
-                                <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                                <WarningCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                                 <p className="text-sm text-destructive">{error}</p>
                               </div>
                             )}
@@ -455,7 +455,7 @@ export default function PlansHubPage() {
                                       <p className="text-xs text-muted-foreground mt-1">{pkg.description}</p>
                                     )}
                                     {derivedSelectedPackage?.type === pkg.type && (
-                                      <CheckCircle2 className="absolute top-3 right-3 h-4 w-4 text-primary" />
+                                      <CheckCircle className="absolute top-3 right-3 h-4 w-4 text-primary" />
                                     )}
                                   </button>
                                 ))}
@@ -486,7 +486,7 @@ export default function PlansHubPage() {
                                       <div className="flex-1">
                                         <p className="text-sm font-medium">{method.label}</p>
                                       </div>
-                                      {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                      {isSelected && <CheckCircle className="h-4 w-4 text-primary" />}
                                     </button>
                                   )
                                 })}
@@ -559,7 +559,7 @@ export default function PlansHubPage() {
                             >
                               {isProcessing ? (
                                 <>
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <RefreshDouble className="h-4 w-4 animate-spin" />
                                   Memproses...
                                 </>
                               ) : (
@@ -699,7 +699,7 @@ function PaymentResultSection({
     return (
       <div className="text-center space-y-3 py-4">
         <div className="mx-auto w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-          <CheckCircle2 className="h-6 w-6 text-green-600" />
+          <CheckCircle className="h-6 w-6 text-green-600" />
         </div>
         <div>
           <p className="font-semibold text-green-700 dark:text-green-400">Pembayaran Berhasil!</p>
@@ -723,7 +723,7 @@ function PaymentResultSection({
     return (
       <div className="text-center space-y-3 py-4">
         <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center">
-          <AlertCircle className="h-6 w-6 text-destructive" />
+          <WarningCircle className="h-6 w-6 text-destructive" />
         </div>
         <div>
           <p className="font-semibold text-destructive">
@@ -739,7 +739,7 @@ function PaymentResultSection({
           onClick={onReset}
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
         >
-          <RefreshCw className="h-4 w-4" />
+          <Refresh className="h-4 w-4" />
           Coba Lagi
         </button>
       </div>
@@ -752,7 +752,7 @@ function PaymentResultSection({
     return (
       <div className="text-center space-y-4 py-4">
         <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-          <AlertCircle className="h-6 w-6 text-muted-foreground" />
+          <WarningCircle className="h-6 w-6 text-muted-foreground" />
         </div>
         <div>
           <p className="font-semibold">Pembayaran Tidak Ditemukan</p>
@@ -828,7 +828,7 @@ function PaymentResultSection({
               className="inline-flex items-center gap-1 mt-2 text-sm text-primary hover:underline"
             >
               Buka {selectedEWalletChannel}
-              <ExternalLink className="h-3 w-3" />
+              <OpenNewWindow className="h-3 w-3" />
             </a>
           )}
         </div>
@@ -839,7 +839,7 @@ function PaymentResultSection({
         // State 2: Expired, show check button
         <div className="space-y-3">
           <div className="flex items-center justify-center gap-2 text-yellow-500">
-            <AlertCircle className="h-4 w-4" />
+            <WarningCircle className="h-4 w-4" />
             <span className="text-sm font-medium">Waktu pembayaran habis</span>
           </div>
           <button
@@ -847,7 +847,7 @@ function PaymentResultSection({
             disabled={isCheckingStatus}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
           >
-            {isCheckingStatus && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isCheckingStatus && <RefreshDouble className="h-4 w-4 animate-spin" />}
             Cek Status Pembayaran
           </button>
           <button onClick={onReset} className="block mx-auto text-sm text-muted-foreground hover:text-foreground">
