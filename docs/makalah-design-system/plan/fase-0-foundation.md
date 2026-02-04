@@ -158,7 +158,7 @@ git commit -m "refactor(foundation): create legacy backup directory and progress
 
 ---
 
-### Task 0.2: Backup globals.css
+### Task 0.2: Backup globals.css ✅ DONE
 
 **Files:**
 - Copy: `src/app/globals.css` → `src/styles/legacy/globals.legacy.css`
