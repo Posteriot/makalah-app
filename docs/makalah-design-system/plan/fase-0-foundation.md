@@ -3,7 +3,7 @@
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 > **Parent Document**: [MASTER-PLAN.md](./MASTER-PLAN.md)
-> **Status**: ⏳ Pending
+> **Status**: ✅ Done
 > **Total Tasks**: 6
 
 **Goal:** Setup infrastruktur styling Mechanical Grace (tokens, utilities, dependencies) TANPA mengubah tampilan existing.
@@ -1022,7 +1022,7 @@ git commit -m "refactor(foundation): create new tailwind.config.ts with theme ex
 
 ---
 
-### Task 0.6: Install iconoir-react
+### Task 0.6: Install iconoir-react ✅ DONE
 
 **Files:**
 - Modify: `package.json`

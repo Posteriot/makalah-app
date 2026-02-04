@@ -341,7 +341,7 @@ Jika terjadi visual breakage parah:
 
 | Fase | Status | Tanggal Mulai | Tanggal Selesai |
 |------|--------|---------------|-----------------|
-| 0 - Foundation | ⏳ Pending | - | - |
+| 0 - Foundation | ✅ Done | 2026-02-04 | 2026-02-04 |
 | 1 - Global Shell | ⏳ Pending | - | - |
 | 2 - Marketing | ⏳ Pending | - | - |
 | 3 - Auth & Onboarding | ⏳ Pending | - | - |
@@ -355,4 +355,4 @@ Jika terjadi visual breakage parah:
 
 ---
 
-> **Next Step**: Buat plan kecil untuk FASE 0 → `plan/fase-0-foundation.md`
+> **Next Step**: Start FASE 1 → `plan/fase-1-global-shell.md`
