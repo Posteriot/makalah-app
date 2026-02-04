@@ -35,30 +35,39 @@ export function OnboardingHeader() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="h-full max-w-[1200px] mx-auto px-6 flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo - same as GlobalHeader for consistency */}
         <Link href="/" className="flex items-center gap-2">
+          {/* Light logo icon (for dark mode) */}
           <Image
-            src="/logo/makalah_logo_500x500.png"
-            alt="Makalah AI"
-            width={32}
-            height={32}
-            className="rounded-md"
-          />
-          {/* Light text (for dark mode) */}
-          <Image
-            src="/makalah_brand_text.svg"
-            alt="Makalah AI"
-            width={100}
+            src="/logo/makalah_logo_light.svg"
+            alt="Makalah"
+            width={24}
             height={24}
-            className="hidden sm:block dark:block [html:not(.dark)_&]:hidden"
+            className="logo-img logo-img-light"
           />
-          {/* Dark text (for light mode) */}
+          {/* Dark logo icon (for light mode) */}
           <Image
-            src="/makalah_brand_text_dark.svg"
-            alt="Makalah AI"
-            width={100}
+            src="/logo/makalah_logo_dark.svg"
+            alt="Makalah"
+            width={24}
             height={24}
-            className="hidden sm:block dark:hidden"
+            className="logo-img logo-img-dark"
+          />
+          {/* White brand text (for dark mode) */}
+          <Image
+            src="/logo-makalah-ai-white.svg"
+            alt="Makalah"
+            width={80}
+            height={18}
+            className="logo-brand-text logo-brand-light"
+          />
+          {/* Black brand text (for light mode) */}
+          <Image
+            src="/logo-makalah-ai-black.svg"
+            alt="Makalah"
+            width={80}
+            height={18}
+            className="logo-brand-text logo-brand-dark"
           />
         </Link>
 
