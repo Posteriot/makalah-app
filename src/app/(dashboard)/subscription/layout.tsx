@@ -5,20 +5,20 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  LayoutDashboard,
+  Dashboard,
   CreditCard,
-  History,
+  Clock,
   ArrowUpCircle,
   Menu,
-  X,
-} from "lucide-react"
+  Xmark,
+} from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 const SIDEBAR_ITEMS = [
   {
     href: "/subscription/overview",
     label: "Overview",
-    icon: LayoutDashboard,
+    icon: Dashboard,
   },
   {
     href: "/subscription/topup",
@@ -28,7 +28,7 @@ const SIDEBAR_ITEMS = [
   {
     href: "/subscription/history",
     label: "Riwayat",
-    icon: History,
+    icon: Clock,
   },
   {
     href: "/subscription/upgrade",
@@ -74,7 +74,7 @@ function SubscriptionSidebar({
             onClick={onClose}
             className="p-1 hover:bg-accent rounded"
           >
-            <X className="h-5 w-5" />
+            <Xmark className="h-5 w-5" />
           </button>
         </div>
 

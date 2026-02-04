@@ -7,14 +7,14 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import {
   ArrowUpCircle,
   CreditCard,
-  Sparkles,
-  TrendingUp,
-  MessageSquare,
-  FileText,
+  Sparks,
+  GraphUp,
+  ChatBubble,
+  Page,
   Search,
-  RefreshCw,
-  Loader2,
-} from "lucide-react"
+  Refresh,
+  RefreshDouble,
+} from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 // Tier configuration
@@ -45,12 +45,12 @@ const TIER_CONFIG = {
   },
 }
 
-// Icon mapping for breakdown
+// Icon mapping for breakdown (backward-compatible keys for database)
 const ICON_MAP = {
-  MessageSquare,
-  FileText,
+  MessageSquare: ChatBubble,
+  FileText: Page,
   Search,
-  RefreshCw,
+  RefreshCw: Refresh,
 }
 
 function formatDate(timestamp: number): string {
@@ -138,7 +138,7 @@ export default function SubscriptionOverviewPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
+          <Sparks className="h-5 w-5 text-primary" />
           Subskripsi
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -169,7 +169,7 @@ export default function SubscriptionOverviewPage() {
                 {tierConfig.description}
               </p>
             </div>
-            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            <GraphUp className="h-5 w-5 text-muted-foreground" />
           </div>
 
           {tier !== "pro" && (
@@ -314,7 +314,7 @@ export default function SubscriptionOverviewPage() {
 
         {usageBreakdown === undefined ? (
           <div className="p-8 text-center">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+            <RefreshDouble className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
           </div>
         ) : usageBreakdown.breakdown.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
@@ -338,7 +338,7 @@ export default function SubscriptionOverviewPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {usageBreakdown.breakdown.map((item) => {
-                  const IconComponent = ICON_MAP[item.icon as keyof typeof ICON_MAP] || MessageSquare
+                  const IconComponent = ICON_MAP[item.icon as keyof typeof ICON_MAP] || ChatBubble
                   return (
                     <tr key={item.type} className="hover:bg-muted/30">
                       <td className="px-4 py-3">

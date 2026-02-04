@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-02-04
 > **Current Phase**: FASE 4 - Dashboard
-> **Current Task**: Task 4.1 - Migrate Dashboard Main Page (Done, pending validation)
+> **Current Task**: Task 4.2 - Migrate Subscription Layout & Overview (Done, pending validation)
 
 ---
 
@@ -115,7 +115,7 @@
 | Task | Status | Notes |
 |------|--------|-------|
 | 4.1 - Migrate Dashboard Main Page | ✅ Done | 1 icon (AlertCircle → WarningCircle) |
-| 4.2 - Migrate Subscription Layout & Overview | ⏳ Pending | - |
+| 4.2 - Migrate Subscription Layout & Overview | ✅ Done | Layout: 6 icons, Overview: 9 icons |
 | 4.3 - Migrate Subscription Pages | ⏳ Pending | - |
 | 4.4 - Migrate UserSettingsModal | ⏳ Pending | - |
 
