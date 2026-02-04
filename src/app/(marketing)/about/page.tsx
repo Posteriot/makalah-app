@@ -1,5 +1,4 @@
 import {
-  HeroSection,
   ManifestoSection,
   ProblemsSection,
   AgentsSection,
@@ -8,14 +7,11 @@ import {
 
 export default function AboutPage() {
   return (
-    <>
-      <HeroSection />
-      <main className="global-main">
-        <ManifestoSection />
-        <ProblemsSection />
-        <AgentsSection />
-        <CareerContactSection />
-      </main>
-    </>
+    <main>
+      <ManifestoSection />
+      <ProblemsSection />
+      <AgentsSection />
+      <CareerContactSection />
+    </main>
   )
 }
