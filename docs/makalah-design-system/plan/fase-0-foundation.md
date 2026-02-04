@@ -294,7 +294,7 @@ git commit -m "refactor(foundation): backup tailwind.config.ts to legacy folder"
 
 ---
 
-### Task 0.4: Create New globals.css
+### Task 0.4: Create New globals.css ✅ DONE
 
 **Files:**
 - Overwrite: `src/app/globals.css`

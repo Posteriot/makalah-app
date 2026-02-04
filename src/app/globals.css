@@ -4,7 +4,102 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ==========================================================================
- * TAILWIND THEME MAPPINGS
+ * MAKALAH-CARBON DESIGN SYSTEM
+ * Mechanical Grace - Technical Industrialism
+ *
+ * Trinity Approach:
+ * - Identity: Makalah-Carbon tokens (this file)
+ * - Structure: shadcn/ui components
+ * - Delivery: Tailwind CSS v4
+ * ========================================================================== */
+
+/* ==========================================================================
+ * SECTION 1: MASTER COLOR PALETTE (OKLCH)
+ * Raw color values from justifikasi-warna.md
+ * ========================================================================== */
+
+/* --- Slate (Neutrals) --- */
+:root {
+  --slate-50:  oklch(.984 .003 247.858);
+  --slate-100: oklch(.968 .007 247.896);
+  --slate-200: oklch(.929 .013 255.508);
+  --slate-300: oklch(.869 .022 252.894);
+  --slate-400: oklch(.704 .04 256.788);
+  --slate-500: oklch(.554 .046 257.417);
+  --slate-600: oklch(.446 .043 257.281);
+  --slate-700: oklch(.372 .044 257.287);
+  --slate-800: oklch(.279 .041 260.031);
+  --slate-900: oklch(.208 .042 265.755);
+  --slate-950: oklch(.129 .042 264.695);
+
+  /* --- Amber (Primary Brand) --- */
+  --amber-50:  oklch(.987 .022 95.277);
+  --amber-100: oklch(.962 .059 95.617);
+  --amber-200: oklch(.924 .12 95.746);
+  --amber-300: oklch(.879 .169 91.605);
+  --amber-400: oklch(.828 .189 84.429);
+  --amber-500: oklch(.769 .188 70.08);
+  --amber-600: oklch(.666 .179 58.318);
+  --amber-700: oklch(.555 .163 48.998);
+  --amber-800: oklch(.473 .137 46.201);
+  --amber-900: oklch(.414 .112 45.904);
+  --amber-950: oklch(.279 .077 45.635);
+
+  /* --- Emerald (Secondary Brand) --- */
+  --emerald-50:  oklch(.979 .021 166.113);
+  --emerald-100: oklch(.95 .052 163.051);
+  --emerald-200: oklch(.905 .093 164.15);
+  --emerald-300: oklch(.845 .143 164.978);
+  --emerald-400: oklch(.765 .177 163.223);
+  --emerald-500: oklch(.696 .17 162.48);
+  --emerald-600: oklch(.596 .145 163.225);
+  --emerald-700: oklch(.508 .118 165.612);
+  --emerald-800: oklch(.432 .095 166.913);
+  --emerald-900: oklch(.378 .077 168.94);
+  --emerald-950: oklch(.262 .051 172.552);
+
+  /* --- Teal (Success) --- */
+  --teal-50:  oklch(.984 .014 180.72);
+  --teal-100: oklch(.953 .051 180.801);
+  --teal-200: oklch(.91 .096 180.426);
+  --teal-300: oklch(.855 .138 181.071);
+  --teal-400: oklch(.777 .152 181.912);
+  --teal-500: oklch(.704 .14 182.503);
+  --teal-600: oklch(.6 .118 184.704);
+  --teal-700: oklch(.511 .096 186.391);
+  --teal-800: oklch(.437 .078 188.216);
+  --teal-900: oklch(.386 .063 188.416);
+  --teal-950: oklch(.277 .046 192.524);
+
+  /* --- Rose (Destructive) --- */
+  --rose-50:  oklch(.969 .015 12.422);
+  --rose-100: oklch(.941 .03 12.58);
+  --rose-200: oklch(.892 .058 10.001);
+  --rose-300: oklch(.81 .117 11.638);
+  --rose-400: oklch(.712 .194 13.428);
+  --rose-500: oklch(.645 .246 16.439);
+  --rose-600: oklch(.586 .253 17.585);
+  --rose-700: oklch(.514 .222 16.935);
+  --rose-800: oklch(.455 .188 13.697);
+  --rose-900: oklch(.41 .159 10.272);
+  --rose-950: oklch(.271 .105 12.094);
+
+  /* --- Sky (Info / AI) --- */
+  --sky-50:  oklch(.977 .013 236.62);
+  --sky-100: oklch(.951 .026 236.824);
+  --sky-200: oklch(.882 .059 254.128);
+  --sky-300: oklch(.828 .111 230.318);
+  --sky-400: oklch(.746 .16 232.661);
+  --sky-500: oklch(.685 .169 237.323);
+  --sky-600: oklch(.588 .158 241.966);
+  --sky-700: oklch(.5 .134 242.749);
+  --sky-800: oklch(.443 .11 240.79);
+  --sky-900: oklch(.391 .09 240.876);
+  --sky-950: oklch(.293 .066 243.157);
+}
+
+/* ==========================================================================
+ * SECTION 2: TAILWIND THEME MAPPINGS
  * Maps CSS variables to Tailwind utility classes
  * ========================================================================== */
 @theme inline {
@@ -108,14 +203,25 @@
   --font-size-5xl: 1.75rem;
   /* 28px - hero large */
 
-  /* Border Radius */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  /* Border Radius - Hybrid Scale (Mechanical Grace) */
+  --radius-none: 0px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-s-md: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  --radius-full: 9999px;
+
+  /* AI Identity Colors */
+  --color-ai-border: var(--ai-border);
+  --color-ai-bg-subtle: var(--ai-bg-subtle);
+
+  /* Interaction States */
+  --color-list-hover-bg: var(--list-hover-bg);
+  --color-list-selected-bg: var(--list-selected-bg);
 
   /* Animations */
   --animate-accordion-down: accordion-down 200ms ease-out;
@@ -172,71 +278,66 @@
 }
 
 /* ==========================================================================
- * CSS VARIABLES - Light Mode (Default)
+ * SECTION 3: SHADCN/UI TOKEN MAPPING - LIGHT MODE
+ * Makalah-Carbon values mapped to shadcn/ui semantic tokens
  * ========================================================================== */
 :root {
-  /* Base radius */
-  --radius: 0.625rem;
+  /* Base radius (Hybrid Scale: Shell premium, Core data) */
+  --radius: 0.5rem; /* 8px base */
 
-  /* Core Colors - shadcn/ui compatible */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.72 0.14 175);
+  /* --- Core Semantic (Slate Trinity) --- */
+  --background: var(--slate-50);
+  --foreground: oklch(0.15 0 0);
+  --card: var(--slate-50);
+  --card-foreground: oklch(0.15 0 0);
+  --popover: var(--slate-50);
+  --popover-foreground: oklch(0.15 0 0);
+
+  /* --- Primary (Amber - Main Brand) --- */
+  --primary: var(--amber-500);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
 
-  /* Brand Colors - Makalah orange */
-  --brand: oklch(0.65 0.2 45);
+  /* --- Secondary --- */
+  --secondary: var(--slate-100);
+  --secondary-foreground: oklch(0.15 0 0);
+
+  /* --- Muted --- */
+  --muted: var(--slate-200);
+  --muted-foreground: var(--slate-500);
+
+  /* --- Accent --- */
+  --accent: var(--slate-100);
+  --accent-foreground: oklch(0.15 0 0);
+
+  /* --- Destructive (Rose) --- */
+  --destructive: var(--rose-500);
+  --destructive-foreground: oklch(1 0 0);
+
+  /* --- Border & Input (Slate 200) --- */
+  --border: var(--slate-200);
+  --input: var(--slate-200);
+  --ring: oklch(.685 .169 237.323 / 0.5); /* Sky 500 Alpha */
+
+  /* --- Brand Colors (Amber - preserved for backward compat) --- */
+  --brand: var(--amber-500);
   --brand-foreground: oklch(1 0 0);
 
-  /* Semantic Colors */
-  --success: oklch(0.711 0.181 125.2);
+  /* --- Semantic Status (Makalah-Carbon) --- */
+  --success: var(--teal-500);
   --success-foreground: oklch(1 0 0);
-  --warning: oklch(0.75 0.18 55);
-  --warning-foreground: oklch(0.145 0 0);
-  --info: oklch(0.65 0.15 250);
+  --warning: var(--amber-400);
+  --warning-foreground: oklch(0.15 0 0);
+  --info: var(--sky-500);
   --info-foreground: oklch(1 0 0);
 
-  /* ========================================
-     SUBSCRIPTION TIER COLORS (STANDAR)
-     ========================================
-     Warna standar untuk badge tier subscription.
-     Gunakan class Tailwind atau CSS variable ini untuk konsistensi.
+  /* --- AI Identity (Terminal Style) --- */
+  --ai-border: var(--sky-500);
+  --ai-bg-subtle: var(--slate-950);
 
-     | Tier   | Tailwind Class  | CSS Variable        | Text Color |
-     |--------|-----------------|---------------------|------------|
-     | GRATIS | bg-emerald-600  | --segment-gratis    | white      |
-     | BPP    | bg-blue-600     | --segment-bpp       | white      |
-     | PRO    | bg-amber-600    | --segment-pro       | white      |
-
-     ATURAN WARNA AVATAR & BADGE:
-     - Avatar dan Badge menggunakan warna yang SAMA berdasarkan subscription tier
-     - Admin dan Superadmin diperlakukan sebagai PRO (amber) untuk avatar & badge
-     - Tidak ada warna terpisah untuk role (admin/superadmin)
-
-     Upgrade Button: Gunakan warna --success (grass green) + text-white
-     CSS: bg-[var(--success)] atau class .btn-upgrade
-     ======================================== */
-  --segment-gratis: oklch(0.55 0.15 165);
-  /* emerald-600 - untuk user GRATIS */
-  --segment-bpp: oklch(0.55 0.2 260);
-  /* blue-600 - untuk user BPP (Bayar Per Paper) */
-  --segment-pro: oklch(0.65 0.18 70);
-  /* amber-600 - untuk user PRO, Admin, dan Superadmin */
+  /* --- Business Tier (Makalah-Carbon) --- */
+  --segment-gratis: var(--emerald-600);
+  --segment-bpp: var(--sky-600);
+  --segment-pro: var(--amber-500);
 
   /* Neo-Brutalist Mockup Colors - Light Mode */
   --neo-card-bg: oklch(0.99 0.01 70 / 0.85);
@@ -273,27 +374,27 @@
 
   /* Chat Colors - Light Mode */
   --chat-background: var(--background);
-  --chat-input: oklch(0.97 0 0);
-  --user-message-bg: oklch(0.94 0 0);
-  --list-hover-bg: oklch(0.35 0 0 / 0.12);
-  --list-selected-bg: oklch(0.35 0 0 / 0.20);
+  --chat-input: var(--slate-100);
+  --user-message-bg: var(--slate-100);
+  --list-hover-bg: oklch(.968 .007 247.896 / 0.8); /* Slate 100 Alpha */
+  --list-selected-bg: var(--slate-200);
 
-  /* Chart Colors */
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* Chart Colors (Makalah-Carbon Data Viz) */
+  --chart-1: var(--sky-500);
+  --chart-2: var(--emerald-500);
+  --chart-3: var(--amber-500);
+  --chart-4: var(--rose-500);
+  --chart-5: var(--teal-500);
 
   /* Sidebar Colors */
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.72 0.14 175);
+  --sidebar: var(--slate-50);
+  --sidebar-foreground: oklch(0.15 0 0);
+  --sidebar-primary: var(--amber-500);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: var(--slate-100);
+  --sidebar-accent-foreground: oklch(0.15 0 0);
+  --sidebar-border: var(--slate-200);
+  --sidebar-ring: var(--ring);
 
   /* Scrollbar - subtle styling per mockup */
   --scrollbar-width: 6px;
@@ -303,67 +404,77 @@
 }
 
 /* ==========================================================================
- * CSS VARIABLES - Dark Mode
+ * SECTION 4: SHADCN/UI TOKEN MAPPING - DARK MODE
+ * Makalah-Carbon dark palette (Slate 900/950 depth layers)
  * ========================================================================== */
 .dark {
-  /* Core Colors */
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.72 0.14 175);
+  /* --- Core Semantic (Slate Dark) --- */
+  --background: var(--slate-900);
+  --foreground: oklch(0.95 0 0);
+  --card: var(--slate-950);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: var(--slate-950);
+  --popover-foreground: oklch(0.95 0 0);
+
+  /* --- Primary (Amber - same in dark) --- */
+  --primary: var(--amber-500);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+
+  /* --- Secondary --- */
+  --secondary: var(--slate-800);
+  --secondary-foreground: oklch(0.95 0 0);
+
+  /* --- Muted --- */
+  --muted: var(--slate-800);
+  --muted-foreground: var(--slate-400);
+
+  /* --- Accent --- */
+  --accent: var(--slate-800);
+  --accent-foreground: oklch(0.95 0 0);
+
+  /* --- Destructive (Rose 600 for dark) --- */
+  --destructive: var(--rose-600);
+  --destructive-foreground: oklch(1 0 0);
+
+  /* --- Border & Input --- */
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
 
-  /* IDE hairlines - dark mode: light lines */
+  /* --- IDE Hairlines (Dark) --- */
   --border-hairline: rgba(255, 255, 255, 0.2);
   --border-hairline-soft: rgba(255, 255, 255, 0.08);
 
-  /* Neo-Brutalist Mockup Colors - Dark Mode */
-  --neo-card-bg: oklch(0.18 0 0 / 0.98);  /* Almost solid to block text behind */
-  --neo-shadow: oklch(0.92 0 0 / 0.55);  /* Brighter, more visible shadow */
+  /* Neo-Brutalist Mockup Colors - Dark Mode (preserved) */
+  --neo-card-bg: oklch(0.18 0 0 / 0.98);
+  --neo-shadow: oklch(0.92 0 0 / 0.55);
   --neo-border: oklch(0.45 0 0);
   --neo-input-bg: oklch(0.22 0.01 180);
   --neo-muted: oklch(0.30 0.02 75);
   --neo-text: oklch(0.95 0 0);
   --neo-text-muted: oklch(0.70 0 0);
 
-  /* Chat Colors - Dark Mode (multi-layer depth) */
-  --chat-background: oklch(0.165 0 0);
-  --chat-input: oklch(0.22 0 0);
-  --user-message-bg: oklch(0.22 0 0);
+  /* Chat Colors - Dark Mode */
+  --chat-background: var(--slate-900);
+  --chat-input: var(--slate-800);
+  --user-message-bg: var(--slate-800);
   --list-hover-bg: oklch(0.62 0 0 / 0.15);
   --list-selected-bg: oklch(0.62 0 0 / 0.25);
 
-  /* Chart Colors - Dark */
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  /* Chart Colors - Dark (same semantic palette) */
+  --chart-1: var(--sky-500);
+  --chart-2: var(--emerald-500);
+  --chart-3: var(--amber-500);
+  --chart-4: var(--rose-500);
+  --chart-5: var(--teal-500);
 
   /* Sidebar Colors - Dark */
-  --sidebar: oklch(0.12 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.72 0.14 175);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.25 0 0);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: var(--slate-950);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-accent: var(--slate-800);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: var(--slate-800);
 
-  /* Scrollbar - Dark (subtle per mockup) */
+  /* Scrollbar - Dark */
   --scrollbar-thumb: oklch(0.6 0 0 / 0.3);
   --scrollbar-thumb-hover: oklch(0.6 0 0 / 0.5);
 }
@@ -2449,9 +2560,13 @@
   }
 }
 
+/* ==========================================================================
+ * SECTION 5: MECHANICAL GRACE UTILITY CLASSES
+ * From class-naming-convention.md
+ * ========================================================================== */
 @layer utilities {
 
-  /* Brand color text */
+  /* Brand color text (preserved) */
   .text-brand {
     color: var(--brand);
   }
@@ -2464,6 +2579,142 @@
   /* Hero/nav font (Geist Mono) */
   .font-hero {
     font-family: var(--font-mono);
+  }
+
+  /* --- Typography Hierarchy (Mechanical Grace) --- */
+  .text-narrative {
+    font-family: var(--font-sans);
+  }
+
+  .text-interface {
+    font-family: var(--font-mono);
+  }
+
+  .text-signal {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* --- Hybrid Radius Scale --- */
+  .rounded-shell {
+    border-radius: var(--radius-xl); /* 16px - Premium shell */
+  }
+
+  .rounded-action {
+    border-radius: var(--radius-md); /* 8px - Action elements */
+  }
+
+  .rounded-badge {
+    border-radius: var(--radius-s-md); /* 6px - Badges */
+  }
+
+  /* --- Border Utilities --- */
+  .border-hairline {
+    border-width: 0.5px;
+    border-color: var(--border-hairline);
+  }
+
+  .border-main {
+    border-width: 1px;
+  }
+
+  .border-ai {
+    border-width: 1px;
+    border-style: dashed;
+    border-color: var(--ai-border);
+  }
+
+  /* --- Spacing Utilities --- */
+  .p-comfort {
+    padding: 1rem; /* 16px */
+  }
+
+  .p-dense {
+    padding: 0.5rem; /* 8px */
+  }
+
+  .p-airy {
+    padding: 1.5rem; /* 24px */
+  }
+
+  .gap-comfort {
+    gap: 1rem; /* 16px */
+  }
+
+  .gap-dense {
+    gap: 0.5rem; /* 8px */
+  }
+
+  /* --- Icon Scale --- */
+  .icon-micro {
+    width: 12px;
+    height: 12px;
+  }
+
+  .icon-interface {
+    width: 16px;
+    height: 16px;
+  }
+
+  .icon-display {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* --- Z-Index Scale --- */
+  .z-base {
+    z-index: 0;
+  }
+
+  .z-overlay {
+    z-index: 10;
+  }
+
+  .z-popover {
+    z-index: 20;
+  }
+
+  .z-drawer {
+    z-index: 50;
+  }
+
+  .z-command {
+    z-index: 100;
+  }
+
+  /* --- Interaction States --- */
+  .hover-slash {
+    position: relative;
+  }
+
+  .hover-slash::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 4px,
+      currentColor 4px,
+      currentColor 5px
+    );
+    opacity: 0;
+    transition: opacity 150ms ease;
+    pointer-events: none;
+  }
+
+  .hover-slash:hover::before {
+    opacity: 0.1;
+  }
+
+  .active-nav {
+    border-left: 2px solid var(--amber-500);
+  }
+
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
