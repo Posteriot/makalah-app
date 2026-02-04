@@ -9,15 +9,15 @@ import {
   CreditCard,
   ArrowLeft,
   QrCode,
-  Building2,
+  Building,
   Wallet,
-  CheckCircle2,
-  Loader2,
+  CheckCircle,
+  RefreshDouble,
   Copy,
-  ExternalLink,
+  OpenNewWindow,
   Clock,
-  AlertCircle,
-} from "lucide-react"
+  WarningCircle,
+} from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import Image from "next/image"
@@ -44,7 +44,7 @@ interface CreditPackage {
 
 const PAYMENT_METHODS = [
   { id: "qris" as const, label: "QRIS", icon: QrCode, description: "Scan dengan e-wallet" },
-  { id: "va" as const, label: "Virtual Account", icon: Building2, description: "Transfer bank" },
+  { id: "va" as const, label: "Virtual Account", icon: Building, description: "Transfer bank" },
   { id: "ewallet" as const, label: "E-Wallet", icon: Wallet, description: "OVO, GoPay" },
 ]
 
@@ -356,7 +356,7 @@ export default function CheckoutBPPPage() {
       {/* Error Banner */}
       {error && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+          <WarningCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-destructive">Gagal memproses pembayaran</p>
             <p className="text-sm text-destructive/80">{error}</p>
@@ -414,7 +414,7 @@ export default function CheckoutBPPPage() {
                 <p className="text-xs text-muted-foreground mt-2">{pkg.description}</p>
               )}
               {derivedSelectedPackage?.type === pkg.type && (
-                <CheckCircle2 className="absolute top-4 right-4 h-5 w-5 text-primary" />
+                <CheckCircle className="absolute top-4 right-4 h-5 w-5 text-primary" />
               )}
             </button>
           ))}
@@ -462,7 +462,7 @@ export default function CheckoutBPPPage() {
                   </p>
                 </div>
                 {isSelected && (
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <CheckCircle className="h-5 w-5 text-primary" />
                 )}
               </button>
             )
@@ -571,12 +571,12 @@ export default function CheckoutBPPPage() {
         >
           {isProcessing ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <RefreshDouble className="h-4 w-4 animate-spin" />
               Memproses...
             </>
           ) : selectedMethod === "ewallet" ? (
             <>
-              <ExternalLink className="h-4 w-4" />
+              <OpenNewWindow className="h-4 w-4" />
               Lanjut ke {selectedEWalletChannel}
             </>
           ) : (
