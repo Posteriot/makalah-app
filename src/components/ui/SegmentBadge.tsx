@@ -12,9 +12,9 @@ type SubscriptionTier = "gratis" | "bpp" | "pro"
 /**
  * Subscription tier badge configuration
  * Colors follow the pricing page design:
- * - GRATIS: green (emerald)
- * - BPP: blue
- * - PRO: orange (amber)
+ * - GRATIS: Emerald 600 (Secondary Brand)
+ * - BPP: Sky 600 (Info/Professional)
+ * - PRO: Amber 500 (Main Brand)
  */
 const TIER_CONFIG: Record<SubscriptionTier, { label: string; className: string }> = {
   gratis: {
@@ -27,7 +27,7 @@ const TIER_CONFIG: Record<SubscriptionTier, { label: string; className: string }
   },
   pro: {
     label: "PRO",
-    className: "bg-segment-pro text-white",
+    className: "bg-segment-pro text-black",
   },
 }
 
@@ -74,8 +74,8 @@ export function SegmentBadge({ role, subscriptionStatus, className }: SegmentBad
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded",
-        "text-[10px] font-bold uppercase tracking-wide",
+        "inline-flex items-center px-2 py-0.5 rounded-badge",
+        "text-signal text-[10px] font-bold",
         config.className,
         className
       )}

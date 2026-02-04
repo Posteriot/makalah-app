@@ -96,6 +96,49 @@
   --sky-800: oklch(.443 .11 240.79);
   --sky-900: oklch(.391 .09 240.876);
   --sky-950: oklch(.293 .066 243.157);
+
+  /* --- Neutral (Ink/White) --- */
+  --neutral-0: oklch(1 0 0);
+  --neutral-50: oklch(0.95 0 0);
+  --neutral-100: oklch(0.922 0 0);
+  --neutral-200: oklch(0.75 0 0);
+  --neutral-300: oklch(0.70 0 0);
+  --neutral-400: oklch(0.62 0 0);
+  --neutral-450: oklch(0.45 0 0);
+  --neutral-500: oklch(0.5 0 0);
+  --neutral-600: oklch(0.6 0 0);
+  --neutral-700: oklch(0.35 0 0);
+  --neutral-800: oklch(0.25 0 0);
+  --neutral-850: oklch(0.205 0 0);
+  --neutral-900: oklch(0.18 0 0);
+  --neutral-950: oklch(0.15 0 0);
+  --neutral-1000: oklch(0 0 0);
+
+  /* --- Neutral Alpha --- */
+  --neutral-0-a10: oklch(1 0 0 / 0.10);
+  --neutral-0-a15: oklch(1 0 0 / 0.15);
+  --neutral-100-a55: oklch(0.92 0 0 / 0.55);
+  --neutral-400-a15: oklch(0.62 0 0 / 0.15);
+  --neutral-400-a25: oklch(0.62 0 0 / 0.25);
+  --neutral-500-a30: oklch(0.5 0 0 / 0.3);
+  --neutral-500-a50: oklch(0.5 0 0 / 0.5);
+  --neutral-600-a30: oklch(0.6 0 0 / 0.3);
+  --neutral-600-a50: oklch(0.6 0 0 / 0.5);
+  --neutral-800-a40: oklch(0.25 0 0 / 0.4);
+  --neutral-1000-a50: oklch(0 0 0 / 0.5);
+  --neutral-1000-a40: oklch(0 0 0 / 0.4);
+
+  /* --- Alpha Helpers --- */
+  --slate-100-a80: oklch(.968 .007 247.896 / 0.8);
+  --sky-500-a50: oklch(.685 .169 237.323 / 0.5);
+
+  /* --- Neo Tokens --- */
+  --neo-card-bg-light: oklch(0.99 0.01 70 / 0.85);
+  --neo-input-bg-light: oklch(0.96 0.01 180);
+  --neo-muted-light: oklch(0.92 0.03 75);
+  --neo-card-bg-dark: oklch(0.18 0 0 / 0.98);
+  --neo-input-bg-dark: oklch(0.22 0.01 180);
+  --neo-muted-dark: oklch(0.30 0.02 75);
 }
 
 /* ==========================================================================
@@ -287,19 +330,19 @@
 
   /* --- Core Semantic (Slate Trinity) --- */
   --background: var(--slate-50);
-  --foreground: oklch(0.15 0 0);
+  --foreground: var(--neutral-950);
   --card: var(--slate-50);
-  --card-foreground: oklch(0.15 0 0);
+  --card-foreground: var(--neutral-950);
   --popover: var(--slate-50);
-  --popover-foreground: oklch(0.15 0 0);
+  --popover-foreground: var(--neutral-950);
 
   /* --- Primary (Amber - Main Brand) --- */
   --primary: var(--amber-500);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: var(--neutral-0);
 
   /* --- Secondary --- */
   --secondary: var(--slate-100);
-  --secondary-foreground: oklch(0.15 0 0);
+  --secondary-foreground: var(--neutral-950);
 
   /* --- Muted --- */
   --muted: var(--slate-200);
@@ -307,28 +350,28 @@
 
   /* --- Accent --- */
   --accent: var(--slate-100);
-  --accent-foreground: oklch(0.15 0 0);
+  --accent-foreground: var(--neutral-950);
 
   /* --- Destructive (Rose) --- */
   --destructive: var(--rose-500);
-  --destructive-foreground: oklch(1 0 0);
+  --destructive-foreground: var(--neutral-0);
 
   /* --- Border & Input (Slate 200) --- */
   --border: var(--slate-200);
   --input: var(--slate-200);
-  --ring: oklch(.685 .169 237.323 / 0.5); /* Sky 500 Alpha */
+  --ring: var(--sky-500-a50);
 
   /* --- Brand Colors (Amber - preserved for backward compat) --- */
   --brand: var(--amber-500);
-  --brand-foreground: oklch(1 0 0);
+  --brand-foreground: var(--neutral-0);
 
   /* --- Semantic Status (Makalah-Carbon) --- */
   --success: var(--teal-500);
-  --success-foreground: oklch(1 0 0);
+  --success-foreground: var(--neutral-0);
   --warning: var(--amber-400);
-  --warning-foreground: oklch(0.15 0 0);
+  --warning-foreground: var(--neutral-950);
   --info: var(--sky-500);
-  --info-foreground: oklch(1 0 0);
+  --info-foreground: var(--neutral-0);
 
   /* --- AI Identity (Terminal Style) --- */
   --ai-border: var(--sky-500);
@@ -340,16 +383,16 @@
   --segment-pro: var(--amber-500);
 
   /* Neo-Brutalist Mockup Colors - Light Mode */
-  --neo-card-bg: oklch(0.99 0.01 70 / 0.85);
-  --neo-shadow: oklch(0.25 0 0 / 0.4);  /* Transparent dark-gray shadow */
-  --neo-border: oklch(0.15 0 0);
-  --neo-input-bg: oklch(0.96 0.01 180);
-  --neo-muted: oklch(0.92 0.03 75);
-  --neo-text: oklch(0.15 0 0);
-  --neo-text-muted: oklch(0.35 0 0);
+  --neo-card-bg: var(--neo-card-bg-light);
+  --neo-shadow: var(--neutral-800-a40);
+  --neo-border: var(--neutral-950);
+  --neo-input-bg: var(--neo-input-bg-light);
+  --neo-muted: var(--neo-muted-light);
+  --neo-text: var(--neutral-950);
+  --neo-text-muted: var(--neutral-700);
 
   /* Chat Bubble Colors */
-  --user-message-bg: oklch(0.95 0 0);
+  --user-message-bg: var(--slate-100);
 
   /* Layout Dimensions */
   --header-h: 54px;
@@ -376,7 +419,7 @@
   --chat-background: var(--background);
   --chat-input: var(--slate-100);
   --user-message-bg: var(--slate-100);
-  --list-hover-bg: oklch(.968 .007 247.896 / 0.8); /* Slate 100 Alpha */
+  --list-hover-bg: var(--slate-100-a80);
   --list-selected-bg: var(--slate-200);
 
   /* Chart Colors (Makalah-Carbon Data Viz) */
@@ -388,18 +431,18 @@
 
   /* Sidebar Colors */
   --sidebar: var(--slate-50);
-  --sidebar-foreground: oklch(0.15 0 0);
+  --sidebar-foreground: var(--neutral-950);
   --sidebar-primary: var(--amber-500);
-  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-primary-foreground: var(--neutral-0);
   --sidebar-accent: var(--slate-100);
-  --sidebar-accent-foreground: oklch(0.15 0 0);
+  --sidebar-accent-foreground: var(--neutral-950);
   --sidebar-border: var(--slate-200);
   --sidebar-ring: var(--ring);
 
   /* Scrollbar - subtle styling per mockup */
   --scrollbar-width: 6px;
-  --scrollbar-thumb: oklch(0.5 0 0 / 0.3);
-  --scrollbar-thumb-hover: oklch(0.5 0 0 / 0.5);
+  --scrollbar-thumb: var(--neutral-500-a30);
+  --scrollbar-thumb-hover: var(--neutral-500-a50);
   --scrollbar-track: transparent;
 }
 
@@ -410,19 +453,19 @@
 .dark {
   /* --- Core Semantic (Slate Dark) --- */
   --background: var(--slate-900);
-  --foreground: oklch(0.95 0 0);
+  --foreground: var(--neutral-50);
   --card: var(--slate-950);
-  --card-foreground: oklch(0.95 0 0);
+  --card-foreground: var(--neutral-50);
   --popover: var(--slate-950);
-  --popover-foreground: oklch(0.95 0 0);
+  --popover-foreground: var(--neutral-50);
 
   /* --- Primary (Amber - same in dark) --- */
   --primary: var(--amber-500);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: var(--neutral-0);
 
   /* --- Secondary --- */
   --secondary: var(--slate-800);
-  --secondary-foreground: oklch(0.95 0 0);
+  --secondary-foreground: var(--neutral-50);
 
   /* --- Muted --- */
   --muted: var(--slate-800);
@@ -430,35 +473,35 @@
 
   /* --- Accent --- */
   --accent: var(--slate-800);
-  --accent-foreground: oklch(0.95 0 0);
+  --accent-foreground: var(--neutral-50);
 
   /* --- Destructive (Rose 600 for dark) --- */
   --destructive: var(--rose-600);
-  --destructive-foreground: oklch(1 0 0);
+  --destructive-foreground: var(--neutral-0);
 
   /* --- Border & Input --- */
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: var(--neutral-0-a10);
+  --input: var(--neutral-0-a15);
 
   /* --- IDE Hairlines (Dark) --- */
   --border-hairline: rgba(255, 255, 255, 0.2);
   --border-hairline-soft: rgba(255, 255, 255, 0.08);
 
   /* Neo-Brutalist Mockup Colors - Dark Mode (preserved) */
-  --neo-card-bg: oklch(0.18 0 0 / 0.98);
-  --neo-shadow: oklch(0.92 0 0 / 0.55);
-  --neo-border: oklch(0.45 0 0);
-  --neo-input-bg: oklch(0.22 0.01 180);
-  --neo-muted: oklch(0.30 0.02 75);
-  --neo-text: oklch(0.95 0 0);
-  --neo-text-muted: oklch(0.70 0 0);
+  --neo-card-bg: var(--neo-card-bg-dark);
+  --neo-shadow: var(--neutral-100-a55);
+  --neo-border: var(--neutral-450);
+  --neo-input-bg: var(--neo-input-bg-dark);
+  --neo-muted: var(--neo-muted-dark);
+  --neo-text: var(--neutral-50);
+  --neo-text-muted: var(--neutral-300);
 
   /* Chat Colors - Dark Mode */
   --chat-background: var(--slate-900);
   --chat-input: var(--slate-800);
   --user-message-bg: var(--slate-800);
-  --list-hover-bg: oklch(0.62 0 0 / 0.15);
-  --list-selected-bg: oklch(0.62 0 0 / 0.25);
+  --list-hover-bg: var(--neutral-400-a15);
+  --list-selected-bg: var(--neutral-400-a25);
 
   /* Chart Colors - Dark (same semantic palette) */
   --chart-1: var(--sky-500);
@@ -469,14 +512,14 @@
 
   /* Sidebar Colors - Dark */
   --sidebar: var(--slate-950);
-  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-foreground: var(--neutral-50);
   --sidebar-accent: var(--slate-800);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-accent-foreground: var(--neutral-50);
   --sidebar-border: var(--slate-800);
 
   /* Scrollbar - Dark */
-  --scrollbar-thumb: oklch(0.6 0 0 / 0.3);
-  --scrollbar-thumb-hover: oklch(0.6 0 0 / 0.5);
+  --scrollbar-thumb: var(--neutral-600-a30);
+  --scrollbar-thumb-hover: var(--neutral-600-a50);
 }
 
 /* ==========================================================================
@@ -562,28 +605,30 @@
     left: 0;
     right: 0;
     height: var(--header-h);
-    background-color: rgb(255, 255, 255);
-    z-index: 100;
+    background-color: var(--background);
+    z-index: 50;
     display: flex;
     flex-direction: column;
     justify-content: center;
     transition: transform 0.2s ease;
   }
 
-  /* Dark mode background */
-  .dark .global-header {
-    background-color: rgb(9, 9, 11);
-  }
-
   /* Header inner container - matches hero max-width for alignment */
   .header-inner {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(16, minmax(0, 1fr));
     align-items: center;
-    justify-content: space-between;
     width: 100%;
-    max-width: 1200px;
+    max-width: 80rem;
     margin: 0 auto;
-    padding: 12px 24px; /* py-3 equivalent (12px vertical) */
+    padding: 12px 16px;
+    gap: 1rem;
+  }
+
+  @media (min-width: 1024px) {
+    .header-inner {
+      padding-inline: 32px;
+    }
   }
 
   /* Header hidden state: scrolling down */
@@ -594,7 +639,7 @@
   .header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
   }
 
   .header-brand {
@@ -658,7 +703,7 @@
   .header-nav {
     display: none;
     align-items: center;
-    gap: 2px;
+    gap: 16px;
     font-family: var(--font-family-sans), sans-serif;
   }
 
@@ -670,13 +715,14 @@
 
   .nav-link {
     font-family: var(--font-family-sans), sans-serif;
-    font-size: var(--font-size-base);
+    font-size: 12px;
     font-weight: 500;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: var(--foreground);
     position: relative;
     padding: 6px 10px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     transition: color 200ms ease;
   }
 
@@ -711,11 +757,16 @@
     border-bottom-color: var(--muted-foreground);
   }
 
+  .nav-link.hover-slash::before {
+    transition: opacity 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
   /* Header Right */
   .header-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: flex-end;
+    gap: 16px;
   }
 
   /* Theme Toggle */
@@ -725,11 +776,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
+    border: 1px solid var(--border);
     background: transparent;
     cursor: pointer;
     color: var(--foreground);
-    transition: color 0.2s;
+    border-radius: var(--radius-md);
+    transition: color 250ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .theme-toggle:hover {
@@ -737,8 +789,8 @@
   }
 
   .theme-toggle .icon {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
   }
 
   .theme-toggle .sun-icon {
@@ -756,22 +808,6 @@
   .dark .theme-toggle .moon-icon {
     display: block;
   }
-  /* Header bottom line - theme-aware */
-  .header-bottom-line {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  /* Light mode: dark header bottom line */
-  :root:not(.dark) .header-bottom-line,
-  .light .header-bottom-line {
-    background: rgba(0, 0, 0, 0.12);
-  }
-
   /* Mobile Menu */
   .mobile-menu {
     position: absolute;
@@ -781,7 +817,7 @@
     display: flex;
     flex-direction: column;
     background: var(--background);
-    border-bottom: 1px solid var(--border-hairline);
+    border-bottom: 0.5px solid var(--border-hairline);
     padding: 8px 16px 16px;
     z-index: 50;
   }
@@ -789,10 +825,13 @@
   .mobile-menu__link {
     display: block;
     padding: 12px 16px;
-    font-size: 15px;
+    font-family: var(--font-family-sans), sans-serif;
+    font-size: 12px;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: var(--foreground);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
   }
 
   .mobile-menu__link:hover {
@@ -800,8 +839,8 @@
   }
 
   .mobile-menu__link--active {
-    color: var(--brand);
-    background: rgba(232, 102, 9, 0.1);
+    color: var(--muted-foreground);
+    background: transparent;
   }
 
   /* Mobile Menu CTA - Outline style (netral, tidak pakai warna segment) */
@@ -809,31 +848,21 @@
     display: block;
     margin-top: 8px;
     padding: 12px 16px;
-    font-size: 15px;
-    font-weight: 600;
+    font-family: var(--font-family-mono), monospace;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
     text-align: center;
     color: var(--foreground);
     background: transparent;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    border-radius: 8px;
-    transition: all 0.2s;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
   }
 
   .mobile-menu__cta:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.8);
-  }
-
-  /* Light mode - darker border */
-  :root.light .mobile-menu__cta,
-  .light .mobile-menu__cta {
-    border-color: rgba(0, 0, 0, 0.4);
-  }
-
-  :root.light .mobile-menu__cta:hover,
-  .light .mobile-menu__cta:hover {
-    background: rgba(0, 0, 0, 0.05);
-    border-color: rgba(0, 0, 0, 0.6);
+    background: var(--muted);
   }
 
   /* ==========================================================================
@@ -934,7 +963,7 @@
   .mobile-menu__auth-avatar {
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: var(--radius-md);
     /* background now comes from segment className (bg-segment-gratis, etc.) */
     display: flex;
     align-items: center;
@@ -947,8 +976,9 @@
 
   /* Auth label (text) */
   .mobile-menu__auth-label {
-    font-size: 15px;
-    font-weight: 500;
+    font-family: var(--font-family-mono), monospace;
+    font-size: 12px;
+    font-weight: 400;
     color: var(--foreground);
     flex: 1;
   }
@@ -978,7 +1008,7 @@
   }
 
   /* Accordion chevron */
-  .mobile-menu__user-accordion-trigger svg[class*="lucide-chevron"] {
+  .mobile-menu__user-accordion-trigger > svg {
     width: 16px;
     height: 16px;
     color: var(--muted-foreground);
@@ -999,8 +1029,9 @@
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    font-size: 14px;
-    font-weight: 500;
+    font-family: var(--font-family-mono), monospace;
+    font-size: 12px;
+    font-weight: 400;
     color: var(--foreground);
     border-radius: 8px;
     width: 100%;
@@ -1408,14 +1439,14 @@
     padding: 0.75rem 1.5rem;
     font-size: 0.875rem;
     font-weight: 600;
-    color: oklch(0.922 0 0);
-    background-color: oklch(0.205 0 0);
+    color: var(--neutral-100);
+    background-color: var(--neutral-850);
     border-radius: var(--radius-sm);
     transition: background-color 0.2s, transform 0.2s;
   }
 
   .btn-brand:hover {
-    background-color: oklch(0.35 0 0);
+    background-color: var(--neutral-700);
   }
 
   .btn-brand:active {
@@ -1425,13 +1456,13 @@
   /* Dark mode btn-brand - invert colors */
   .dark .btn-brand,
   :root.dark .btn-brand {
-    color: oklch(0.205 0 0);
-    background-color: oklch(0.922 0 0);
+    color: var(--neutral-850);
+    background-color: var(--neutral-100);
   }
 
   .dark .btn-brand:hover,
   :root.dark .btn-brand:hover {
-    background-color: oklch(0.75 0 0);
+    background-color: var(--neutral-200);
   }
 
   /* Outline button - transparent with border */
@@ -1822,7 +1853,7 @@
   .user-settings-backdrop {
     position: absolute;
     inset: 0;
-    background: oklch(0 0 0 / 0.5);
+    background: var(--neutral-1000-a50);
     backdrop-filter: blur(4px);
   }
 
@@ -1836,7 +1867,7 @@
     background: var(--card);
     border-radius: 12px;
     border: 1px solid var(--border);
-    box-shadow: 0 25px 50px -12px oklch(0 0 0 / 0.4);
+    box-shadow: 0 25px 50px -12px var(--neutral-1000-a40);
     overflow: hidden;
     animation: settingsModalIn 200ms ease-out;
   }
@@ -2692,13 +2723,9 @@
     content: '';
     position: absolute;
     inset: 0;
-    background-image: repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 4px,
-      currentColor 4px,
-      currentColor 5px
-    );
+    background-image: url('/slash-pattern.svg');
+    background-repeat: repeat;
+    background-size: 12px 12px;
     opacity: 0;
     transition: opacity 150ms ease;
     pointer-events: none;

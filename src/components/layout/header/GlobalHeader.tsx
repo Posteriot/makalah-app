@@ -82,6 +82,7 @@ export function GlobalHeader() {
   const [isSigningOut, setIsSigningOut] = useState(false)
   const lastScrollYRef = useRef(0)
   const isThemeReady = resolvedTheme !== undefined
+  const shouldHideHeader = pathname?.startsWith("/chat")
 
   const isMobileMenuOpen = useMemo(() => {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
@@ -172,137 +173,148 @@ export function GlobalHeader() {
   // isAdmin berdasarkan ROLE (bukan segment), karena segment sekarang hanya subscription tier
   const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
 
+  if (shouldHideHeader) return null
+
   return (
     <header
       className={cn(
-        "global-header",
+        "global-header bg-background z-drawer",
         isHidden && "header-hidden"
       )}
     >
       {/* Inner container - matches hero max-width for alignment */}
       <div className="header-inner">
         {/* Header Left - Logo & Brand */}
-        <div className="header-left">
-        <Link href="/" className="header-brand">
-          {/* Light logo icon (for dark mode) */}
-          <Image
-            src="/logo/makalah_logo_light.svg"
-            alt="Makalah"
-            width={24}
-            height={24}
-            className="logo-img logo-img-light"
-          />
-          {/* Dark logo icon (for light mode) */}
-          <Image
-            src="/logo/makalah_logo_dark.svg"
-            alt="Makalah"
-            width={24}
-            height={24}
-            className="logo-img logo-img-dark"
-          />
-          {/* White brand text (for dark mode) */}
-          <Image
-            src="/logo-makalah-ai-white.svg"
-            alt="Makalah"
-            width={80}
-            height={18}
-            className="logo-brand-text logo-brand-light"
-          />
-          {/* Black brand text (for light mode) */}
-          <Image
-            src="/logo-makalah-ai-black.svg"
-            alt="Makalah"
-            width={80}
-            height={18}
-            className="logo-brand-text logo-brand-dark"
-          />
-        </Link>
-        {/* Subscription Badge - shows when logged in */}
-        <SignedIn>
-          {isConvexLoading ? (
-            <RefreshDouble className="h-4 w-4 animate-spin text-muted-foreground" />
-          ) : convexUser ? (
-            <SegmentBadge
-              role={convexUser.role}
-              subscriptionStatus={convexUser.subscriptionStatus}
+        <div className="header-left col-span-8 md:col-span-4 gap-dense flex-nowrap">
+          <Link href="/" className="header-brand shrink-0">
+            {/* Light logo icon (for dark mode) */}
+            <Image
+              src="/logo/makalah_logo_light.svg"
+              alt="Makalah"
+              width={24}
+              height={24}
+              className="logo-img logo-img-light"
             />
-          ) : null}
-        </SignedIn>
-      </div>
+            {/* Dark logo icon (for light mode) */}
+            <Image
+              src="/logo/makalah_logo_dark.svg"
+              alt="Makalah"
+              width={24}
+              height={24}
+              className="logo-img logo-img-dark"
+            />
+            {/* White brand text (for dark mode) */}
+            <Image
+              src="/logo-makalah-ai-white.svg"
+              alt="Makalah"
+              width={80}
+              height={18}
+              className="logo-brand-text logo-brand-light"
+            />
+            {/* Black brand text (for light mode) */}
+            <Image
+              src="/logo-makalah-ai-black.svg"
+              alt="Makalah"
+              width={80}
+              height={18}
+              className="logo-brand-text logo-brand-dark"
+            />
+          </Link>
+          {/* Subscription Badge - shows when logged in */}
+          <SignedIn>
+            {isConvexLoading ? (
+              <RefreshDouble className="icon-interface animate-spin text-muted-foreground" />
+            ) : convexUser ? (
+              <SegmentBadge
+                role={convexUser.role}
+                subscriptionStatus={convexUser.subscriptionStatus}
+                className="shrink-0"
+              />
+            ) : null}
+          </SignedIn>
+        </div>
 
-      {/* Header Right - Nav, Theme Toggle & Auth */}
-      <div className="header-right">
-        {/* Navigation - Desktop only */}
-        <nav className="header-nav">
-          {NAV_LINKS.map((link) => {
-            const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn("nav-link", isActive && "active")}
+        {/* Header Right - Nav, Theme Toggle & Auth */}
+        <div className="header-right col-span-8 md:col-span-12 gap-comfort">
+          {/* Navigation - Desktop only */}
+          <nav className="header-nav">
+            {NAV_LINKS.map((link) => {
+              const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                  "nav-link text-narrative uppercase tracking-wider",
+                  isActive && "active"
+                )}
               >
                 {link.label}
-              </Link>
-            )
-          })}
-        </nav>
-        {/* Theme Toggle - Mobile (icon only, left of hamburger) */}
-        <SignedIn>
+                </Link>
+              )
+            })}
+          </nav>
+          {/* Theme Toggle - Mobile (icon only, left of hamburger) */}
+          <SignedIn>
+            <button
+              onClick={toggleTheme}
+              className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-action border-main border-border text-foreground transition-opacity hover:opacity-70 mr-3"
+              type="button"
+              title="Toggle theme"
+              aria-label="Toggle theme"
+              disabled={!isThemeReady}
+            >
+              {(resolvedTheme ?? "dark") === "dark" ? (
+                <SunLight className="icon-interface" />
+              ) : (
+                <HalfMoon className="icon-interface" />
+              )}
+            </button>
+          </SignedIn>
+
+          {/* Mobile Menu Toggle */}
           <button
-            onClick={toggleTheme}
-            className="md:hidden inline-flex h-9 w-9 items-center justify-center text-foreground transition-opacity hover:opacity-70 mr-3"
+            onClick={toggleMobileMenu}
+            className="md:hidden inline-flex h-9 w-9 items-center justify-center text-foreground transition-opacity hover:opacity-70"
             type="button"
-            title="Toggle theme"
-            aria-label="Toggle theme"
-            disabled={!isThemeReady}
+            aria-label={isMobileMenuOpen ? "Tutup menu" : "Buka menu"}
+            aria-expanded={isMobileMenuOpen}
           >
-            {(resolvedTheme ?? "dark") === "dark" ? (
-              <SunLight className="h-5 w-5" />
+            {isMobileMenuOpen ? (
+              <Xmark className="icon-interface" />
             ) : (
-              <HalfMoon className="h-5 w-5" />
+              <Menu className="icon-interface" />
             )}
           </button>
-        </SignedIn>
 
-        {/* Mobile Menu Toggle */}
-        <button
-          onClick={toggleMobileMenu}
-          className="md:hidden inline-flex h-9 w-9 items-center justify-center text-foreground transition-opacity hover:opacity-70"
-          type="button"
-          aria-label={isMobileMenuOpen ? "Tutup menu" : "Buka menu"}
-          aria-expanded={isMobileMenuOpen}
-        >
-          {isMobileMenuOpen ? <Xmark className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+          {/* Theme Toggle - Desktop only for logged-in users */}
+          <SignedIn>
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle hidden md:inline-flex rounded-action border-main border-border"
+              title="Toggle theme"
+              aria-label="Toggle theme"
+            >
+              <SunLight className="icon sun-icon" />
+              <HalfMoon className="icon moon-icon" />
+            </button>
+          </SignedIn>
 
-        {/* Theme Toggle - Desktop only for logged-in users */}
-        <SignedIn>
-          <button
-            onClick={toggleTheme}
-            className="theme-toggle hidden md:inline-flex"
-            title="Toggle theme"
-            aria-label="Toggle theme"
-          >
-            <SunLight className="icon sun-icon" />
-            <HalfMoon className="icon moon-icon" />
-          </button>
-        </SignedIn>
+          {/* Auth State - Desktop only (mobile shows in panel) */}
+          <SignedOut>
+            <Link href="/sign-in" className="btn btn-outline hidden md:inline-flex">
+              Masuk
+            </Link>
+          </SignedOut>
 
-        {/* Auth State - Desktop only (mobile shows in panel) */}
-        <SignedOut>
-          <Link href="/sign-in" className="btn btn-outline hidden md:inline-flex">
-            Masuk
-          </Link>
-        </SignedOut>
-
-        <SignedIn>
-          <div className="hidden md:block">
-            <UserDropdown />
-          </div>
-        </SignedIn>
+          <SignedIn>
+            <div className="hidden md:block">
+              <UserDropdown />
+            </div>
+          </SignedIn>
+        </div>
       </div>
-      </div>{/* End header-inner */}
+      {/* End header-inner */}
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
@@ -314,7 +326,7 @@ export function GlobalHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-              className={cn("mobile-menu__link", isActive && "mobile-menu__link--active")}
+                className={cn("mobile-menu__link", isActive && "mobile-menu__link--active")}
                 onClick={() => setMobileMenuState({ isOpen: false, pathname })}
               >
                 {link.label}
@@ -355,14 +367,14 @@ export function GlobalHeader() {
                     </AccordionTrigger>
                     <AccordionContent className="mobile-menu__user-accordion-content">
                       <button
-                          onClick={() => {
-                            setMobileMenuState({ isOpen: false, pathname })
-                            setIsSettingsOpen(true)
+                        onClick={() => {
+                          setMobileMenuState({ isOpen: false, pathname })
+                          setIsSettingsOpen(true)
                         }}
                         className="mobile-menu__user-menu-item"
                         type="button"
                       >
-                        <User className="h-4 w-4" />
+                        <User className="icon-interface" />
                         <span>Atur Akun</span>
                       </button>
 
@@ -371,7 +383,7 @@ export function GlobalHeader() {
                         className="mobile-menu__user-menu-item"
                         onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                       >
-                        <CreditCard className="h-4 w-4" />
+                        <CreditCard className="icon-interface" />
                         <span>Subskripsi</span>
                       </Link>
 
@@ -381,7 +393,7 @@ export function GlobalHeader() {
                           className="mobile-menu__user-menu-item"
                           onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                         >
-                          <Settings className="h-4 w-4" />
+                          <Settings className="icon-interface" />
                           <span>Admin Panel</span>
                         </Link>
                       )}
@@ -396,9 +408,9 @@ export function GlobalHeader() {
                         type="button"
                       >
                         {isSigningOut ? (
-                          <RefreshDouble className="h-4 w-4 animate-spin" />
+                          <RefreshDouble className="icon-interface animate-spin" />
                         ) : (
-                          <LogOut className="h-4 w-4" />
+                          <LogOut className="icon-interface" />
                         )}
                         <span>{isSigningOut ? "Keluar..." : "Sign out"}</span>
                       </button>
@@ -410,9 +422,6 @@ export function GlobalHeader() {
           </SignedIn>
         </nav>
       )}
-
-      {/* Horizontal line border below header */}
-      <div className="header-bottom-line" />
 
       {/* User Settings Modal (for mobile menu "Atur Akun") */}
       <UserSettingsModal

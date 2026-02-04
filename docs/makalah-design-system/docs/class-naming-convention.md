@@ -33,7 +33,7 @@ Standar ketebalan garis untuk menjaga kebersihan informasi.
 ## 4. Interaction States (The Signature)
 Standar perilaku elemen saat berinteraksi.
 
-*   **`.hover-slash`**: Mengaktifkan pola garis diagonal (`/ / / /`) khas terminal saat di-hover. Wajib untuk Tombol Utama dan Command Palette.
+*   **`.hover-slash`**: Mengaktifkan pola garis diagonal (`/ / / /`) khas terminal saat di-hover. Wajib untuk Tombol Utama dan Command Palette. **TIDAK UNTUK** link navigasi standar.
 *   **`.active-nav`**: Memberikan aksen garis oranye di sisi kiri (`border-l-2 border-amber-500`) untuk item sidebar yang aktif.
 *   **`.focus-ring`**: Menggunakan warna Sky/Info (`ring-info/50`) untuk menjaga kesan teknis, bukan biru standar browser.
 

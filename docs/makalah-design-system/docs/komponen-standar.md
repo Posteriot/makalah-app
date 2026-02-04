@@ -11,7 +11,7 @@ Semua tombol menggunakan font **Mono + Uppercase**. State Hover menggunakan pola
   LOG IN
 </Button>
 
-// 1.2 Navigation Link (Ghost with Arrow)
+// 1.2 Navigation Link (Ghost with Arrow) - NO SLASH
 <Button variant="ghost" className="font-mono text-xs uppercase tracking-wider text-slate-400 hover:text-slate-50 flex items-center gap-2">
   LEARN MORE ->
 </Button>
