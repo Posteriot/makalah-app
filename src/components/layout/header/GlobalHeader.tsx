@@ -4,7 +4,17 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "next-themes"
-import { Menu, X, Sun, Moon, User, CreditCard, Settings, LogOut, Loader2 } from "lucide-react"
+import {
+  Menu,
+  Xmark,
+  SunLight,
+  HalfMoon,
+  User,
+  CreditCard,
+  Settings,
+  LogOut,
+  RefreshDouble,
+} from "iconoir-react"
 import {
   Accordion,
   AccordionContent,
@@ -210,7 +220,7 @@ export function GlobalHeader() {
         {/* Subscription Badge - shows when logged in */}
         <SignedIn>
           {isConvexLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <RefreshDouble className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : convexUser ? (
             <SegmentBadge
               role={convexUser.role}
@@ -248,9 +258,9 @@ export function GlobalHeader() {
             disabled={!isThemeReady}
           >
             {(resolvedTheme ?? "dark") === "dark" ? (
-              <Sun className="h-5 w-5" />
+              <SunLight className="h-5 w-5" />
             ) : (
-              <Moon className="h-5 w-5" />
+              <HalfMoon className="h-5 w-5" />
             )}
           </button>
         </SignedIn>
@@ -263,7 +273,7 @@ export function GlobalHeader() {
           aria-label={isMobileMenuOpen ? "Tutup menu" : "Buka menu"}
           aria-expanded={isMobileMenuOpen}
         >
-          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {isMobileMenuOpen ? <Xmark className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
         {/* Theme Toggle - Desktop only for logged-in users */}
@@ -274,8 +284,8 @@ export function GlobalHeader() {
             title="Toggle theme"
             aria-label="Toggle theme"
           >
-            <Sun className="icon sun-icon" />
-            <Moon className="icon moon-icon" />
+            <SunLight className="icon sun-icon" />
+            <HalfMoon className="icon moon-icon" />
           </button>
         </SignedIn>
 
@@ -386,7 +396,7 @@ export function GlobalHeader() {
                         type="button"
                       >
                         {isSigningOut ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <RefreshDouble className="h-4 w-4 animate-spin" />
                         ) : (
                           <LogOut className="h-4 w-4" />
                         )}

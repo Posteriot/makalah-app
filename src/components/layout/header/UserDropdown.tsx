@@ -4,7 +4,14 @@ import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useUser, useClerk } from "@clerk/nextjs"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { Settings, LogOut, ChevronDown, Loader2, User, CreditCard } from "lucide-react"
+import {
+  Settings,
+  LogOut,
+  NavArrowDown,
+  RefreshDouble,
+  User,
+  CreditCard,
+} from "iconoir-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { UserSettingsModal } from "@/components/settings/UserSettingsModal"
@@ -92,7 +99,7 @@ export function UserDropdown() {
         {/* Badge dihapus - sudah ada di samping logo (SegmentBadge di GlobalHeader) */}
 
         {/* Chevron */}
-        <ChevronDown
+        <NavArrowDown
           className={cn(
             "h-4 w-4 text-muted-foreground transition-transform duration-200",
             isOpen && "rotate-180"
@@ -149,7 +156,7 @@ export function UserDropdown() {
             )}
           >
             {isSigningOut ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <RefreshDouble className="h-4 w-4 animate-spin" />
             ) : (
               <LogOut className="h-4 w-4" />
             )}

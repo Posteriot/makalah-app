@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Twitter, Linkedin, Instagram } from "lucide-react"
+import { X as XIcon, Linkedin, Instagram } from "iconoir-react"
 import { DiagonalStripes } from "@/components/marketing/SectionBackground"
 
 const RESOURCE_LINKS = [
@@ -23,7 +23,7 @@ const LEGAL_LINKS = [
 ]
 
 const SOCIAL_LINKS = [
-  { href: "#", label: "X", icon: Twitter },
+  { href: "#", label: "X", icon: XIcon },
   { href: "#", label: "LinkedIn", icon: Linkedin },
   { href: "#", label: "Instagram", icon: Instagram },
 ]
@@ -129,7 +129,7 @@ export function Footer() {
                   rel="noopener noreferrer"
                   className="flex items-center justify-center text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:text-foreground dark:hover:text-white"
                 >
-                  <social.icon size={20} strokeWidth={2} />
+                  <social.icon className="h-5 w-5" />
                 </a>
               ))}
             </div>
