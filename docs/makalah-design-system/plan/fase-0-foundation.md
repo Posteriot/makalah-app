@@ -964,7 +964,7 @@ git commit -m "refactor(foundation): create new globals.css with Makalah-Carbon 
 
 ---
 
-### Task 0.5: Create New tailwind.config.ts
+### Task 0.5: Create New tailwind.config.ts ⏭️ SKIPPED
 
 **Files:**
 - Overwrite: `tailwind.config.ts`
