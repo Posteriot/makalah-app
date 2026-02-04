@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ArrowUpCircle, Loader2Icon, PlusIcon } from "lucide-react"
+import { ArrowUpCircle, RefreshDouble, Plus } from "iconoir-react"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
@@ -139,12 +139,12 @@ export function ChatSidebar({
           >
             {isCreating ? (
               <>
-                <Loader2Icon className="h-4 w-4 animate-spin" />
+                <RefreshDouble className="h-4 w-4 animate-spin" />
                 Membuat...
               </>
             ) : (
               <>
-                <PlusIcon className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
                 Percakapan Baru
               </>
             )}
