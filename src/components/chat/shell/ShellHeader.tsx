@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useTheme } from "next-themes"
-import { SunIcon, MoonIcon, PanelRightIcon, PanelRightCloseIcon } from "lucide-react"
+import { SunLight, HalfMoon, SidebarExpand, SidebarCollapse } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { NotificationDropdown } from "./NotificationDropdown"
@@ -61,28 +61,37 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
       {/* Left Section: Logo + Brand + Segment Badge */}
       <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center gap-2">
+          {/* Light logo icon (for dark mode) */}
           <Image
-            src="/logo/makalah_logo_500x500.png"
+            src="/logo/makalah_logo_light.svg"
             alt="Makalah"
-            width={32}
-            height={32}
-            className="w-8 h-8"
+            width={24}
+            height={24}
+            className="logo-img logo-img-light"
           />
-          {/* Light brand text (visible in dark mode) */}
+          {/* Dark logo icon (for light mode) */}
           <Image
-            src="/makalah_brand_text.svg"
+            src="/logo/makalah_logo_dark.svg"
+            alt="Makalah"
+            width={24}
+            height={24}
+            className="logo-img logo-img-dark"
+          />
+          {/* White brand text (for dark mode) */}
+          <Image
+            src="/logo-makalah-ai-white.svg"
             alt="Makalah"
             width={80}
             height={18}
-            className="hidden dark:block w-20 h-auto"
+            className="logo-brand-text logo-brand-light"
           />
-          {/* Dark brand text (visible in light mode) */}
+          {/* Black brand text (for light mode) */}
           <Image
-            src="/makalah_brand_text_dark.svg"
+            src="/logo-makalah-ai-black.svg"
             alt="Makalah"
             width={80}
             height={18}
-            className="block dark:hidden w-20 h-auto"
+            className="logo-brand-text logo-brand-dark"
           />
         </Link>
 
@@ -115,9 +124,9 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
                 aria-label="Toggle theme"
               >
                 {/* Sun icon (visible in dark mode, clicking switches to light) */}
-                <SunIcon className="h-5 w-5 hidden dark:block" />
+                <SunLight className="h-5 w-5 hidden dark:block" />
                 {/* Moon icon (visible in light mode, clicking switches to dark) */}
-                <MoonIcon className="h-5 w-5 block dark:hidden" />
+                <HalfMoon className="h-5 w-5 block dark:hidden" />
               </button>
             </TooltipTrigger>
             <TooltipContent>Toggle theme</TooltipContent>
@@ -141,9 +150,9 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
               >
                 {/* Icon changes based on panel state */}
                 {isPanelCollapsed ? (
-                  <PanelRightIcon className="h-5 w-5" />
+                  <SidebarExpand className="h-5 w-5" />
                 ) : (
-                  <PanelRightCloseIcon className="h-5 w-5" />
+                  <SidebarCollapse className="h-5 w-5" />
                 )}
                 {/* Artifact count badge - always rendered, visibility controlled */}
                 <span
