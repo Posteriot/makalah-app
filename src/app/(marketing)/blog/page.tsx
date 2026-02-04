@@ -4,10 +4,7 @@ import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Input } from "@/components/ui/input"
-import {
-    Search,
-    ArrowRight,
-} from "lucide-react"
+import { Search, ArrowRight } from "iconoir-react"
 import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
