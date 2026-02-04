@@ -230,7 +230,7 @@ git commit -m "refactor(foundation): backup globals.css to legacy folder"
 
 ---
 
-### Task 0.3: Backup tailwind.config.ts
+### Task 0.3: Backup tailwind.config.ts ⏭️ SKIPPED
 
 **Files:**
 - Copy: `tailwind.config.ts` → `src/styles/legacy/tailwind.config.legacy.ts`
