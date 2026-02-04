@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
-import { Send } from "lucide-react"
+import { Send } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 /**
@@ -221,7 +221,7 @@ export function ChatInputHeroMock() {
             <span>Ketik obrolan...</span>
           </div>
           <div className="absolute bottom-4 right-4 w-10 h-10 border-[3px] border-neo-border rounded-md bg-neo-card flex items-center justify-center text-neo-text">
-            <Send size={18} />
+            <Send className="w-[18px] h-[18px]" />
           </div>
         </div>
       </div>
@@ -280,7 +280,7 @@ export function ChatInputHeroMock() {
             sendClicked && "translate-x-[-2px] translate-y-[2px] shadow-none"
           )}
         >
-          <Send size={18} />
+          <Send className="w-[18px] h-[18px]" />
         </div>
 
         {/* Cursor */}
