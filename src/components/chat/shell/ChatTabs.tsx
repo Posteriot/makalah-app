@@ -2,12 +2,12 @@
 
 import { useRef, useState, useEffect, useCallback } from "react"
 import {
-  MessageSquareIcon,
-  FileTextIcon,
-  XIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "lucide-react"
+  ChatBubble,
+  Page,
+  Xmark,
+  NavArrowLeft,
+  NavArrowRight,
+} from "iconoir-react"
 import { cn } from "@/lib/utils"
 import type { Tab } from "@/lib/hooks/useTabState"
 
@@ -29,9 +29,9 @@ interface ChatTabsProps {
  */
 function getTabIcon(type: "chat" | "paper") {
   if (type === "paper") {
-    return <FileTextIcon className="h-4 w-4" aria-hidden="true" />
+    return <Page className="h-4 w-4" aria-hidden="true" />
   }
-  return <MessageSquareIcon className="h-4 w-4" aria-hidden="true" />
+  return <ChatBubble className="h-4 w-4" aria-hidden="true" />
 }
 
 /**
@@ -249,16 +249,16 @@ export function ChatTabs({
               id={`tab-${tab.id}`}
               className={cn(
                 "group flex items-center gap-1.5",
-                "px-3 h-[35px]",
+                "px-3 h-[35px] rounded-t-[6px]",
                 "bg-transparent border-b-2 border-transparent",
-                "text-sm cursor-pointer",
+                "font-mono text-sm cursor-pointer",
                 "transition-all duration-150",
                 "hover:bg-accent",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
                 // Responsive sizing
                 "flex-1 min-w-[140px] max-w-[320px]",
-                // Active state
-                activeTabId === tab.id && "bg-background border-b-primary",
+                // Active state - Amber-500 underline per Mechanical Grace spec
+                activeTabId === tab.id && "bg-background border-b-amber-500",
                 // Separator line between tabs (except last)
                 index < tabs.length - 1 &&
                   activeTabId !== tab.id &&
@@ -304,7 +304,7 @@ export function ChatTabs({
                 aria-label={`Close ${tab.title} tab`}
                 tabIndex={-1}
               >
-                <XIcon className="h-3 w-3" aria-hidden="true" />
+                <Xmark className="h-3 w-3" aria-hidden="true" />
               </button>
             </div>
           ))}
@@ -333,7 +333,7 @@ export function ChatTabs({
           )}
           aria-label="Scroll tabs left"
         >
-          <ChevronLeftIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <NavArrowLeft className="h-4 w-4" aria-hidden="true" />
         </button>
 
         {/* Scroll right */}
@@ -352,7 +352,7 @@ export function ChatTabs({
           )}
           aria-label="Scroll tabs right"
         >
-          <ChevronRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <NavArrowRight className="h-4 w-4" aria-hidden="true" />
         </button>
 
         {/* Divider */}
@@ -372,7 +372,7 @@ export function ChatTabs({
           )}
           aria-label="Close all tabs"
         >
-          <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <Xmark className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
     </div>

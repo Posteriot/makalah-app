@@ -58,7 +58,7 @@ function ActivityBarItem({
             "w-10 h-10 rounded-lg transition-all duration-150",
             "text-muted-foreground hover:text-foreground hover:bg-accent",
             "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-            isActive && "text-primary bg-primary/15"
+            isActive && "text-foreground border-l-2 border-amber-500 bg-amber-500/10"
           )}
           onClick={onClick}
           aria-label={`${label} panel`}
@@ -69,7 +69,7 @@ function ActivityBarItem({
           {icon}
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="right" sideOffset={8} id={`activity-bar-item-${panel}-desc`}>
+      <TooltipContent side="right" sideOffset={8} id={`activity-bar-item-${panel}-desc`} className="font-mono text-xs">
         {label}
       </TooltipContent>
     </Tooltip>
@@ -219,7 +219,7 @@ export function ActivityBar({
               )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
+          <TooltipContent side="right" sideOffset={8} className="font-mono text-xs">
             {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           </TooltipContent>
         </Tooltip>

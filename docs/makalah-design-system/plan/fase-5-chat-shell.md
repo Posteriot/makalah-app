@@ -3,7 +3,7 @@
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 > **Parent Document**: [MASTER-PLAN.md](./MASTER-PLAN.md)
-> **Status**: ⏳ Pending
+> **Status**: ✅ Done
 > **Total Tasks**: 5
 > **Prerequisite**: FASE 4 (Dashboard) completed
 
@@ -84,7 +84,7 @@
 
 ## Tasks
 
-### Task 5.1: Verify ChatLayout Grid System
+### Task 5.1: Verify ChatLayout Grid System ✅ Done
 
 **Files:**
 - Review: `src/components/chat/layout/ChatLayout.tsx`
@@ -124,7 +124,7 @@ git commit -m "refactor(chat-layout): verify 16-column grid alignment"
 
 ---
 
-### Task 5.2: Migrate ActivityBar (if not done in FASE 1)
+### Task 5.2: Migrate ActivityBar (if not done in FASE 1) ✅ Done
 
 **Files:**
 - Modify: `src/components/chat/shell/ActivityBar.tsx`
@@ -173,7 +173,7 @@ git commit -m "refactor(activity-bar): migrate to Mechanical Grace + Iconoir"
 
 ---
 
-### Task 5.3: Migrate ChatTabs
+### Task 5.3: Migrate ChatTabs ✅ Done
 
 **Files:**
 - Modify: `src/components/chat/shell/ChatTabs.tsx`
@@ -225,7 +225,7 @@ git commit -m "refactor(chat-tabs): migrate to Mechanical Grace + Iconoir"
 
 ---
 
-### Task 5.4: Migrate ShellHeader
+### Task 5.4: Migrate ShellHeader ✅ Done
 
 **Files:**
 - Modify: `src/components/chat/shell/ShellHeader.tsx`
@@ -271,7 +271,7 @@ git commit -m "refactor(shell-header): migrate to Mechanical Grace + Iconoir"
 
 ---
 
-### Task 5.5: Migrate NotificationDropdown & PanelResizer
+### Task 5.5: Migrate NotificationDropdown & PanelResizer ✅ Done
 
 **Files:**
 - Modify: `src/components/chat/shell/NotificationDropdown.tsx`

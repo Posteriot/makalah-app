@@ -129,7 +129,7 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
                 <HalfMoon className="h-5 w-5 block dark:hidden" />
               </button>
             </TooltipTrigger>
-            <TooltipContent>Toggle theme</TooltipContent>
+            <TooltipContent className="font-mono text-xs">Toggle theme</TooltipContent>
           </Tooltip>
         )}
 
@@ -154,14 +154,14 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
                 ) : (
                   <SidebarCollapse className="h-5 w-5" />
                 )}
-                {/* Artifact count badge - always rendered, visibility controlled */}
+                {/* Artifact count badge - Amber per Mechanical Grace spec */}
                 <span
                   className={cn(
                     "absolute -top-1 -right-1",
                     "min-w-[18px] h-[18px] px-1",
                     "flex items-center justify-center",
-                    "text-[10px] font-semibold",
-                    "bg-primary text-primary-foreground",
+                    "text-[10px] font-semibold font-mono",
+                    "bg-amber-500 text-white",
                     "rounded-full",
                     "transition-opacity duration-150",
                     isPanelCollapsed ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -171,7 +171,7 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
                 </span>
               </button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent className="font-mono text-xs">
               {isPanelCollapsed ? `Open artifacts panel (${artifactCount} artifacts)` : "Close artifacts panel"}
             </TooltipContent>
           </Tooltip>

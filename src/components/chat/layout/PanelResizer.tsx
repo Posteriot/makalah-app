@@ -118,9 +118,9 @@ export function PanelResizer({
         "relative z-20 flex-shrink-0",
         "w-1 cursor-col-resize",
         "transition-colors duration-150",
-        // Default: transparent, hover/drag: primary
-        "bg-transparent hover:bg-primary",
-        isDragging && "bg-primary",
+        // Default: transparent, hover/drag: Sky feedback per Mechanical Grace spec
+        "bg-transparent hover:bg-sky-500/30",
+        isDragging && "bg-sky-500/50",
         // Position-specific margins for overlap
         position === "left" && "-mx-0.5",
         position === "right" && "-mx-0.5",
