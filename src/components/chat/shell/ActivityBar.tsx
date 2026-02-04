@@ -3,12 +3,12 @@
 import { useCallback } from "react"
 import { cn } from "@/lib/utils"
 import {
-  MessageSquareIcon,
-  FileTextIcon,
-  GitBranchIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
-} from "lucide-react"
+  ChatBubble,
+  Page,
+  GitBranch,
+  FastArrowLeft,
+  FastArrowRight,
+} from "iconoir-react"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -166,17 +166,17 @@ export function ActivityBar({
   }> = [
     {
       panel: "chat-history",
-      icon: <MessageSquareIcon className="h-5 w-5" aria-hidden="true" />,
+      icon: <ChatBubble className="h-5 w-5" aria-hidden="true" />,
       label: "Chat History",
     },
     {
       panel: "paper",
-      icon: <FileTextIcon className="h-5 w-5" aria-hidden="true" />,
+      icon: <Page className="h-5 w-5" aria-hidden="true" />,
       label: "Paper Sessions",
     },
     {
       panel: "progress",
-      icon: <GitBranchIcon className="h-5 w-5" aria-hidden="true" />,
+      icon: <GitBranch className="h-5 w-5" aria-hidden="true" />,
       label: "Progress Timeline",
     },
   ]
@@ -213,9 +213,9 @@ export function ActivityBar({
               aria-controls="chat-sidebar"
             >
               {isSidebarCollapsed ? (
-                <ChevronsRightIcon className="h-5 w-5" aria-hidden="true" />
+                <FastArrowRight className="h-5 w-5" aria-hidden="true" />
               ) : (
-                <ChevronsLeftIcon className="h-5 w-5" aria-hidden="true" />
+                <FastArrowLeft className="h-5 w-5" aria-hidden="true" />
               )}
             </Button>
           </TooltipTrigger>

@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-02-04
 > **Current Phase**: FASE 1 - Global Shell
-> **Current Task**: Task 1.4 - Migrate ChatSidebar (Pending Validation)
+> **Current Task**: Task 1.5 - Migrate ActivityBar (Pending Validation)
 
 ---
 
@@ -51,13 +51,13 @@
 | 1.1 - Migrate GlobalHeader | ✅ Done | Icons migrated to Iconoir, build passed |
 | 1.2 - Migrate Footer Standard | ✅ Done | Twitter→X, Iconoir icons, build passed |
 | 1.3 - Create ChatMiniFooter | ✅ Done | Component created, Mechanical Grace styling |
-| 1.4 - Migrate ChatSidebar | ⏳ Pending Validation | Icons migrated to Iconoir, build passed |
-| 1.5 - Migrate ActivityBar | ⏳ Pending | - |
+| 1.4 - Migrate ChatSidebar | ✅ Done | Icons migrated to Iconoir, build passed |
+| 1.5 - Migrate ActivityBar | ⏳ Pending Validation | Icons migrated to Iconoir, build passed |
 | 1.6 - Migrate SidebarChatHistory | ⏳ Pending | - |
 
 **Blockers**: None
 
-**Next Action**: Awaiting user validation for Task 1.4
+**Next Action**: Awaiting user validation for Task 1.5
 
 ---
 
