@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-02-04
 > **Current Phase**: FASE 2 - Marketing Pages
-> **Current Task**: Task 2.1 - Migrate Home Page Hero (Pending Validation)
+> **Current Task**: Task 2.2 - Migrate Pricing Page (Pending Validation)
 
 ---
 
@@ -71,15 +71,15 @@
 
 | Task | Status | Notes |
 |------|--------|-------|
-| 2.1 - Migrate Home Page Hero | ⏳ Pending Validation | Send icon migrated, size→className fix |
-| 2.2 - Migrate Blog Page | ⏳ Pending | - |
+| 2.1 - Migrate Home Page Hero | ✅ Done | Send icon migrated, size→className fix |
+| 2.2 - Migrate Pricing Page | ⏳ Pending Validation | Audit: No Lucide icons found |
 | 2.3 - Migrate Documentation Page | ⏳ Pending | - |
 | 2.4 - Migrate Pricing Page | ⏳ Pending | - |
 | 2.5 - Migrate About Page | ⏳ Pending | - |
 
 **Blockers**: None
 
-**Next Action**: Awaiting user validation for Task 2.1
+**Next Action**: Awaiting user validation for Task 2.2
 
 ---
 
