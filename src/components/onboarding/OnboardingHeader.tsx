@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { X } from "lucide-react"
+import { Xmark } from "iconoir-react"
 import { usePathname, useRouter } from "next/navigation"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 
@@ -68,7 +68,7 @@ export function OnboardingHeader() {
           className="p-2 rounded-md hover:bg-muted transition-colors"
           aria-label="Tutup"
         >
-          <X className="h-5 w-5" />
+          <Xmark className="h-5 w-5" />
         </button>
       </div>
     </header>

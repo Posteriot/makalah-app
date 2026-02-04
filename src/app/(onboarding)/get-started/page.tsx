@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle } from "iconoir-react"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 
 const GRATIS_FEATURES = [
@@ -57,7 +57,7 @@ export default function GetStartedPage() {
       {/* Current Tier Card */}
       <div className="bg-card border border-border rounded-xl p-6 text-left">
         <div className="flex items-center gap-2 mb-4">
-          <CheckCircle2 className="h-5 w-5 text-green-500" />
+          <CheckCircle className="h-5 w-5 text-green-500" />
           <span className="font-medium">Kamu sekarang di paket GRATIS</span>
         </div>
         <ul className="space-y-2 text-sm text-muted-foreground">

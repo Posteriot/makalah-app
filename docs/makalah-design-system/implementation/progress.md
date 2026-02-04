@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-02-04
 > **Current Phase**: FASE 3 - Auth & Onboarding
-> **Current Task**: Task 3.1 - Migrate Auth Pages (Pending Validation)
+> **Current Task**: Task 3.2 & 3.3 - OnboardingHeader & Get Started (Pending Validation)
 
 ---
 
@@ -93,14 +93,14 @@
 
 | Task | Status | Notes |
 |------|--------|-------|
-| 3.1 - Migrate Auth Pages | ⏳ Pending Validation | Sign Up: 3 icons migrated |
-| 3.2 - Migrate Get Started Page | ⏳ Pending | - |
-| 3.3 - Migrate Checkout BPP | ⏳ Pending | - |
-| 3.4 - Migrate Checkout Pro | ⏳ Pending | - |
+| 3.1 - Migrate Auth Pages | ✅ Done | Sign Up: 3 icons migrated |
+| 3.2 - Migrate OnboardingHeader | ⏳ Pending Validation | 1 icon (X → Xmark) |
+| 3.3 - Migrate Get Started Page | ⏳ Pending Validation | 1 icon (CheckCircle2 → CheckCircle) |
+| 3.4 - Migrate Checkout Pages | ⏳ Pending | - |
 
 **Blockers**: None
 
-**Next Action**: Awaiting user validation for Task 3.1
+**Next Action**: Awaiting user validation for Task 3.2 & 3.3
 
 ---
 
