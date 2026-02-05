@@ -325,7 +325,7 @@ git commit -m "refactor(pricing): align carousel dots with Carbon tokens"
 **Files:**
 - Modify: `src/components/marketing/pricing/PricingSkeleton.tsx`
 
-**Status:** Pending
+**Status:** Done
 
 **Step 1: Update skeleton card shell**
 

@@ -21,3 +21,8 @@
 - Tests: type-check pass (`npx tsc --noEmit`)
 - Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
 - Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Task 5: Done
+- Changes: `src/components/marketing/pricing/PricingSkeleton.tsx` (rounded-shell, hairline border, inner skeleton radius)
+- Tests: type-check pass (`npx tsc --noEmit`)
+- Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
+- Tests: build pass with dynamic server usage logs from `ensureConvexUser`
