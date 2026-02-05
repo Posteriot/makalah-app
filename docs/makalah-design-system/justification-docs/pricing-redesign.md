@@ -95,14 +95,14 @@ Dokumen ini adalah panduan teknis komprehensif untuk memigrasikan **Pricing Page
 
 ## 4. Checklist Verifikasi (Review & Audit)
 
-- [ ] **Grid Audit**: Content pricing sejajar sempurna dengan 16-kolom grid.
-- [ ] **Typo Audit**: Plan name & Price = Mono. Fitur List = Mono. Header = Mono.
-- [ ] **Radius Audit**: Shell = 16px. CTA = 8px.
-- [ ] **Border Audit**: Pemisah internal menggunakan `.border-hairline` (0.5px).
-- [ ] **Color Audit**: Highlight menggunakan Amber (Main Brand), bukan Emerald lagi.
-- [ ] **Interaction Audit**: Efek `.hover-slash` aktif pada tombol CTA.
-- [ ] **Contrast Audit**: Teks Mono 11px tetap terbaca dengan kontras Slate-400 ke atas.
-- [ ] **Skeleton Audit**: `PricingSkeleton` harus meniru struktur radius dan gap baru.
+- [x] **Grid Audit**: Content pricing sejajar sempurna dengan 16-kolom grid.
+- [x] **Typo Audit**: Plan name & Price = Mono. Fitur List = Mono. Header = Mono.
+- [x] **Radius Audit**: Shell = 16px. CTA = 8px.
+- [x] **Border Audit**: Pemisah internal menggunakan `.border-hairline` (0.5px).
+- [x] **Color Audit**: Highlight menggunakan Amber (Main Brand), bukan Emerald lagi.
+- [x] **Interaction Audit**: Efek `.hover-slash` aktif pada tombol CTA.
+- [x] **Contrast Audit**: Teks Mono 11px tetap terbaca dengan kontras Slate-400 ke atas.
+- [x] **Skeleton Audit**: `PricingSkeleton` harus meniru struktur radius dan gap baru.
 
 ---
 > [!IMPORTANT]

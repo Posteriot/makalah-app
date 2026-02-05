@@ -364,7 +364,7 @@ git commit -m "refactor(pricing): align PricingSkeleton with Mechanical Grace"
 **Files:**
 - Modify: `docs/makalah-design-system/justification-docs/pricing-redesign.md`
 
-**Status:** Pending
+**Status:** Done
 
 **Step 1: Visual verification**
 
