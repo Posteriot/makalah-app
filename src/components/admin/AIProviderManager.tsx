@@ -16,13 +16,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import {
   Plus,
-  Pencil,
-  Power,
-  Trash2,
-  ArrowLeftRight,
-  Settings2,
-  RefreshCw,
-} from "lucide-react"
+  EditPencil,
+  SwitchOn,
+  Trash,
+  DataTransferBoth,
+  Settings,
+  Refresh,
+} from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 import { AIProviderFormDialog } from "./AIProviderFormDialog"
 
@@ -165,7 +165,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
           <div className="card-header-row">
             <div>
               <div className="card-title-row">
-                <Settings2 className="card-icon" />
+                <Settings className="card-icon" />
                 <h3 className="card-title">AI Provider Configuration</h3>
               </div>
               <p className="card-description">
@@ -178,7 +178,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
                 className="btn btn--secondary"
                 onClick={handleReloadConfig}
               >
-                <RefreshCw className="btn-icon" />
+                <Refresh className="btn-icon" />
                 <span>Reload Cache</span>
               </button>
               <button
@@ -215,7 +215,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
                     className="text-center text-muted-foreground py-16"
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <Settings2 className="h-8 w-8 opacity-20" />
+                      <Settings className="h-8 w-8 opacity-20" />
                       <span>Belum ada config. Klik &quot;Buat Config Baru&quot; untuk memulai.</span>
                     </div>
                   </td>
@@ -278,14 +278,14 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
                           onClick={() => setEditingConfig(config)}
                           title="Edit"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <EditPencil className="h-4 w-4" />
                         </button>
                         <button
                           className="icon-btn text-blue-500"
                           onClick={() => setSwapConfig(config)}
                           title="Tukar Primary ↔ Fallback"
                         >
-                          <ArrowLeftRight className="h-4 w-4" />
+                          <DataTransferBoth className="h-4 w-4" />
                         </button>
                         {config.isActive ? (
                           <button
@@ -293,7 +293,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
                             title="Config sedang aktif"
                             disabled
                           >
-                            <Power className="h-4 w-4 text-success" />
+                            <SwitchOn className="h-4 w-4 text-success" />
                           </button>
                         ) : (
                           <>
@@ -302,14 +302,14 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
                               onClick={() => setActivateConfig(config)}
                               title="Aktifkan"
                             >
-                              <Power className="h-4 w-4" />
+                              <SwitchOn className="h-4 w-4" />
                             </button>
                             <button
                               className="icon-btn text-destructive"
                               onClick={() => setDeleteConfig(config)}
                               title="Hapus"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash className="h-4 w-4" />
                             </button>
                           </>
                         )}
@@ -325,7 +325,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
         {/* Note section - matching table width */}
         <div className="p-6 bg-accent/30">
           <div className="flex items-start gap-3">
-            <Settings2 className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <Settings className="h-4 w-4 text-muted-foreground mt-0.5" />
             <div className="space-y-1">
               <span className="font-medium text-sm text-foreground block">Sistem Fallback & Cache</span>
               <p className="text-xs text-muted-foreground leading-relaxed">

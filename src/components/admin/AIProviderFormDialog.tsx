@@ -25,7 +25,14 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { CheckCircle2, XCircle, Loader2, AlertTriangle, Shield, ShieldCheck, ShieldX } from "lucide-react"
+import {
+  CheckCircle,
+  XmarkCircle,
+  WarningTriangle,
+  Shield,
+  ShieldCheck,
+  ShieldXmark,
+} from "iconoir-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Id } from "@convex/_generated/dataModel"
 
@@ -662,13 +669,13 @@ export function AIProviderFormDialog({
                 <div className="flex items-center gap-2">
                   {primaryValidation === "success" && (
                     <div className="flex items-center gap-1 text-green-600 text-sm">
-                      <CheckCircle2 className="h-4 w-4" />
+                      <CheckCircle className="h-4 w-4" />
                       <span>Tervalidasi</span>
                     </div>
                   )}
                   {primaryValidation === "error" && (
                     <div className="flex items-center gap-1 text-destructive text-sm">
-                      <XCircle className="h-4 w-4" />
+                      <XmarkCircle className="h-4 w-4" />
                       <span>Validasi Gagal</span>
                     </div>
                   )}
@@ -731,7 +738,7 @@ export function AIProviderFormDialog({
                 disabled={isLoading || isTestingPrimary}
               >
                 {isTestingPrimary ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
                   "Test"
                 )}
@@ -749,13 +756,13 @@ export function AIProviderFormDialog({
                 <div className="flex items-center gap-2">
                   {fallbackValidation === "success" && (
                     <div className="flex items-center gap-1 text-green-600 text-sm">
-                      <CheckCircle2 className="h-4 w-4" />
+                      <CheckCircle className="h-4 w-4" />
                       <span>Tervalidasi</span>
                     </div>
                   )}
                   {fallbackValidation === "error" && (
                     <div className="flex items-center gap-1 text-destructive text-sm">
-                      <XCircle className="h-4 w-4" />
+                      <XmarkCircle className="h-4 w-4" />
                       <span>Validasi Gagal</span>
                     </div>
                   )}
@@ -818,7 +825,7 @@ export function AIProviderFormDialog({
                 disabled={isLoading || isTestingFallback}
               >
                 {isTestingFallback ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
                   "Test"
                 )}
@@ -838,7 +845,7 @@ export function AIProviderFormDialog({
                   >
                     {isVerifyingCompatibility ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
                         Verifying Tool Compatibility...
                       </>
                     ) : (
@@ -869,10 +876,10 @@ export function AIProviderFormDialog({
                       <ShieldCheck className="h-4 w-4 text-green-600" />
                     )}
                     {compatibilityResult.compatibility.level === "partial" && (
-                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      <WarningTriangle className="h-4 w-4 text-yellow-600" />
                     )}
                     {compatibilityResult.compatibility.level === "incompatible" && (
-                      <ShieldX className="h-4 w-4" />
+                      <ShieldXmark className="h-4 w-4" />
                     )}
                     <AlertTitle className="flex items-center gap-2">
                       {compatibilityResult.compatibility.level === "full" && "Fully Compatible"}
@@ -887,9 +894,9 @@ export function AIProviderFormDialog({
                         {Object.entries(compatibilityResult.featureSupport).map(([feature, supported]) => (
                           <div key={feature} className="flex items-center gap-2">
                             {supported ? (
-                              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                              <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                             ) : (
-                              <XCircle className="h-3.5 w-3.5 text-red-500" />
+                              <XmarkCircle className="h-3.5 w-3.5 text-red-500" />
                             )}
                             <span className={supported ? "" : "text-muted-foreground"}>{feature}</span>
                           </div>

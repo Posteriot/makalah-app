@@ -27,13 +27,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import {
   Plus,
-  Pencil,
-  History,
-  Power,
-  PowerOff,
-  Trash2,
-  FileText,
-} from "lucide-react"
+  EditPencil,
+  ClockRotateRight,
+  SwitchOn,
+  SwitchOff,
+  Trash,
+  Page,
+} from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 import { SystemPromptFormDialog } from "./SystemPromptFormDialog"
 import { VersionHistoryDialog } from "./VersionHistoryDialog"
@@ -161,7 +161,7 @@ export function SystemPromptsManager({ userId }: SystemPromptsManagerProps) {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+                <Page className="h-5 w-5" />
                 System Prompts
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
@@ -236,7 +236,7 @@ export function SystemPromptsManager({ userId }: SystemPromptsManagerProps) {
                             onClick={() => setEditingPrompt(prompt)}
                             title="Edit"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <EditPencil className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
@@ -244,7 +244,7 @@ export function SystemPromptsManager({ userId }: SystemPromptsManagerProps) {
                             onClick={() => setHistoryPrompt(prompt)}
                             title="Riwayat Versi"
                           >
-                            <History className="h-4 w-4" />
+                            <ClockRotateRight className="h-4 w-4" />
                           </Button>
                           {prompt.isActive ? (
                             <Button
@@ -254,7 +254,7 @@ export function SystemPromptsManager({ userId }: SystemPromptsManagerProps) {
                               title="Nonaktifkan"
                               className="text-orange-600 hover:text-orange-700"
                             >
-                              <PowerOff className="h-4 w-4" />
+                              <SwitchOff className="h-4 w-4" />
                             </Button>
                           ) : (
                             <>
@@ -265,7 +265,7 @@ export function SystemPromptsManager({ userId }: SystemPromptsManagerProps) {
                                 title="Aktifkan"
                                 className="text-green-600 hover:text-green-700"
                               >
-                                <Power className="h-4 w-4" />
+                                <SwitchOn className="h-4 w-4" />
                               </Button>
                               <Button
                                 size="sm"
@@ -274,7 +274,7 @@ export function SystemPromptsManager({ userId }: SystemPromptsManagerProps) {
                                 title="Hapus"
                                 className="text-destructive hover:text-destructive"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash className="h-4 w-4" />
                               </Button>
                             </>
                           )}
