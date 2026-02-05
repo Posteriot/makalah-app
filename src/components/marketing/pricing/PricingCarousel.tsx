@@ -67,17 +67,19 @@ export function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
   )
 
   return (
-    <div className="md:hidden relative overflow-x-hidden overflow-y-visible pt-7">
+    <div className="relative overflow-hidden touch-pan-y pt-6 md:hidden">
       <div
-        className="flex transition-transform duration-300 ease-out touch-pan-y will-change-transform overflow-visible"
+        className="flex transition-transform duration-300 ease-out touch-pan-y"
         style={{ transform: `translateX(-${activeSlide * 100}%)` }}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
       >
         {plans.map((plan) => (
-          <div key={plan._id} className="flex-[0_0_100%] px-2 box-border">
-            <PricingCard plan={plan} />
+          <div key={plan._id} className="flex-shrink-0 w-full px-2 box-border">
+            <div className="w-full max-w-[300px] mx-auto">
+              <PricingCard plan={plan} />
+            </div>
           </div>
         ))}
       </div>
@@ -89,7 +91,8 @@ export function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
             key={index}
             onClick={() => setActiveSlide(clampIndex(index))}
             className={cn(
-              "w-2.5 h-2.5 rounded-full border-none cursor-pointer transition-all duration-200",
+              "w-2 h-2 rounded-full border-none cursor-pointer",
+              "transition-colors duration-200",
               activeSlide === index
                 ? "bg-brand scale-120"
                 : "bg-black/20 dark:bg-white/30"

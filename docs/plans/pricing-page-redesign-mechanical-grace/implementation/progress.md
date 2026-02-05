@@ -34,3 +34,5 @@
 - Tests: build pass with dynamic server usage logs from `ensureConvexUser`
 - Correction: Align pricing card palette with Pricing Teaser
 - Changes: `src/components/marketing/pricing/PricingCard.tsx`, `src/components/marketing/pricing/PricingCarousel.tsx`, `src/components/marketing/pricing/PricingSkeleton.tsx`, `docs/makalah-design-system/justification-docs/pricing-redesign.md`
+- Correction: Mirror pricing layout + card typography + hover behavior to Pricing Teaser
+- Changes: `src/app/(marketing)/pricing/page.tsx`, `src/components/marketing/pricing/PricingCard.tsx`, `src/components/marketing/pricing/PricingCarousel.tsx`, `src/components/marketing/pricing/PricingSkeleton.tsx`, `docs/makalah-design-system/justification-docs/pricing-redesign.md`

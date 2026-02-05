@@ -1,8 +1,8 @@
 "use client"
 
-import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
+import { SectionCTA } from "@/components/ui/section-cta"
 
 export type PricingPlan = {
   _id: string
@@ -43,8 +43,11 @@ function PricingCTA({
       <button
         disabled
         className={cn(
-          "w-full py-2.5 px-4 rounded-action text-xs font-mono font-bold uppercase tracking-widest",
-          "bg-muted/40 border border-main text-muted-foreground",
+          "group relative overflow-hidden",
+          "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2 w-full",
+          "text-signal text-[11px] font-bold",
+          "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
+          "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
           "cursor-not-allowed opacity-60"
         )}
       >
@@ -54,18 +57,9 @@ function PricingCTA({
   }
 
   return (
-    <Link
-      href={getHref()}
-      className={cn(
-        "w-full py-2.5 px-4 rounded-action text-xs font-mono font-bold uppercase tracking-widest text-center block",
-        "transition-colors",
-        plan.isHighlighted
-          ? "bg-primary text-primary-foreground hover:bg-primary/90 hover-slash"
-          : "bg-transparent border border-main text-foreground hover:bg-muted/50 hover-slash"
-      )}
-    >
+    <SectionCTA href={getHref()} className="w-full justify-center">
       {plan.ctaText}
-    </Link>
+    </SectionCTA>
   )
 }
 
@@ -93,7 +87,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
 
       <div
         className={cn(
-          "group relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-4 md:p-8 rounded-shell",
+          "group relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
           "border-1 border-[color:var(--slate-400)]",
           "group-hover:bg-[color:var(--slate-200)] dark:group-hover:bg-[color:var(--slate-700)]",
           "group-hover:-translate-y-1 transition-all duration-300",
@@ -101,36 +95,34 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
         )}
       >
         {/* Plan name */}
-        <h3 className="font-mono font-bold text-xs uppercase tracking-widest text-amber-500 text-center mt-4 md:mt-0">
+        <h3 className="text-narrative font-light text-xl md:text-2xl text-foreground mb-3 text-center mt-4 md:mt-0">
           {plan.name}
         </h3>
 
         {/* Price */}
-        <p className="font-mono text-4xl md:text-5xl font-bold tracking-tight text-foreground text-center mb-6">
+        <p className="text-interface text-3xl md:text-3xl font-medium tracking-tight tabular-nums text-foreground text-center mb-6">
           {plan.price}
           {plan.unit && (
-            <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground ml-2">
+            <span className="text-interface text-sm font-normal text-muted-foreground ml-1">
               {plan.unit}
             </span>
           )}
         </p>
 
-        <div className="my-4 border-t border-hairline" />
-
         {/* Tagline with dot indicator */}
         <div className="flex items-start gap-3">
           <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-[color:var(--rose-500)] animate-pulse shadow-[0_0_8px_var(--rose-500)]" />
-          <p className="font-mono text-sm leading-relaxed text-foreground">
+          <p className="text-interface font-normal text-sm leading-relaxed text-foreground">
             {plan.tagline}
           </p>
         </div>
 
         {/* Features list */}
-        <ul className="mt-4 pt-3 flex-1 space-y-1.5">
+        <ul className="mt-6 md:mt-0 pt-3 md:pt-6 flex-1 space-y-1.5">
           {plan.features.map((feature, index) => (
             <li
               key={index}
-              className="font-mono text-[11px] leading-relaxed text-foreground/80 flex items-start gap-2"
+              className="text-interface text-xs leading-relaxed text-foreground flex items-start gap-2"
             >
               <span className="text-[color:var(--emerald-500)] mt-0.5">✓</span>
               {feature}
