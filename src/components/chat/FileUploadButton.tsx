@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { PaperclipIcon, Loader2 } from "lucide-react"
+import { Attachment } from "iconoir-react"
 import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -114,17 +114,17 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="p-2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                        className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
                         aria-label="Attach file"
                     >
                         {isUploading ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span className="h-5 w-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin block" />
                         ) : (
-                            <PaperclipIcon className="h-5 w-5" />
+                            <Attachment className="h-5 w-5" />
                         )}
                     </button>
                 </TooltipTrigger>
-                <TooltipContent>Attach file</TooltipContent>
+                <TooltipContent className="font-mono text-xs">Attach file</TooltipContent>
             </Tooltip>
         </>
     )

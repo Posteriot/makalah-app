@@ -3,7 +3,7 @@
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 > **Parent Document**: [MASTER-PLAN.md](./MASTER-PLAN.md)
-> **Status**: ⏳ Pending
+> **Status**: ✅ Done
 > **Total Tasks**: 3
 > **Prerequisite**: FASE 7 (Chat Artifacts) completed
 
@@ -76,7 +76,7 @@
 
 ## Tasks
 
-### Task 8.1: Migrate FileUploadButton
+### Task 8.1: Migrate FileUploadButton ✅ Done
 
 **Files:**
 - Modify: `src/components/chat/FileUploadButton.tsx`
@@ -119,7 +119,7 @@ git commit -m "refactor(file-upload): migrate to Mechanical Grace + Iconoir"
 
 ---
 
-### Task 8.2: Migrate ChatWindow
+### Task 8.2: Migrate ChatWindow ✅ Done
 
 **Files:**
 - Modify: `src/components/chat/ChatWindow.tsx`
@@ -166,7 +166,7 @@ git commit -m "refactor(chat-window): migrate to Mechanical Grace + Iconoir"
 
 ---
 
-### Task 8.3: Migrate QuotaWarningBanner & TemplateGrid
+### Task 8.3: Migrate QuotaWarningBanner & TemplateGrid ✅ Done
 
 **Files:**
 - Modify: `src/components/chat/QuotaWarningBanner.tsx`

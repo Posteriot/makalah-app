@@ -349,10 +349,10 @@ Jika terjadi visual breakage parah:
 | 5 - Chat Shell | ✅ Done | 2026-02-05 | 2026-02-05 |
 | 6 - Chat Interaction | ✅ Done | 2026-02-05 | 2026-02-05 |
 | 7 - Chat Artifacts | ✅ Done | 2026-02-05 | 2026-02-05 |
-| 8 - Chat Tools | ⏳ Pending | - | - |
+| 8 - Chat Tools | ✅ Done | 2026-02-05 | 2026-02-05 |
 | 9 - Admin | ⏳ Pending | - | - |
 | 10 - Cleanup | ⏳ Pending | - | - |
 
 ---
 
-> **Next Step**: Start FASE 8 → `plan/fase-8-chat-tools.md`
+> **Next Step**: Start FASE 9 → `plan/fase-9-admin.md`

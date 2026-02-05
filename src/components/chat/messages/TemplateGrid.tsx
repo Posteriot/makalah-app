@@ -1,6 +1,6 @@
 "use client"
 
-import { FileTextIcon, MessageCircleIcon } from "lucide-react"
+import { Page, ChatBubble } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 export type TemplateType = "paper" | "dialog"
@@ -112,39 +112,40 @@ function TemplateCard({
       onClick={() => onSelect(template)}
       className={cn(
         "flex items-start gap-3.5 p-4 text-left",
-        "rounded-[10px] border border-border bg-card",
-        "hover:bg-accent hover:border-primary",
+        // Mechanical Grace: .rounded-action (8px), .border-hairline
+        "rounded-lg border border-slate-800 bg-slate-900/50",
+        "hover:bg-slate-800/50 hover:border-amber-500/50",
         "transition-all duration-150"
       )}
     >
-      {/* Icon - 40x40px, different colors for paper/dialog */}
+      {/* Icon - 40x40px, Mechanical Grace colors */}
       <div
         className={cn(
-          "flex-shrink-0 w-10 h-10 rounded-[10px]",
+          "flex-shrink-0 w-10 h-10 rounded-lg",
           "flex items-center justify-center",
           isPaper
-            ? "bg-primary/15 text-primary"
-            : "bg-info/15 text-info"
+            ? "bg-amber-500/15 text-amber-500"
+            : "bg-sky-500/15 text-sky-400"
         )}
       >
         {isPaper ? (
-          <FileTextIcon className="h-5 w-5" />
+          <Page className="h-5 w-5" />
         ) : (
-          <MessageCircleIcon className="h-5 w-5" />
+          <ChatBubble className="h-5 w-5" />
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        {/* Badge - PAPER (teal) or DIALOG (blue) */}
+        {/* Badge - Mechanical Grace: Amber PAPER, Sky DIALOG */}
         <span
           className={cn(
             "inline-block px-2 py-0.5 rounded",
-            "text-[11px] font-semibold uppercase tracking-wide",
+            "text-[11px] font-mono font-semibold uppercase tracking-wide",
             "mb-1.5",
             isPaper
-              ? "bg-primary/15 text-primary"
-              : "bg-info/15 text-info"
+              ? "bg-amber-500/15 text-amber-500"
+              : "bg-sky-500/15 text-sky-400"
           )}
         >
           {template.badge}
@@ -156,7 +157,7 @@ function TemplateCard({
         </h3>
 
         {/* Description */}
-        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 font-mono">
           {template.description}
         </p>
       </div>
