@@ -241,7 +241,7 @@ git commit -m "refactor(pricing): migrate PricingCard to Mechanical Grace"
 **Files:**
 - Modify: `src/components/marketing/pricing/PricingCard.tsx`
 
-**Status:** Pending
+**Status:** Done
 
 **Step 1: Disabled CTA**
 

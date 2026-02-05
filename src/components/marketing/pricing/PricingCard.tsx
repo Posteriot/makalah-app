@@ -43,10 +43,9 @@ function PricingCTA({
       <button
         disabled
         className={cn(
-          "w-full py-2.5 px-4 rounded-lg text-sm font-semibold",
-          "bg-black/5 dark:bg-white/5",
-          "border border-black/10 dark:border-white/10",
-          "text-muted-foreground cursor-not-allowed opacity-60"
+          "w-full py-2.5 px-4 rounded-action text-xs font-mono font-bold uppercase tracking-widest",
+          "bg-muted/40 border border-main text-muted-foreground",
+          "cursor-not-allowed opacity-60"
         )}
       >
         {plan.ctaText}
@@ -58,11 +57,11 @@ function PricingCTA({
     <Link
       href={getHref()}
       className={cn(
-        "w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-center block",
-        "transition-all duration-200",
+        "w-full py-2.5 px-4 rounded-action text-xs font-mono font-bold uppercase tracking-widest text-center block",
+        "transition-colors",
         plan.isHighlighted
-          ? "bg-[var(--brand)] text-white shadow-[0_4px_20px_rgba(232,102,9,0.2)] hover:translate-y-[-2px] hover:shadow-[0_8px_30px_rgba(232,102,9,0.4)]"
-          : "bg-transparent border border-black/20 dark:border-white/30 text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+          ? "bg-primary text-primary-foreground hover:bg-primary/90 hover-slash"
+          : "bg-transparent border border-main text-foreground hover:bg-muted/50 hover-slash"
       )}
     >
       {plan.ctaText}

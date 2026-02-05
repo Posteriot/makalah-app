@@ -11,3 +11,8 @@
 - Tests: type-check pass (`npx tsc --noEmit`)
 - Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
 - Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Task 3: Done
+- Changes: `src/components/marketing/pricing/PricingCard.tsx` (CTA rounded-action, hover-slash, mono uppercase button text)
+- Tests: type-check pass (`npx tsc --noEmit`)
+- Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
+- Tests: build pass with dynamic server usage logs from `ensureConvexUser`
