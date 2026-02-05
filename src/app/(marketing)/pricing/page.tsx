@@ -11,7 +11,7 @@ export default function PricingPage() {
 
   return (
     <section
-      className="relative min-h-[580px] md:min-h-[700px] flex flex-col justify-center px-4 md:px-6 pb-16 md:pb-24 overflow-hidden bg-muted/30 dark:bg-black"
+      className="relative min-h-[580px] md:min-h-[700px] px-4 md:px-6 pb-16 md:pb-24 overflow-hidden bg-background text-foreground"
       style={{ paddingTop: "calc(var(--header-h) + 60px)" }}
       id="pricing"
     >
@@ -19,16 +19,16 @@ export default function PricingPage() {
       <GridPattern className="z-0" />
       <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
-      <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto">
+      <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto grid grid-cols-16 gap-4">
         {/* Section Header */}
-        <div className="flex flex-col items-start gap-3 md:gap-4 mb-6 md:mb-8">
+        <div className="col-span-16 flex flex-col items-start gap-3 md:gap-4 mb-6 md:mb-8">
           <SectionBadge>Pemakaian & Harga</SectionBadge>
-          <h1 className="font-mono text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight text-foreground leading-tight">
+          <h1 className="font-mono text-3xl md:text-5xl font-bold tracking-tight text-foreground leading-tight">
             Tak Perlu Bayar Mahal
             <br />
             Untuk Karya Yang Masuk Akal
           </h1>
-          <p className="font-mono text-sm md:text-base text-muted-foreground max-w-xl">
+          <p className="font-mono text-[11px] md:text-sm text-muted-foreground max-w-xl">
             Pilih paket penggunaan sesuai kebutuhan. Mau ujicoba dulu yang
             gratisan? Boleh! Atau langsung bayar per paper? Aman!
           </p>
@@ -39,8 +39,8 @@ export default function PricingPage() {
 
         {/* Empty state */}
         {plans && plans.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
+          <div className="col-span-16 text-center py-12">
+            <p className="font-mono text-xs text-muted-foreground">
               Paket harga sedang disiapkan. Silakan cek kembali nanti.
             </p>
           </div>
@@ -50,9 +50,18 @@ export default function PricingPage() {
         {plans && plans.length > 0 && (
           <>
             {/* Desktop: Grid */}
-            <div className="hidden md:grid grid-cols-3 gap-6 items-stretch">
-              {plans.map((plan) => (
-                <PricingCard key={plan._id} plan={plan} />
+            <div className="col-span-16 hidden md:grid grid-cols-16 gap-4 items-stretch">
+              {plans.map((plan, index) => (
+                <div
+                  key={plan._id}
+                  className={
+                    index === 1
+                      ? "md:col-span-6"
+                      : "md:col-span-5"
+                  }
+                >
+                  <PricingCard plan={plan} />
+                </div>
               ))}
             </div>
 
