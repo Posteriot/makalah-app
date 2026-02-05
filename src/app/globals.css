@@ -139,6 +139,9 @@
   --neo-card-bg-dark: oklch(0.18 0 0 / 0.98);
   --neo-input-bg-dark: oklch(0.22 0.01 180);
   --neo-muted-dark: oklch(0.30 0.02 75);
+
+  /* --- Section Background Variants --- */
+  --section-bg-alt: var(--slate-100);
 }
 
 /* ==========================================================================
@@ -504,6 +507,9 @@
   --user-message-bg: var(--slate-800);
   --list-hover-bg: var(--neutral-400-a15);
   --list-selected-bg: var(--neutral-400-a25);
+
+  /* Section Background Variants */
+  --section-bg-alt: var(--slate-800);
 
   /* Chart Colors - Dark (same semantic palette) */
   --chart-1: var(--sky-500);
@@ -1511,89 +1517,6 @@
 
   .btn-success:hover {
     opacity: 0.9;
-  }
-}
-
-/* ==========================================================================
- * BENEFITS SECTION - BENTO GRID (Kenapa Makalah AI?)
- * ========================================================================== */
-@layer components {
-  /* Section container */
-  .benefits-section {
-    position: relative;
-    height: 100vh;
-    height: 100dvh; /* Dynamic viewport height for mobile */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 3rem var(--section-padding-x);
-    background-color: var(--luxe-zinc-600, #1c1c21);
-    overflow: hidden;
-    isolation: isolate; /* Create stacking context */
-  }
-
-  /* Light mode: lighter background */
-  :root:not(.dark) .benefits-section,
-  .light .benefits-section {
-    background-color: #f4f4f5;
-  }
-
-  /* Background patterns now rendered by React components:
-     - DiagonalStripes from SectionBackground
-     - DottedPattern from SectionBackground
-     See: src/components/marketing/benefits/BenefitsSection.tsx */
-
-  /* Container */
-  .benefits-container {
-    position: relative;
-    z-index: 10;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 24px;
-  }
-
-  /* Section header */
-  .benefits-header {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-element-gap-lg);
-    margin-bottom: 2rem;
-  }
-
-  .benefits-title {
-    font-family: var(--font-mono), monospace;
-    font-size: 2rem;
-    font-weight: 600;
-    line-height: 1.3;
-    color: var(--foreground);
-  }
-
-  @media (min-width: 768px) {
-    .benefits-title {
-      font-size: 2.5rem;
-    }
-  }
-
-  /* Responsive - Mobile */
-  @media (max-width: 640px) {
-    .benefits-section {
-      height: 100dvh; /* Fit to viewport like other sections */
-      min-height: auto;
-      max-height: 100dvh;
-      padding: 2rem var(--section-padding-x);
-      box-sizing: border-box;
-      overflow-y: auto; /* Allow scroll when accordion expands */
-    }
-
-    .benefits-title {
-      font-size: 1.5rem;
-    }
-
-    /* Compact spacing for fit-to-viewport */
-    .benefits-header {
-      margin-bottom: 1.25rem;
-    }
   }
 }
 

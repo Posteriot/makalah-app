@@ -12,7 +12,7 @@ interface SectionBadgeProps {
 /**
  * SectionBadge - Reusable badge untuk marketing sections
  *
- * Animated orange dot + uppercase text pada background teal.
+ * Amber signal dot + uppercase text pada surface Slate.
  * Optional href untuk jadikan link dengan hover effects.
  *
  * @example
@@ -23,18 +23,21 @@ export function SectionBadge({ children, href, className }: SectionBadgeProps) {
   const badgeContent = (
     <div
       className={cn(
-        "inline-flex items-center gap-2 px-2.5 py-1 rounded-badge bg-[color:var(--emerald-500)]",
-        href && "group transition-colors duration-300 hover:bg-[color:var(--emerald-800)]",
+        "inline-flex w-fit items-center gap-2 rounded-badge px-2.5 py-1",
+        "bg-[color:var(--slate-900)] text-[color:var(--slate-50)]",
+        "dark:bg-[color:var(--emerald-500)] dark:text-[color:var(--slate-900)]",
+        href &&
+          "group transition-colors duration-300 hover:bg-[color:var(--slate-50)] dark:hover:bg-[color:var(--emerald-800)]",
         className
       )}
     >
       {/* Animated amber dot */}
-      <span className="w-2 h-2 rounded-full bg-primary ring-2 ring-primary/40 animate-pulse" />
+      <span className="h-2 w-2 rounded-full bg-[color:var(--amber-500)] shadow-[0_0_6px_var(--amber-500)] animate-pulse" />
       {/* Badge text */}
       <span
         className={cn(
-          "text-signal text-[10px] font-bold uppercase text-[color:var(--slate-900)]",
-          href && "group-hover:text-[color:var(--slate-50)]"
+          "text-signal text-[10px] font-bold",
+          href && "group-hover:text-[color:var(--slate-900)] dark:group-hover:text-[color:var(--slate-50)]"
         )}
       >
         {children}

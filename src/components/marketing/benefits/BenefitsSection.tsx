@@ -9,32 +9,43 @@ import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBa
  * BenefitsSection - "Kenapa Makalah AI?" section
  *
  * Responsive layout:
- * - Desktop (md+): Bento grid with asymmetric cards and SVG illustrations
+ * - Desktop (md+): Bento grid 2x2 di atas grid 16-kolom
  * - Mobile (<md): Accordion with card styling, single open, all collapsed by default
  * - DocsCTA at bottom center
  */
 export function BenefitsSection() {
   return (
-    <section className="benefits-section" id="kenapa-makalah-ai">
+    <section
+      className="relative isolate h-[100svh] min-h-[100svh] overflow-hidden bg-[color:var(--section-bg-alt)]"
+      id="kenapa-makalah-ai"
+    >
       {/* Background patterns - using memoized React components */}
-      <DiagonalStripes withFadeMask={true} className="opacity-40" />
+      <DiagonalStripes className="opacity-40" />
       <DottedPattern spacing={24} withRadialMask={true} />
 
-      <div className="benefits-container">
-        {/* Section Header */}
-        <div className="benefits-header">
-          <BenefitsBadge />
-          <BenefitsTitle />
+      <div className="relative z-10 mx-auto h-full w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
+        <div className="grid h-full grid-cols-16 content-center gap-comfort">
+          {/* Section Header */}
+          <div className="col-span-16 md:col-span-12 md:col-start-3 flex flex-col gap-comfort">
+            <BenefitsBadge />
+            <BenefitsTitle />
+          </div>
+
+          {/* Desktop: Bento Grid */}
+          <div className="col-span-16 md:col-span-12 md:col-start-3">
+            <BentoBenefitsGrid />
+          </div>
+
+          {/* Mobile: Accordion */}
+          <div className="col-span-16 md:col-span-12 md:col-start-3">
+            <BenefitsAccordion />
+          </div>
+
+          {/* Documentation CTA - Bottom Center */}
+          <div className="col-span-16 md:col-span-12 md:col-start-3">
+            <DocsCTA />
+          </div>
         </div>
-
-        {/* Desktop: Bento Grid */}
-        <BentoBenefitsGrid />
-
-        {/* Mobile: Accordion */}
-        <BenefitsAccordion />
-
-        {/* Documentation CTA - Bottom Center */}
-        <DocsCTA />
       </div>
     </section>
   )

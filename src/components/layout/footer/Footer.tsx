@@ -33,7 +33,7 @@ export function Footer() {
     <div id="footer" className="bg-background text-foreground">
       <footer className="relative overflow-hidden bg-background">
         {/* Subtle Background Pattern - using memoized React component */}
-        <DiagonalStripes withFadeMask={true} className="opacity-40" />
+        <DiagonalStripes className="opacity-40" />
 
         {/* Content container - align with header (max-w-7xl) */}
         <div className="relative z-[1] mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
