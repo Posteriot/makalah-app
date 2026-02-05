@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { SaveIcon, XIcon } from "lucide-react"
+import { FloppyDisk, Xmark } from "iconoir-react"
 
 interface ArtifactEditorProps {
     content: string
@@ -61,7 +61,7 @@ export function ArtifactEditor({ content, onSave, onCancel, isLoading = false }:
                     value={editedContent}
                     onChange={(e) => setEditedContent(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className="w-full h-full resize-none bg-muted rounded-lg p-4 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full h-full resize-none bg-muted rounded-lg p-4 text-sm font-mono border border-dashed border-sky-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Masukkan konten artifact..."
                     disabled={isLoading}
                     aria-label="Edit artifact content"
@@ -70,10 +70,10 @@ export function ArtifactEditor({ content, onSave, onCancel, isLoading = false }:
 
             {/* Footer with actions */}
             <div className="p-4 border-t flex items-center justify-between">
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground font-mono">
                     {charCount} karakter
                     {hasChanges && (
-                        <span className="ml-2 text-yellow-500">• Belum disimpan</span>
+                        <span className="ml-2 text-amber-500">• Belum disimpan</span>
                     )}
                 </div>
                 <div className="flex gap-2">
@@ -82,16 +82,18 @@ export function ArtifactEditor({ content, onSave, onCancel, isLoading = false }:
                         size="sm"
                         onClick={onCancel}
                         disabled={isLoading}
+                        className="font-mono"
                     >
-                        <XIcon className="h-4 w-4 mr-1" />
+                        <Xmark className="h-4 w-4 mr-1" />
                         Batal
                     </Button>
                     <Button
                         size="sm"
                         onClick={handleSave}
                         disabled={!editedContent.trim() || isLoading}
+                        className="font-mono"
                     >
-                        <SaveIcon className="h-4 w-4 mr-1" />
+                        <FloppyDisk className="h-4 w-4 mr-1" />
                         {isLoading ? "Menyimpan..." : "Simpan"}
                     </Button>
                 </div>

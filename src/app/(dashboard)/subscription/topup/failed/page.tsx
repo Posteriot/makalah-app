@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { XCircle, ArrowLeft, RefreshCw } from "lucide-react"
+import { XmarkCircle, ArrowLeft, Refresh } from "iconoir-react"
 
 export default function TopUpFailedPage() {
   return (
@@ -9,7 +9,7 @@ export default function TopUpFailedPage() {
       {/* Failed Icon */}
       <div className="flex justify-center">
         <div className="w-20 h-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-          <XCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
+          <XmarkCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
         </div>
       </div>
 
@@ -29,7 +29,7 @@ export default function TopUpFailedPage() {
           href="/subscription/topup"
           className="flex items-center justify-center gap-2 w-full py-3 rounded-lg font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
-          <RefreshCw className="h-4 w-4" />
+          <Refresh className="h-4 w-4" />
           Coba Lagi
         </Link>
 

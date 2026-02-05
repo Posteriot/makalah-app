@@ -5,12 +5,12 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import {
-  AlertCircle,
-  CheckCircle2,
-  AlertTriangle,
-  Info,
-  RefreshCw,
-} from "lucide-react"
+  WarningCircle,
+  CheckCircle,
+  WarningTriangle,
+  InfoCircle,
+  Refresh,
+} from "iconoir-react"
 import { formatDistanceToNow } from "date-fns"
 import { id as localeId } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -63,11 +63,11 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case "critical":
-        return <AlertCircle className="h-4 w-4 text-destructive" />
+        return <WarningCircle className="h-4 w-4 text-destructive" />
       case "warning":
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
+        return <WarningTriangle className="h-4 w-4 text-yellow-500" />
       default:
-        return <Info className="h-4 w-4 text-blue-500" />
+        return <InfoCircle className="h-4 w-4 text-blue-500" />
     }
   }
 
@@ -77,7 +77,7 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
       <div className="card">
         <div className="card-header">
           <div className="card-title-row">
-            <RefreshCw className="card-icon animate-spin" />
+            <Refresh className="card-icon animate-spin" />
             <h3 className="card-title">System Health</h3>
           </div>
         </div>
@@ -101,9 +101,9 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
           <div>
             <div className="card-title-row">
               {isFallbackMode ? (
-                <AlertCircle className="card-icon text-destructive" />
+                <WarningCircle className="card-icon text-destructive" />
               ) : (
-                <CheckCircle2 className="card-icon card-icon--success" />
+                <CheckCircle className="card-icon card-icon--success" />
               )}
               <h3 className="card-title">System Health Monitoring</h3>
             </div>
@@ -124,7 +124,7 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
           {/* Section: System Prompt Status */}
           <div className="p-6 md:p-10 flex flex-col h-full">
             <h4 className="health-label mb-8 flex items-center gap-2">
-              <RefreshCw className="h-3 w-3" />
+              <Refresh className="h-3 w-3" />
               System Prompt Status
             </h4>
 
@@ -132,7 +132,7 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
               {isFallbackMode ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-destructive" />
+                    <WarningCircle className="h-5 w-5 text-destructive" />
                     <span className="font-bold text-destructive text-lg">FALLBACK MODE AKTIF</span>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
@@ -150,9 +150,9 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
                       disabled={isResolving === "all"}
                     >
                       {isResolving === "all" ? (
-                        <RefreshCw className="btn-icon animate-spin" />
+                        <Refresh className="btn-icon animate-spin" />
                       ) : (
-                        <CheckCircle2 className="btn-icon" />
+                        <CheckCircle className="btn-icon" />
                       )}
                       <span>Selesaikan Semua Fallback</span>
                     </button>
@@ -161,7 +161,7 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
               ) : (
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
-                    <CheckCircle2 className="h-6 w-6 text-success" />
+                    <CheckCircle className="h-6 w-6 text-success" />
                     <span className="font-bold text-success text-xl uppercase tracking-tight">Normal</span>
                   </div>
 
@@ -196,7 +196,7 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
           {/* Section: Recent Alerts */}
           <div className="p-6 md:p-10 flex flex-col h-full bg-accent/[0.01]">
             <h4 className="health-label mb-8 flex items-center gap-2">
-              <AlertTriangle className="h-3 w-3" />
+              <WarningTriangle className="h-3 w-3" />
               History Alert Terbaru
             </h4>
 
@@ -239,9 +239,9 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
                           disabled={isResolving === alert._id}
                         >
                           {isResolving === alert._id ? (
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            <Refresh className="h-3.5 w-3.5 animate-spin" />
                           ) : (
-                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <CheckCircle className="h-3.5 w-3.5" />
                           )}
                         </button>
                       )}
@@ -250,7 +250,7 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-12 text-center h-full opacity-10 border-2 border-dashed rounded-xl border-border">
-                  <CheckCircle2 className="h-16 w-16 mb-4" />
+                  <CheckCircle className="h-16 w-16 mb-4" />
                   <p className="text-lg font-bold tracking-widest">CLEAR</p>
                   <p className="text-xs">Sistem beroperasi tanpa anomali.</p>
                 </div>

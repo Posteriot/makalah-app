@@ -7,15 +7,14 @@ import { api } from "@convex/_generated/api"
 import { Doc, Id } from "@convex/_generated/dataModel"
 import { toast } from "sonner"
 import {
-  FileText,
+  Page,
   Archive,
-  ArchiveRestore,
-  Trash2,
+  Undo,
+  Trash,
   Download,
-  FileDown,
-  ChevronRight,
+  NavArrowRight,
   Check,
-} from "lucide-react"
+} from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -196,7 +195,7 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
           <Button asChild size="sm" variant={isCompleted ? "outline" : "default"}>
             <Link href={`/chat/${session.conversationId}`}>
               {isCompleted ? "Lihat" : "Lanjutkan"}
-              <ChevronRight className="ml-1 h-4 w-4" />
+              <NavArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
 
@@ -212,11 +211,11 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="word">
-                  <FileDown className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2" />
                   Word
                 </SelectItem>
                 <SelectItem value="pdf">
-                  <FileText className="h-4 w-4 mr-2" />
+                  <Page className="h-4 w-4 mr-2" />
                   PDF
                 </SelectItem>
               </SelectContent>
@@ -232,7 +231,7 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
             title={isArchived ? "Unarchive" : "Archive"}
           >
             {isArchived ? (
-              <ArchiveRestore className="h-4 w-4" />
+              <Undo className="h-4 w-4" />
             ) : (
               <Archive className="h-4 w-4" />
             )}
@@ -246,7 +245,7 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
             title="Hapus"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash className="h-4 w-4" />
           </Button>
         </CardFooter>
       </Card>

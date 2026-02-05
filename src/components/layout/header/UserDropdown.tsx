@@ -4,7 +4,14 @@ import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useUser, useClerk } from "@clerk/nextjs"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { Settings, LogOut, ChevronDown, Loader2, User, CreditCard } from "lucide-react"
+import {
+  Settings,
+  LogOut,
+  NavArrowDown,
+  RefreshDouble,
+  User,
+  CreditCard,
+} from "iconoir-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { UserSettingsModal } from "@/components/settings/UserSettingsModal"
@@ -80,21 +87,21 @@ export function UserDropdown() {
       {/* Trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1 rounded-lg border border-black/50 dark:border-white/50 hover:bg-accent transition-colors"
+        className="flex items-center gap-dense px-3 py-1 rounded-action border-main border-border hover:bg-accent transition-colors"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
         {/* Name (hidden on mobile) */}
-        <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
+        <span className="hidden sm:block text-[12px] font-medium text-interface max-w-[120px] truncate">
           {fullName}
         </span>
 
         {/* Badge dihapus - sudah ada di samping logo (SegmentBadge di GlobalHeader) */}
 
         {/* Chevron */}
-        <ChevronDown
+        <NavArrowDown
           className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+            "icon-interface text-muted-foreground transition-transform duration-200",
             isOpen && "rotate-180"
           )}
         />
@@ -102,16 +109,16 @@ export function UserDropdown() {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 py-1 bg-popover border border-border rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-border bg-popover shadow-xl z-drawer py-1">
           <button
             onClick={() => {
               setIsOpen(false)
               setIsSettingsOpen(true)
             }}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors w-full"
+            className="flex items-center gap-dense p-dense text-[12px] text-interface text-foreground hover:bg-accent transition-colors w-full rounded-action"
             type="button"
           >
-            <User className="h-4 w-4" />
+            <User className="icon-interface" />
             <span>Atur Akun</span>
           </button>
 
@@ -119,9 +126,9 @@ export function UserDropdown() {
           <Link
             href="/subscription/overview"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+            className="flex items-center gap-dense p-dense text-[12px] text-interface text-foreground hover:bg-accent transition-colors rounded-action"
           >
-            <CreditCard className="h-4 w-4" />
+            <CreditCard className="icon-interface" />
             <span>Subskripsi</span>
           </Link>
 
@@ -130,9 +137,9 @@ export function UserDropdown() {
             <Link
               href="/dashboard"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+              className="flex items-center gap-dense p-dense text-[12px] text-interface text-foreground hover:bg-accent transition-colors rounded-action"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="icon-interface" />
               <span>Admin Panel</span>
             </Link>
           )}
@@ -142,16 +149,16 @@ export function UserDropdown() {
             onClick={handleSignOut}
             disabled={isSigningOut}
             className={cn(
-              "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+              "w-full flex items-center gap-dense p-dense text-[12px] text-interface transition-colors rounded-action",
               isSigningOut
                 ? "text-muted-foreground cursor-not-allowed"
-                : "text-destructive hover:bg-destructive/10"
+                : "text-rose-500 hover:bg-rose-500/10"
             )}
           >
             {isSigningOut ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <RefreshDouble className="icon-interface animate-spin" />
             ) : (
-              <LogOut className="h-4 w-4" />
+              <LogOut className="icon-interface" />
             )}
             <span>{isSigningOut ? "Keluar..." : "Sign out"}</span>
           </button>

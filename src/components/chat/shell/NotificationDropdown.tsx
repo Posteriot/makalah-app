@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { BellIcon, FileTextIcon, InfoIcon, DownloadIcon, MessageSquareIcon, ChevronRightIcon } from "lucide-react"
+import { Bell, Page, InfoCircle, Download, ChatBubble, NavArrowRight } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 /**
@@ -71,15 +71,15 @@ const MOCK_NOTIFICATIONS: NotificationItem[] = [
 function getNotificationIcon(type: NotificationType) {
   switch (type) {
     case "paper":
-      return <FileTextIcon className="h-4 w-4" />
+      return <Page className="h-4 w-4" />
     case "system":
-      return <InfoIcon className="h-4 w-4" />
+      return <InfoCircle className="h-4 w-4" />
     case "export":
-      return <DownloadIcon className="h-4 w-4" />
+      return <Download className="h-4 w-4" />
     case "feedback":
-      return <MessageSquareIcon className="h-4 w-4" />
+      return <ChatBubble className="h-4 w-4" />
     default:
-      return <BellIcon className="h-4 w-4" />
+      return <Bell className="h-4 w-4" />
   }
 }
 
@@ -183,7 +183,7 @@ export function NotificationDropdown() {
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        <BellIcon className="h-5 w-5" />
+        <Bell className="h-5 w-5" />
         {/* Badge dot */}
         {hasUnread && (
           <span
@@ -260,7 +260,7 @@ export function NotificationDropdown() {
                   <p className="text-xs text-muted-foreground line-clamp-2">
                     {notification.description}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1 font-mono">
                     {notification.time}
                   </p>
                 </div>
@@ -280,7 +280,7 @@ export function NotificationDropdown() {
               )}
             >
               Show all
-              <ChevronRightIcon className="h-4 w-4" />
+              <NavArrowRight className="h-4 w-4" />
             </button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { WandSparkles, Loader2 } from "lucide-react"
+import { MagicWand } from "iconoir-react"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -99,9 +99,9 @@ export function RefrasaButton({
             className="gap-1.5"
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              <WandSparkles className="h-4 w-4" />
+              <MagicWand className="h-4 w-4" />
             )}
             <span className="hidden sm:inline">Refrasa</span>
           </Button>

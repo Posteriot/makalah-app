@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { HistoryIcon, ChevronRightIcon, Loader2Icon } from "lucide-react"
+import { Clock, NavArrowRight } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 interface VersionHistoryDialogProps {
@@ -63,15 +63,15 @@ export function VersionHistoryDialog({
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                    <HistoryIcon className="h-4 w-4 mr-1" />
+                <Button variant="outline" size="sm" className="font-mono">
+                    <Clock className="h-4 w-4 mr-1" />
                     Riwayat ({versionHistory?.length ?? 0})
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <HistoryIcon className="h-5 w-5" />
+                        <Clock className="h-5 w-5" />
                         Riwayat Versi
                     </DialogTitle>
                 </DialogHeader>
@@ -80,7 +80,7 @@ export function VersionHistoryDialog({
                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
                     {versionHistory === undefined ? (
                         <div className="flex items-center justify-center py-8">
-                            <Loader2Icon className="h-6 w-6 animate-spin text-muted-foreground" />
+                            <span className="h-6 w-6 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
                         </div>
                     ) : (
                         <div className="space-y-2">
@@ -94,9 +94,11 @@ export function VersionHistoryDialog({
                                         key={version._id}
                                         onClick={() => onSelectVersion(version._id)}
                                         className={cn(
-                                            "w-full text-left p-3 rounded-lg border transition-colors",
-                                            "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary",
-                                            isCurrentVersion && "bg-accent border-primary"
+                                            "w-full text-left p-3 rounded-lg transition-colors",
+                                            // Mechanical Grace: .border-hairline
+                                            "border border-slate-800 hover:border-slate-700",
+                                            "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-amber-500",
+                                            isCurrentVersion && "bg-accent border-amber-500/50"
                                         )}
                                     >
                                         <div className="flex items-start justify-between gap-2">
@@ -104,28 +106,29 @@ export function VersionHistoryDialog({
                                                 {/* Timeline dot */}
                                                 <div className={cn(
                                                     "w-2 h-2 rounded-full shrink-0",
-                                                    isCurrentVersion ? "bg-primary" : "bg-muted-foreground/50"
+                                                    isCurrentVersion ? "bg-amber-500" : "bg-muted-foreground/50"
                                                 )} />
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-medium">v{version.version}</span>
+                                                        <span className="font-mono font-medium">v{version.version}</span>
                                                         {isLatest && (
-                                                            <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                                            <Badge variant="secondary" className="text-[10px] font-mono px-1 py-0">
                                                                 Terbaru
                                                             </Badge>
                                                         )}
                                                         {isCurrentVersion && (
-                                                            <Badge variant="default" className="text-[10px] px-1 py-0">
+                                                            <Badge variant="default" className="text-[10px] font-mono px-1 py-0 bg-amber-500/20 text-amber-400">
                                                                 Dilihat
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                                    {/* Mechanical Grace: .text-interface timestamps */}
+                                                    <p className="text-xs font-mono text-muted-foreground mt-0.5">
                                                         {formatDate(version.createdAt)}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <ChevronRightIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                            <NavArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
                                         </div>
 
                                         {/* Content preview */}
@@ -139,8 +142,8 @@ export function VersionHistoryDialog({
                     )}
                 </div>
 
-                {/* Footer info */}
-                <div className="pt-4 border-t text-xs text-muted-foreground text-center">
+                {/* Footer info - Mechanical Grace: .border-hairline + Mono */}
+                <div className="pt-4 border-t border-slate-800 text-xs font-mono text-muted-foreground text-center">
                     Total {versionHistory?.length ?? 0} versi
                 </div>
             </DialogContent>

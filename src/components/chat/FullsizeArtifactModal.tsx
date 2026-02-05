@@ -12,15 +12,14 @@ import {
     SelectTrigger,
 } from "@/components/ui/select"
 import {
-    XIcon,
-    Minimize2Icon,
-    DownloadIcon,
-    CheckIcon,
-    CopyIcon,
-    Loader2Icon,
-    ChevronDownIcon,
-    WandSparkles,
-} from "lucide-react"
+    Xmark,
+    Collapse,
+    Download,
+    Check,
+    Copy,
+    NavArrowDown,
+    MagicWand,
+} from "iconoir-react"
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -257,7 +256,7 @@ export function FullsizeArtifactModal({
                 />
                 {/* Loading */}
                 <div className="relative z-10 flex items-center justify-center w-full h-full">
-                    <Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <span className="h-8 w-8 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
                 </div>
             </div>
         )
@@ -284,18 +283,19 @@ export function FullsizeArtifactModal({
                         "relative z-10 flex flex-col",
                         "w-[calc(100vw-80px)] h-[calc(100vh-52px-32px-40px)]", // Full width minus margin, height minus header/footer
                         "mt-[52px]", // Below app header (52px)
-                        "bg-card rounded-lg border border-border",
+                        // Mechanical Grace: .rounded-shell (16px), dark bg
+                        "bg-slate-950 rounded-2xl border border-slate-800",
                         "shadow-2xl overflow-hidden"
                     )}
                 >
-                    {/* Header - Muted background like mockup */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted shrink-0">
+                    {/* Header - Mechanical Grace dark */}
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900 shrink-0">
                         <div className="flex items-center gap-3">
                             <h2 className="text-lg font-semibold text-foreground">
                                 {artifact.title}
                             </h2>
-                            {/* Version badge - Green/Primary like mockup */}
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-primary text-primary-foreground">
+                            {/* Version badge - Mechanical Grace Mono */}
+                            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
                                 v{artifact.version}
                             </span>
                         </div>
@@ -312,10 +312,10 @@ export function FullsizeArtifactModal({
                                         )}
                                         aria-label="Minimize"
                                     >
-                                        <Minimize2Icon className="h-4 w-4" />
+                                        <Collapse className="h-4 w-4" />
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent>Minimize</TooltipContent>
+                                <TooltipContent className="font-mono text-xs">Minimize</TooltipContent>
                             </Tooltip>
                             {/* Close Button */}
                             <Tooltip>
@@ -325,14 +325,14 @@ export function FullsizeArtifactModal({
                                         className={cn(
                                             "w-8 h-8 flex items-center justify-center rounded-md",
                                             "text-muted-foreground",
-                                            "hover:bg-red-500/90 hover:text-white transition-colors"
+                                            "hover:bg-rose-500/90 hover:text-white transition-colors"
                                         )}
                                         aria-label="Close (ESC)"
                                     >
-                                        <XIcon className="h-4 w-4" />
+                                        <Xmark className="h-4 w-4" />
                                     </button>
                                 </TooltipTrigger>
-                                <TooltipContent>Close (ESC)</TooltipContent>
+                                <TooltipContent className="font-mono text-xs">Close (ESC)</TooltipContent>
                             </Tooltip>
                         </div>
                     </div>
@@ -358,9 +358,10 @@ export function FullsizeArtifactModal({
                                 onChange={(e) => setEditContent(e.target.value)}
                                 className={cn(
                                     "w-full h-full min-h-[300px] p-4",
-                                    "bg-background rounded-lg border border-border",
+                                    // Mechanical Grace: .border-ai + Amber focus
+                                    "bg-slate-900 rounded-lg border border-dashed border-sky-500/50",
                                     "text-base leading-relaxed text-foreground",
-                                    "focus:outline-none focus:ring-2 focus:ring-primary",
+                                    "focus:outline-none focus:ring-2 focus:ring-amber-500",
                                     "resize-none"
                                 )}
                                 placeholder="Edit konten artifact..."
@@ -397,8 +398,8 @@ export function FullsizeArtifactModal({
                         )}
                     </div>
 
-                    {/* Actions Bar - Muted background, split left/right */}
-                    <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted shrink-0">
+                    {/* Actions Bar - Mechanical Grace dark */}
+                    <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800 bg-slate-900 shrink-0">
                         {/* Left Actions */}
                         <div className="flex items-center gap-2">
                             {/* Download Dropdown */}
@@ -407,38 +408,38 @@ export function FullsizeArtifactModal({
                                     variant="outline"
                                     size="sm"
                                     onClick={handleDownload}
-                                    className="rounded-r-none border-r-0 h-9"
+                                    className="rounded-r-none border-r-0 h-9 font-mono"
                                 >
-                                    <DownloadIcon className="h-4 w-4 mr-1.5" />
-                                    <span className="capitalize">{downloadFormat}</span>
+                                    <Download className="h-4 w-4 mr-1.5" />
+                                    <span className="uppercase">{downloadFormat}</span>
                                 </Button>
                                 <Select
                                     value={downloadFormat}
                                     onValueChange={(v) => setDownloadFormat(v as DownloadFormat)}
                                 >
                                     <SelectTrigger className="h-9 w-8 rounded-l-none border-l-0 px-2">
-                                        <ChevronDownIcon className="h-3 w-3" />
+                                        <NavArrowDown className="h-3 w-3" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="docx">Docx</SelectItem>
+                                        <SelectItem value="docx">DOCX</SelectItem>
                                         <SelectItem value="pdf">PDF</SelectItem>
                                         <SelectItem value="txt">TXT</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            {/* Save Button (when editing) - Primary color */}
+                            {/* Save Button (when editing) - Amber action */}
                             {isEditing && (
                                 <Button
                                     size="sm"
                                     onClick={handleSave}
                                     disabled={isSaving}
-                                    className="h-9 bg-primary hover:bg-primary/90"
+                                    className="h-9 bg-amber-500 hover:bg-amber-600 text-slate-950 font-mono"
                                 >
                                     {isSaving ? (
-                                        <Loader2Icon className="h-4 w-4 mr-1.5 animate-spin" />
+                                        <span className="h-4 w-4 mr-1.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                                     ) : (
-                                        <CheckIcon className="h-4 w-4 mr-1.5" />
+                                        <Check className="h-4 w-4 mr-1.5" />
                                     )}
                                     Simpan
                                 </Button>
@@ -451,9 +452,9 @@ export function FullsizeArtifactModal({
                                     size="sm"
                                     onClick={handleRefrasaTrigger}
                                     disabled={isRefrasaLoading || artifact.content.length < 50}
-                                    className="h-9"
+                                    className="h-9 font-mono"
                                 >
-                                    <WandSparkles className="h-4 w-4 mr-1.5" />
+                                    <MagicWand className="h-4 w-4 mr-1.5" />
                                     Refrasa
                                 </Button>
                             )}
@@ -470,7 +471,7 @@ export function FullsizeArtifactModal({
                                         setIsEditing(false)
                                         setEditContent(artifact.content)
                                     }}
-                                    className="h-9 text-muted-foreground hover:text-foreground"
+                                    className="h-9 text-muted-foreground hover:text-foreground font-mono"
                                 >
                                     Batal
                                 </Button>
@@ -482,7 +483,7 @@ export function FullsizeArtifactModal({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setIsEditing(true)}
-                                    className="h-9"
+                                    className="h-9 font-mono"
                                 >
                                     Edit
                                 </Button>
@@ -494,16 +495,16 @@ export function FullsizeArtifactModal({
                                 size="sm"
                                 onClick={handleCopy}
                                 disabled={copied}
-                                className="h-9"
+                                className={cn("h-9 font-mono", copied && "text-emerald-500")}
                             >
                                 {copied ? (
                                     <>
-                                        <CheckIcon className="h-4 w-4 mr-1.5" />
+                                        <Check className="h-4 w-4 mr-1.5" />
                                         Disalin
                                     </>
                                 ) : (
                                     <>
-                                        <CopyIcon className="h-4 w-4 mr-1.5" />
+                                        <Copy className="h-4 w-4 mr-1.5" />
                                         Salin
                                     </>
                                 )}

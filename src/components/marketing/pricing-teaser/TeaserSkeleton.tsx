@@ -7,7 +7,7 @@ export function TeaserSkeleton() {
       id="pemakaian-harga"
     >
       {/* Background pattern */}
-      <GridPattern size={48} className="z-0" />
+      <GridPattern className="z-0" />
 
       <div className="relative z-10 max-w-[var(--container-max-width)] mx-auto">
         {/* Section Header Skeleton */}

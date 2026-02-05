@@ -57,7 +57,7 @@ Integrasi utamanya ada di `src/app/(marketing)/page.tsx`.
 - `PawangBadge.tsx`: badge kecil dengan dot animasi, link ke `/about` (gunakan `next/link`).
 - `HeroHeading.tsx`: heading `h1` dengan text SR (`sr-only`) dan render visual via `HeroHeadingSvg`.
 - `HeroHeadingSvg.tsx`: SVG text heading dengan warna tema (`fill-foreground`) dan aksen merah `#ee4036`.
-- `HeroSubheading.tsx`: teks subheading/tagline.
+- `HeroSubheading.tsx`: teks subheading/tagline (Geist via `text-narrative`).
 - `HeroCTA.tsx`: tombol CTA utama, menentukan route berdasar status auth + onboarding.
 - `HeroResearchMock.tsx`: mockup progress riset/paper (timeline + progress bar), data statik.
 - `ChatInputHeroMock.tsx`: mockup input chat dengan animasi typewriter + cursor + click.
@@ -145,7 +145,7 @@ Komponen yang memakai `"use client"`:
 - Token neo-brutalist (`bg-neo-*`, `border-neo-*`, `text-neo-*`) bersumber dari CSS variables di `src/app/globals.css`.
 - `HeroHeadingSvg` set font via inline styles (`var(--font-geist-mono)`, `fontWeight: 500`, `letterSpacing: -0.05em`).
 - Animasi yang dipakai:
-  - `badge-dot-blink` (dot di `PawangBadge`)
+  - `animate-pulse` (dot di `PawangBadge`)
   - `neo-shimmer` dan `neo-dot-pulse` (placeholder di `ChatInputHeroMock`)
   - `hero-caret-blink` (caret saat hold di `ChatInputHeroMock`)
 - `HeroCTA` memakai class `.btn-brand` dari `src/app/globals.css`.

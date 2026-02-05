@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Trash2 } from "lucide-react"
+import { Trash } from "iconoir-react"
 import { toast } from "sonner"
 import type { Id } from "@convex/_generated/dataModel"
 
@@ -142,7 +142,7 @@ export function StyleConstitutionVersionHistoryDialog({
                         title={version.isActive ? "Nonaktifkan dulu untuk menghapus" : "Hapus versi ini"}
                         className="text-destructive hover:text-destructive"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>

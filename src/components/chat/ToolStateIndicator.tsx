@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Loader2Icon, AlertCircleIcon, GlobeIcon } from "lucide-react"
+import { WarningCircle, Globe } from "iconoir-react"
 
 interface ToolStateIndicatorProps {
     toolName: string
@@ -18,35 +18,39 @@ export function ToolStateIndicator({ toolName, state, errorText }: ToolStateIndi
 
     const isGoogleSearch = toolName === 'google_search'
 
+    // Mechanical Grace: Uppercase status labels
     let text = ""
     if (state === 'input-streaming') {
-        text = isGoogleSearch ? "Mencari informasi di internet..." : `AI menyiapkan ${toolName}...`
+        text = isGoogleSearch ? "SEARCHING_WEB" : `RUNNING_${toolName.toUpperCase()}`
     }
     else if (state === 'input-available') {
-        text = isGoogleSearch ? "Mencari informasi di internet..." : `Memproses ${toolName}...`
+        text = isGoogleSearch ? "SEARCHING_WEB" : `PROCESSING_${toolName.toUpperCase()}`
     }
-    else if (isError) text = `Gagal: ${errorText || "Terjadi kesalahan"}`
-    else text = `${toolName} (${state})`
+    else if (isError) text = `ERROR: ${errorText || "UNKNOWN_ERROR"}`
+    else text = `${toolName.toUpperCase()}_${state.toUpperCase()}`
 
     return (
         <div
             className={cn(
-                "flex w-fit items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-sm transition-all duration-300 animate-in fade-in zoom-in-95",
+                // Mechanical Grace: border-ai (dashed), Mono font, uppercase
+                "flex w-fit items-center gap-2 rounded-lg border border-dashed px-3 py-2",
+                "text-[11px] font-mono uppercase tracking-wide",
+                "shadow-sm transition-all duration-300 animate-in fade-in zoom-in-95",
                 isError
-                    ? "border-destructive/20 bg-destructive/10 text-destructive"
-                    : "border-blue-500/20 bg-blue-500/10 text-foreground"
+                    ? "border-rose-500/50 bg-rose-500/10 text-rose-500"
+                    : "border-sky-500/50 bg-sky-500/10 text-sky-400"
             )}
             role="status"
             aria-label={text}
         >
             {isProcessing && (
                 isGoogleSearch ? (
-                    <GlobeIcon className="h-4 w-4 animate-pulse text-blue-500" />
+                    <Globe className="h-4 w-4 animate-pulse text-sky-500" />
                 ) : (
-                    <Loader2Icon className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="h-4 w-4 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
                 )
             )}
-            {isError && <AlertCircleIcon className="h-4 w-4" />}
+            {isError && <WarningCircle className="h-4 w-4" />}
             <span>{text}</span>
         </div>
     )

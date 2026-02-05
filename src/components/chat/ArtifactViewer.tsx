@@ -17,7 +17,7 @@ import {
     ContextMenuItem,
     ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { FileTextIcon, Loader2Icon, AlertTriangle, WandSparkles } from "lucide-react"
+import { Page, WarningTriangle, MagicWand } from "iconoir-react"
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from "react"
 import { toast } from "sonner"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -309,7 +309,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     if (!artifactId) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
-                <FileTextIcon className="h-12 w-12 mb-4 opacity-50" />
+                <Page className="h-12 w-12 mb-4 opacity-50" />
                 <p className="text-center">Pilih artifact untuk melihat konten</p>
             </div>
         )
@@ -319,7 +319,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     if (artifact === undefined) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
-                <Loader2Icon className="h-8 w-8 animate-spin mb-4" />
+                <span className="h-8 w-8 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin mb-4" />
                 <p>Memuat artifact...</p>
             </div>
         )
@@ -329,7 +329,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     if (artifact === null) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
-                <FileTextIcon className="h-12 w-12 mb-4 opacity-50" />
+                <Page className="h-12 w-12 mb-4 opacity-50" />
                 <p className="text-center">Artifact tidak ditemukan</p>
             </div>
         )
@@ -388,7 +388,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                                     )}
                                     data-testid="artifact-type-badge"
                                 >
-                                    <AlertTriangle className="h-3 w-3 mr-1 inline-block" data-testid="invalidation-indicator" />
+                                    <WarningTriangle className="h-3 w-3 mr-1 inline-block" data-testid="invalidation-indicator" />
                                     Perlu revisi
                                 </span>
                             </TooltipTrigger>
@@ -410,7 +410,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
             {/* Invalidation Warning Banner */}
             {isInvalidated && (
                 <Alert variant="warning" className="mx-4 mt-2" data-testid="invalidation-warning">
-                    <AlertTriangle className="h-4 w-4" data-testid="invalidation-warning-icon" />
+                    <WarningTriangle className="h-4 w-4" data-testid="invalidation-warning-icon" />
                     <AlertDescription>
                         <span className="font-medium">Artifact perlu di-update</span>
                         {invalidatedStageLabel && (
@@ -478,7 +478,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                                     onClick={handleRefrasaTrigger}
                                     disabled={isRefrasaLoading || artifact.content.length < 50}
                                 >
-                                    <WandSparkles className="h-4 w-4 mr-2" />
+                                    <MagicWand className="h-4 w-4 mr-2" />
                                     Refrasa
                                 </ContextMenuItem>
                             )}

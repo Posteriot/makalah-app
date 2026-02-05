@@ -6,7 +6,7 @@ import { api } from "../../../../convex/_generated/api"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { Skeleton } from "@/components/ui/skeleton"
-import { FileTextIcon, FolderIcon, ChevronRightIcon } from "lucide-react"
+import { Page, Folder, NavArrowRight } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import {
   getStageLabel,
@@ -106,11 +106,11 @@ export function SidebarPaperSessions({
         </div>
         {/* Empty state - same messaging as SidebarProgress */}
         <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
-          <FileTextIcon className="h-8 w-8 text-muted-foreground/50 mb-2" />
-          <span className="text-sm text-muted-foreground/70 font-medium mb-1">
+          <Page className="h-8 w-8 text-muted-foreground/50 mb-2" />
+          <span className="text-sm text-muted-foreground/70 font-medium font-mono mb-1">
             Tidak ada paper aktif
           </span>
-          <span className="text-xs text-muted-foreground/50">
+          <span className="text-xs text-muted-foreground/50 font-mono">
             Percakapan ini bukan sesi penulisan paper
           </span>
         </div>
@@ -199,9 +199,9 @@ function PaperFolderItem({
   // Convert spaces to underscores for display (matching mockup style)
   const displayTitle = paperTitle.replace(/\s+/g, "_")
 
-  // Status color - blue for in-progress, green for completed
+  // Status color - Mechanical Grace: Sky for in-progress, Emerald for completed
   const isCompleted = session.currentStage === "completed"
-  const statusColorClass = isCompleted ? "bg-success" : "bg-info"
+  const statusColorClass = isCompleted ? "bg-emerald-500" : "bg-sky-500"
 
   // Group artifacts by type and get latest version of each
   const latestArtifacts = artifacts
@@ -219,14 +219,14 @@ function PaperFolderItem({
         onClick={onToggle}
       >
         {/* Chevron - rotates when expanded */}
-        <ChevronRightIcon
+        <NavArrowRight
           className={cn(
             "h-4 w-4 text-muted-foreground transition-transform duration-150 shrink-0",
             isExpanded && "rotate-90"
           )}
         />
 
-        {/* Status Dot - 8px, blue for in-progress */}
+        {/* Status Dot - 8px, Mechanical Grace: Sky for in-progress */}
         <div
           className={cn(
             "w-2 h-2 rounded-full shrink-0",
@@ -234,11 +234,11 @@ function PaperFolderItem({
           )}
         />
 
-        {/* Folder Icon - ORANGE color (warning) */}
-        <FolderIcon className="h-[18px] w-[18px] text-warning shrink-0" />
+        {/* Folder Icon - Mechanical Grace: Amber/Orange color */}
+        <Folder className="h-[18px] w-[18px] text-amber-500 shrink-0" />
 
-        {/* Folder Name */}
-        <span className="text-[13px] font-medium truncate flex-1">
+        {/* Folder Name - Mechanical Grace: Mono */}
+        <span className="text-[13px] font-mono font-medium truncate flex-1">
           {displayTitle}
         </span>
       </div>
@@ -246,8 +246,8 @@ function PaperFolderItem({
       {/* Expanded Content */}
       {isExpanded && (
         <div className="pl-6">
-          {/* Stage Info */}
-          <div className="text-[11px] text-muted-foreground py-1 px-4">
+          {/* Stage Info - Mechanical Grace: Mono metadata */}
+          <div className="text-[11px] font-mono text-muted-foreground py-1 px-4">
             Stage {stageNumber}/13 - {stageLabel}
           </div>
 
@@ -266,7 +266,7 @@ function PaperFolderItem({
               />
             ))
           ) : (
-            <div className="text-[11px] text-muted-foreground/70 italic py-2 px-4">
+            <div className="text-[11px] font-mono text-muted-foreground/70 py-2 px-4 uppercase">
               No artifacts yet
             </div>
           )}
@@ -319,28 +319,28 @@ function ArtifactTreeItem({
       className={cn(
         "flex items-center gap-2 py-1.5 px-4 cursor-pointer transition-colors",
         "hover:bg-accent",
-        isSelected && "bg-primary/10"
+        isSelected && "bg-amber-500/10"
       )}
     >
-      {/* Document Icon - green for final, muted otherwise */}
-      <FileTextIcon
+      {/* Document Icon - Mechanical Grace: Emerald for final, muted otherwise */}
+      <Page
         className={cn(
           "h-4 w-4 shrink-0",
-          isFinal ? "text-success" : "text-muted-foreground"
+          isFinal ? "text-emerald-500" : "text-muted-foreground"
         )}
       />
 
       {/* File Name */}
       <span className="text-[13px] truncate flex-1">{artifact.title}</span>
 
-      {/* Version Badge */}
-      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+      {/* Version Badge - Mechanical Grace: Mono */}
+      <span className="text-[9px] font-mono font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
         v{artifact.version}
       </span>
 
       {/* FINAL Badge - only for validated artifacts */}
       {isFinal && (
-        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-success text-white shrink-0 ml-1">
+        <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-500 text-white shrink-0 ml-1 uppercase">
           FINAL
         </span>
       )}

@@ -1,11 +1,10 @@
 /**
  * BentoBenefitsGrid - Desktop Bento Grid View
- * Layout 2x2 dengan design tokens dari @theme
+ * Layout 16-kolom dengan bento 2x2
  *
  * Tokens used:
- * - Colors: bg-bento, bg-bento-hover, border-bento-border, bg-dot
- * - Typography: text-bento-heading, text-bento-paragraph, leading-bento-heading
- * - Fonts: font-sans (Geist), font-mono (Geist Mono)
+ * - Colors: Slate (surface/hover), Amber (dot), Hairline border
+ * - Typography: text-narrative (title), text-interface (description)
  */
 
 const benefits = [
@@ -37,21 +36,21 @@ const benefits = [
 
 export function BentoBenefitsGrid() {
   return (
-    <div className="hidden md:grid grid-cols-2 grid-rows-2 gap-4">
+    <div className="hidden md:grid grid-cols-16 gap-comfort">
       {benefits.map((benefit) => (
         <div
           key={benefit.id}
-          className="group relative overflow-hidden flex flex-col p-4 rounded-lg  border-1 border-bento-border-light dark:border-bento-border hover:bg-bento-light-hover dark:hover:bg-bento-hover hover:border-bento-border-light-hover dark:hover:border-bento-border-hover hover:-translate-y-1 transition-all duration-300 z-[5]"
+          className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-transparent p-comfort transition-colors duration-200 hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-900)]"
         >
-          <div className="relative flex-1 z-[2] flex flex-col">
-            <h3 className="font-sans font-light text-bento-heading text-3xl leading-bento-heading m-0 mb-6 text-foreground">
+          <div className="relative flex-1 flex flex-col">
+            <h3 className="text-narrative font-light text-3xl leading-[1.1] text-foreground m-0 mb-6">
               {benefit.title[0]}
               <br />
               {benefit.title[1]}
             </h3>
-            <div className="flex items-start gap-3 pl-30">
-              <span className="w-2.5 h-2.5 min-w-2.5 rounded-full mt-1.5 bg-dot-light dark:bg-dot animate-badge-dot shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
-              <p className="font-mono font-normal text-bento-paragraph text-xs leading-relaxed m-0 text-muted-foreground">
+            <div className="flex items-start gap-3">
+              <span className="mt-1.5 h-2.5 w-2.5 min-w-2.5 rounded-full bg-[color:var(--amber-500)] animate-pulse shadow-[0_0_8px_var(--amber-500)]" />
+              <p className="text-interface text-xs leading-relaxed text-muted-foreground m-0">
                 {benefit.description}
               </p>
             </div>

@@ -25,22 +25,22 @@ import {
 } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
 import {
-  FileTextIcon,
-  XIcon,
-  Maximize2Icon,
-  DownloadIcon,
-  PencilIcon,
-  WandSparkles,
-  CopyIcon,
-  CheckIcon,
-  MoreVerticalIcon,
-  ChevronDownIcon,
-  CodeIcon,
-  ListIcon,
-  TableIcon,
-  BookOpenIcon,
-  FunctionSquareIcon,
-} from "lucide-react"
+  Page,
+  Xmark,
+  Expand,
+  Download,
+  EditPencil,
+  MagicWand,
+  Copy,
+  Check,
+  MoreVert,
+  NavArrowDown,
+  Code,
+  List,
+  Table2Columns,
+  Book,
+  Calculator,
+} from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { FullsizeArtifactModal } from "./FullsizeArtifactModal"
@@ -54,14 +54,14 @@ type ArtifactType =
   | "citation"
   | "formula"
 
-// Map artifact type to icon
+// Map artifact type to icon (Iconoir)
 const typeIcons: Record<ArtifactType, React.ElementType> = {
-  code: CodeIcon,
-  outline: ListIcon,
-  section: FileTextIcon,
-  table: TableIcon,
-  citation: BookOpenIcon,
-  formula: FunctionSquareIcon,
+  code: Code,
+  outline: List,
+  section: Page,
+  table: Table2Columns,
+  citation: Book,
+  formula: Calculator,
 }
 
 // Map artifact type to display label
@@ -147,7 +147,8 @@ export function ArtifactPanel({
       className={cn(
         "@container/artifact",
         "flex flex-col h-full w-full",
-        "bg-card",
+        // Mechanical Grace: dark panel, rounded-shell, hairline border
+        "bg-slate-950 rounded-2xl border border-slate-800",
         "transition-all duration-300 ease-in-out"
       )}
     >
@@ -155,7 +156,7 @@ export function ArtifactPanel({
       <div className="px-4 py-2 flex items-center justify-between shrink-0 min-w-0">
         {/* Left: Title + Count (can shrink) */}
         <div className="flex items-center gap-2 min-w-0 shrink">
-          <h2 className="text-sm font-medium text-foreground truncate">Artifact</h2>
+          <h2 className="text-xs font-mono font-medium uppercase tracking-wide text-foreground truncate">ARTIFACT</h2>
           {artifactCount > 0 && (
             <span
               className={cn(
@@ -192,11 +193,11 @@ export function ArtifactPanel({
                           )}
                           aria-label="Unduh"
                         >
-                          <DownloadIcon className="h-4 w-4" />
+                          <Download className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
-                    <TooltipContent>Unduh</TooltipContent>
+                    <TooltipContent className="font-mono text-xs">Unduh</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
@@ -241,10 +242,10 @@ export function ArtifactPanel({
                       )}
                       aria-label="Edit"
                     >
-                      <PencilIcon className="h-4 w-4" />
+                      <EditPencil className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
+                  <TooltipContent className="font-mono text-xs">Edit</TooltipContent>
                 </Tooltip>
 
                 {/* Refrasa Button */}
@@ -262,10 +263,10 @@ export function ArtifactPanel({
                       )}
                       aria-label="Refrasa"
                     >
-                      <WandSparkles className="h-4 w-4" />
+                      <MagicWand className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Refrasa</TooltipContent>
+                  <TooltipContent className="font-mono text-xs">Refrasa</TooltipContent>
                 </Tooltip>
 
                 {/* Copy Button */}
@@ -288,13 +289,13 @@ export function ArtifactPanel({
                       aria-label="Salin"
                     >
                       {copied ? (
-                        <CheckIcon className="h-4 w-4 text-green-500" />
+                        <Check className="h-4 w-4 text-emerald-500" />
                       ) : (
-                        <CopyIcon className="h-4 w-4" />
+                        <Copy className="h-4 w-4" />
                       )}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Salin</TooltipContent>
+                  <TooltipContent className="font-mono text-xs">Salin</TooltipContent>
                 </Tooltip>
 
                 {/* Separator */}
@@ -318,17 +319,17 @@ export function ArtifactPanel({
                           )}
                           aria-label="Aksi"
                         >
-                          <MoreVerticalIcon className="h-4 w-4" />
+                          <MoreVert className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
-                    <TooltipContent>Aksi</TooltipContent>
+                    <TooltipContent className="font-mono text-xs">Aksi</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end">
                     {/* Download submenu */}
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
-                        <DownloadIcon className="h-4 w-4 mr-2" />
+                        <Download className="h-4 w-4 mr-2" />
                         Unduh
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
@@ -359,11 +360,11 @@ export function ArtifactPanel({
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                     <DropdownMenuItem onClick={() => viewerRef.current?.startEdit()}>
-                      <PencilIcon className="h-4 w-4 mr-2" />
+                      <EditPencil className="h-4 w-4 mr-2" />
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => viewerRef.current?.triggerRefrasa()}>
-                      <WandSparkles className="h-4 w-4 mr-2" />
+                      <MagicWand className="h-4 w-4 mr-2" />
                       Refrasa
                     </DropdownMenuItem>
                     <DropdownMenuItem
@@ -374,9 +375,9 @@ export function ArtifactPanel({
                       }}
                     >
                       {copied ? (
-                        <CheckIcon className="h-4 w-4 mr-2 text-green-500" />
+                        <Check className="h-4 w-4 mr-2 text-emerald-500" />
                       ) : (
-                        <CopyIcon className="h-4 w-4 mr-2" />
+                        <Copy className="h-4 w-4 mr-2" />
                       )}
                       Salin
                     </DropdownMenuItem>
@@ -384,7 +385,7 @@ export function ArtifactPanel({
                     <DropdownMenuItem
                       onClick={() => setIsFullsizeOpen(true)}
                     >
-                      <Maximize2Icon className="h-4 w-4 mr-2" />
+                      <Expand className="h-4 w-4 mr-2" />
                       Fullscreen
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -411,10 +412,10 @@ export function ArtifactPanel({
                 )}
                 aria-label="Expand artifact fullscreen"
               >
-                <Maximize2Icon className="h-4 w-4" />
+                <Expand className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Expand fullscreen</TooltipContent>
+            <TooltipContent className="font-mono text-xs">Expand fullscreen</TooltipContent>
           </Tooltip>
 
           {/* Close Button - ALWAYS visible */}
@@ -432,10 +433,10 @@ export function ArtifactPanel({
                 )}
                 aria-label="Close panel"
               >
-                <XIcon className="h-4 w-4" />
+                <Xmark className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Close panel</TooltipContent>
+            <TooltipContent className="font-mono text-xs">Close panel</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -485,7 +486,7 @@ export function ArtifactPanel({
                               >
                                 v{selectedArtifact.version}
                               </Badge>
-                              <ChevronDownIcon
+                              <NavArrowDown
                                 className={cn(
                                   "h-4 w-4 ml-auto shrink-0 text-muted-foreground transition-transform duration-200",
                                   isArtifactListOpen && "rotate-180"
@@ -515,7 +516,7 @@ export function ArtifactPanel({
                         <span className="text-sm text-muted-foreground">
                           Pilih artifact ({artifactCount})
                         </span>
-                        <ChevronDownIcon
+                        <NavArrowDown
                           className={cn(
                             "h-4 w-4 text-muted-foreground transition-transform duration-200",
                             isArtifactListOpen && "rotate-180"
@@ -561,7 +562,7 @@ export function ArtifactPanel({
                 "h-full py-12 px-6 text-center"
               )}
             >
-              <FileTextIcon
+              <Page
                 className={cn(
                   "h-12 w-12 mb-4",
                   "text-muted-foreground opacity-50"

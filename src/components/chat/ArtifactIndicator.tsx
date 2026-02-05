@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckCircleIcon, ChevronRightIcon } from "lucide-react"
+import { CheckCircle, NavArrowRight } from "iconoir-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 
@@ -37,9 +37,10 @@ export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndic
             onKeyDown={handleKeyDown}
             className={cn(
                 "flex items-center gap-3 w-full text-left",
-                "px-3 py-2.5 rounded-lg",
-                "bg-success/15 border border-success/30",
-                "hover:bg-success/25 hover:border-success/50",
+                "px-3 py-2.5 rounded-md",
+                // Mechanical Grace: .border-ai (dashed Sky)
+                "bg-sky-500/10 border border-dashed border-sky-500/50",
+                "hover:bg-sky-500/20 hover:border-sky-500/70",
                 "transition-all duration-150 cursor-pointer",
                 "group"
             )}
@@ -48,13 +49,13 @@ export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndic
             tabIndex={0}
         >
             {/* Success Icon */}
-            <CheckCircleIcon className="h-5 w-5 text-success flex-shrink-0" />
+            <CheckCircle className="h-5 w-5 text-sky-500 flex-shrink-0" />
 
             {/* Content */}
             <div className="flex-1 min-w-0 flex items-center gap-2">
-                {/* ARTIFACT CREATED Badge */}
-                <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-success/20 text-success border border-success/30">
-                    Artifact Created
+                {/* SYSTEM_OUTPUT Badge - Mechanical Grace */}
+                <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold uppercase tracking-wide bg-sky-500/20 text-sky-400 border border-dashed border-sky-500/30">
+                    SYSTEM_OUTPUT
                 </span>
 
                 {/* Title */}
@@ -64,9 +65,9 @@ export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndic
             </div>
 
             {/* View Button */}
-            <span className="flex items-center gap-0.5 text-sm text-success font-medium flex-shrink-0 group-hover:underline">
-                View
-                <ChevronRightIcon className="h-4 w-4" />
+            <span className="flex items-center gap-0.5 text-xs font-mono text-sky-400 font-medium flex-shrink-0 group-hover:underline uppercase">
+                VIEW
+                <NavArrowRight className="h-4 w-4" />
             </span>
         </button>
     )

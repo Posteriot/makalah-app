@@ -39,17 +39,17 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import {
   Plus,
-  Pencil,
-  History,
-  Power,
-  PowerOff,
-  Trash2,
-  ScrollText,
-  Info,
+  EditPencil,
+  ClockRotateRight,
+  SwitchOn,
+  SwitchOff,
+  Trash,
+  Journal,
+  InfoCircle,
   Download,
-  AlertCircle,
-  Settings2,
-} from "lucide-react"
+  WarningCircle,
+  Settings,
+} from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 import { StyleConstitutionVersionHistoryDialog } from "./StyleConstitutionVersionHistoryDialog"
 
@@ -294,7 +294,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
       <Card className="mb-4">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Settings2 className="h-4 w-4" />
+            <Settings className="h-4 w-4" />
             Status Tool Refrasa
           </CardTitle>
         </CardHeader>
@@ -331,7 +331,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <ScrollText className="h-5 w-5" />
+                <Journal className="h-5 w-5" />
                 Refrasa - Style Constitution
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
@@ -347,7 +347,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
         <CardContent>
           {/* Information Note */}
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-3 mb-4 flex items-start gap-2">
-            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <InfoCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-blue-700 dark:text-blue-300">
               <strong>Catatan:</strong> Constitution hanya untuk style rules (Layer 2).
               Naturalness criteria (Layer 1) sudah hardcoded dan tidak bisa di-override.
@@ -373,7 +373,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
                       {/* Empty State with Seed Default Option */}
                       <div className="flex flex-col items-center justify-center py-12 px-4">
                         <div className="rounded-full bg-orange-100 dark:bg-orange-900/30 p-3 mb-4">
-                          <AlertCircle className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+                          <WarningCircle className="h-8 w-8 text-orange-600 dark:text-orange-400" />
                         </div>
                         <h3 className="text-lg font-semibold mb-2">
                           Belum Ada Style Constitution
@@ -444,7 +444,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
                             onClick={() => setEditingConstitution(constitution)}
                             title="Edit"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <EditPencil className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
@@ -452,7 +452,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
                             onClick={() => setHistoryConstitution(constitution)}
                             title="Riwayat Versi"
                           >
-                            <History className="h-4 w-4" />
+                            <ClockRotateRight className="h-4 w-4" />
                           </Button>
                           {constitution.isActive ? (
                             <Button
@@ -462,7 +462,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
                               title="Nonaktifkan"
                               className="text-orange-600 hover:text-orange-700"
                             >
-                              <PowerOff className="h-4 w-4" />
+                              <SwitchOff className="h-4 w-4" />
                             </Button>
                           ) : (
                             <>
@@ -473,7 +473,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
                                 title="Aktifkan"
                                 className="text-green-600 hover:text-green-700"
                               >
-                                <Power className="h-4 w-4" />
+                                <SwitchOn className="h-4 w-4" />
                               </Button>
                               <Button
                                 size="sm"
@@ -482,7 +482,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
                                 title="Hapus Semua Versi"
                                 className="text-destructive hover:text-destructive"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash className="h-4 w-4" />
                               </Button>
                             </>
                           )}

@@ -12,7 +12,7 @@ type HeroHeadingSvgProps = {
 export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
   return (
     <span
-      className={cn("block w-full lg:max-w-[520px] h-auto", className)}
+      className={cn("block w-full max-w-[520px] h-auto", className)}
       aria-hidden="true"
     >
       {/* Dark mode heading (light text) */}

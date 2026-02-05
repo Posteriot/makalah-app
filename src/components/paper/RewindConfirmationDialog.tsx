@@ -12,7 +12,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
-import { RotateCcw, AlertTriangle } from "lucide-react";
+import { Undo, WarningTriangle } from "iconoir-react";
 
 interface RewindConfirmationDialogProps {
     open: boolean;
@@ -45,7 +45,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
-                        <RotateCcw className="h-5 w-5 text-amber-500" />
+                        <Undo className="h-5 w-5 text-amber-500" />
                         Kembali ke tahap {targetLabel}?
                     </AlertDialogTitle>
                     <AlertDialogDescription asChild>
@@ -54,7 +54,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                                 Lo akan kembali dari tahap <strong>{currentLabel}</strong> ke tahap <strong>{targetLabel}</strong>.
                             </p>
                             <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-md">
-                                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                                <WarningTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                                 <div className="text-xs text-amber-200">
                                     <strong>Perhatian:</strong> Semua artifact dan keputusan dari tahap {targetLabel} sampai {currentLabel} akan ditandai sebagai <em>invalidated</em> dan perlu direvisi ulang.
                                 </div>
@@ -76,7 +76,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                     >
                         {isSubmitting ? (
                             <>
-                                <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+                                <Undo className="h-4 w-4 mr-2 animate-spin" />
                                 Memproses...
                             </>
                         ) : (

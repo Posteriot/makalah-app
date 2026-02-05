@@ -118,7 +118,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
 
         {/* Tagline with dot indicator */}
         <div className="flex items-start gap-3">
-          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-dot-light dark:bg-dot animate-badge-dot shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
+          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-dot-light dark:bg-dot animate-pulse shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
           <p className="font-mono font-bold text-base leading-relaxed text-foreground">
             {plan.tagline}
           </p>

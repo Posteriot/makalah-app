@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Edit3, Send, X } from "lucide-react";
+import { Check, EditPencil, Send, Xmark } from "iconoir-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -90,7 +90,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             onClick={() => setShowRevisionForm(false)}
                             className="h-7 w-7 text-muted-foreground hover:text-foreground flex-shrink-0"
                         >
-                            <X size={16} />
+                            <Xmark className="h-4 w-4" />
                         </Button>
                     )}
                 </div>
@@ -109,7 +109,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                                 "hover:bg-red-500/10 hover:border-red-500"
                             )}
                         >
-                            <Edit3 size={14} />
+                            <EditPencil className="h-3.5 w-3.5" />
                             <span>Revisi</span>
                         </Button>
                         <Button
@@ -122,7 +122,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                                 "text-white border-none"
                             )}
                         >
-                            <Check size={14} />
+                            <Check className="h-3.5 w-3.5" />
                             <span>Approve & Lanjut</span>
                         </Button>
                     </div>
@@ -153,7 +153,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                                     "hover:bg-primary/90"
                                 )}
                             >
-                                <Send size={14} />
+                                <Send className="h-3.5 w-3.5" />
                                 <span>Kirim Feedback</span>
                             </Button>
                         </div>

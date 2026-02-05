@@ -93,10 +93,10 @@ export function TeaserCarousel({ plans }: { plans: TeaserPlan[] }) {
             onClick={() => setActiveSlide(clampIndex(index))}
             className={cn(
               "w-2 h-2 rounded-full border-none cursor-pointer",
-              "transition-all duration-200",
+              "transition-colors duration-200",
               activeSlide === index
-                ? "bg-brand scale-125"
-                : "bg-black/20 dark:bg-white/30 hover:scale-110"
+                ? "bg-brand"
+                : "bg-black/20 dark:bg-white/30"
             )}
             aria-label={`Slide ${index + 1}`}
           />

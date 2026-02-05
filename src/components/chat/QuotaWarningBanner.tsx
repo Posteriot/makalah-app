@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { AlertTriangle, Zap, CreditCard, X } from "lucide-react"
+import { WarningTriangle, Flash, CreditCard, Xmark } from "iconoir-react"
 import { useState, useCallback } from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -104,20 +104,21 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
   // No banner needed
   if (!bannerType) return null
 
+  // Mechanical Grace: Slate background, Signal Theory borders
   const bannerStyles = {
-    warning: "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200",
-    critical: "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-200",
-    depleted: "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200",
+    warning: "bg-slate-900 border-amber-500/50 text-amber-200",
+    critical: "bg-slate-900 border-orange-500/50 text-orange-200",
+    depleted: "bg-slate-900 border-rose-500/50 text-rose-200",
   }
 
   const iconStyles = {
     warning: "text-amber-500",
     critical: "text-orange-500",
-    depleted: "text-red-500",
+    depleted: "text-rose-500",
   }
 
-  const Icon = bannerType === "depleted" ? AlertTriangle :
-               tierDisplay === "bpp" ? CreditCard : Zap
+  const Icon = bannerType === "depleted" ? WarningTriangle :
+               tierDisplay === "bpp" ? CreditCard : Flash
 
   return (
     <div
@@ -129,15 +130,15 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
     >
       <Icon className={cn("h-4 w-4 flex-shrink-0", iconStyles[bannerType])} />
 
-      <p className="flex-1">{message}</p>
+      <p className="flex-1 font-mono text-xs">{message}</p>
 
       <Link
         href={actionHref}
         className={cn(
-          "font-medium underline underline-offset-2 hover:no-underline whitespace-nowrap",
-          bannerType === "depleted" && "text-red-700 dark:text-red-300",
-          bannerType === "critical" && "text-orange-700 dark:text-orange-300",
-          bannerType === "warning" && "text-amber-700 dark:text-amber-300"
+          "font-mono text-xs font-medium underline underline-offset-2 hover:no-underline whitespace-nowrap",
+          bannerType === "depleted" && "text-rose-300",
+          bannerType === "critical" && "text-orange-300",
+          bannerType === "warning" && "text-amber-300"
         )}
       >
         {actionText}
@@ -149,7 +150,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
           className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/5 flex-shrink-0"
           aria-label="Tutup"
         >
-          <X className="h-4 w-4" />
+          <Xmark className="h-4 w-4" />
         </button>
       )}
     </div>

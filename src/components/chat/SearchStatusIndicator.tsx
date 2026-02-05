@@ -1,6 +1,6 @@
 "use client"
 
-import { SearchIcon, CheckCircleIcon, XCircleIcon, LoaderIcon } from "lucide-react"
+import { Search, CheckCircle, XmarkCircle } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 export type SearchStatus = "searching" | "done" | "off" | "error"
@@ -29,9 +29,9 @@ export function SearchStatusIndicator({ status, message }: SearchStatusIndicator
     return (
         <div
             className={cn(
-                // Base styles - full width horizontal bar
+                // Base styles - full width horizontal bar, Mechanical Grace
                 "flex items-center gap-2.5 px-3 py-2 rounded-md",
-                "text-sm transition-all duration-300",
+                "text-[11px] font-mono uppercase tracking-wide transition-all duration-300",
                 "animate-in fade-in slide-in-from-left-2",
                 // Left border accent
                 "border-l-4",
@@ -61,35 +61,35 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
     switch (status) {
         case "searching":
             return {
-                icon: <LoaderIcon className="h-4 w-4 animate-spin" />,
-                text: customMessage || "Running literature search...",
-                containerClass: "bg-info/15 border-l-info",
-                iconClass: "text-info",
-                textClass: "text-info",
+                icon: <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />,
+                text: customMessage || "SEARCHING...",
+                containerClass: "bg-sky-500/10 border-l-sky-500",
+                iconClass: "text-sky-500",
+                textClass: "text-sky-500",
             }
 
         case "done":
             return {
-                icon: <CheckCircleIcon className="h-4 w-4" />,
-                text: customMessage || "Literature search completed",
-                containerClass: "bg-success/15 border-l-success",
-                iconClass: "text-success",
-                textClass: "text-success",
+                icon: <CheckCircle className="h-4 w-4" />,
+                text: customMessage || "SEARCH_COMPLETE",
+                containerClass: "bg-emerald-500/10 border-l-emerald-500",
+                iconClass: "text-emerald-500",
+                textClass: "text-emerald-500",
             }
 
         case "error":
             return {
-                icon: <XCircleIcon className="h-4 w-4" />,
-                text: customMessage || "Search failed - API timeout",
-                containerClass: "bg-destructive/15 border-l-destructive",
-                iconClass: "text-destructive",
-                textClass: "text-destructive",
+                icon: <XmarkCircle className="h-4 w-4" />,
+                text: customMessage || "SEARCH_ERROR",
+                containerClass: "bg-rose-500/10 border-l-rose-500",
+                iconClass: "text-rose-500",
+                textClass: "text-rose-500",
             }
 
         default:
             return {
-                icon: <SearchIcon className="h-4 w-4" />,
-                text: "Search",
+                icon: <Search className="h-4 w-4" />,
+                text: "SEARCH",
                 containerClass: "bg-muted border-l-muted-foreground",
                 iconClass: "text-muted-foreground",
                 textClass: "text-muted-foreground",

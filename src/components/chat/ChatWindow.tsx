@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { MenuIcon, AlertCircleIcon, RotateCcwIcon, SearchXIcon, MessageSquarePlusIcon, SparklesIcon, FileTextIcon, SearchIcon } from "lucide-react"
+import { Menu, WarningCircle, Refresh, ChatPlusIn, Sparks, Page, Search } from "iconoir-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -399,9 +399,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile Header */}
-        <div className="md:hidden p-4 border-b flex items-center justify-between">
+        <div className="md:hidden p-4 border-b border-slate-800 flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-            <MenuIcon className="h-5 w-5" />
+            <Menu className="h-5 w-5" />
           </Button>
           <span className="font-semibold">Makalah Chat</span>
           <div className="w-9" />
@@ -410,9 +410,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         {/* Empty State - Informational */}
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="max-w-md text-center space-y-6">
-            {/* Icon */}
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <SparklesIcon className="w-8 h-8 text-primary" />
+            {/* Icon - Mechanical Grace: Sky system color */}
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center">
+              <Sparks className="w-8 h-8 text-sky-400" />
             </div>
 
             {/* Title & Description */}
@@ -424,32 +424,32 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               </p>
             </div>
 
-            {/* Features */}
+            {/* Features - Mechanical Grace styling */}
             <div className="grid grid-cols-1 gap-3 text-left text-sm">
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                <FileTextIcon className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+                <Page className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Tulis Makalah</p>
-                  <p className="text-muted-foreground text-xs">Panduan step-by-step menulis paper akademik</p>
+                  <p className="text-muted-foreground text-xs font-mono">Panduan step-by-step menulis paper akademik</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                <SearchIcon className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+                <Search className="w-5 h-5 text-sky-400 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Riset & Referensi</p>
-                  <p className="text-muted-foreground text-xs">Cari jurnal dan sumber ilmiah terpercaya</p>
+                  <p className="text-muted-foreground text-xs font-mono">Cari jurnal dan sumber ilmiah terpercaya</p>
                 </div>
               </div>
             </div>
 
-            {/* CTA Button */}
+            {/* CTA Button - Mechanical Grace: Amber action */}
             <Button
               onClick={handleStartNewChat}
               disabled={!userId || isCreatingChat}
-              className="w-full"
+              className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-mono"
               size="lg"
             >
-              <MessageSquarePlusIcon className="w-5 h-5 mr-2" />
+              <ChatPlusIn className="w-5 h-5 mr-2" />
               {isCreatingChat ? "Membuat..." : "Mulai Percakapan Baru"}
             </Button>
           </div>
@@ -462,18 +462,19 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (conversationNotFound) {
     return (
       <div className="flex-1 flex flex-col h-full">
-        <div className="md:hidden p-4 border-b flex items-center justify-between">
+        <div className="md:hidden p-4 border-b border-slate-800 flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-            <MenuIcon className="h-5 w-5" />
+            <Menu className="h-5 w-5" />
           </Button>
           <span className="font-semibold">Makalah Chat</span>
           <div className="w-9" />
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-muted-foreground">
-            <SearchXIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="mb-2">Percakapan tidak ditemukan</p>
-            <p className="text-sm opacity-75">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
+            {/* Mechanical Grace: Rose error color */}
+            <WarningCircle className="h-12 w-12 mx-auto mb-4 text-rose-500/50" />
+            <p className="mb-2 font-mono">Percakapan tidak ditemukan</p>
+            <p className="text-sm opacity-75 font-mono">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
           </div>
         </div>
       </div>
@@ -483,9 +484,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
-      <div className="md:hidden p-4 border-b flex items-center gap-2">
+      <div className="md:hidden p-4 border-b border-slate-800 flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-          <MenuIcon className="h-5 w-5" />
+          <Menu className="h-5 w-5" />
         </Button>
         <span className="font-semibold">Makalah Chat</span>
       </div>
@@ -578,15 +579,15 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             />
           )}
 
-          {/* Error State Overlay - mx-6 matches message padding */}
+          {/* Error State Overlay - Mechanical Grace: Rose error */}
           {error && (
-            <div className="absolute bottom-4 left-6 right-6 bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-lg flex items-center justify-between text-sm shadow-sm backdrop-blur-sm">
+            <div className="absolute bottom-4 left-6 right-6 bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-lg flex items-center justify-between text-sm shadow-sm backdrop-blur-sm">
               <div className="flex items-center gap-2">
-                <AlertCircleIcon className="h-4 w-4" />
-                <span>Gagal mengirim pesan.</span>
+                <WarningCircle className="h-4 w-4" />
+                <span className="font-mono">Gagal mengirim pesan.</span>
               </div>
-              <Button variant="outline" size="sm" onClick={() => handleRegenerate()} className="bg-background hover:bg-accent h-7 text-xs border-destructive/20 hover:border-destructive/40">
-                <RotateCcwIcon className="h-3 w-3 mr-1" />
+              <Button variant="outline" size="sm" onClick={() => handleRegenerate()} className="bg-background hover:bg-accent h-7 text-xs font-mono border-rose-500/30 hover:border-rose-500/50">
+                <Refresh className="h-3 w-3 mr-1" />
                 Coba Lagi
               </Button>
             </div>

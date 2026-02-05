@@ -11,7 +11,7 @@ import {
   type PaperStageId,
 } from "../../../../convex/paperSessions/constants"
 import { cn } from "@/lib/utils"
-import { GitBranchIcon } from "lucide-react"
+import { GitBranch } from "iconoir-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { RewindConfirmationDialog } from "@/components/paper/RewindConfirmationDialog"
 import {
@@ -119,18 +119,18 @@ function MilestoneItem({
         ? "In Progress"
         : undefined
 
-  // Milestone dot element
+  // Milestone dot element - Mechanical Grace: Amber for completed
   const dotElement = (
     <div
       className={cn(
         "w-3 h-3 rounded-full border-2 shrink-0 z-10 transition-all",
-        state === "completed" && "bg-success border-success",
-        // Current state: solid fill + ring outline (matches mockup)
-        state === "current" && "bg-primary border-primary ring-2 ring-primary/30 ring-offset-1 ring-offset-sidebar",
+        state === "completed" && "bg-amber-500 border-amber-500",
+        // Current state: solid fill + ring outline
+        state === "current" && "bg-sky-500 border-sky-500 ring-2 ring-sky-500/30 ring-offset-1 ring-offset-sidebar",
         state === "pending" && "bg-transparent border-muted-foreground/50",
         // Rewind styles
         canRewind &&
-          "cursor-pointer hover:scale-125 hover:ring-2 hover:ring-success/50"
+          "cursor-pointer hover:scale-125 hover:ring-2 hover:ring-amber-500/50"
       )}
       onClick={canRewind ? onRewindClick : undefined}
       role={canRewind ? "button" : undefined}
@@ -166,32 +166,32 @@ function MilestoneItem({
         {showTooltip ? (
           <Tooltip>
             <TooltipTrigger asChild>{dotElement}</TooltipTrigger>
-            <TooltipContent side="right" className="max-w-[200px]">
+            <TooltipContent side="right" className="max-w-[200px] font-mono text-xs">
               {rewindReason}
             </TooltipContent>
           </Tooltip>
         ) : (
           dotElement
         )}
-        {/* Connecting Line */}
+        {/* Connecting Line - Mechanical Grace: .border-hairline */}
         {!isLast && (
           <div
             className={cn(
               "w-0.5 flex-1 min-h-[24px]",
-              state === "completed" ? "bg-success" : "bg-muted-foreground/30"
+              state === "completed" ? "bg-amber-500" : "bg-slate-700"
             )}
           />
         )}
       </div>
 
-      {/* Milestone Content */}
+      {/* Milestone Content - Mechanical Grace: .text-interface */}
       <div className={cn("pb-4", isLast && "pb-0")}>
         <div
           className={cn(
-            "text-sm font-medium transition-colors",
-            state === "current" && "text-primary",
+            "text-sm font-mono font-medium transition-colors",
+            state === "current" && "text-sky-400",
             state === "pending" && "text-muted-foreground",
-            canRewind && "group-hover:text-success"
+            canRewind && "group-hover:text-amber-400"
           )}
         >
           {index + 1}. {label}
@@ -199,10 +199,10 @@ function MilestoneItem({
         {statusText && (
           <div
             className={cn(
-              "text-xs transition-colors",
-              // Mockup: Completed always green, In Progress always teal
-              state === "completed" && "text-success",
-              state === "current" && "text-primary"
+              "text-xs font-mono transition-colors",
+              // Mechanical Grace: Amber completed, Sky in progress
+              state === "completed" && "text-amber-500",
+              state === "current" && "text-sky-400"
             )}
           >
             {statusText}
@@ -321,9 +321,9 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
   if (!isPaperMode || !session) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
-        <GitBranchIcon className="h-8 w-8 mb-2" />
-        <span className="text-sm font-medium mb-1">Tidak ada paper aktif</span>
-        <span className="text-xs">
+        <GitBranch className="h-8 w-8 mb-2" />
+        <span className="text-sm font-mono font-medium mb-1">Tidak ada paper aktif</span>
+        <span className="text-xs font-mono">
           Percakapan ini bukan sesi penulisan paper
         </span>
       </div>
@@ -366,22 +366,22 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
   return (
     <>
       <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="p-4 border-b">
+        {/* Header - Mechanical Grace: .border-hairline */}
+        <div className="p-4 border-b border-slate-800">
           <div className="text-sm font-semibold mb-1">Progress</div>
-          <div className="text-xs text-muted-foreground truncate mb-3">
+          <div className="text-xs font-mono text-muted-foreground truncate mb-3">
             {paperTitle}
           </div>
 
-          {/* Progress Bar */}
+          {/* Progress Bar - Mechanical Grace: .rounded-full, Amber fill */}
           <div className="space-y-1">
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-success rounded-full transition-all duration-300"
+                className="h-full bg-amber-500 rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <div className="text-xs text-muted-foreground text-right">
+            <div className="text-xs font-mono text-muted-foreground text-right">
               {progressPercent}% &middot; Stage {stageNumber}/{totalStages}
             </div>
           </div>

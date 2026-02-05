@@ -14,8 +14,8 @@ import {
  *
  * - Single item open at a time (mutual exclusive)
  * - All collapsed by default
- * - Blinking dot matching desktop design
- * - Design tokens: bg-dot, font-sans, font-mono
+ * - Blinking dot matching desktop design (Amber)
+ * - Design tokens: Slate surface, Hairline border, text-narrative, text-interface
  */
 
 const benefits = [
@@ -55,25 +55,25 @@ export function BenefitsAccordion() {
         collapsible
         value={openItem}
         onValueChange={(value) => setOpenItem(value ?? "")}
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-comfort"
       >
         {benefits.map((benefit) => (
           <AccordionItem
             key={benefit.id}
             value={benefit.id}
-            className="group relative overflow-hidden rounded-lg !border border-bento-border-light dark:border-bento-border bg-transparent hover:bg-bento-light-hover dark:hover:bg-bento-hover hover:border-bento-border-light-hover dark:hover:border-bento-border-hover hover:-translate-y-1 transition-all duration-300"
+            className="group relative overflow-hidden rounded-md border-hairline bg-transparent transition-colors duration-200 hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-900)]"
           >
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3">
                 {/* Blinking dot - matches desktop */}
-                <span className="w-2.5 h-2.5 min-w-2.5 rounded-full bg-dot-light dark:bg-dot animate-badge-dot shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
-                <span className="font-sans font-medium text-base text-foreground">
+                <span className="h-2.5 w-2.5 min-w-2.5 rounded-full bg-[color:var(--amber-500)] animate-pulse shadow-[0_0_8px_var(--amber-500)]" />
+                <span className="text-narrative font-medium text-base text-foreground">
                   {benefit.title}
                 </span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4">
-              <p className="font-mono text-sm leading-relaxed text-muted-foreground pl-5">
+              <p className="text-interface text-xs leading-relaxed text-muted-foreground pl-5">
                 {benefit.description}
               </p>
             </AccordionContent>

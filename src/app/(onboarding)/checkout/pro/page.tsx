@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import Link from "next/link"
-import { Crown, Construction } from "lucide-react"
+import { Crown, Tools } from "iconoir-react"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 
 const PRO_FEATURES = [
@@ -53,7 +53,7 @@ export default function CheckoutPROPage() {
 
       {/* Coming Soon Card */}
       <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl p-6 text-center">
-        <Construction className="h-8 w-8 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
+        <Tools className="h-8 w-8 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
         <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-2">
           SEGERA HADIR
         </h3>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDownIcon, CheckCircleIcon, ExternalLinkIcon } from "lucide-react"
+import { NavArrowDown, CheckCircle, OpenNewWindow } from "iconoir-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -43,16 +43,17 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
 
     return (
         <div className="space-y-2">
-            {/* "Found X sources" Header - GREEN mockup style */}
+            {/* "Found X sources" Header - Mechanical Grace Emerald success */}
             <div
                 className={cn(
-                    "flex items-center gap-2.5 px-3 py-2 rounded-md",
-                    "bg-success/15 border-l-4 border-l-success",
+                    "flex items-center gap-2.5 px-3 py-2",
+                    // Mechanical Grace: .rounded-badge (6px) + Emerald border
+                    "rounded-md bg-emerald-500/10 border-l-4 border-l-emerald-500",
                     "text-sm"
                 )}
             >
-                <CheckCircleIcon className="h-4 w-4 text-success flex-shrink-0" />
-                <span className="text-success font-medium">
+                <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                <span className="text-emerald-500 font-medium font-mono uppercase text-xs tracking-wide">
                     Found {sources.length} {sources.length === 1 ? "source" : "sources"}
                 </span>
             </div>
@@ -61,7 +62,8 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
             <Collapsible
                 open={isOpen}
                 onOpenChange={setIsOpen}
-                className="rounded-lg border border-border bg-muted/30"
+                // Mechanical Grace: .border-hairline + .rounded-badge
+                className="rounded-md border border-slate-800 bg-muted/30"
             >
                 {/* Collapsed Header */}
                 <CollapsibleTrigger asChild>
@@ -69,14 +71,14 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                         className={cn(
                             "flex w-full items-center justify-between gap-3",
                             "px-3 py-2 text-sm",
-                            "hover:bg-accent/50 transition-colors rounded-lg",
-                            isOpen && "border-b border-border rounded-b-none"
+                            "hover:bg-accent/50 transition-colors rounded-md",
+                            isOpen && "border-b border-slate-800 rounded-b-none"
                         )}
                     >
-                        <span className="font-medium text-foreground">
+                        <span className="font-mono font-medium text-foreground">
                             {sources.length} {sources.length === 1 ? "source" : "sources"}
                         </span>
-                        <ChevronDownIcon
+                        <NavArrowDown
                             className={cn(
                                 "h-4 w-4 text-muted-foreground transition-transform duration-200",
                                 isOpen && "rotate-180"
@@ -87,7 +89,8 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
 
                 {/* Expanded Content */}
                 <CollapsibleContent className="px-3 py-2">
-                    <div className="flex flex-col divide-y divide-border">
+                    {/* Mechanical Grace: .border-hairline dividers */}
+                    <div className="flex flex-col divide-y divide-slate-800">
                         {displayedSources.map(({ source, idx }) => {
                             const parts = getWebCitationDisplayParts(source)
                             return (
@@ -102,7 +105,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowAll(!showAll)}
-                            className="h-7 w-full mt-2 text-xs text-muted-foreground hover:text-foreground"
+                            className="h-7 w-full mt-2 text-xs font-mono text-muted-foreground hover:text-foreground"
                         >
                             {showAll ? "Show less" : `Show ${remainingCount} more`}
                         </Button>
@@ -128,13 +131,14 @@ function SourceItem({ parts }: { parts: ReturnType<typeof getWebCitationDisplayP
             )}
         >
             {/* Title */}
-            <span className="text-sm font-medium text-foreground group-hover:text-primary flex items-center gap-1">
+            <span className="text-sm font-medium text-foreground group-hover:text-sky-400 flex items-center gap-1">
                 {parts.title}
-                <ExternalLinkIcon className="h-3 w-3 opacity-0 group-hover:opacity-70 transition-opacity" />
+                {/* Mechanical Grace: .icon-micro (12px) */}
+                <OpenNewWindow className="h-3 w-3 opacity-0 group-hover:opacity-70 transition-opacity" />
             </span>
 
-            {/* URL */}
-            <span className="text-xs text-muted-foreground truncate">
+            {/* URL - Mechanical Grace: Mono typography */}
+            <span className="text-xs font-mono text-muted-foreground truncate">
                 {parts.url}
             </span>
         </a>

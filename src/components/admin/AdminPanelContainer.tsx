@@ -10,16 +10,25 @@ import { SystemHealthPanel } from "./SystemHealthPanel"
 import { AIProviderManager } from "./AIProviderManager"
 import { StyleConstitutionManager } from "./StyleConstitutionManager"
 import { WaitlistManager } from "./WaitlistManager"
-import { Monitor, Menu, X, LayoutDashboard, CheckCircle2, UserCog, UserPlus } from "lucide-react"
 import type { Id } from "@convex/_generated/dataModel"
-import type { LucideIcon } from "lucide-react"
 import {
-  Users,
-  FileText,
+  Computer,
+  Menu,
+  Xmark,
+  Dashboard,
+  CheckCircle,
+  Settings,
+  UserPlus,
+  Group,
+  Page,
   Cpu,
-  PencilLine,
-  BarChart3,
-} from "lucide-react"
+  EditPencil,
+  StatsReport,
+} from "iconoir-react"
+import type { ComponentType, SVGProps } from "react"
+
+// Iconoir icon type for dynamic rendering
+type IconoirIcon = ComponentType<SVGProps<SVGSVGElement>>
 import { cn } from "@/lib/utils"
 
 interface AdminPanelContainerProps {
@@ -30,36 +39,36 @@ interface AdminPanelContainerProps {
 interface SidebarItem {
   id: string
   label: string
-  icon: LucideIcon
+  icon: IconoirIcon
   headerTitle: string
   headerDescription: string
-  headerIcon: LucideIcon
+  headerIcon: IconoirIcon
 }
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
   {
     id: "overview",
     label: "Overview",
-    icon: LayoutDashboard,
+    icon: Dashboard,
     headerTitle: "Admin Panel",
     headerDescription: "Kelola pengguna dan lihat statistik aplikasi",
-    headerIcon: Monitor,
+    headerIcon: Computer,
   },
   {
     id: "users",
     label: "User Management",
-    icon: Users,
+    icon: Group,
     headerTitle: "User Management",
     headerDescription: "Kelola pengguna dan hak akses",
-    headerIcon: Users,
+    headerIcon: Group,
   },
   {
     id: "prompts",
     label: "System Prompts",
-    icon: FileText,
+    icon: Page,
     headerTitle: "System Prompts",
     headerDescription: "Kelola system prompt untuk AI",
-    headerIcon: FileText,
+    headerIcon: Page,
   },
   {
     id: "providers",
@@ -72,10 +81,10 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   {
     id: "refrasa",
     label: "Refrasa",
-    icon: PencilLine,
+    icon: EditPencil,
     headerTitle: "Refrasa",
     headerDescription: "Kelola style constitution untuk tool Refrasa",
-    headerIcon: PencilLine,
+    headerIcon: EditPencil,
   },
   {
     id: "waitlist",
@@ -88,10 +97,10 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   {
     id: "stats",
     label: "Statistik",
-    icon: BarChart3,
+    icon: StatsReport,
     headerTitle: "Statistik",
     headerDescription: "Lihat statistik penggunaan aplikasi",
-    headerIcon: BarChart3,
+    headerIcon: StatsReport,
   },
 ]
 
@@ -118,29 +127,29 @@ function AdminSidebar({
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Mechanical Grace: Slate bg, hairline border */}
       <aside
         className={cn(
           "fixed md:relative top-0 left-0 h-full md:h-auto z-50 md:z-0",
-          "w-[200px] bg-sidebar border-r border-sidebar-border",
+          "w-[200px] bg-slate-900 border-r border-slate-800",
           "transform transition-transform duration-200 ease-in-out",
           "md:transform-none",
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         {/* Mobile Close Button */}
-        <div className="flex items-center justify-between p-4 border-b border-border md:hidden">
-          <span className="font-semibold text-sm">Menu</span>
+        <div className="flex items-center justify-between p-3 border-b border-slate-800 md:hidden">
+          <span className="font-mono text-xs font-medium uppercase tracking-wide text-slate-400">Menu</span>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-accent rounded"
+            className="p-1.5 hover:bg-slate-800 rounded-lg transition-colors"
           >
-            <X className="h-5 w-5" />
+            <Xmark className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="p-2 pt-6 space-y-1">
+        {/* Navigation - Dense padding */}
+        <nav className="p-1.5 pt-4 space-y-0.5">
           {SIDEBAR_ITEMS.map((item) => {
             const isActive = activeTab === item.id
             const Icon = item.icon
@@ -153,19 +162,19 @@ function AdminSidebar({
                   onClose()
                 }}
                 className={cn(
-                  "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left",
-                  "hover:bg-accent",
+                  "relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors text-left",
+                  "hover:bg-slate-800",
                   isActive
-                    ? "bg-accent text-foreground"
-                    : "text-muted-foreground"
+                    ? "bg-slate-800 text-amber-500"
+                    : "text-slate-400"
                 )}
               >
-                {/* Active indicator */}
+                {/* Active indicator - Amber */}
                 {isActive && (
-                  <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-primary rounded-r" />
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-amber-500 rounded-r" />
                 )}
                 <Icon className="h-4 w-4 shrink-0" />
-                <span>{item.label}</span>
+                <span className="font-mono">{item.label}</span>
               </button>
             )
           })}
@@ -205,84 +214,84 @@ function AdminOverviewContent({
   const proCount = users.filter((u) => u.subscriptionStatus === "pro").length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Top Cards: System Status + User Summary - 2 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* System Status Card */}
-        <div className="bg-card border border-border rounded-lg p-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* System Status Card - Mechanical Grace: Slate bg, hairline border */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
                 Status Sistem
               </p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs font-bold px-2 py-0.5 rounded text-white bg-emerald-600">
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                   NORMAL
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-xs text-slate-400 mt-2 font-mono">
                 Semua sistem berjalan normal
               </p>
             </div>
-            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+            <CheckCircle className="h-5 w-5 text-emerald-500" />
           </div>
           <button
             onClick={() => onNavigate("prompts")}
-            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-mono font-medium text-amber-500 hover:text-amber-400 transition-colors"
           >
-            <FileText className="h-4 w-4" />
+            <Page className="h-3.5 w-3.5" />
             Lihat System Prompts
           </button>
         </div>
 
         {/* User Summary Card */}
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
                 Total Pengguna
               </p>
-              <p className="text-2xl font-semibold mt-1">{totalUsers}</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-2xl font-mono font-semibold mt-1 text-slate-100">{totalUsers}</p>
+              <p className="text-xs text-slate-400 mt-1 font-mono">
                 Pengguna terdaftar di platform
               </p>
             </div>
-            <Users className="h-5 w-5 text-muted-foreground" />
+            <Group className="h-5 w-5 text-slate-500" />
           </div>
           <button
             onClick={() => onNavigate("users")}
-            className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-lg hover:bg-amber-400 transition-colors"
           >
-            <UserCog className="h-4 w-4" />
+            <Settings className="h-3.5 w-3.5" />
             Kelola Users
           </button>
         </div>
       </div>
 
-      {/* User by Role Card */}
-      <div className="bg-card border border-border rounded-lg p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-medium">Pengguna Berdasarkan Role</h2>
-          <span className="text-xs text-muted-foreground">Total: {totalUsers}</span>
+      {/* User by Role Card - Mechanical Grace */}
+      <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-slate-200">Pengguna Berdasarkan Role</h2>
+          <span className="text-[10px] font-mono text-slate-500">Total: {totalUsers}</span>
         </div>
 
         {/* Progress Bar Visual */}
-        <div className="relative h-3 bg-muted rounded-full overflow-hidden mb-4">
+        <div className="relative h-2 bg-slate-800 rounded-full overflow-hidden mb-3">
           {totalUsers > 0 && (
             <>
               <div
-                className="absolute left-0 top-0 h-full bg-red-500"
+                className="absolute left-0 top-0 h-full bg-rose-500"
                 style={{ width: `${(superadminCount / totalUsers) * 100}%` }}
               />
               <div
-                className="absolute top-0 h-full bg-zinc-600"
+                className="absolute top-0 h-full bg-amber-500"
                 style={{
                   left: `${(superadminCount / totalUsers) * 100}%`,
                   width: `${(adminCount / totalUsers) * 100}%`,
                 }}
               />
               <div
-                className="absolute top-0 h-full bg-zinc-400"
+                className="absolute top-0 h-full bg-slate-500"
                 style={{
                   left: `${((superadminCount + adminCount) / totalUsers) * 100}%`,
                   width: `${(userCount / totalUsers) * 100}%`,
@@ -292,95 +301,95 @@ function AdminOverviewContent({
           )}
         </div>
 
-        {/* Legend */}
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        {/* Legend - Mono typography */}
+        <div className="grid grid-cols-3 gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
-            <div>
-              <span className="font-medium">{superadminCount}</span>
-              <span className="text-muted-foreground ml-1">Superadmin</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+            <div className="font-mono">
+              <span className="font-semibold text-slate-200">{superadminCount}</span>
+              <span className="text-slate-500 ml-1">Super</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-zinc-600" />
-            <div>
-              <span className="font-medium">{adminCount}</span>
-              <span className="text-muted-foreground ml-1">Admin</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            <div className="font-mono">
+              <span className="font-semibold text-slate-200">{adminCount}</span>
+              <span className="text-slate-500 ml-1">Admin</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-zinc-400" />
-            <div>
-              <span className="font-medium">{userCount}</span>
-              <span className="text-muted-foreground ml-1">User</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+            <div className="font-mono">
+              <span className="font-semibold text-slate-200">{userCount}</span>
+              <span className="text-slate-500 ml-1">User</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* User by Tier Card */}
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
-          <h2 className="font-medium">Pengguna Berdasarkan Tier</h2>
+      {/* User by Tier Card - Mechanical Grace: hairline borders, dense */}
+      <div className="bg-slate-900/50 border border-slate-800 rounded-lg overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-slate-800">
+          <h2 className="text-sm font-medium text-slate-200">Pengguna Berdasarkan Tier</h2>
         </div>
 
-        <div className="divide-y divide-border">
-          <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/30">
+        <div className="divide-y divide-slate-800">
+          <div className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-800/50 transition-colors">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold px-2 py-0.5 rounded text-white bg-emerald-600">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                 GRATIS
               </span>
-              <span className="text-sm">Tier dasar dengan limit</span>
+              <span className="text-xs font-mono text-slate-400">Tier dasar dengan limit</span>
             </div>
-            <span className="text-sm font-semibold">{gratisCount}</span>
+            <span className="text-sm font-mono font-semibold text-slate-200">{gratisCount}</span>
           </div>
-          <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/30">
+          <div className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-800/50 transition-colors">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold px-2 py-0.5 rounded text-white bg-blue-600">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30">
                 BPP
               </span>
-              <span className="text-sm">Bayar Per Paper</span>
+              <span className="text-xs font-mono text-slate-400">Bayar Per Paper</span>
             </div>
-            <span className="text-sm font-semibold">{bppCount}</span>
+            <span className="text-sm font-mono font-semibold text-slate-200">{bppCount}</span>
           </div>
-          <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/30">
+          <div className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-800/50 transition-colors">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold px-2 py-0.5 rounded text-white bg-amber-600">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
                 PRO
               </span>
-              <span className="text-sm">Langganan premium</span>
+              <span className="text-xs font-mono text-slate-400">Langganan premium</span>
             </div>
-            <span className="text-sm font-semibold">{proCount}</span>
+            <span className="text-sm font-mono font-semibold text-slate-200">{proCount}</span>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions / Admin Guide Card */}
-      <div className="bg-muted/30 border border-border rounded-lg p-4">
-        <h3 className="font-medium mb-3">Panduan Admin Panel</h3>
-        <ul className="text-sm text-muted-foreground space-y-2">
+      {/* Quick Actions / Admin Guide Card - Mechanical Grace */}
+      <div className="bg-slate-800/30 border border-slate-800 rounded-lg p-4">
+        <h3 className="text-sm font-medium text-slate-200 mb-3">Panduan Admin Panel</h3>
+        <ul className="text-xs font-mono text-slate-400 space-y-2">
           <li className="flex items-start gap-2">
-            <span className="text-primary font-medium">1.</span>
+            <span className="text-amber-500 font-semibold">1.</span>
             <span>
-              <strong>User Management:</strong> Promote/demote user ke admin, lihat status verifikasi
+              <strong className="text-slate-300">User Management:</strong> Promote/demote user ke admin, lihat status verifikasi
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-primary font-medium">2.</span>
+            <span className="text-amber-500 font-semibold">2.</span>
             <span>
-              <strong>System Prompts:</strong> Kelola prompt AI global untuk semua user
+              <strong className="text-slate-300">System Prompts:</strong> Kelola prompt AI global untuk semua user
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-primary font-medium">3.</span>
+            <span className="text-amber-500 font-semibold">3.</span>
             <span>
-              <strong>AI Providers:</strong> Konfigurasi model dan fallback provider
+              <strong className="text-slate-300">AI Providers:</strong> Konfigurasi model dan fallback provider
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-primary font-medium">4.</span>
+            <span className="text-amber-500 font-semibold">4.</span>
             <span>
-              <strong>Refrasa:</strong> Kelola style constitution untuk tool parafrase
+              <strong className="text-slate-300">Refrasa:</strong> Kelola style constitution untuk tool parafrase
             </span>
           </li>
         </ul>
@@ -414,15 +423,15 @@ export function AdminPanelContainer({
 
   return (
     <div className="admin-container max-w-[1400px] mx-auto">
-      {/* Mobile Header */}
-      <div className="md:hidden flex items-center gap-3 p-4 border-b border-border">
+      {/* Mobile Header - Mechanical Grace */}
+      <div className="md:hidden flex items-center gap-3 p-3 border-b border-slate-800 bg-slate-900">
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="p-2 hover:bg-accent rounded-md"
+          className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-4 w-4" />
         </button>
-        <span className="font-semibold">Admin Panel</span>
+        <span className="font-mono text-xs font-medium uppercase tracking-wide text-slate-300">Admin Panel</span>
       </div>
 
       {/* Main Grid: Sidebar + Content */}
@@ -435,14 +444,14 @@ export function AdminPanelContainer({
         />
 
         {/* Content */}
-        <div className="flex-1 p-4 md:p-6 overflow-auto">
-          {/* Dynamic Page Header */}
-          <div className="mb-6">
-            <h1 className="text-xl font-semibold flex items-center gap-2">
-              <HeaderIcon className="h-5 w-5 text-primary" />
+        <div className="flex-1 p-4 md:p-5 overflow-auto">
+          {/* Dynamic Page Header - Mechanical Grace */}
+          <div className="mb-5">
+            <h1 className="text-base font-semibold flex items-center gap-2 text-slate-100">
+              <HeaderIcon className="h-4 w-4 text-amber-500" />
               {currentTab.headerTitle}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs font-mono text-slate-500 mt-1">
               {currentTab.headerDescription}
             </p>
           </div>
@@ -480,16 +489,16 @@ export function AdminPanelContainer({
           )}
 
           {activeTab === "stats" && (
-            <div className="card card--placeholder">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-lg">
               <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-8">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <BarChart3 className="w-8 h-8 text-muted-foreground" />
+                <div className="w-14 h-14 bg-slate-800 rounded-lg flex items-center justify-center mb-4">
+                  <StatsReport className="w-7 h-7 text-slate-500" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Fitur Statistik</h3>
-                <p className="text-sm text-muted-foreground max-w-md mb-4">
+                <h3 className="text-sm font-semibold text-slate-200 mb-2">Fitur Statistik</h3>
+                <p className="text-xs font-mono text-slate-500 max-w-md mb-4">
                   Fitur statistik akan segera hadir. Anda akan dapat melihat analitik penggunaan aplikasi, statistik pengguna, dan metrik performa.
                 </p>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-mono font-medium bg-sky-500/15 text-sky-400 border border-sky-500/30">
                   Coming Soon
                 </span>
               </div>

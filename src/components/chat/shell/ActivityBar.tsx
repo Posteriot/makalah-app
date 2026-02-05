@@ -3,12 +3,12 @@
 import { useCallback } from "react"
 import { cn } from "@/lib/utils"
 import {
-  MessageSquareIcon,
-  FileTextIcon,
-  GitBranchIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
-} from "lucide-react"
+  ChatBubble,
+  Page,
+  GitBranch,
+  FastArrowLeft,
+  FastArrowRight,
+} from "iconoir-react"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -58,7 +58,7 @@ function ActivityBarItem({
             "w-10 h-10 rounded-lg transition-all duration-150",
             "text-muted-foreground hover:text-foreground hover:bg-accent",
             "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-            isActive && "text-primary bg-primary/15"
+            isActive && "text-foreground border-l-2 border-amber-500 bg-amber-500/10"
           )}
           onClick={onClick}
           aria-label={`${label} panel`}
@@ -69,7 +69,7 @@ function ActivityBarItem({
           {icon}
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="right" sideOffset={8} id={`activity-bar-item-${panel}-desc`}>
+      <TooltipContent side="right" sideOffset={8} id={`activity-bar-item-${panel}-desc`} className="font-mono text-xs">
         {label}
       </TooltipContent>
     </Tooltip>
@@ -166,17 +166,17 @@ export function ActivityBar({
   }> = [
     {
       panel: "chat-history",
-      icon: <MessageSquareIcon className="h-5 w-5" aria-hidden="true" />,
+      icon: <ChatBubble className="h-5 w-5" aria-hidden="true" />,
       label: "Chat History",
     },
     {
       panel: "paper",
-      icon: <FileTextIcon className="h-5 w-5" aria-hidden="true" />,
+      icon: <Page className="h-5 w-5" aria-hidden="true" />,
       label: "Paper Sessions",
     },
     {
       panel: "progress",
-      icon: <GitBranchIcon className="h-5 w-5" aria-hidden="true" />,
+      icon: <GitBranch className="h-5 w-5" aria-hidden="true" />,
       label: "Progress Timeline",
     },
   ]
@@ -213,13 +213,13 @@ export function ActivityBar({
               aria-controls="chat-sidebar"
             >
               {isSidebarCollapsed ? (
-                <ChevronsRightIcon className="h-5 w-5" aria-hidden="true" />
+                <FastArrowRight className="h-5 w-5" aria-hidden="true" />
               ) : (
-                <ChevronsLeftIcon className="h-5 w-5" aria-hidden="true" />
+                <FastArrowLeft className="h-5 w-5" aria-hidden="true" />
               )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
+          <TooltipContent side="right" sideOffset={8} className="font-mono text-xs">
             {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           </TooltipContent>
         </Tooltip>

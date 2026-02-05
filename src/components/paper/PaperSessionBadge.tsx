@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FileText } from "lucide-react";
+import { Page } from "iconoir-react";
 import { STAGE_ORDER } from "../../../convex/paperSessions/constants";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,7 @@ export const PaperSessionBadge: React.FC<PaperSessionBadgeProps> = ({
             )}
             title={`Paper mode: Tahap ${stageNumber} dari ${totalStages}`}
         >
-            <FileText className="h-2.5 w-2.5" />
+            <Page className="h-2.5 w-2.5" />
             {stageNumber}/{totalStages}
         </span>
     );

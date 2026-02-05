@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { History, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react"
+import { Clock, ArrowUpRight, ArrowDownRight, RefreshDouble } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 function formatDate(timestamp: number): string {
@@ -31,7 +31,7 @@ export default function TransactionHistoryPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" />
+            <Clock className="h-5 w-5 text-primary" />
             Riwayat Transaksi
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -40,7 +40,7 @@ export default function TransactionHistoryPage() {
         </div>
 
         <div className="bg-card border border-border rounded-lg p-8">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+          <RefreshDouble className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
         </div>
       </div>
     )
@@ -50,7 +50,7 @@ export default function TransactionHistoryPage() {
     return (
       <div className="space-y-2">
         <h1 className="text-xl font-semibold flex items-center gap-2">
-          <History className="h-5 w-5 text-primary" />
+          <Clock className="h-5 w-5 text-primary" />
           Riwayat Transaksi
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -65,7 +65,7 @@ export default function TransactionHistoryPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-xl font-semibold flex items-center gap-2">
-          <History className="h-5 w-5 text-primary" />
+          <Clock className="h-5 w-5 text-primary" />
           Riwayat Transaksi
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -77,7 +77,7 @@ export default function TransactionHistoryPage() {
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         {transactions.length === 0 ? (
           <div className="p-8 text-center">
-            <History className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+            <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">Belum ada transaksi</p>
             <p className="text-sm text-muted-foreground mt-1">
               Transaksi akan muncul setelah Anda top up credit atau menggunakan layanan.

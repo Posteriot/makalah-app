@@ -15,7 +15,7 @@ export function ThinkingIndicator({ visible }: ThinkingIndicatorProps) {
                 // Base styles matching mockup .thinking-indicator
                 "flex items-center gap-2.5",
                 "px-4 py-3 mx-4 my-4",
-                "bg-muted border border-border rounded-lg",
+                "bg-slate-900/80 border border-slate-700 rounded-lg",
                 // Animation
                 "transition-all duration-300",
                 "animate-in fade-in slide-in-from-bottom-2"
@@ -24,9 +24,9 @@ export function ThinkingIndicator({ visible }: ThinkingIndicatorProps) {
             aria-live="polite"
             aria-label="AI sedang berpikir"
         >
-            {/* Text */}
-            <span className="text-sm text-muted-foreground">
-                AI sedang berpikir
+            {/* Text - Terminal style, uppercase, Mono */}
+            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+                SYSTEM_PROCESSING
             </span>
 
             {/* Animated dots matching mockup .thinking-dots */}

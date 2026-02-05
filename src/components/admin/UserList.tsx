@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowUp, ArrowDown } from "lucide-react"
+import { ArrowUp, ArrowDown } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 
 interface User {

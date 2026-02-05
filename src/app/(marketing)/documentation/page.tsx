@@ -3,19 +3,19 @@
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
-  BookOpen,
-  FileText,
+  Book,
+  Page,
   Globe,
-  Lightbulb,
+  LightBulb,
   Search,
   Settings,
   ShieldCheck,
-  Users,
-  Zap,
-  ChevronRight,
-  ChevronLeft,
-  Loader2,
-} from "lucide-react"
+  Group,
+  Flash,
+  NavArrowRight,
+  NavArrowLeft,
+  RefreshDouble,
+} from "iconoir-react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -77,15 +77,16 @@ type SearchRecord = {
   stemText: string
 }
 
+// Iconoir icon map with backward-compatible keys (match database iconName values)
 const iconMap = {
-  BookOpen,
-  FileText,
+  BookOpen: Book,
+  FileText: Page,
   Globe,
-  Lightbulb,
+  Lightbulb: LightBulb,
   Settings,
   ShieldCheck,
-  Users,
-  Zap,
+  Users: Group,
+  Zap: Flash,
 }
 
 type IconKey = keyof typeof iconMap
@@ -416,7 +417,7 @@ function DocumentationContent() {
                           <span className="flex-1 truncate text-left font-hero">
                             {item.title}
                           </span>
-                          {isActive && <ChevronRight className="h-4 w-4 shrink-0" />}
+                          {isActive && <NavArrowRight className="h-4 w-4 shrink-0" />}
                         </button>
                       </li>
                     )
@@ -515,7 +516,7 @@ function DocumentationContent() {
                                 </div>
                                 <div className="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">
                                   {item.ctaText}
-                                  <ChevronRight className="h-4 w-4" />
+                                  <NavArrowRight className="h-4 w-4" />
                                 </div>
                               </button>
                             )
@@ -586,7 +587,7 @@ function DocumentationContent() {
                     }
                     disabled={!previousSection}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <NavArrowLeft className="h-4 w-4" />
                     Kembali
                   </button>
                   <button
@@ -601,7 +602,7 @@ function DocumentationContent() {
                     disabled={!nextSection}
                   >
                     Lanjut
-                    <ChevronRight className="h-4 w-4" />
+                    <NavArrowRight className="h-4 w-4" />
                   </button>
                 </div>
               </article>
@@ -663,7 +664,7 @@ function DocumentationContent() {
                           <span className="flex-1 truncate text-left font-hero">
                             {item.title}
                           </span>
-                          {isActive && <ChevronRight className="h-4 w-4 shrink-0" />}
+                          {isActive && <NavArrowRight className="h-4 w-4 shrink-0" />}
                         </button>
                       </li>
                     )
@@ -725,7 +726,7 @@ function DocumentationLoading() {
     <div className="min-h-screen pt-[var(--header-h)]">
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <RefreshDouble className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Memuat dokumentasi...</p>
         </div>
       </div>

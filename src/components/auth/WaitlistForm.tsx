@@ -6,7 +6,7 @@ import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Loader2, Mail, CheckCircle } from "lucide-react"
+import { Mail, CheckCircle } from "iconoir-react"
 import { toast } from "sonner"
 import { sendConfirmationEmail } from "@/app/(auth)/waiting-list/actions"
 
@@ -110,7 +110,7 @@ export function WaitlistForm() {
       >
         {formState === "loading" ? (
           <>
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             <span>Mendaftar...</span>
           </>
         ) : (

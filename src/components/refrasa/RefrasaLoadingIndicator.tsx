@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2 } from "lucide-react"
 import {
   LOADING_MESSAGES,
   LOADING_ROTATION_INTERVAL,
@@ -35,7 +34,7 @@ export function RefrasaLoadingIndicator({
     <div
       className={`flex flex-col items-center justify-center gap-4 py-8 ${className}`}
     >
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <span className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       <p className="text-sm text-muted-foreground animate-pulse">
         {LOADING_MESSAGES[currentIndex]}
       </p>

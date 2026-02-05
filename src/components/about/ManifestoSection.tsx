@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { NavArrowDown } from "iconoir-react"
 import {
   Collapsible,
   CollapsibleContent,
@@ -32,7 +32,7 @@ export function ManifestoSection() {
       id="manifesto"
     >
       {/* Background patterns */}
-      <GridPattern size={48} className="z-0" />
+      <GridPattern className="z-0" />
       <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
       <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto">
@@ -83,7 +83,7 @@ export function ManifestoSection() {
                   )}
                   aria-label={isOpen ? "Tutup manifesto" : "Baca selengkapnya"}
                 >
-                  <ChevronDown
+                  <NavArrowDown
                     className={cn(
                       "w-4 h-4 text-muted-foreground transition-transform duration-300",
                       isOpen && "rotate-180"
