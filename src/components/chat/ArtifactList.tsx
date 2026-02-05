@@ -11,14 +11,13 @@ import { Badge } from "@/components/ui/badge"
 //     SelectValue,
 // } from "@/components/ui/select"
 import {
-    FileTextIcon,
-    CodeIcon,
-    ListIcon,
-    TableIcon,
-    BookOpenIcon,
-    FunctionSquareIcon,
-    // FilterIcon,
-} from "lucide-react"
+    Page,
+    Code,
+    List,
+    Table2Columns,
+    Book,
+    Calculator,
+} from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 // Artifact type from Convex (matches schema)
@@ -38,14 +37,14 @@ interface ArtifactListProps {
     onSelect: (id: Id<"artifacts">) => void
 }
 
-// Map artifact type to icon
+// Map artifact type to icon (Iconoir)
 const typeIcons: Record<ArtifactType, React.ElementType> = {
-    code: CodeIcon,
-    outline: ListIcon,
-    section: FileTextIcon,
-    table: TableIcon,
-    citation: BookOpenIcon,
-    formula: FunctionSquareIcon,
+    code: Code,
+    outline: List,
+    section: Page,
+    table: Table2Columns,
+    citation: Book,
+    formula: Calculator,
 }
 
 // Map artifact type to display label (Indonesian)
@@ -121,8 +120,8 @@ export function ArtifactList({
             <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
                 {artifacts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
-                        <FileTextIcon className="h-8 w-8 mb-2 opacity-50" />
-                        <span className="text-xs">Belum ada artifact</span>
+                        <Page className="h-8 w-8 mb-2 opacity-50" />
+                        <span className="text-xs font-mono uppercase">NO_ARTIFACTS</span>
                     </div>
                 ) : (
                     <div className="space-y-1">
@@ -151,7 +150,7 @@ export function ArtifactList({
                                                 </span>
                                                 <Badge
                                                     variant="secondary"
-                                                    className="shrink-0 text-[10px] px-1 py-0"
+                                                    className="shrink-0 text-[10px] font-mono px-1 py-0"
                                                 >
                                                     v{artifact.version}
                                                 </Badge>
@@ -163,7 +162,7 @@ export function ArtifactList({
                                                 >
                                                     {typeLabels[artifact.type]}
                                                 </Badge>
-                                                <span className="text-[10px] text-muted-foreground">
+                                                <span className="text-[10px] font-mono text-muted-foreground">
                                                     {formatDate(artifact.createdAt)}
                                                 </span>
                                             </div>
