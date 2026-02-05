@@ -66,10 +66,10 @@ export function WaitlistForm() {
   if (formState === "success") {
     return (
       <div className="w-full flex flex-col items-center justify-center py-8 text-center">
-        <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mb-4">
-          <CheckCircle className="w-8 h-8 text-brand" />
+        <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4">
+          <CheckCircle className="w-8 h-8 text-success" />
         </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">
+        <h3 className="text-lg font-mono font-bold text-foreground mb-2 tracking-tight">
           Pendaftaran Berhasil!
         </h3>
         <p className="text-sm text-muted-foreground">
@@ -93,7 +93,7 @@ export function WaitlistForm() {
               setError(null)
             }}
             disabled={formState === "loading"}
-            className="pl-10 h-11 rounded-lg border-border bg-background focus:ring-brand focus:border-brand"
+            className="pl-10 h-10 rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary"
             aria-invalid={!!error}
             required
           />
@@ -106,19 +106,19 @@ export function WaitlistForm() {
       <Button
         type="submit"
         disabled={formState === "loading" || !email}
-        className="w-full h-11 bg-brand hover:bg-brand/90 text-white font-semibold rounded-lg"
+        className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-mono font-bold text-xs uppercase tracking-widest rounded-action hover-slash"
       >
         {formState === "loading" ? (
           <>
             <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            <span>Mendaftar...</span>
+            <span>MENDAFTAR...</span>
           </>
         ) : (
-          <span>Daftar Waiting List</span>
+          <span>DAFTAR WAITING LIST</span>
         )}
       </Button>
 
-      <p className="text-xs text-center text-muted-foreground">
+      <p className="text-xs text-center text-muted-foreground font-sans">
         Dengan mendaftar, kamu akan menerima email undangan saat giliran kamu tiba.
       </p>
     </form>
