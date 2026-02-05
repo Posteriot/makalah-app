@@ -130,7 +130,7 @@ export function GlobalHeader() {
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      if (!target.closest('.global-header')) {
+      if (!target.closest('[data-global-header]')) {
         setMobileMenuState({ isOpen: false, pathname })
       }
     }
@@ -177,23 +177,25 @@ export function GlobalHeader() {
 
   return (
     <header
+      data-global-header
       className={cn(
-        "global-header z-drawer",
-        isHidden && "header-hidden"
+        "fixed top-0 left-0 right-0 z-drawer h-[54px] bg-[color:var(--header-background)]",
+        "flex items-center transition-transform duration-200",
+        isHidden && "-translate-y-full"
       )}
     >
       {/* Inner container - matches hero max-width for alignment */}
-      <div className="header-inner">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-16 items-center gap-4 px-4 py-3 lg:px-8">
         {/* Header Left - Logo & Brand */}
-        <div className="header-left col-span-8 md:col-span-4 gap-dense flex-nowrap">
-          <Link href="/" className="header-brand shrink-0">
+        <div className="col-span-8 md:col-span-4 flex items-center gap-dense flex-nowrap">
+          <Link href="/" className="flex items-center gap-3 shrink-0">
             {/* Light logo icon (for dark mode) */}
             <Image
               src="/logo/makalah_logo_light.svg"
               alt="Makalah"
               width={24}
               height={24}
-              className="logo-img logo-img-light"
+              className="h-6 w-6 rounded-[4px] hidden dark:block"
             />
             {/* Dark logo icon (for light mode) */}
             <Image
@@ -201,7 +203,7 @@ export function GlobalHeader() {
               alt="Makalah"
               width={24}
               height={24}
-              className="logo-img logo-img-dark"
+              className="h-6 w-6 rounded-[4px] block dark:hidden"
             />
             {/* White brand text (for dark mode) */}
             <Image
@@ -209,7 +211,7 @@ export function GlobalHeader() {
               alt="Makalah"
               width={80}
               height={18}
-              className="logo-brand-text logo-brand-light"
+              className="h-[18px] w-auto hidden dark:block"
             />
             {/* Black brand text (for light mode) */}
             <Image
@@ -217,7 +219,7 @@ export function GlobalHeader() {
               alt="Makalah"
               width={80}
               height={18}
-              className="logo-brand-text logo-brand-dark"
+              className="h-[18px] w-auto block dark:hidden"
             />
           </Link>
           {/* Subscription Badge - shows when logged in */}
@@ -235,9 +237,9 @@ export function GlobalHeader() {
         </div>
 
         {/* Header Right - Nav, Theme Toggle & Auth */}
-        <div className="header-right col-span-8 md:col-span-12 gap-comfort">
+        <div className="col-span-8 md:col-span-12 flex items-center justify-end gap-comfort">
           {/* Navigation - Desktop only */}
-          <nav className="header-nav">
+          <nav className="hidden md:flex items-center gap-4">
             {NAV_LINKS.map((link) => {
               const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
               return (
@@ -245,9 +247,13 @@ export function GlobalHeader() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                  "nav-link text-narrative uppercase tracking-wider",
-                  isActive && "active"
-                )}
+                    "relative px-2.5 py-1.5 text-narrative text-[11px] uppercase tracking-wider",
+                    "text-foreground transition-colors hover:text-muted-foreground",
+                    "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-1",
+                    "after:border-b after:border-dotted after:border-current after:scale-x-0 after:origin-left after:transition-transform",
+                    "hover:after:scale-x-100",
+                    isActive && "text-muted-foreground after:scale-x-100"
+                  )}
               >
                 {link.label}
                 </Link>
@@ -291,18 +297,21 @@ export function GlobalHeader() {
           <SignedIn>
             <button
               onClick={toggleTheme}
-              className="theme-toggle hidden md:inline-flex rounded-action border-main border-border"
+              className="hidden md:inline-flex h-9 w-9 items-center justify-center rounded-action border-main border-border text-foreground transition-colors hover:text-muted-foreground"
               title="Toggle theme"
               aria-label="Toggle theme"
             >
-              <SunLight className="icon sun-icon" />
-              <HalfMoon className="icon moon-icon" />
+              <SunLight className="icon-interface block dark:hidden" />
+              <HalfMoon className="icon-interface hidden dark:block" />
             </button>
           </SignedIn>
 
           {/* Auth State - Desktop only (mobile shows in panel) */}
           <SignedOut>
-            <Link href="/sign-in" className="btn btn-outline hidden md:inline-flex">
+            <Link
+              href="/sign-in"
+              className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-[color:var(--slate-950)] bg-[color:var(--slate-950)] px-4 py-2 text-[11px] font-bold text-narrative uppercase text-[color:var(--slate-50)] transition-colors hover:bg-[color:var(--slate-900)] dark:border-[color:var(--slate-50)] dark:bg-[color:var(--slate-50)] dark:text-[color:var(--slate-950)] dark:hover:bg-[color:var(--slate-200)] focus-ring"
+            >
               Masuk
             </Link>
           </SignedOut>
@@ -318,7 +327,7 @@ export function GlobalHeader() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <nav className="mobile-menu md:hidden">
+        <nav className="absolute top-full left-0 right-0 md:hidden flex flex-col bg-background border-b border-hairline p-4">
           {/* Main Navigation Links */}
           {NAV_LINKS.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
@@ -326,7 +335,11 @@ export function GlobalHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={cn("mobile-menu__link", isActive && "mobile-menu__link--active")}
+                className={cn(
+                  "block px-3 py-2 text-narrative text-[11px] uppercase tracking-wider rounded-action",
+                  "text-foreground hover:bg-accent transition-colors",
+                  isActive && "text-muted-foreground"
+                )}
                 onClick={() => setMobileMenuState({ isOpen: false, pathname })}
               >
                 {link.label}
@@ -338,86 +351,82 @@ export function GlobalHeader() {
           <SignedOut>
             <Link
               href="/sign-in"
-              className="mobile-menu__cta"
+              className="mt-2 inline-flex items-center justify-center rounded-action border-main border-border px-3 py-2 text-signal text-[11px] font-bold uppercase tracking-widest text-foreground hover:bg-accent transition-colors"
               onClick={() => setMobileMenuState({ isOpen: false, pathname })}
             >
               Masuk
             </Link>
           </SignedOut>
 
-          {/* SignedIn: Auth section with benefits-like background */}
+          {/* SignedIn: Auth section */}
           <SignedIn>
-            <div className="mobile-menu__auth-section">
-              {/* Background layers (like BenefitsSection) */}
-              <div className="mobile-menu__auth-bg-stripes" />
-              <div className="mobile-menu__auth-bg-dots" />
-
-              {/* Auth content */}
-              <div className="mobile-menu__auth-content">
-                {/* User Accordion */}
-                <Accordion type="single" collapsible className="mobile-menu__user-accordion">
-                  <AccordionItem value="user" className="mobile-menu__user-accordion-item">
-                    <AccordionTrigger className="mobile-menu__user-accordion-trigger">
-                      <div className="mobile-menu__auth-row">
-                        <div className={cn("mobile-menu__auth-avatar", segmentConfig.className)}>
-                          {initial}
-                        </div>
-                        <span className="mobile-menu__auth-label">{fullName}</span>
+            <div className="mt-3 rounded-shell border-hairline bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-900)] p-3">
+              <Accordion type="single" collapsible>
+                <AccordionItem value="user" className="border-none">
+                  <AccordionTrigger className="p-0 hover:no-underline">
+                    <div className="flex items-center gap-3 w-full text-left px-2 py-2 rounded-action hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-800)] transition-colors">
+                      <div className={cn("h-7 w-7 rounded-action flex items-center justify-center text-[12px] font-semibold", segmentConfig.className)}>
+                        {initial}
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="mobile-menu__user-accordion-content">
-                      <button
-                        onClick={() => {
-                          setMobileMenuState({ isOpen: false, pathname })
-                          setIsSettingsOpen(true)
-                        }}
-                        className="mobile-menu__user-menu-item"
-                        type="button"
-                      >
-                        <User className="icon-interface" />
-                        <span>Atur Akun</span>
-                      </button>
+                      <span className="text-narrative text-[11px] font-medium text-foreground flex-1">
+                        {fullName}
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-2 pl-2">
+                    <button
+                      onClick={() => {
+                        setMobileMenuState({ isOpen: false, pathname })
+                        setIsSettingsOpen(true)
+                      }}
+                      className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-800)] transition-colors"
+                      type="button"
+                    >
+                      <User className="icon-interface" />
+                      <span>Atur Akun</span>
+                    </button>
 
+                    <Link
+                      href="/subscription/overview"
+                      className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-800)] transition-colors"
+                      onClick={() => setMobileMenuState({ isOpen: false, pathname })}
+                    >
+                      <CreditCard className="icon-interface" />
+                      <span>Subskripsi</span>
+                    </Link>
+
+                    {isAdmin && (
                       <Link
-                        href="/subscription/overview"
-                        className="mobile-menu__user-menu-item"
+                        href="/dashboard"
+                        className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-800)] transition-colors"
                         onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                       >
-                        <CreditCard className="icon-interface" />
-                        <span>Subskripsi</span>
+                        <Settings className="icon-interface" />
+                        <span>Admin Panel</span>
                       </Link>
+                    )}
 
-                      {isAdmin && (
-                        <Link
-                          href="/dashboard"
-                          className="mobile-menu__user-menu-item"
-                          onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                        >
-                          <Settings className="icon-interface" />
-                          <span>Admin Panel</span>
-                        </Link>
+                    <button
+                      onClick={handleSignOut}
+                      disabled={isSigningOut}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative rounded-action transition-colors",
+                        isSigningOut
+                          ? "text-muted-foreground cursor-not-allowed"
+                          : "text-rose-500 hover:bg-rose-500/10"
                       )}
-
-                      <button
-                        onClick={handleSignOut}
-                        disabled={isSigningOut}
-                        className={cn(
-                          "mobile-menu__user-menu-item mobile-menu__user-signout",
-                          isSigningOut && "opacity-50 cursor-not-allowed"
-                        )}
-                        type="button"
-                      >
-                        {isSigningOut ? (
-                          <RefreshDouble className="icon-interface animate-spin" />
-                        ) : (
-                          <LogOut className="icon-interface" />
-                        )}
-                        <span>{isSigningOut ? "Keluar..." : "Sign out"}</span>
-                      </button>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </div>
+                      type="button"
+                    >
+                      {isSigningOut ? (
+                        <RefreshDouble className="icon-interface animate-spin" />
+                      ) : (
+                        <LogOut className="icon-interface" />
+                      )}
+                      <span>{isSigningOut ? "Keluar..." : "Sign out"}</span>
+                    </button>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </SignedIn>
         </nav>

@@ -87,12 +87,12 @@ export function UserDropdown() {
       {/* Trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-dense px-3 py-1 rounded-action border-main border-border hover:bg-accent transition-colors"
+        className="flex items-center justify-center gap-2 rounded-action border-main border-[color:var(--slate-950)] bg-[color:var(--slate-950)] px-4 py-2 text-[12px] font-medium text-narrative text-[color:var(--slate-50)] transition-colors hover:bg-[color:var(--slate-900)] dark:border-[color:var(--slate-50)] dark:bg-[color:var(--slate-50)] dark:text-[color:var(--slate-950)] dark:hover:bg-[color:var(--slate-200)] focus-ring"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
         {/* Name (hidden on mobile) */}
-        <span className="hidden sm:block text-[12px] font-medium text-interface max-w-[120px] truncate">
+        <span className="hidden sm:block text-[12px] font-medium text-narrative max-w-[120px] truncate">
           {fullName}
         </span>
 
@@ -109,13 +109,13 @@ export function UserDropdown() {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-border bg-popover shadow-xl z-drawer py-1">
+        <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-border bg-popover shadow-xl z-drawer py-2 px-2">
           <button
             onClick={() => {
               setIsOpen(false)
               setIsSettingsOpen(true)
             }}
-            className="flex items-center gap-dense p-dense text-[12px] text-interface text-foreground hover:bg-accent transition-colors w-full rounded-action"
+            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors w-full rounded-action"
             type="button"
           >
             <User className="icon-interface" />
@@ -126,7 +126,7 @@ export function UserDropdown() {
           <Link
             href="/subscription/overview"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-dense p-dense text-[12px] text-interface text-foreground hover:bg-accent transition-colors rounded-action"
+            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors rounded-action"
           >
             <CreditCard className="icon-interface" />
             <span>Subskripsi</span>
@@ -137,7 +137,7 @@ export function UserDropdown() {
             <Link
               href="/dashboard"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-dense p-dense text-[12px] text-interface text-foreground hover:bg-accent transition-colors rounded-action"
+              className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors rounded-action"
             >
               <Settings className="icon-interface" />
               <span>Admin Panel</span>
@@ -149,7 +149,7 @@ export function UserDropdown() {
             onClick={handleSignOut}
             disabled={isSigningOut}
             className={cn(
-              "w-full flex items-center gap-dense p-dense text-[12px] text-interface transition-colors rounded-action",
+              "w-full flex items-center gap-dense p-dense text-[12px] text-narrative transition-colors rounded-action",
               isSigningOut
                 ? "text-muted-foreground cursor-not-allowed"
                 : "text-rose-500 hover:bg-rose-500/10"

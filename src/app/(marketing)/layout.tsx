@@ -40,11 +40,20 @@ async function ensureConvexUser() {
       emailVerified,
     }, { token: convexToken })
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Convex sync timeout (5s)")), 5000)
-    )
+    const timeoutMs = 10000
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    const timeoutPromise = new Promise<"timeout">((resolve) => {
+      timeoutId = setTimeout(() => resolve("timeout"), timeoutMs)
+    })
 
-    await Promise.race([syncPromise, timeoutPromise])
+    const result = await Promise.race([syncPromise.then(() => "synced" as const), timeoutPromise])
+
+    if (timeoutId) clearTimeout(timeoutId)
+
+    if (result === "timeout") {
+      console.warn(`[ensureConvexUser] Convex sync timeout (${timeoutMs}ms)`)
+      return
+    }
   } catch (error) {
     console.error("[ensureConvexUser] Marketing layout sync failed:", error)
   }
