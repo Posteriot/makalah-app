@@ -45,7 +45,7 @@ function PricingCTA({
         className={cn(
           "group relative overflow-hidden",
           "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2 w-full",
-          "text-signal text-[11px] font-bold",
+          "text-signal text-[11px] font-bold uppercase tracking-widest",
           "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
           "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
           "cursor-not-allowed opacity-60"
@@ -57,7 +57,7 @@ function PricingCTA({
   }
 
   return (
-    <SectionCTA href={getHref()} className="w-full justify-center">
+    <SectionCTA href={getHref()} className="w-full justify-center uppercase tracking-widest">
       {plan.ctaText}
     </SectionCTA>
   )
@@ -69,13 +69,13 @@ function PricingCTA({
 
 export function PricingCard({ plan }: { plan: PricingPlan }) {
   return (
-    <div className="relative h-full">
+    <div className="group/card relative h-full">
       {/* Popular tag for highlighted card */}
       {plan.isHighlighted && (
         <div
           className={cn(
             "absolute -top-3 left-1/2 -translate-x-1/2 z-10",
-            "transition-transform duration-300 group-hover:-translate-y-1",
+            "transition-transform duration-300 group-hover/card:-translate-y-1",
             "bg-[color:var(--emerald-500)] text-[color:var(--slate-50)]",
             "text-[11px] font-semibold uppercase tracking-wide",
             "px-3 py-1 rounded-full whitespace-nowrap"
@@ -87,10 +87,10 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
 
       <div
         className={cn(
-          "group relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
+          "relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
           "border-1 border-[color:var(--slate-400)]",
-          "group-hover:bg-[color:var(--slate-200)] dark:group-hover:bg-[color:var(--slate-700)]",
-          "group-hover:-translate-y-1 transition-all duration-300",
+          "group-hover/card:bg-[color:var(--slate-200)] dark:group-hover/card:bg-[color:var(--slate-700)]",
+          "group-hover/card:-translate-y-1 transition-all duration-300",
           plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
         )}
       >

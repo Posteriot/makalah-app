@@ -36,3 +36,7 @@
 - Changes: `src/components/marketing/pricing/PricingCard.tsx`, `src/components/marketing/pricing/PricingCarousel.tsx`, `src/components/marketing/pricing/PricingSkeleton.tsx`, `docs/makalah-design-system/justification-docs/pricing-redesign.md`
 - Correction: Mirror pricing layout + card typography + hover behavior to Pricing Teaser
 - Changes: `src/app/(marketing)/pricing/page.tsx`, `src/components/marketing/pricing/PricingCard.tsx`, `src/components/marketing/pricing/PricingCarousel.tsx`, `src/components/marketing/pricing/PricingSkeleton.tsx`, `docs/makalah-design-system/justification-docs/pricing-redesign.md`
+- Correction: Isolate card hover from CTA + enforce uppercase CTA text
+- Changes: `src/components/marketing/pricing/PricingCard.tsx`
+- Correction: Expand pricing section width to align with header/footer edges
+- Changes: `src/app/(marketing)/pricing/page.tsx`
