@@ -31,7 +31,7 @@ Menggunakan spektrum penuh dari Geist family untuk kontrol hirarki yang presisi:
 | **Display / H1** | `24px+` | **Bold (700)** | Default | Judul halaman utama, Page Hero. |
 | **H2 / Section** | `18px` | **SemiBold (600)** | Default | Judul modul dashboard / Bento. |
 | **H3 / Card** | `14px` | **Medium (500)** | Default | Judul dalam card atau panel. |
-| **Subheading** | `14px` | **Regular (400)** | Default | Deskripsi pendek di bawah judul. |
+| **Subheading** | `16px` | **Medium (500)** | Default | Deskripsi pendek di bawah judul (marketing). |
 | **Body** | `12px` | **Regular (400)** | Default | Konten utama, chat bubble, artikel. |
 | **Label / Meta** | `10px` | **Bold (700)** | **UPPERCASE** | Badge, status indicator, table header. |
 | **Small / Footer** | `8px` | **Medium (500)** | Default | Legal text, micro-metadata. |
@@ -57,3 +57,6 @@ Menggunakan spektrum penuh dari Geist family untuk kontrol hirarki yang presisi:
 ---
 > [!TIP]
 > **Mechanical Grace Hint**: Jika teks berfungsi sebagai "Sinyal" (Status, Kategori, Metadata), gunakan **Mono + Uppercase**. Jika teks bersifat "Dialog" (Pesan User, Narasi), gunakan **Sans + Sentence case**.
+
+> [!NOTE]
+> **Hero Subheading**: Untuk home hero, gunakan **Geist Sans** (`text-narrative`) dengan ukuran `text-base` hingga `text-lg` agar terasa naratif.

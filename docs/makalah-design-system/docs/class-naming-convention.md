@@ -33,7 +33,7 @@ Standar ketebalan garis untuk menjaga kebersihan informasi.
 ## 4. Interaction States (The Signature)
 Standar perilaku elemen saat berinteraksi.
 
-*   **`.hover-slash`**: Mengaktifkan pola garis diagonal (`/ / / /`) khas terminal saat di-hover. Wajib untuk Tombol Utama dan Command Palette. **TIDAK UNTUK** link navigasi standar.
+*   **`.hover-slash`**: Mengaktifkan pola garis diagonal (`/ / / /`) khas terminal saat di-hover. **Wajib untuk Command Palette**, **opsional** untuk CTA utama. CTA standar boleh memakai hover solid tanpa slash.
 *   **`.active-nav`**: Memberikan aksen garis oranye di sisi kiri (`border-l-2 border-amber-500`) untuk item sidebar yang aktif.
 *   **`.focus-ring`**: Menggunakan warna Sky/Info (`ring-info/50`) untuk menjaga kesan teknis, bukan biru standar browser.
 
@@ -68,3 +68,6 @@ Standar perilaku elemen saat berinteraksi.
 ---
 > [!IMPORTANT]
 > **Rule of Thumb**: Jika sebuah teks bersifat "instruksi sistem" atau "data", dia **HARUS** menggunakan font Mono (`.text-interface`). Jika teks bersifat "marketing/narasi", baru gunakan Sans (`.text-narrative`).
+
+> [!NOTE]
+> **Header Surface**: Hindari `bg-background` untuk header global. Header wajib memakai token `--header-background` lewat class komponen `global-header`.

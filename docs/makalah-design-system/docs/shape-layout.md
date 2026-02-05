@@ -83,6 +83,11 @@ Makalah-Carbon mengadopsi standar **2x Grid** dari Carbon Design System untuk me
     - **Contoh**: Jika layar lebar 1920px, margin kiri-kanan masing-masing 48px memberikan ruang napas yang premium di sisi luar grid.
     - **Contoh**: Sidebar profil user mengambil **4 kolom**, area Chat mengambil **9 kolom**, dan panel Activity Bar AI mengambil **3 kolom**. Total **16 kolom** penuh tanpa ada ruang kosong yang tidak terukur.
 
+### 4.3 Hero Split (Marketing Home)
+- **Hero Left**: `col-span-7`
+- **Hero Right**: `col-span-9`
+- **Alasan**: Menghindari overlap antara heading text dan mockup kanan.
+
 ---
 ## 5. Bento Grid Logic (Sub-Grid Precision)
 

@@ -46,7 +46,7 @@ Interaksi di Makalah App harus terasa "Inertial but Precise"—tidak lembek, tap
 - **Mechanical Easing**: Hindari `bounce` yang berlebihan. Gunakan `cubic-bezier(0.4, 0, 0.2, 1)`.
 
 ### 3.2 Hover Effects
-- **Action Elements**: Gunakan `.hover-slash` (garis diagonal) untuk tombol utama (CTAs). **DILARANG** menggunakan efek ini untuk link navigasi standar guna menjaga kejernihan hirarki visual.
+- **Action Elements**: `.hover-slash` dipakai untuk aksi **premium/khusus** (mis. command palette). Tombol utama standar boleh memakai **hover solid** tanpa slash, selama kontras tetap tinggi.
 - **Data Rows**: Gunakan *subtle tint* `bg-slate-50/5` dengan hairline border yang sedikit menebal atau berganti warna ke `Amber`.
 
 ---

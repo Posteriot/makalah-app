@@ -32,6 +32,19 @@
   --slate-900: oklch(.208 .042 265.755);
   --slate-950: oklch(.129 .042 264.695);
 
+  /* --- Stone (Neutral Alt) --- */
+  --stone-50:  oklch(.985 .001 106.423);
+  --stone-100: oklch(.97 .001 106.424);
+  --stone-200: oklch(.923 .003 48.717);
+  --stone-300: oklch(.869 .005 56.366);
+  --stone-400: oklch(.709 .01 56.259);
+  --stone-500: oklch(.553 .013 58.071);
+  --stone-600: oklch(.444 .011 73.639);
+  --stone-700: oklch(.374 .01 67.558);
+  --stone-800: oklch(.268 .007 34.298);
+  --stone-900: oklch(.216 .006 56.043);
+  --stone-950: oklch(.147 .004 49.25);
+
   /* --- Amber (Primary Brand) --- */
   --amber-50:  oklch(.987 .022 95.277);
   --amber-100: oklch(.962 .059 95.617);
@@ -169,6 +182,19 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* Colors - Stone (Neutral Alt) */
+  --color-stone-50: var(--stone-50);
+  --color-stone-100: var(--stone-100);
+  --color-stone-200: var(--stone-200);
+  --color-stone-300: var(--stone-300);
+  --color-stone-400: var(--stone-400);
+  --color-stone-500: var(--stone-500);
+  --color-stone-600: var(--stone-600);
+  --color-stone-700: var(--stone-700);
+  --color-stone-800: var(--stone-800);
+  --color-stone-900: var(--stone-900);
+  --color-stone-950: var(--stone-950);
 
   /* Colors - Brand (Makalah orange) */
   --color-brand: var(--brand);

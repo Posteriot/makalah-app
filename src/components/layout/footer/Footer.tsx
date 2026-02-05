@@ -31,7 +31,7 @@ const SOCIAL_LINKS = [
 export function Footer() {
   return (
     <div id="footer" className="bg-background text-foreground">
-      <footer className="relative overflow-hidden bg-background">
+      <footer className="relative overflow-hidden bg-[color:var(--section-bg-alt)]">
         {/* Subtle Background Pattern - using memoized React component */}
         <DiagonalStripes className="opacity-40" />
 

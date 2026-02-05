@@ -22,7 +22,7 @@ Sebelum memulai migrasi pada file `src/`, wajib melakukan prosedur berikut:
 Dilarang melakukan migrasi sekaligus. Ikuti urutan prioritas ini:
 
 ### Fase 1: Foundation Injection (Low Risk)
-- **Action**: Masukkan semua variabel CSS baru (tokens) dari [global-css.md](./global-css.md) ke dalam blok `@theme` di `globals.css`. Pastikan variabel Dark Mode juga terinjeksi sempurna.
+- **Action**: Pastikan semua variabel CSS (tokens) tersentral di `src/app/globals.css` (blok `@theme` dan token root). Pastikan variabel Dark Mode juga terinjeksi sempurna.
 - **Sync**: Sesuaikan styling **Clerk Auth** (jika ada) via `appearance` prop atau CSS overrides agar selaras dengan palet Slate/Amber.
 - **Goal**: Memberikan akses ke "cat" baru (Amber, Emerald, Mono font) tanpa mengubah tampilan elemen yang sudah ada.
 
@@ -73,7 +73,7 @@ Gunakan tabel ini untuk memantau progres transisi ke standar Mechanical Grace.
 
 | Layer / Module | Scope / Page | Status | PIC | Tanggal |
 | :--- | :--- | :--- | :--- | :--- |
-| **Foundation** | CSS Variables (global-css.md) | ⏳ Pending | - | - |
+| **Foundation** | CSS Variables (`src/app/globals.css`) | ⏳ Pending | - | - |
 | **Global Shell** | Main Navigation Bar (Global) | ⏳ Pending | - | - |
 | | Sidebar Navigation (Dashboard) | ⏳ Pending | - | - |
 | | Mini Footer (Chat Workspace) | ⏳ Pending | - | - |

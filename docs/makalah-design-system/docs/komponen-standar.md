@@ -7,18 +7,18 @@ Semua tombol menggunakan font **Mono + Uppercase**. State Hover menggunakan pola
 
 ```tsx
 // 1.1 Command Button (Primary - White)
-<Button className="font-mono text-sm uppercase tracking-widest rounded-[8px] bg-slate-50 text-slate-950 px-6 py-2 hover:bg-[url('/slash-pattern.svg')] hover:bg-repeat transition-all">
+<Button className="text-signal text-sm uppercase tracking-widest rounded-action bg-[color:var(--slate-50)] text-[color:var(--slate-950)] px-6 py-2 hover:bg-[color:var(--slate-200)]">
   LOG IN
 </Button>
 
-// 1.2 Navigation Link (Ghost with Arrow) - NO SLASH
-<Button variant="ghost" className="font-mono text-xs uppercase tracking-wider text-slate-400 hover:text-slate-50 flex items-center gap-2">
+// 1.2 Navigation Link (Ghost with Arrow)
+<Button variant="ghost" className="text-interface text-xs uppercase tracking-wider text-[color:var(--slate-400)] hover:text-[color:var(--slate-50)] flex items-center gap-2">
   LEARN MORE ->
 </Button>
 
 // 1.3 Segmented Switcher (The System Mode)
-<div className="flex bg-slate-900 border border-slate-800 rounded-[8px] p-1 gap-1">
-  <Button className="font-mono text-[10px] uppercase bg-slate-50 text-slate-950 rounded-[6px] px-3 py-1 flex items-center gap-1.5">
+<div className="flex bg-[color:var(--slate-900)] border border-main rounded-action p-1 gap-1">
+  <Button className="text-signal text-[10px] uppercase bg-[color:var(--slate-50)] text-[color:var(--slate-950)] rounded-badge px-3 py-1 flex items-center gap-1.5">
     <Monitor className="w-3 h-3" /> SYSTEM
   </Button>
   <Button variant="ghost" className="p-2 text-slate-500 hover:text-slate-300">
@@ -149,12 +149,12 @@ Wajib menggunakan **Geist Mono** untuk menjaga presisi geometris. Active state m
 
 ```tsx
 // 6.1 Category Tag (e.g. CASE STUDY)
-<span className="font-mono text-[9px] font-medium uppercase tracking-[0.2em] border-[0.5px] border-slate-700 bg-slate-900/50 px-2 py-1 rounded-[6px] text-slate-300">
+<span className="text-signal text-[9px] font-medium uppercase tracking-[0.2em] border-hairline border-[color:var(--slate-700)] bg-[color:var(--slate-900)]/50 px-2 py-1 rounded-badge text-[color:var(--slate-300)]">
   CASE STUDY
 </span>
 
 // 6.2 Signal Tag (e.g. NEW)
-<span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-amber-500 text-black px-1.5 py-0.5 rounded-[6px]">
+<span className="text-signal text-[9px] font-bold uppercase tracking-wider bg-[color:var(--amber-500)] text-[color:var(--neutral-950)] px-1.5 py-0.5 rounded-badge">
   NEW
 </span>
 ```
@@ -231,7 +231,7 @@ Shell radius lebar (16px), list item dengan Mono dan Slash Hover.
     <input className="bg-transparent border-none outline-none font-sans text-lg text-slate-100 placeholder:text-slate-600 w-full" placeholder="Search commands..." />
   </div>
   <div className="p-2 flex flex-col gap-1">
-    <div className="flex items-center justify-between px-3 py-2 rounded-[8px] hover:bg-[url('/slash-pattern-light.svg')] hover:bg-repeat cursor-pointer group">
+    <div className="flex items-center justify-between px-3 py-2 rounded-[8px] hover:bg-[url('/slash-pattern.svg')] hover:bg-repeat cursor-pointer group">
       <div className="flex items-center gap-3">
         <FileText className="w-4 h-4 text-slate-400 group-hover:text-slate-100" />
         <span className="font-mono text-sm text-slate-300 group-hover:text-slate-950">Scan New Paper</span>

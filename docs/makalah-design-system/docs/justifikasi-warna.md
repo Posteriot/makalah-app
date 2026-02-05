@@ -106,6 +106,7 @@ Di sini kita menentukan "jiwa" visual dari Makalah App. Silakan edit nilai di ko
 | Token | Original Value | **Proposed (Slate Trinity)** | Justifikasi / Alasan |
 | :--- | :--- | :--- | :--- |
 | `--background` | `oklch(1 0 0)` | `oklch(.984 .003 247.858)` (Slate 50) | Memberikan kesan "Digital Canvas" yang lebih modern dan premium dibanding Gray. |
+| `--header-background` | `-` | `oklch(.929 .013 255.508)` (Slate 200) | Header perlu kontras halus dari background utama. |
 | `--primary` | `oklch(0.72 0.14 175)` | `oklch(0.769 .188 70.08)` (Amber 500) | Menggunakan Amber sebagai warna aksi utama agar kontras dengan Slate. |
 | `--border` | `oklch(0.922 0 0)` | `oklch(.929 .013 255.508)` (Slate 200) | Hairline border yang sangat subtle untuk UI yang bersih. |
 
@@ -116,6 +117,7 @@ Strategi "multi-layer" menggunakan kedalaman palet Slate agar tidak terkesan kak
 | Token | Original Value | **Proposed (Slate Dark)** | Justifikasi |
 | :--- | :--- | :--- | :--- |
 | `--background` | `oklch(0.145 0 0)` | `oklch(.208 .042 265.755)` (Slate 900) | Kedalaman warna yang lebih "deep techno" daripada Gray 90. |
+| `--header-background` | `-` | `oklch(.372 .044 257.287)` (Slate 700) | Header tetap terangkat tanpa mengganggu hierarki gelap. |
 | `--card` | `oklch(0.205 0 0)` | `oklch(.129 .042 264.695)` (Slate 950) | Kontainer paling dalam untuk efek fokus pada konten. |
 | `--secondary` | `oklch(0.269 0 0)` | `oklch(.279 .041 260.031)` (Slate 800) | Aksen subtle untuk hover atau sidebar inactive. |
 

@@ -24,10 +24,9 @@ export function SectionBadge({ children, href, className }: SectionBadgeProps) {
     <div
       className={cn(
         "inline-flex w-fit items-center gap-2 rounded-badge px-2.5 py-1",
-        "bg-[color:var(--slate-900)] text-[color:var(--slate-50)]",
-        "dark:bg-[color:var(--emerald-500)] dark:text-[color:var(--slate-900)]",
+        "bg-[color:var(--emerald-500)] text-[color:var(--slate-900)]",
         href &&
-          "group transition-colors duration-300 hover:bg-[color:var(--slate-50)] dark:hover:bg-[color:var(--emerald-800)]",
+          "group transition-colors duration-300 hover:bg-[color:var(--emerald-900)]",
         className
       )}
     >
@@ -37,7 +36,7 @@ export function SectionBadge({ children, href, className }: SectionBadgeProps) {
       <span
         className={cn(
           "text-signal text-[10px] font-bold",
-          href && "group-hover:text-[color:var(--slate-900)] dark:group-hover:text-[color:var(--slate-50)]"
+          href && "group-hover:text-[color:var(--slate-50)]"
         )}
       >
         {children}

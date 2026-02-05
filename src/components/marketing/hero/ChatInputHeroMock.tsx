@@ -5,8 +5,11 @@ import { Send } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 /**
- * ChatInputHeroMock - Chat input simulation with Neo-Brutalist styling
- * Front layer mockup showing typewriter animation and cursor interaction
+ * ChatInputHeroMock - Unified Dark Mockup (Manifesto Compliant)
+ * Theme: Permanent Dark (Stone-800)
+ * Shadow: Sharp Diagonal Bottom-Left (-12px 12px)
+ *   - Dark APP: Stone-400/20% shadow
+ *   - Light APP: Stone-700/30% shadow
  */
 
 const PROMPTS = [
@@ -195,33 +198,41 @@ export function ChatInputHeroMock() {
     return () => { cancelled = true; clearTimers(); isTypingRef.current = false }
   }, [isInView, isDocumentVisible, prefersReducedMotion, addTimer, clearTimers, resetToPlaceholder])
 
-  // Neo-brutalist card styles
+  // Unified Style with Shell Stone-200
   const cardStyles = cn(
-    "hidden md:block absolute w-full max-w-[440px] font-mono",
-    "bg-neo-card border-[4px] border-neo-border rounded-lg",
-    "shadow-[-10px_10px_0_var(--neo-shadow)]",
-    "backdrop-blur-sm",
+    "hidden md:block absolute w-full max-w-[440px] transition-all duration-300",
+    "bg-stone-200 border-stone-300", // Shell: Stone-200, Border: Stone-300
+    "border-[1px] rounded-md",
+    // Sharp Shadow - Diagonal Bottom-Left (-12px 12px)
+    "dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.2)]",
+    "shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.3)]",
     // layer-front positioning
-    "z-20 top-40 right-0"
+    "z-20 top-1/2 right-0 -translate-y-1/2"
   )
 
   // Reduced motion fallback
   if (prefersReducedMotion) {
     return (
       <div className={cardStyles} aria-hidden="true">
-        <div className="flex items-center gap-4 p-3 rounded-t bg-neo-border border-b-[3px] border-neo-shadow">
-          <div className="flex gap-2">
-            <span className="w-3.5 h-3.5 rounded-full bg-[#ff5f56] border-[3px] border-neo-shadow" />
-            <span className="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] border-[3px] border-neo-shadow" />
-            <span className="w-3.5 h-3.5 rounded-full bg-[#27c93f] border-[3px] border-neo-shadow" />
+        <div className={cn(
+          "flex items-center gap-4 p-3 rounded-t-md border-b-[0.5px] border-stone-600 bg-stone-500" // Header: Stone-500
+        )}>
+          <div className="flex gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
           </div>
         </div>
-        <div className="relative min-h-[120px] flex flex-col justify-start p-5 pr-[60px]">
-          <div className="absolute top-5 left-5 font-mono text-sm font-medium text-neo-text-muted">
+        <div className="relative min-h-[120px] flex flex-col justify-start p-6 pr-[60px]">
+          <div className={cn(
+            "absolute top-6 left-6 font-mono text-xs tracking-wider text-stone-500" // Muted for Stone-200 bg
+          )}>
             <span>Ketik obrolan...</span>
           </div>
-          <div className="absolute bottom-4 right-4 w-10 h-10 border-[3px] border-neo-border rounded-md bg-neo-card flex items-center justify-center text-neo-text">
-            <Send className="w-[18px] h-[18px]" />
+          <div className={cn(
+            "absolute bottom-4 right-4 w-9 h-9 border-[0.5px] rounded-none flex items-center justify-center bg-stone-500 border-stone-600 text-stone-100"
+          )}>
+            <Send className="w-4 h-4" />
           </div>
         </div>
       </div>
@@ -230,70 +241,74 @@ export function ChatInputHeroMock() {
 
   return (
     <div ref={containerRef} className={cardStyles} aria-hidden="true">
-      {/* Header */}
-      <div className="flex items-center gap-4 p-3 rounded-t bg-neo-border border-b-[3px] border-neo-shadow">
-        <div className="flex gap-2">
-          <span className="w-3.5 h-3.5 rounded-full bg-[#ff5f56] border-[3px] border-neo-shadow" />
-          <span className="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] border-[3px] border-neo-shadow" />
-          <span className="w-3.5 h-3.5 rounded-full bg-[#27c93f] border-[3px] border-neo-shadow" />
+      {/* Header - Stone-500 */}
+      <div className={cn(
+        "flex items-center gap-4 p-3 rounded-t-md border-b-[0.5px] border-stone-600 bg-stone-500"
+      )}>
+        <div className="flex gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-rose-500" />
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
         </div>
       </div>
 
       {/* Content */}
-      <div className="relative min-h-[120px] flex flex-col justify-start p-5 pr-[60px]">
-        {/* Placeholder */}
+      <div className="relative min-h-[120px] flex flex-col justify-start p-6 pr-[60px]">
+        {/* Placeholder - Total Mono */}
         <div
           className={cn(
-            "absolute top-5 left-5 font-mono text-sm font-medium text-neo-text-muted flex items-center transition-opacity",
+            "absolute top-6 left-6 font-mono text-xs flex items-center transition-all tracking-wider text-stone-500",
             showPlaceholder ? "opacity-100" : "opacity-0"
           )}
         >
-          <span className="bg-gradient-to-r from-neo-text-muted via-neo-text to-neo-text-muted bg-[length:200%_100%] bg-clip-text text-transparent animate-[neo-shimmer_2s_ease-in-out_infinite]">
-            Ketik obrolan
-          </span>
+          <span className="tracking-tight">Ketik obrolan</span>
           <span className="inline-flex ml-0.5">
-            <span className="opacity-30 animate-[neo-dot-pulse_1.4s_ease-in-out_infinite]">.</span>
-            <span className="opacity-30 animate-[neo-dot-pulse_1.4s_ease-in-out_infinite_0.2s]">.</span>
-            <span className="opacity-30 animate-[neo-dot-pulse_1.4s_ease-in-out_infinite_0.4s]">.</span>
+            <span className="opacity-30 animate-pulse">.</span>
+            <span className="opacity-30 animate-pulse delay-150">.</span>
+            <span className="opacity-30 animate-pulse delay-300">.</span>
           </span>
         </div>
 
-        {/* Typewriter */}
+        {/* Typewriter - Total Mono with Widest Tracking */}
         <div
           className={cn(
-            "absolute top-5 left-5 right-[60px] font-mono text-sm font-medium text-neo-text whitespace-pre-wrap leading-relaxed transition-opacity",
+            "absolute top-6 left-6 right-[60px] font-mono text-xs whitespace-pre-wrap leading-relaxed transition-all tracking-widest text-stone-950",
             !showPlaceholder ? "opacity-100" : "opacity-0"
           )}
         >
           <span>{typedText}</span>
           <span className={cn(
-            "inline-block w-0.5 h-[1.1em] bg-neo-text ml-0.5 align-text-bottom",
-            phase === "hold" && "animate-[hero-caret-blink_0.4s_step-end_infinite]"
+            "inline-block w-1.5 h-[1.1em] ml-1 translate-y-0.5 bg-stone-950",
+            phase === "hold" && "animate-pulse"
           )} />
         </div>
 
-        {/* Send Button */}
+        {/* Send Button - Sharp Radius (Radius Contrast) */}
         <div
           className={cn(
-            "absolute bottom-4 right-4 w-10 h-10 border-[3px] border-neo-border rounded-md bg-neo-card flex items-center justify-center text-neo-text transition-all duration-150",
-            sendHovered && "bg-[#006d5b] text-white shadow-[-3px_3px_0_var(--neo-shadow)]",
-            sendClicked && "translate-x-[-2px] translate-y-[2px] shadow-none"
+            "absolute bottom-4 right-4 w-9 h-9 border-[1px] transition-all duration-200 flex items-center justify-center rounded-none", // Core: rounded-none
+            sendClicked
+              ? "bg-stone-800 border-stone-700 text-stone-500 scale-95 translate-y-0.5"
+              : sendHovered
+                ? "bg-stone-700 border-stone-600 text-stone-100 shadow-lg shadow-stone-800/20 scale-105"
+                : "bg-stone-500 border-stone-600 text-stone-100"
           )}
         >
-          <Send className="w-[18px] h-[18px]" />
+          <Send className="w-4.5 h-4.5" />
         </div>
 
-        {/* Cursor */}
+        {/* Cursor - Mechanical Stylus (Solid & Stone-950) */}
         <div
           className={cn(
-            "absolute w-6 h-6 text-zinc-500 dark:text-zinc-400 pointer-events-none z-50 transition-all duration-800 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            "absolute w-5 h-5 pointer-events-none z-50 transition-all duration-800",
             cursorVisible ? "opacity-100" : "opacity-0",
-            cursorAtTarget ? "bottom-7 right-7" : "bottom-[70px] right-[100px]",
-            cursorClicking && "scale-[0.85]"
+            cursorAtTarget ? "bottom-6 right-6" : "bottom-[60px] right-[80px]",
+            "text-stone-950", // Standard color: Stone-950
+            cursorClicking && "scale-90 opacity-80" // Scale down on click
           )}
         >
           <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M0 0 L0 20 L5.5 14.5 L9 22 L12 21 L8.5 13.5 L16 12 Z" />
+            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
           </svg>
         </div>
       </div>

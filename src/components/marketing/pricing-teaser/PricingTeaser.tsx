@@ -41,32 +41,38 @@ export function PricingTeaser() {
 
   return (
     <section
-      className="relative h-dvh min-h-[580px] md:min-h-[700px] flex flex-col justify-center px-4 md:px-6 overflow-hidden bg-muted/30 dark:bg-black"
+      className="relative h-[100svh] flex flex-col justify-center overflow-hidden bg-background"
       id="pemakaian-harga"
     >
       {/* Background patterns - using memoized React components */}
       <GridPattern className="z-0" />
       <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
-      <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto">
-        {/* Section Header */}
-        <div className="flex flex-col items-start gap-3 md:gap-4 mb-4 md:mb-8">
-          <PricingTeaserBadge />
-          <PricingTeaserTitle />
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-6 md:px-8 md:py-10">
+        <div className="grid grid-cols-16 gap-comfort content-center">
+          {/* Section Header */}
+          <div className="col-span-16 md:col-span-12 md:col-start-3 flex flex-col items-start gap-3 md:gap-4 mb-4 md:mb-8">
+            <PricingTeaserBadge />
+            <PricingTeaserTitle />
+          </div>
+
+          {/* Desktop: Grid */}
+          <div className="col-span-16 md:col-span-12 md:col-start-3">
+            <div className="hidden md:grid grid-cols-3 gap-6 items-stretch">
+              {teaserPlans.map((plan) => (
+                <TeaserCard key={plan._id} plan={plan} />
+              ))}
+            </div>
+
+            {/* Mobile: Carousel */}
+            <TeaserCarousel plans={teaserPlans} />
+          </div>
+
+          {/* Global CTA - Link to full pricing page */}
+          <div className="col-span-16 md:col-span-12 md:col-start-3">
+            <TeaserCTA />
+          </div>
         </div>
-
-        {/* Desktop: Grid */}
-        <div className="hidden md:grid grid-cols-3 gap-6 items-stretch">
-          {teaserPlans.map((plan) => (
-            <TeaserCard key={plan._id} plan={plan} />
-          ))}
-        </div>
-
-        {/* Mobile: Carousel */}
-        <TeaserCarousel plans={teaserPlans} />
-
-        {/* Global CTA - Link to full pricing page */}
-        <TeaserCTA />
       </div>
     </section>
   )

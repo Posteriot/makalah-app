@@ -42,8 +42,8 @@ export default function MarketingHomePage() {
             </div>
 
             {/* Hero Right - Layered Mockup */}
-            <div className="hidden lg:flex lg:col-span-9 lg:justify-end">
-              <div className="relative h-[440px] w-full max-w-[560px]">
+            <div className="hidden lg:flex lg:col-span-9 lg:items-center lg:justify-end">
+              <div className="relative h-[480px] w-full max-w-[560px]">
                 <HeroResearchMock />
                 <ChatInputHeroMock />
               </div>
