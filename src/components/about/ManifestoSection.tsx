@@ -32,7 +32,7 @@ export function ManifestoSection() {
       id="manifesto"
     >
       {/* Background patterns */}
-      <GridPattern size={48} className="z-0" />
+      <GridPattern className="z-0" />
       <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
       <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto">

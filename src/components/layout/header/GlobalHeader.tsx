@@ -178,7 +178,7 @@ export function GlobalHeader() {
   return (
     <header
       className={cn(
-        "global-header bg-background z-drawer",
+        "global-header z-drawer",
         isHidden && "header-hidden"
       )}
     >

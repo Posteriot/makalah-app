@@ -66,7 +66,7 @@ export function BenefitsAccordion() {
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3">
                 {/* Blinking dot - matches desktop */}
-                <span className="w-2.5 h-2.5 min-w-2.5 rounded-full bg-dot-light dark:bg-dot animate-badge-dot shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
+                <span className="w-2.5 h-2.5 min-w-2.5 rounded-full bg-dot-light dark:bg-dot animate-pulse shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
                 <span className="font-sans font-medium text-base text-foreground">
                   {benefit.title}
                 </span>

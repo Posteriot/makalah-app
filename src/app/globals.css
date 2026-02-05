@@ -330,6 +330,7 @@
 
   /* --- Core Semantic (Slate Trinity) --- */
   --background: var(--slate-50);
+  --header-background: var(--slate-200);
   --foreground: var(--neutral-950);
   --card: var(--slate-50);
   --card-foreground: var(--neutral-950);
@@ -453,6 +454,7 @@
 .dark {
   /* --- Core Semantic (Slate Dark) --- */
   --background: var(--slate-900);
+  --header-background: var(--slate-700);
   --foreground: var(--neutral-50);
   --card: var(--slate-950);
   --card-foreground: var(--neutral-50);
@@ -605,7 +607,7 @@
     left: 0;
     right: 0;
     height: var(--header-h);
-    background-color: var(--background);
+    background-color: var(--header-background);
     z-index: 50;
     display: flex;
     flex-direction: column;
@@ -1364,17 +1366,6 @@
     background: linear-gradient(to bottom, transparent, var(--background));
     pointer-events: none;
     z-index: 1;
-  }
-
-  /* ==========================================================================
-   * HERO LAYERED MOCKUP
-   * ========================================================================== */
-
-  .mockup-layered-container {
-    position: relative;
-    width: 100%;
-    max-width: 560px;
-    height: 440px;
   }
 
   .hero-mockup {
@@ -2797,32 +2788,6 @@
 }
 
 /* ==========================================================================
- * ANIMATIONS - Hero
- * ========================================================================== */
-@layer utilities {
-
-  /* KEEP: Keyframe used by Tailwind animate-[badge-dot-blink_...] */
-  @keyframes badge-dot-blink {
-
-    0%,
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    50% {
-      opacity: 0.5;
-      transform: scale(0.8);
-    }
-  }
-
-  .animate-badge-dot {
-    animation: badge-dot-blink 2s ease-in-out infinite;
-  }
-
-}
-
-/* ==========================================================================
  * ANIMATIONS - Accordion
  * ========================================================================== */
 @layer utilities {
@@ -2859,7 +2824,7 @@
   /* Disable all animations */
   .animate-thinking-dot,
   .animate-cursor-blink,
-  .animate-badge-dot,
+  .animate-pulse,
   .hero-text-shimmer,
   .hero-caret-blink,
   .animate-accordion-down,

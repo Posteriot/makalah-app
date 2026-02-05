@@ -45,8 +45,8 @@ export default function BlogPage() {
                     </h1>
 
                     {/* Subheading */}
-                    <p className="hero-subheading">
-                        Eksplorasi tren terbaru, tutorial mendalam, dan berita seputar kecerdasan buatan dalam penulisan akademik.
+                    <p className="text-narrative">
+                      Eksplorasi tren terbaru, tutorial mendalam, dan berita seputar kecerdasan buatan dalam penulisan akademik.
                     </p>
 
                     {/* Search Bar in Hero */}

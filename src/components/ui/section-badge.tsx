@@ -23,15 +23,20 @@ export function SectionBadge({ children, href, className }: SectionBadgeProps) {
   const badgeContent = (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2a7d6e]",
-        href && "transition-all duration-300 hover:translate-y-[-2px] hover:bg-[#339485]",
+        "inline-flex items-center gap-2 px-2.5 py-1 rounded-badge bg-[color:var(--emerald-500)]",
+        href && "group transition-colors duration-300 hover:bg-[color:var(--emerald-800)]",
         className
       )}
     >
-      {/* Animated orange dot */}
-      <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)] animate-[badge-dot-blink_1.5s_ease-in-out_infinite]" />
+      {/* Animated amber dot */}
+      <span className="w-2 h-2 rounded-full bg-primary ring-2 ring-primary/40 animate-pulse" />
       {/* Badge text */}
-      <span className="text-[10px] font-medium tracking-wide text-white/95 uppercase">
+      <span
+        className={cn(
+          "text-signal text-[10px] font-bold uppercase text-[color:var(--slate-900)]",
+          href && "group-hover:text-[color:var(--slate-50)]"
+        )}
+      >
         {children}
       </span>
     </div>

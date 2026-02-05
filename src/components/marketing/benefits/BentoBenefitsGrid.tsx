@@ -50,7 +50,7 @@ export function BentoBenefitsGrid() {
               {benefit.title[1]}
             </h3>
             <div className="flex items-start gap-3 pl-30">
-              <span className="w-2.5 h-2.5 min-w-2.5 rounded-full mt-1.5 bg-dot-light dark:bg-dot animate-badge-dot shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
+              <span className="w-2.5 h-2.5 min-w-2.5 rounded-full mt-1.5 bg-dot-light dark:bg-dot animate-pulse shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
               <p className="font-mono font-normal text-bento-paragraph text-xs leading-relaxed m-0 text-muted-foreground">
                 {benefit.description}
               </p>

@@ -1,11 +1,7 @@
-import { memo, useMemo } from "react"
+import { memo } from "react"
 import { cn } from "@/lib/utils"
 
 interface GridPatternProps {
-  /** Grid cell size in pixels */
-  size?: number
-  /** Line color (supports Tailwind arbitrary values) */
-  color?: string
   /** Additional className */
   className?: string
 }
@@ -16,29 +12,19 @@ interface GridPatternProps {
  * Creates a subtle grid pattern overlay.
  * Default: 48px cells with slate-400 lines at 15% opacity.
  *
- * Performance: Wrapped in React.memo with memoized style object.
+ * Performance: Wrapped in React.memo.
  */
 export const GridPattern = memo(function GridPattern({
-  size = 48,
-  color = "rgba(148, 163, 184, 0.15)",
   className
 }: GridPatternProps) {
-  // Memoize style object to prevent recreation on parent re-renders
-  const style = useMemo(() => ({
-    backgroundImage: `
-      linear-gradient(${color} 1px, transparent 1px),
-      linear-gradient(90deg, ${color} 1px, transparent 1px)
-    `.trim(),
-    backgroundSize: `${size}px ${size}px`,
-  }), [size, color])
-
   return (
     <div
       className={cn(
         "absolute inset-0 pointer-events-none",
+        "bg-[linear-gradient(color-mix(in_oklab,var(--slate-400),transparent_85%)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--slate-400),transparent_85%)_1px,transparent_1px)]",
+        "bg-[length:48px_48px]",
         className
       )}
-      style={style}
       aria-hidden="true"
     />
   )

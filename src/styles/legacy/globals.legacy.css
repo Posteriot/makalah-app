@@ -1224,17 +1224,6 @@
     z-index: 1;
   }
 
-  /* ==========================================================================
-   * HERO LAYERED MOCKUP
-   * ========================================================================== */
-
-  .mockup-layered-container {
-    position: relative;
-    width: 100%;
-    max-width: 560px;
-    height: 440px;
-  }
-
   .hero-mockup {
     background: var(--luxe-zinc-900, #08080a);
     border: 1px solid var(--border-hairline);
@@ -2519,32 +2508,6 @@
 }
 
 /* ==========================================================================
- * ANIMATIONS - Hero
- * ========================================================================== */
-@layer utilities {
-
-  /* KEEP: Keyframe used by Tailwind animate-[badge-dot-blink_...] */
-  @keyframes badge-dot-blink {
-
-    0%,
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    50% {
-      opacity: 0.5;
-      transform: scale(0.8);
-    }
-  }
-
-  .animate-badge-dot {
-    animation: badge-dot-blink 2s ease-in-out infinite;
-  }
-
-}
-
-/* ==========================================================================
  * ANIMATIONS - Accordion
  * ========================================================================== */
 @layer utilities {
@@ -2581,7 +2544,7 @@
   /* Disable all animations */
   .animate-thinking-dot,
   .animate-cursor-blink,
-  .animate-badge-dot,
+  .animate-pulse,
   .hero-text-shimmer,
   .hero-caret-blink,
   .animate-accordion-down,

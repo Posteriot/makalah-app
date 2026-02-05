@@ -22,7 +22,7 @@ export function SectionCTA({ href, children, className, isLoading }: SectionCTAP
     <Link
       href={href}
       className={cn(
-        "btn-brand font-sans text-[12px] font-medium px-3 py-1.5 inline-flex items-center",
+        "btn-brand text-signal text-[12px] font-bold rounded-action hover-slash px-3 py-1.5 inline-flex items-center justify-center",
         className
       )}
       aria-busy={isLoading}

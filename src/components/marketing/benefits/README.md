@@ -72,7 +72,7 @@ Integrasi utama ada di `src/app/(marketing)/page.tsx`.
 ## Styling
 
 **Shared Design Tokens** (dipakai desktop & mobile):
-- Dot: `bg-dot-light` (light), `bg-dot` (dark) + `animate-badge-dot` + glow shadow
+- Dot: `bg-dot-light` (light), `bg-dot` (dark) + `animate-pulse` + glow shadow
 - Fonts: `font-sans` (Geist), `font-mono` (Geist Mono)
 
 **Desktop (BentoBenefitsGrid)** - Tailwind design tokens:

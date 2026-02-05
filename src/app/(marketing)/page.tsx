@@ -11,10 +11,8 @@ import { BenefitsSection } from "@/components/marketing/benefits"
 import { PricingTeaser } from "@/components/marketing/pricing-teaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
 
-// New background components
-import { AuroraBackground, VignetteOverlay } from "@/components/marketing/PageBackground"
 import { TintOverlay } from "@/components/marketing/BackgroundOverlay"
-import { GridPattern, DiagonalStripes, FadeBottom } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
 
 export default function MarketingHomePage() {
   return (
@@ -25,37 +23,34 @@ export default function MarketingHomePage() {
       </Suspense>
 
       {/* Hero Section */}
-      <section className="hero-section relative isolate overflow-hidden">
+      <section className="relative isolate min-h-[100svh] overflow-hidden bg-background">
         {/* Background Layers (bottom to top) */}
-        <AuroraBackground />
-        <VignetteOverlay />
-        <TintOverlay intensity={50} className="z-0" />
-        <GridPattern />
-        <DiagonalStripes />
+        <GridPattern className="z-0 opacity-80" />
+        <DiagonalStripes className="opacity-80" />
 
         {/* Hero Flex Container */}
-        <div className="hero-flex">
-          {/* Hero Left - Text Content */}
-          <div className="hero-left">
-            <PawangBadge />
-            <HeroHeading />
-            <HeroSubheading />
-            <div className="hero-actions">
-              <HeroCTA />
+        <div className="relative z-[1] mx-auto flex min-h-[100svh] max-w-7xl items-center px-4 py-10 md:px-8 md:py-24">
+          <div className="grid grid-cols-1 gap-comfort lg:grid-cols-16 lg:gap-16">
+            {/* Hero Left - Text Content */}
+            <div className="flex flex-col items-start text-left justify-center lg:col-span-7 lg:justify-start">
+              <PawangBadge />
+              <HeroHeading />
+              <HeroSubheading />
+              <div className="mt-4 w-full">
+                <HeroCTA />
+              </div>
             </div>
-          </div>
 
-          {/* Hero Right - Layered Mockup */}
-          <div className="hero-right">
-            <div className="mockup-layered-container">
-              <HeroResearchMock />
-              <ChatInputHeroMock />
+            {/* Hero Right - Layered Mockup */}
+            <div className="hidden lg:flex lg:col-span-9 lg:justify-end">
+              <div className="relative h-[440px] w-full max-w-[560px]">
+                <HeroResearchMock />
+                <ChatInputHeroMock />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Fade */}
-        <FadeBottom />
       </section>
 
       {/* Benefits Section */}
