@@ -135,7 +135,7 @@ git commit -m "refactor(pricing): align pricing page layout to Mechanical Grace 
 **Files:**
 - Modify: `src/components/marketing/pricing/PricingCard.tsx`
 
-**Status:** Pending
+**Status:** Done
 
 **Step 1: Update highlighted badge**
 

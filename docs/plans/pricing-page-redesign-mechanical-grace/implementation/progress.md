@@ -6,3 +6,8 @@
 - Tests: type-check pass (`npx tsc --noEmit`)
 - Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
 - Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Task 2: Done
+- Changes: `src/components/marketing/pricing/PricingCard.tsx` (badge amber, rounded-shell, hairline divider, mono typography, success checkmarks)
+- Tests: type-check pass (`npx tsc --noEmit`)
+- Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
+- Tests: build pass with dynamic server usage logs from `ensureConvexUser`
