@@ -10,8 +10,6 @@ import {
 import { BenefitsSection } from "@/components/marketing/benefits"
 import { PricingTeaser } from "@/components/marketing/pricing-teaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
-
-import { TintOverlay } from "@/components/marketing/BackgroundOverlay"
 import { GridPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
 
 export default function MarketingHomePage() {
