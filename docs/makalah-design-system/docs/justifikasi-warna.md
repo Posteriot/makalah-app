@@ -11,17 +11,32 @@ Ini adalah nilai "mentah" yang akan diregistrasikan ke dalam `@theme` di `global
 
 ### Slate (Neutrals)
 ```css
-50:  oklch(.984 .003 247.858)
-100: oklch(.968 .007 247.896)
-200: oklch(.929 .013 255.508)
-300: oklch(.869 .022 252.894)
-400: oklch(.704 .04 256.788)
-500: oklch(.554 .046 257.417)
-600: oklch(.446 .043 257.281)
-700: oklch(.372 .044 257.287)
-800: oklch(.279 .041 260.031)
-900: oklch(.208 .042 265.755)
-950: oklch(.129 .042 264.695)
+50:  oklch(.984 0 0)
+100: oklch(.968 0 0)
+200: oklch(.929 0 0)
+300: oklch(.869 0 0)
+400: oklch(.704 0 0)
+500: oklch(.554 0 0)
+600: oklch(.446 0 0)
+700: oklch(.372 0 0)
+800: oklch(.279 0 0)
+900: oklch(.208 0 0)
+950: oklch(.129 0 0)
+```
+
+### Stone (Neutral Alt)
+```css
+50:  oklch(.985 .001 106.423)
+100: oklch(.97 .001 106.424)
+200: oklch(.923 .003 48.717)
+300: oklch(.869 .005 56.366)
+400: oklch(.709 .01 56.259)
+500: oklch(.553 .013 58.071)
+600: oklch(.444 .011 73.639)
+700: oklch(.374 .01 67.558)
+800: oklch(.268 .007 34.298)
+900: oklch(.216 .006 56.043)
+950: oklch(.147 .004 49.25)
 ```
 
 ### Amber (Primary Brand)
@@ -105,10 +120,10 @@ Di sini kita menentukan "jiwa" visual dari Makalah App. Silakan edit nilai di ko
 
 | Token | Original Value | **Proposed (Slate Trinity)** | Justifikasi / Alasan |
 | :--- | :--- | :--- | :--- |
-| `--background` | `oklch(1 0 0)` | `oklch(.984 .003 247.858)` (Slate 50) | Memberikan kesan "Digital Canvas" yang lebih modern dan premium dibanding Gray. |
-| `--header-background` | `-` | `oklch(.929 .013 255.508)` (Slate 200) | Header perlu kontras halus dari background utama. |
+| `--background` | `oklch(1 0 0)` | `oklch(.984 0 0)` (Slate 50) | Memberikan kesan "Digital Canvas" yang lebih modern dan premium dibanding Gray. |
+| `--header-background` | `-` | `oklch(.929 0 0)` (Slate 200) | Header perlu kontras halus dari background utama. |
 | `--primary` | `oklch(0.72 0.14 175)` | `oklch(0.769 .188 70.08)` (Amber 500) | Menggunakan Amber sebagai warna aksi utama agar kontras dengan Slate. |
-| `--border` | `oklch(0.922 0 0)` | `oklch(.929 .013 255.508)` (Slate 200) | Hairline border yang sangat subtle untuk UI yang bersih. |
+| `--border` | `oklch(0.922 0 0)` | `oklch(.929 0 0)` (Slate 200) | Hairline border yang sangat subtle untuk UI yang bersih. |
 
 ## 3. Layering & Surface (Dark Mode)
 
@@ -116,10 +131,10 @@ Strategi "multi-layer" menggunakan kedalaman palet Slate agar tidak terkesan kak
 
 | Token | Original Value | **Proposed (Slate Dark)** | Justifikasi |
 | :--- | :--- | :--- | :--- |
-| `--background` | `oklch(0.145 0 0)` | `oklch(.208 .042 265.755)` (Slate 900) | Kedalaman warna yang lebih "deep techno" daripada Gray 90. |
-| `--header-background` | `-` | `oklch(.372 .044 257.287)` (Slate 700) | Header tetap terangkat tanpa mengganggu hierarki gelap. |
-| `--card` | `oklch(0.205 0 0)` | `oklch(.129 .042 264.695)` (Slate 950) | Kontainer paling dalam untuk efek fokus pada konten. |
-| `--secondary` | `oklch(0.269 0 0)` | `oklch(.279 .041 260.031)` (Slate 800) | Aksen subtle untuk hover atau sidebar inactive. |
+| `--background` | `oklch(0.145 0 0)` | `oklch(.208 0 0)` (Slate 900) | Kedalaman warna yang lebih "deep techno" daripada Gray 90. |
+| `--header-background` | `-` | `oklch(.372 0 0)` (Slate 700) | Header tetap terangkat tanpa mengganggu hierarki gelap. |
+| `--card` | `oklch(0.205 0 0)` | `oklch(.129 0 0)` (Slate 950) | Kontainer paling dalam untuk efek fokus pada konten. |
+| `--secondary` | `oklch(0.269 0 0)` | `oklch(.279 0 0)` (Slate 800) | Aksen subtle untuk hover atau sidebar inactive. |
 
 ## 4. Warna Semantik (Status)
 
@@ -139,7 +154,7 @@ Sesuai prinsip **The Trinity**, fitur AI harus memiliki visual identitas yang un
 | Token | Deskripsi | **Proposed Value** | Kegunaan |
 | :--- | :--- | :--- | :--- |
 | `--ai-border` | System Frame | `oklch(.685 .169 237.323)` (Sky 500) | Memberikan sinyal "Machine Generated" yang teknis dan bersih. |
-| `--ai-bg-subtle` | Terminal Panel | `oklch(.129 .042 264.695)` (Slate 950) | Background kontras untuk modul AI agar kerasa seperti terminal window terpisah. |
+| `--ai-bg-subtle` | Terminal Panel | `oklch(.129 0 0)` (Slate 950) | Background kontras untuk modul AI agar kerasa seperti terminal window terpisah. |
 
 > [!TIP]
 > **Identitas Visual**: AI tidak menggunakan warna ungu. Identitas utamanya adalah gaya **Dashed/Dotted Border** menggunakan warna `--ai-border`.
@@ -173,8 +188,8 @@ Menstandarisasi *feedback* visual saat user berinteraksi dengan elemen UI.
 | Token | Deskripsi | **Proposed Value** | Justifikasi |
 | :--- | :--- | :--- | :--- |
 | `--focus` | Focus Ring | `oklch(.685 .169 237.323 / 0.5)` | Outline Sky (Cyan-Blue) transparan untuk nuansa IDE. |
-| `--selected-bg` | Item Terpilih | `oklch(.929 .013 255.508)` (Slate 200) | Memberikan kontras subtle pada list/sidebar. |
-| `--hover-bg` | Hover State | `oklch(.968 .007 247.896 / 0.8)` (Slate 100) | Efek "tebal" saat kursor melintas. |
+| `--selected-bg` | Item Terpilih | `oklch(.929 0 0)` (Slate 200) | Memberikan kontras subtle pada list/sidebar. |
+| `--hover-bg` | Hover State | `oklch(.968 0 0 / 0.8)` (Slate 100) | Efek "tebal" saat kursor melintas. |
 
 ## 9. Warna Brand (Amber & Emerald Identity)
 
@@ -208,25 +223,25 @@ Gue bakal tulis draf variabel CSS yang siap kita "tembak" ke `globals.css` nanti
 ```css
 /* Draf Implementasi Trinity */
 :root {
-  --background: oklch(.984 .003 247.858); /* Slate 50 */
+  --background: oklch(.984 0 0); /* Slate 50 */
   /* Master Brand */
   --primary: oklch(.769 .188 70.08);      /* Amber 500 */
-  --border: oklch(.929 .013 255.508);     /* Slate 200 */
-  
+  --border: oklch(.929 0 0);     /* Slate 200 */
+
   /* Semantic Status */
   --success: oklch(.704 .14 182.503);     /* Teal 500 */
   --destructive: oklch(.645 .246 16.439); /* Rose 500 */
   --info: oklch(.685 .169 237.323);        /* Sky 500 */
-  
+
   /* AI Identity (Terminal Style) */
   --ai-border: var(--info);
-  --ai-bg-subtle: oklch(.129 .042 264.695); /* Slate 950 */
-  
+  --ai-bg-subtle: oklch(.129 0 0); /* Slate 950 */
+
   /* Interaction States */
   --ring: oklch(.685 .169 237.323 / 0.5);   /* Sky 500 Alpha */
-  --list-selected-bg: oklch(.929 .013 255.508); /* Slate 200 */
-  --list-hover-bg: oklch(.968 .007 247.896 / 0.8); /* Slate 100 Alpha */
-  
+  --list-selected-bg: oklch(.929 0 0); /* Slate 200 */
+  --list-hover-bg: oklch(.968 0 0 / 0.8); /* Slate 100 Alpha */
+
   /* Business Tier */
   --segment-pro: oklch(.769 .188 70.08);    /* Amber 500 */
   --segment-bpp: oklch(.588 .158 241.966);  /* Sky 600 */
@@ -234,12 +249,12 @@ Gue bakal tulis draf variabel CSS yang siap kita "tembak" ke `globals.css` nanti
 }
 
 .dark {
-  --background: oklch(.208 .042 265.755); /* Slate 900 */
-  --card: oklch(.129 .042 264.695);       /* Slate 950 */
+  --background: oklch(.208 0 0); /* Slate 900 */
+  --card: oklch(.129 0 0);       /* Slate 950 */
 }
 ```
 
 ---
 > [!TIP]
-> **Status:** Menunggu Validasi User.  
+> **Status:** Menunggu Validasi User.<br>
 > Silakan beri komentar atau instruksi jika ada warna spesifik yang ingin lo pertahankan atau ubah!

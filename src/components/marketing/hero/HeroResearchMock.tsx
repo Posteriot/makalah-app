@@ -34,8 +34,8 @@ export function HeroResearchMock() {
       className={cn(
         "hidden md:block absolute w-full transition-all duration-300",
         // Unified Dark Theme (Stone-800)
-        "bg-stone-800 border-stone-700",
-        "border-[1px] rounded-md", // Shell: rounded-md
+        "bg-stone-800 border-stone-500",
+        "border-[2px] rounded-md", // Shell: rounded-md
         // Sharp Shadow - Diagonal Bottom-Left
         "dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.2)]", // Stone-400 transp
         "shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.3)]",          // Stone-700 transp
@@ -45,7 +45,7 @@ export function HeroResearchMock() {
     >
       {/* Browser Header */}
       <div className={cn(
-        "flex items-center gap-4 p-3 rounded-t-md border-b-[0.5px] border-stone-700 bg-stone-900"
+        "flex items-center gap-4 p-3 rounded-t-md border-b-[0.5px] border-stone-700 bg-stone-600"
       )}>
         {/* Traffic lights - Colored sequence */}
         <div className="flex gap-1.5 px-1">
@@ -56,7 +56,7 @@ export function HeroResearchMock() {
         {/* URL bar - Terminal style (Stone-500 BG) */}
         <div className={cn(
           "font-mono text-[9px] font-medium px-3 py-1 rounded-none border-[0.5px] tracking-widest transition-colors",
-          "bg-stone-500 text-stone-100 border-stone-600"
+          "bg-stone-800 text-stone-100 border-stone-600"
         )}>
           makalah.ai/workflow
         </div>
@@ -72,7 +72,7 @@ export function HeroResearchMock() {
           <div className={cn(
             "font-mono text-base font-normal tracking-wider truncate mb-4 text-stone-100"
           )}>
-            Dampak AI pada Pendidikan Tinggi
+            Kolaborasi dengan Ai
           </div>
 
           {/* Progress Bar - Mechanical Style (SHARP) */}
@@ -85,7 +85,7 @@ export function HeroResearchMock() {
             />
           </div>
           <div className={cn(
-            "font-mono text-sm text-right mt-2 uppercase tracking-[0.25em] text-stone-400"
+            "font-mono text-xs text-right mt-2 uppercase tracking-[0.25em] text-stone-400"
           )}>
             {MOCK_PROGRESS.percent}% &middot; Stage {MOCK_PROGRESS.current}/{MOCK_PROGRESS.total}
           </div>
@@ -97,7 +97,7 @@ export function HeroResearchMock() {
             const isLast = index === MOCK_STAGES.length - 1
             const statusText =
               stage.state === "completed"
-                ? "DONE"
+                ? "SELESAI"
                 : stage.state === "current"
                   ? "IN PROGRESS"
                   : null
@@ -109,8 +109,8 @@ export function HeroResearchMock() {
                   <div
                     className={cn(
                       "w-2 h-2 rounded-full border-[1px] flex-shrink-0 z-[1] transition-colors duration-300", // Milestone: rounded-full (Dot)
-                      stage.state === "completed" && "bg-emerald-500 border-emerald-400",
-                      stage.state === "current" && "bg-amber-500 border-amber-400",
+                      stage.state === "completed" && "bg-emerald-400 border-emerald-400",
+                      stage.state === "current" && "bg-amber-400 border-amber-400",
                       stage.state === "pending" && "bg-transparent border-stone-700"
                     )}
                   />
@@ -127,7 +127,7 @@ export function HeroResearchMock() {
                 </div>
 
                 {/* Label Column */}
-                <div className={cn("pb-6 w-full", isLast && "pb-0")}>
+                <div className={cn("pb-6 w-full -mt-1.5", isLast && "pb-0")}>
                   <div
                     className={cn(
                       "font-mono text-sm tracking-wider transition-colors", // Enlarge to sm
@@ -141,8 +141,8 @@ export function HeroResearchMock() {
                   {statusText && (
                     <div
                       className={cn(
-                        "font-mono text-sm font-bold mt-1 uppercase tracking-[0.2em] transition-colors", // Enlarge to sm
-                        stage.state === "completed" && "text-emerald-500/60",
+                        "font-mono text-xs font-bold mt-1 uppercase tracking-[0.2em] transition-colors", 
+                        stage.state === "completed" && "text-emerald-400/70",
                         stage.state === "current" && "text-amber-500"
                       )}
                     >

@@ -18,19 +18,19 @@
  * Raw color values from justifikasi-warna.md
  * ========================================================================== */
 
-/* --- Slate (Neutrals) --- */
+/* --- Slate (Neutrals) - True Neutral (no color bias) --- */
 :root {
-  --slate-50:  oklch(.984 .003 247.858);
-  --slate-100: oklch(.968 .007 247.896);
-  --slate-200: oklch(.929 .013 255.508);
-  --slate-300: oklch(.869 .022 252.894);
-  --slate-400: oklch(.704 .04 256.788);
-  --slate-500: oklch(.554 .046 257.417);
-  --slate-600: oklch(.446 .043 257.281);
-  --slate-700: oklch(.372 .044 257.287);
-  --slate-800: oklch(.279 .041 260.031);
-  --slate-900: oklch(.208 .042 265.755);
-  --slate-950: oklch(.129 .042 264.695);
+  --slate-50:  oklch(0.984 0 0);
+  --slate-100: oklch(0.968 0 0);
+  --slate-200: oklch(0.929 0 0);
+  --slate-300: oklch(0.869 0 0);
+  --slate-400: oklch(0.704 0 0);
+  --slate-500: oklch(0.554 0 0);
+  --slate-600: oklch(0.446 0 0);
+  --slate-700: oklch(0.372 0 0);
+  --slate-800: oklch(0.279 0 0);
+  --slate-900: oklch(0.208 0 0);
+  --slate-950: oklch(0.129 0 0);
 
   /* --- Stone (Neutral Alt) --- */
   --stone-50:  oklch(.985 .001 106.423);
@@ -142,7 +142,7 @@
   --neutral-1000-a40: oklch(0 0 0 / 0.4);
 
   /* --- Alpha Helpers --- */
-  --slate-100-a80: oklch(.968 .007 247.896 / 0.8);
+  --slate-100-a80: oklch(0.968 0 0 / 0.8);
   --sky-500-a50: oklch(.685 .169 237.323 / 0.5);
 
   /* --- Neo Tokens --- */
@@ -2218,6 +2218,36 @@
   .focus-ring:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+}
+
+/* ==========================================================================
+ * BUTTON HOVER - Diagonal Stripes Pattern
+ * Only gradient patterns here - positioning/animation via Tailwind classes
+ * ========================================================================== */
+@layer utilities {
+  /* Light mode: light bg + subtle stripes */
+  .btn-stripes-pattern {
+    background-color: var(--slate-100);
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      var(--slate-300) 6px,
+      var(--slate-300) 7px
+    );
+  }
+
+  /* Dark mode: dark bg + visible stripes */
+  .dark .btn-stripes-pattern {
+    background-color: var(--slate-800);
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      var(--slate-600) 6px,
+      var(--slate-600) 7px
+    );
   }
 }
 

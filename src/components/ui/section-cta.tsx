@@ -22,15 +22,35 @@ export function SectionCTA({ href, children, className, isLoading }: SectionCTAP
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-action border-main border-[color:var(--slate-950)] bg-[color:var(--slate-950)] px-4 py-2 text-signal text-[11px] font-bold text-[color:var(--slate-50)] transition-colors hover:bg-[color:var(--slate-900)]",
-        "dark:border-[color:var(--slate-50)] dark:bg-[color:var(--slate-50)] dark:text-[color:var(--slate-950)] dark:hover:bg-[color:var(--slate-200)]",
-        "focus-ring",
+        // Structure for stripes animation
+        "group relative overflow-hidden",
+        // Base layout
+        "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2",
+        // Typography
+        "text-signal text-[11px] font-bold",
+        // Light mode diam: dark button
+        "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
+        // Light mode hover: text & border darken
+        "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
+        // Dark mode diam: light button
+        "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
+        // Dark mode hover: text & border lighten
+        "dark:hover:text-[color:var(--slate-100)] dark:hover:border-[color:var(--slate-400)]",
+        // Transition & focus
+        "transition-colors focus-ring",
+        // Loading state
         isLoading && "pointer-events-none opacity-70",
         className
       )}
       aria-busy={isLoading}
     >
-      {children}
+      {/* Diagonal stripes overlay - slides in on hover */}
+      <span
+        className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+        aria-hidden="true"
+      />
+      {/* Text content - stays above stripes */}
+      <span className="relative z-10">{children}</span>
     </Link>
   )
 }

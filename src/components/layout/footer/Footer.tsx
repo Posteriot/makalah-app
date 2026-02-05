@@ -47,7 +47,7 @@ export function Footer() {
                 alt="Makalah AI"
                 width={32}
                 height={32}
-                className="logo-img logo-img-light"
+                className="hidden dark:block"
               />
               {/* Dark logo (for light mode) */}
               <Image
@@ -55,7 +55,7 @@ export function Footer() {
                 alt="Makalah AI"
                 width={32}
                 height={32}
-                className="logo-img logo-img-dark"
+                className="block dark:hidden"
               />
             </div>
 

@@ -36,7 +36,7 @@ Gunakan **Mono + Uppercase** untuk label dengan tracking lebar. Input value dan 
   <label className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
     FIRST NAME*
   </label>
-  <Input 
+  <Input
     className="rounded-md border-sm border-slate-800 bg-slate-950 font-mono text-sm px-3 py-2 text-slate-200 placeholder:text-slate-700 focus:ring-1 focus:ring-info transition-all"
     placeholder="First Name"
   />
@@ -102,11 +102,11 @@ Gunakan **Dashed Border** dan warna **Sky/Info** untuk membedakan output AI dari
   <div className="absolute -top-3 -left-2 bg-info text-white font-mono text-[9px] px-2 py-0.5 rounded-full">
     AI_SYSTEM
   </div>
-  
+
   <p className="font-mono text-sm leading-relaxed text-foreground">
     Analisis makalah lo nunjukin kontribusi AI sekitar 15%.
   </p>
-  
+
   <div className="mt-4 border-t border-xs border-info/20 pt-2 font-mono text-[10px] text-info">
     ENGINE: GPT-4o-REASONING // STATUS: VERIFIED
   </div>
@@ -121,7 +121,7 @@ Wajib menggunakan **Geist Mono** untuk menjaga presisi geometris. Active state m
 <div className="flex flex-col gap-1 w-full">
   {/* Category Namespace */}
   <span className="font-mono text-[11px] text-slate-500 px-3 py-2">Integrations</span>
-  
+
   {/* Active Item */}
   <div className="relative flex items-center gap-3 px-3 py-1.5 bg-amber-500/5 text-amber-500 group">
     <div className="absolute left-0 w-[2px] h-4 bg-amber-500 rounded-r-full" />
@@ -315,7 +315,7 @@ Varian standar dengan sentuhan **Mechanical Grace**.
     <h4 className="font-sans text-xl text-slate-50 mb-2">Primary Insight</h4>
     <p className="font-mono text-xs text-slate-400">Deep semantic analysis results...</p>
   </div>
-  
+
   {/* Side Info Block */}
   <div className="col-span-6 rounded-xl bg-slate-900 border border-slate-800 p-6 flex flex-col justify-between">
     <Activity className="icon-display text-amber-500" />
@@ -353,7 +353,7 @@ Pola antarmuka untuk Login, Signup, dan Manajemen Sesi. Mengombinasikan `AuthWid
     <div className="absolute inset-0 [background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.05)_0,rgba(255,255,255,0.05)_1px,transparent_1px,transparent_8px)]" />
     <span className="relative z-10 font-mono text-[10px] text-amber-500 uppercase tracking-widest">STEP_01: AUTHENTICATION</span>
   </div>
-  
+
   {/* Right: Interaction Area (The Form) */}
   <div className="md:w-7/12 p-12 bg-slate-900">
     {/* Input & Action buttons follow Section 1 & 2 standards */}

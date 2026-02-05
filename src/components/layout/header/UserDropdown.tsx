@@ -87,21 +87,44 @@ export function UserDropdown() {
       {/* Trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-center gap-2 rounded-action border-main border-[color:var(--slate-950)] bg-[color:var(--slate-950)] px-4 py-2 text-[12px] font-medium text-narrative text-[color:var(--slate-50)] transition-colors hover:bg-[color:var(--slate-900)] dark:border-[color:var(--slate-50)] dark:bg-[color:var(--slate-50)] dark:text-[color:var(--slate-950)] dark:hover:bg-[color:var(--slate-200)] focus-ring"
+        className={cn(
+          // Structure for stripes animation
+          "group relative overflow-hidden",
+          // Base layout
+          "flex items-center justify-center gap-2 rounded-action px-4 py-2",
+          // Typography
+          "text-[12px] font-medium text-narrative",
+          // Light mode diam: dark button
+          "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
+          // Light mode hover/expanded: text & border darken
+          "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
+          "aria-expanded:text-[color:var(--slate-800)] aria-expanded:border-[color:var(--slate-600)]",
+          // Dark mode diam: light button
+          "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
+          // Dark mode hover/expanded: text & border lighten
+          "dark:hover:text-[color:var(--slate-100)] dark:hover:border-[color:var(--slate-400)]",
+          "dark:aria-expanded:text-[color:var(--slate-100)] dark:aria-expanded:border-[color:var(--slate-400)]",
+          // Transition & focus
+          "transition-colors focus-ring"
+        )}
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
+        {/* Diagonal stripes overlay - slides in on hover or when expanded */}
+        <span
+          className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0 group-aria-expanded:translate-x-0"
+          aria-hidden="true"
+        />
+
         {/* Name (hidden on mobile) */}
-        <span className="hidden sm:block text-[12px] font-medium text-narrative max-w-[120px] truncate">
+        <span className="relative z-10 hidden sm:block text-[12px] font-medium text-narrative max-w-[120px] truncate">
           {fullName}
         </span>
-
-        {/* Badge dihapus - sudah ada di samping logo (SegmentBadge di GlobalHeader) */}
 
         {/* Chevron */}
         <NavArrowDown
           className={cn(
-            "icon-interface text-muted-foreground transition-transform duration-200",
+            "relative z-10 icon-interface transition-transform duration-200",
             isOpen && "rotate-180"
           )}
         />
