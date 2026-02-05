@@ -32,3 +32,5 @@
 - Tests: type-check pass (`npx tsc --noEmit`)
 - Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
 - Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Correction: Align pricing card palette with Pricing Teaser
+- Changes: `src/components/marketing/pricing/PricingCard.tsx`, `src/components/marketing/pricing/PricingCarousel.tsx`, `src/components/marketing/pricing/PricingSkeleton.tsx`, `docs/makalah-design-system/justification-docs/pricing-redesign.md`

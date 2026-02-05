@@ -81,9 +81,10 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
         <div
           className={cn(
             "absolute -top-3 left-1/2 -translate-x-1/2 z-10",
-            "bg-amber-500 text-slate-950",
-            "text-[9px] font-bold uppercase tracking-widest",
-            "px-2 py-1 rounded-badge whitespace-nowrap"
+            "transition-transform duration-300 group-hover:-translate-y-1",
+            "bg-[color:var(--emerald-500)] text-[color:var(--slate-50)]",
+            "text-[11px] font-semibold uppercase tracking-wide",
+            "px-3 py-1 rounded-full whitespace-nowrap"
           )}
         >
           Solusi Terbaik
@@ -93,9 +94,10 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
       <div
         className={cn(
           "group relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-4 md:p-8 rounded-shell",
-          "border border-hairline bg-slate-900",
-          "transition-colors",
-          plan.isHighlighted && "border-amber-500"
+          "border-1 border-[color:var(--slate-400)]",
+          "group-hover:bg-[color:var(--slate-200)] dark:group-hover:bg-[color:var(--slate-700)]",
+          "group-hover:-translate-y-1 transition-all duration-300",
+          plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
         )}
       >
         {/* Plan name */}
@@ -117,7 +119,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
 
         {/* Tagline with dot indicator */}
         <div className="flex items-start gap-3">
-          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-dot-light dark:bg-dot animate-pulse shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
+          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-[color:var(--rose-500)] animate-pulse shadow-[0_0_8px_var(--rose-500)]" />
           <p className="font-mono text-sm leading-relaxed text-foreground">
             {plan.tagline}
           </p>
@@ -130,7 +132,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
               key={index}
               className="font-mono text-[11px] leading-relaxed text-foreground/80 flex items-start gap-2"
             >
-              <span className="text-success mt-0.5">✓</span>
+              <span className="text-[color:var(--emerald-500)] mt-0.5">✓</span>
               {feature}
             </li>
           ))}

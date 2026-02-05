@@ -4,7 +4,7 @@ export function PricingSkeleton() {
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="relative h-full min-h-[280px] md:min-h-[320px] flex flex-col p-4 md:p-8 rounded-shell border border-hairline bg-slate-900 animate-pulse"
+          className="relative h-full min-h-[280px] md:min-h-[320px] flex flex-col p-4 md:p-8 rounded-shell border-1 border-[color:var(--slate-400)] bg-card animate-pulse"
         >
           {/* Plan name skeleton */}
           <div className="h-7 bg-muted rounded-[4px] w-24 mx-auto mb-3 mt-4 md:mt-0" />

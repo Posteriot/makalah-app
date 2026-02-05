@@ -91,8 +91,8 @@ export function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
             className={cn(
               "w-2.5 h-2.5 rounded-full border-none cursor-pointer transition-all duration-200",
               activeSlide === index
-                ? "bg-amber-500 scale-120"
-                : "bg-slate-500/40"
+                ? "bg-brand scale-120"
+                : "bg-black/20 dark:bg-white/30"
             )}
             aria-label={`Slide ${index + 1}`}
           />

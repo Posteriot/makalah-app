@@ -21,7 +21,7 @@ Dokumen ini adalah panduan teknis komprehensif untuk memigrasikan **Pricing Page
 *Referensi: [justifikasi-warna.md](../docs/justifikasi-warna.md)*
 *   **Background Page**: `oklch(.984 .003 247.858)` (Slate 50) / `oklch(.208 .042 265.755)` (Slate 900).
 *   **Card Surface**: `bg-slate-900` (Dark) dengan border `slate-800`.
-*   **Highlighted Card (Pro)**: Gunakan border **Amber 500** (`oklch(.769 .188 70.08)`) untuk menonjolkan value utama.
+*   **Highlighted Card (Pro)**: Gunakan border **Emerald 500** (`oklch(.696 .17 162.48)`) agar konsisten dengan Pricing Teaser.
 *   **Success Signal (Checkmarks)**: `oklch(.704 .14 182.503)` (Teal 500).
 
 ### 1.2 Hirarki Tipografi
@@ -60,7 +60,7 @@ Dokumen ini adalah panduan teknis komprehensif untuk memigrasikan **Pricing Page
 | :--- | :--- | :--- | :--- | :--- |
 | **Section Header** | `font-mono text-3xl` | `.text-signal tracking-tight` | Typography | Standarisasi industrial signal. |
 | **Pricing Card** | `rounded-lg border-black/20` | `.rounded-shell border-main bg-slate-900` | Shape & Surface | Hybrid radius & industrial surface. |
-| **Highlighted Card**| `border-emerald-600` | `border-amber-500` | Color Identity | Amber sebagai Main Brand/Action. |
+| **Highlighted Card**| `border-emerald-600` | `border-emerald-500` | Color Identity | Emerald mengikuti karakter Pricing Teaser. |
 | **Popular Badge** | `rounded-full text-[11px]` | `.rounded-badge .text-signal` | Shape & Typo | Geist Mono + tracking-widest. |
 | **CTA Button** | `rounded-lg font-semibold` | `.rounded-action .text-signal hover-slash` | Interaction | Mechanical signature hover. |
 | **Feature List** | `font-mono text-sm` | `.text-interface text-[11px]` | Typography | Info-dense scaling. |
@@ -78,7 +78,7 @@ Dokumen ini adalah panduan teknis komprehensif untuk memigrasikan **Pricing Page
 *   **Aksi**:
     1. Ganti `rounded-lg` ke `.rounded-shell` (16px).
     2. Terapkan `.border-hairline` untuk divider internal antara header card dan list fitur.
-    3. Ganti warna `emerald-600` pada highlighted card ke `amber-500` (Amber 500).
+    3. Pertahankan highlighted card di `emerald-500` (Emerald 500) mengikuti Pricing Teaser.
     4. Ubah font plan name ke **Geist Mono** dengan gaya **Signal** (Uppercase + Widest Tracking).
 
 ### Step 3: Standarisasi Data Pricing
@@ -99,7 +99,7 @@ Dokumen ini adalah panduan teknis komprehensif untuk memigrasikan **Pricing Page
 - [x] **Typo Audit**: Plan name & Price = Mono. Fitur List = Mono. Header = Mono.
 - [x] **Radius Audit**: Shell = 16px. CTA = 8px.
 - [x] **Border Audit**: Pemisah internal menggunakan `.border-hairline` (0.5px).
-- [x] **Color Audit**: Highlight menggunakan Amber (Main Brand), bukan Emerald lagi.
+- [x] **Color Audit**: Highlight menggunakan Emerald (mengikuti Pricing Teaser).
 - [x] **Interaction Audit**: Efek `.hover-slash` aktif pada tombol CTA.
 - [x] **Contrast Audit**: Teks Mono 11px tetap terbaca dengan kontras Slate-400 ke atas.
 - [x] **Skeleton Audit**: `PricingSkeleton` harus meniru struktur radius dan gap baru.
