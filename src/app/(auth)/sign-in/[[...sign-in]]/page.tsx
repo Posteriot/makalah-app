@@ -68,27 +68,26 @@ export default function SignInPage() {
             card: "shadow-none border-none bg-transparent p-0 w-full",
             headerTitle: "hidden",
             headerSubtitle: "hidden",
-            main: "p-0", // Remove Clerk default main padding
-            socialButtonsBlockButton: `rounded-lg border-border hover:bg-muted transition-colors text-sm font-medium ${isDark ? "bg-muted/50" : ""}`,
-            formButtonPrimary: "bg-brand hover:opacity-90 transition-opacity text-sm font-bold h-10 shadow-none",
-            formFieldInput: `rounded-lg border-border bg-background focus:ring-brand focus:border-brand transition-all ${isDark ? "bg-muted/20" : ""}`,
-            footerActionLink: "text-brand hover:text-brand/80 font-bold",
-            identityPreviewText: "text-foreground",
-            identityPreviewEditButtonIcon: "text-brand",
+            main: "p-0",
+            socialButtonsBlockButton: `rounded-action border-border hover:bg-muted transition-colors font-mono text-xs uppercase tracking-wider ${isDark ? "bg-muted/50" : ""}`,
+            formButtonPrimary: "bg-primary hover:bg-primary/90 transition-colors font-mono text-xs font-bold uppercase tracking-widest h-10 shadow-none rounded-action",
+            formFieldInput: `rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary transition-all ${isDark ? "bg-muted/20" : ""}`,
+            footerActionLink: "text-primary hover:text-primary/80 font-bold",
+            identityPreviewText: "text-foreground font-mono",
+            identityPreviewEditButtonIcon: "text-primary",
             formFieldLabel: "hidden",
             formFieldHintText: "hidden",
             socialButtonsBlockButtonBadge: "hidden",
-            // Hide "Terakhir digunakan" (Last used) badge
             identifierFieldInputOptionLastUsed: "hidden",
             alternativeMethodsBlockButtonBadge: "hidden",
             formFieldInputGroupSuffix: "hidden",
             formFieldSuccessText: "hidden",
-            dividerText: "text-muted-foreground",
-            footer: "bg-transparent mt-4", // Add small margin to match subtitle spacing
-            footerActionText: "text-muted-foreground",
+            dividerText: "text-muted-foreground font-mono text-xs uppercase tracking-wider",
+            footer: "bg-transparent mt-4",
+            footerActionText: "text-muted-foreground font-sans text-xs",
           },
           variables: {
-            colorPrimary: "oklch(0.711 0.181 125.2)", // Match with --success (green header button)
+            colorPrimary: "oklch(0.769 0.188 70.08)", // Amber 500 - Mechanical Grace
             colorTextSecondary: "#a1a1aa",
             colorBackground: "transparent",
             colorTextOnPrimaryBackground: "white",
