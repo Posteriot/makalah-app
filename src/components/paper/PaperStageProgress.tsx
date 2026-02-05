@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from "react";
 import { STAGE_ORDER, getStageLabel, getStageNumber, type PaperStageId } from "../../../convex/paperSessions/constants";
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
+import { Check } from "iconoir-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { RewindConfirmationDialog } from "./RewindConfirmationDialog";
 
@@ -166,7 +166,7 @@ export const PaperStageProgress: React.FC<PaperStageProgressProps> = ({
                                 } : undefined}
                                 aria-label={canRewind ? `Kembali ke tahap ${label}` : undefined}
                             >
-                                {isCompleted ? <Check size={14} strokeWidth={3} /> : stageNumber}
+                                {isCompleted ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : stageNumber}
                             </div>
                         );
 

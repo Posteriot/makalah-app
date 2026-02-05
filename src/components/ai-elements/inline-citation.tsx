@@ -13,7 +13,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
 import { cn } from "@/lib/utils"
-import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react"
+import { ArrowLeft, ArrowRight } from "iconoir-react"
 import { type ComponentProps, useCallback, useEffect, useState, createContext, useContext } from "react"
 
 const CarouselApiContext = createContext<CarouselApi | undefined>(undefined)
@@ -175,7 +175,7 @@ export const InlineCitationCarouselPrev = ({
       type="button"
       {...props}
     >
-      <ArrowLeftIcon className="size-4 text-muted-foreground" />
+      <ArrowLeft className="size-4 text-muted-foreground" />
     </button>
   )
 }
@@ -198,7 +198,7 @@ export const InlineCitationCarouselNext = ({
       type="button"
       {...props}
     >
-      <ArrowRightIcon className="size-4 text-muted-foreground" />
+      <ArrowRight className="size-4 text-muted-foreground" />
     </button>
   )
 }

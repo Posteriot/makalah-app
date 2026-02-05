@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { NavArrowDown, NavArrowRight } from "iconoir-react"
 import {
   Dialog,
   DialogContent,
@@ -101,9 +101,9 @@ export function RefrasaConfirmDialog({
                   <Collapsible open={naturalnessOpen} onOpenChange={setNaturalnessOpen}>
                     <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-purple-700 dark:text-purple-400 hover:underline">
                       {naturalnessOpen ? (
-                        <ChevronDown className="h-4 w-4" />
+                        <NavArrowDown className="h-4 w-4" />
                       ) : (
-                        <ChevronRight className="h-4 w-4" />
+                        <NavArrowRight className="h-4 w-4" />
                       )}
                       Naturalness Issues ({naturalnessIssues.length})
                     </CollapsibleTrigger>
@@ -124,9 +124,9 @@ export function RefrasaConfirmDialog({
                   <Collapsible open={styleOpen} onOpenChange={setStyleOpen}>
                     <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-teal-700 dark:text-teal-400 hover:underline">
                       {styleOpen ? (
-                        <ChevronDown className="h-4 w-4" />
+                        <NavArrowDown className="h-4 w-4" />
                       ) : (
-                        <ChevronRight className="h-4 w-4" />
+                        <NavArrowRight className="h-4 w-4" />
                       )}
                       Style Issues ({styleIssues.length})
                     </CollapsibleTrigger>
