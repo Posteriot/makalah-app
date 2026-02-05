@@ -38,11 +38,17 @@ export function AuthWideCard({
         : ""
 
     return (
-        <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-2xl border border-border bg-card shadow-2xl relative">
+        <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-shell border border-border bg-card shadow-none relative">
             {/* Left Column: Branding & Personality */}
-            <div className="md:w-5/12 bg-muted/30 p-8 md:p-12 border-b md:border-b-0 md:border-r border-border relative flex flex-col">
-                {/* Decorative Grid for Left side */}
-                <div className="absolute inset-0 opacity-40 pointer-events-none hero-grid-thin" />
+            <div className="md:w-5/12 bg-muted/30 p-8 md:p-12 border-b md:border-b-0 md:border-r border-hairline relative flex flex-col">
+                {/* Diagonal Stripes - Industrial Texture */}
+                <div
+                    className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]"
+                    style={{
+                        backgroundImage: 'repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 8px)'
+                    }}
+                    aria-hidden="true"
+                />
 
                 {customLeftContent ? (
                     <div className="relative z-10 w-full h-full flex flex-col">
@@ -82,7 +88,7 @@ export function AuthWideCard({
 
                         {/* Heading + Subheading - Bottom, aligns with bottom edge of Clerk card */}
                         <div className="space-y-4 mt-auto">
-                            <h1 className="font-hero text-3xl md:text-5xl font-bold tracking-tighter text-foreground leading-[1.1]">
+                            <h1 className="font-mono text-2xl md:text-4xl font-bold tracking-tighter text-foreground leading-[1.1]">
                                 {shouldBreakTitle ? (
                                     <>
                                         <span className="block">{titleFirstWord}</span>
@@ -92,12 +98,12 @@ export function AuthWideCard({
                                     resolvedTitle
                                 )}
                             </h1>
-                            <p className="text-sm leading-relaxed max-w-[280px]">
+                            <p className="text-sm leading-relaxed max-w-[280px] font-sans">
                                 <span className="text-muted-foreground font-normal">
                                     {subtitleLead}
                                 </span>{" "}
                                 {subtitleEmphasis && (
-                                    <span className="text-brand font-bold">
+                                    <span className="text-primary font-semibold">
                                         {subtitleEmphasis}
                                     </span>
                                 )}
