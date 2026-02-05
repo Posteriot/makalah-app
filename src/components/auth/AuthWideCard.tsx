@@ -115,7 +115,7 @@ export function AuthWideCard({
             </div>
 
             {/* Right Column: Interaction (Clerk Form) */}
-            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center bg-card relative">
+            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-800)] relative">
                 <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
                     {children}
                 </div>

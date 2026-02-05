@@ -2249,6 +2249,55 @@
       var(--slate-600) 7px
     );
   }
+
+  /* Clerk social button stripes - applied to ::before pseudo-element */
+  /* Light mode: stripes slide in with light bg */
+  .btn-stripes-clerk::before {
+    background-color: var(--slate-100);
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      var(--slate-300) 6px,
+      var(--slate-300) 7px
+    );
+  }
+
+  /* Dark mode: stripes slide in with dark bg */
+  .dark .btn-stripes-clerk::before {
+    background-color: var(--slate-800);
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      var(--slate-600) 6px,
+      var(--slate-600) 7px
+    );
+  }
+}
+
+/* ==========================================================================
+ * CLERK OVERRIDES - Force transparent backgrounds
+ * ========================================================================== */
+.cl-footer,
+.cl-footerAction,
+.cl-footerPages,
+.cl-card__footer,
+.cl-signIn-root,
+.cl-signUp-root,
+[class*="cl-footer"],
+[class*="cl-internal"],
+[class*="footer"] [class*="cl-"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Target Clerk internal footer wrapper */
+.cl-footerAction__signIn,
+.cl-footerAction__signUp {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 /* ==========================================================================
