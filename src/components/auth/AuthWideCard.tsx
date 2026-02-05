@@ -60,28 +60,29 @@ export function AuthWideCard({
                         {/* Logo + Brand - Top, aligns with top edge of Clerk card */}
                         <div className="flex flex-col">
                             <Link href="/" className="inline-flex items-center gap-2 group w-fit">
+                                {/* Logo Icon */}
                                 <Image
-                                    src="/logo/makalah_logo_500x500.png"
-                                    alt="Makalah"
+                                    src="/logo/makalah_logo_light.svg"
+                                    alt=""
                                     width={28}
                                     height={28}
-                                    className="rounded-md shadow-sm transition-transform group-hover:scale-105"
+                                    className="transition-transform group-hover:scale-105"
                                 />
-                                {/* Light text (for dark mode) */}
+                                {/* Brand Text - for dark mode */}
                                 <Image
-                                    src="/makalah_brand_text.svg"
+                                    src="/logo-makalah-ai-white.svg"
                                     alt="Makalah"
-                                    width={72}
-                                    height={16}
-                                    className="logo-brand-light"
+                                    width={80}
+                                    height={20}
+                                    className="hidden dark:block transition-transform group-hover:scale-105"
                                 />
-                                {/* Dark text (for light mode) */}
+                                {/* Brand Text - for light mode */}
                                 <Image
-                                    src="/makalah_brand_text_dark.svg"
+                                    src="/logo-makalah-ai-black.svg"
                                     alt="Makalah"
-                                    width={72}
-                                    height={16}
-                                    className="logo-brand-dark"
+                                    width={80}
+                                    height={20}
+                                    className="block dark:hidden transition-transform group-hover:scale-105"
                                 />
                             </Link>
                         </div>
