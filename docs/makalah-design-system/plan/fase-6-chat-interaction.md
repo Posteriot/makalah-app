@@ -3,7 +3,7 @@
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 > **Parent Document**: [MASTER-PLAN.md](./MASTER-PLAN.md)
-> **Status**: ⏳ Pending
+> **Status**: ✅ Done
 > **Total Tasks**: 4
 > **Prerequisite**: FASE 5 (Chat Shell) completed
 
@@ -80,7 +80,7 @@
 
 ## Tasks
 
-### Task 6.1: Migrate ChatInput
+### Task 6.1: Migrate ChatInput ✅ Done
 
 **Files:**
 - Modify: `src/components/chat/ChatInput.tsx`
@@ -179,7 +179,7 @@ git commit -m "refactor(message-bubble): migrate to Mechanical Grace + Iconoir"
 
 ---
 
-### Task 6.3: Migrate QuickActions
+### Task 6.3: Migrate QuickActions ✅ Done
 
 **Files:**
 - Modify: `src/components/chat/QuickActions.tsx`
@@ -222,7 +222,7 @@ git commit -m "refactor(quick-actions): migrate to Mechanical Grace + Iconoir"
 
 ---
 
-### Task 6.4: Migrate Indicators (Thinking, Search, Tool)
+### Task 6.4: Migrate Indicators (Thinking, Search, Tool) ✅ Done
 
 **Files:**
 - Review: `src/components/chat/ThinkingIndicator.tsx`

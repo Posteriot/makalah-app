@@ -1,7 +1,7 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { PaperclipIcon, PencilIcon, XIcon, SendHorizontalIcon } from "lucide-react"
+import { Attachment, EditPencil, Xmark, Send } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
@@ -290,7 +290,7 @@ export function MessageBubble({
                                     className="p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-colors"
                                     aria-label="Edit message"
                                 >
-                                    <PencilIcon className="h-4 w-4" />
+                                    <EditPencil className="h-4 w-4" />
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent>Edit</TooltipContent>
@@ -304,7 +304,7 @@ export function MessageBubble({
                                     aria-label="Edit message"
                                     aria-disabled="true"
                                 >
-                                    <PencilIcon className="h-4 w-4" />
+                                    <EditPencil className="h-4 w-4" />
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent side="left" className="max-w-[250px]">
@@ -323,6 +323,7 @@ export function MessageBubble({
                     isUser && [
                         "rounded-lg",
                         "bg-user-message-bg",
+                        "border border-slate-800",
                         "max-w-[85%]",
                     ],
                     // Agent: no bubble, full width
@@ -337,7 +338,7 @@ export function MessageBubble({
                     {fileIds && fileIds.length > 0 && (
                         <div className="mb-3">
                             <span className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-md bg-info/20 text-info border border-info/30">
-                                <PaperclipIcon className="h-3 w-3" />
+                                <Attachment className="h-3 w-3" />
                                 <span>{fileIds.length} {fileIds.length === 1 ? "file" : "files"}</span>
                             </span>
                         </div>
@@ -369,24 +370,24 @@ export function MessageBubble({
                                     e.target.style.height = e.target.scrollHeight + 'px'
                                 }}
                                 onKeyDown={handleKeyDown}
-                                className="w-full rounded-lg p-3 text-sm bg-background border border-border text-foreground focus:outline-none focus:border-primary resize-none overflow-hidden"
+                                className="w-full rounded-lg p-3 text-sm bg-background border border-dashed border-sky-500 text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none overflow-hidden"
                                 rows={1}
                                 aria-label="Edit message content"
                             />
                             <div className="flex gap-2 justify-end">
                                 <button
                                     onClick={handleCancel}
-                                    className="px-3 py-1.5 rounded-md text-xs flex items-center gap-1.5 hover:bg-accent transition-colors"
+                                    className="px-3 py-1.5 rounded-md text-xs font-mono flex items-center gap-1.5 hover:bg-accent transition-colors"
                                     aria-label="Batalkan edit"
                                 >
-                                    <XIcon className="h-3.5 w-3.5" /> Batal
+                                    <Xmark className="h-3.5 w-3.5" /> Batal
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="px-3 py-1.5 rounded-md text-xs flex items-center gap-1.5 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                    className="px-3 py-1.5 rounded-md text-xs font-mono flex items-center gap-1.5 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                                     aria-label="Kirim pesan yang diedit"
                                 >
-                                    <SendHorizontalIcon className="h-3.5 w-3.5" /> Kirim
+                                    <Send className="h-3.5 w-3.5" /> Kirim
                                 </button>
                             </div>
                         </div>

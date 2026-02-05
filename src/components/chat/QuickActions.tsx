@@ -1,6 +1,6 @@
 "use client"
 
-import { CopyIcon, CheckIcon } from "lucide-react"
+import { Copy, Check } from "iconoir-react"
 import { useState } from "react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
@@ -34,10 +34,12 @@ export function QuickActions({ content }: QuickActionsProps) {
                 <TooltipTrigger asChild>
                     <button
                         onClick={handleCopy}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-muted"
+                        className={`flex items-center gap-1 text-[10px] font-mono transition-colors p-1.5 rounded-md hover:bg-muted ${
+                            isCopied ? "text-emerald-500" : "text-muted-foreground hover:text-foreground"
+                        }`}
                         aria-label="Copy to clipboard"
                     >
-                        {isCopied ? <CheckIcon className="h-3.5 w-3.5" /> : <CopyIcon className="h-3.5 w-3.5" />}
+                        {isCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                         <span>{isCopied ? "Copied" : "Copy"}</span>
                     </button>
                 </TooltipTrigger>
