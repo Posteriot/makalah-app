@@ -98,13 +98,17 @@ Dokumen ini adalah panduan teknis komprehensif untuk memigrasikan **Auth Section
 
 ## 4. Checklist Verifikasi (Review & Audit)
 
-- [ ] **Grid Audit**: Card berada tepat di tengah grid sistem.
-- [ ] **Typo Audit**: Judul, Label, dan Tombol = Geist Mono. Deskripsi = Geist Sans.
-- [ ] **Radius Audit**: Main Card = 16px. Form elements = 8px.
-- [ ] **Color Audit**: Tombol utama menggunakan Amber 500. Notifikasi sukses menggunakan Emerald 500.
-- [ ] **Icon Audit**: Tidak ada lagi icon dari Lucide, semua sudah Iconoir.
-- [ ] **Interaction Audit**: Tombol utama (Clerk maupun Waitlist) memiliki efek `.hover-slash`.
-- [ ] **Responsive Audit**: Layout dua kolom `AuthWideCard` rapi di portrait/mobile.
+- [x] **Grid Audit**: Card berada tepat di tengah grid sistem.
+- [x] **Typo Audit**: Judul, Label, dan Tombol = Geist Mono. Deskripsi = Geist Sans.
+- [x] **Radius Audit**: Main Card = 16px. Form elements = 8px.
+- [x] **Color Audit**: Tombol utama menggunakan Amber 500. Notifikasi sukses menggunakan Emerald 500.
+- [x] **Icon Audit**: Tidak ada lagi icon dari Lucide, semua sudah Iconoir.
+- [x] **Interaction Audit**: Tombol utama (Clerk maupun Waitlist) memiliki efek `.hover-slash`.
+- [x] **Responsive Audit**: Layout dua kolom `AuthWideCard` rapi di portrait/mobile.
+
+**Migration Status:** ✅ COMPLETED (2026-02-06)
+**Branch:** `feat/auth-redesign-mechanical-grace`
+**Commits:** 6 commits total (layout, card, form, sign-in, sign-up, docs)
 
 ---
 > [!IMPORTANT]
