@@ -63,19 +63,19 @@ function InvitedUserLeftContent({ email }: { email: string }) {
       </div>
 
       <div className="space-y-4 mt-auto">
-        <div className="flex items-center gap-2 text-brand">
+        <div className="flex items-center gap-2 text-success">
           <CheckCircle className="h-5 w-5" />
-          <span className="text-sm font-medium">Undangan Valid</span>
+          <span className="font-mono text-xs font-bold uppercase tracking-widest">UNDANGAN VALID</span>
         </div>
-        <h1 className="font-hero text-3xl md:text-4xl font-bold tracking-tighter text-foreground leading-[1.1]">
+        <h1 className="font-mono text-2xl md:text-3xl font-bold tracking-tighter text-foreground leading-[1.1]">
           Selamat datang!
         </h1>
         <p className="text-sm text-muted-foreground">
           Kamu diundang untuk bergabung dengan Makalah App.
         </p>
-        <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 bg-muted/50 rounded-action px-3 py-2 border border-hairline">
           <Mail className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">{email}</span>
+          <span className="font-mono text-sm">{email}</span>
         </div>
         <p className="text-xs text-muted-foreground">
           Gunakan email di atas untuk mendaftar.
@@ -99,10 +99,10 @@ function InvalidTokenContent({ error }: { error: string }) {
         {error}
       </p>
       <Link
-        href="/auth/waiting-list"
-        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+        href="/waiting-list"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-action font-mono text-xs font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors"
       >
-        Daftar Waiting List
+        DAFTAR WAITING LIST
       </Link>
     </div>
   )
@@ -139,20 +139,20 @@ export default function SignUpPage() {
       main: "p-0",
       formFieldRow: "!flex !flex-col !gap-4",
       socialButtonsBlockButtonBadge: "hidden",
-      socialButtonsBlockButton: `rounded-lg border-border hover:bg-muted transition-colors text-sm font-medium ${isDark ? "bg-muted/50" : ""}`,
-      formButtonPrimary: "bg-brand hover:opacity-90 transition-opacity text-sm font-bold h-10 shadow-none",
-      formFieldInput: `rounded-lg border-border bg-background focus:ring-brand focus:border-brand transition-all ${isDark ? "bg-muted/20" : ""}`,
-      footerActionLink: "text-brand hover:text-brand/80 font-bold",
-      identityPreviewText: "text-foreground",
-      identityPreviewEditButtonIcon: "text-brand",
+      socialButtonsBlockButton: `rounded-action border-border hover:bg-muted transition-colors font-mono text-xs uppercase tracking-wider ${isDark ? "bg-muted/50" : ""}`,
+      formButtonPrimary: "bg-primary hover:bg-primary/90 transition-colors font-mono text-xs font-bold uppercase tracking-widest h-10 shadow-none rounded-action",
+      formFieldInput: `rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary transition-all ${isDark ? "bg-muted/20" : ""}`,
+      footerActionLink: "text-primary hover:text-primary/80 font-bold",
+      identityPreviewText: "text-foreground font-mono",
+      identityPreviewEditButtonIcon: "text-primary",
       formFieldLabel: "hidden",
       formFieldHintText: "hidden",
-      dividerText: "text-muted-foreground",
+      dividerText: "text-muted-foreground font-mono text-xs uppercase tracking-wider",
       footer: "bg-transparent mt-4",
-      footerActionText: "text-muted-foreground",
+      footerActionText: "text-muted-foreground font-sans text-xs",
     },
     variables: {
-      colorPrimary: "oklch(0.711 0.181 125.2)",
+      colorPrimary: "oklch(0.769 0.188 70.08)",
       colorTextSecondary: "#a1a1aa",
       colorBackground: "transparent",
       colorTextOnPrimaryBackground: "white",
