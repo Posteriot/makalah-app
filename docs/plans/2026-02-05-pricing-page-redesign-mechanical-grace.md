@@ -285,7 +285,7 @@ git commit -m "refactor(pricing): standardize CTA to Mechanical Grace"
 **Files:**
 - Modify: `src/components/marketing/pricing/PricingCarousel.tsx`
 
-**Status:** Pending
+**Status:** Done
 
 **Step 1: Update dot colors to Carbon tokens**
 
