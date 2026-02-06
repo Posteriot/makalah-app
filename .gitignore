@@ -60,3 +60,5 @@ agent-os/
 # Temporary files
 .tmp/
 .playwright-mcp/
+
+screenshots/

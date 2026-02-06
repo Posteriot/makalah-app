@@ -18,14 +18,6 @@ export function AuthWideCard({
     customLeftContent,
 }: AuthWideCardProps) {
     const resolvedTitle = title || "Silakan masuk!"
-    const firstSpaceIndex = resolvedTitle.indexOf(" ")
-    const shouldBreakTitle = firstSpaceIndex > 0
-    const titleFirstWord = shouldBreakTitle
-        ? resolvedTitle.slice(0, firstSpaceIndex)
-        : resolvedTitle
-    const titleRest = shouldBreakTitle
-        ? resolvedTitle.slice(firstSpaceIndex + 1).trimStart()
-        : ""
 
     const resolvedSubtitle = subtitle || "Susun Paper terbaikmu, tanpa ribet, tinggal ngobrol!"
     const firstCommaIndex = resolvedSubtitle.indexOf(",")
@@ -38,11 +30,17 @@ export function AuthWideCard({
         : ""
 
     return (
-        <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-2xl border border-border bg-card shadow-2xl relative">
+        <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-lg border border-border bg-card shadow-none relative">
             {/* Left Column: Branding & Personality */}
-            <div className="md:w-5/12 bg-muted/30 p-8 md:p-12 border-b md:border-b-0 md:border-r border-border relative flex flex-col">
-                {/* Decorative Grid for Left side */}
-                <div className="absolute inset-0 opacity-40 pointer-events-none hero-grid-thin" />
+            <div className="md:w-5/12 bg-muted/30 p-6 md:p-12 relative flex flex-col">
+                {/* Diagonal Stripes - Industrial Texture */}
+                <div
+                    className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]"
+                    style={{
+                        backgroundImage: 'repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 8px)'
+                    }}
+                    aria-hidden="true"
+                />
 
                 {customLeftContent ? (
                     <div className="relative z-10 w-full h-full flex flex-col">
@@ -54,50 +52,28 @@ export function AuthWideCard({
                         {/* Logo + Brand - Top, aligns with top edge of Clerk card */}
                         <div className="flex flex-col">
                             <Link href="/" className="inline-flex items-center gap-2 group w-fit">
+                                {/* Logo Icon */}
                                 <Image
-                                    src="/logo/makalah_logo_500x500.png"
-                                    alt="Makalah"
+                                    src="/logo/makalah_logo_light.svg"
+                                    alt=""
                                     width={28}
                                     height={28}
-                                    className="rounded-md shadow-sm transition-transform group-hover:scale-105"
-                                />
-                                {/* Light text (for dark mode) */}
-                                <Image
-                                    src="/makalah_brand_text.svg"
-                                    alt="Makalah"
-                                    width={72}
-                                    height={16}
-                                    className="logo-brand-light"
-                                />
-                                {/* Dark text (for light mode) */}
-                                <Image
-                                    src="/makalah_brand_text_dark.svg"
-                                    alt="Makalah"
-                                    width={72}
-                                    height={16}
-                                    className="logo-brand-dark"
+                                    className="transition-transform group-hover:scale-105 brightness-[.88] sepia-[.06] hue-rotate-[185deg] saturate-[3]"
                                 />
                             </Link>
                         </div>
 
                         {/* Heading + Subheading - Bottom, aligns with bottom edge of Clerk card */}
-                        <div className="space-y-4 mt-auto">
-                            <h1 className="font-hero text-3xl md:text-5xl font-bold tracking-tighter text-foreground leading-[1.1]">
-                                {shouldBreakTitle ? (
-                                    <>
-                                        <span className="block">{titleFirstWord}</span>
-                                        <span>{titleRest}</span>
-                                    </>
-                                ) : (
-                                    resolvedTitle
-                                )}
+                        <div className="space-y-3 mt-6 md:space-y-4 md:mt-auto">
+                            <h1 className="font-sans text-2xl md:text-3xl font-medium text-foreground dark:text-slate-200 leading-[1.1]">
+                                {resolvedTitle}
                             </h1>
-                            <p className="text-sm leading-relaxed max-w-[280px]">
+                            <p className="text-sm leading-relaxed max-w-[280px] font-mono">
                                 <span className="text-muted-foreground font-normal">
                                     {subtitleLead}
                                 </span>{" "}
                                 {subtitleEmphasis && (
-                                    <span className="text-brand font-bold">
+                                    <span className="text-slate-50 font-normal">
                                         {subtitleEmphasis}
                                     </span>
                                 )}
@@ -108,7 +84,7 @@ export function AuthWideCard({
             </div>
 
             {/* Right Column: Interaction (Clerk Form) */}
-            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center bg-card relative">
+            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-800)] relative">
                 <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
                     {children}
                 </div>

@@ -6,13 +6,17 @@ export default function AuthLayout({
     children: React.ReactNode
 }) {
     return (
-        <div className="min-h-screen relative overflow-hidden bg-background text-foreground flex items-center justify-center p-6 hero-vivid">
-            {/* Dark Overlay for Aurora - provide "transparency to black" feel */}
-            <div className="absolute inset-0 bg-black/60 pointer-events-none z-0" aria-hidden="true" />
-
-            {/* Grid Overlay */}
+        <div className="min-h-dvh relative bg-background text-foreground flex items-center justify-center p-4 md:p-6">
+            {/* Industrial Grid Pattern - Mechanical Grace */}
             <div
-                className="hero-grid-thin absolute inset-0 pointer-events-none opacity-20 z-[1]"
+                className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05] z-[1]"
+                style={{
+                    backgroundImage: `
+                        linear-gradient(var(--border-hairline) 1px, transparent 1px),
+                        linear-gradient(90deg, var(--border-hairline) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '48px 48px'
+                }}
                 aria-hidden="true"
             />
 
