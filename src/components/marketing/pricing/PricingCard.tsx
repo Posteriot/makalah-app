@@ -1,8 +1,8 @@
 "use client"
 
-import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
+import { SectionCTA } from "@/components/ui/section-cta"
 
 export type PricingPlan = {
   _id: string
@@ -43,10 +43,12 @@ function PricingCTA({
       <button
         disabled
         className={cn(
-          "w-full py-2.5 px-4 rounded-lg text-sm font-semibold",
-          "bg-black/5 dark:bg-white/5",
-          "border border-black/10 dark:border-white/10",
-          "text-muted-foreground cursor-not-allowed opacity-60"
+          "group relative overflow-hidden",
+          "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2",
+          "text-signal text-[11px] font-bold uppercase tracking-widest",
+          "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
+          "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
+          "cursor-not-allowed opacity-60"
         )}
       >
         {plan.ctaText}
@@ -55,18 +57,9 @@ function PricingCTA({
   }
 
   return (
-    <Link
-      href={getHref()}
-      className={cn(
-        "w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-center block",
-        "transition-all duration-200",
-        plan.isHighlighted
-          ? "bg-[var(--brand)] text-white shadow-[0_4px_20px_rgba(232,102,9,0.2)] hover:translate-y-[-2px] hover:shadow-[0_8px_30px_rgba(232,102,9,0.4)]"
-          : "bg-transparent border border-black/20 dark:border-white/30 text-foreground hover:bg-black/5 dark:hover:bg-white/5"
-      )}
-    >
+    <SectionCTA href={getHref()} className="justify-center uppercase tracking-widest">
       {plan.ctaText}
-    </Link>
+    </SectionCTA>
   )
 }
 
@@ -76,13 +69,14 @@ function PricingCTA({
 
 export function PricingCard({ plan }: { plan: PricingPlan }) {
   return (
-    <div className="relative h-full">
+    <div className="group/card relative h-full">
       {/* Popular tag for highlighted card */}
       {plan.isHighlighted && (
         <div
           className={cn(
             "absolute -top-3 left-1/2 -translate-x-1/2 z-10",
-            "bg-emerald-600 text-white",
+            "transition-transform duration-300 group-hover/card:-translate-y-1",
+            "bg-[color:var(--emerald-500)] text-[color:var(--slate-50)]",
             "text-[11px] font-semibold uppercase tracking-wide",
             "px-3 py-1 rounded-full whitespace-nowrap"
           )}
@@ -93,24 +87,23 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
 
       <div
         className={cn(
-          "group relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-4 md:p-8 rounded-lg",
-          "border border-black/20 dark:border-white/25",
-          "hover:bg-bento-light-hover dark:hover:bg-bento-hover",
-          "hover:border-black/30 dark:hover:border-white/35",
-          "hover:-translate-y-1 transition-all duration-300",
-          plan.isHighlighted && "border-2 border-emerald-600 dark:border-emerald-500"
+          "relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
+          "border border-[color:var(--slate-500)]",
+          "group-hover/card:bg-[color:var(--slate-200)] dark:group-hover/card:bg-[color:var(--slate-700)]",
+          "group-hover/card:-translate-y-1 transition-all duration-300",
+          plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
         )}
       >
         {/* Plan name */}
-        <h3 className="font-sans font-light text-xl md:text-2xl text-foreground mb-3 text-center mt-4 md:mt-0">
+        <h3 className="text-narrative font-light text-xl md:text-2xl text-foreground mb-3 text-center mt-4 md:mt-0">
           {plan.name}
         </h3>
 
         {/* Price */}
-        <p className="font-mono text-3xl md:text-5xl tracking-tight text-foreground text-center mb-6">
+        <p className="text-interface text-3xl md:text-3xl font-medium tracking-tight tabular-nums text-foreground text-center mb-6">
           {plan.price}
           {plan.unit && (
-            <span className="text-sm font-normal text-muted-foreground ml-1">
+            <span className="text-interface text-sm font-normal text-muted-foreground ml-1">
               {plan.unit}
             </span>
           )}
@@ -118,27 +111,27 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
 
         {/* Tagline with dot indicator */}
         <div className="flex items-start gap-3">
-          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-dot-light dark:bg-dot animate-pulse shadow-[0_0_8px_var(--color-dot-light)] dark:shadow-[0_0_8px_var(--color-dot)]" />
-          <p className="font-mono font-bold text-base leading-relaxed text-foreground">
+          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-[color:var(--rose-500)] animate-pulse shadow-[0_0_8px_var(--rose-500)]" />
+          <p className="text-interface font-normal text-sm leading-relaxed text-foreground">
             {plan.tagline}
           </p>
         </div>
 
         {/* Features list */}
-        <ul className="mt-4 pt-3 flex-1 space-y-1.5">
+        <ul className="mt-6 md:mt-0 pt-3 md:pt-6 flex-1 space-y-1.5">
           {plan.features.map((feature, index) => (
             <li
               key={index}
-              className="font-mono text-sm leading-relaxed text-foreground/80 flex items-start gap-2"
+              className="text-interface text-xs leading-relaxed text-foreground flex items-start gap-2"
             >
-              <span className="text-emerald-600 dark:text-emerald-500 mt-0.5">✓</span>
+              <span className="text-[color:var(--emerald-500)] mt-0.5">✓</span>
               {feature}
             </li>
           ))}
         </ul>
 
         {/* CTA Button */}
-        <div className="mt-6">
+        <div className="mt-6 flex justify-center">
           <PricingCTA plan={plan} />
         </div>
       </div>

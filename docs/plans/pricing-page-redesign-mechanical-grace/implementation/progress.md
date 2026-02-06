@@ -1,0 +1,44 @@
+# Progress Log - Pricing Page Redesign (Mechanical Grace)
+
+## 2026-02-05
+- Task 1: Done
+- Changes: `src/app/(marketing)/pricing/page.tsx` (bg-background, 16-col grid, header mono, empty state mono, card grid spans)
+- Tests: type-check pass (`npx tsc --noEmit`)
+- Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
+- Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Task 2: Done
+- Changes: `src/components/marketing/pricing/PricingCard.tsx` (badge amber, rounded-shell, hairline divider, mono typography, success checkmarks)
+- Tests: type-check pass (`npx tsc --noEmit`)
+- Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
+- Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Task 3: Done
+- Changes: `src/components/marketing/pricing/PricingCard.tsx` (CTA rounded-action, hover-slash, mono uppercase button text)
+- Tests: type-check pass (`npx tsc --noEmit`)
+- Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
+- Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Task 4: Done
+- Changes: `src/components/marketing/pricing/PricingCarousel.tsx` (carousel dots amber/ slate)
+- Tests: type-check pass (`npx tsc --noEmit`)
+- Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
+- Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Task 5: Done
+- Changes: `src/components/marketing/pricing/PricingSkeleton.tsx` (rounded-shell, hairline border, inner skeleton radius)
+- Tests: type-check pass (`npx tsc --noEmit`)
+- Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
+- Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Task 6: Done
+- Changes: `docs/makalah-design-system/justification-docs/pricing-redesign.md` (checklist marked complete)
+- Verification: `/pricing` light/dark via browser automation; grid + card classes present; skeleton verified by code inspection
+- Tests: type-check pass (`npx tsc --noEmit`)
+- Tests: lint warnings in `.agent/skills/design-replicate/scripts/extract_styles.js`
+- Tests: build pass with dynamic server usage logs from `ensureConvexUser`
+- Correction: Align pricing card palette with Pricing Teaser
+- Changes: `src/components/marketing/pricing/PricingCard.tsx`, `src/components/marketing/pricing/PricingCarousel.tsx`, `src/components/marketing/pricing/PricingSkeleton.tsx`, `docs/makalah-design-system/justification-docs/pricing-redesign.md`
+- Correction: Mirror pricing layout + card typography + hover behavior to Pricing Teaser
+- Changes: `src/app/(marketing)/pricing/page.tsx`, `src/components/marketing/pricing/PricingCard.tsx`, `src/components/marketing/pricing/PricingCarousel.tsx`, `src/components/marketing/pricing/PricingSkeleton.tsx`, `docs/makalah-design-system/justification-docs/pricing-redesign.md`
+- Correction: Isolate card hover from CTA + enforce uppercase CTA text
+- Changes: `src/components/marketing/pricing/PricingCard.tsx`
+- Correction: Expand pricing section width to align with header/footer edges
+- Changes: `src/app/(marketing)/pricing/page.tsx`
+- Correction: Tailwind compliance cleanup (remove inline padding style, replace border-1, remove scale-120)
+- Changes: `src/app/(marketing)/pricing/page.tsx`, `src/components/marketing/pricing/PricingCard.tsx`, `src/components/marketing/pricing/PricingCarousel.tsx`

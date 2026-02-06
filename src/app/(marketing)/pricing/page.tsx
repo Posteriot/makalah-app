@@ -11,55 +11,64 @@ export default function PricingPage() {
 
   return (
     <section
-      className="relative min-h-[580px] md:min-h-[700px] flex flex-col justify-center px-4 md:px-6 pb-16 md:pb-24 overflow-hidden bg-muted/30 dark:bg-black"
-      style={{ paddingTop: "calc(var(--header-h) + 60px)" }}
+      className="relative min-h-[100svh] flex flex-col justify-center overflow-hidden bg-background pb-6 md:pb-10 pt-[calc(var(--header-h)+60px)] md:pt-[calc(var(--header-h)+60px)]"
       id="pricing"
     >
       {/* Background patterns - using memoized React components */}
       <GridPattern className="z-0" />
       <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
-      <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto">
-        {/* Section Header */}
-        <div className="flex flex-col items-start gap-3 md:gap-4 mb-6 md:mb-8">
-          <SectionBadge>Pemakaian & Harga</SectionBadge>
-          <h1 className="font-mono text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight text-foreground leading-tight">
-            Tak Perlu Bayar Mahal
-            <br />
-            Untuk Karya Yang Masuk Akal
-          </h1>
-          <p className="font-mono text-sm md:text-base text-muted-foreground max-w-xl">
-            Pilih paket penggunaan sesuai kebutuhan. Mau ujicoba dulu yang
-            gratisan? Boleh! Atau langsung bayar per paper? Aman!
-          </p>
-        </div>
-
-        {/* Loading state */}
-        {plans === undefined && <PricingSkeleton />}
-
-        {/* Empty state */}
-        {plans && plans.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              Paket harga sedang disiapkan. Silakan cek kembali nanti.
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8">
+        <div className="grid grid-cols-16 gap-comfort content-center">
+          {/* Section Header */}
+          <div className="col-span-16 flex flex-col items-start gap-3 md:gap-4 mb-4 md:mb-8">
+            <SectionBadge>Pemakaian & Harga</SectionBadge>
+            <h1 className="text-narrative text-2xl sm:text-[2rem] md:text-[2.5rem] font-medium leading-[1.3] text-foreground">
+              Tak Perlu Bayar Mahal
+              <br />
+              Untuk Karya Yang Masuk Akal
+            </h1>
+            <p className="text-interface text-sm text-muted-foreground max-w-xl">
+              Pilih paket penggunaan sesuai kebutuhan. Mau ujicoba dulu yang
+              gratisan? Boleh! Atau langsung bayar per paper? Aman!
             </p>
           </div>
-        )}
 
-        {/* Loaded state with data */}
-        {plans && plans.length > 0 && (
-          <>
-            {/* Desktop: Grid */}
-            <div className="hidden md:grid grid-cols-3 gap-6 items-stretch">
-              {plans.map((plan) => (
-                <PricingCard key={plan._id} plan={plan} />
-              ))}
+          {/* Loading state */}
+          {plans === undefined && (
+            <div className="col-span-16">
+              <PricingSkeleton />
             </div>
+          )}
 
-            {/* Mobile: Carousel */}
-            <PricingCarousel plans={plans} />
-          </>
-        )}
+          {/* Empty state */}
+          {plans && plans.length === 0 && (
+            <div className="col-span-16 text-center py-12">
+              <p className="text-interface text-xs text-muted-foreground">
+                Paket harga sedang disiapkan. Silakan cek kembali nanti.
+              </p>
+            </div>
+          )}
+
+          {/* Loaded state with data */}
+          {plans && plans.length > 0 && (
+            <>
+              {/* Desktop: Grid */}
+              <div className="col-span-16">
+                <div className="hidden md:grid grid-cols-3 gap-6 items-stretch">
+                  {plans.map((plan) => (
+                    <PricingCard key={plan._id} plan={plan} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Mobile: Carousel */}
+              <div className="col-span-16">
+                <PricingCarousel plans={plans} />
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </section>
   )
