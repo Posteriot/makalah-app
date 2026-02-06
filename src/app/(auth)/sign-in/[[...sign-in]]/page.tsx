@@ -94,6 +94,7 @@ export default function SignInPage() {
             socialButtonsBlockButtonBadge: "hidden",
             identifierFieldInputOptionLastUsed: "hidden",
             alternativeMethodsBlockButtonBadge: "hidden",
+            formFieldInputShowPasswordButton: "hover:!text-[color:var(--slate-200)]",
             formFieldInputGroupSuffix: "hidden",
             formFieldSuccessText: "hidden",
             dividerText: "text-muted-foreground font-mono text-xs uppercase tracking-wider px-4",

@@ -177,6 +177,7 @@ export default function SignUpPage() {
       formFieldLabel: "hidden",
       formFieldHintText: "hidden",
       identifierFieldInputOptionLastUsed: "hidden",
+      formFieldInputShowPasswordButton: "hover:!text-[color:var(--slate-200)]",
       formFieldInputGroupSuffix: "hidden",
       formFieldSuccessText: "hidden",
       dividerText: "text-muted-foreground font-mono text-xs uppercase tracking-wider px-4",
