@@ -27,7 +27,7 @@ export function ManifestoSection() {
 
   return (
     <section
-      className="relative min-h-[400px] md:min-h-[500px] flex flex-col justify-center px-4 md:px-6 pb-16 md:pb-24 overflow-hidden bg-muted/30 dark:bg-black"
+      className="relative overflow-hidden bg-background px-4 pb-16 md:px-6 md:pb-24"
       style={{ paddingTop: "calc(var(--header-h) + 60px)" }}
       id="manifesto"
     >
@@ -35,64 +35,66 @@ export function ManifestoSection() {
       <GridPattern className="z-0" />
       <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
-      <div className="relative z-10 w-full max-w-[var(--container-max-width)] mx-auto">
-        {/* Section Header */}
-        <div className="flex flex-col items-start gap-3 md:gap-4 mb-8 md:mb-12">
-          <SectionBadge>Tentang Kami</SectionBadge>
-          <h1 className="font-mono text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight text-foreground leading-tight">
-            {MANIFESTO_HEADING}
-          </h1>
-          <p className="font-mono text-sm md:text-base text-muted-foreground max-w-xl">
-            {MANIFESTO_SUBHEADING}
-          </p>
-        </div>
+      <div className="relative z-10 mx-auto w-full max-w-[var(--container-max-width)]">
+        <div className="grid grid-cols-1 gap-comfort md:grid-cols-16">
+          {/* Section Header */}
+          <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:col-start-3 md:mb-12 md:gap-4">
+            <SectionBadge>Tentang Kami</SectionBadge>
+            <h1 className="font-mono text-3xl leading-tight tracking-tight text-foreground md:text-4xl lg:text-5xl">
+              {MANIFESTO_HEADING}
+            </h1>
+            <p className="max-w-xl font-mono text-sm text-muted-foreground md:text-base">
+              {MANIFESTO_SUBHEADING}
+            </p>
+          </div>
 
-        {/* Manifesto Content */}
-        <div className="max-w-3xl">
-          {/* Summary (always visible) */}
-          <p className="font-mono text-base leading-relaxed text-foreground mb-4">
-            {MANIFESTO_SUMMARY}
-          </p>
+          {/* Manifesto Content */}
+          <div className="col-span-1 md:col-span-12 md:col-start-3">
+            {/* Summary (always visible) */}
+            <p className="mb-4 font-mono text-base leading-relaxed text-foreground">
+              {MANIFESTO_SUMMARY}
+            </p>
 
-          {/* Expandable Content */}
-          <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-            <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-              <div className="pt-4 space-y-4">
-                {MANIFESTO_EXTENDED.map((paragraph, index) => (
-                  <p
-                    key={index}
-                    className="font-mono text-base leading-relaxed text-muted-foreground"
-                  >
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            </CollapsibleContent>
+            {/* Expandable Content */}
+            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+              <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                <div className="space-y-4 pt-4">
+                  {MANIFESTO_EXTENDED.map((paragraph, index) => (
+                    <p
+                      key={index}
+                      className="font-mono text-base leading-relaxed text-muted-foreground"
+                    >
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </CollapsibleContent>
 
-            {/* Circular Trigger Button */}
-            <div className="flex justify-center mt-6">
-              <CollapsibleTrigger asChild>
-                <button
-                  className={cn(
-                    "w-9 h-9 rounded-full",
-                    "bg-card border border-border",
-                    "shadow-sm hover:bg-accent",
-                    "flex items-center justify-center",
-                    "cursor-pointer transition-all duration-200",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  )}
-                  aria-label={isOpen ? "Tutup manifesto" : "Baca selengkapnya"}
-                >
-                  <NavArrowDown
+              {/* Circular Trigger Button */}
+              <div className="mt-6 flex justify-center">
+                <CollapsibleTrigger asChild>
+                  <button
                     className={cn(
-                      "w-4 h-4 text-muted-foreground transition-transform duration-300",
-                      isOpen && "rotate-180"
+                      "h-9 w-9 rounded-full",
+                      "bg-card border border-border",
+                      "shadow-sm hover:bg-accent",
+                      "flex items-center justify-center",
+                      "cursor-pointer transition-all duration-200",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     )}
-                  />
-                </button>
-              </CollapsibleTrigger>
-            </div>
-          </Collapsible>
+                    aria-label={isOpen ? "Tutup manifesto" : "Baca selengkapnya"}
+                  >
+                    <NavArrowDown
+                      className={cn(
+                        "h-4 w-4 text-muted-foreground transition-transform duration-300",
+                        isOpen && "rotate-180"
+                      )}
+                    />
+                  </button>
+                </CollapsibleTrigger>
+              </div>
+            </Collapsible>
+          </div>
         </div>
       </div>
     </section>

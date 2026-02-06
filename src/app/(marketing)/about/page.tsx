@@ -7,7 +7,7 @@ import {
 
 export default function AboutPage() {
   return (
-    <main>
+    <main className="bg-background">
       <ManifestoSection />
       <ProblemsSection />
       <AgentsSection />
