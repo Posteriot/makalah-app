@@ -40,3 +40,5 @@
 - Changes: `src/components/marketing/pricing/PricingCard.tsx`
 - Correction: Expand pricing section width to align with header/footer edges
 - Changes: `src/app/(marketing)/pricing/page.tsx`
+- Correction: Tailwind compliance cleanup (remove inline padding style, replace border-1, remove scale-120)
+- Changes: `src/app/(marketing)/pricing/page.tsx`, `src/components/marketing/pricing/PricingCard.tsx`, `src/components/marketing/pricing/PricingCarousel.tsx`

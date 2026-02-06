@@ -88,7 +88,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
       <div
         className={cn(
           "relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
-          "border-1 border-[color:var(--slate-400)]",
+          "border-main border-[color:var(--slate-400)]",
           "group-hover/card:bg-[color:var(--slate-200)] dark:group-hover/card:bg-[color:var(--slate-700)]",
           "group-hover/card:-translate-y-1 transition-all duration-300",
           plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"

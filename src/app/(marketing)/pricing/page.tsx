@@ -11,8 +11,7 @@ export default function PricingPage() {
 
   return (
     <section
-      className="relative min-h-[100svh] flex flex-col justify-center overflow-hidden bg-background py-6 md:py-10"
-      style={{ paddingTop: "calc(var(--header-h) + 60px)" }}
+      className="relative min-h-[100svh] flex flex-col justify-center overflow-hidden bg-background pb-6 md:pb-10 pt-[calc(var(--header-h)+60px)] md:pt-[calc(var(--header-h)+60px)]"
       id="pricing"
     >
       {/* Background patterns - using memoized React components */}

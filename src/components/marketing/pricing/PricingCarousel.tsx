@@ -94,7 +94,7 @@ export function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
               "w-2 h-2 rounded-full border-none cursor-pointer",
               "transition-colors duration-200",
               activeSlide === index
-                ? "bg-brand scale-120"
+                ? "bg-brand"
                 : "bg-black/20 dark:bg-white/30"
             )}
             aria-label={`Slide ${index + 1}`}
