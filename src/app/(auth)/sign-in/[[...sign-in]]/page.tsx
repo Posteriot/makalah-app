@@ -69,7 +69,6 @@ export default function SignInPage() {
             form: "border-none !shadow-none",
             formContainer: "border-none !shadow-none",
             formBox: "!shadow-none",
-            footerBox: "!shadow-none",
             headerTitle: "hidden",
             headerSubtitle: "hidden",
             main: "p-0 border-none",
