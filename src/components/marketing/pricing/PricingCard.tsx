@@ -44,7 +44,7 @@ function PricingCTA({
         disabled
         className={cn(
           "group relative overflow-hidden",
-          "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2 w-full",
+          "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2",
           "text-signal text-[11px] font-bold uppercase tracking-widest",
           "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
           "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
@@ -57,7 +57,7 @@ function PricingCTA({
   }
 
   return (
-    <SectionCTA href={getHref()} className="w-full justify-center uppercase tracking-widest">
+    <SectionCTA href={getHref()} className="justify-center uppercase tracking-widest">
       {plan.ctaText}
     </SectionCTA>
   )
@@ -88,7 +88,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
       <div
         className={cn(
           "relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
-          "border-main border-[color:var(--slate-400)]",
+          "border border-[color:var(--slate-500)]",
           "group-hover/card:bg-[color:var(--slate-200)] dark:group-hover/card:bg-[color:var(--slate-700)]",
           "group-hover/card:-translate-y-1 transition-all duration-300",
           plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
@@ -131,7 +131,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
         </ul>
 
         {/* CTA Button */}
-        <div className="mt-6">
+        <div className="mt-6 flex justify-center">
           <PricingCTA plan={plan} />
         </div>
       </div>
