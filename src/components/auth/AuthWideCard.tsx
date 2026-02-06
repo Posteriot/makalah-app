@@ -18,14 +18,6 @@ export function AuthWideCard({
     customLeftContent,
 }: AuthWideCardProps) {
     const resolvedTitle = title || "Silakan masuk!"
-    const firstSpaceIndex = resolvedTitle.indexOf(" ")
-    const shouldBreakTitle = firstSpaceIndex > 0
-    const titleFirstWord = shouldBreakTitle
-        ? resolvedTitle.slice(0, firstSpaceIndex)
-        : resolvedTitle
-    const titleRest = shouldBreakTitle
-        ? resolvedTitle.slice(firstSpaceIndex + 1).trimStart()
-        : ""
 
     const resolvedSubtitle = subtitle || "Susun Paper terbaikmu, tanpa ribet, tinggal ngobrol!"
     const firstCommaIndex = resolvedSubtitle.indexOf(",")
@@ -38,9 +30,9 @@ export function AuthWideCard({
         : ""
 
     return (
-        <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-shell border border-border bg-card shadow-none relative">
+        <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-lg border border-border bg-card shadow-none relative">
             {/* Left Column: Branding & Personality */}
-            <div className="md:w-5/12 bg-muted/30 p-8 md:p-12 border-b md:border-b-0 md:border-r border-hairline relative flex flex-col">
+            <div className="md:w-5/12 bg-muted/30 p-6 md:p-12 relative flex flex-col">
                 {/* Diagonal Stripes - Industrial Texture */}
                 <div
                     className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]"
@@ -66,45 +58,22 @@ export function AuthWideCard({
                                     alt=""
                                     width={28}
                                     height={28}
-                                    className="transition-transform group-hover:scale-105"
-                                />
-                                {/* Brand Text - for dark mode */}
-                                <Image
-                                    src="/logo-makalah-ai-white.svg"
-                                    alt="Makalah"
-                                    width={80}
-                                    height={20}
-                                    className="hidden dark:block transition-transform group-hover:scale-105"
-                                />
-                                {/* Brand Text - for light mode */}
-                                <Image
-                                    src="/logo-makalah-ai-black.svg"
-                                    alt="Makalah"
-                                    width={80}
-                                    height={20}
-                                    className="block dark:hidden transition-transform group-hover:scale-105"
+                                    className="transition-transform group-hover:scale-105 brightness-[.88] sepia-[.06] hue-rotate-[185deg] saturate-[3]"
                                 />
                             </Link>
                         </div>
 
                         {/* Heading + Subheading - Bottom, aligns with bottom edge of Clerk card */}
-                        <div className="space-y-4 mt-auto">
-                            <h1 className="font-mono text-2xl md:text-4xl font-bold tracking-tighter text-foreground leading-[1.1]">
-                                {shouldBreakTitle ? (
-                                    <>
-                                        <span className="block">{titleFirstWord}</span>
-                                        <span>{titleRest}</span>
-                                    </>
-                                ) : (
-                                    resolvedTitle
-                                )}
+                        <div className="space-y-3 mt-6 md:space-y-4 md:mt-auto">
+                            <h1 className="font-mono text-2xl md:text-3xl font-medium text-foreground dark:text-slate-200 leading-[1.1]">
+                                {resolvedTitle}
                             </h1>
                             <p className="text-sm leading-relaxed max-w-[280px] font-sans">
                                 <span className="text-muted-foreground font-normal">
                                     {subtitleLead}
                                 </span>{" "}
                                 {subtitleEmphasis && (
-                                    <span className="text-primary font-semibold">
+                                    <span className="text-slate-50 font-normal">
                                         {subtitleEmphasis}
                                     </span>
                                 )}

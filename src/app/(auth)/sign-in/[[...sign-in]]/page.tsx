@@ -15,26 +15,25 @@ const SignIn = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="space-y-4 animate-pulse">
+      <div className="w-full space-y-5 animate-pulse">
+        {/* Social button skeleton */}
         {SHOW_SOCIAL_SKELETON && (
           <>
-            <div className="space-y-3">
-              <div className="h-10 bg-muted rounded-md" />
-              <div className="h-10 bg-muted rounded-md" />
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-px bg-muted flex-1" />
-              <div className="h-2 w-14 bg-muted rounded" />
-              <div className="h-px bg-muted flex-1" />
+            <div className="h-10 bg-foreground/10 rounded-action" />
+            {/* Divider skeleton */}
+            <div className="flex items-center gap-4">
+              <div className="h-[0.5px] bg-foreground/10 flex-1" />
+              <div className="h-2 w-10 bg-foreground/10 rounded" />
+              <div className="h-[0.5px] bg-foreground/10 flex-1" />
             </div>
           </>
         )}
-        <div className="space-y-3">
-          <div className="h-10 bg-muted rounded-md" />
-          <div className="h-10 bg-muted rounded-md" />
-        </div>
-        <div className="h-10 bg-muted rounded-md" />
-        <div className="h-3 w-32 bg-muted rounded mx-auto" />
+        {/* Email input skeleton */}
+        <div className="h-10 bg-foreground/10 rounded-action" />
+        {/* Submit button skeleton */}
+        <div className="h-10 bg-foreground/[0.07] rounded-action" />
+        {/* Footer skeleton */}
+        <div className="h-3 w-36 bg-foreground/[0.05] rounded mx-auto mt-4" />
       </div>
     ),
   }
@@ -74,7 +73,7 @@ export default function SignInPage() {
             headerTitle: "hidden",
             headerSubtitle: "hidden",
             main: "p-0 border-none",
-            socialButtonsBlockButton: `!relative !overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors !border !border-solid !border-transparent before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:translate-x-[101%] before:transition-transform before:duration-300 before:ease-out hover:before:translate-x-0 btn-stripes-clerk [&>*]:relative [&>*]:z-10 hover:!border-[color:var(--slate-400)] ${
+            socialButtonsBlockButton: `!relative !overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors !border !border-solid !border-transparent before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:translate-x-[101%] before:transition-transform before:duration-300 before:ease-out hover:before:translate-x-0 btn-stripes-clerk [&>*]:relative [&>*]:z-10 hover:!border-[color:var(--slate-400)] ${
               isDark
                 ? "!bg-[color:var(--slate-100)] !text-[color:var(--slate-800)] hover:!text-[color:var(--slate-100)]"
                 : "!bg-[color:var(--slate-800)] !text-[color:var(--slate-100)] hover:!text-[color:var(--slate-800)]"
@@ -84,7 +83,7 @@ export default function SignInPage() {
                 ? "!bg-[color:var(--slate-100)] !text-[color:var(--slate-800)] hover:!text-[color:var(--slate-100)]"
                 : "!bg-[color:var(--slate-800)] !text-[color:var(--slate-100)] hover:!text-[color:var(--slate-800)]"
             }`,
-            formFieldInput: `rounded-action border-border font-mono text-sm focus:ring-primary focus:border-primary transition-all ${isDark ? "!bg-[color:var(--slate-900)]" : "bg-background"}`,
+            formFieldInput: `rounded-action border-border h-10 font-mono text-sm focus:ring-primary focus:border-primary transition-all ${isDark ? "!bg-[color:var(--slate-900)]" : "bg-background"}`,
             footerActionLink: "!text-[color:var(--slate-50)] hover:!text-[color:var(--slate-300)] font-bold",
             identityPreviewText: "text-foreground font-mono",
             identityPreviewEditButtonIcon: "text-primary",
