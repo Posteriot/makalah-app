@@ -135,6 +135,7 @@ export function CareerContactSection() {
                   "text-signal text-[11px] font-bold",
                   "bg-[color:var(--amber-500)] text-[color:var(--slate-950)]",
                   "shadow-sm",
+                  "hover-slash overflow-hidden",
                   "hover:translate-y-[-2px] hover:bg-[color:var(--amber-400)]",
                   "transition-all duration-200"
                 )}

@@ -73,6 +73,7 @@ const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
             <button
               className={cn(
                 "flex w-full items-center justify-between p-comfort",
+                "rounded-action hover-slash overflow-hidden",
                 "bg-transparent text-left text-base",
                 "text-foreground transition-colors duration-200",
                 "focus-visible:outline-none focus-visible:ring-2",

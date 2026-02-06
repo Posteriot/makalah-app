@@ -79,6 +79,7 @@ export function ManifestoSection() {
                       "bg-card border-main border-border",
                       "shadow-sm hover:bg-accent",
                       "flex items-center justify-center",
+                      "hover-slash overflow-hidden",
                       "cursor-pointer transition-all duration-200",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     )}
