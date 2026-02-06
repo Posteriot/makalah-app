@@ -225,7 +225,7 @@ export default function SignUpPage() {
   return (
     <AuthWideCard
       title="Ayo bergabung!"
-      subtitle="Kolaborasi kecerdasan manusia & Ai, dalam menyusun paper bermutu & akuntable"
+      subtitle="Kolaborasi manusia & Ai, menyusun paper bermutu & akuntable"
     >
       <SignUp
         appearance={clerkAppearance}

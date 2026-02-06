@@ -26,6 +26,23 @@ export function AppProviders({ children }: { children: ReactNode }) {
         formFieldLabel__firstName: "",
         formFieldLabel__lastName: "",
         formFieldLabel__password: "",
+        formFieldAction__forgotPassword: "Lupa password?",
+        signIn: {
+          alternativeMethods: {
+            actionText: "Masih bermasalah?",
+            actionLink: "Bantuan",
+            getHelp: {
+              title: "Bantuan",
+              blockButton__emailSupport: "Email Bantuan",
+              content:
+                "Jika kamu mengalami kesulitan masuk ke akunmu, kirim email ke kami dan kami akan membantumu memulihkan akses secepat mungkin.",
+            },
+          },
+          forgotPasswordAlternativeMethods: {
+            blockButton__resetPassword: "Reset password",
+            label__alternativeMethods: "Atau",
+          },
+        },
       }}
     >
       <ThemeProvider

@@ -65,10 +65,10 @@ export function AuthWideCard({
 
                         {/* Heading + Subheading - Bottom, aligns with bottom edge of Clerk card */}
                         <div className="space-y-3 mt-6 md:space-y-4 md:mt-auto">
-                            <h1 className="font-mono text-2xl md:text-3xl font-medium text-foreground dark:text-slate-200 leading-[1.1]">
+                            <h1 className="font-sans text-2xl md:text-3xl font-medium text-foreground dark:text-slate-200 leading-[1.1]">
                                 {resolvedTitle}
                             </h1>
-                            <p className="text-sm leading-relaxed max-w-[280px] font-sans">
+                            <p className="text-sm leading-relaxed max-w-[280px] font-mono">
                                 <span className="text-muted-foreground font-normal">
                                     {subtitleLead}
                                 </span>{" "}

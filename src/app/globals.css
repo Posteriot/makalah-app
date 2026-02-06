@@ -2301,6 +2301,108 @@
 }
 
 /* ==========================================================================
+ * CLERK - Reset "Email code" button to text link style
+ * Parent .cl-alternativeMethods contains email code, while .cl-main contains
+ * reset password. This targets only email code to keep it as a text link.
+ * ========================================================================== */
+/* Inverted button style — shared by Reset Password & Email Bantuan.
+ * isolation + z-index:-1 keeps ::before stripe behind bare text node. */
+.cl-main > .cl-alternativeMethodsBlockButton,
+.cl-signIn-havingTrouble .cl-button {
+  position: relative !important;
+  overflow: hidden !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1rem !important;
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  transition: color 0.15s, border-color 0.15s !important;
+  border: 1px solid transparent !important;
+  isolation: isolate !important;
+}
+
+.dark .cl-main > .cl-alternativeMethodsBlockButton,
+.dark .cl-signIn-havingTrouble .cl-button {
+  background-color: var(--slate-100) !important;
+  color: var(--slate-800) !important;
+}
+
+.cl-main > .cl-alternativeMethodsBlockButton:hover,
+.cl-signIn-havingTrouble .cl-button:hover {
+  border-color: var(--slate-400) !important;
+}
+
+.dark .cl-main > .cl-alternativeMethodsBlockButton:hover,
+.dark .cl-signIn-havingTrouble .cl-button:hover {
+  color: var(--slate-200) !important;
+}
+
+/* Stripe animation for inverted buttons */
+.cl-main > .cl-alternativeMethodsBlockButton::before,
+.cl-signIn-havingTrouble .cl-button::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+  transform: translateX(101%) !important;
+  transition: transform 0.3s ease-out !important;
+}
+
+.dark .cl-main > .cl-alternativeMethodsBlockButton::before,
+.dark .cl-signIn-havingTrouble .cl-button::before {
+  background-color: var(--slate-800) !important;
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 6px, var(--slate-600) 6px, var(--slate-600) 7px) !important;
+}
+
+.cl-main > .cl-alternativeMethodsBlockButton:hover::before,
+.cl-signIn-havingTrouble .cl-button:hover::before {
+  transform: translateX(0) !important;
+}
+
+/* Hide the arrow icon inside Email Bantuan button */
+.cl-signIn-havingTrouble .cl-button img {
+  display: none !important;
+}
+
+/* Email code link (parent: .cl-alternativeMethods) - text link style.
+ * No Tailwind classes from appearance API, so plain CSS overrides work. */
+.cl-alternativeMethods .cl-alternativeMethodsBlockButton {
+  background: none !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.75rem !important;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  color: var(--slate-600) !important;
+  cursor: pointer !important;
+  transition: color 0.15s !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.cl-alternativeMethods .cl-alternativeMethodsBlockButton:hover {
+  color: var(--slate-200) !important;
+  background: none !important;
+}
+
+.cl-alternativeMethods .cl-alternativeMethodsBlockButton::before {
+  display: none !important;
+}
+
+/* ==========================================================================
  * ANIMATIONS - Chat/Thinking
  * ========================================================================== */
 @layer utilities {
