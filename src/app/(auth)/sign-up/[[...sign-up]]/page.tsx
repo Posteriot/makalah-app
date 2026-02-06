@@ -195,7 +195,6 @@ export default function SignUpPage() {
       colorBackground: "transparent",
       colorTextOnPrimaryBackground: "white",
       colorBorder: "transparent",
-      colorFooterBackground: "transparent",
       borderRadius: "8px",
     },
     layout: {

@@ -111,7 +111,6 @@ export default function SignInPage() {
             colorBackground: "transparent",
             colorTextOnPrimaryBackground: "white",
             colorBorder: "transparent",
-            colorFooterBackground: "transparent",
             borderRadius: "8px",
           },
           layout: {
