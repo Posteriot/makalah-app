@@ -20,7 +20,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         formFieldInputPlaceholder__emailAddress: "Alamat email",
         formFieldInputPlaceholder__firstName: "Nama depan",
         formFieldInputPlaceholder__lastName: "Nama belakang",
-        formFieldInputPlaceholder__password: "Kata sandi",
+        formFieldInputPlaceholder__password: "Password",
         // Nuclear Lapis 1: Blank out labels & badges
         formFieldLabel__emailAddress: "",
         formFieldLabel__firstName: "",
@@ -41,6 +41,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
           forgotPasswordAlternativeMethods: {
             blockButton__resetPassword: "Reset password",
             label__alternativeMethods: "Atau",
+          },
+          start: {
+            actionText: "Belum punya akun?",
+            actionLink: "Daftar",
           },
         },
       }}
