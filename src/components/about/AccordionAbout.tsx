@@ -67,15 +67,15 @@ const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
           ref={ref}
           data-anchor-id={item.anchorId}
           id={item.anchorId}
-          className="border-b border-border"
+          className="border-b border-hairline"
         >
           <CollapsibleTrigger asChild>
             <button
               className={cn(
-                "flex w-full items-center justify-between py-4",
-                "bg-transparent text-left text-base font-medium",
+                "flex w-full items-center justify-between p-comfort",
+                "bg-transparent text-left text-base",
                 "text-foreground transition-colors duration-200",
-                "hover:text-brand focus-visible:outline-none focus-visible:ring-2",
+                "focus-visible:outline-none focus-visible:ring-2",
                 "focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
               aria-expanded={isOpen}
@@ -86,26 +86,26 @@ const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
                   <div
                     className={cn(
                       "flex h-8 w-8 shrink-0 items-center justify-center",
-                      "rounded-md bg-brand/10"
+                      "rounded-action bg-[color:var(--amber-500)]/10"
                     )}
                   >
-                    <span className="text-brand [&>svg]:h-4 [&>svg]:w-4">
+                    <span className="text-[color:var(--amber-500)] [&>svg]:h-4 [&>svg]:w-4">
                       {item.icon}
                     </span>
                   </div>
                 )}
 
                 {/* Title */}
-                <span className="flex-1">{item.title}</span>
+                <span className="text-interface flex-1 font-bold tracking-tight">{item.title}</span>
 
                 {/* Optional Badge */}
                 {item.badgeLabel && (
                   <Badge
                     variant={item.badgeVariant === "secondary" ? "secondary" : "default"}
                     className={cn(
-                      "ml-auto mr-3 shrink-0 text-[10px] uppercase tracking-wide",
+                      "text-signal ml-auto mr-3 shrink-0 rounded-badge text-[10px] font-bold tracking-widest",
                       item.badgeVariant !== "secondary" &&
-                        "bg-success text-success-foreground"
+                        "bg-[color:var(--emerald-500)] text-[color:var(--slate-950)]"
                     )}
                   >
                     {item.badgeLabel}
@@ -116,7 +116,7 @@ const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
               {/* Chevron */}
               <NavArrowDown
                 className={cn(
-                  "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300",
+                  "h-4 w-4 shrink-0 text-[color:var(--amber-500)] transition-transform duration-300",
                   isOpen && "rotate-180"
                 )}
               />
@@ -130,7 +130,7 @@ const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
               "data-[state=closed]:animate-accordion-up"
             )}
           >
-            <div className="pb-4 text-sm leading-relaxed text-muted-foreground">
+            <div className="text-narrative p-dense pb-4 text-sm leading-relaxed text-muted-foreground">
               {item.content}
             </div>
           </CollapsibleContent>
@@ -194,7 +194,7 @@ export function AccordionAbout({
   }
 
   return (
-    <div className={cn("border-t border-border", className)}>
+    <div className={cn("rounded-shell border-main border-border border-t bg-card/30", className)}>
       {items.map((item) => (
         <AccordionItem
           key={item.id}

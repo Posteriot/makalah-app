@@ -40,10 +40,10 @@ export function ManifestoSection() {
           {/* Section Header */}
           <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:col-start-3 md:mb-12 md:gap-4">
             <SectionBadge>Tentang Kami</SectionBadge>
-            <h1 className="font-mono text-3xl leading-tight tracking-tight text-foreground md:text-4xl lg:text-5xl">
+            <h1 className="text-interface text-3xl font-bold leading-tight tracking-tight text-foreground md:text-4xl lg:text-5xl">
               {MANIFESTO_HEADING}
             </h1>
-            <p className="max-w-xl font-mono text-sm text-muted-foreground md:text-base">
+            <p className="text-narrative max-w-xl text-sm text-muted-foreground md:text-base">
               {MANIFESTO_SUBHEADING}
             </p>
           </div>
@@ -51,7 +51,7 @@ export function ManifestoSection() {
           {/* Manifesto Content */}
           <div className="col-span-1 md:col-span-12 md:col-start-3">
             {/* Summary (always visible) */}
-            <p className="mb-4 font-mono text-base leading-relaxed text-foreground">
+            <p className="text-narrative mb-4 text-base leading-relaxed text-foreground">
               {MANIFESTO_SUMMARY}
             </p>
 
@@ -62,7 +62,7 @@ export function ManifestoSection() {
                   {MANIFESTO_EXTENDED.map((paragraph, index) => (
                     <p
                       key={index}
-                      className="font-mono text-base leading-relaxed text-muted-foreground"
+                      className="text-narrative text-base leading-relaxed text-muted-foreground"
                     >
                       {paragraph}
                     </p>
@@ -75,8 +75,8 @@ export function ManifestoSection() {
                 <CollapsibleTrigger asChild>
                   <button
                     className={cn(
-                      "h-9 w-9 rounded-full",
-                      "bg-card border border-border",
+                      "h-10 w-10 rounded-action",
+                      "bg-card border-main border-border",
                       "shadow-sm hover:bg-accent",
                       "flex items-center justify-center",
                       "cursor-pointer transition-all duration-200",

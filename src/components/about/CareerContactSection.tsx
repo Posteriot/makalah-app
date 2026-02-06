@@ -23,8 +23,8 @@ function renderContent(content: string | ContactContent) {
   if (isContactContent(content)) {
     return (
       <div className="space-y-2">
-        <p className="font-mono font-medium text-foreground">{content.company}</p>
-        <div className="font-mono text-sm text-muted-foreground">
+        <p className="text-interface font-bold text-foreground">{content.company}</p>
+        <div className="text-narrative text-sm text-muted-foreground">
           {content.address.map((line, index) => (
             <p key={index}>{line}</p>
           ))}
@@ -32,7 +32,7 @@ function renderContent(content: string | ContactContent) {
         <p>
           <a
             href={`mailto:${content.email}`}
-            className="font-mono text-sm text-brand hover:underline"
+            className="text-interface text-sm text-[color:var(--amber-500)] hover:underline"
           >
             {content.email}
           </a>
@@ -40,7 +40,7 @@ function renderContent(content: string | ContactContent) {
       </div>
     )
   }
-  return <p className="font-mono text-sm text-muted-foreground">{content}</p>
+  return <p className="text-narrative text-sm text-muted-foreground">{content}</p>
 }
 
 export function CareerContactSection() {
@@ -70,7 +70,7 @@ export function CareerContactSection() {
           {/* Section Header */}
           <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:mb-12 md:gap-4">
             <SectionBadge>Karier & Kontak</SectionBadge>
-            <h2 className="font-mono text-2xl leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
+            <h2 className="text-interface text-2xl font-bold leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
               Bergabung atau Hubungi Kami
             </h2>
           </div>
@@ -90,24 +90,25 @@ export function CareerContactSection() {
                   id={item.anchorId}
                   data-anchor-id={item.anchorId}
                   className={cn(
-                    "col-span-8 group relative flex h-full min-h-[180px] flex-col overflow-hidden rounded-lg p-6 md:p-8",
-                    "border border-black/20 dark:border-white/25",
-                    "hover:bg-bento-light-hover dark:hover:bg-bento-hover",
-                    "hover:border-black/30 dark:hover:border-white/35",
+                    "col-span-8 group relative flex h-full min-h-[180px] flex-col overflow-hidden rounded-shell p-airy",
+                    "border-main border-border bg-card/40",
+                    "hover:bg-accent/30",
                     "hover:-translate-y-1 transition-all duration-300"
                   )}
                 >
                   {/* Icon + Title row */}
                   <div className="mb-4 flex items-start gap-4">
                     {Icon && (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand/10">
-                        <Icon className="h-5 w-5 text-brand" />
+                      <div className="rounded-action flex h-10 w-10 shrink-0 items-center justify-center bg-[color:var(--amber-500)]/10">
+                        <Icon className="h-5 w-5 text-[color:var(--amber-500)]" />
                       </div>
                     )}
-                    <h3 className="pt-2 font-mono text-lg font-medium leading-tight text-foreground">
+                    <h3 className="text-interface pt-2 text-lg font-bold leading-tight text-foreground">
                       {item.title}
                     </h3>
                   </div>
+
+                  <div className="mb-4 border-t border-hairline" />
 
                   {/* Content */}
                   <div className="flex-1">
@@ -119,9 +120,9 @@ export function CareerContactSection() {
           </div>
 
           {/* CTA Section */}
-          <div className="col-span-1 mt-12 border-t border-black/10 pt-8 dark:border-white/10 md:col-span-16 md:mt-16">
+          <div className="col-span-1 mt-12 border-t border-hairline pt-8 md:col-span-16 md:mt-16">
             <div className="flex flex-col items-center gap-4 text-center">
-              <p className="font-mono text-lg text-muted-foreground">
+              <p className="text-interface text-lg text-muted-foreground">
                 Ada pertanyaan? Hubungi kami
               </p>
               <a
@@ -130,11 +131,11 @@ export function CareerContactSection() {
                 rel="noopener noreferrer"
                 className={cn(
                   "inline-flex items-center justify-center",
-                  "px-6 py-3 rounded-lg",
-                  "font-mono text-sm font-semibold",
-                  "bg-[var(--brand)] text-white",
-                  "shadow-[0_4px_20px_rgba(232,102,9,0.2)]",
-                  "hover:translate-y-[-2px] hover:shadow-[0_8px_30px_rgba(232,102,9,0.4)]",
+                  "rounded-action px-6 py-3",
+                  "text-signal text-[11px] font-bold",
+                  "bg-[color:var(--amber-500)] text-[color:var(--slate-950)]",
+                  "shadow-sm",
+                  "hover:translate-y-[-2px] hover:bg-[color:var(--amber-400)]",
                   "transition-all duration-200"
                 )}
               >

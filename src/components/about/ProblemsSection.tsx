@@ -29,7 +29,7 @@ export function ProblemsSection() {
           {/* Section Header */}
           <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:col-start-1 md:mb-12 md:gap-4">
             <SectionBadge>Persoalan</SectionBadge>
-            <h2 className="font-mono text-2xl leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
+            <h2 className="text-interface text-2xl font-bold leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
               Apa Saja Persoalan Yang Dijawab?
             </h2>
           </div>
@@ -47,27 +47,28 @@ export function ProblemsSection() {
                 <div
                   key={item.id}
                   className={cn(
-                    "col-span-8 group relative flex h-full min-h-[180px] flex-col overflow-hidden rounded-lg p-6 md:p-8",
-                    "border border-black/20 dark:border-white/25",
-                    "hover:bg-bento-light-hover dark:hover:bg-bento-hover",
-                    "hover:border-black/30 dark:hover:border-white/35",
+                    "col-span-8 group relative flex h-full min-h-[180px] flex-col overflow-hidden rounded-shell p-airy",
+                    "border-main border-border bg-card/40",
+                    "hover:bg-accent/30",
                     "hover:-translate-y-1 transition-all duration-300"
                   )}
                 >
                   {/* Icon + Title row */}
                   <div className="mb-4 flex items-start gap-4">
                     {Icon && (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand/10">
-                        <Icon className="h-5 w-5 text-brand" />
+                      <div className="rounded-action flex h-10 w-10 shrink-0 items-center justify-center bg-[color:var(--amber-500)]/10">
+                        <Icon className="h-5 w-5 text-[color:var(--amber-500)]" />
                       </div>
                     )}
-                    <h3 className="pt-2 font-mono text-lg font-medium leading-tight text-foreground">
+                    <h3 className="text-interface pt-2 text-lg font-bold leading-tight text-foreground">
                       {item.title}
                     </h3>
                   </div>
 
+                  <div className="mb-4 border-t border-hairline" />
+
                   {/* Description */}
-                  <p className="font-mono text-sm leading-relaxed text-muted-foreground">
+                  <p className="text-narrative text-sm leading-relaxed text-muted-foreground">
                     {item.description}
                   </p>
                 </div>
