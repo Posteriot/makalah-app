@@ -70,7 +70,7 @@ export function CareerContactSection() {
           {/* Section Header */}
           <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:mb-12 md:gap-4">
             <SectionBadge>Karier & Kontak</SectionBadge>
-            <h2 className="text-interface text-2xl font-bold leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
+            <h2 className="text-narrative text-3xl font-medium leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
               Bergabung atau Hubungi Kami
             </h2>
           </div>
@@ -123,7 +123,7 @@ export function CareerContactSection() {
           <div className="col-span-1 mt-12 border-t border-hairline pt-8 md:col-span-16 md:mt-16">
             <div className="flex flex-col items-center gap-4 text-center">
               <p className="text-interface text-lg text-muted-foreground">
-                Ada pertanyaan? Hubungi kami
+                Ada pertanyaan?
               </p>
               <a
                 href={HERO_CONTENT.ctaHref}

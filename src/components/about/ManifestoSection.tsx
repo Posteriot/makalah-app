@@ -1,20 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { NavArrowDown } from "iconoir-react"
+import { useEffect, useRef, useState } from "react"
 import { SectionBadge } from "@/components/ui/section-badge"
 import {
   GridPattern,
   DiagonalStripes,
   DottedPattern,
 } from "@/components/marketing/SectionBackground"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import { cn } from "@/lib/utils"
 import { ManifestoTerminalPanel } from "./ManifestoTerminalPanel"
+import { ManifestoMobileAccordion } from "./ManifestoMobileAccordion"
 
 const MANIFESTO_HEADING_LINES = ["Kolaborasi", "Penumbuh", "Pikiran"] as const
 const MANIFESTO_SUBHEADING = "Teknologi tidak menggantikan manusia, melainkan melengkapi agar kian berdaya"
@@ -36,9 +30,41 @@ const MANIFESTO_MOBILE_PARAGRAPHS = [
 
 export function ManifestoSection() {
   const [isManifestoOpen, setIsManifestoOpen] = useState(false)
+  const sectionRef = useRef<HTMLElement | null>(null)
+  const closeScrollTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (closeScrollTimeoutRef.current !== null) {
+        window.clearTimeout(closeScrollTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const handleManifestoOpenChange = (nextOpen: boolean) => {
+    setIsManifestoOpen(nextOpen)
+
+    if (nextOpen || typeof window === "undefined") {
+      return
+    }
+
+    if (!window.matchMedia("(max-width: 1023px)").matches) {
+      return
+    }
+
+    if (closeScrollTimeoutRef.current !== null) {
+      window.clearTimeout(closeScrollTimeoutRef.current)
+    }
+
+    closeScrollTimeoutRef.current = window.setTimeout(() => {
+      sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      closeScrollTimeoutRef.current = null
+    }, 220)
+  }
 
   return (
     <section
+      ref={sectionRef}
       className="relative isolate min-h-[100svh] overflow-hidden bg-background"
       style={{ paddingTop: "var(--header-h)" }}
       id="manifesto"
@@ -66,57 +92,12 @@ export function ManifestoSection() {
 
             {/* Content for mobile/tablet */}
             <div className="mt-6 w-full lg:hidden">
-              <Collapsible open={isManifestoOpen} onOpenChange={setIsManifestoOpen}>
-                <div className="overflow-hidden rounded-shell border-main border-border bg-card/75 backdrop-blur-sm">
-                  <div className="px-4 pt-4 pb-3">
-                    <p className="text-interface text-base font-medium leading-snug text-foreground">
-                      {MANIFESTO_MOBILE_HEADING}
-                    </p>
-                  </div>
-
-                  <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-                    <div className="space-y-4 border-t border-hairline px-4 py-4">
-                      {MANIFESTO_MOBILE_PARAGRAPHS.map((paragraph, index) => (
-                        <p
-                          key={index}
-                          className="text-narrative text-base leading-relaxed text-[color:var(--slate-50)]"
-                        >
-                          {paragraph}
-                        </p>
-                      ))}
-                    </div>
-                  </CollapsibleContent>
-
-                  <CollapsibleTrigger asChild>
-                    <button
-                      className={cn(
-                        "group relative overflow-hidden flex w-full items-center justify-center border border-transparent border-t border-hairline px-4 py-3",
-                        "text-signal text-[11px] font-bold",
-                        "bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
-                        "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
-                        "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
-                        "dark:hover:text-[color:var(--slate-100)] dark:hover:border-[color:var(--slate-400)]",
-                        "text-left transition-colors focus-ring"
-                      )}
-                      aria-label={isManifestoOpen ? "Tutup manifesto" : "Baca manifesto lengkap"}
-                    >
-                      <span
-                        className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
-                        aria-hidden="true"
-                      />
-                      <span className="relative z-10">
-                        {isManifestoOpen ? "TUTUP" : "BACA LENGKAP"}
-                      </span>
-                      <NavArrowDown
-                        className={cn(
-                          "pointer-events-none absolute right-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-transform duration-300",
-                          isManifestoOpen && "rotate-180"
-                        )}
-                      />
-                    </button>
-                  </CollapsibleTrigger>
-                </div>
-              </Collapsible>
+              <ManifestoMobileAccordion
+                heading={MANIFESTO_MOBILE_HEADING}
+                paragraphs={MANIFESTO_MOBILE_PARAGRAPHS}
+                isOpen={isManifestoOpen}
+                onOpenChange={handleManifestoOpenChange}
+              />
             </div>
           </div>
 

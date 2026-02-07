@@ -41,6 +41,12 @@ export interface AccordionAboutProps {
   defaultOpen?: string | null
   /** Additional class name for the wrapper */
   className?: string
+  /** Optional override for trigger title text styling */
+  titleClassName?: string
+  /** Optional override for content text styling */
+  contentClassName?: string
+  /** Optional override for chevron styling */
+  chevronClassName?: string
   /** Callback when an item is opened/closed */
   onOpenChange?: (openId: string | null) => void
 }
@@ -53,10 +59,13 @@ interface AccordionItemProps {
   item: AccordionItemData
   isOpen: boolean
   onToggle: () => void
+  titleClassName?: string
+  contentClassName?: string
+  chevronClassName?: string
 }
 
 const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
-  ({ item, isOpen, onToggle }, ref) => {
+  ({ item, isOpen, onToggle, titleClassName, contentClassName, chevronClassName }, ref) => {
     return (
       <Collapsible
         open={isOpen}
@@ -97,7 +106,14 @@ const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
                 )}
 
                 {/* Title */}
-                <span className="text-interface flex-1 font-bold tracking-tight">{item.title}</span>
+                <span
+                  className={cn(
+                    "text-interface flex-1 font-bold tracking-tight",
+                    titleClassName
+                  )}
+                >
+                  {item.title}
+                </span>
 
                 {/* Optional Badge */}
                 {item.badgeLabel && (
@@ -118,6 +134,7 @@ const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
               <NavArrowDown
                 className={cn(
                   "h-4 w-4 shrink-0 text-[color:var(--amber-500)] transition-transform duration-300",
+                  chevronClassName,
                   isOpen && "rotate-180"
                 )}
               />
@@ -131,7 +148,12 @@ const AccordionItem = React.forwardRef<HTMLDivElement, AccordionItemProps>(
               "data-[state=closed]:animate-accordion-up"
             )}
           >
-            <div className="text-narrative p-dense pb-4 text-sm leading-relaxed text-muted-foreground">
+            <div
+              className={cn(
+                "text-narrative p-dense pb-4 text-sm leading-relaxed text-muted-foreground",
+                contentClassName
+              )}
+            >
               {item.content}
             </div>
           </CollapsibleContent>
@@ -150,6 +172,9 @@ export function AccordionAbout({
   items,
   defaultOpen = null,
   className,
+  titleClassName,
+  contentClassName,
+  chevronClassName,
   onOpenChange,
 }: AccordionAboutProps) {
   const [openId, setOpenId] = React.useState<string | null>(defaultOpen)
@@ -203,6 +228,9 @@ export function AccordionAbout({
           item={item}
           isOpen={openId === item.id}
           onToggle={() => handleToggle(item.id)}
+          titleClassName={titleClassName}
+          contentClassName={contentClassName}
+          chevronClassName={chevronClassName}
         />
       ))}
     </div>

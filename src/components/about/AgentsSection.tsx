@@ -42,7 +42,7 @@ export function AgentsSection() {
           {/* Section Header */}
           <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:mb-12 md:gap-4">
             <SectionBadge>AI Agents</SectionBadge>
-            <h2 className="text-interface text-2xl font-bold leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
+            <h2 className="text-narrative text-3xl font-medium leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
               Fitur & Pengembangan
             </h2>
           </div>
