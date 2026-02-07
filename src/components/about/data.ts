@@ -131,7 +131,7 @@ export const AGENTS_ITEMS: AgentItem[] = [
     iconName: "MessageCircle",
     title: "Sparring Partner",
     description:
-      "Agen Ai mendampingi riset sekaligus lawan diskusi. Berperan sebagai juru tulis pengguna. Pengguna fokus berpikir tanpa direporkan persoalan teknis dan prompting. Paper tetap orisinal, buah pikiran pengguna.",
+      "Pendamping riset. Berperan sebagai juru tulis pengguna, sekaligus mitra diskusi.",
     status: "available",
   },
   {
@@ -139,7 +139,7 @@ export const AGENTS_ITEMS: AgentItem[] = [
     iconName: "BookOpen",
     title: "Dosen Pembimbing",
     description:
-      "Agen Ai berperan sebagai Dosen Pembimbing, yang memberikan arahan struktur, kritik metodologi, dan petunjuk milestone. Dengan demikian, pengguna masuk dalam pengalaman: seperti berbincang dengan dosen pembimbing.",
+      "Layaknya Dosen Pembimbing, yang memberikan arahan struktur, kritik metodologi, dan petunjuk milestone.",
     status: "in-progress",
   },
   {
@@ -171,7 +171,7 @@ export const AGENTS_ITEMS: AgentItem[] = [
     iconName: "Share2",
     title: "Graph Elaborator",
     description:
-      "Bayangkan, pengguna mengirimkan konsep tertentu, kemudian agen Ai memetakan konsep itu dalam bentuk grafik, mengaitkannya dengan referensi pendukung, serta konsep-konsep sejenis yang pernah ada sebelumnya. Ya, itu akan ada dalam Makalah.",
+      "Pengguna mengirimkan konsep tertentu, kemudian agen Ai memetakan konsep itu dalam grafik, mengaitkannya dengan referensi, serta konsep-konsep sejenis yang pernah ada sebelumnya..",
     status: "in-progress",
   },
 ]
