@@ -1,100 +1,65 @@
 "use client"
 
-import { useState } from "react"
-import { NavArrowDown } from "iconoir-react"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
 import { SectionBadge } from "@/components/ui/section-badge"
-import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
-import { cn } from "@/lib/utils"
+import {
+  GridPattern,
+  DiagonalStripes,
+  DottedPattern,
+} from "@/components/marketing/SectionBackground"
+import { ManifestoTerminalPanel } from "./ManifestoTerminalPanel"
 
-const MANIFESTO_HEADING = "AI Yang Menumbuhkan Pikiran"
+const MANIFESTO_HEADING = "Kolaborasi Penumbuh Pikiran"
 const MANIFESTO_SUBHEADING = "Teknologi tidak menggantikan manusia, melainkan melengkapi agar kian berdaya"
 
-const MANIFESTO_SUMMARY = `Platform ini disiapkan untuk merespons disrupsi teknologi dalam aktivitas akademik dan riset. Laju pemakaian AI/Large Language Model nggak bisa dihindari. Pelarangan penggunaannya di lingkungan akademik hanya memicu ketidakjujuran: ngomongnya nggak pakai, padahal diam-diam menggunakan.`
-
-const MANIFESTO_EXTENDED = [
+const MANIFESTO_PARAGRAPHS = [
+  `Platform ini disiapkan untuk merespons disrupsi teknologi dalam aktivitas akademik dan riset. Laju pemakaian AI/Large Language Model nggak bisa dihindari. Pelarangan penggunaannya di lingkungan akademik hanya memicu ketidakjujuran: ngomongnya nggak pakai, padahal diam-diam menggunakan.`,
   `Bagaimana dengan detektor AI—apakah absah? Problematik. Detektor AI rawan false positive dan hanya mengeluarkan persentase probabilitas tanpa argumen jelas. Selama tulisan mengikuti struktur subjek–predikat–objek–keterangan, kalimat apa pun bisa terdeteksi "buatan AI".`,
   `Yang diperlukan sekarang: mengatur penggunaan AI agar transparan, bisa dipertanggungjawabkan, dan punya riwayat pemakaian yang akuntabel. Siapa pun bisa dilacak: apakah paper dibuatkan AI, atau dibuat bersama AI? Bukankah itu dua hal yang berbeda?`,
   `Makalah berdiri di posisi: Penggunaan AI harus transparan, terjejak, dan terdidik.`,
 ]
 
 export function ManifestoSection() {
-  const [isOpen, setIsOpen] = useState(false)
-
   return (
     <section
-      className="relative overflow-hidden bg-background px-4 pb-16 md:px-6 md:pb-24"
-      style={{ paddingTop: "calc(var(--header-h) + 60px)" }}
+      className="relative isolate min-h-[100svh] overflow-hidden bg-background"
+      style={{ paddingTop: "var(--header-h)" }}
       id="manifesto"
     >
       {/* Background patterns */}
-      <GridPattern className="z-0" />
-      <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+      <GridPattern className="z-0 opacity-80" />
+      <DiagonalStripes className="opacity-75" />
+      <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-40" />
 
-      <div className="relative z-10 mx-auto w-full max-w-[var(--container-max-width)]">
-        <div className="grid grid-cols-1 gap-comfort md:grid-cols-16">
-          {/* Section Header */}
-          <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:col-start-3 md:mb-12 md:gap-4">
+      <div className="relative z-[1] mx-auto flex min-h-[100svh] w-full max-w-[var(--container-max-width)] items-center px-4 py-10 md:px-6 md:py-20">
+        <div className="grid grid-cols-1 gap-comfort lg:grid-cols-16 lg:gap-16">
+          {/* Hero left */}
+          <div className="flex flex-col items-start justify-center text-left lg:col-span-7">
             <SectionBadge>Tentang Kami</SectionBadge>
-            <h1 className="text-interface text-3xl font-bold leading-tight tracking-tight text-foreground md:text-4xl lg:text-5xl">
+            <h1 className="text-interface mt-6 text-3xl font-medium leading-[0.80] tracking-[-0.06em] text-foreground md:text-4xl lg:text-7xl">
               {MANIFESTO_HEADING}
             </h1>
-            <p className="text-narrative max-w-xl text-sm text-muted-foreground md:text-base">
+            <p className="text-narrative text-base md:text-2xl font-normal text-[color:var(--slate-600)] dark:text-[color:var(--slate-200)] max-w-[520px] mt-4 mb-0">
               {MANIFESTO_SUBHEADING}
             </p>
+
+            {/* Content for mobile/tablet */}
+            <div className="mt-5 w-full lg:hidden">
+              <div className="space-y-4 pb-4">
+                {MANIFESTO_PARAGRAPHS.map((paragraph, index) => (
+                  <p
+                    key={index}
+                    className="text-narrative text-base leading-relaxed text-muted-foreground"
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Manifesto Content */}
-          <div className="col-span-1 md:col-span-12 md:col-start-3">
-            {/* Summary (always visible) */}
-            <p className="text-narrative mb-4 text-base leading-relaxed text-foreground">
-              {MANIFESTO_SUMMARY}
-            </p>
-
-            {/* Expandable Content */}
-            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-              <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-                <div className="space-y-4 pt-4">
-                  {MANIFESTO_EXTENDED.map((paragraph, index) => (
-                    <p
-                      key={index}
-                      className="text-narrative text-base leading-relaxed text-muted-foreground"
-                    >
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
-              </CollapsibleContent>
-
-              {/* Circular Trigger Button */}
-              <div className="mt-6 flex justify-center">
-                <CollapsibleTrigger asChild>
-                  <button
-                    className={cn(
-                      "h-10 w-10 rounded-action",
-                      "bg-card border-main border-border",
-                      "shadow-sm hover:bg-accent",
-                      "flex items-center justify-center",
-                      "hover-slash overflow-hidden",
-                      "cursor-pointer transition-all duration-200",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    )}
-                    aria-label={isOpen ? "Tutup manifesto" : "Baca selengkapnya"}
-                  >
-                    <NavArrowDown
-                      className={cn(
-                        "h-4 w-4 text-muted-foreground transition-transform duration-300",
-                        isOpen && "rotate-180"
-                      )}
-                    />
-                  </button>
-                </CollapsibleTrigger>
-              </div>
-            </Collapsible>
+          {/* Hero right: manifesto panel (desktop) */}
+          <div className="hidden lg:col-span-9 lg:flex lg:self-stretch lg:min-h-full lg:items-center lg:justify-end lg:-translate-y-8">
+            <ManifestoTerminalPanel paragraphs={MANIFESTO_PARAGRAPHS} />
           </div>
         </div>
       </div>

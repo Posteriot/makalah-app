@@ -7,7 +7,7 @@ import { HeroHeadingSvg } from "@/components/marketing/hero/HeroHeadingSvg"
  */
 export function HeroHeading() {
   return (
-    <h1 className="text-[0px] leading-[0] w-full">
+    <h1 className="text-[0px] mt-4 leading-[0] w-full">
       <span className="sr-only">
         Ngobrol+Riset+Brainstorming=Paper_Akademik
       </span>
