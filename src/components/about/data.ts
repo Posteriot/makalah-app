@@ -16,7 +16,6 @@ export interface ManifestoContent {
 
 export interface ProblemItem {
   id: string
-  iconName: string
   title: string
   description: string
 }
@@ -25,7 +24,6 @@ export type AgentStatus = "available" | "in-progress"
 
 export interface AgentItem {
   id: string
-  iconName: string
   title: string
   description: string
   status: AgentStatus
@@ -40,7 +38,7 @@ export interface ContactContent {
 export interface CareerContactItem {
   id: string
   anchorId: string
-  iconName: string
+  iconName: "Briefcase" | "Mail"
   title: string
   content: string | ContactContent
 }
@@ -79,42 +77,36 @@ export const MANIFESTO_CONTENT: ManifestoContent = {
 export const PROBLEMS_ITEMS: ProblemItem[] = [
   {
     id: "curiosity",
-    iconName: "Lightbulb",
     title: "Ai Mematikan Rasa Ingin Tahu?",
     description:
       "Konon AI kerap bikin malas berpikir. Baiklah, Makalah sebaliknya, justru memantik diskusi dan menyangga teknis penulisan, supaya pengguna fokus menajamkan dan elaborasi gagasan.",
   },
   {
     id: "prompting",
-    iconName: "MessageCircle",
     title: "Prompting Yang Ribet",
     description:
       "Makalah hadir untuk membantah asumsi: berinteraksi dengan Ai memerlukan prompting yang sakti mandraguna. Tidak! Yang diperlukan Makalah adalah percakapan iteratif, informatif, dalam bahasa sehari-hari. Singkatnya: ngobrol!",
   },
   {
     id: "citation",
-    iconName: "MessageSquareText",
     title: "Sitasi & Provenance",
     description:
       "Makalah memastikan setiap sumber tersitasi dengan format standar dan menyimpan asal-usul ide (provenance) agar kutipan mudah dilacak dan diaudit.",
   },
   {
     id: "plagiarism",
-    iconName: "ShieldCheck",
     title: "Plagiarisme? Dipagari Etis",
     description:
       "LLM dipagari etis untuk tidak menulis persis teks berhak cipta lebih dari 10 kata. Batasan ini sekaligus menutup celah plagiarisme dan menjaga orisinalitas gagasan pengguna.",
   },
   {
     id: "transparency",
-    iconName: "Link2",
     title: "Transparansi proses penyusunan",
     description:
       "Riwayat interaksi terekam rapi\u2014menjamin akuntabilitas dan membedakan kolaborasi dengan generasi otomatis.",
   },
   {
     id: "detection",
-    iconName: "AlertTriangle",
     title: "Deteksi AI Problematik",
     description:
       "\"AI atau bukan\" tidak dapat dipertanggungjawabkan. Makalah mendorong transparansi penggunaan, bukan sekadar deteksi.",
@@ -128,7 +120,6 @@ export const PROBLEMS_ITEMS: ProblemItem[] = [
 export const AGENTS_ITEMS: AgentItem[] = [
   {
     id: "sparring-partner",
-    iconName: "MessageCircle",
     title: "Sparring Partner",
     description:
       "Pendamping riset. Berperan sebagai juru tulis pengguna, sekaligus mitra diskusi.",
@@ -136,7 +127,6 @@ export const AGENTS_ITEMS: AgentItem[] = [
   },
   {
     id: "dosen-pembimbing",
-    iconName: "BookOpen",
     title: "Dosen Pembimbing",
     description:
       "Layaknya Dosen Pembimbing, yang memberikan arahan struktur, kritik metodologi, dan petunjuk milestone.",
@@ -144,7 +134,6 @@ export const AGENTS_ITEMS: AgentItem[] = [
   },
   {
     id: "peer-reviewer",
-    iconName: "Search",
     title: "Peer Reviewer",
     description:
       "Agen Ai berperan layaknya kawan debat, yang memberikan review kritis pada paper pengguna, lengkap dengan catatan argumen & referensi.",
@@ -152,7 +141,6 @@ export const AGENTS_ITEMS: AgentItem[] = [
   },
   {
     id: "gap-thinker",
-    iconName: "Lightbulb",
     title: "Gap Thinker",
     description:
       "Agen Ai menyorot celah riset dari berbagai paper referensi awal, menemukan potensi topik baru yang lebih segar.",
@@ -160,7 +148,6 @@ export const AGENTS_ITEMS: AgentItem[] = [
   },
   {
     id: "novelty-finder",
-    iconName: "Sparkles",
     title: "Novelty Finder",
     description:
       "Agen Ai yang mampu memetakan kebaruan dan posisi kontribusi penyusun paper, dalam topik yang telah banyak diulas.",
@@ -168,7 +155,6 @@ export const AGENTS_ITEMS: AgentItem[] = [
   },
   {
     id: "graph-elaborator",
-    iconName: "Share2",
     title: "Graph Elaborator",
     description:
       "Pengguna mengirimkan konsep tertentu, kemudian agen Ai memetakan konsep itu dalam grafik, mengaitkannya dengan referensi, serta konsep-konsep sejenis yang pernah ada sebelumnya..",

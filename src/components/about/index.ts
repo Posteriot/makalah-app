@@ -28,9 +28,6 @@ export {
   SECTION_HEADINGS,
 } from "./data"
 
-// Icon utilities
-export { ICON_MAP, getIcon, type IconName } from "./icons"
-
 // Components
 export {
   AccordionAbout,
