@@ -51,10 +51,10 @@ const SCROLL_UP_DELTA = 2    // px minimum to show header (more sensitive)
  * - Admin dan Superadmin diperlakukan sebagai PRO (amber)
  * - Tier determination via shared getEffectiveTier() utility
  */
-const SEGMENT_CONFIG: Record<EffectiveTier, { label: string; className: string }> = {
-  gratis: { label: "GRATIS", className: "bg-segment-gratis text-white" },
-  bpp: { label: "BPP", className: "bg-segment-bpp text-white" },
-  pro: { label: "PRO", className: "bg-segment-pro text-white" },
+const SEGMENT_CONFIG: Record<EffectiveTier, { className: string }> = {
+  gratis: { className: "bg-segment-gratis text-white" },
+  bpp: { className: "bg-segment-bpp text-white" },
+  pro: { className: "bg-segment-pro text-white" },
 }
 
 export function GlobalHeader() {
@@ -165,7 +165,7 @@ export function GlobalHeader() {
     <header
       data-global-header
       className={cn(
-        "fixed top-0 left-0 right-0 z-drawer h-[54px] bg-[color:var(--header-background)]",
+        "fixed top-0 left-0 right-0 z-drawer h-[54px] bg-[var(--header-background)]",
         "flex items-center transition-transform duration-200",
         isHidden && "-translate-y-full"
       )}
@@ -233,7 +233,7 @@ export function GlobalHeader() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "relative px-2.5 py-1.5 text-narrative text-[11px] uppercase tracking-wider",
+                    "relative px-2.5 py-1.5 text-narrative text-sm uppercase",
                     "text-foreground transition-colors hover:text-muted-foreground",
                     "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-1",
                     "after:border-b after:border-dotted after:border-current after:scale-x-0 after:origin-left after:transition-transform",
@@ -254,15 +254,15 @@ export function GlobalHeader() {
                 // Structure for stripes animation
                 "group relative overflow-hidden",
                 // Base layout
-                "md:hidden inline-flex h-9 w-9 items-center justify-center rounded-action mr-3",
+                "md:hidden inline-flex h-6 w-6 items-center justify-center rounded-action mr-2",
                 // Light mode diam: dark button
-                "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
+                "border border-transparent bg-slate-800 text-slate-100",
                 // Light mode hover: text & border darken
-                "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
+                "hover:text-slate-800 hover:border-slate-600",
                 // Dark mode diam: light button
-                "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
+                "dark:bg-slate-100 dark:text-slate-800",
                 // Dark mode hover: text & border lighten
-                "dark:hover:text-[color:var(--slate-100)] dark:hover:border-[color:var(--slate-400)]",
+                "dark:hover:text-slate-100 dark:hover:border-slate-400",
                 // Transition & focus
                 "transition-colors focus-ring"
               )}
@@ -276,9 +276,9 @@ export function GlobalHeader() {
               {/* Icon */}
               <span className="relative z-10">
                 {(resolvedTheme ?? "dark") === "dark" ? (
-                  <SunLight className="icon-interface" />
+                  <SunLight className="h-3.5 w-3.5" />
                 ) : (
-                  <HalfMoon className="icon-interface" />
+                  <HalfMoon className="h-3.5 w-3.5" />
                 )}
               </span>
             </button>
@@ -307,15 +307,15 @@ export function GlobalHeader() {
                 // Structure for stripes animation
                 "group relative overflow-hidden",
                 // Base layout
-                "hidden md:inline-flex h-9 w-9 items-center justify-center rounded-action",
+                "hidden md:inline-flex h-7.5 w-7.5 items-center justify-center rounded-action",
                 // Light mode diam: dark button
-                "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
+                "border border-transparent bg-slate-800 text-slate-100",
                 // Light mode hover: text & border darken
-                "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
+                "hover:text-slate-800 hover:border-slate-600",
                 // Dark mode diam: light button
-                "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
+                "dark:bg-slate-100 dark:text-slate-800",
                 // Dark mode hover: text & border lighten
-                "dark:hover:text-[color:var(--slate-100)] dark:hover:border-[color:var(--slate-400)]",
+                "dark:hover:text-slate-100 dark:hover:border-slate-400",
                 // Transition & focus
                 "transition-colors focus-ring"
               )}
@@ -334,7 +334,7 @@ export function GlobalHeader() {
           <SignedOut>
             <Link
               href="/sign-in"
-              className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-[color:var(--slate-950)] bg-[color:var(--slate-950)] px-4 py-2 text-[11px] font-bold text-narrative uppercase text-[color:var(--slate-50)] transition-colors hover:bg-[color:var(--slate-900)] dark:border-[color:var(--slate-50)] dark:bg-[color:var(--slate-50)] dark:text-[color:var(--slate-950)] dark:hover:bg-[color:var(--slate-200)] focus-ring"
+              className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-slate-950 bg-slate-950 px-2 py-1 text-sm font-medium text-narrative uppercase text-slate-50 transition-colors hover:bg-slate-900 dark:border-slate-50 dark:bg-slate-50 dark:text-slate-950 dark:hover:bg-slate-200 focus-ring"
             >
               Masuk
             </Link>
@@ -384,11 +384,11 @@ export function GlobalHeader() {
 
           {/* SignedIn: Auth section */}
           <SignedIn>
-            <div className="mt-3 rounded-shell border-hairline bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-900)] p-3">
+            <div className="mt-3 rounded-shell border-hairline bg-slate-100 dark:bg-slate-900 p-3">
               <Accordion type="single" collapsible>
                 <AccordionItem value="user" className="border-none">
                   <AccordionTrigger className="p-0 hover:no-underline">
-                    <div className="flex items-center gap-3 w-full text-left px-2 py-2 rounded-action hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-800)] transition-colors">
+                    <div className="flex items-center gap-3 w-full text-left px-2 py-2 rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
                       <div className={cn("h-7 w-7 rounded-action flex items-center justify-center text-[12px] font-semibold", segmentConfig.className)}>
                         {initial}
                       </div>
@@ -401,7 +401,7 @@ export function GlobalHeader() {
                     <Link
                       href="/settings"
                       onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                      className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-800)] transition-colors"
+                      className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
                     >
                       <User className="icon-interface" />
                       <span>Atur Akun</span>
@@ -409,7 +409,7 @@ export function GlobalHeader() {
 
                     <Link
                       href="/subscription/overview"
-                      className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-800)] transition-colors"
+                      className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
                       onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                     >
                       <CreditCard className="icon-interface" />
@@ -419,7 +419,7 @@ export function GlobalHeader() {
                     {isAdmin && (
                       <Link
                         href="/dashboard"
-                        className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-800)] transition-colors"
+                        className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
                         onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                       >
                         <Settings className="icon-interface" />
