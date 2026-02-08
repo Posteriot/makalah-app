@@ -6,6 +6,7 @@
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
+import { getEffectiveTier } from "@/lib/utils/subscription"
 // Note: tokensToCredits conversion handled internally by deductCredits mutation
 
 // Token estimation: ~4 chars = 1 token for English, ~2-3 chars for Indonesian
@@ -124,8 +125,17 @@ export async function recordUsageAfterOperation(params: {
     const user = await fetchQuery(api.users.getById, { userId: params.userId }, convexOptions)
     if (!user) return null
 
-    // 3. Deduct based on tier
-    const tier = user.subscriptionStatus === "free" ? "gratis" : user.subscriptionStatus
+    // 3. Admin/superadmin: skip deduction (Convex backend also bypasses)
+    if (user.role === "admin" || user.role === "superadmin") {
+      return {
+        eventId: recordResult.eventId,
+        costIDR: recordResult.costIDR,
+        deducted: false,
+      }
+    }
+
+    // 4. Deduct based on tier
+    const tier = getEffectiveTier(user.role, user.subscriptionStatus)
 
     if (tier === "bpp") {
       // BPP: Deduct from credit balance
