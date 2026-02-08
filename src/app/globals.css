@@ -360,7 +360,8 @@
 
   /* --- Core Semantic (Slate Trinity) --- */
   --background: var(--slate-50);
-  --header-background: var(--slate-200);
+  --header-background: var(--slate-100);
+  --footer-background: var(--slate-100);
   --foreground: var(--neutral-950);
   --card: var(--slate-50);
   --card-foreground: var(--neutral-950);
@@ -484,7 +485,8 @@
 .dark {
   /* --- Core Semantic (Slate Dark) --- */
   --background: var(--slate-900);
-  --header-background: var(--slate-700);
+  --header-background: var(--slate-900);
+  --footer-background: var(--slate-900);
   --foreground: var(--neutral-50);
   --card: var(--slate-950);
   --card-foreground: var(--neutral-50);

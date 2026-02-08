@@ -31,7 +31,7 @@ function renderContent(content: string | ContactContent) {
         <p>
           <a
             href={`mailto:${content.email}`}
-            className="text-interface text-sm text-[color:var(--slate-50)] hover:underline"
+            className="text-interface text-sm text-[color:var(--slate-700)] dark:text-[color:var(--slate-50)] hover:underline"
           >
             {content.email}
           </a>
@@ -66,7 +66,12 @@ export function CareerContactSection() {
           <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:col-start-3 md:mb-12 md:gap-4">
             <SectionBadge>Karier & Kontak</SectionBadge>
             <h2 className="text-narrative text-3xl font-medium leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
-              Bergabung atau Hubungi Kami
+              <span className="md:hidden">
+                Bergabung atau
+                <br />
+                hubungi kami
+              </span>
+              <span className="hidden md:inline">Bergabung atau Hubungi Kami</span>
             </h2>
           </div>
 
@@ -92,7 +97,7 @@ export function CareerContactSection() {
                   className={cn(
                     "group relative col-span-8 flex h-full min-h-[180px] flex-col overflow-hidden rounded-shell border-hairline bg-transparent p-airy",
                     "transition-colors duration-200",
-                    "hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-900)]"
+                    "hover:bg-[color:var(--slate-50)] dark:hover:bg-[color:var(--slate-900)]"
                   )}
                 >
                   {/* Icon + Title row */}
