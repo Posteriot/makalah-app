@@ -27,6 +27,8 @@ import {
   Refresh,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
+import { getEffectiveTier } from "@/lib/utils/subscription"
+import type { EffectiveTier } from "@/lib/utils/subscription"
 import { toast } from "sonner"
 
 // ════════════════════════════════════════════════════════════════
@@ -89,9 +91,8 @@ const EWALLET_CHANNELS = [
   { code: "GOPAY", label: "GoPay" },
 ]
 
-const TIER_BADGES = {
+const TIER_BADGES: Record<EffectiveTier, { label: string; color: string }> = {
   gratis: { label: "GRATIS", color: "bg-segment-gratis" },
-  free: { label: "GRATIS", color: "bg-segment-gratis" },
   bpp: { label: "BPP", color: "bg-segment-bpp" },
   pro: { label: "PRO", color: "bg-segment-pro" },
 }
@@ -254,8 +255,8 @@ export default function PlansHubPage() {
     )
   }
 
-  const currentTier = (user.subscriptionStatus || "free") as keyof typeof TIER_BADGES
-  const tierBadge = TIER_BADGES[currentTier] || TIER_BADGES.gratis
+  const currentTier = getEffectiveTier(user.role, user.subscriptionStatus)
+  const tierBadge = TIER_BADGES[currentTier]
   const currentCredits = creditBalance?.remainingCredits ?? 0
 
   // Check if user has any soft-blocked paper session
@@ -296,9 +297,7 @@ export default function PlansHubPage() {
       {/* Plans Grid - Responsive */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {plans.map((plan) => {
-          const isCurrentTier =
-            (plan.slug === "gratis" && (currentTier === "gratis" || currentTier === "free")) ||
-            (plan.slug === currentTier)
+          const isCurrentTier = plan.slug === currentTier
           const isBPP = plan.slug === "bpp"
           const isPro = plan.slug === "pro"
 
