@@ -20,15 +20,15 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { RoleBadge } from "@/components/admin/RoleBadge"
 
 // Tier configuration for subscription badges
-// Standar warna: GRATIS=emerald, BPP=blue, PRO=amber (semua text putih)
+// Standar warna: GRATIS=emerald, BPP=sky, PRO=amber (semua text putih)
 // Upgrade button: warna --success (grass green) + text-white
 type TierType = "gratis" | "free" | "bpp" | "pro"
 
 const TIER_CONFIG: Record<TierType, { label: string; className: string; showUpgrade: boolean }> = {
   gratis: { label: "GRATIS", className: "bg-emerald-600 text-white", showUpgrade: true },
   free: { label: "GRATIS", className: "bg-emerald-600 text-white", showUpgrade: true },
-  bpp: { label: "BPP", className: "bg-blue-600 text-white", showUpgrade: true },
-  pro: { label: "PRO", className: "bg-amber-600 text-white", showUpgrade: false },
+  bpp: { label: "BPP", className: "bg-sky-600 text-white", showUpgrade: true },
+  pro: { label: "PRO", className: "bg-amber-500 text-white", showUpgrade: false },
 }
 
 interface UserSettingsModalProps {
@@ -209,25 +209,25 @@ export function UserSettingsModal({
 
   return (
     <div
-      className="user-settings-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-label="Pengaturan akun"
     >
-      <div className="user-settings-backdrop" onClick={handleClose} />
+      <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" onClick={handleClose} />
       <div
-        className="user-settings-container"
+        className="relative z-10 flex w-full max-w-[720px] flex-col overflow-hidden rounded-shell border border-border bg-card shadow-lg max-md:mx-4 max-md:h-auto max-md:max-h-[calc(100vh-32px)] md:h-[560px]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="user-settings-header">
-          <div className="user-settings-title-area">
-            <h2 className="user-settings-title">Atur Akun</h2>
-            <p className="user-settings-subtitle">
+        <div className="flex shrink-0 items-start justify-between border-b border-border px-6 pb-4 pt-6">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-signal text-lg">Atur Akun</h2>
+            <p className="text-narrative text-sm text-muted-foreground">
               Kelola informasi akun Anda di Makalah AI.
             </p>
           </div>
           <button
-            className="user-settings-close-btn"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-action text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-ring"
             onClick={handleClose}
             aria-label="Tutup modal"
             type="button"
@@ -236,69 +236,71 @@ export function UserSettingsModal({
           </button>
         </div>
 
-        <div className="user-settings-body">
-          <nav className="user-settings-nav" aria-label="Navigasi akun">
+        <div className="flex min-h-0 flex-1 max-md:flex-col">
+          <nav className="flex w-[200px] shrink-0 flex-col gap-1 border-r border-border bg-muted/30 p-2 pt-6 max-md:w-full max-md:flex-row max-md:flex-wrap max-md:border-b max-md:border-r-0 max-md:p-3 max-md:pt-3" aria-label="Navigasi akun">
             <button
               className={cn(
-                "user-settings-nav-item",
-                activeTab === "profile" && "active"
+                "relative inline-flex items-center gap-3 rounded-action px-3 py-2.5 text-left text-interface text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring",
+                activeTab === "profile" && "bg-accent text-foreground"
               )}
               onClick={() => setActiveTab("profile")}
               type="button"
             >
+              {activeTab === "profile" && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-primary" />}
               <UserIcon />
               <span>Profil</span>
             </button>
             <button
               className={cn(
-                "user-settings-nav-item",
-                activeTab === "security" && "active"
+                "relative inline-flex items-center gap-3 rounded-action px-3 py-2.5 text-left text-interface text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring",
+                activeTab === "security" && "bg-accent text-foreground"
               )}
               onClick={() => setActiveTab("security")}
               type="button"
             >
+              {activeTab === "security" && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-primary" />}
               <Shield />
               <span>Keamanan</span>
             </button>
             <button
               className={cn(
-                "user-settings-nav-item",
-                activeTab === "status" && "active"
+                "relative inline-flex items-center gap-3 rounded-action px-3 py-2.5 text-left text-interface text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring",
+                activeTab === "status" && "bg-accent text-foreground"
               )}
               onClick={() => setActiveTab("status")}
               type="button"
             >
+              {activeTab === "status" && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-primary" />}
               <BadgeCheck />
               <span>Status Akun</span>
             </button>
           </nav>
 
-          <div className="user-settings-content">
+          <div className="flex-1 min-w-0 overflow-y-auto p-6 max-sm:p-5">
             <div
               className={cn(
-                "user-settings-tab",
-                activeTab === "profile" && "active"
+                activeTab === "profile" ? "block" : "hidden"
               )}
             >
               {/* Header with icon like subscription page */}
-              <div className="settings-content-header">
-                <h3 className="settings-content-title">
-                  <UserIcon />
+              <div className="mb-6">
+                <h3 className="flex items-center gap-2 text-signal text-lg">
+                  <UserIcon className="h-5 w-5 text-primary" />
                   Detail Profil
                 </h3>
-                <p className="settings-content-subtitle">
+                <p className="mt-1 text-narrative text-sm text-muted-foreground">
                   Atur nama dan avatar akun Anda.
                 </p>
               </div>
 
               {/* Card wrapper like subscription page */}
-              <div className="settings-card">
-                <div className="settings-card-header">Profil</div>
-                <div className="settings-card-body">
+              <div className="mb-4 overflow-hidden rounded-action border border-border bg-card">
+                <div className="border-b border-border px-4 py-3 text-interface text-sm font-medium">Profil</div>
+                <div className="p-4">
                 {!isProfileEditing ? (
                   <div className="flex items-center justify-between">
-                    <div className="settings-profile-info">
-                      <div className="settings-avatar">
+                    <div className="flex items-center gap-3">
+                      <div className="inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground text-sm font-semibold">
                         {user?.imageUrl ? (
                           <Image
                             src={user.imageUrl}
@@ -313,12 +315,12 @@ export function UserSettingsModal({
                           <span>{userInitial}</span>
                         )}
                       </div>
-                      <span className="settings-profile-name">
+                      <span className="text-interface text-sm font-medium">
                         {fullName || primaryEmail || "-"}
                       </span>
                     </div>
                     <button
-                      className="settings-row-action"
+                      className="text-interface text-sm font-medium text-primary transition-opacity hover:opacity-80 focus-ring"
                       onClick={() => setIsProfileEditing(true)}
                       type="button"
                     >
@@ -326,11 +328,11 @@ export function UserSettingsModal({
                     </button>
                   </div>
                 ) : (
-                  <div className="settings-accordion-fullwidth">
-                    <div className="accordion-fw-header">Ubah profil</div>
-                    <div className="accordion-fw-body">
-                      <div className="accordion-avatar-row">
-                        <div className="settings-avatar accordion-avatar">
+                  <div className="w-full">
+                    <div className="mb-4 text-interface text-sm font-semibold">Ubah profil</div>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="inline-flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground text-base font-semibold">
                           {profilePreviewUrl ? (
                             <Image
                               src={profilePreviewUrl}
@@ -355,16 +357,16 @@ export function UserSettingsModal({
                             <span>{userInitial}</span>
                           )}
                         </div>
-                        <div className="accordion-avatar-info">
+                        <div className="flex flex-col gap-1">
                           <button
-                            className="accordion-upload-btn"
+                            className="inline-flex w-fit rounded-action border border-border px-3 py-1.5 text-interface text-sm transition-colors hover:bg-accent focus-ring disabled:opacity-50"
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={!isLoaded}
                           >
                             Upload
                           </button>
-                          <span className="accordion-upload-hint">
+                          <span className="text-narrative text-xs text-muted-foreground">
                             Ukuran rekomendasi 1:1, maksimal 10MB.
                           </span>
                           <input
@@ -379,30 +381,30 @@ export function UserSettingsModal({
                           />
                         </div>
                       </div>
-                      <div className="accordion-fields-row">
-                        <div className="accordion-field">
-                          <label className="accordion-label">Nama depan</label>
+                      <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+                        <div className="flex flex-1 flex-col gap-1.5">
+                          <label className="text-interface text-xs font-medium text-foreground">Nama depan</label>
                           <input
                             type="text"
-                            className="accordion-input"
+                            className="h-10 w-full rounded-action border border-border bg-background px-3 text-interface text-sm transition-colors focus-ring"
                             value={firstName}
                             onChange={(event) => setFirstName(event.target.value)}
                           />
                         </div>
-                        <div className="accordion-field">
-                          <label className="accordion-label">Nama belakang</label>
+                        <div className="flex flex-1 flex-col gap-1.5">
+                          <label className="text-interface text-xs font-medium text-foreground">Nama belakang</label>
                           <input
                             type="text"
-                            className="accordion-input"
+                            className="h-10 w-full rounded-action border border-border bg-background px-3 text-interface text-sm transition-colors focus-ring"
                             value={lastName}
                             onChange={(event) => setLastName(event.target.value)}
                           />
                         </div>
                       </div>
                     </div>
-                    <div className="accordion-fw-footer">
+                    <div className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
                       <button
-                        className="accordion-cancel-btn"
+                        className="rounded-action border border-border bg-background px-4 py-2 text-interface text-sm transition-colors hover:bg-accent focus-ring disabled:opacity-50"
                         type="button"
                         onClick={() => setIsProfileEditing(false)}
                         disabled={isSavingProfile}
@@ -410,7 +412,7 @@ export function UserSettingsModal({
                         Batal
                       </button>
                       <button
-                        className="accordion-save-btn"
+                        className="rounded-action bg-primary px-5 py-2 text-interface text-sm text-primary-foreground transition-colors hover:bg-primary/90 focus-ring disabled:opacity-50"
                         type="button"
                         onClick={handleProfileSave}
                         disabled={!isLoaded || isSavingProfile}
@@ -424,13 +426,13 @@ export function UserSettingsModal({
               </div>
 
               {/* Email card */}
-              <div className="settings-card">
-                <div className="settings-card-header">Email</div>
-                <div className="settings-card-body">
-                  <div className="settings-email-item">
+              <div className="mb-4 overflow-hidden rounded-action border border-border bg-card">
+                <div className="border-b border-border px-4 py-3 text-interface text-sm font-medium">Email</div>
+                <div className="p-4">
+                  <div className="flex items-center gap-2 text-interface text-sm">
                     <span>{primaryEmail || "-"}</span>
                     {primaryEmail && (
-                      <span className="settings-badge-primary">Utama</span>
+                      <span className="inline-flex rounded-badge border border-border bg-muted px-2 py-0.5 text-signal text-[10px]">Utama</span>
                     )}
                   </div>
                 </div>
@@ -439,33 +441,32 @@ export function UserSettingsModal({
 
             <div
               className={cn(
-                "user-settings-tab",
-                activeTab === "security" && "active"
+                activeTab === "security" ? "block" : "hidden"
               )}
             >
               {/* Header with icon like subscription page */}
-              <div className="settings-content-header">
-                <h3 className="settings-content-title">
-                  <Shield />
+              <div className="mb-6">
+                <h3 className="flex items-center gap-2 text-signal text-lg">
+                  <Shield className="h-5 w-5 text-primary" />
                   Keamanan
                 </h3>
-                <p className="settings-content-subtitle">
+                <p className="mt-1 text-narrative text-sm text-muted-foreground">
                   Update kata sandi dan kontrol sesi.
                 </p>
               </div>
 
               {/* Password card */}
-              <div className="settings-card">
-                <div className="settings-card-header">Kata Sandi</div>
-                <div className="settings-card-body">
+              <div className="mb-4 overflow-hidden rounded-action border border-border bg-card">
+                <div className="border-b border-border px-4 py-3 text-interface text-sm font-medium">Kata Sandi</div>
+                <div className="p-4">
                 {!isPasswordEditing ? (
-                  <div className="settings-row">
-                    <span className="settings-row-label">Kata sandi</span>
-                    <div className="settings-row-value">
-                      <span className="settings-password-dots">••••••••</span>
+                  <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3">
+                    <span className="text-interface text-xs text-muted-foreground">Kata sandi</span>
+                    <div className="min-w-0 text-interface text-sm text-foreground">
+                      <span className="tracking-[0.2em] text-muted-foreground">••••••••</span>
                     </div>
                     <button
-                      className="settings-row-action"
+                      className="text-interface text-sm font-medium text-primary transition-opacity hover:opacity-80 focus-ring"
                       onClick={() => setIsPasswordEditing(true)}
                       type="button"
                     >
@@ -473,22 +474,22 @@ export function UserSettingsModal({
                     </button>
                   </div>
                 ) : (
-                  <div className="settings-accordion-fullwidth">
-                    <div className="accordion-fw-header">Ubah kata sandi</div>
-                    <div className="accordion-fw-body">
-                      <div className="accordion-field accordion-field-full">
-                        <label className="accordion-label">Kata sandi saat ini</label>
-                        <div className="accordion-input-wrapper">
+                  <div className="w-full">
+                    <div className="mb-4 text-interface text-sm font-semibold">Ubah kata sandi</div>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex w-full flex-1 flex-col gap-1.5">
+                        <label className="text-interface text-xs font-medium text-foreground">Kata sandi saat ini</label>
+                        <div className="relative flex items-center">
                           <input
                             type={showCurrentPassword ? "text" : "password"}
-                            className="accordion-input"
+                            className="h-10 w-full rounded-action border border-border bg-background px-3 pr-10 text-interface text-sm transition-colors focus-ring"
                             value={currentPassword}
                             onChange={(event) =>
                               setCurrentPassword(event.target.value)
                             }
                           />
                           <button
-                            className="accordion-eye-btn"
+                            className="absolute right-2 inline-flex h-7 w-7 items-center justify-center rounded-badge text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring"
                             type="button"
                             onClick={() =>
                               setShowCurrentPassword((prev) => !prev)
@@ -503,17 +504,17 @@ export function UserSettingsModal({
                           </button>
                         </div>
                       </div>
-                      <div className="accordion-field accordion-field-full">
-                        <label className="accordion-label">Kata sandi baru</label>
-                        <div className="accordion-input-wrapper">
+                      <div className="flex w-full flex-1 flex-col gap-1.5">
+                        <label className="text-interface text-xs font-medium text-foreground">Kata sandi baru</label>
+                        <div className="relative flex items-center">
                           <input
                             type={showNewPassword ? "text" : "password"}
-                            className="accordion-input"
+                            className="h-10 w-full rounded-action border border-border bg-background px-3 pr-10 text-interface text-sm transition-colors focus-ring"
                             value={newPassword}
                             onChange={(event) => setNewPassword(event.target.value)}
                           />
                           <button
-                            className="accordion-eye-btn"
+                            className="absolute right-2 inline-flex h-7 w-7 items-center justify-center rounded-badge text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring"
                             type="button"
                             onClick={() => setShowNewPassword((prev) => !prev)}
                             aria-label="Tampilkan kata sandi baru"
@@ -526,19 +527,19 @@ export function UserSettingsModal({
                           </button>
                         </div>
                       </div>
-                      <div className="accordion-field accordion-field-full">
-                        <label className="accordion-label">Konfirmasi kata sandi</label>
-                        <div className="accordion-input-wrapper">
+                      <div className="flex w-full flex-1 flex-col gap-1.5">
+                        <label className="text-interface text-xs font-medium text-foreground">Konfirmasi kata sandi</label>
+                        <div className="relative flex items-center">
                           <input
                             type={showConfirmPassword ? "text" : "password"}
-                            className="accordion-input"
+                            className="h-10 w-full rounded-action border border-border bg-background px-3 pr-10 text-interface text-sm transition-colors focus-ring"
                             value={confirmPassword}
                             onChange={(event) =>
                               setConfirmPassword(event.target.value)
                             }
                           />
                           <button
-                            className="accordion-eye-btn"
+                            className="absolute right-2 inline-flex h-7 w-7 items-center justify-center rounded-badge text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring"
                             type="button"
                             onClick={() =>
                               setShowConfirmPassword((prev) => !prev)
@@ -553,31 +554,31 @@ export function UserSettingsModal({
                           </button>
                         </div>
                       </div>
-                      <div className="accordion-checkbox-row">
+                      <div className="flex items-start gap-2.5">
                         <input
                           type="checkbox"
-                          className="accordion-checkbox"
+                          className="mt-0.5 size-[18px] shrink-0 accent-primary"
                           id="signout-checkbox"
                           checked={signOutOthers}
                           onChange={(event) => setSignOutOthers(event.target.checked)}
                         />
-                        <div className="accordion-checkbox-content">
+                        <div className="flex flex-col gap-0.5">
                           <label
-                            className="accordion-checkbox-label"
+                            className="text-interface text-xs font-medium text-foreground"
                             htmlFor="signout-checkbox"
                           >
                             Keluar dari semua perangkat lain
                           </label>
-                          <span className="accordion-checkbox-hint">
+                          <span className="text-narrative text-xs leading-5 text-muted-foreground">
                             Disarankan agar semua sesi lama ikut keluar setelah
                             kata sandi diganti.
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="accordion-fw-footer">
+                    <div className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
                       <button
-                        className="accordion-cancel-btn"
+                        className="rounded-action border border-border bg-background px-4 py-2 text-interface text-sm transition-colors hover:bg-accent focus-ring disabled:opacity-50"
                         type="button"
                         onClick={() => setIsPasswordEditing(false)}
                         disabled={isSavingPassword}
@@ -585,7 +586,7 @@ export function UserSettingsModal({
                         Batal
                       </button>
                       <button
-                        className="accordion-save-btn"
+                        className="rounded-action bg-primary px-5 py-2 text-interface text-sm text-primary-foreground transition-colors hover:bg-primary/90 focus-ring disabled:opacity-50"
                         type="button"
                         onClick={handlePasswordSave}
                         disabled={!isLoaded || isSavingPassword}
@@ -601,42 +602,41 @@ export function UserSettingsModal({
 
             <div
               className={cn(
-                "user-settings-tab",
-                activeTab === "status" && "active"
+                activeTab === "status" ? "block" : "hidden"
               )}
             >
               {/* Header with icon like subscription page */}
-              <div className="settings-content-header">
-                <h3 className="settings-content-title">
-                  <BadgeCheck />
+              <div className="mb-6">
+                <h3 className="flex items-center gap-2 text-signal text-lg">
+                  <BadgeCheck className="h-5 w-5 text-primary" />
                   Status Akun
                 </h3>
-                <p className="settings-content-subtitle">
+                <p className="mt-1 text-narrative text-sm text-muted-foreground">
                   Ringkasan akses akun Anda di Makalah AI.
                 </p>
               </div>
 
               {/* Email info card */}
-              <div className="settings-card">
-                <div className="settings-card-header">Informasi Akun</div>
-                <div className="settings-card-body">
-                  <div className="settings-row">
-                    <span className="settings-row-label">Email</span>
-                    <div className="settings-row-value">{primaryEmail || "-"}</div>
+              <div className="mb-4 overflow-hidden rounded-action border border-border bg-card">
+                <div className="border-b border-border px-4 py-3 text-interface text-sm font-medium">Informasi Akun</div>
+                <div className="p-4">
+                  <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3">
+                    <span className="text-interface text-xs text-muted-foreground">Email</span>
+                    <div className="min-w-0 text-interface text-sm text-foreground">{primaryEmail || "-"}</div>
                     <div />
                   </div>
                 </div>
               </div>
 
               {/* Role card */}
-              <div className="settings-card">
-                <div className="settings-card-header">Role & Akses</div>
-                <div className="settings-card-body">
-                  <div className="settings-row">
-                    <span className="settings-row-label">Role</span>
-                    <div className="settings-row-value">
+              <div className="mb-4 overflow-hidden rounded-action border border-border bg-card">
+                <div className="border-b border-border px-4 py-3 text-interface text-sm font-medium">Role & Akses</div>
+                <div className="p-4">
+                  <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3">
+                    <span className="text-interface text-xs text-muted-foreground">Role</span>
+                    <div className="min-w-0 text-interface text-sm text-foreground">
                       {isConvexLoading ? (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-interface text-sm text-muted-foreground">
                           Memuat...
                         </span>
                       ) : convexUser ? (
@@ -653,11 +653,11 @@ export function UserSettingsModal({
               </div>
 
               {/* Subscription card */}
-              <div className="settings-card">
-                <div className="settings-card-header">Subskripsi</div>
-                <div className="settings-card-body">
+              <div className="mb-4 overflow-hidden rounded-action border border-border bg-card">
+                <div className="border-b border-border px-4 py-3 text-interface text-sm font-medium">Subskripsi</div>
+                <div className="p-4">
                   {isConvexLoading ? (
-                    <span className="text-sm text-muted-foreground">Memuat...</span>
+                    <span className="text-interface text-sm text-muted-foreground">Memuat...</span>
                   ) : (
                     <>
                       {/* Tier badge */}
@@ -668,7 +668,7 @@ export function UserSettingsModal({
                           <div className="flex items-center justify-between">
                             <span
                               className={cn(
-                                "inline-flex items-center px-3 py-1 rounded-md text-xs font-bold",
+                                "inline-flex items-center rounded-badge px-3 py-1 text-signal text-xs",
                                 tierConfig.className
                               )}
                             >
@@ -679,7 +679,7 @@ export function UserSettingsModal({
                               <Link
                                 href="/subscription/upgrade"
                                 onClick={() => onOpenChange(false)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors bg-[var(--success)] text-white hover:bg-[oklch(0.65_0.181_125.2)]"
+                                className="inline-flex items-center gap-1.5 rounded-action bg-success px-4 py-2 text-interface text-sm font-medium text-white transition-colors hover:bg-success/90 focus-ring"
                               >
                                 <ArrowUpCircle className="h-4 w-4" />
                                 Upgrade
@@ -695,7 +695,7 @@ export function UserSettingsModal({
             </div>
 
             {!isLoaded && (
-              <div className="text-sm text-muted-foreground">Memuat...</div>
+              <div className="text-interface text-sm text-muted-foreground">Memuat...</div>
             )}
           </div>
         </div>
