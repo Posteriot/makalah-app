@@ -59,7 +59,7 @@ export function ProblemsSection() {
               return (
                 <div
                   key={item.id}
-                  className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-transparent p-comfort transition-colors duration-200 hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-900)]"
+                  className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-transparent p-comfort transition-colors duration-200 hover:bg-slate-50 dark:hover:bg-slate-900"
                 >
                   <div className="relative flex flex-1 flex-col">
                     <h3 className="text-narrative font-light text-3xl leading-[1.1] text-foreground m-0 mb-6">
@@ -69,7 +69,7 @@ export function ProblemsSection() {
                     </h3>
                     <div className="flex items-start gap-3">
                       <span className="mt-1.5 h-2.5 w-2.5 min-w-2.5 rounded-full bg-[color:var(--amber-500)] shadow-[0_0_8px_var(--amber-500)] animate-pulse" />
-                      <p className="text-interface m-0 text-xs leading-relaxed text-muted-foreground hover:text-slate-50">
+                      <p className="text-interface m-0 text-xs leading-relaxed text-muted-foreground hover:text-slate-900 dark:hover:text-slate-50">
                         {item.description}
                       </p>
                     </div>

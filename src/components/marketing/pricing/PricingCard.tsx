@@ -46,8 +46,8 @@ function PricingCTA({
           "group relative overflow-hidden",
           "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2",
           "text-signal text-[11px] font-bold uppercase tracking-widest",
-          "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
-          "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
+          "border border-transparent bg-slate-800 text-slate-100",
+          "dark:bg-slate-100 dark:text-slate-800",
           "cursor-not-allowed opacity-60"
         )}
       >
@@ -76,7 +76,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
           className={cn(
             "absolute -top-3 left-1/2 -translate-x-1/2 z-10",
             "transition-transform duration-300 group-hover/card:-translate-y-1",
-            "bg-[color:var(--emerald-500)] text-[color:var(--slate-50)]",
+            "bg-emerald-500 text-slate-50",
             "text-[11px] font-semibold uppercase tracking-wide",
             "px-3 py-1 rounded-full whitespace-nowrap"
           )}
@@ -88,10 +88,10 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
       <div
         className={cn(
           "relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
-          "border border-[color:var(--slate-500)]",
-          "group-hover/card:bg-[color:var(--slate-200)] dark:group-hover/card:bg-[color:var(--slate-700)]",
+          "border border-slate-500",
+          "group-hover/card:bg-slate-200 dark:group-hover/card:bg-slate-700",
           "group-hover/card:-translate-y-1 transition-all duration-300",
-          plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
+          plan.isHighlighted && "border-2 border-emerald-500"
         )}
       >
         {/* Plan name */}
@@ -111,7 +111,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
 
         {/* Tagline with dot indicator */}
         <div className="flex items-start gap-3">
-          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-[color:var(--rose-500)] animate-pulse shadow-[0_0_8px_var(--rose-500)]" />
+          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-rose-500 animate-pulse shadow-[0_0_8px] shadow-rose-500" />
           <p className="text-interface font-normal text-sm leading-relaxed text-foreground">
             {plan.tagline}
           </p>
@@ -124,7 +124,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
               key={index}
               className="text-interface text-xs leading-relaxed text-foreground flex items-start gap-2"
             >
-              <span className="text-[color:var(--emerald-500)] mt-0.5">✓</span>
+              <span className="text-emerald-500 mt-0.5">✓</span>
               {feature}
             </li>
           ))}
