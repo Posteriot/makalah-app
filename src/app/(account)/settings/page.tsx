@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
@@ -29,6 +29,14 @@ function parseTabParam(param: string | null): SettingsTab {
 }
 
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="text-interface text-sm text-muted-foreground">Memuat...</div>}>
+      <SettingsContent />
+    </Suspense>
+  )
+}
+
+function SettingsContent() {
   const searchParams = useSearchParams()
   const { user, isLoaded } = useUser()
   const { user: convexUser, isLoading: isConvexLoading } = useCurrentUser()
