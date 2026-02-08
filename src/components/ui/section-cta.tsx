@@ -25,9 +25,9 @@ export function SectionCTA({ href, children, className, isLoading }: SectionCTAP
         // Structure for stripes animation
         "group relative overflow-hidden",
         // Base layout
-        "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2",
+        "inline-flex items-center justify-center gap-2 rounded-action px-2 py-1",
         // Typography
-        "text-signal text-[11px] font-bold",
+        "text-signal text-sm font-medium",
         // Light mode diam: dark button
         "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
         // Light mode hover: text & border darken
