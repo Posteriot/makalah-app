@@ -103,7 +103,7 @@ export function CareerContactSection() {
                   {/* Icon + Title row */}
                   <div className="mb-4 flex items-start gap-4">
                     {Icon && (
-                      <div className="rounded-action flex h-10 w-10 shrink-0 items-center justify-center bg-[color:var(--slate-900)]">
+                      <div className="rounded-action flex h-10 w-10 shrink-0 items-center justify-center bg-[color:var(--slate-600)] dark:bg-[color:var(--slate-700)]">
                         <Icon className="h-5 w-5 text-[color:var(--slate-50)]" />
                       </div>
                     )}
