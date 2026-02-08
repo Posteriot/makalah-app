@@ -1,4 +1,5 @@
 "use client"
+import { useMemo, useState } from "react"
 import dynamic from "next/dynamic"
 import { dark } from "@clerk/themes"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
@@ -130,8 +131,10 @@ export default function SignUpPage() {
   const searchParams = useSearchParams()
   const inviteToken = searchParams.get("invite")
 
-  // Get validated redirect URL from search params (e.g., ?redirect=/checkout/bpp)
-  const redirectUrl = getClerkRedirectUrl(searchParams)
+  // Lock redirect URL on first render — Clerk strips query params during multi-step flow
+  // forceRedirectUrl needed here (not fallback) because env var SIGN_UP_FORCE_REDIRECT_URL
+  // would override Clerk's native redirect_url handling
+  const [redirectUrl] = useState(() => getClerkRedirectUrl(searchParams))
 
   // Only validate token if present
   const tokenValidation = useQuery(
@@ -139,14 +142,12 @@ export default function SignUpPage() {
     inviteToken ? { token: inviteToken } : "skip"
   )
 
-  const initialTheme =
-    resolvedTheme ??
-    (typeof document !== "undefined" && document.documentElement.classList.contains("dark")
-      ? "dark"
-      : "light")
-  const isDark = initialTheme === "dark"
+  // Auth pages always dark (ThemeEnforcer forces dark for unauthenticated)
+  // Treat undefined (still resolving) as dark to prevent re-render cascade
+  const isDark = resolvedTheme !== "light"
 
-  const clerkAppearance = {
+  // Memoize appearance to prevent Clerk re-initialization on every render
+  const clerkAppearance = useMemo(() => ({
     baseTheme: isDark ? dark : undefined,
     elements: {
       rootBox: "w-full border-none !shadow-none",
@@ -210,7 +211,7 @@ export default function SignUpPage() {
     layout: {
       showOptionalFields: true,
     }
-  }
+  }), [isDark])
 
   // If invite token present, check validation
   if (inviteToken) {

@@ -233,7 +233,7 @@ export function GlobalHeader() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "relative px-2.5 py-1.5 text-narrative text-sm uppercase",
+                    "relative px-2.5 py-1.5 text-narrative text-xs uppercase",
                     "text-foreground transition-colors hover:text-muted-foreground",
                     "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-1",
                     "after:border-b after:border-dotted after:border-current after:scale-x-0 after:origin-left after:transition-transform",
@@ -333,8 +333,8 @@ export function GlobalHeader() {
           {/* Auth State - Desktop only (mobile shows in panel) */}
           <SignedOut>
             <Link
-              href="/sign-in"
-              className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-slate-950 bg-slate-950 px-2 py-1 text-sm font-medium text-narrative uppercase text-slate-50 transition-colors hover:bg-slate-900 dark:border-slate-50 dark:bg-slate-50 dark:text-slate-950 dark:hover:bg-slate-200 focus-ring"
+              href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
+              className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-slate-950 bg-slate-950 px-2 py-1 text-xs font-medium text-narrative uppercase text-slate-50 transition-colors hover:bg-slate-900 dark:border-slate-50 dark:bg-slate-50 dark:text-slate-950 dark:hover:bg-slate-200 focus-ring"
             >
               Masuk
             </Link>
@@ -374,7 +374,7 @@ export function GlobalHeader() {
           {/* SignedOut: Show login button */}
           <SignedOut>
             <Link
-              href="/sign-in"
+              href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
               className="mt-2 inline-flex items-center justify-center rounded-action border-main border-border px-3 py-2 text-signal text-[11px] font-bold uppercase tracking-widest text-foreground hover:bg-accent transition-colors"
               onClick={() => setMobileMenuState({ isOpen: false, pathname })}
             >

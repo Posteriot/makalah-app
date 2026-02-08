@@ -12,6 +12,7 @@ const ALLOWED_REDIRECT_PATHS = [
   "/checkout/pro",
   "/chat",
   "/dashboard",
+  "/settings",
 ]
 
 /**
@@ -21,7 +22,8 @@ const ALLOWED_REDIRECT_PATHS = [
  * @returns Safe redirect URL (whitelisted path or default)
  */
 export function getRedirectUrl(searchParams: URLSearchParams): string {
-  const redirect = searchParams.get("redirect")
+  // Check redirect_url first (set by proxy.ts/middleware), then redirect (set by PricingCard)
+  const redirect = searchParams.get("redirect_url") ?? searchParams.get("redirect")
 
   // If no redirect param, return default
   if (!redirect) {
@@ -67,7 +69,8 @@ export function getClerkRedirectUrl(
   searchParams: URLSearchParams,
   defaultRedirect: string = "/get-started"
 ): string {
-  const redirect = searchParams.get("redirect")
+  // Check redirect_url first (set by proxy.ts/middleware), then redirect (set by PricingCard)
+  const redirect = searchParams.get("redirect_url") ?? searchParams.get("redirect")
 
   if (!redirect) {
     return defaultRedirect
