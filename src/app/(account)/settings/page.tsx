@@ -47,7 +47,7 @@ function SettingsContent() {
   const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? ""
 
   return (
-    <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-lg border border-border bg-card shadow-none relative">
+    <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-shell border border-border bg-card shadow-none relative">
       {/* Left Column: Branding & Navigation */}
       <div className="md:w-4/12 bg-muted/30 p-6 md:p-8 relative flex flex-col">
         {/* Diagonal Stripes — same as AuthWideCard */}
