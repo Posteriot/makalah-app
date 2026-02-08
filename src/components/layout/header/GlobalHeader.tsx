@@ -26,6 +26,8 @@ import { usePathname } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { getEffectiveTier } from "@/lib/utils/subscription"
+import type { EffectiveTier } from "@/lib/utils/subscription"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -47,26 +49,12 @@ const SCROLL_UP_DELTA = 2    // px minimum to show header (more sensitive)
  * ATURAN WARNA:
  * - Warna avatar dan badge berdasarkan SUBSCRIPTION TIER, bukan role
  * - Admin dan Superadmin diperlakukan sebagai PRO (amber)
- * - Tidak ada warna terpisah untuk role admin/superadmin
+ * - Tier determination via shared getEffectiveTier() utility
  */
-type SegmentType = "gratis" | "bpp" | "pro"
-
-const SEGMENT_CONFIG: Record<SegmentType, { label: string; className: string }> = {
+const SEGMENT_CONFIG: Record<EffectiveTier, { label: string; className: string }> = {
   gratis: { label: "GRATIS", className: "bg-segment-gratis text-white" },
   bpp: { label: "BPP", className: "bg-segment-bpp text-white" },
   pro: { label: "PRO", className: "bg-segment-pro text-white" },
-}
-
-/**
- * Determine subscription tier from user role and subscription status
- * Admin/Superadmin always treated as PRO (full access)
- */
-function getSegmentFromUser(role?: string, subscriptionStatus?: string): SegmentType {
-  // Admin and superadmin are always treated as PRO
-  if (role === "superadmin" || role === "admin") return "pro"
-  if (subscriptionStatus === "pro") return "pro"
-  if (subscriptionStatus === "bpp") return "bpp"
-  return "gratis"
 }
 
 export function GlobalHeader() {
@@ -166,7 +154,7 @@ export function GlobalHeader() {
   const lastName = clerkUser?.lastName || ""
   const fullName = `${firstName} ${lastName}`.trim()
   const initial = firstName.charAt(0).toUpperCase()
-  const segment = getSegmentFromUser(convexUser?.role, convexUser?.subscriptionStatus)
+  const segment = getEffectiveTier(convexUser?.role, convexUser?.subscriptionStatus)
   const segmentConfig = SEGMENT_CONFIG[segment]
   // isAdmin berdasarkan ROLE (bukan segment), karena segment sekarang hanya subscription tier
   const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
