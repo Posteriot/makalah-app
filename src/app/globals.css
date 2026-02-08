@@ -537,7 +537,7 @@
 
   /* Section Background Variants */
   --section-bg-alt: var(--slate-800);
-  --section-bg-alt2: var(--slate-700);
+  --section-bg-alt2: var(--slate-950);
 
   /* Chart Colors - Dark (same semantic palette) */
   --chart-1: var(--sky-500);
