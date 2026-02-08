@@ -72,18 +72,18 @@ export default function SignInPage() {
             headerTitle: "hidden",
             headerSubtitle: "hidden",
             main: "p-0 border-none",
-            socialButtonsBlockButton: `!relative !overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors !border !border-solid !border-transparent before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:translate-x-[101%] before:transition-transform before:duration-300 before:ease-out hover:before:translate-x-0 btn-stripes-clerk [&>*]:relative [&>*]:z-10 hover:!border-[color:var(--slate-400)] ${
+            socialButtonsBlockButton: `!relative !overflow-hidden inline-flex items-center justify-center gap-2 !rounded-[var(--radius-sm)] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors !border !border-solid !border-transparent before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:translate-x-[101%] before:transition-transform before:duration-300 before:ease-out hover:before:translate-x-0 btn-stripes-clerk [&>*]:relative [&>*]:z-10 hover:!border-slate-400 ${
               isDark
-                ? "!bg-[color:var(--slate-100)] !text-[color:var(--slate-800)] hover:!text-[color:var(--slate-100)]"
-                : "!bg-[color:var(--slate-800)] !text-[color:var(--slate-100)] hover:!text-[color:var(--slate-800)]"
+                ? "!bg-slate-100 !text-slate-800 hover:!text-slate-100"
+                : "!bg-slate-800 !text-slate-100 hover:!text-slate-800"
             }`,
-            formButtonPrimary: `!relative !overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors !border-[1px] !border-solid !border-transparent !outline-none !ring-0 !shadow-none before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:translate-x-[101%] before:transition-transform before:duration-300 before:ease-out hover:before:translate-x-0 btn-stripes-clerk [&>*]:relative [&>*]:z-10 hover:!border-[color:var(--slate-400)] ${
+            formButtonPrimary: `!relative !overflow-hidden inline-flex items-center justify-center gap-2 !rounded-[var(--radius-sm)] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors !border-[1px] !border-solid !border-transparent !outline-none !ring-0 !shadow-none before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:translate-x-[101%] before:transition-transform before:duration-300 before:ease-out hover:before:translate-x-0 btn-stripes-clerk [&>*]:relative [&>*]:z-10 hover:!border-slate-400 ${
               isDark
-                ? "!bg-[color:var(--slate-100)] !text-[color:var(--slate-800)] hover:!text-[color:var(--slate-100)]"
-                : "!bg-[color:var(--slate-800)] !text-[color:var(--slate-100)] hover:!text-[color:var(--slate-800)]"
+                ? "!bg-slate-100 !text-slate-800 hover:!text-slate-100"
+                : "!bg-slate-800 !text-slate-100 hover:!text-slate-800"
             }`,
-            formFieldInput: `rounded-action border-border h-10 font-mono text-sm focus:ring-primary focus:border-primary transition-all ${isDark ? "!bg-[color:var(--slate-900)]" : "bg-background"}`,
-            footerActionLink: "!text-[color:var(--slate-50)] hover:!text-[color:var(--slate-300)] font-bold",
+            formFieldInput: `!rounded-md border-border h-10 !font-mono text-sm placeholder:!font-mono focus:ring-primary focus:border-primary transition-all ${isDark ? "!bg-slate-900" : "bg-background"}`,
+            footerActionLink: "!text-slate-50 hover:!text-slate-300 font-bold",
             identityPreviewText: "text-foreground font-mono",
             identityPreviewEditButtonIcon: "!text-slate-200",
             formFieldAction: "!text-slate-50 font-mono text-xs",
@@ -94,12 +94,12 @@ export default function SignInPage() {
             socialButtonsBlockButtonBadge: "hidden",
             identifierFieldInputOptionLastUsed: "hidden",
             alternativeMethodsBlockButtonBadge: "hidden",
-            formFieldInputShowPasswordButton: "hover:!text-[color:var(--slate-200)]",
+            formFieldInputShowPasswordButton: "hover:!text-slate-200",
             formFieldInputGroupSuffix: "hidden",
             formFieldSuccessText: "hidden",
             dividerText: "text-muted-foreground font-mono text-xs uppercase tracking-wider px-4",
             dividerRow: "flex items-center gap-0 w-full",
-            dividerLine: "flex-1 h-[0.5px] !bg-[color:var(--slate-400)]",
+            dividerLine: "flex-1 h-[0.5px] !bg-slate-400",
             footer: "!bg-transparent mt-4 [&]:!bg-transparent",
             footerBox: "!bg-transparent !shadow-none",
             footerAction: "!bg-transparent",

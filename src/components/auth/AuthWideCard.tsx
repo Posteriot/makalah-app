@@ -32,7 +32,7 @@ export function AuthWideCard({
     return (
         <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-lg border border-border bg-card shadow-none relative">
             {/* Left Column: Branding & Personality */}
-            <div className="md:w-5/12 bg-muted/30 p-6 md:p-12 relative flex flex-col">
+            <div className="md:w-5/12 bg-slate-950 p-6 md:p-12 relative flex flex-col">
                 {/* Diagonal Stripes - Industrial Texture */}
                 <div
                     className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]"
@@ -84,7 +84,7 @@ export function AuthWideCard({
             </div>
 
             {/* Right Column: Interaction (Clerk Form) */}
-            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-800)] relative">
+            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center bg-slate-100 dark:bg-slate-800 relative">
                 <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
                     {children}
                 </div>
