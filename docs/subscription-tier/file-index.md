@@ -20,6 +20,7 @@ Daftar semua file yang terkait dengan sistem subscription tier di Makalah App.
 
 | File | Relevansi |
 |------|-----------|
+| `src/lib/utils/subscription.ts` | **Shared utility**: `getEffectiveTier(role, subscriptionStatus)` — single source of truth |
 | `src/lib/hooks/useCurrentUser.ts` | Returns `{ user, isLoading }` — user object contains both `role` and `subscriptionStatus` |
 | `src/lib/billing/enforcement.ts` | Pre-flight quota check + post-op usage recording — **BUG**: tier determination ignores role (line 128) |
 
@@ -27,20 +28,20 @@ Daftar semua file yang terkait dengan sistem subscription tier di Makalah App.
 
 | File | Tier Logic | Status |
 |------|------------|--------|
-| `src/components/ui/SegmentBadge.tsx` | `getSubscriptionTier()` line 47-56 — cek role dulu | **Benar** |
-| `src/components/layout/header/GlobalHeader.tsx` | `getSegmentFromUser()` line 64-70 — cek role dulu | **Benar** |
+| `src/components/ui/SegmentBadge.tsx` | Uses shared `getEffectiveTier()` | **Fixed** |
+| `src/components/layout/header/GlobalHeader.tsx` | Uses shared `getEffectiveTier()` | **Fixed** |
 | `src/components/chat/shell/ShellHeader.tsx` | Pakai SegmentBadge dengan `role` + `subscriptionStatus` (line 60-64) | **Benar** |
-| `src/components/settings/StatusTab.tsx` | Hanya baca `subscriptionStatus` (line 80) | **BUG** |
-| `src/components/chat/QuotaWarningBanner.tsx` | Hanya baca `subscriptionStatus` (line 60) | **BUG** |
+| `src/components/settings/StatusTab.tsx` | Uses shared `getEffectiveTier()` | **Fixed** |
+| `src/components/chat/QuotaWarningBanner.tsx` | Hanya baca `subscriptionStatus` (line 49) | **BUG** (future fix) |
 
 ## Pages — Subscription Management
 
 | File | Tier Logic | Status |
 |------|------------|--------|
 | `src/app/(account)/settings/page.tsx` | Parent yang pass `convexUser` ke StatusTab | — |
-| `src/app/(dashboard)/subscription/overview/page.tsx` | Hanya baca `subscriptionStatus` (line 125) | **BUG** |
-| `src/app/(dashboard)/subscription/plans/page.tsx` | Plan selection & BPP payment flow | Perlu review |
-| `src/app/(dashboard)/subscription/upgrade/page.tsx` | Pro upgrade page | Perlu review |
+| `src/app/(dashboard)/subscription/overview/page.tsx` | Uses shared `getEffectiveTier()` | **Fixed** |
+| `src/app/(dashboard)/subscription/plans/page.tsx` | Uses shared `getEffectiveTier()` | **Fixed** |
+| `src/app/(dashboard)/subscription/upgrade/page.tsx` | Pro upgrade page — no tier display logic | OK |
 
 ## Admin Panel (display-only, lower priority)
 
