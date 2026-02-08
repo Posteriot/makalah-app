@@ -2,8 +2,7 @@
 
 import { Suspense, useState } from "react"
 import { useUser } from "@clerk/nextjs"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { useSearchParams, useRouter } from "next/navigation"
 import {
   BadgeCheck,
   NavArrowLeft,
@@ -37,6 +36,7 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const { user, isLoaded } = useUser()
   const { user: convexUser, isLoading: isConvexLoading } = useCurrentUser()
   const [activeTab, setActiveTab] = useState<SettingsTab>(
@@ -60,13 +60,14 @@ function SettingsContent() {
 
         <div className="relative z-10 flex flex-col flex-grow">
           {/* Back link — top */}
-          <Link
-            href="/chat"
+          <button
+            type="button"
+            onClick={() => router.back()}
             className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground transition-colors hover:text-foreground w-fit"
           >
             <NavArrowLeft className="h-4 w-4" />
             <span>Kembali</span>
-          </Link>
+          </button>
 
           {/* Heading + Subtitle */}
           <div className="mt-6 md:mt-8">
