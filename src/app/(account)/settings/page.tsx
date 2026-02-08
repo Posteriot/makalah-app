@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { useSearchParams, useRouter } from "next/navigation"
+import Image from "next/image"
 import {
   BadgeCheck,
   NavArrowLeft,
@@ -11,6 +12,12 @@ import {
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { ProfileTab } from "@/components/settings/ProfileTab"
 import { SecurityTab } from "@/components/settings/SecurityTab"
 import { StatusTab } from "@/components/settings/StatusTab"
@@ -44,14 +51,19 @@ function SettingsContent() {
   )
 
   const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? ""
+  const handleAccordionChange = (value: string) => {
+    if (VALID_TABS.includes(value as SettingsTab)) {
+      setActiveTab(value as SettingsTab)
+    }
+  }
 
   return (
-    <div className="w-full max-w-4xl h-[70vh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden rounded-shell border border-border bg-card shadow-none relative">
+    <div className="relative w-full h-auto flex flex-col md:flex-row bg-transparent shadow-none md:max-w-4xl md:h-[80vh] md:overflow-hidden md:rounded-xl md:border md:border-border md:bg-card">
       {/* Left Column: Branding & Navigation */}
-      <div className="md:w-4/12 bg-muted/30 p-6 md:p-8 relative flex flex-col">
+      <div className="hidden md:flex md:w-4/12 bg-slate-200 dark:bg-slate-950 p-6 md:p-8 relative flex-col">
         {/* Diagonal Stripes — same as AuthWideCard */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]"
+          className="absolute inset-0 pointer-events-none opacity-[0.04] dark:opacity-[0.05]"
           style={{
             backgroundImage: 'repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 8px)'
           }}
@@ -59,20 +71,28 @@ function SettingsContent() {
         />
 
         <div className="relative z-10 flex flex-col flex-grow">
-          {/* Back link — top */}
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground transition-colors hover:text-foreground w-fit"
-          >
-            <NavArrowLeft className="h-4 w-4" />
-            <span>Kembali</span>
-          </button>
+          {/* Logo - Top */}
+          <div className="flex flex-col">
+            <Image
+              src="/logo/makalah_logo_dark.svg"
+              alt="Makalah"
+              width={28}
+              height={28}
+              className="block h-7 w-7 dark:hidden"
+            />
+            <Image
+              src="/logo/makalah_logo_light.svg"
+              alt="Makalah"
+              width={28}
+              height={28}
+              className="hidden h-7 w-7 dark:block"
+            />
+          </div>
 
           {/* Heading + Subtitle */}
           <div className="mt-6 md:mt-8">
-            <h1 className="text-signal text-lg">Atur Akun</h1>
-            <p className="mt-1 text-sm font-mono text-muted-foreground">
+            <h1 className="text-narrative font-medium text-xl">Pengaturan Akun</h1>
+            <p className="mt-1 text-sm font-normal text-slate-800 dark:text-slate-400">
               Kelola informasi akun Anda.
             </p>
           </div>
@@ -82,56 +102,151 @@ function SettingsContent() {
             <button
               className={cn(
                 "relative inline-flex items-center gap-3 rounded-action px-3 py-2.5 text-left text-interface text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring",
-                activeTab === "profile" && "bg-accent text-foreground"
+                activeTab === "profile" && "bg-slate-50 text-foreground dark:bg-slate-800 dark:text-slate-50"
               )}
               onClick={() => setActiveTab("profile")}
               type="button"
             >
-              {activeTab === "profile" && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-primary" />}
               <UserIcon className="h-4 w-4" />
               <span>Profil</span>
             </button>
             <button
               className={cn(
                 "relative inline-flex items-center gap-3 rounded-action px-3 py-2.5 text-left text-interface text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring",
-                activeTab === "security" && "bg-accent text-foreground"
+                activeTab === "security" && "bg-slate-50 text-foreground dark:bg-slate-800 dark:text-slate-50"
               )}
               onClick={() => setActiveTab("security")}
               type="button"
             >
-              {activeTab === "security" && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-primary" />}
               <Shield className="h-4 w-4" />
               <span>Keamanan</span>
             </button>
             <button
               className={cn(
                 "relative inline-flex items-center gap-3 rounded-action px-3 py-2.5 text-left text-interface text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring",
-                activeTab === "status" && "bg-accent text-foreground"
+                activeTab === "status" && "bg-slate-50 text-foreground dark:bg-slate-800 dark:text-slate-50"
               )}
               onClick={() => setActiveTab("status")}
               type="button"
             >
-              {activeTab === "status" && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-primary" />}
               <BadgeCheck className="h-4 w-4" />
               <span>Status Akun</span>
             </button>
           </nav>
 
+          {/* Back Button - Footer */}
+          <div className="mt-auto pt-6">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="inline-flex items-center gap-2 text-sm font-normal text-slate-800 dark:text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-100 hover:underline focus-ring w-fit"
+            >
+              <NavArrowLeft className="h-4 w-4" />
+              <span>Kembali</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Right Column: Tab Content */}
-      <div className="md:w-8/12 p-6 md:p-8 flex flex-col bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-800)] relative overflow-y-auto">
+      <div className="md:w-8/12 p-4 md:p-8 flex flex-col bg-slate-200 dark:bg-slate-950 relative overflow-visible md:overflow-y-auto md:bg-[color:var(--slate-100)] md:dark:bg-slate-800">
+        {/* Mobile Diagonal Stripes */}
+        <div
+          className="md:hidden absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]"
+          style={{
+            backgroundImage: "repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 8px)"
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Mobile Header */}
+        <div className="md:hidden relative z-10 mb-3 flex items-center justify-between px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo/makalah_logo_dark.svg"
+              alt="Makalah"
+              width={24}
+              height={24}
+              className="block h-6 w-6 dark:hidden"
+            />
+            <Image
+              src="/logo/makalah_logo_light.svg"
+              alt="Makalah"
+              width={24}
+              height={24}
+              className="hidden h-6 w-6 dark:block"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-sm font-normal text-slate-800 dark:text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-100 hover:underline focus-ring w-fit"
+          >
+            <NavArrowLeft className="h-4 w-4" />
+            <span>Kembali</span>
+          </button>
+        </div>
+
+        {/* Mobile Accordion */}
+        <div className="md:hidden relative z-10">
+          <Accordion
+            type="single"
+            value={activeTab}
+            onValueChange={handleAccordionChange}
+            className="rounded-md border border-slate-300 bg-slate-50 px-3 dark:border-slate-600 dark:bg-slate-900"
+          >
+            <AccordionItem value="profile" className="border-slate-300 dark:border-slate-600">
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <span className="inline-flex items-center gap-2 text-interface text-sm">
+                  <UserIcon className="h-4 w-4" />
+                  Profil
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-0">
+                <ProfileTab user={user} isLoaded={isLoaded} />
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="security" className="border-slate-300 dark:border-slate-600">
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <span className="inline-flex items-center gap-2 text-interface text-sm">
+                  <Shield className="h-4 w-4" />
+                  Keamanan
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-0">
+                <SecurityTab user={user} isLoaded={isLoaded} />
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="status" className="border-slate-300 dark:border-slate-600">
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <span className="inline-flex items-center gap-2 text-interface text-sm">
+                  <BadgeCheck className="h-4 w-4" />
+                  Status Akun
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-0">
+                <StatusTab
+                  primaryEmail={primaryEmail}
+                  convexUser={convexUser}
+                  isConvexLoading={isConvexLoading}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+
         <div className="w-full relative z-10">
-          <div className={cn(activeTab === "profile" ? "block" : "hidden")}>
+          <div className={cn(activeTab === "profile" ? "hidden md:block" : "hidden")}>
             <ProfileTab user={user} isLoaded={isLoaded} />
           </div>
 
-          <div className={cn(activeTab === "security" ? "block" : "hidden")}>
+          <div className={cn(activeTab === "security" ? "hidden md:block" : "hidden")}>
             <SecurityTab user={user} isLoaded={isLoaded} />
           </div>
 
-          <div className={cn(activeTab === "status" ? "block" : "hidden")}>
+          <div className={cn(activeTab === "status" ? "hidden md:block" : "hidden")}>
             <StatusTab
               primaryEmail={primaryEmail}
               convexUser={convexUser}

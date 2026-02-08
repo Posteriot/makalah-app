@@ -21,22 +21,23 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const hasPassword = Boolean(user?.passwordEnabled)
 
   const handleSave = async () => {
     if (!user) return
 
     if (!newPassword) {
-      toast.error("Kata sandi baru wajib diisi.")
+      toast.error("Password baru wajib diisi.")
       return
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("Konfirmasi kata sandi tidak cocok.")
+      toast.error("Konfirmasi password tidak cocok.")
       return
     }
 
-    if (user.passwordEnabled && !currentPassword) {
-      toast.error("Kata sandi saat ini wajib diisi.")
+    if (hasPassword && !currentPassword) {
+      toast.error("Password saat ini wajib diisi.")
       return
     }
 
@@ -47,17 +48,21 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
         currentPassword: currentPassword || undefined,
         signOutOfOtherSessions: signOutOthers,
       })
-      toast.success("Kata sandi berhasil diperbarui.")
+      toast.success(
+        hasPassword
+          ? "Password berhasil diperbarui."
+          : "Password berhasil dibuat."
+      )
       setIsEditing(false)
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
     } catch (error) {
       const message = isClerkAPIResponseError(error)
-        ? error.errors[0]?.message ?? "Gagal memperbarui kata sandi."
+        ? error.errors[0]?.message ?? "Gagal memperbarui password."
         : error instanceof Error
           ? error.message
-          : "Gagal memperbarui kata sandi."
+          : "Gagal memperbarui password."
       toast.error(message)
     } finally {
       setIsSaving(false)
@@ -67,77 +72,101 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
   return (
     <>
       <div className="mb-6">
-        <h3 className="flex items-center gap-2 text-signal text-lg">
-          <Shield className="h-5 w-5 text-primary" />
+        <h3 className="flex items-center gap-2 text-narrative font-medium text-xl">
+          <Shield className="h-5 w-5 text-slate-800 dark:text-slate-200" />
           Keamanan
         </h3>
         <p className="mt-1 text-narrative text-sm text-muted-foreground">
-          Update kata sandi dan kontrol sesi.
+          Update password dan kontrol sesi.
         </p>
       </div>
 
-      <div className="mb-4 overflow-hidden rounded-action border border-border bg-card">
-        <div className="border-b border-border px-4 py-3 text-interface text-sm font-medium">Kata Sandi</div>
-        <div className="p-4">
+      <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
+        <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">Password</div>
+        <div className="p-4 bg-slate-50 dark:bg-slate-800">
         {!isEditing ? (
-          <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3">
-            <span className="text-interface text-xs text-muted-foreground">Kata sandi</span>
+          <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3 max-sm:grid-cols-1 max-sm:items-start">
+            <span className="text-interface text-xs text-muted-foreground">Password</span>
             <div className="min-w-0 text-interface text-sm text-foreground">
-              <span className="tracking-[0.2em] text-muted-foreground">••••••••</span>
+              {hasPassword ? (
+                <span className="tracking-[0.2em] text-muted-foreground">••••••••</span>
+              ) : (
+                <span className="text-interface text-xs text-muted-foreground">
+                  Belum diatur
+                </span>
+              )}
             </div>
             <button
-              className="text-interface text-sm font-medium text-primary transition-opacity hover:opacity-80 focus-ring"
+              className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-2 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring"
               onClick={() => setIsEditing(true)}
               type="button"
             >
-              Ubah kata sandi
+              <span
+                className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                aria-hidden="true"
+              />
+              <span className="relative z-10">
+                {hasPassword ? "Ubah Password" : "Buat Password"}
+              </span>
             </button>
           </div>
         ) : (
           <div className="w-full">
-            <div className="mb-4 text-interface text-sm font-semibold">Ubah kata sandi</div>
-            <div className="flex flex-col gap-4">
-              <div className="flex w-full flex-1 flex-col gap-1.5">
-                <label className="text-interface text-xs font-medium text-foreground">Kata sandi saat ini</label>
-                <div className="relative flex items-center">
-                  <input
-                    type={showCurrentPassword ? "text" : "password"}
-                    className="h-10 w-full rounded-action border border-border bg-background px-3 pr-10 text-interface text-sm transition-colors focus-ring"
-                    value={currentPassword}
-                    onChange={(event) =>
-                      setCurrentPassword(event.target.value)
-                    }
-                  />
-                  <button
-                    className="absolute right-2 inline-flex h-7 w-7 items-center justify-center rounded-badge text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring"
-                    type="button"
-                    onClick={() =>
-                      setShowCurrentPassword((prev) => !prev)
-                    }
-                    aria-label="Tampilkan kata sandi"
-                  >
-                    {showCurrentPassword ? (
-                      <EyeClosed className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
+            <div className="mb-4 text-interface text-sm font-semibold">
+              {hasPassword ? "Ubah password" : "Buat password"}
+            </div>
+            <div className="flex flex-col gap-5">
+              {hasPassword && (
+                <div className="flex w-full flex-1 flex-col gap-1.5">
+                  <label className="sr-only" htmlFor="current-password">
+                    Password saat ini
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      id="current-password"
+                      type={showCurrentPassword ? "text" : "password"}
+                      placeholder="Password saat ini"
+                      className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                      value={currentPassword}
+                      onChange={(event) =>
+                        setCurrentPassword(event.target.value)
+                      }
+                    />
+                    <button
+                      className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
+                      type="button"
+                      onClick={() =>
+                        setShowCurrentPassword((prev) => !prev)
+                      }
+                      aria-label="Tampilkan password"
+                    >
+                      {showCurrentPassword ? (
+                        <EyeClosed className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="flex w-full flex-1 flex-col gap-1.5">
-                <label className="text-interface text-xs font-medium text-foreground">Kata sandi baru</label>
+                <label className="sr-only" htmlFor="new-password">
+                  Password baru
+                </label>
                 <div className="relative flex items-center">
                   <input
+                    id="new-password"
                     type={showNewPassword ? "text" : "password"}
-                    className="h-10 w-full rounded-action border border-border bg-background px-3 pr-10 text-interface text-sm transition-colors focus-ring"
+                    placeholder="Password baru"
+                    className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
                   />
                   <button
-                    className="absolute right-2 inline-flex h-7 w-7 items-center justify-center rounded-badge text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring"
+                    className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
                     type="button"
                     onClick={() => setShowNewPassword((prev) => !prev)}
-                    aria-label="Tampilkan kata sandi baru"
+                    aria-label="Tampilkan password baru"
                   >
                     {showNewPassword ? (
                       <EyeClosed className="h-4 w-4" />
@@ -148,23 +177,27 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
                 </div>
               </div>
               <div className="flex w-full flex-1 flex-col gap-1.5">
-                <label className="text-interface text-xs font-medium text-foreground">Konfirmasi kata sandi</label>
+                <label className="sr-only" htmlFor="confirm-password">
+                  Konfirmasi password
+                </label>
                 <div className="relative flex items-center">
                   <input
+                    id="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
-                    className="h-10 w-full rounded-action border border-border bg-background px-3 pr-10 text-interface text-sm transition-colors focus-ring"
+                    placeholder="Konfirmasi password"
+                    className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
                     value={confirmPassword}
                     onChange={(event) =>
                       setConfirmPassword(event.target.value)
                     }
                   />
                   <button
-                    className="absolute right-2 inline-flex h-7 w-7 items-center justify-center rounded-badge text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring"
+                    className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
                     type="button"
                     onClick={() =>
                       setShowConfirmPassword((prev) => !prev)
                     }
-                    aria-label="Tampilkan konfirmasi kata sandi"
+                    aria-label="Tampilkan konfirmasi password"
                   >
                     {showConfirmPassword ? (
                       <EyeClosed className="h-4 w-4" />
@@ -177,7 +210,7 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
               <div className="flex items-start gap-2.5">
                 <input
                   type="checkbox"
-                  className="mt-0.5 size-[18px] shrink-0 accent-primary"
+                  className="mt-0.5 size-[18px] shrink-0 accent-slate-200"
                   id="signout-checkbox"
                   checked={signOutOthers}
                   onChange={(event) => setSignOutOthers(event.target.checked)}
@@ -191,27 +224,35 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
                   </label>
                   <span className="text-narrative text-xs leading-5 text-muted-foreground">
                     Disarankan agar semua sesi lama ikut keluar setelah
-                    kata sandi diganti.
+                    password diganti.
                   </span>
                 </div>
               </div>
             </div>
-            <div className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
+            <div className="mt-5 flex justify-end gap-4 border-t border-border pt-4 max-sm:flex-col-reverse max-sm:items-stretch">
               <button
-                className="rounded-action border border-border bg-background px-4 py-2 text-interface text-sm transition-colors hover:bg-accent focus-ring disabled:opacity-50"
+                className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-1 text-narrative text-xs font-medium border border-transparent bg-transparent text-slate-800 hover:text-slate-800 hover:border-slate-600 dark:text-slate-100 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
                 onClick={() => setIsEditing(false)}
                 disabled={isSaving}
               >
-                Batal
+                <span
+                  className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                  aria-hidden="true"
+                />
+                <span className="relative z-10">Batal</span>
               </button>
               <button
-                className="rounded-action bg-primary px-5 py-2 text-interface text-sm text-primary-foreground transition-colors hover:bg-primary/90 focus-ring disabled:opacity-50"
+                className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
                 onClick={handleSave}
                 disabled={!isLoaded || isSaving}
               >
-                {isSaving ? "Menyimpan..." : "Simpan"}
+                <span
+                  className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                  aria-hidden="true"
+                />
+                <span className="relative z-10">{isSaving ? "Menyimpan..." : "Simpan"}</span>
               </button>
             </div>
           </div>

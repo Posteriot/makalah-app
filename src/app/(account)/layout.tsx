@@ -55,7 +55,7 @@ export default async function AccountLayout({
   await ensureConvexUser()
 
   return (
-    <div className="min-h-dvh relative bg-background text-foreground flex items-center justify-center p-4 md:p-6">
+    <div className="min-h-dvh relative bg-background text-foreground flex items-start md:items-center justify-center p-0 md:p-6">
       {/* Industrial Grid Pattern — same as auth layout */}
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05] z-[1]"
@@ -70,7 +70,7 @@ export default async function AccountLayout({
       />
 
       {/* Content Container */}
-      <div className="relative z-10 w-full max-w-5xl flex justify-center">
+      <div className="relative z-10 w-full max-w-none md:max-w-5xl flex md:justify-center">
         {children}
       </div>
     </div>
