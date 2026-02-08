@@ -69,7 +69,7 @@ export function ProblemsSection() {
                     </h3>
                     <div className="flex items-start gap-3">
                       <span className="mt-1.5 h-2.5 w-2.5 min-w-2.5 rounded-full bg-[color:var(--amber-500)] shadow-[0_0_8px_var(--amber-500)] animate-pulse" />
-                      <p className="text-interface m-0 text-xs leading-relaxed text-muted-foreground hover:text-slate-50">
+                      <p className="text-interface m-0 text-md leading-relaxed text-muted-foreground hover:text-slate-50">
                         {item.description}
                       </p>
                     </div>

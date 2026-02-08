@@ -1,11 +1,10 @@
 "use client"
 
 import { SectionBadge } from "@/components/ui/section-badge"
-import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
+import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 import { AccordionAbout } from "./AccordionAbout"
 import {
   CAREER_CONTACT_ITEMS,
-  HERO_CONTENT,
   type ContactContent,
 } from "./data"
 import { getIcon } from "./icons"
@@ -32,7 +31,7 @@ function renderContent(content: string | ContactContent) {
         <p>
           <a
             href={`mailto:${content.email}`}
-            className="text-interface text-sm text-[color:var(--amber-500)] hover:underline"
+            className="text-interface text-sm text-[color:var(--slate-50)] hover:underline"
           >
             {content.email}
           </a>
@@ -58,17 +57,17 @@ export function CareerContactSection() {
 
   return (
     <section
-      className="relative overflow-hidden bg-background px-4 py-16 md:px-6 md:py-24"
+      className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt2)]"
       id="karier-kontak"
     >
       {/* Background patterns */}
-      <GridPattern className="z-0" />
-      <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+      <DiagonalStripes className="opacity-40" />
+      <DottedPattern spacing={24} withRadialMask={true} />
 
-      <div className="relative z-10 mx-auto w-full max-w-[var(--container-max-width)]">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
         <div className="grid grid-cols-1 gap-comfort md:grid-cols-16">
           {/* Section Header */}
-          <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:mb-12 md:gap-4">
+          <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:col-start-3 md:mb-12 md:gap-4">
             <SectionBadge>Karier & Kontak</SectionBadge>
             <h2 className="text-narrative text-3xl font-medium leading-tight tracking-tight text-foreground md:text-3xl lg:text-4xl">
               Bergabung atau Hubungi Kami
@@ -81,7 +80,7 @@ export function CareerContactSection() {
           </div>
 
           {/* Desktop: 16-col bento mapping (8/8) */}
-          <div className="mb-16 hidden md:col-span-16 md:grid md:grid-cols-16 md:gap-comfort">
+          <div className="hidden md:col-span-12 md:col-start-3 md:grid grid-cols-16 gap-comfort">
             {CAREER_CONTACT_ITEMS.map((item) => {
               const Icon = getIcon(item.iconName)
               return (
@@ -90,20 +89,19 @@ export function CareerContactSection() {
                   id={item.anchorId}
                   data-anchor-id={item.anchorId}
                   className={cn(
-                    "col-span-8 group relative flex h-full min-h-[180px] flex-col overflow-hidden rounded-shell p-airy",
-                    "border-main border-border bg-card/40",
-                    "hover:bg-accent/30",
-                    "hover:-translate-y-1 transition-all duration-300"
+                    "group relative col-span-8 flex h-full min-h-[180px] flex-col overflow-hidden rounded-shell border-hairline bg-transparent p-airy",
+                    "transition-colors duration-200",
+                    "hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-900)]"
                   )}
                 >
                   {/* Icon + Title row */}
                   <div className="mb-4 flex items-start gap-4">
                     {Icon && (
-                      <div className="rounded-action flex h-10 w-10 shrink-0 items-center justify-center bg-[color:var(--amber-500)]/10">
-                        <Icon className="h-5 w-5 text-[color:var(--amber-500)]" />
+                      <div className="rounded-action flex h-10 w-10 shrink-0 items-center justify-center bg-[color:var(--slate-900)]">
+                        <Icon className="h-5 w-5 text-[color:var(--slate-50)]" />
                       </div>
                     )}
-                    <h3 className="text-interface pt-2 text-lg font-bold leading-tight text-foreground">
+                    <h3 className="text-narrative pt-2 text-lg font-medium leading-tight text-foreground">
                       {item.title}
                     </h3>
                   </div>
@@ -119,31 +117,6 @@ export function CareerContactSection() {
             })}
           </div>
 
-          {/* CTA Section */}
-          <div className="col-span-1 mt-12 border-t border-hairline pt-8 md:col-span-16 md:mt-16">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <p className="text-interface text-lg text-muted-foreground">
-                Ada pertanyaan?
-              </p>
-              <a
-                href={HERO_CONTENT.ctaHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  "inline-flex items-center justify-center",
-                  "rounded-action px-6 py-3",
-                  "text-signal text-[11px] font-bold",
-                  "bg-[color:var(--amber-500)] text-[color:var(--slate-950)]",
-                  "shadow-sm",
-                  "hover-slash overflow-hidden",
-                  "hover:translate-y-[-2px] hover:bg-[color:var(--amber-400)]",
-                  "transition-all duration-200"
-                )}
-              >
-                {HERO_CONTENT.ctaText}
-              </a>
-            </div>
-          </div>
         </div>
       </div>
     </section>

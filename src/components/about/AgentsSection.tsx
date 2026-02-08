@@ -33,7 +33,7 @@ function AgentTeaserCard({ item }: { item: AgentTeaserItem }) {
           "border-1 border-[color:var(--slate-400)]",
           "transition-all duration-300 group-hover:-translate-y-1",
           "group-hover:bg-[color:var(--slate-200)] dark:group-hover:bg-[color:var(--slate-700)]",
-          item.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
+          item.isHighlighted && "border-2 border-[color:var(--teal-500)]"
         )}
       >
         <h3 className="text-narrative mt-4 mb-3 text-center text-xl font-light text-foreground md:mt-0 md:text-2xl">
@@ -53,7 +53,7 @@ function AgentTeaserCard({ item }: { item: AgentTeaserItem }) {
               "inline-flex items-center rounded-badge px-2.5 py-1",
               "text-signal text-[10px] font-bold",
               item.statusKey === "available" &&
-                "border border-[color:var(--teal-300)] bg-[color:var(--teal-100)] text-[color:var(--teal-900)] dark:border-[color:var(--teal-600)] dark:bg-[color:var(--teal-700)] dark:text-[color:var(--slate-100)]",
+                "border bg-[color:var(--teal-500)] text-[color:var(--slate-100)] dark:bg-[color:var(--teal-700)] dark:text-[color:var(--slate-100)]",
               item.statusKey === "in-progress" &&
                 "border border-[color:var(--slate-600)] bg-[color:var(--slate-500)] text-[color:var(--slate-200)]"
             )}
