@@ -9,11 +9,6 @@
 // TYPE DEFINITIONS
 // =============================================================================
 
-export interface ManifestoContent {
-  summary: string
-  extended: string[]
-}
-
 export interface ProblemItem {
   id: string
   title: string
@@ -41,33 +36,6 @@ export interface CareerContactItem {
   iconName: "Briefcase" | "Mail"
   title: string
   content: string | ContactContent
-}
-
-// =============================================================================
-// HERO SECTION
-// =============================================================================
-
-export const HERO_CONTENT = {
-  heading: "AI Yang Menumbuhkan Pikiran",
-  subheading:
-    "Teknologi tidak menggantikan manusia, melainkan melengkapi agar kian berdaya",
-  ctaText: "Hubungi Kami",
-  ctaHref:
-    "https://mail.google.com/mail/?view=cm&fs=1&to=dukungan@makalah.ai&su=Pertanyaan%20tentang%20Makalah%20AI&body=Halo%20Tim%20Makalah%2C%0A%0ASaya%20ingin%20bertanya%20tentang%20...%0A%0ATerima%20kasih.",
-} as const
-
-// =============================================================================
-// MANIFESTO SECTION
-// =============================================================================
-
-export const MANIFESTO_CONTENT: ManifestoContent = {
-  summary:
-    "Platform ini disiapkan untuk merespons disrupsi teknologi dalam aktivitas akademik dan riset. Laju pemakaian AI/Large Language Model nggak bisa dihindari. Pelarangan penggunaannya di lingkungan akademik hanya memicu ketidakjujuran: ngomongnya nggak pakai, padahal diam-diam menggunakan.",
-  extended: [
-    "Bagaimana dengan detektor AI\u2014apakah absah? Problematik. Detektor AI rawan false positive dan hanya mengeluarkan persentase probabilitas tanpa argumen jelas. Selama tulisan mengikuti struktur subjek\u2013predikat\u2013objek\u2013keterangan, kalimat apa pun bisa terdeteksi \"buatan AI\".",
-    "Yang diperlukan sekarang: mengatur penggunaan AI agar transparan, bisa dipertanggungjawabkan, dan punya riwayat pemakaian yang akuntabel. Siapa pun bisa dilacak: apakah paper dibuatkan AI, atau dibuat bersama AI? Bukankah itu dua hal yang berbeda?",
-    "Makalah berdiri di posisi: Penggunaan AI harus transparan, terjejak, dan terdidik.",
-  ],
 }
 
 // =============================================================================
@@ -189,17 +157,6 @@ export const CAREER_CONTACT_ITEMS: CareerContactItem[] = [
     },
   },
 ]
-
-// =============================================================================
-// SECTION HEADINGS
-// =============================================================================
-
-export const SECTION_HEADINGS = {
-  manifesto: "Jadi, begini...",
-  problems: "Apa Saja Persoalan Yang Dijawab?",
-  agents: "Ai Agents: Fitur & Pengembangan",
-  careerContact: "Karier & Kontak",
-} as const
 
 // =============================================================================
 // BADGE LABELS

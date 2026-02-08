@@ -44,16 +44,12 @@ function renderContent(content: string | ContactContent) {
 
 export function CareerContactSection() {
   // Transform items for accordion (mobile)
-  const accordionItems = CAREER_CONTACT_ITEMS.map((item) => {
-    const Icon = getIcon(item.iconName)
-    return {
-      id: item.id,
-      icon: Icon ? <Icon className="h-4 w-4" /> : undefined,
-      title: item.title,
-      content: renderContent(item.content),
-      anchorId: item.anchorId,
-    }
-  })
+  const accordionItems = CAREER_CONTACT_ITEMS.map((item) => ({
+    id: item.id,
+    title: item.title,
+    content: renderContent(item.content),
+    anchorId: item.anchorId,
+  }))
 
   return (
     <section
@@ -76,7 +72,12 @@ export function CareerContactSection() {
 
           {/* Mobile: Accordion */}
           <div className="col-span-1 md:hidden">
-            <AccordionAbout items={accordionItems} />
+            <AccordionAbout
+              items={accordionItems}
+              titleClassName="text-interface font-mono text-base font-medium leading-snug text-foreground tracking-normal"
+              contentClassName="!px-4 !pb-4 text-base leading-relaxed text-[color:var(--slate-600)] dark:text-[color:var(--slate-50)]"
+              chevronClassName="text-muted-foreground"
+            />
           </div>
 
           {/* Desktop: 16-col bento mapping (8/8) */}

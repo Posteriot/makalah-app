@@ -173,7 +173,7 @@ function AgentsTeaserCarousel({ items }: { items: AgentTeaserItem[] }) {
 export function AgentsSection() {
   return (
     <section
-      className="relative flex h-[100svh] flex-col justify-center overflow-hidden bg-background"
+      className="relative flex flex-col overflow-hidden bg-background md:h-[100svh] md:justify-center"
       id="agents"
     >
       <GridPattern className="z-0" />
