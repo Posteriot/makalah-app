@@ -89,9 +89,9 @@ export function UserDropdown() {
           // Structure for stripes animation
           "group relative overflow-hidden",
           // Base layout
-          "flex items-center justify-center gap-2 rounded-action px-4 py-2",
+          "flex items-center justify-center gap-2 rounded-action px-2 py-1",
           // Typography
-          "text-[12px] font-medium text-narrative",
+          "text-sm font-medium text-narrative",
           // Light mode diam: dark button
           "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
           // Light mode hover/expanded: text & border darken
@@ -115,7 +115,7 @@ export function UserDropdown() {
         />
 
         {/* Name (hidden on mobile) */}
-        <span className="relative z-10 hidden sm:block text-[12px] font-medium text-narrative max-w-[120px] truncate">
+        <span className="relative z-10 hidden sm:block text-sm font-medium text-narrative max-w-[120px] truncate">
           {fullName}
         </span>
 
@@ -134,7 +134,7 @@ export function UserDropdown() {
           <Link
             href="/settings"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors w-full rounded-action"
+            className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors w-full rounded-action"
           >
             <User className="icon-interface" />
             <span>Atur Akun</span>
@@ -144,7 +144,7 @@ export function UserDropdown() {
           <Link
             href="/subscription/overview"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors rounded-action"
+            className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors rounded-action"
           >
             <CreditCard className="icon-interface" />
             <span>Subskripsi</span>
@@ -155,7 +155,7 @@ export function UserDropdown() {
             <Link
               href="/dashboard"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors rounded-action"
+              className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
             >
               <Settings className="icon-interface" />
               <span>Admin Panel</span>
@@ -167,7 +167,7 @@ export function UserDropdown() {
             onClick={handleSignOut}
             disabled={isSigningOut}
             className={cn(
-              "w-full flex items-center gap-dense p-dense text-[12px] text-narrative transition-colors rounded-action",
+              "w-full flex items-center gap-dense p-dense text-sm font-medium text-narrative transition-colors rounded-action",
               isSigningOut
                 ? "text-muted-foreground cursor-not-allowed"
                 : "text-rose-400 hover:bg-rose-900 hover:text-rose-50"

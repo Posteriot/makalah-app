@@ -1538,7 +1538,7 @@
   }
 
   .rounded-action {
-    border-radius: var(--radius-md); /* 8px - Action elements */
+    border-radius: var(--radius-sm); /* 4px - Action elements */
   }
 
   .rounded-badge {
@@ -1729,6 +1729,17 @@
   background-color: transparent !important;
 }
 
+/* Force Clerk auth input typography to mono (typed value + placeholder) */
+.cl-formFieldInput,
+input[data-cl-element='formFieldInput'] {
+  font-family: var(--font-mono) !important;
+}
+
+.cl-formFieldInput::placeholder,
+input[data-cl-element='formFieldInput']::placeholder {
+  font-family: var(--font-mono) !important;
+}
+
 /* ==========================================================================
  * CLERK - Reset "Email code" button to text link style
  * Parent .cl-alternativeMethods contains email code, while .cl-main contains
@@ -1744,7 +1755,7 @@
   align-items: center !important;
   justify-content: center !important;
   gap: 0.5rem !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-sm) !important;
   padding: 0.5rem 1rem !important;
   font-family: var(--font-sans) !important;
   font-size: 13px !important;
@@ -1759,6 +1770,12 @@
 .dark .cl-signIn-havingTrouble .cl-button {
   background-color: var(--slate-100) !important;
   color: var(--slate-800) !important;
+}
+
+/* Keep auth buttons in sm radius even when Clerk variables use md radius for inputs */
+.cl-main .cl-socialButtonsBlockButton,
+.cl-main .cl-formButtonPrimary {
+  border-radius: var(--radius-sm) !important;
 }
 
 .cl-main > .cl-alternativeMethodsBlockButton:hover,
@@ -2080,5 +2097,95 @@
     padding: 0 !important;
     position: absolute !important;
     z-index: -9999 !important;
+  }
+
+  /* Clerk autofill fix: force neutral slate, prevent browser blue tint */
+  [data-cl-element='rootBox'] input:-webkit-autofill,
+  [data-cl-element='rootBox'] input:-webkit-autofill:hover,
+  [data-cl-element='rootBox'] input:-webkit-autofill:focus,
+  [data-cl-element='rootBox'] input:-webkit-autofill:active,
+  .cl-rootBox input:-webkit-autofill,
+  .cl-rootBox input:-webkit-autofill:hover,
+  .cl-rootBox input:-webkit-autofill:focus,
+  .cl-rootBox input:-webkit-autofill:active,
+  .cl-formFieldInput:-webkit-autofill,
+  .cl-formFieldInput:-webkit-autofill:hover,
+  .cl-formFieldInput:-webkit-autofill:focus,
+  .cl-formFieldInput:-webkit-autofill:active,
+  input[data-cl-element='formFieldInput']:-webkit-autofill,
+  input[data-cl-element='formFieldInput']:-webkit-autofill:hover,
+  input[data-cl-element='formFieldInput']:-webkit-autofill:focus,
+  input[data-cl-element='formFieldInput']:-webkit-autofill:active {
+    background-color: var(--background) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--background) inset !important;
+    box-shadow: 0 0 0 1000px var(--background) inset !important;
+    -webkit-text-fill-color: var(--foreground) !important;
+    caret-color: var(--foreground) !important;
+    border-color: var(--border) !important;
+    transition: background-color 99999s ease-in-out 0s !important;
+  }
+
+  .dark [data-cl-element='rootBox'] input:-webkit-autofill,
+  .dark [data-cl-element='rootBox'] input:-webkit-autofill:hover,
+  .dark [data-cl-element='rootBox'] input:-webkit-autofill:focus,
+  .dark [data-cl-element='rootBox'] input:-webkit-autofill:active,
+  .dark .cl-rootBox input:-webkit-autofill,
+  .dark .cl-rootBox input:-webkit-autofill:hover,
+  .dark .cl-rootBox input:-webkit-autofill:focus,
+  .dark .cl-rootBox input:-webkit-autofill:active,
+  .dark .cl-formFieldInput:-webkit-autofill,
+  .dark .cl-formFieldInput:-webkit-autofill:hover,
+  .dark .cl-formFieldInput:-webkit-autofill:focus,
+  .dark .cl-formFieldInput:-webkit-autofill:active,
+  .dark input[data-cl-element='formFieldInput']:-webkit-autofill,
+  .dark input[data-cl-element='formFieldInput']:-webkit-autofill:hover,
+  .dark input[data-cl-element='formFieldInput']:-webkit-autofill:focus,
+  .dark input[data-cl-element='formFieldInput']:-webkit-autofill:active {
+    background-color: var(--slate-900) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--slate-900) inset !important;
+    box-shadow: 0 0 0 1000px var(--slate-900) inset !important;
+    -webkit-text-fill-color: var(--slate-100) !important;
+    caret-color: var(--slate-100) !important;
+    border-color: var(--neutral-0-a10) !important;
+  }
+
+  [data-cl-element='rootBox'] input:-moz-autofill,
+  [data-cl-element='rootBox'] input:-moz-autofill:focus,
+  .cl-rootBox input:-moz-autofill,
+  .cl-rootBox input:-moz-autofill:focus,
+  .cl-formFieldInput:-moz-autofill,
+  .cl-formFieldInput:-moz-autofill:focus,
+  input[data-cl-element='formFieldInput']:-moz-autofill,
+  input[data-cl-element='formFieldInput']:-moz-autofill:focus {
+    box-shadow: 0 0 0 1000px var(--background) inset !important;
+    color: var(--foreground) !important;
+    caret-color: var(--foreground) !important;
+    border-color: var(--border) !important;
+  }
+
+  /* Fallback: if Clerk internal selectors change, keep autofill neutral app-wide */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    background-color: var(--background) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--background) inset !important;
+    box-shadow: 0 0 0 1000px var(--background) inset !important;
+    -webkit-text-fill-color: var(--foreground) !important;
+    caret-color: var(--foreground) !important;
+    border-color: var(--border) !important;
+    transition: background-color 99999s ease-in-out 0s !important;
+  }
+
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    background-color: var(--slate-900) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--slate-900) inset !important;
+    box-shadow: 0 0 0 1000px var(--slate-900) inset !important;
+    -webkit-text-fill-color: var(--slate-100) !important;
+    caret-color: var(--slate-100) !important;
+    border-color: var(--neutral-0-a10) !important;
   }
 }
