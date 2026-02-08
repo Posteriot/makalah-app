@@ -3,13 +3,12 @@
 import Link from "next/link"
 import { ArrowUpCircle, BadgeCheck } from "iconoir-react"
 import { cn } from "@/lib/utils"
+import { getEffectiveTier } from "@/lib/utils/subscription"
+import type { EffectiveTier } from "@/lib/utils/subscription"
 import { RoleBadge } from "@/components/admin/RoleBadge"
 
-type TierType = "gratis" | "free" | "bpp" | "pro"
-
-const TIER_CONFIG: Record<TierType, { label: string; className: string; showUpgrade: boolean }> = {
+const TIER_CONFIG: Record<EffectiveTier, { label: string; className: string; showUpgrade: boolean }> = {
   gratis: { label: "GRATIS", className: "bg-emerald-600 text-white", showUpgrade: true },
-  free: { label: "GRATIS", className: "bg-emerald-600 text-white", showUpgrade: true },
   bpp: { label: "BPP", className: "bg-sky-600 text-white", showUpgrade: true },
   pro: { label: "PRO", className: "bg-amber-500 text-white", showUpgrade: false },
 }
@@ -77,8 +76,8 @@ export function StatusTab({ primaryEmail, convexUser, isConvexLoading }: StatusT
             <span className="text-interface text-sm text-muted-foreground">Memuat...</span>
           ) : (
             (() => {
-              const tierKey = (convexUser?.subscriptionStatus || "free").toLowerCase() as TierType
-              const tierConfig = TIER_CONFIG[tierKey] || TIER_CONFIG.free
+              const tierKey = getEffectiveTier(convexUser?.role, convexUser?.subscriptionStatus)
+              const tierConfig = TIER_CONFIG[tierKey]
               return (
                 <div className="flex items-center justify-between">
                   <span
