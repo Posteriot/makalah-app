@@ -134,7 +134,7 @@ export function UserDropdown() {
           <Link
             href="/settings"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-slate-800 hover:text-slate-100 transition-colors w-full rounded-action"
+            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors w-full rounded-action"
           >
             <User className="icon-interface" />
             <span>Atur Akun</span>
@@ -144,7 +144,7 @@ export function UserDropdown() {
           <Link
             href="/subscription/overview"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-slate-800 hover:text-slate-100 transition-colors rounded-action"
+            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors rounded-action"
           >
             <CreditCard className="icon-interface" />
             <span>Subskripsi</span>
@@ -155,7 +155,7 @@ export function UserDropdown() {
             <Link
               href="/dashboard"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-slate-800 hover:text-slate-100 transition-colors rounded-action"
+              className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors rounded-action"
             >
               <Settings className="icon-interface" />
               <span>Admin Panel</span>
