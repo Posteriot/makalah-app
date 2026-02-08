@@ -32,18 +32,21 @@ export function getEffectiveTier(role?: string, subscriptionStatus?: string): Ef
 - Backend Convex sudah bypass quota untuk admin, tapi frontend display banyak yang tidak
 - Utility ini menggantikan duplicate logic dan menjadi single source of truth
 
-**Consumers (6 file):**
+**Consumers (8 file):**
 1. `src/components/ui/SegmentBadge.tsx`
 2. `src/components/layout/header/GlobalHeader.tsx`
 3. `src/components/settings/StatusTab.tsx`
 4. `src/app/(dashboard)/subscription/overview/page.tsx`
 5. `src/app/(dashboard)/subscription/plans/page.tsx`
+6. `src/components/chat/QuotaWarningBanner.tsx`
+7. `src/lib/billing/enforcement.ts`
+8. `src/components/chat/ChatSidebar.tsx`
 
 ---
 
 ## Fix Status Overview
 
-### FIXED (5 lokasi)
+### FIXED (8 lokasi + 1 deleted)
 
 | File | Line | Sebelum | Sesudah | Commit |
 |------|------|---------|---------|--------|
@@ -52,128 +55,27 @@ export function getEffectiveTier(role?: string, subscriptionStatus?: string): Ef
 | `GlobalHeader.tsx` | 157 | Local `getSegmentFromUser()` function | Import shared `getEffectiveTier()` | `0b67c20` |
 | `overview/page.tsx` | 108 | `user?.subscriptionStatus \|\| "free"` | `getEffectiveTier(user?.role, user?.subscriptionStatus)` | `11c6733` |
 | `plans/page.tsx` | 258 | `user.subscriptionStatus \|\| "free"` + isCurrentTier special case | `getEffectiveTier(user.role, user.subscriptionStatus)` + simplified isCurrentTier | `479ff07` |
+| `QuotaWarningBanner.tsx` | 49 | `user.subscriptionStatus \|\| "free"` + `tierDisplay` variable | `getEffectiveTier(user.role, user.subscriptionStatus)` | `85a670a` |
+| `enforcement.ts` | 128 | `user.subscriptionStatus === "free" ? "gratis" : ...` | Admin early return + `getEffectiveTier()` | `0aa2478` |
+| `ChatSidebar.tsx` | 84-88 | Manual role check + raw `subscriptionStatus` (4 conditions) | `getEffectiveTier() !== "pro"` (1 line) | `5d5cc00` |
+| `AccountStatusPage.tsx` | — | Raw `subscriptionStatus` display | **Deleted** (dead code, not imported anywhere) | `1d93d8f` |
 
-Semua lokasi fixed juga:
+Patterns applied across all fixes:
 - Menghapus entry `"free"` duplicate dari local TIER_CONFIG/TIER_BADGES
 - Menambah type annotation `Record<EffectiveTier, ...>` untuk type safety
 - Menghapus fallback `|| TIER_CONFIG.gratis` yang tidak diperlukan lagi
+- Admin early return di server-side code (`enforcement.ts`)
 
 ---
 
-## REMAINING BUGS (3 lokasi)
+## ALL FRONTEND BUGS FIXED
 
-### Bug 1: `QuotaWarningBanner.tsx` — Prioritas TINGGI
+Semua bug tier determination di frontend dan billing enforcement sudah diperbaiki. Tidak ada lagi lokasi di `src/` yang baca raw `subscriptionStatus` untuk tier determination (kecuali admin panel yang intentional menampilkan raw DB values).
 
-**File:** `src/components/chat/QuotaWarningBanner.tsx`
-**Line:** 49-50
-
-```typescript
-const tier = user.subscriptionStatus || "free"
-const tierDisplay = tier === "free" ? "gratis" : tier
-```
-
-**Impact:** Admin/superadmin dengan `subscriptionStatus: "free"`:
-- `tier` = `"free"` → `tierDisplay` = `"gratis"`
-- Masuk branch `if (tierDisplay === "gratis" || tierDisplay === "pro")` (line 58)
-- Jika quota data menunjukkan usage tinggi → muncul banner "Kuota habis. **Upgrade** ke Pro"
-- Admin seharusnya TIDAK PERNAH melihat quota warning
-
-**Fix yang diperlukan:**
-```typescript
-import { getEffectiveTier } from "@/lib/utils/subscription"
-// ...
-const tier = getEffectiveTier(user.role, user.subscriptionStatus)
-```
-Lalu hapus `tierDisplay` variable, pakai `tier` langsung. Tambahkan early return untuk `tier === "pro"` karena PRO (termasuk admin) tidak perlu warning banner tentang upgrade.
-
-**Catatan tambahan:** Setelah fix, perlu juga review apakah Pro users butuh warning untuk overage. Saat ini logic hanya handle quota-based warning (gratis/pro) dan credit-based warning (bpp).
-
----
-
-### Bug 2: `enforcement.ts` — Prioritas TINGGI
-
-**File:** `src/lib/billing/enforcement.ts`
-**Line:** 128
-
-```typescript
-const tier = user.subscriptionStatus === "free" ? "gratis" : user.subscriptionStatus
-```
-
-**Context:** Ini di dalam `recordUsageAfterOperation()`, dipanggil setelah AI response selesai untuk deduct quota/credits.
-
-**Impact:** Admin/superadmin dengan `subscriptionStatus: "free"`:
-- `tier` = `"gratis"`
-- Masuk branch `else` (line 154-159) → deduct dari quota bucket "gratis"
-- Seharusnya tier `"pro"` → deduct dari quota bucket "pro" (atau skip karena admin)
-
-**Mitigasi yang sudah ada:**
-- Backend `deductQuota()` di Convex sudah punya admin bypass (line 170-172), jadi deduction mungkin di-bypass oleh backend
-- Tapi `recordUsageAfterOperation()` di frontend tetap salah menentukan tier, bisa menyebabkan wrong bucket deduction jika backend bypass tidak trigger
-
-**Fix yang diperlukan:**
-```typescript
-import { getEffectiveTier } from "@/lib/utils/subscription"
-// ...
-// Di recordUsageAfterOperation(), line 128:
-const tier = getEffectiveTier(user.role, user.subscriptionStatus)
-```
-Setelah fix, logic `if (tier === "bpp")` dan `else` (gratis/pro) tetap benar karena admin jadi tier `"pro"` dan masuk branch deduct quota (yang akan di-bypass oleh backend).
-
-**Alternatif lebih baik:** Tambahkan early return untuk admin di `recordUsageAfterOperation()` sendiri, sebelum tier determination. Mirip pattern di `isAdminUser()` yang sudah ada di file yang sama (line 198-202).
-
----
-
-### Bug 3: `AccountStatusPage.tsx` — Prioritas SEDANG
-
-**File:** `src/components/user/AccountStatusPage.tsx`
-**Line:** 56
-
-```typescript
-{user.subscriptionStatus || "Free"}
-```
-
-**Context:** Custom page di dalam Clerk `<UserButton.UserProfilePage />`. Menampilkan raw `subscriptionStatus` dengan capitalize.
-
-**Impact:** Admin/superadmin melihat "Free" atau "free" sebagai subscription status, bukan "Pro".
-
-**Fix yang diperlukan:**
-```typescript
-import { getEffectiveTier } from "@/lib/utils/subscription"
-// ...
-// Bisa pakai SegmentBadge component atau getEffectiveTier + display mapping
-const tier = getEffectiveTier(user.role, user.subscriptionStatus)
-```
-
-**Catatan:** Component ini mungkin sudah obsolete karena settings page baru (`/settings`) sudah ada dengan StatusTab yang sudah di-fix. Perlu verifikasi apakah `AccountStatusPage` masih dipakai di mana saja, atau bisa dihapus.
-
----
-
-## SAFE BUT COULD USE DRY (1 lokasi)
-
-### `ChatSidebar.tsx` — Prioritas RENDAH
-
-**File:** `src/components/chat/ChatSidebar.tsx`
-**Line:** 84-88
-
-```typescript
-const showUpgradeCTA =
-    user &&
-    user.role !== "admin" &&
-    user.role !== "superadmin" &&
-    (user.subscriptionStatus === "bpp" || user.subscriptionStatus === "free")
-```
-
-**Status: BUKAN BUG.** Logic ini sudah cek `role !== "admin" && role !== "superadmin"` secara eksplisit sebelum baca `subscriptionStatus`. Admin/superadmin tidak akan pernah lihat upgrade CTA.
-
-**Minor issue:** Hanya handle `"free"` dan `"bpp"`, tidak `"gratis"` (tapi `"gratis"` tidak pernah ada di DB saat ini, jadi tidak jadi masalah nyata).
-
-**Optional DRY refactor:**
-```typescript
-const tier = getEffectiveTier(user.role, user.subscriptionStatus)
-const showUpgradeCTA = user && tier !== "pro"
-```
-
-Ini lebih bersih, lebih aman terhadap perubahan masa depan, dan konsisten dengan pattern di seluruh codebase.
+**Remaining raw `subscriptionStatus` reads di `src/` (semua acceptable):**
+- `src/lib/utils/subscription.ts` — comment di shared utility (bukan bug)
+- `src/components/admin/AdminPanelContainer.tsx` — intentional raw DB stats view
+- `src/components/admin/UserList.tsx` — intentional raw DB display
 
 ---
 
@@ -254,16 +156,10 @@ Pattern: `(user.subscriptionStatus === "free" ? "gratis" : user.subscriptionStat
 
 ---
 
-## Rekomendasi Fix Berikutnya
+## Remaining Items (Nice to Have)
 
-**Prioritas 1 (bug dengan user-facing impact):**
-1. Fix `QuotaWarningBanner.tsx` — admin bisa lihat warning + upgrade CTA yang salah
-2. Fix `enforcement.ts` — tier determination salah saat recording usage
+Semua frontend bugs sudah fixed. Item di bawah ini bersifat opsional:
 
-**Prioritas 2 (bug minor + cleanup):**
-3. Fix atau hapus `AccountStatusPage.tsx` — cek dulu apakah masih dipakai
-4. DRY refactor `ChatSidebar.tsx` — optional tapi meningkatkan konsistensi
-
-**Prioritas 3 (nice to have):**
-5. Review `demoteToUser` — apakah perlu reset `subscriptionStatus` saat demote
-6. Review Convex backend tier pattern — buat utility serupa di `convex/billing/` jika ingin konsisten
+1. **Review `demoteToUser`** — apakah perlu reset `subscriptionStatus` saat demote admin ke user. Saat ini demoted admin tetap punya `subscriptionStatus: "pro"`.
+2. **Review Convex backend tier pattern** — 5 lokasi di `quotas.ts` pakai raw pattern (aman karena setelah admin bypass), tapi bisa buat utility serupa di `convex/billing/` untuk konsistensi. Note: Convex runtime tidak bisa import dari `src/lib/utils/`.
+3. **Admin panel stats clarity** — `AdminPanelContainer.tsx` counts admin/superadmin sebagai "gratis" di tier stats. Bisa tambah tooltip atau separate count jika ingin lebih akurat.

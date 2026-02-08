@@ -22,9 +22,8 @@
 | `src/components/layout/header/GlobalHeader.tsx` | Uses `getEffectiveTier()` | **Fixed** (`0b67c20`) |
 | `src/components/chat/shell/ShellHeader.tsx` | Delegates ke SegmentBadge (line 102) | **Benar** (indirect) |
 | `src/components/settings/StatusTab.tsx` | Uses `getEffectiveTier()` | **Fixed** (`9eaf104`) |
-| `src/components/chat/QuotaWarningBanner.tsx` | Raw `subscriptionStatus` (line 49) | **BUG** — admin lihat warning + "Upgrade" |
-| `src/components/user/AccountStatusPage.tsx` | Raw `subscriptionStatus` (line 56) | **BUG** — admin lihat "Free" |
-| `src/components/chat/ChatSidebar.tsx` | Manual role check + raw `subscriptionStatus` (line 84-88) | **Aman** (role check benar, tapi bisa DRY) |
+| `src/components/chat/QuotaWarningBanner.tsx` | Uses `getEffectiveTier()` | **Fixed** (`85a670a`) |
+| `src/components/chat/ChatSidebar.tsx` | Uses `getEffectiveTier()` | **Fixed** (`5d5cc00`) |
 
 ---
 
@@ -49,7 +48,7 @@
 
 | File | Tier Logic | Status |
 |------|------------|--------|
-| `src/lib/billing/enforcement.ts` | Raw `subscriptionStatus` (line 128) | **BUG** — admin tier salah saat recording |
+| `src/lib/billing/enforcement.ts` | Admin early return + `getEffectiveTier()` | **Fixed** (`0aa2478`) |
 
 ---
 
@@ -99,9 +98,8 @@
 
 | Status | Count | Files |
 |--------|-------|-------|
-| **Fixed** | 5 | SegmentBadge, GlobalHeader, StatusTab, overview, plans |
-| **BUG** | 3 | QuotaWarningBanner, enforcement.ts, AccountStatusPage |
-| **Aman (bisa DRY)** | 1 | ChatSidebar |
+| **Fixed** | 8 | SegmentBadge, GlobalHeader, StatusTab, overview, plans, QuotaWarningBanner, enforcement.ts, ChatSidebar |
+| **Deleted** | 1 | AccountStatusPage (dead code, removed `1d93d8f`) |
 | **Kosmetik** | 2 | AdminPanelContainer, UserList |
 | **Edge case** | 1 | demoteToUser (tidak reset subscriptionStatus) |
 | **Benar** | 9 | ShellHeader, quotas.ts, credits.ts, subscriptions.ts, dll |
@@ -125,3 +123,4 @@
 |------|-------|--------|
 | `docs/plans/2026-02-08-subscription-tier-consistency.md` | 5 tasks: create utility, fix StatusTab, refactor SegmentBadge, refactor GlobalHeader, verify | **Selesai** |
 | `docs/plans/2026-02-08-subscription-pages-tier-fix.md` | 3 tasks: fix overview, fix plans, verify + update docs | **Selesai** |
+| `docs/plans/2026-02-08-remaining-tier-bugs.md` | 5 tasks: fix QuotaWarningBanner, fix enforcement.ts, DRY ChatSidebar, delete AccountStatusPage, verify + docs | **Selesai** |
