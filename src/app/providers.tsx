@@ -28,10 +28,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
         formFieldLabel__password: "",
         formFieldAction__forgotPassword: "Lupa password?",
         signIn: {
+          ...idID.signIn,
           alternativeMethods: {
+            ...(idID.signIn?.alternativeMethods ?? {}),
             actionText: "Masih bermasalah?",
             actionLink: "Bantuan",
             getHelp: {
+              ...(idID.signIn?.alternativeMethods?.getHelp ?? {}),
               title: "Bantuan",
               blockButton__emailSupport: "Email Bantuan",
               content:
@@ -39,10 +42,12 @@ export function AppProviders({ children }: { children: ReactNode }) {
             },
           },
           forgotPasswordAlternativeMethods: {
+            ...(idID.signIn?.forgotPasswordAlternativeMethods ?? {}),
             blockButton__resetPassword: "Reset password",
             label__alternativeMethods: "Atau",
           },
           start: {
+            ...(idID.signIn?.start ?? {}),
             actionText: "Belum punya akun?",
             actionLink: "Daftar",
           },

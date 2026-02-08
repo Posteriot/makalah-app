@@ -83,10 +83,19 @@ export default function SignInPage() {
                 : "!bg-slate-800 !text-slate-100 hover:!text-slate-800"
             }`,
             formFieldInput: `!rounded-md border-border h-10 !font-mono text-sm placeholder:!font-mono focus:ring-primary focus:border-primary transition-all ${isDark ? "!bg-slate-900" : "bg-background"}`,
+            otpCodeField: "w-full",
+            otpCodeFieldInputs: "grid !grid-cols-6 gap-2",
+            otpCodeFieldInputContainer: `cursor-text !rounded-md !border !border-border transition-colors ${
+              isDark
+                ? "!bg-slate-900/70 focus-within:!bg-amber-500/10 focus-within:!border-amber-400"
+                : "!bg-slate-100/70 focus-within:!bg-amber-500/10 focus-within:!border-amber-600"
+            }`,
+            otpCodeFieldInput: `!h-10 !w-full !rounded-md !border-0 !bg-transparent !font-mono !text-sm !cursor-text !caret-amber-400 transition-colors focus:!outline-none focus:!ring-2 focus:!ring-amber-500/35 focus:!bg-amber-500/10 active:!bg-amber-500/10 ${isDark ? "!text-slate-100" : "!text-foreground"}`,
             footerActionLink: "!text-slate-50 hover:!text-slate-300 font-bold",
             identityPreviewText: "text-foreground font-mono",
             identityPreviewEditButtonIcon: "!text-slate-200",
             formFieldAction: "!text-slate-50 font-mono text-xs",
+            formResendCodeLink: "font-mono text-xs !text-slate-300 hover:!text-slate-50 hover:underline",
             backLink: "!text-slate-200 font-sans text-xs",
             backRow: "[&_a]:!text-slate-200 [&_a]:!decoration-slate-200 [&_a]:!font-sans [&_a]:!text-xs",
             formFieldLabel: "hidden",
@@ -112,7 +121,7 @@ export default function SignInPage() {
             colorTextSecondary: "#a1a1aa",
             colorBackground: "transparent",
             colorTextOnPrimaryBackground: "white",
-            colorBorder: "transparent",
+            colorBorder: "oklch(0.372 0.044 257.287 / 0.5)",
             borderRadius: "8px",
           },
           layout: {

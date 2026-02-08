@@ -171,6 +171,14 @@ export default function SignUpPage() {
           : "!bg-[color:var(--slate-800)] !text-[color:var(--slate-100)] hover:!text-[color:var(--slate-800)]"
       }`,
       formFieldInput: `!rounded-md border-border h-10 !font-mono text-sm placeholder:!font-mono focus:ring-primary focus:border-primary transition-all ${isDark ? "!bg-[color:var(--slate-900)]" : "bg-background"}`,
+      otpCodeField: "w-full",
+      otpCodeFieldInputs: "grid !grid-cols-6 gap-2",
+      otpCodeFieldInputContainer: `cursor-text !rounded-md !border !border-border transition-colors ${
+        isDark
+          ? "!bg-[color:var(--slate-900)]/70 focus-within:!bg-amber-500/10 focus-within:!border-amber-400"
+          : "!bg-[color:var(--slate-100)]/70 focus-within:!bg-amber-500/10 focus-within:!border-amber-600"
+      }`,
+      otpCodeFieldInput: `!h-10 !w-full !rounded-md !border-0 !bg-transparent !font-mono !text-sm !cursor-text !caret-amber-400 transition-colors focus:!outline-none focus:!ring-2 focus:!ring-amber-500/35 focus:!bg-amber-500/10 active:!bg-amber-500/10 ${isDark ? "!text-[color:var(--slate-100)]" : "!text-foreground"}`,
       footerActionLink: "!text-[color:var(--slate-50)] hover:!text-[color:var(--slate-300)] font-bold",
       identityPreviewText: "text-foreground font-mono",
       identityPreviewEditButtonIcon: "!text-slate-200",
@@ -180,6 +188,7 @@ export default function SignUpPage() {
       formFieldInputShowPasswordButton: "hover:!text-[color:var(--slate-200)]",
       formFieldInputGroupSuffix: "hidden",
       formFieldSuccessText: "hidden",
+      formResendCodeLink: "font-mono text-xs !text-slate-300 hover:!text-slate-50 hover:underline",
       dividerText: "text-muted-foreground font-mono text-xs uppercase tracking-wider px-4",
       dividerRow: "flex items-center gap-0 w-full",
       dividerLine: "flex-1 h-[0.5px] !bg-[color:var(--slate-400)]",
@@ -195,7 +204,7 @@ export default function SignUpPage() {
       colorTextSecondary: "#a1a1aa",
       colorBackground: "transparent",
       colorTextOnPrimaryBackground: "white",
-      colorBorder: "transparent",
+      colorBorder: "oklch(0.372 0.044 257.287 / 0.5)",
       borderRadius: "8px",
     },
     layout: {
