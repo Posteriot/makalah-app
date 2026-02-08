@@ -3,7 +3,6 @@
 import { Suspense, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { useSearchParams } from "next/navigation"
-import Image from "next/image"
 import Link from "next/link"
 import {
   BadgeCheck,
@@ -47,7 +46,7 @@ function SettingsContent() {
   const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? ""
 
   return (
-    <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-shell border border-border bg-card shadow-none relative">
+    <div className="w-full max-w-4xl h-[70vh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden rounded-shell border border-border bg-card shadow-none relative">
       {/* Left Column: Branding & Navigation */}
       <div className="md:w-4/12 bg-muted/30 p-6 md:p-8 relative flex flex-col">
         {/* Diagonal Stripes — same as AuthWideCard */}
@@ -60,15 +59,13 @@ function SettingsContent() {
         />
 
         <div className="relative z-10 flex flex-col flex-grow">
-          {/* Logo — top */}
-          <Link href="/" className="inline-flex items-center gap-2 group w-fit">
-            <Image
-              src="/logo/makalah_logo_light.svg"
-              alt=""
-              width={28}
-              height={28}
-              className="transition-transform group-hover:scale-105 brightness-[.88] sepia-[.06] hue-rotate-[185deg] saturate-[3]"
-            />
+          {/* Back link — top */}
+          <Link
+            href="/chat"
+            className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground transition-colors hover:text-foreground w-fit"
+          >
+            <NavArrowLeft className="h-4 w-4" />
+            <span>Kembali</span>
           </Link>
 
           {/* Heading + Subtitle */}
@@ -119,22 +116,11 @@ function SettingsContent() {
             </button>
           </nav>
 
-          {/* Spacer */}
-          <div className="flex-grow" />
-
-          {/* Back link — bottom */}
-          <Link
-            href="/chat"
-            className="mt-6 inline-flex items-center gap-2 text-sm font-mono text-muted-foreground transition-colors hover:text-foreground w-fit"
-          >
-            <NavArrowLeft className="h-4 w-4" />
-            <span>Kembali</span>
-          </Link>
         </div>
       </div>
 
       {/* Right Column: Tab Content */}
-      <div className="md:w-8/12 p-6 md:p-8 flex flex-col bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-800)] relative overflow-y-auto max-h-[70vh] md:max-h-[80vh]">
+      <div className="md:w-8/12 p-6 md:p-8 flex flex-col bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-800)] relative overflow-y-auto">
         <div className="w-full relative z-10">
           <div className={cn(activeTab === "profile" ? "block" : "hidden")}>
             <ProfileTab user={user} isLoaded={isLoaded} />
