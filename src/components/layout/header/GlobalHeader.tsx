@@ -24,7 +24,6 @@ import {
 import { SignedIn, SignedOut, useUser, useClerk } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
-import { UserSettingsModal } from "@/components/settings/UserSettingsModal"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { cn } from "@/lib/utils"
@@ -78,7 +77,6 @@ export function GlobalHeader() {
     isOpen: false,
     pathname,
   }))
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const lastScrollYRef = useRef(0)
   const isThemeReady = resolvedTheme !== undefined
@@ -412,17 +410,14 @@ export function GlobalHeader() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pt-2 pl-2">
-                    <button
-                      onClick={() => {
-                        setMobileMenuState({ isOpen: false, pathname })
-                        setIsSettingsOpen(true)
-                      }}
+                    <Link
+                      href="/settings"
+                      onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                       className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-[color:var(--slate-200)] dark:hover:bg-[color:var(--slate-800)] transition-colors"
-                      type="button"
                     >
                       <User className="icon-interface" />
                       <span>Atur Akun</span>
-                    </button>
+                    </Link>
 
                     <Link
                       href="/subscription/overview"
@@ -470,11 +465,6 @@ export function GlobalHeader() {
         </nav>
       )}
 
-      {/* User Settings Modal (for mobile menu "Atur Akun") */}
-      <UserSettingsModal
-        open={isSettingsOpen}
-        onOpenChange={setIsSettingsOpen}
-      />
     </header>
   )
 }

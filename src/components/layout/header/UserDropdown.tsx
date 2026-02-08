@@ -14,14 +14,12 @@ import {
 } from "iconoir-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { UserSettingsModal } from "@/components/settings/UserSettingsModal"
 
 export function UserDropdown() {
   const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
   const [isOpen, setIsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -133,23 +131,20 @@ export function UserDropdown() {
       {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-border bg-popover shadow-md z-drawer py-2 px-2">
-          <button
-            onClick={() => {
-              setIsOpen(false)
-              setIsSettingsOpen(true)
-            }}
-            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors w-full rounded-action"
-            type="button"
+          <Link
+            href="/settings"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-slate-800 hover:text-slate-100 transition-colors w-full rounded-action"
           >
             <User className="icon-interface" />
             <span>Atur Akun</span>
-          </button>
+          </Link>
 
           {/* Subscription Link */}
           <Link
             href="/subscription/overview"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors rounded-action"
+            className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-slate-800 hover:text-slate-100 transition-colors rounded-action"
           >
             <CreditCard className="icon-interface" />
             <span>Subskripsi</span>
@@ -160,7 +155,7 @@ export function UserDropdown() {
             <Link
               href="/dashboard"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-accent transition-colors rounded-action"
+              className="flex items-center gap-dense p-dense text-[12px] text-narrative text-foreground hover:bg-slate-800 hover:text-slate-100 transition-colors rounded-action"
             >
               <Settings className="icon-interface" />
               <span>Admin Panel</span>
@@ -188,10 +183,6 @@ export function UserDropdown() {
         </div>
       )}
 
-      <UserSettingsModal
-        open={isSettingsOpen}
-        onOpenChange={setIsSettingsOpen}
-      />
     </div>
   )
 }
