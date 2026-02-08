@@ -16,7 +16,7 @@ import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBa
 export function BenefitsSection() {
   return (
     <section
-      className="relative isolate h-[100svh] min-h-[100svh] overflow-hidden bg-[color:var(--section-bg-alt)]"
+      className="relative isolate h-[100svh] min-h-[100svh] overflow-hidden bg-[var(--section-bg-alt)]"
       id="kenapa-makalah-ai"
     >
       {/* Background patterns - using memoized React components */}

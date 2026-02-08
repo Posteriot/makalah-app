@@ -1,13 +1,8 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-
-/**
- * Subscription tier types for badge display
- * This badge shows subscription status, not user role.
- * Admin/superadmin are treated as "pro" since they have full access.
- */
-type SubscriptionTier = "gratis" | "bpp" | "pro"
+import { getEffectiveTier } from "@/lib/utils/subscription"
+import type { EffectiveTier } from "@/lib/utils/subscription"
 
 /**
  * Subscription tier badge configuration
@@ -16,7 +11,7 @@ type SubscriptionTier = "gratis" | "bpp" | "pro"
  * - BPP: Sky 600 (Info/Professional)
  * - PRO: Amber 500 (Main Brand)
  */
-const TIER_CONFIG: Record<SubscriptionTier, { label: string; className: string }> = {
+const TIER_CONFIG: Record<EffectiveTier, { label: string; className: string }> = {
   gratis: {
     label: "GRATIS",
     className: "bg-segment-gratis text-white",
@@ -41,26 +36,11 @@ interface SegmentBadgeProps {
 }
 
 /**
- * Determine subscription tier from user role and subscription status
- * Admin/superadmin are treated as "pro" since they have full access.
- */
-function getSubscriptionTier(role?: string, subscriptionStatus?: string): SubscriptionTier {
-  // Admin and superadmin are always treated as pro
-  if (role === "superadmin" || role === "admin") return "pro"
-
-  // Check subscription status
-  if (subscriptionStatus === "pro") return "pro"
-  if (subscriptionStatus === "bpp") return "bpp"
-
-  return "gratis"
-}
-
-/**
  * SegmentBadge - User subscription tier indicator
  *
  * Displays the user's current subscription tier as a colored badge.
- * This badge represents subscription status (related to model quality features),
- * not user role. Admin/superadmin are shown as "PRO" since they have full access.
+ * Uses shared getEffectiveTier() for tier determination.
+ * Admin/superadmin are shown as "PRO" since they have full access.
  *
  * Variations:
  * - GRATIS (green) - free tier
@@ -68,7 +48,7 @@ function getSubscriptionTier(role?: string, subscriptionStatus?: string): Subscr
  * - PRO (orange) - premium subscription
  */
 export function SegmentBadge({ role, subscriptionStatus, className }: SegmentBadgeProps) {
-  const tier = getSubscriptionTier(role, subscriptionStatus)
+  const tier = getEffectiveTier(role, subscriptionStatus)
   const config = TIER_CONFIG[tier]
 
   return (

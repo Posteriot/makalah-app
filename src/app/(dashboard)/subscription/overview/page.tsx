@@ -16,16 +16,12 @@ import {
   RefreshDouble,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
+import { getEffectiveTier } from "@/lib/utils/subscription"
+import type { EffectiveTier } from "@/lib/utils/subscription"
 
 // Tier configuration
-const TIER_CONFIG = {
+const TIER_CONFIG: Record<EffectiveTier, { label: string; description: string; color: string; textColor: string }> = {
   gratis: {
-    label: "GRATIS",
-    description: "Akses dasar dengan limit",
-    color: "bg-segment-gratis",
-    textColor: "text-segment-gratis",
-  },
-  free: {
     label: "GRATIS",
     description: "Akses dasar dengan limit",
     color: "bg-segment-gratis",
@@ -109,8 +105,8 @@ export default function SubscriptionOverviewPage() {
     )
   }
 
-  const tier = (user?.subscriptionStatus || "free") as keyof typeof TIER_CONFIG
-  const tierConfig = TIER_CONFIG[tier] || TIER_CONFIG.gratis
+  const tier = getEffectiveTier(user?.role, user?.subscriptionStatus)
+  const tierConfig = TIER_CONFIG[tier]
 
   // For BPP users, show credit balance
   const isBPP = quotaStatus?.creditBased || tier === "bpp"

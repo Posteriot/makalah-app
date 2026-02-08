@@ -53,7 +53,7 @@ export function CareerContactSection() {
 
   return (
     <section
-      className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt2)]"
+      className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)]"
       id="karier-kontak"
     >
       {/* Background patterns */}
@@ -97,14 +97,14 @@ export function CareerContactSection() {
                   className={cn(
                     "group relative col-span-8 flex h-full min-h-[180px] flex-col overflow-hidden rounded-shell border-hairline bg-transparent p-airy",
                     "transition-colors duration-200",
-                    "hover:bg-[color:var(--slate-50)] dark:hover:bg-[color:var(--slate-900)]"
+                    "hover:bg-slate-50 dark:hover:bg-slate-900"
                   )}
                 >
                   {/* Icon + Title row */}
                   <div className="mb-4 flex items-start gap-4">
                     {Icon && (
                       <div className="rounded-action flex h-10 w-10 shrink-0 items-center justify-center bg-[color:var(--slate-600)] dark:bg-[color:var(--slate-700)]">
-                        <Icon className="h-5 w-5 text-[color:var(--slate-50)]" />
+                        <Icon className="h-5 w-5 text-slate-50" />
                       </div>
                     )}
                     <h3 className="text-narrative pt-2 text-lg font-medium leading-tight text-foreground">

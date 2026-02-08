@@ -154,8 +154,7 @@
   --neo-muted-dark: oklch(0.30 0.02 75);
 
   /* --- Section Background Variants --- */
-  --section-bg-alt: var(--slate-100);
-  --section-bg-alt2: var(--slate-200);
+  --section-bg-alt: var(--slate-200);
 }
 
 /* ==========================================================================
@@ -184,6 +183,19 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* Colors - Slate (True Neutral) */
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
+  --color-slate-950: var(--slate-950);
+
   /* Colors - Stone (Neutral Alt) */
   --color-stone-50: var(--stone-50);
   --color-stone-100: var(--stone-100);
@@ -196,6 +208,104 @@
   --color-stone-800: var(--stone-800);
   --color-stone-900: var(--stone-900);
   --color-stone-950: var(--stone-950);
+
+  /* Colors - Amber */
+  --color-amber-50: var(--amber-50);
+  --color-amber-100: var(--amber-100);
+  --color-amber-200: var(--amber-200);
+  --color-amber-300: var(--amber-300);
+  --color-amber-400: var(--amber-400);
+  --color-amber-500: var(--amber-500);
+  --color-amber-600: var(--amber-600);
+  --color-amber-700: var(--amber-700);
+  --color-amber-800: var(--amber-800);
+  --color-amber-900: var(--amber-900);
+  --color-amber-950: var(--amber-950);
+
+  /* Colors - Emerald */
+  --color-emerald-50: var(--emerald-50);
+  --color-emerald-100: var(--emerald-100);
+  --color-emerald-200: var(--emerald-200);
+  --color-emerald-300: var(--emerald-300);
+  --color-emerald-400: var(--emerald-400);
+  --color-emerald-500: var(--emerald-500);
+  --color-emerald-600: var(--emerald-600);
+  --color-emerald-700: var(--emerald-700);
+  --color-emerald-800: var(--emerald-800);
+  --color-emerald-900: var(--emerald-900);
+  --color-emerald-950: var(--emerald-950);
+
+  /* Colors - Teal */
+  --color-teal-50: var(--teal-50);
+  --color-teal-100: var(--teal-100);
+  --color-teal-200: var(--teal-200);
+  --color-teal-300: var(--teal-300);
+  --color-teal-400: var(--teal-400);
+  --color-teal-500: var(--teal-500);
+  --color-teal-600: var(--teal-600);
+  --color-teal-700: var(--teal-700);
+  --color-teal-800: var(--teal-800);
+  --color-teal-900: var(--teal-900);
+  --color-teal-950: var(--teal-950);
+
+  /* Colors - Rose */
+  --color-rose-50: var(--rose-50);
+  --color-rose-100: var(--rose-100);
+  --color-rose-200: var(--rose-200);
+  --color-rose-300: var(--rose-300);
+  --color-rose-400: var(--rose-400);
+  --color-rose-500: var(--rose-500);
+  --color-rose-600: var(--rose-600);
+  --color-rose-700: var(--rose-700);
+  --color-rose-800: var(--rose-800);
+  --color-rose-900: var(--rose-900);
+  --color-rose-950: var(--rose-950);
+
+  /* Colors - Sky */
+  --color-sky-50: var(--sky-50);
+  --color-sky-100: var(--sky-100);
+  --color-sky-200: var(--sky-200);
+  --color-sky-300: var(--sky-300);
+  --color-sky-400: var(--sky-400);
+  --color-sky-500: var(--sky-500);
+  --color-sky-600: var(--sky-600);
+  --color-sky-700: var(--sky-700);
+  --color-sky-800: var(--sky-800);
+  --color-sky-900: var(--sky-900);
+  --color-sky-950: var(--sky-950);
+
+  /* Colors - Neutral */
+  --color-neutral-0: var(--neutral-0);
+  --color-neutral-50: var(--neutral-50);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-450: var(--neutral-450);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-850: var(--neutral-850);
+  --color-neutral-900: var(--neutral-900);
+  --color-neutral-950: var(--neutral-950);
+  --color-neutral-1000: var(--neutral-1000);
+
+  /* Colors - Alpha Helpers */
+  --color-neutral-0-a10: var(--neutral-0-a10);
+  --color-neutral-0-a15: var(--neutral-0-a15);
+  --color-neutral-100-a55: var(--neutral-100-a55);
+  --color-neutral-400-a15: var(--neutral-400-a15);
+  --color-neutral-400-a25: var(--neutral-400-a25);
+  --color-neutral-500-a30: var(--neutral-500-a30);
+  --color-neutral-500-a50: var(--neutral-500-a50);
+  --color-neutral-600-a30: var(--neutral-600-a30);
+  --color-neutral-600-a50: var(--neutral-600-a50);
+  --color-neutral-800-a40: var(--neutral-800-a40);
+  --color-neutral-1000-a50: var(--neutral-1000-a50);
+  --color-neutral-1000-a40: var(--neutral-1000-a40);
+  --color-slate-100-a80: var(--slate-100-a80);
+  --color-sky-500-a50: var(--sky-500-a50);
 
   /* Colors - Brand (Makalah orange) */
   --color-brand: var(--brand);
@@ -361,7 +471,7 @@
   /* --- Core Semantic (Slate Trinity) --- */
   --background: var(--slate-50);
   --header-background: var(--slate-100);
-  --footer-background: var(--slate-100);
+  --footer-background: var(--slate-50);
   --foreground: var(--neutral-950);
   --card: var(--slate-50);
   --card-foreground: var(--neutral-950);
@@ -539,7 +649,6 @@
 
   /* Section Background Variants */
   --section-bg-alt: var(--slate-800);
-  --section-bg-alt2: var(--slate-950);
 
   /* Chart Colors - Dark (same semantic palette) */
   --chart-1: var(--sky-500);
@@ -1317,662 +1426,6 @@
   }
 }
 
-/* ==========================================================================
- * USER SETTINGS MODAL
- * ========================================================================== */
-@layer components {
-  .user-settings-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .user-settings-backdrop {
-    position: absolute;
-    inset: 0;
-    background: var(--neutral-1000-a50);
-    backdrop-filter: blur(4px);
-  }
-
-  .user-settings-container {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    width: 720px;
-    height: 560px;
-    background: var(--card);
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    box-shadow: 0 25px 50px -12px var(--neutral-1000-a40);
-    overflow: hidden;
-    animation: settingsModalIn 200ms ease-out;
-  }
-
-  @keyframes settingsModalIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .user-settings-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding: 24px 24px 16px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .user-settings-title-area {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .user-settings-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--foreground);
-    margin: 0;
-  }
-
-  .user-settings-subtitle {
-    font-size: 13px;
-    color: var(--muted-foreground);
-    margin: 0;
-  }
-
-  .user-settings-close-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    border: none;
-    background: transparent;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    transition: all 150ms ease;
-    flex-shrink: 0;
-  }
-
-  .user-settings-close-btn:hover {
-    background-color: var(--destructive);
-    color: white;
-  }
-
-  .user-settings-body {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .user-settings-nav {
-    width: 200px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px;
-    padding-top: 24px;
-    border-right: 1px solid var(--sidebar-border);
-    background: var(--sidebar);
-  }
-
-  .user-settings-nav-item {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--muted-foreground);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 150ms ease;
-    text-align: left;
-  }
-
-  .user-settings-nav-item:hover {
-    background: var(--accent);
-    color: var(--foreground);
-  }
-
-  .user-settings-nav-item.active {
-    background: var(--accent);
-    color: var(--foreground);
-  }
-
-  /* Active indicator - green bar on left (like subscription sidebar) */
-  .user-settings-nav-item.active::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 8px;
-    bottom: 8px;
-    width: 3px;
-    background: var(--primary);
-    border-radius: 0 2px 2px 0;
-  }
-
-  .user-settings-nav-item svg {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-  }
-
-  .user-settings-nav-item.active svg {
-    opacity: 1;
-  }
-
-  .user-settings-content {
-    flex: 1;
-    min-width: 0;
-    overflow-y: auto;
-    padding: 24px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-  }
-
-  .user-settings-content::-webkit-scrollbar {
-    width: var(--scrollbar-width);
-  }
-
-  .user-settings-content::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-  }
-
-  .user-settings-content::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: calc(var(--scrollbar-width) / 2);
-  }
-
-  .user-settings-tab {
-    display: none;
-  }
-
-  .user-settings-tab.active {
-    display: block;
-  }
-
-  .settings-content-header {
-    margin-bottom: 24px;
-  }
-
-  .settings-content-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--foreground);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .settings-content-title svg {
-    width: 20px;
-    height: 20px;
-    color: var(--primary);
-  }
-
-  .settings-content-subtitle {
-    font-size: 14px;
-    color: var(--muted-foreground);
-    margin: 4px 0 0 0;
-  }
-
-  /* Card-based sections like subscription page */
-  .settings-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 16px;
-    overflow: hidden;
-  }
-
-  .settings-card-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    font-weight: 500;
-    font-size: 14px;
-  }
-
-  .settings-card-body {
-    padding: 16px;
-  }
-
-  .settings-section {
-    padding: 16px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .settings-section:first-of-type {
-    padding-top: 20px;
-  }
-
-  .settings-section:last-child {
-    border-bottom: none;
-  }
-
-  .settings-row {
-    display: grid;
-    grid-template-columns: 120px 1fr auto;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .settings-row-top {
-    align-items: flex-start;
-  }
-
-  .settings-row-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--muted-foreground);
-  }
-
-  .settings-row-value {
-    font-size: 14px;
-    color: var(--foreground);
-    min-width: 0;
-  }
-
-  .settings-row-action {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--primary);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    transition: opacity 150ms ease;
-  }
-
-  .settings-row-action:hover {
-    opacity: 0.8;
-  }
-
-  .settings-row-action-icon {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    color: var(--muted-foreground);
-  }
-
-  .settings-row-action-icon:hover {
-    background: var(--accent);
-    color: var(--foreground);
-    opacity: 1;
-  }
-
-  .settings-profile-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .settings-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--primary);
-    color: var(--primary-foreground);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    font-weight: 600;
-    flex-shrink: 0;
-    overflow: hidden;
-  }
-
-  .settings-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .settings-profile-name {
-    font-weight: 500;
-  }
-
-  .settings-email-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .settings-badge-primary {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    background: var(--muted);
-    color: var(--muted-foreground);
-    border: 1px solid var(--border);
-  }
-
-  .settings-password-dots {
-    letter-spacing: 2px;
-    color: var(--muted-foreground);
-  }
-
-  .settings-device {
-    display: flex;
-    gap: 12px;
-    padding: 12px 0;
-    align-items: flex-start;
-  }
-
-  .settings-device:first-child {
-    padding-top: 0;
-  }
-
-  .settings-device+.settings-device {
-    border-top: 1px solid var(--border);
-  }
-
-  .settings-device-icon {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--foreground);
-    border-radius: 4px;
-    flex-shrink: 0;
-  }
-
-  .settings-device-icon svg {
-    width: 18px;
-    height: 18px;
-    color: var(--background);
-  }
-
-  .settings-device-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .settings-device-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .settings-device-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--foreground);
-  }
-
-  .settings-badge-current {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    background: var(--muted);
-    color: var(--muted-foreground);
-    border: 1px solid var(--border);
-  }
-
-  .settings-device-detail {
-    font-size: 12px;
-    color: var(--muted-foreground);
-    word-break: break-all;
-  }
-
-  .settings-device-action {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    border: none;
-    background: transparent;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    transition: all 150ms ease;
-    flex-shrink: 0;
-  }
-
-  .settings-device-action:hover {
-    background: var(--accent);
-    color: var(--foreground);
-  }
-
-  .settings-accordion-fullwidth {
-    width: 100%;
-  }
-
-  .accordion-fw-header {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--foreground);
-    margin-bottom: 16px;
-  }
-
-  .accordion-fw-body {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .accordion-fw-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-  }
-
-  .accordion-cancel-btn {
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--foreground);
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 150ms ease;
-  }
-
-  .accordion-cancel-btn:hover {
-    background: var(--accent);
-  }
-
-  .accordion-save-btn {
-    padding: 8px 20px;
-    font-size: 13px;
-    font-weight: 500;
-    color: white;
-    background: var(--muted-foreground);
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 150ms ease;
-  }
-
-  .accordion-save-btn:hover {
-    background: var(--foreground);
-  }
-
-  .accordion-avatar-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .accordion-avatar {
-    width: 48px;
-    height: 48px;
-    font-size: 18px;
-  }
-
-  .accordion-avatar-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .accordion-upload-btn {
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--foreground);
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 150ms ease;
-    width: fit-content;
-  }
-
-  .accordion-upload-btn:hover {
-    background: var(--accent);
-    border-color: var(--muted-foreground);
-  }
-
-  .accordion-upload-hint {
-    font-size: 12px;
-    color: var(--muted-foreground);
-  }
-
-  .accordion-fields-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .accordion-field {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .accordion-field-full {
-    width: 100%;
-  }
-
-  .accordion-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--foreground);
-  }
-
-  .accordion-input {
-    padding: 10px 12px;
-    font-size: 14px;
-    color: var(--foreground);
-    background: var(--background);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    outline: none;
-    transition: border-color 150ms ease;
-  }
-
-  .accordion-input:focus {
-    border-color: var(--primary);
-  }
-
-  .accordion-input::placeholder {
-    color: var(--muted-foreground);
-  }
-
-  .accordion-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-
-  .accordion-input-wrapper .accordion-input {
-    width: 100%;
-    padding-right: 40px;
-  }
-
-  .accordion-eye-btn {
-    position: absolute;
-    right: 8px;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    transition: all 150ms ease;
-  }
-
-  .accordion-eye-btn:hover {
-    background: var(--accent);
-    color: var(--foreground);
-  }
-
-  .accordion-checkbox-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .accordion-checkbox {
-    width: 18px;
-    height: 18px;
-    margin-top: 2px;
-    accent-color: var(--primary);
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .accordion-checkbox-content {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .accordion-checkbox-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--foreground);
-    cursor: pointer;
-  }
-
-  .accordion-checkbox-hint {
-    font-size: 12px;
-    color: var(--muted-foreground);
-    line-height: 1.4;
-  }
-}
-
 @media (max-width: 768px) {
   .dashboard-main {
     padding: 20px;
@@ -2008,22 +1461,6 @@
   .sidebar-nav-item[data-state="active"]::before {
     display: none;
   }
-
-  .user-settings-container {
-    width: calc(100% - 32px);
-    height: auto;
-    max-height: calc(100vh - 32px);
-  }
-
-  .user-settings-body {
-    flex-direction: column;
-  }
-
-  .user-settings-nav {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
 }
 
 @media (max-width: 480px) {
@@ -2056,18 +1493,6 @@
   .sidebar-icon {
     width: 18px;
     height: 18px;
-  }
-
-  .user-settings-content {
-    padding: 20px;
-  }
-
-  .user-settings-nav {
-    padding: 12px;
-  }
-
-  .accordion-fields-row {
-    grid-template-columns: 1fr;
   }
 }
 

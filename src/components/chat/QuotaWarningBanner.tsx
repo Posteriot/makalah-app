@@ -7,6 +7,7 @@ import { WarningTriangle, Flash, CreditCard, Xmark } from "iconoir-react"
 import { useState, useCallback } from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { getEffectiveTier } from "@/lib/utils/subscription"
 
 type BannerType = "warning" | "critical" | "depleted"
 
@@ -46,8 +47,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
   // Don't show anything while loading or if dismissed
   if (userLoading || !user || isDismissed) return null
 
-  const tier = user.subscriptionStatus || "free"
-  const tierDisplay = tier === "free" ? "gratis" : tier
+  const tier = getEffectiveTier(user.role, user.subscriptionStatus)
 
   // Determine banner type and content
   let bannerType: BannerType | null = null
@@ -55,7 +55,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
   let actionText = ""
   let actionHref = ""
 
-  if (tierDisplay === "gratis" || tierDisplay === "pro") {
+  if (tier === "gratis" || tier === "pro") {
     // Quota-based tiers
     if (!quotaStatus) return null
 
@@ -77,7 +77,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
       actionText = "Lihat Detail"
       actionHref = "/subscription/overview"
     }
-  } else if (tierDisplay === "bpp") {
+  } else if (tier === "bpp") {
     // Credit-based tier
     if (!creditBalance) return null
 
@@ -118,7 +118,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
   }
 
   const Icon = bannerType === "depleted" ? WarningTriangle :
-               tierDisplay === "bpp" ? CreditCard : Flash
+               tier === "bpp" ? CreditCard : Flash
 
   return (
     <div
