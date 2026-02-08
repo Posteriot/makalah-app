@@ -26,9 +26,9 @@ Gunakan nilai absolut dari sistem token. Jangan gunakan nilai ad-hoc.
 
 ### 1.2 Hirarki Tipografi & Data
 *Referensi: [typografi.md]*
-*   **Narrative (The Voice)**: Font (Sans), Weight (500), tracking (normal).
-*   **Interface (The Interface)**: Font (Mono), Weight (400), tracking (wider).
-*   **Signal (The Signal)**: Font (Mono), Weight (700), Case (Uppercase), tracking (widest).
+*   **Narrative (The Voice)**: Font (Sans), Weight (500)
+*   **Interface (The Interface)**: Font (Mono), Weight (400).
+*   **Signal (The Signal)**: Font (Mono), Weight (700), Case (Uppercase).
 
 ### 1.3 Shape, Border & Spacing (Mechanical Breath)
 *Referensi: [shape-layout.md] & [class-naming-convention.md]*
@@ -55,7 +55,7 @@ Gunakan nilai absolut dari sistem token. Jangan gunakan nilai ad-hoc.
 | **Container** | `.wrapper` | `.grid-cols-16` | Layout & Grid | Snap ke grid 16-kolom. |
 | **Font Body** | `.text-base` | `.text-narrative` | Typography | Standarisasi narasi UI. |
 | **Buttons** | `btn-primary` | `.rounded-action .hover-slash`| Shape & Motion | Estetika industrial. |
-| **AI Content** | `bg-blue-50` | `border-ai bg-sky-50/10` | AI Identity | Mapping ke identitas AI. |
+| **AI Content** | `bg-sky-50` | `border-ai bg-sky-50/10` | AI Identity | Mapping ke identitas AI. |
 | **Header Surface** | `bg-background` | `--header-background` | Surface | Header harus beda dari section background. |
 
 ---

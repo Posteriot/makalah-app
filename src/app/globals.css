@@ -155,6 +155,7 @@
 
   /* --- Section Background Variants --- */
   --section-bg-alt: var(--slate-100);
+  --section-bg-alt2: var(--slate-200);
 }
 
 /* ==========================================================================
@@ -487,7 +488,7 @@
   --foreground: var(--neutral-50);
   --card: var(--slate-950);
   --card-foreground: var(--neutral-50);
-  --popover: var(--slate-950);
+  --popover: var(--slate-800);
   --popover-foreground: var(--neutral-50);
 
   /* --- Primary (Amber - same in dark) --- */
@@ -503,7 +504,7 @@
   --muted-foreground: var(--slate-400);
 
   /* --- Accent --- */
-  --accent: var(--slate-800);
+  --accent: var(--slate-700);
   --accent-foreground: var(--neutral-50);
 
   /* --- Destructive (Rose 600 for dark) --- */
@@ -536,6 +537,7 @@
 
   /* Section Background Variants */
   --section-bg-alt: var(--slate-800);
+  --section-bg-alt2: var(--slate-700);
 
   /* Chart Colors - Dark (same semantic palette) */
   --chart-1: var(--sky-500);

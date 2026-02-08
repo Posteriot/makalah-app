@@ -132,7 +132,7 @@ export function UserDropdown() {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-border bg-popover shadow-xl z-drawer py-2 px-2">
+        <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-border bg-popover shadow-md z-drawer py-2 px-2">
           <button
             onClick={() => {
               setIsOpen(false)
@@ -175,7 +175,7 @@ export function UserDropdown() {
               "w-full flex items-center gap-dense p-dense text-[12px] text-narrative transition-colors rounded-action",
               isSigningOut
                 ? "text-muted-foreground cursor-not-allowed"
-                : "text-rose-500 hover:bg-rose-500/10"
+                : "text-rose-400 hover:bg-rose-900 hover:text-rose-50"
             )}
           >
             {isSigningOut ? (
