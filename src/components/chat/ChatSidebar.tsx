@@ -10,6 +10,7 @@ import { SidebarChatHistory } from "./sidebar/SidebarChatHistory"
 import { SidebarPaperSessions } from "./sidebar/SidebarPaperSessions"
 import { SidebarProgress } from "./sidebar/SidebarProgress"
 import type { PanelType } from "./shell/ActivityBar"
+import { getEffectiveTier } from "@/lib/utils/subscription"
 
 /**
  * ChatSidebar Props
@@ -80,12 +81,9 @@ export function ChatSidebar({
   const { user } = useCurrentUser()
   const router = useRouter()
 
-  // Determine if user needs upgrade CTA (BPP or Gratis)
+  // Determine if user needs upgrade CTA (non-PRO users only)
   const showUpgradeCTA =
-    user &&
-    user.role !== "admin" &&
-    user.role !== "superadmin" &&
-    (user.subscriptionStatus === "bpp" || user.subscriptionStatus === "free")
+    user && getEffectiveTier(user.role, user.subscriptionStatus) !== "pro"
 
   // Render sidebar content based on active panel
   const renderContent = () => {
