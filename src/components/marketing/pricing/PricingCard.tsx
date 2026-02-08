@@ -32,7 +32,7 @@ function PricingCTA({
   const getHref = (): string => {
     const dest = plan.ctaHref || "/chat"
     if (!isSignedIn) {
-      return `/sign-up?redirect=${encodeURIComponent(dest)}`
+      return `/sign-up?redirect_url=${encodeURIComponent(dest)}`
     }
     return dest
   }
