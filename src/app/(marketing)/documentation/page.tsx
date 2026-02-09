@@ -178,7 +178,7 @@ const renderInline = (text: string) => {
   return parts.map((part, index) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <strong key={`${part}-${index}`} className="text-foreground font-semibold">
+        <strong key={`${part}-${index}`} className="text-narrative font-semibold text-foreground">
           {part.slice(2, -2)}
         </strong>
       )
@@ -187,7 +187,7 @@ const renderInline = (text: string) => {
       return (
         <code
           key={`${part}-${index}`}
-          className="rounded bg-muted px-1 py-0.5 text-xs text-foreground"
+          className="text-interface rounded-sm bg-slate-950/10 px-1 py-0.5 text-xs text-foreground dark:bg-slate-950"
         >
           {part.slice(1, -1)}
         </code>
@@ -436,24 +436,24 @@ function DocumentationContent() {
             {activeContent ? (
               <article className="space-y-8">
                 <div className="space-y-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  <div className="text-signal text-[10px] font-bold text-muted-foreground">
                     {activeContent.group}
                   </div>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-action bg-primary/10">
                       {(() => {
                         const Icon = getIcon(activeContent.headerIcon ?? activeContent.icon)
                         return Icon ? <Icon className="h-6 w-6 text-primary" /> : null
                       })()}
                     </div>
                     <div>
-                      <h1 className="font-heading text-2xl font-semibold text-foreground md:text-3xl">
+                      <h1 className="text-interface text-2xl font-bold tracking-tight text-foreground md:text-3xl">
                         {activeContent.title}
                       </h1>
                     </div>
                   </div>
                   {activeContent.summary && (
-                    <p className="text-base leading-relaxed text-muted-foreground">
+                    <p className="text-narrative text-sm leading-relaxed text-muted-foreground">
                       {activeContent.summary}
                     </p>
                   )}
@@ -530,18 +530,18 @@ function DocumentationContent() {
 
                     return (
                       <section key={`${block.type}-${index}`} className="space-y-3">
-                        <h2 className="font-heading text-lg font-semibold text-foreground">
+                        <h2 className="text-interface text-base font-medium text-foreground">
                           {block.title}
                         </h2>
                         {block.description && (
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-narrative text-sm leading-relaxed text-muted-foreground">
                             {block.description}
                           </p>
                         )}
                         {block.paragraphs?.map((paragraph, paragraphIndex) => (
                           <p
                             key={`${block.title}-p-${paragraphIndex}`}
-                            className="text-sm text-muted-foreground"
+                            className="text-narrative text-sm leading-relaxed text-muted-foreground"
                           >
                             {renderInline(paragraph)}
                           </p>
