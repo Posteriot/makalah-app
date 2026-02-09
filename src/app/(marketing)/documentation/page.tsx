@@ -465,23 +465,23 @@ function DocumentationContent() {
                       return (
                         <div
                           key={`${block.type}-${index}`}
-                          className="rounded-lg border border-border bg-card/70"
+                          className="rounded-shell border-main border border-info/20 bg-info/5"
                         >
-                          <div className="border-l-4 border-primary px-5 py-4">
-                            <h2 className="font-heading text-lg font-semibold text-primary">
+                          <div className="border-l-4 border-info px-5 py-4">
+                            <h2 className="text-interface text-base font-medium text-info">
                               {block.title}
                             </h2>
                             {block.description && (
-                              <p className="mt-1 text-sm text-muted-foreground">
+                              <p className="text-narrative mt-1 text-sm text-muted-foreground">
                                 {block.description}
                               </p>
                             )}
                           </div>
                           <div className="px-5 pb-5 pt-4">
-                            <ul className="space-y-2 text-sm text-muted-foreground">
+                            <ul className="space-y-2 text-narrative text-sm text-muted-foreground">
                               {block.items.map((item, itemIndex) => (
                                 <li key={`${block.title}-${itemIndex}`} className="relative pl-4">
-                                  <span className="absolute left-0 top-1 text-primary">•</span>
+                                  <span className="absolute left-0 top-1 text-info">•</span>
                                   {renderInline(item)}
                                 </li>
                               ))}
@@ -504,20 +504,20 @@ function DocumentationContent() {
                                 key={item.title}
                                 type="button"
                                 onClick={() => handleSetActiveSection(item.targetSection)}
-                                className="group flex h-full flex-col rounded-lg border border-border bg-card px-5 py-4 text-left transition hover:-translate-y-0.5 hover:bg-card/80"
+                                className="hover-slash group flex h-full flex-col rounded-shell border border-main bg-card px-5 py-4 text-left transition hover:border-primary/30"
                               >
-                                <div className="mb-4">
+                                <div className="relative z-10 mb-4">
                                   {Icon && (
                                     <Icon className="mb-3 h-7 w-7 text-primary" />
                                   )}
-                                  <h3 className="font-heading text-base font-semibold text-foreground">
+                                  <h3 className="text-interface text-sm font-medium text-foreground">
                                     {item.title}
                                   </h3>
-                                  <p className="mt-1 text-sm text-muted-foreground">
+                                  <p className="text-narrative mt-1 text-sm text-muted-foreground">
                                     {item.description}
                                   </p>
                                 </div>
-                                <div className="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                                <div className="text-signal relative z-10 mt-auto inline-flex items-center gap-2 text-xs text-primary">
                                   {item.ctaText}
                                   <NavArrowRight className="h-4 w-4" />
                                 </div>
