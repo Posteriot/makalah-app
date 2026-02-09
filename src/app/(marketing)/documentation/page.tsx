@@ -394,7 +394,7 @@ function DocumentationContent() {
           <nav className="flex flex-col gap-6">
             {navigationGroups.map((group) => (
               <div key={group.title}>
-                <h3 className="font-hero text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                <h3 className="text-signal text-[10px] font-bold text-muted-foreground">
                   {group.title}
                 </h3>
                 <ul className="mt-3 space-y-1">
@@ -407,14 +407,17 @@ function DocumentationContent() {
                           type="button"
                           onClick={() => handleSetActiveSection(item.slug)}
                           className={cn(
-                            "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                            "relative flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition",
                             isActive
-                              ? "bg-muted/70 text-primary"
-                              : "text-muted-foreground hover:bg-muted/50"
+                              ? "bg-amber-500/5 text-amber-500"
+                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                           )}
                         >
+                          {isActive && (
+                            <div className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-full bg-amber-500" />
+                          )}
                           {Icon && <Icon className="h-4 w-4 shrink-0" />}
-                          <span className="flex-1 truncate text-left font-hero">
+                          <span className="text-interface flex-1 truncate text-left">
                             {item.title}
                           </span>
                           {isActive && <NavArrowRight className="h-4 w-4 shrink-0" />}
@@ -638,7 +641,7 @@ function DocumentationContent() {
           <div className="overflow-y-auto px-5 py-5">
             {navigationGroups.map((group) => (
               <div key={group.title} className="mb-6">
-                <h3 className="font-hero text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                <h3 className="text-signal text-[10px] font-bold text-muted-foreground">
                   {group.title}
                 </h3>
                 <ul className="mt-3 space-y-1">
@@ -654,14 +657,17 @@ function DocumentationContent() {
                             setSidebarOpen(false)
                           }}
                           className={cn(
-                            "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                            "relative flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition",
                             isActive
-                              ? "bg-muted/70 text-primary"
-                              : "text-muted-foreground hover:bg-muted/50"
+                              ? "bg-amber-500/5 text-amber-500"
+                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                           )}
                         >
+                          {isActive && (
+                            <div className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-full bg-amber-500" />
+                          )}
                           {Icon && <Icon className="h-4 w-4 shrink-0" />}
-                          <span className="flex-1 truncate text-left font-hero">
+                          <span className="text-interface flex-1 truncate text-left">
                             {item.title}
                           </span>
                           {isActive && <NavArrowRight className="h-4 w-4 shrink-0" />}
