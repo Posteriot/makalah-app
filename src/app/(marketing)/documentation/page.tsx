@@ -334,8 +334,8 @@ function DocumentationContent() {
 
   return (
     <div className="min-h-screen pt-[var(--header-h)]">
-      <div className="flex min-h-screen">
-        <aside className="sticky top-[var(--header-h)] hidden h-[calc(100vh-var(--header-h))] w-64 flex-col overflow-y-auto border-r border-border bg-card/30 px-4 py-6 md:flex">
+      <div className="grid grid-cols-1 md:grid-cols-16 min-h-screen">
+        <aside className="sticky top-[var(--header-h)] hidden h-[calc(100vh-var(--header-h))] flex-col overflow-y-auto border-r border-hairline bg-card/30 px-4 py-6 md:col-span-4 md:flex">
           <div className="mb-6 rounded-lg bg-background/70 px-3 py-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -428,7 +428,7 @@ function DocumentationContent() {
           </nav>
         </aside>
 
-        <main className="flex-1 px-4 py-6 md:px-10">
+        <main className="col-span-1 px-4 py-6 md:col-span-12 md:px-10">
           <div className="mx-auto w-full max-w-4xl">
             {activeContent ? (
               <article className="space-y-8">
