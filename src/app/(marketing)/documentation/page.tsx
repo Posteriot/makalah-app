@@ -336,7 +336,7 @@ function DocumentationContent() {
     <div className="min-h-screen pt-[var(--header-h)]">
       <div className="grid grid-cols-1 md:grid-cols-16 min-h-screen">
         <aside className="sticky top-[var(--header-h)] hidden h-[calc(100vh-var(--header-h))] flex-col overflow-y-auto border-r border-hairline bg-card/30 px-4 py-6 md:col-span-4 md:flex">
-          <div className="mb-6 rounded-lg bg-background/70 px-3 py-3">
+          <div className="mb-6 rounded-action bg-background/70 px-3 py-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -348,13 +348,13 @@ function DocumentationContent() {
                   }
                 }}
                 placeholder="Cari dokumentasi..."
-                className="h-10 w-full rounded-md border border-border bg-background pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="text-interface focus-ring h-10 w-full rounded-action border-main border border-border bg-background pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20"
               />
             </div>
             {query.length > 0 && (
-              <div className="mt-2 rounded-md border border-border bg-card/70">
+              <div className="mt-2 rounded-action border-main border border-border bg-card/70">
                 {results.length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                  <div className="text-interface px-3 py-2 text-xs text-muted-foreground">
                     Tidak ada hasil yang cocok
                   </div>
                 ) : (
@@ -369,7 +369,7 @@ function DocumentationContent() {
                             activeSection === result.id && "bg-muted/70"
                           )}
                         >
-                          <div className="font-medium text-foreground">{result.title}</div>
+                          <div className="text-interface font-medium text-foreground">{result.title}</div>
                           <div
                             className="line-clamp-2 text-muted-foreground"
                             dangerouslySetInnerHTML={{
@@ -384,7 +384,7 @@ function DocumentationContent() {
                     ))}
                   </ul>
                 )}
-                <div className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground">
+                <div className="text-interface border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground">
                   Tekan Enter untuk membuka hasil teratas
                 </div>
               </div>
@@ -633,7 +633,7 @@ function DocumentationContent() {
                   }
                 }}
                 placeholder="Cari dokumentasi..."
-                className="h-10 w-full rounded-md border border-border bg-background pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="text-interface focus-ring h-10 w-full rounded-action border-main border border-border bg-background pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20"
               />
             </div>
           </div>
@@ -678,8 +678,8 @@ function DocumentationContent() {
                 </ul>
 
                 {query.length > 0 && (
-                  <div className="mt-4 rounded-md border border-border bg-card/60">
-                    <div className="px-3 py-2 text-[10px] font-semibold uppercase text-muted-foreground">
+                  <div className="mt-4 rounded-action border-main border border-border bg-card/60">
+                    <div className="text-signal px-3 py-2 text-[10px] font-bold text-muted-foreground">
                       Hasil pencarian
                     </div>
                     {results.length === 0 ? (
@@ -697,11 +697,11 @@ function DocumentationContent() {
                                 setSidebarOpen(false)
                               }}
                               className={cn(
-                                "w-full rounded px-2 py-2 text-left text-xs transition hover:bg-muted/50",
+                                "w-full rounded-action px-2 py-2 text-left text-xs transition hover:bg-muted/50",
                                 activeSection === result.id && "bg-muted/70"
                               )}
                             >
-                              <div className="font-medium text-foreground">{result.title}</div>
+                              <div className="text-interface font-medium text-foreground">{result.title}</div>
                               <div
                                 className="line-clamp-2 text-muted-foreground"
                                 dangerouslySetInnerHTML={{
