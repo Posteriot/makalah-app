@@ -576,14 +576,14 @@ function DocumentationContent() {
                   })}
                 </div>
 
-                <div className="flex items-center justify-between border-t border-border pt-4 md:hidden">
+                <div className="flex items-center justify-between border-t border-hairline pt-4 md:hidden">
                   <button
                     type="button"
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-semibold",
+                      "text-signal inline-flex items-center gap-2 rounded-action border-main border px-3 py-2 text-[10px]",
                       previousSection
-                        ? "text-foreground"
-                        : "cursor-not-allowed text-muted-foreground"
+                        ? "border-border text-foreground"
+                        : "cursor-not-allowed border-border/50 text-muted-foreground"
                     )}
                     onClick={() =>
                       previousSection && handleSetActiveSection(previousSection.slug)
@@ -596,10 +596,10 @@ function DocumentationContent() {
                   <button
                     type="button"
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-semibold",
+                      "text-signal inline-flex items-center gap-2 rounded-action border-main border px-3 py-2 text-[10px]",
                       nextSection
-                        ? "text-foreground"
-                        : "cursor-not-allowed text-muted-foreground"
+                        ? "border-border text-foreground"
+                        : "cursor-not-allowed border-border/50 text-muted-foreground"
                     )}
                     onClick={() => nextSection && handleSetActiveSection(nextSection.slug)}
                     disabled={!nextSection}
@@ -610,8 +610,10 @@ function DocumentationContent() {
                 </div>
               </article>
             ) : (
-              <div className="rounded-lg border border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
-                Dokumentasi sedang dimuat.
+              <div className="rounded-shell border-main border border-border bg-card/60 p-6 text-center">
+                <p className="text-interface text-xs uppercase tracking-widest text-muted-foreground">
+                  Dokumentasi sedang dimuat.
+                </p>
               </div>
             )}
           </div>
@@ -733,7 +735,9 @@ function DocumentationLoading() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <RefreshDouble className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Memuat dokumentasi...</p>
+          <p className="text-interface text-xs uppercase tracking-widest text-muted-foreground">
+            Memuat dokumentasi...
+          </p>
         </div>
       </div>
     </div>
