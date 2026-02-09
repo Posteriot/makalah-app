@@ -1561,6 +1561,23 @@
     border-color: var(--ai-border);
   }
 
+  /* Blog neutral input: keep border neutral on focus (no blue ring) */
+  input.blog-neutral-input:focus,
+  input.blog-neutral-input:focus-visible,
+  input.blog-neutral-input:active {
+    border-color: var(--border) !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    outline: none !important;
+    outline-color: transparent !important;
+    box-shadow: none !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-offset-width: 0px !important;
+    --tw-ring-offset-color: transparent !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+  }
+
   /* --- Spacing Utilities --- */
   .p-comfort {
     padding: 1rem; /* 16px */
