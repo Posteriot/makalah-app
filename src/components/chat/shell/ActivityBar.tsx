@@ -55,10 +55,10 @@ function ActivityBarItem({
           variant="ghost"
           size="icon"
           className={cn(
-            "w-10 h-10 rounded-lg transition-all duration-150",
-            "text-muted-foreground hover:text-foreground hover:bg-accent",
-            "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-            isActive && "text-foreground border-l-2 border-amber-500 bg-amber-500/10"
+            "w-10 h-10 rounded-action transition-all duration-150",
+            "text-slate-400 hover:text-slate-50 hover:bg-slate-800",
+            "focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
+            isActive && "text-slate-50 border-l-2 border-amber-500 bg-amber-500/10"
           )}
           onClick={onClick}
           aria-label={`${label} panel`}
@@ -189,7 +189,7 @@ export function ActivityBar({
         className={cn(
           "flex flex-col items-center py-2 gap-1",
           "w-[var(--activity-bar-width)] min-w-[48px]",
-          "border-r bg-sidebar"
+          "border-r border-border/50 bg-slate-950"
         )}
         data-testid="activity-bar"
         onKeyDown={handleKeyDown}
@@ -201,9 +201,9 @@ export function ActivityBar({
               variant="ghost"
               size="icon"
               className={cn(
-                "w-10 h-10 rounded-lg mb-2",
-                "text-muted-foreground hover:text-foreground hover:bg-accent",
-                "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                "w-10 h-10 rounded-action mb-2",
+                "text-slate-400 hover:text-slate-50 hover:bg-slate-800",
+                "focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               )}
               onClick={onToggleSidebar}
               aria-label={
