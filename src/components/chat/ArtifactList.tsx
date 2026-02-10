@@ -134,7 +134,7 @@ export function ArtifactList({
                                     key={artifact._id}
                                     onClick={() => onSelect(artifact._id)}
                                     className={cn(
-                                        "w-full p-2 rounded-lg text-left transition-colors",
+                                        "w-full p-2 rounded-action text-left transition-colors",
                                         "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary",
                                         isSelected && "bg-accent text-accent-foreground"
                                     )}
@@ -150,7 +150,7 @@ export function ArtifactList({
                                                 </span>
                                                 <Badge
                                                     variant="secondary"
-                                                    className="shrink-0 text-[10px] font-mono px-1 py-0"
+                                                    className="shrink-0 text-[10px] font-mono px-1 py-0 rounded-badge"
                                                 >
                                                     v{artifact.version}
                                                 </Badge>
@@ -158,7 +158,7 @@ export function ArtifactList({
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <Badge
                                                     variant="outline"
-                                                    className="text-[10px] px-1 py-0 capitalize"
+                                                    className="text-[10px] font-mono px-1 py-0 rounded-badge capitalize"
                                                 >
                                                     {typeLabels[artifact.type]}
                                                 </Badge>
