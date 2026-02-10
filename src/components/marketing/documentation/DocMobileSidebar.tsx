@@ -71,14 +71,17 @@ export function DocMobileSidebar({
                         type="button"
                         onClick={() => handleSelect(item.slug)}
                         className={cn(
-                          "text-interface flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition-colors",
+                          "relative flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition",
                           isActive
-                            ? "bg-slate-900/60 text-slate-100 dark:bg-slate-200/10 dark:text-slate-100"
-                            : "text-muted-foreground hover:bg-slate-200 hover:text-slate-900 dark:hover:bg-slate-500 dark:hover:text-slate-50"
+                            ? "bg-amber-500/5 text-amber-500"
+                            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                         )}
                       >
+                        {isActive && (
+                          <div className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-full bg-amber-500" />
+                        )}
                         {Icon && <Icon className="h-4 w-4 shrink-0" />}
-                        <span className="flex-1 truncate text-left">
+                        <span className="text-interface flex-1 truncate text-left">
                           {item.title}
                         </span>
                         {isActive && <NavArrowRight className="h-4 w-4 shrink-0" />}
