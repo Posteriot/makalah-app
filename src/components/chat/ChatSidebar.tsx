@@ -118,7 +118,7 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "w-full h-full flex flex-col bg-sidebar overflow-hidden",
+        "w-full h-full flex flex-col bg-card overflow-hidden",
         className
       )}
     >
@@ -130,7 +130,7 @@ export function ChatSidebar({
               onNewChat()
               onCloseMobile?.()
             }}
-            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-white font-medium rounded-[10px] gap-2 text-sm"
+            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-white font-medium rounded-action gap-2 text-sm"
             aria-label="Start new chat"
             aria-busy={isCreating}
             disabled={isCreating}
@@ -152,8 +152,8 @@ export function ChatSidebar({
 
       {/* Section Label - Only show for chat-history panel */}
       {activePanel === "chat-history" && (
-        <div className="py-2 px-4 text-xs text-muted-foreground">
-          Conversations <span className="ml-2">{conversations.length}</span>
+        <div className="py-2 px-4 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+          Riwayat Chat <span className="ml-2 font-mono">{conversations.length}</span>
         </div>
       )}
 

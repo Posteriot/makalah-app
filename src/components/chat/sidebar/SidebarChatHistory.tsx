@@ -12,6 +12,7 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { PaperSessionBadge } from "@/components/paper"
 import { getStageNumber, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import { formatRelativeTime } from "@/lib/date/formatters"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -203,11 +204,12 @@ export function SidebarChatHistory({
           const isExceedingMaxLength = isEditing && editValue.length > 50
 
           // Shared classes for both Link and div
-          const itemClasses = `group flex items-center w-full p-3 transition-colors text-left ${
+          const itemClasses = cn(
+            "group flex items-center w-full p-2.5 transition-colors text-left",
             currentConversationId === conv._id
               ? "bg-list-selected-bg"
               : "hover:bg-list-hover-bg"
-          }`
+          )
 
           // Content yang sama untuk edit mode dan normal mode
           const renderContent = () => (
@@ -231,7 +233,7 @@ export function SidebarChatHistory({
                     />
                   ) : (
                     <span
-                      className="font-medium text-sm truncate"
+                      className="font-sans font-medium text-sm truncate"
                       onDoubleClick={(e) => {
                         if (hasPaperSession) return
                         e.preventDefault()
@@ -251,7 +253,7 @@ export function SidebarChatHistory({
                   )}
                 </div>
                 {!isEditing && (
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground font-mono">
                     {formatRelativeTime(conv.lastMessageAt)}
                   </div>
                 )}

@@ -99,8 +99,8 @@ export function SidebarPaperSessions({
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="pt-5 px-4 pb-3">
-          <div className="text-base font-semibold">Paper Sessions</div>
-          <div className="text-[13px] text-muted-foreground">
+          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">Paper Sessions</div>
+          <div className="text-[11px] font-mono text-muted-foreground/70 mt-1">
             Paper folders and artifacts
           </div>
         </div>
