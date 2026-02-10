@@ -99,10 +99,10 @@ export function DocArticle({
                             <button
                               type="button"
                               onClick={() => onSelectSection(item.targetSection)}
-                              className="text-interface mt-auto inline-flex items-center gap-1 text-xs font-bold uppercase text-slate-600 transition-colors hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-slate-50"
+                              className="text-signal mt-auto inline-flex w-fit cursor-pointer items-center gap-2 text-[10px] font-bold tracking-widest text-muted-foreground transition-colors hover:text-foreground hover:underline"
                             >
                               {item.ctaText}
-                              <NavArrowRight className="h-4 w-4" />
+                              <NavArrowRight className="icon-interface" />
                             </button>
                           </div>
                         )
