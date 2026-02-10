@@ -33,7 +33,7 @@ export function ToolStateIndicator({ toolName, state, errorText }: ToolStateIndi
         <div
             className={cn(
                 // Mechanical Grace: border-ai (dashed), Mono font, uppercase
-                "flex w-fit items-center gap-2 rounded-lg border border-dashed px-3 py-2",
+                "flex w-fit items-center gap-2 rounded-action border border-dashed px-3 py-2",
                 "text-[11px] font-mono uppercase tracking-wide",
                 "shadow-sm transition-all duration-300 animate-in fade-in zoom-in-95",
                 isError
