@@ -356,7 +356,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                         >
                             <SelectTrigger
                                 size="sm"
-                                className="h-6 text-[11px] font-medium w-auto min-w-[60px] px-2 py-0 rounded bg-muted border-0"
+                                className="h-6 text-[11px] font-mono font-medium w-auto min-w-[60px] px-2 py-0 rounded-action bg-muted border-0"
                             >
                                 <SelectValue placeholder="v1" />
                             </SelectTrigger>
@@ -372,7 +372,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
 
                     {/* FINAL Badge */}
                     {isFinal && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500 text-white">
+                        <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-badge bg-emerald-500 text-white">
                             FINAL
                         </span>
                     )}
@@ -383,7 +383,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                             <TooltipTrigger asChild>
                                 <span
                                     className={cn(
-                                        "px-2 py-0.5 rounded text-[11px] cursor-help",
+                                        "px-2 py-0.5 rounded-badge text-[11px] font-mono cursor-help",
                                         "bg-amber-500/20 text-amber-500"
                                     )}
                                     data-testid="artifact-type-badge"
@@ -465,7 +465,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                                         sources={artifact.sources}
                                     />
                                 ) : (
-                                    <pre className="whitespace-pre-wrap font-sans bg-muted p-4 rounded-lg text-sm leading-relaxed">
+                                    <pre className="whitespace-pre-wrap font-sans bg-muted p-4 rounded-action text-sm leading-relaxed">
                                         {artifact.content}
                                     </pre>
                                 )}
