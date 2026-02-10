@@ -31,6 +31,7 @@ import type * as migrations_backfillCreditBalances from "../migrations/backfillC
 import type * as migrations_backfillProviderKeys from "../migrations/backfillProviderKeys.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
 import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/fixAgentPersonaAndCapabilities.js";
+import type * as migrations_reconcileClerkUsers from "../migrations/reconcileClerkUsers.js";
 import type * as migrations_removeOldPaperWorkflowSection from "../migrations/removeOldPaperWorkflowSection.js";
 import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultAIConfig.js";
 import type * as migrations_seedDefaultStyleConstitution from "../migrations/seedDefaultStyleConstitution.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillProviderKeys": typeof migrations_backfillProviderKeys;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
   "migrations/fixAgentPersonaAndCapabilities": typeof migrations_fixAgentPersonaAndCapabilities;
+  "migrations/reconcileClerkUsers": typeof migrations_reconcileClerkUsers;
   "migrations/removeOldPaperWorkflowSection": typeof migrations_removeOldPaperWorkflowSection;
   "migrations/seedDefaultAIConfig": typeof migrations_seedDefaultAIConfig;
   "migrations/seedDefaultStyleConstitution": typeof migrations_seedDefaultStyleConstitution;

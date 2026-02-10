@@ -13,6 +13,7 @@
     "convex:dev": "npm run convex -- dev",
     "convex:deploy": "npm run convex -- deploy",
     "convex:dashboard": "npm run convex -- dashboard",
+    "sync:clerk:reconcile": "node scripts/reconcile-clerk-users.mjs",
     "lint": "eslint",
     "test": "vitest run"
   },

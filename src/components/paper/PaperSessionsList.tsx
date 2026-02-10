@@ -30,26 +30,26 @@ export function PaperSessionsList({
   return (
     <div className="space-y-4">
       {/* Filter and Sort Controls */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-shell border border-hairline bg-slate-900/50 p-4">
         <Tabs
           value={filterStatus}
           onValueChange={(value) => onFilterChange(value as FilterStatus)}
         >
-          <TabsList>
-            <TabsTrigger value="all">Semua</TabsTrigger>
-            <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="archived">Archived</TabsTrigger>
+          <TabsList className="bg-slate-800/60 border border-hairline">
+            <TabsTrigger className="text-interface text-xs" value="all">Semua</TabsTrigger>
+            <TabsTrigger className="text-interface text-xs" value="in_progress">In Progress</TabsTrigger>
+            <TabsTrigger className="text-interface text-xs" value="completed">Completed</TabsTrigger>
+            <TabsTrigger className="text-interface text-xs" value="archived">Archived</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Urutkan:</span>
+          <span className="text-[10px] text-slate-500 text-signal">Urutkan:</span>
           <Select value={sortBy} onValueChange={(v) => onSortChange(v as SortBy)}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[160px] rounded-action border-hairline bg-slate-900 text-interface text-xs">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-hairline bg-slate-900 text-interface text-xs">
               <SelectItem value="updatedAt">Terakhir Diubah</SelectItem>
               <SelectItem value="createdAt">Tanggal Dibuat</SelectItem>
             </SelectContent>
@@ -84,8 +84,8 @@ function EmptyFilterState({ filterStatus }: { filterStatus: FilterStatus }) {
   }
 
   return (
-    <div className="text-center py-12 text-muted-foreground">
-      <p>{messages[filterStatus]}</p>
+    <div className="text-center py-12 text-slate-500 rounded-shell border border-hairline bg-slate-900/50">
+      <p className="text-interface text-xs">{messages[filterStatus]}</p>
       {filterStatus === "all" && <PaperSessionsEmpty />}
     </div>
   )

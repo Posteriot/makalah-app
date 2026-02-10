@@ -10,12 +10,14 @@ import { api } from "@convex/_generated/api"
  *
  * Handles Clerk webhook events and triggers custom email flows via Resend.
  * Events handled:
- * - user.created: Sends welcome email to new users
+ * - user.created: Create/update Convex user + send welcome email
+ * - user.updated: Update Convex user profile
+ * - user.deleted: Soft-delete Convex user record
  *
  * Setup di Clerk Dashboard:
  * 1. Go to Webhooks → Add Endpoint
  * 2. URL: https://your-domain.com/api/webhooks/clerk
- * 3. Select events: user.created
+ * 3. Select events: user.created, user.updated, user.deleted
  * 4. Copy Signing Secret to CLERK_WEBHOOK_SECRET env var
  */
 
@@ -73,6 +75,7 @@ export async function POST(req: Request) {
 
       if (primaryEmail?.email_address) {
         const email = primaryEmail.email_address
+        const emailVerified = primaryEmail.verification?.status === "verified"
 
         // 1. Create Convex user IMMEDIATELY (ensures badge shows on any page)
         try {
@@ -81,6 +84,7 @@ export async function POST(req: Request) {
             email,
             firstName: first_name ?? undefined,
             lastName: last_name ?? undefined,
+            emailVerified,
           })
         } catch (error) {
           console.error("Failed to create Convex user:", error)
@@ -106,9 +110,43 @@ export async function POST(req: Request) {
       break
     }
 
+    case "user.updated": {
+      const { id: clerkUserId, email_addresses, first_name, last_name } = evt.data
+      const primaryEmail = email_addresses?.find(
+        (email) => email.id === evt.data.primary_email_address_id
+      )
+
+      if (clerkUserId && primaryEmail?.email_address) {
+        try {
+          await fetchMutation(api.users.createUserFromWebhook, {
+            clerkUserId,
+            email: primaryEmail.email_address,
+            firstName: first_name ?? undefined,
+            lastName: last_name ?? undefined,
+            emailVerified: primaryEmail.verification?.status === "verified",
+          })
+        } catch (error) {
+          console.error("Failed to sync updated user from Clerk:", error)
+        }
+      }
+      break
+    }
+
+    case "user.deleted": {
+      const deletedId = evt.data.id
+      if (deletedId) {
+        try {
+          await fetchMutation(api.users.markUserDeletedFromWebhook, {
+            clerkUserId: deletedId,
+          })
+        } catch (error) {
+          console.error("Failed to mark deleted user in Convex:", error)
+        }
+      }
+      break
+    }
+
     // Add more event handlers as needed
-    // case "user.updated":
-    // case "user.deleted":
     // case "session.created":
 
     default:

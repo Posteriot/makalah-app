@@ -74,14 +74,14 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
   // Loading state
   if (activePrompt === undefined || alertCount === undefined) {
     return (
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title-row">
-            <Refresh className="card-icon animate-spin" />
-            <h3 className="card-title">System Health</h3>
+      <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
+        <div className="border-b border-border bg-slate-200/45 px-6 py-5 dark:bg-slate-900/50">
+          <div className="flex items-center gap-2">
+            <Refresh className="h-4 w-4 animate-spin text-muted-foreground" />
+            <h3 className="text-interface text-sm font-semibold text-foreground">System Health</h3>
           </div>
         </div>
-        <div className="card-content">
+        <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-20 bg-muted rounded"></div>
             <div className="h-32 bg-muted rounded"></div>
@@ -95,35 +95,35 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
   const hasUnresolvedAlerts = (alertCount?.total ?? 0) > 0
 
   return (
-    <div className={cn("card overflow-hidden", !isFallbackMode && "card--health")}>
-      <div className="card-header border-b">
-        <div className="card-header-row">
+    <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
+      <div className="border-b border-border bg-slate-200/45 px-6 py-5 dark:bg-slate-900/50">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="card-title-row">
+            <div className="flex items-center gap-2 mb-1">
               {isFallbackMode ? (
-                <WarningCircle className="card-icon text-destructive" />
+                <WarningCircle className="h-4 w-4 text-destructive" />
               ) : (
-                <CheckCircle className="card-icon card-icon--success" />
+                <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               )}
-              <h3 className="card-title">System Health Monitoring</h3>
+              <h3 className="text-interface text-sm font-semibold text-foreground">System Health Monitoring</h3>
             </div>
-            <p className="card-description">
+            <p className="text-xs text-muted-foreground">
               Status real-time system prompt dan indikator alert monitoring
             </p>
           </div>
           {hasUnresolvedAlerts && (
-            <span className="status-badge bg-destructive text-white animate-pulse">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-badge text-[10px] font-mono font-bold uppercase tracking-wide bg-destructive text-white animate-pulse">
               {alertCount.total} Unresolved Alert{alertCount.total > 1 ? "s" : ""}
             </span>
           )}
         </div>
       </div>
 
-      <div className="card-content p-0">
+      <div className="p-0">
         <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x divide-border">
           {/* Section: System Prompt Status */}
           <div className="p-6 md:p-10 flex flex-col h-full">
-            <h4 className="health-label mb-8 flex items-center gap-2">
+            <h4 className="text-signal text-[10px] font-bold text-slate-500 mb-8 flex items-center gap-2">
               <Refresh className="h-3 w-3" />
               System Prompt Status
             </h4>
@@ -145,14 +145,14 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
                   )}
                   <div className="pt-2">
                     <button
-                      className="btn btn--secondary"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-action border border-hairline text-xs font-mono text-slate-300 hover:bg-slate-800 disabled:opacity-50 focus-ring"
                       onClick={handleResolveAllFallback}
                       disabled={isResolving === "all"}
                     >
                       {isResolving === "all" ? (
-                        <Refresh className="btn-icon animate-spin" />
+                        <Refresh className="h-4 w-4 animate-spin" />
                       ) : (
-                        <CheckCircle className="btn-icon" />
+                        <CheckCircle className="h-4 w-4" />
                       )}
                       <span>Selesaikan Semua Fallback</span>
                     </button>
@@ -195,7 +195,7 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
 
           {/* Section: Recent Alerts */}
           <div className="p-6 md:p-10 flex flex-col h-full bg-accent/[0.01]">
-            <h4 className="health-label mb-8 flex items-center gap-2">
+            <h4 className="text-signal text-[10px] font-bold text-slate-500 mb-8 flex items-center gap-2">
               <WarningTriangle className="h-3 w-3" />
               History Alert Terbaru
             </h4>
@@ -234,7 +234,7 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
 
                       {!alert.resolved && (
                         <button
-                          className="icon-btn shrink-0 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0"
+                          className="shrink-0 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0 inline-flex items-center justify-center h-8 w-8 rounded-action border border-transparent text-slate-400 hover:text-slate-100 hover:bg-slate-800 hover:border-border focus-ring"
                           onClick={() => handleResolveAlert(alert._id)}
                           disabled={isResolving === alert._id}
                         >

@@ -40,7 +40,7 @@ export function PaperSessionsContainer() {
   // User not authenticated
   if (!user) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
+      <div className="text-center py-12 text-slate-500 rounded-shell border border-hairline bg-slate-900/50">
         Silakan login untuk melihat paper sessions kamu.
       </div>
     )
@@ -71,7 +71,7 @@ export function PaperSessionsContainer() {
 
 function PaperSessionsContainerSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 rounded-shell border border-hairline bg-slate-900/50 p-4">
       {/* Filter tabs skeleton */}
       <div className="flex gap-2">
         <Skeleton className="h-9 w-20" />
@@ -83,7 +83,7 @@ function PaperSessionsContainerSkeleton() {
       {/* Cards skeleton */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="border rounded-xl p-6 space-y-4">
+          <div key={i} className="border border-hairline rounded-shell p-6 space-y-4 bg-slate-900/40">
             <Skeleton className="h-5 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
             <div className="flex gap-2">

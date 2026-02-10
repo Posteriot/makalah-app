@@ -1258,7 +1258,7 @@
   .dashboard-main {
     flex: 1;
     margin-top: var(--header-h);
-    padding: 24px;
+    padding: 16px;
     width: 100%;
     max-width: 1400px;
     margin-inline: auto;
@@ -1282,12 +1282,12 @@
   .subscription-body {
     background: var(--card);
     /* Border on sides and bottom only - no top border to merge with header */
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
+    border-left: 0.5px solid var(--border-hairline);
+    border-right: 0.5px solid var(--border-hairline);
+    border-bottom: 0.5px solid var(--border-hairline);
     border-top: none;
     /* Rounded corners only at bottom - top merges with header */
-    border-radius: 0 0 var(--radius) var(--radius);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
     overflow: hidden;
   }
 
@@ -1304,28 +1304,27 @@
 
   /* Override dashboard-main padding when admin page is shown */
   .dashboard-main:has(.admin-container) {
-    padding-top: 0;
+    padding: 0;
+    max-width: none;
+    margin-inline: 0;
   }
 
   .admin-container {
     width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
   }
 
   .admin-body {
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 0;
     min-height: calc(100vh - var(--header-h) - var(--footer-h) - 48px);
     background: var(--card);
     /* Border on sides and bottom only - no top border to merge with header */
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
+    border-left: 0.5px solid var(--border-hairline);
+    border-right: 0.5px solid var(--border-hairline);
+    border-bottom: 0.5px solid var(--border-hairline);
     border-top: none;
     /* Rounded corners only at bottom - top merges with header */
-    border-radius: 0 0 var(--radius) var(--radius);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
     overflow: hidden;
   }
 
@@ -1428,11 +1427,7 @@
 
 @media (max-width: 768px) {
   .dashboard-main {
-    padding: 20px;
-  }
-
-  .admin-body {
-    grid-template-columns: 1fr;
+    padding: 14px;
   }
 
   .admin-sidebar {
@@ -1465,7 +1460,7 @@
 
 @media (max-width: 480px) {
   .dashboard-main {
-    padding: 16px;
+    padding: 12px;
   }
 
   .admin-content {
