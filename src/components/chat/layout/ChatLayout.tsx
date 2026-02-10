@@ -13,6 +13,7 @@ import { useTabState } from "@/lib/hooks/useTabState"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { ChatMiniFooter } from "../ChatMiniFooter"
 
 /**
  * ChatLayout - 6-column CSS Grid orchestrator
@@ -324,7 +325,7 @@ export function ChatLayout({
       {/* Row 2, Column 2: Sidebar */}
       <aside
         className={cn(
-          "flex flex-col border-r bg-sidebar overflow-hidden",
+          "flex flex-col border-r border-border/50 bg-sidebar overflow-hidden",
           "hidden md:flex",
           isSidebarCollapsed && "w-0 border-r-0"
         )}
@@ -385,7 +386,7 @@ export function ChatLayout({
         <aside
           className={cn(
             "hidden md:flex flex-col overflow-hidden",
-            "border-l bg-card",
+            "border-l border-border/50 bg-card",
             !isArtifactPanelOpen && "w-0 border-l-0"
           )}
         >
@@ -417,14 +418,8 @@ export function ChatLayout({
         </SheetContent>
       </Sheet>
 
-      {/* App Footer - Fixed bottom bar */}
-      <footer className="fixed bottom-0 left-0 right-0 h-8 flex items-center justify-center gap-2 text-xs text-muted-foreground bg-background border-t z-10">
-        <span className="font-medium">Makalah AI</span>
-        <span className="opacity-50">·</span>
-        <span className="opacity-80">© 2026</span>
-        <span className="opacity-50">·</span>
-        <span className="opacity-80">v1.0</span>
-      </footer>
+      {/* App Footer - Mechanical Grace Mini Footer */}
+      <ChatMiniFooter />
     </div>
   )
 }
