@@ -117,7 +117,7 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
                 onClick={toggleTheme}
                 className={cn(
                   "flex items-center justify-center",
-                  "w-9 h-9 rounded-lg",
+                  "w-9 h-9 rounded-action",
                   "text-muted-foreground hover:text-foreground hover:bg-accent",
                   "transition-colors duration-150"
                 )}
@@ -141,7 +141,7 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
                 onClick={onTogglePanel}
                 className={cn(
                   "relative flex items-center justify-center",
-                  "w-9 h-9 rounded-lg",
+                  "w-9 h-9 rounded-action",
                   "text-muted-foreground hover:text-foreground hover:bg-accent",
                   "transition-colors duration-150"
                 )}
@@ -212,7 +212,7 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
       <div
         className={cn(
           "absolute bottom-0 left-0 right-0",
-          "h-px bg-border"
+          "h-px bg-border/50"
         )}
       />
     </header>
