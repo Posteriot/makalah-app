@@ -1556,6 +1556,12 @@
     border-color: var(--ai-border);
   }
 
+  /* --- Industrial Textures --- */
+  .bg-dots {
+    background-image: radial-gradient(circle, var(--border-hairline) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
   /* Blog neutral input: keep border neutral on focus (no blue ring) */
   input.blog-neutral-input:focus,
   input.blog-neutral-input:focus-visible,
