@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { FilterList } from "iconoir-react"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
 import { BlogFeedSection } from "./BlogFeedSection"
 import { BlogFiltersPanel } from "./BlogFiltersPanel"
@@ -129,9 +130,10 @@ export function BlogLandingPage() {
                 <button
                   type="button"
                   onClick={() => setMobileFilterOpen(true)}
-                  className="text-signal rounded-action border-main border-border px-3 py-2 text-[10px] font-bold tracking-widest text-foreground"
+                  className="rounded-action p-1 text-foreground transition-colors hover:text-foreground/70"
+                  aria-label="Buka filter"
                 >
-                  Filter
+                  <FilterList className="h-7 w-7" strokeWidth={1.5} />
                 </button>
               </div>
 
@@ -165,9 +167,11 @@ export function BlogLandingPage() {
 
         <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
           <SheetContent side="right" className="w-[320px] p-5 sm:max-w-[320px]">
-            <p className="text-signal mb-4 text-[10px] font-bold tracking-widest text-amber-500">
-              Filter Konten
-            </p>
+            <SheetHeader className="mb-4 p-0">
+              <SheetTitle className="text-signal text-[10px] font-bold tracking-widest text-foreground">
+                Filter Konten
+              </SheetTitle>
+            </SheetHeader>
             <BlogFiltersPanel
               mobile
               searchQuery={searchQuery}
