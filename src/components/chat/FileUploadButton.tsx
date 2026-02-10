@@ -114,7 +114,7 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                        className="p-2 rounded-action text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
                         aria-label="Attach file"
                     >
                         {isUploading ? (
