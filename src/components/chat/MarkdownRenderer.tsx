@@ -272,7 +272,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       nodes.push(
         <code
           key={`${keyPrefix}-code-${partIndex++}`}
-          className="rounded bg-background/50 px-1 py-0.5 font-mono text-[0.85em]"
+          className="rounded-badge bg-background/50 px-1 py-0.5 font-mono text-[0.85em]"
         >
           {inner}
         </code>,
@@ -414,7 +414,7 @@ function renderBlocks(
         // h1: Display title - largest
         if (block.level === 1)
           return (
-            <h1 key={k} className="mt-6 mb-2 text-2xl font-bold text-foreground">
+            <h1 key={k} className="mt-6 mb-2 text-2xl font-bold tracking-tight text-foreground">
               {content}
               {fallbackChip}
             </h1>
@@ -422,7 +422,7 @@ function renderBlocks(
         // h2: Section heading - dominant, big top margin to separate sections
         if (block.level === 2)
           return (
-            <h2 key={k} className="mt-8 mb-1 text-xl font-bold text-foreground first:mt-0">
+            <h2 key={k} className="mt-8 mb-1 text-xl font-bold tracking-tight text-foreground first:mt-0">
               {content}
               {fallbackChip}
             </h2>
@@ -430,14 +430,14 @@ function renderBlocks(
         // h3: Sub-section heading
         if (block.level === 3)
           return (
-            <h3 key={k} className="mt-5 mb-1 text-lg font-semibold text-foreground">
+            <h3 key={k} className="mt-5 mb-1 text-lg font-semibold tracking-tight text-foreground">
               {content}
               {fallbackChip}
             </h3>
           )
         // h4+: Minor heading
         return (
-          <h4 key={k} className="mt-4 mb-1 text-base font-semibold text-foreground">
+          <h4 key={k} className="mt-4 mb-1 text-base font-semibold tracking-tight text-foreground">
             {content}
             {fallbackChip}
           </h4>
@@ -506,7 +506,7 @@ function renderBlocks(
       case "code":
         return (
           <Fragment key={k}>
-            <pre className="my-2 overflow-x-auto rounded-md bg-background/50 p-3 text-xs leading-relaxed">
+            <pre className="my-2 overflow-x-auto rounded-action bg-background/50 p-3 text-xs leading-relaxed">
               <code>{block.code}</code>
             </pre>
             {fallbackChip ? <div className="mt-2">{fallbackChip}</div> : null}
@@ -515,7 +515,7 @@ function renderBlocks(
       case "blockquote": {
         const inner = parseBlocks(block.lines.join("\n"))
         return (
-          <blockquote key={k} className="border-l-2 pl-3 my-2 opacity-90 space-y-2">
+          <blockquote key={k} className="border-l-2 border-border pl-3 my-2 opacity-90 space-y-2">
             {renderBlocks(groupOutlineLists(inner), `${k}-q`, sources, {
               appendFallbackChip: shouldAppendFallback,
             })}
@@ -525,7 +525,7 @@ function renderBlocks(
       case "hr":
         return (
           <Fragment key={k}>
-            <hr className="my-3 border-muted-foreground/20" />
+            <hr className="my-3 border-border/50" />
             {fallbackChip ? <div className="mt-2">{fallbackChip}</div> : null}
           </Fragment>
         )
