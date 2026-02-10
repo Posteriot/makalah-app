@@ -18,7 +18,7 @@ export function DocArticle({
   onSelectSection,
 }: DocArticleProps) {
   return (
-    <main className="col-span-1 pt-4 md:col-span-12">
+    <main>
       <div className="mx-auto w-full max-w-4xl rounded-shell border-hairline bg-card/90 px-5 py-6 backdrop-blur-[1px] dark:bg-slate-900 md:px-8">
         {activeContent ? (
           <article className="space-y-8">
