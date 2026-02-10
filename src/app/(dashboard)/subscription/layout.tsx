@@ -61,25 +61,25 @@ function SubscriptionSidebar({
         className={cn(
           // Mobile: fixed overlay
           "fixed md:relative top-0 left-0 h-full md:h-auto z-50 md:z-0",
-          "w-[200px] bg-sidebar border-r border-sidebar-border",
+          "w-[220px] md:w-auto md:col-span-3 bg-slate-900 border-r border-hairline",
           "transform transition-transform duration-200 ease-in-out",
           "md:transform-none",
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         {/* Mobile Close Button */}
-        <div className="flex items-center justify-between p-4 border-b border-border md:hidden">
-          <span className="font-semibold text-sm">Menu</span>
+        <div className="flex items-center justify-between p-3 border-b border-hairline md:hidden">
+          <span className="text-interface text-xs font-semibold uppercase tracking-wide text-slate-400">Menu</span>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-accent rounded"
+            className="p-1.5 hover:bg-slate-800 rounded-action focus-ring"
           >
-            <Xmark className="h-5 w-5" />
+            <Xmark className="h-4 w-4" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="p-2 pt-6 space-y-1">
+        <nav className="p-2 pt-4 space-y-1">
           {SIDEBAR_ITEMS.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
@@ -90,19 +90,19 @@ function SubscriptionSidebar({
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "relative flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                  "hover:bg-accent",
+                  "relative flex items-center gap-2.5 px-2.5 py-2 rounded-action text-xs transition-colors",
+                  "hover:bg-slate-800 hover:text-slate-100",
                   isActive
-                    ? "bg-accent text-foreground"
-                    : "text-muted-foreground"
+                    ? "bg-amber-500/5 text-amber-500"
+                    : "text-slate-400"
                 )}
               >
                 {/* Active indicator */}
                 {isActive && (
-                  <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-primary rounded-r" />
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-amber-500 rounded-r-full" />
                 )}
-                <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="text-interface">{item.label}</span>
               </Link>
             )
           })}
@@ -122,25 +122,25 @@ export default function SubscriptionLayout({
   return (
     <div className="subscription-container max-w-[1400px] mx-auto">
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center gap-3 p-4 border-b border-border">
+      <div className="md:hidden flex items-center gap-3 p-3 border-b border-hairline bg-slate-900">
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="p-2 hover:bg-accent rounded-md"
+          className="p-2 hover:bg-slate-800 rounded-action focus-ring"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-4 w-4" />
         </button>
-        <span className="font-semibold">Subskripsi</span>
+        <span className="text-interface text-xs font-semibold uppercase tracking-wide text-slate-300">Subskripsi</span>
       </div>
 
       {/* Main Grid: Sidebar + Content */}
-      <div className="subscription-body grid grid-cols-1 md:grid-cols-[200px_1fr] min-h-[calc(100vh-var(--header-h)-var(--footer-h)-48px)] overflow-hidden">
+      <div className="subscription-body grid grid-cols-16 min-h-[calc(100vh-var(--header-h)-var(--footer-h)-48px)] overflow-hidden">
         <SubscriptionSidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
 
         {/* Content */}
-        <div className="flex-1 p-4 md:p-6 overflow-auto">
+        <div className="col-span-16 md:col-span-13 p-4 md:p-5 overflow-auto">
           {children}
         </div>
       </div>

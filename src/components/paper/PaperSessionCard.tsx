@@ -151,14 +151,14 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
 
   return (
     <>
-      <Card className={cn("transition-all hover:shadow-md", isArchived && "opacity-60")}>
+      <Card className={cn("transition-all hover:shadow-md rounded-shell border border-hairline bg-slate-900/50", isArchived && "opacity-60")}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-base truncate" title={displayTitle}>
+              <CardTitle className="text-interface text-base truncate text-slate-100" title={displayTitle}>
                 {displayTitle}
               </CardTitle>
-              <CardDescription className="mt-1">
+              <CardDescription className="mt-1 text-[11px] text-slate-500 font-mono">
                 {isCompleted ? "Selesai" : `Tahap ${currentStageNumber}/${STAGE_ORDER.length}`} - {getStageLabel(session.currentStage as PaperStageId | "completed")}
               </CardDescription>
             </div>
@@ -175,24 +175,24 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
                 className={cn(
                   "h-1 flex-1 rounded-full",
                   index < currentStageNumber
-                    ? "bg-green-500"
+                    ? "bg-emerald-500"
                     : index === currentStageNumber && !isCompleted
-                      ? "bg-primary-500"
-                      : "bg-muted"
+                      ? "bg-amber-500"
+                      : "bg-slate-800"
                 )}
               />
             ))}
           </div>
 
-          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-            <span>Dibuat: {createdDate}</span>
-            <span>Diubah: {updatedDate}</span>
+          <div className="flex flex-col gap-1 text-[11px] font-mono text-slate-500">
+            <span className="text-interface">Dibuat: {createdDate}</span>
+            <span className="text-interface">Diubah: {updatedDate}</span>
           </div>
         </CardContent>
 
-        <CardFooter className="flex-wrap gap-2 pt-3 border-t">
+        <CardFooter className="flex-wrap gap-2 pt-3 border-t border-hairline">
           {/* Lanjutkan / Lihat button */}
-          <Button asChild size="sm" variant={isCompleted ? "outline" : "default"}>
+          <Button asChild size="sm" variant={isCompleted ? "outline" : "default"} className="text-interface text-xs rounded-action">
             <Link href={`/chat/${session.conversationId}`}>
               {isCompleted ? "Lihat" : "Lanjutkan"}
               <NavArrowRight className="ml-1 h-4 w-4" />
@@ -205,11 +205,11 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
               onValueChange={(value) => handleExport(value as "word" | "pdf")}
               disabled={isExporting}
             >
-              <SelectTrigger className="w-[100px]" size="sm">
+              <SelectTrigger className="w-[100px] text-interface text-xs rounded-action border-hairline bg-slate-900" size="sm">
                 <Download className="h-4 w-4 mr-1" />
                 <SelectValue placeholder="Export" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="border-hairline bg-slate-900 text-interface text-xs">
                 <SelectItem value="word">
                   <Download className="h-4 w-4 mr-2" />
                   Word
@@ -228,6 +228,7 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
             variant="ghost"
             onClick={handleArchiveToggle}
             disabled={isArchiving}
+            className="rounded-action hover:bg-slate-800"
             title={isArchived ? "Unarchive" : "Archive"}
           >
             {isArchived ? (
@@ -242,7 +243,7 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
             size="icon-sm"
             variant="ghost"
             onClick={() => setShowDeleteDialog(true)}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            className="rounded-action text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
             title="Hapus"
           >
             <Trash className="h-4 w-4" />
@@ -280,7 +281,7 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
 function StatusBadge({ isCompleted, isArchived }: { isCompleted: boolean; isArchived: boolean }) {
   if (isArchived) {
     return (
-      <Badge variant="secondary" className="shrink-0">
+      <Badge variant="secondary" className="shrink-0 rounded-badge text-[10px] font-mono uppercase tracking-wide bg-slate-800 border border-hairline text-slate-300">
         <Archive className="h-3 w-3 mr-1" />
         Archived
       </Badge>
@@ -289,7 +290,7 @@ function StatusBadge({ isCompleted, isArchived }: { isCompleted: boolean; isArch
 
   if (isCompleted) {
     return (
-      <Badge className="shrink-0 bg-green-500/20 text-green-600 border-green-500/30">
+      <Badge className="shrink-0 rounded-badge text-[10px] font-mono uppercase tracking-wide bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
         <Check className="h-3 w-3 mr-1" />
         Selesai
       </Badge>
@@ -297,7 +298,7 @@ function StatusBadge({ isCompleted, isArchived }: { isCompleted: boolean; isArch
   }
 
   return (
-    <Badge variant="outline" className="shrink-0">
+    <Badge variant="outline" className="shrink-0 rounded-badge text-[10px] font-mono uppercase tracking-wide border-hairline text-slate-400">
       In Progress
     </Badge>
   )

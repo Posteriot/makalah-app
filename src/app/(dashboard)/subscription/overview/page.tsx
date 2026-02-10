@@ -97,7 +97,7 @@ export default function SubscriptionOverviewPage() {
   if (!user) {
     return (
       <div className="space-y-2">
-        <h1 className="text-xl font-semibold">Subskripsi</h1>
+        <h1 className="text-interface text-xl font-semibold">Subskripsi</h1>
         <p className="text-sm text-muted-foreground">
           Sesi tidak aktif. Silakan login ulang.
         </p>
@@ -133,7 +133,7 @@ export default function SubscriptionOverviewPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl font-semibold flex items-center gap-2">
+        <h1 className="text-interface text-xl font-semibold flex items-center gap-2">
           <Sparks className="h-5 w-5 text-primary" />
           Subskripsi
         </h1>
@@ -145,33 +145,33 @@ export default function SubscriptionOverviewPage() {
       {/* Top Cards: Tier + Credit - 2 columns 50%/50% */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Tier Card */}
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              <p className="text-signal text-[10px] text-slate-500">
                 Tier Saat Ini
               </p>
               <div className="flex items-center gap-2 mt-1">
                 <span
                   className={cn(
-                    "text-xs font-bold px-2 py-0.5 rounded text-white",
+                    "text-[10px] font-bold px-2 py-0.5 rounded-badge text-white",
                     tierConfig.color
                   )}
                 >
                   {tierConfig.label}
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-slate-400 mt-2">
                 {tierConfig.description}
               </p>
             </div>
-            <GraphUp className="h-5 w-5 text-muted-foreground" />
+            <GraphUp className="h-5 w-5 text-slate-500" />
           </div>
 
           {tier !== "pro" && (
             <Link
               href="/subscription/upgrade"
-              className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              className="mt-4 inline-flex items-center gap-1.5 text-xs font-mono font-medium text-amber-500 hover:text-amber-400"
             >
               <ArrowUpCircle className="h-4 w-4" />
               Upgrade ke Pro
@@ -180,25 +180,25 @@ export default function SubscriptionOverviewPage() {
         </div>
 
         {/* Credit Balance Card */}
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              <p className="text-signal text-[10px] text-slate-500">
                 Saldo Credit
               </p>
-              <p className="text-2xl font-semibold mt-1">
+              <p className="text-interface text-2xl font-semibold mt-1 text-slate-100">
                 {currentCreditBalance.toLocaleString("id-ID")} kredit
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-slate-400 mt-1">
                 Saldo untuk tier Bayar Per Paper
               </p>
             </div>
-            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <CreditCard className="h-5 w-5 text-slate-500" />
           </div>
 
           <Link
             href="/subscription/topup"
-            className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
           >
             <CreditCard className="h-4 w-4" />
             Top Up
@@ -208,10 +208,10 @@ export default function SubscriptionOverviewPage() {
 
       {/* Usage Progress Card (for non-BPP users) */}
       {!isBPP && (
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium">Penggunaan Bulan Ini</h2>
-            <span className="text-xs text-muted-foreground">
+            <h2 className="text-interface text-sm font-medium text-slate-200">Penggunaan Bulan Ini</h2>
+            <span className="text-[10px] font-mono text-slate-500">
               Reset: {resetDate}
             </span>
           </div>
@@ -230,10 +230,10 @@ export default function SubscriptionOverviewPage() {
           {/* Stats */}
           <div className="flex items-center justify-between mt-2">
             <span className="text-sm">
-              <span className={cn("font-semibold", (isLowQuota || isBlocked) && "text-destructive")}>
+              <span className={cn("text-interface font-semibold", (isLowQuota || isBlocked) && "text-destructive")}>
                 {usedTokens.toLocaleString("id-ID")}
               </span>
-              <span className="text-muted-foreground">
+              <span className="text-slate-500">
                 {" / "}
                 {allottedTokens.toLocaleString("id-ID")} tokens
               </span>
@@ -272,29 +272,29 @@ export default function SubscriptionOverviewPage() {
 
       {/* BPP Credit Status Card */}
       {isBPP && (
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium">Status Credit</h2>
+            <h2 className="text-interface text-sm font-medium text-slate-200">Status Credit</h2>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <p className="text-3xl font-bold">
+              <p className="text-interface text-3xl font-bold text-slate-100">
                 {currentCreditBalance.toLocaleString("id-ID")} kredit
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-slate-400 mt-1">
                 ≈ {(currentCreditBalance * 1000).toLocaleString("id-ID")} tokens tersedia
               </p>
             </div>
             {creditBalance && currentCreditBalance < 100 && (
-              <div className="px-3 py-1.5 bg-amber-100 text-amber-800 text-sm rounded-md">
+              <div className="px-3 py-1.5 bg-amber-500/15 text-amber-400 text-xs font-mono rounded-badge border border-amber-500/30">
                 Saldo Rendah
               </div>
             )}
           </div>
 
           {creditBalance?.lastPurchaseAt && (
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-[10px] font-mono text-slate-500 mt-3">
               Pembelian terakhir: {formatDate(creditBalance.lastPurchaseAt)}
               ({creditBalance.lastPurchaseCredits ?? 0} kredit)
             </p>
@@ -303,9 +303,9 @@ export default function SubscriptionOverviewPage() {
       )}
 
       {/* Usage Breakdown Table */}
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
-          <h2 className="font-medium">Breakdown Penggunaan</h2>
+      <div className="bg-slate-900/50 border border-hairline rounded-shell overflow-hidden">
+        <div className="px-4 py-3 border-b border-hairline">
+          <h2 className="text-interface text-sm font-medium text-slate-200">Breakdown Penggunaan</h2>
         </div>
 
         {usageBreakdown === undefined ? (
@@ -318,35 +318,35 @@ export default function SubscriptionOverviewPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs font-mono">
               <thead>
-                <tr className="bg-muted/50">
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
+                <tr className="bg-slate-800/40">
+                  <th className="text-left px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
                     Tipe
                   </th>
-                  <th className="text-right px-4 py-2 font-medium text-muted-foreground">
+                  <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
                     Tokens
                   </th>
-                  <th className="text-right px-4 py-2 font-medium text-muted-foreground">
+                  <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
                     Estimasi Biaya
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-slate-800/80">
                 {usageBreakdown.breakdown.map((item) => {
                   const IconComponent = ICON_MAP[item.icon as keyof typeof ICON_MAP] || ChatBubble
                   return (
-                    <tr key={item.type} className="hover:bg-muted/30">
+                    <tr key={item.type} className="hover:bg-slate-800/30">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <IconComponent className="h-4 w-4 text-muted-foreground" />
-                          <span>{item.type}</span>
+                          <IconComponent className="h-4 w-4 text-slate-500" />
+                          <span className="text-slate-200">{item.type}</span>
                         </div>
                       </td>
-                      <td className="text-right px-4 py-3 tabular-nums">
+                      <td className="text-right px-4 py-3 tabular-nums text-slate-100">
                         {item.tokens.toLocaleString("id-ID")}
                       </td>
-                      <td className="text-right px-4 py-3 tabular-nums text-muted-foreground">
+                      <td className="text-right px-4 py-3 tabular-nums text-slate-400">
                         Rp {item.cost.toLocaleString("id-ID")}
                       </td>
                     </tr>
@@ -354,12 +354,12 @@ export default function SubscriptionOverviewPage() {
                 })}
               </tbody>
               <tfoot>
-                <tr className="bg-muted/50 font-medium">
-                  <td className="px-4 py-2">Total</td>
-                  <td className="text-right px-4 py-2 tabular-nums">
+                <tr className="bg-slate-800/40 font-semibold">
+                  <td className="px-4 py-2 text-slate-200">Total</td>
+                  <td className="text-right px-4 py-2 tabular-nums text-slate-100">
                     {usageBreakdown.totalTokens.toLocaleString("id-ID")}
                   </td>
-                  <td className="text-right px-4 py-2 tabular-nums">
+                  <td className="text-right px-4 py-2 tabular-nums text-slate-200">
                     Rp {usageBreakdown.totalCost.toLocaleString("id-ID")}
                   </td>
                 </tr>
@@ -370,24 +370,24 @@ export default function SubscriptionOverviewPage() {
       </div>
 
       {/* Hybrid Model Info */}
-      <div className="bg-muted/30 border border-border rounded-lg p-4">
-        <h3 className="font-medium mb-2">Cara Kerja Pembayaran</h3>
-        <ul className="text-sm text-muted-foreground space-y-1.5">
+      <div className="bg-slate-800/30 border border-hairline rounded-shell p-4">
+        <h3 className="text-interface text-sm font-medium text-slate-200 mb-2">Cara Kerja Pembayaran</h3>
+        <ul className="text-sm text-slate-400 space-y-1.5">
           <li className="flex items-start gap-2">
-            <span className="text-primary">1.</span>
+            <span className="text-amber-500">1.</span>
             <span>
               <strong>Gratis:</strong> 100K tokens/bulan untuk mencoba fitur dasar
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-primary">2.</span>
+            <span className="text-amber-500">2.</span>
             <span>
               <strong>Top Up Credit:</strong> Beli credit mulai Rp 25.000, bayar sesuai
               pemakaian
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-primary">3.</span>
+            <span className="text-amber-500">3.</span>
             <span>
               <strong>Pro:</strong> Rp 200.000/bulan untuk menyusun 5-6 paper
             </span>

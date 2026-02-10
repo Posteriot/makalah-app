@@ -94,81 +94,87 @@ export function UserList({ users, currentUserRole }: UserListProps) {
 
   return (
     <>
-      <div className="data-table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Nama</th>
-              <th>Role</th>
-              <th>Subscription</th>
-              <th>Status Email</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 ? (
+      <div className="rounded-shell border border-hairline bg-slate-900/50 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-xs font-mono">
+            <thead className="bg-slate-800/40 border-b border-hairline">
               <tr>
-                <td colSpan={6} className="text-center text-muted-foreground py-8">
-                  Tidak ada data pengguna
-                </td>
+                <th className="px-4 py-3 text-slate-500 uppercase tracking-wider font-bold">Email</th>
+                <th className="px-4 py-3 text-slate-500 uppercase tracking-wider font-bold">Nama</th>
+                <th className="px-4 py-3 text-slate-500 uppercase tracking-wider font-bold">Role</th>
+                <th className="px-4 py-3 text-slate-500 uppercase tracking-wider font-bold">Subscription</th>
+                <th className="px-4 py-3 text-slate-500 uppercase tracking-wider font-bold">Status Email</th>
+                <th className="px-4 py-3 text-right text-slate-500 uppercase tracking-wider font-bold">Aksi</th>
               </tr>
-            ) : (
-              users.map((user) => (
-                <tr key={user._id}>
-                  <td className="cell-email">{user.email}</td>
-                  <td className="cell-name">{getFullName(user)}</td>
-                  <td>
-                    <RoleBadge
-                      role={user.role as "superadmin" | "admin" | "user"}
-                    />
-                  </td>
-                  <td>
-                    <span className="sub-badge capitalize">
-                      {user.subscriptionStatus}
-                    </span>
-                  </td>
-                  <td>
-                    {user.emailVerified ? (
-                      <span className="status-badge status-badge--verified">Verified</span>
-                    ) : (
-                      <span className="status-badge status-badge--unverified">Belum Verified</span>
-                    )}
-                  </td>
-                  <td>
-                    {currentUserRole === "superadmin" ? (
-                      <div className="flex items-center gap-2">
-                        {user.role === "superadmin" ? (
-                          <span className="action-disabled">Cannot modify</span>
-                        ) : user.role === "user" ? (
-                          <button
-                            className="action-btn action-btn--promote"
-                            onClick={() => handlePromoteClick(user)}
-                            disabled={isLoading}
-                          >
-                            <ArrowUp className="action-icon" />
-                            <span>Promote</span>
-                          </button>
-                        ) : user.role === "admin" ? (
-                          <button
-                            className="action-btn action-btn--demote"
-                            onClick={() => handleDemoteClick(user)}
-                            disabled={isLoading}
-                          >
-                            <ArrowDown className="action-icon" />
-                            <span>Demote</span>
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <span className="action-disabled text-sm">View only</span>
-                    )}
+            </thead>
+            <tbody className="divide-y divide-slate-800/80">
+              {users.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-slate-500">
+                    Tidak ada data pengguna
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                users.map((user) => (
+                  <tr key={user._id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="px-4 py-3 text-slate-300">{user.email}</td>
+                    <td className="px-4 py-3 text-slate-200">{getFullName(user)}</td>
+                    <td className="px-4 py-3">
+                      <RoleBadge
+                        role={user.role as "superadmin" | "admin" | "user"}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-badge text-[10px] font-bold uppercase tracking-wide bg-slate-800 text-slate-300 border border-hairline">
+                        {user.subscriptionStatus}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {user.emailVerified ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-badge text-[10px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-badge text-[10px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                          Belum Verified
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {currentUserRole === "superadmin" ? (
+                        <div className="flex items-center justify-end gap-2">
+                          {user.role === "superadmin" ? (
+                            <span className="text-slate-500 italic">Cannot modify</span>
+                          ) : user.role === "user" ? (
+                            <button
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-action border border-hairline text-slate-200 hover:bg-slate-800 hover-slash focus-ring disabled:opacity-50"
+                              onClick={() => handlePromoteClick(user)}
+                              disabled={isLoading}
+                            >
+                              <ArrowUp className="h-3.5 w-3.5 text-emerald-400" />
+                              <span>Promote</span>
+                            </button>
+                          ) : user.role === "admin" ? (
+                            <button
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-action border border-hairline text-slate-200 hover:bg-slate-800 hover-slash focus-ring disabled:opacity-50"
+                              onClick={() => handleDemoteClick(user)}
+                              disabled={isLoading}
+                            >
+                              <ArrowDown className="h-3.5 w-3.5 text-amber-400" />
+                              <span>Demote</span>
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-slate-500">View only</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <AlertDialog

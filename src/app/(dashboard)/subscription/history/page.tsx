@@ -30,7 +30,7 @@ export default function TransactionHistoryPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2">
+          <h1 className="text-interface text-xl font-semibold flex items-center gap-2">
             <Clock className="h-5 w-5 text-primary" />
             Riwayat Transaksi
           </h1>
@@ -39,7 +39,7 @@ export default function TransactionHistoryPage() {
           </p>
         </div>
 
-        <div className="bg-card border border-border rounded-lg p-8">
+        <div className="bg-slate-900/50 border border-hairline rounded-shell p-8">
           <RefreshDouble className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
         </div>
       </div>
@@ -49,7 +49,7 @@ export default function TransactionHistoryPage() {
   if (!user) {
     return (
       <div className="space-y-2">
-        <h1 className="text-xl font-semibold flex items-center gap-2">
+        <h1 className="text-interface text-xl font-semibold flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />
           Riwayat Transaksi
         </h1>
@@ -64,7 +64,7 @@ export default function TransactionHistoryPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl font-semibold flex items-center gap-2">
+        <h1 className="text-interface text-xl font-semibold flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />
           Riwayat Transaksi
         </h1>
@@ -74,40 +74,40 @@ export default function TransactionHistoryPage() {
       </div>
 
       {/* Transaction List */}
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <div className="bg-slate-900/50 border border-hairline rounded-shell overflow-hidden">
         {transactions.length === 0 ? (
           <div className="p-8 text-center">
-            <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Belum ada transaksi</p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <Clock className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-400">Belum ada transaksi</p>
+            <p className="text-sm text-slate-500 mt-1">
               Transaksi akan muncul setelah Anda top up credit atau menggunakan layanan.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-slate-800/80">
             {transactions.map((tx) => (
               <div
                 key={tx.id}
-                className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors"
+                className="flex items-center gap-4 p-4 hover:bg-slate-800/30 transition-colors"
               >
                 {/* Icon */}
                 <div
                   className={cn(
-                    "p-2 rounded-full",
-                    tx.type === "purchase" ? "bg-green-100" : "bg-red-100"
+                    "p-2 rounded-badge",
+                    tx.type === "purchase" ? "bg-emerald-500/15 border border-emerald-500/30" : "bg-rose-500/15 border border-rose-500/30"
                   )}
                 >
                   {tx.type === "purchase" ? (
-                    <ArrowDownRight className="h-4 w-4 text-green-600" />
+                    <ArrowDownRight className="h-4 w-4 text-emerald-400" />
                   ) : (
-                    <ArrowUpRight className="h-4 w-4 text-red-600" />
+                    <ArrowUpRight className="h-4 w-4 text-rose-400" />
                   )}
                 </div>
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{tx.description}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-interface font-medium truncate text-slate-200">{tx.description}</p>
+                  <p className="text-[11px] font-mono text-slate-500">
                     {formatDate(tx.createdAt)}
                   </p>
                 </div>
@@ -116,8 +116,8 @@ export default function TransactionHistoryPage() {
                 <div className="text-right">
                   <p
                     className={cn(
-                      "font-semibold tabular-nums",
-                      tx.type === "purchase" ? "text-green-600" : "text-red-600"
+                      "text-interface font-semibold tabular-nums",
+                      tx.type === "purchase" ? "text-emerald-400" : "text-rose-400"
                     )}
                   >
                     {tx.credits > 0 ? "+" : ""}
@@ -131,7 +131,7 @@ export default function TransactionHistoryPage() {
       </div>
 
       {/* Note */}
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="text-[10px] font-mono text-slate-500 text-center">
         Menampilkan 30 transaksi terakhir. Untuk laporan lengkap, hubungi support.
       </p>
     </div>

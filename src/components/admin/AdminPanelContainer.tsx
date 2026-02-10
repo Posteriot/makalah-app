@@ -1,6 +1,5 @@
 "use client"
 
-import "@/app/admin-styles.css"
 import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
@@ -131,18 +130,18 @@ function AdminSidebar({
       <aside
         className={cn(
           "fixed md:relative top-0 left-0 h-full md:h-auto z-50 md:z-0",
-          "w-[200px] bg-slate-900 border-r border-slate-800",
+          "w-[220px] md:w-auto md:col-span-3 bg-slate-900 border-r border-hairline",
           "transform transition-transform duration-200 ease-in-out",
           "md:transform-none",
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         {/* Mobile Close Button */}
-        <div className="flex items-center justify-between p-3 border-b border-slate-800 md:hidden">
+        <div className="flex items-center justify-between p-3 border-b border-hairline md:hidden">
           <span className="font-mono text-xs font-medium uppercase tracking-wide text-slate-400">Menu</span>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-slate-800 rounded-action transition-colors focus-ring"
           >
             <Xmark className="h-4 w-4" />
           </button>
@@ -162,7 +161,7 @@ function AdminSidebar({
                   onClose()
                 }}
                 className={cn(
-                  "relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors text-left",
+                  "relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-action text-xs font-medium transition-colors text-left",
                   "hover:bg-slate-800",
                   isActive
                     ? "bg-slate-800 text-amber-500"
@@ -218,7 +217,7 @@ function AdminOverviewContent({
       {/* Top Cards: System Status + User Summary - 2 columns */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* System Status Card - Mechanical Grace: Slate bg, hairline border */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
@@ -245,7 +244,7 @@ function AdminOverviewContent({
         </div>
 
         {/* User Summary Card */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
@@ -260,7 +259,7 @@ function AdminOverviewContent({
           </div>
           <button
             onClick={() => onNavigate("users")}
-            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-lg hover:bg-amber-400 transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
           >
             <Settings className="h-3.5 w-3.5" />
             Kelola Users
@@ -269,7 +268,7 @@ function AdminOverviewContent({
       </div>
 
       {/* User by Role Card - Mechanical Grace */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+      <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium text-slate-200">Pengguna Berdasarkan Role</h2>
           <span className="text-[10px] font-mono text-slate-500">Total: {totalUsers}</span>
@@ -328,8 +327,8 @@ function AdminOverviewContent({
       </div>
 
       {/* User by Tier Card - Mechanical Grace: hairline borders, dense */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-lg overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-slate-800">
+      <div className="bg-slate-900/50 border border-hairline rounded-shell overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-hairline">
           <h2 className="text-sm font-medium text-slate-200">Pengguna Berdasarkan Tier</h2>
         </div>
 
@@ -365,7 +364,7 @@ function AdminOverviewContent({
       </div>
 
       {/* Quick Actions / Admin Guide Card - Mechanical Grace */}
-      <div className="bg-slate-800/30 border border-slate-800 rounded-lg p-4">
+      <div className="bg-slate-800/30 border border-hairline rounded-shell p-4">
         <h3 className="text-sm font-medium text-slate-200 mb-3">Panduan Admin Panel</h3>
         <ul className="text-xs font-mono text-slate-400 space-y-2">
           <li className="flex items-start gap-2">
@@ -412,7 +411,7 @@ export function AdminPanelContainer({
 
   if (users === undefined) {
     return (
-      <div className="admin-container max-w-[1400px] mx-auto">
+      <div className="admin-container">
         <div className="animate-pulse space-y-4 p-6">
           <div className="h-8 bg-muted rounded w-1/3"></div>
           <div className="h-64 bg-muted rounded"></div>
@@ -422,12 +421,12 @@ export function AdminPanelContainer({
   }
 
   return (
-    <div className="admin-container max-w-[1400px] mx-auto">
+    <div className="admin-container">
       {/* Mobile Header - Mechanical Grace */}
-      <div className="md:hidden flex items-center gap-3 p-3 border-b border-slate-800 bg-slate-900">
+      <div className="md:hidden flex items-center gap-3 p-3 border-b border-hairline bg-slate-900">
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+          className="p-2 hover:bg-slate-800 rounded-action transition-colors focus-ring"
         >
           <Menu className="h-4 w-4" />
         </button>
@@ -435,7 +434,7 @@ export function AdminPanelContainer({
       </div>
 
       {/* Main Grid: Sidebar + Content */}
-      <div className="admin-body grid grid-cols-1 md:grid-cols-[200px_1fr] min-h-[calc(100vh-var(--header-h)-var(--footer-h)-48px)] overflow-hidden">
+      <div className="admin-body grid grid-cols-16 min-h-[calc(100vh-var(--header-h)-var(--footer-h)-48px)] overflow-hidden">
         <AdminSidebar
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -444,7 +443,7 @@ export function AdminPanelContainer({
         />
 
         {/* Content */}
-        <div className="flex-1 p-4 md:p-5 overflow-auto">
+        <div className="col-span-16 md:col-span-13 p-4 md:p-5 overflow-auto">
           {/* Dynamic Page Header - Mechanical Grace */}
           <div className="mb-5">
             <h1 className="text-base font-semibold flex items-center gap-2 text-slate-100">
@@ -489,16 +488,16 @@ export function AdminPanelContainer({
           )}
 
           {activeTab === "stats" && (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-lg">
+            <div className="bg-slate-900/50 border border-hairline rounded-shell">
               <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-8">
-                <div className="w-14 h-14 bg-slate-800 rounded-lg flex items-center justify-center mb-4">
+                <div className="w-14 h-14 bg-slate-800 rounded-shell flex items-center justify-center mb-4">
                   <StatsReport className="w-7 h-7 text-slate-500" />
                 </div>
                 <h3 className="text-sm font-semibold text-slate-200 mb-2">Fitur Statistik</h3>
                 <p className="text-xs font-mono text-slate-500 max-w-md mb-4">
                   Fitur statistik akan segera hadir. Anda akan dapat melihat analitik penggunaan aplikasi, statistik pengguna, dan metrik performa.
                 </p>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-mono font-medium bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-badge text-[10px] font-mono font-medium bg-sky-500/15 text-sky-400 border border-sky-500/30">
                   Coming Soon
                 </span>
               </div>
