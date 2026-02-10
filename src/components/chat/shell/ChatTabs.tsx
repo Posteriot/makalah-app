@@ -182,7 +182,7 @@ export function ChatTabs({
       className={cn(
         "flex items-stretch",
         "h-9 min-h-[36px]",
-        "bg-muted border-b border-border",
+        "bg-background border-b border-border/50",
         "flex-shrink-0"
       )}
       role="tablist"
@@ -200,7 +200,7 @@ export function ChatTabs({
         <div
           className={cn(
             "absolute left-0 top-0 bottom-0 w-8",
-            "bg-gradient-to-r from-muted to-transparent",
+            "bg-gradient-to-r from-background to-transparent",
             "pointer-events-none z-10",
             "transition-opacity duration-150",
             hasOverflowLeft ? "opacity-100" : "opacity-0"
@@ -212,7 +212,7 @@ export function ChatTabs({
         <div
           className={cn(
             "absolute right-0 top-0 bottom-0 w-8",
-            "bg-gradient-to-l from-muted to-transparent",
+            "bg-gradient-to-l from-background to-transparent",
             "pointer-events-none z-10",
             "transition-opacity duration-150",
             hasOverflowRight ? "opacity-100" : "opacity-0"
@@ -258,7 +258,7 @@ export function ChatTabs({
                 // Responsive sizing
                 "flex-1 min-w-[140px] max-w-[320px]",
                 // Active state - Amber-500 underline per Mechanical Grace spec
-                activeTabId === tab.id && "bg-background border-b-amber-500",
+                activeTabId === tab.id && "bg-card border-b-amber-500",
                 // Separator line between tabs (except last)
                 index < tabs.length - 1 &&
                   activeTabId !== tab.id &&
