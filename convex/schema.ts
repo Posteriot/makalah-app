@@ -62,10 +62,14 @@ export default defineSchema({
     xenditCustomerId: v.optional(v.string()), // Xendit customer reference
     // Onboarding completion flag
     hasCompletedOnboarding: v.optional(v.boolean()), // true after first-time onboarding flow
+    // Clerk synchronization state
+    clerkSyncStatus: v.optional(v.union(v.literal("active"), v.literal("deleted"))),
+    clerkDeletedAt: v.optional(v.number()),
   })
     .index("by_clerkUserId", ["clerkUserId"])
     .index("by_role", ["role"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_clerkSyncStatus", ["clerkSyncStatus"]),
   papers: defineTable({
     userId: v.id("users"),
     title: v.string(),

@@ -4,17 +4,7 @@ import { useState, useEffect } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +39,8 @@ import {
   Download,
   WarningCircle,
   Settings,
+  NavArrowLeft,
+  NavArrowRight,
 } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 import { StyleConstitutionVersionHistoryDialog } from "./StyleConstitutionVersionHistoryDialog"
@@ -70,6 +62,24 @@ interface StyleConstitutionManagerProps {
   userId: Id<"users">
 }
 
+type ConstitutionDynamicColumnKey =
+  | "version"
+  | "status"
+  | "creator"
+  | "updatedAt"
+  | "actions"
+
+const CONSTITUTION_DYNAMIC_COLUMNS: Array<{
+  key: ConstitutionDynamicColumnKey
+  label: string
+}> = [
+  { key: "version", label: "Versi" },
+  { key: "status", label: "Status" },
+  { key: "creator", label: "Dibuat Oleh" },
+  { key: "updatedAt", label: "Update Terakhir" },
+  { key: "actions", label: "Aksi" },
+]
+
 export function StyleConstitutionManager({ userId }: StyleConstitutionManagerProps) {
   const constitutions = useQuery(api.styleConstitutions.list, {
     requestorUserId: userId,
@@ -83,6 +93,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
   const [deactivateConstitution, setDeactivateConstitution] = useState<StyleConstitution | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSeedingDefault, setIsSeedingDefault] = useState(false)
+  const [dynamicColumnStart, setDynamicColumnStart] = useState(0)
 
   // Form state
   const [formName, setFormName] = useState("")
@@ -275,31 +286,157 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
     ? formContent !== editingConstitution.content || formDescription !== (editingConstitution.description ?? "")
     : formName.trim() !== "" && formContent.trim() !== ""
 
+  const DESKTOP_DYNAMIC_COLUMN_COUNT = 2
+  const MOBILE_DYNAMIC_COLUMN_COUNT = 1
+
+  const visibleDynamicColumnsDesktop = Array.from(
+    { length: DESKTOP_DYNAMIC_COLUMN_COUNT },
+    (_, offset) =>
+      CONSTITUTION_DYNAMIC_COLUMNS[
+        (dynamicColumnStart + offset) % CONSTITUTION_DYNAMIC_COLUMNS.length
+      ]
+  )
+
+  const visibleDynamicColumnsMobile = Array.from(
+    { length: MOBILE_DYNAMIC_COLUMN_COUNT },
+    (_, offset) =>
+      CONSTITUTION_DYNAMIC_COLUMNS[
+        (dynamicColumnStart + offset) % CONSTITUTION_DYNAMIC_COLUMNS.length
+      ]
+  )
+
+  const goToPrevColumns = () => {
+    setDynamicColumnStart(
+      (prev) =>
+        (prev - 1 + CONSTITUTION_DYNAMIC_COLUMNS.length) %
+        CONSTITUTION_DYNAMIC_COLUMNS.length
+    )
+  }
+
+  const goToNextColumns = () => {
+    setDynamicColumnStart(
+      (prev) => (prev + 1) % CONSTITUTION_DYNAMIC_COLUMNS.length
+    )
+  }
+
+  const renderActionsCell = (constitution: StyleConstitution) => (
+    <div className="flex items-center justify-center gap-1">
+      <button
+        type="button"
+        onClick={() => setEditingConstitution(constitution)}
+        title="Edit"
+        className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-muted-foreground transition-colors hover:bg-slate-200 hover:text-foreground dark:hover:bg-slate-800"
+      >
+        <EditPencil className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setHistoryConstitution(constitution)}
+        title="Riwayat Versi"
+        className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-sky-600 transition-colors hover:bg-slate-200 dark:text-sky-400 dark:hover:bg-slate-800"
+      >
+        <ClockRotateRight className="h-4 w-4" />
+      </button>
+      {constitution.isActive ? (
+        <button
+          type="button"
+          onClick={() => setDeactivateConstitution(constitution)}
+          title="Nonaktifkan"
+          className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400"
+        >
+          <SwitchOff className="h-4 w-4" />
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => setActivateConstitution(constitution)}
+            title="Aktifkan"
+            className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-emerald-600 transition-colors hover:bg-slate-200 dark:text-emerald-400 dark:hover:bg-slate-800"
+          >
+            <SwitchOn className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteConstitution(constitution)}
+            title="Hapus Semua Versi"
+            className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-rose-600 transition-colors hover:bg-rose-500/10 dark:text-rose-400"
+          >
+            <Trash className="h-4 w-4" />
+          </button>
+        </>
+      )}
+    </div>
+  )
+
+  const renderDynamicCell = (
+    columnKey: ConstitutionDynamicColumnKey,
+    constitution: StyleConstitution
+  ) => {
+    if (columnKey === "version") {
+      return (
+        <span className="inline-flex items-center rounded-badge border border-border bg-slate-200 px-2.5 py-1 text-[10px] font-bold tracking-wide text-slate-700 uppercase dark:bg-slate-700 dark:text-slate-100">
+          v{constitution.version}
+        </span>
+      )
+    }
+
+    if (columnKey === "status") {
+      return constitution.isActive ? (
+        <span className="inline-flex items-center rounded-badge border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold tracking-wide text-emerald-600 uppercase dark:text-emerald-400">
+          Aktif
+        </span>
+      ) : (
+        <span className="inline-flex items-center rounded-badge border border-slate-500/30 bg-slate-500/15 px-2.5 py-1 text-[10px] font-bold tracking-wide text-slate-600 uppercase dark:text-slate-300">
+          Tidak Aktif
+        </span>
+      )
+    }
+
+    if (columnKey === "creator") {
+      return (
+        <span className="text-narrative text-xs text-muted-foreground">
+          {constitution.creatorEmail}
+        </span>
+      )
+    }
+
+    if (columnKey === "updatedAt") {
+      return (
+        <span className="text-narrative text-xs text-muted-foreground">
+          {formatDate(constitution.updatedAt ?? constitution.createdAt)}
+        </span>
+      )
+    }
+
+    return renderActionsCell(constitution)
+  }
+
   if (constitutions === undefined) {
     return (
-      <Card>
-        <CardContent className="pt-6">
+      <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
+        <div className="p-6">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-muted rounded w-1/3"></div>
-            <div className="h-64 bg-muted rounded"></div>
+            <div className="h-8 w-1/3 rounded bg-muted" />
+            <div className="h-64 rounded bg-muted" />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
     <>
       {/* Refrasa Tool Status Toggle */}
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Settings className="h-4 w-4" />
+      <div className="mb-4 overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
+        <div className="border-b border-border bg-slate-200/45 px-4 py-3 dark:bg-slate-900/50">
+          <h3 className="text-interface flex items-center gap-2 text-base font-medium text-foreground">
+            <Settings className="h-4 w-4 text-muted-foreground" />
             Status Tool Refrasa
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
+          </h3>
+        </div>
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
               <Label htmlFor="refrasa-toggle" className="text-sm font-medium">
                 Aktifkan Refrasa Tool
@@ -316,192 +453,219 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
             />
           </div>
           {isRefrasaEnabled === false && (
-            <div className="mt-3 p-2 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md">
-              <p className="text-xs text-orange-700 dark:text-orange-300">
+            <div className="mt-3 rounded-action border border-amber-500/30 bg-amber-500/10 p-2">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
                 <strong>Mode Maintenance:</strong> Tombol Refrasa saat ini disembunyikan dari semua user.
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Style Constitution Manager */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Journal className="h-5 w-5" />
+      <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
+        <div className="border-b border-border px-4 py-4 md:px-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-1">
+              <h3 className="text-interface flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Journal className="h-4 w-4 text-muted-foreground" />
                 Refrasa - Style Constitution
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
+              </h3>
+              <p className="text-narrative text-xs text-muted-foreground">
                 Kelola panduan gaya penulisan (Layer 2) untuk Refrasa tool. Hanya satu constitution yang bisa aktif.
               </p>
             </div>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Buat Constitution Baru
-            </Button>
+            <button
+              type="button"
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="focus-ring inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Buat Constitution Baru</span>
+            </button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+
+        <div className="p-4 md:p-6">
           {/* Information Note */}
-          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-3 mb-4 flex items-start gap-2">
-            <InfoCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-blue-700 dark:text-blue-300">
+          <div className="mb-4 flex items-start gap-2 rounded-action border border-sky-500/30 bg-sky-500/10 p-3">
+            <InfoCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-sky-600 dark:text-sky-400" />
+            <p className="text-sm text-sky-700 dark:text-sky-300">
               <strong>Catatan:</strong> Constitution hanya untuk style rules (Layer 2).
               Naturalness criteria (Layer 1) sudah hardcoded dan tidak bisa di-override.
             </p>
           </div>
 
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Versi</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Dibuat Oleh</TableHead>
-                  <TableHead>Terakhir Diupdate</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {constitutions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-0">
-                      {/* Empty State with Seed Default Option */}
-                      <div className="flex flex-col items-center justify-center py-12 px-4">
-                        <div className="rounded-full bg-orange-100 dark:bg-orange-900/30 p-3 mb-4">
-                          <WarningCircle className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-                        </div>
-                        <h3 className="text-lg font-semibold mb-2">
-                          Belum Ada Style Constitution
-                        </h3>
-                        <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-                          Refrasa membutuhkan Style Constitution (Layer 2) untuk panduan gaya penulisan.
-                          Gunakan constitution default atau buat sendiri.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <Button
-                            onClick={handleSeedDefault}
-                            disabled={isSeedingDefault}
-                            className="gap-2"
+          {constitutions.length === 0 ? (
+            <div className="rounded-shell border-main border border-border bg-card/80 px-4 py-10 text-center dark:bg-slate-900/80">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10">
+                <WarningCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h3 className="text-interface mb-2 text-lg font-semibold text-foreground">
+                Belum Ada Style Constitution
+              </h3>
+              <p className="text-narrative mx-auto mb-6 max-w-md text-sm text-muted-foreground">
+                Refrasa membutuhkan Style Constitution (Layer 2) untuk panduan gaya penulisan.
+              </p>
+              <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleSeedDefault}
+                  disabled={isSeedingDefault}
+                  className="focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-mono text-foreground transition-colors hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-900 dark:hover:bg-slate-800"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>{isSeedingDefault ? "Memproses..." : "Gunakan Default"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateDialogOpen(true)}
+                  className="focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Buat Sendiri</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
+              <div className="hidden md:block">
+                <table className="text-interface w-full table-fixed border-collapse text-left text-sm">
+                  <thead className="border-b border-border bg-slate-300/70 dark:bg-slate-800/95">
+                    <tr>
+                      <th className="text-signal h-12 w-[36%] bg-slate-200/75 px-4 py-3 text-[10px] font-bold tracking-wider text-muted-foreground uppercase dark:bg-slate-900/85">
+                        Constitution
+                      </th>
+                      <th className="h-12 w-[8%] border-l border-border bg-slate-200/75 px-2 py-2 dark:bg-slate-900/85">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={goToPrevColumns}
+                            aria-label="Kolom sebelumnya"
+                            className="focus-ring inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
                           >
-                            <Download className="h-4 w-4" />
-                            {isSeedingDefault ? "Memproses..." : "Gunakan Default Constitution"}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => setIsCreateDialogOpen(true)}
+                            <NavArrowLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={goToNextColumns}
+                            aria-label="Kolom berikutnya"
+                            className="focus-ring inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
                           >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Buat Sendiri
-                          </Button>
+                            <NavArrowRight className="h-4 w-4" />
+                          </button>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-4">
-                          Default: &quot;Makalah Style Constitution&quot; - panduan gaya penulisan akademis Bahasa Indonesia
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  constitutions.map((constitution) => (
-                    <TableRow key={constitution._id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div>{constitution.name}</div>
-                          {constitution.description && (
-                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                      </th>
+                      {visibleDynamicColumnsDesktop.map((column) => (
+                        <th
+                          key={column.key}
+                          className="text-signal h-12 w-[28%] px-4 py-3 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
+                        >
+                          {column.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {constitutions.map((constitution) => (
+                      <tr key={constitution._id} className="group transition-colors hover:bg-muted/50">
+                        <td className="bg-slate-200/35 px-4 py-3 align-top group-hover:bg-slate-200/55 dark:bg-slate-900/55 dark:group-hover:bg-slate-800/70">
+                          <div className="text-narrative font-medium text-foreground">
+                            {constitution.name}
+                          </div>
+                          {constitution.description ? (
+                            <div className="text-narrative mt-0.5 break-words text-xs text-muted-foreground">
                               {constitution.description}
                             </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">v{constitution.version}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {constitution.isActive ? (
-                          <Badge variant="default" className="bg-green-600">
-                            Aktif
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Tidak Aktif</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {constitution.creatorEmail}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {formatDate(constitution.updatedAt ?? constitution.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingConstitution(constitution)}
-                            title="Edit"
+                          ) : null}
+                        </td>
+                        <td className="border-l border-border bg-gradient-to-r from-slate-300/45 to-card/40 px-2 py-3 group-hover:from-slate-300/65 group-hover:to-muted/40 dark:from-slate-900/80 dark:to-slate-900/40 dark:group-hover:from-slate-800/95 dark:group-hover:to-slate-800/50" />
+                        {visibleDynamicColumnsDesktop.map((column) => (
+                          <td key={`${constitution._id}-${column.key}`} className="px-4 py-3 text-center align-top">
+                            <div className="inline-flex items-center justify-center">
+                              {renderDynamicCell(column.key, constitution)}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="md:hidden">
+                <table className="text-interface w-full table-fixed border-collapse text-left text-xs">
+                  <thead className="border-b border-border bg-slate-300/70 dark:bg-slate-800/95">
+                    <tr>
+                      <th className="text-signal h-11 w-[44%] bg-slate-200/75 px-2 py-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase dark:bg-slate-900/85">
+                        Constitution
+                      </th>
+                      <th className="h-11 w-[18%] border-l border-border bg-slate-200/75 px-1 py-1 dark:bg-slate-900/85">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={goToPrevColumns}
+                            aria-label="Kolom sebelumnya"
+                            className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
                           >
-                            <EditPencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setHistoryConstitution(constitution)}
-                            title="Riwayat Versi"
+                            <NavArrowLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={goToNextColumns}
+                            aria-label="Kolom berikutnya"
+                            className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
                           >
-                            <ClockRotateRight className="h-4 w-4" />
-                          </Button>
-                          {constitution.isActive ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setDeactivateConstitution(constitution)}
-                              title="Nonaktifkan"
-                              className="text-orange-600 hover:text-orange-700"
-                            >
-                              <SwitchOff className="h-4 w-4" />
-                            </Button>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setActivateConstitution(constitution)}
-                                title="Aktifkan"
-                                className="text-green-600 hover:text-green-700"
-                              >
-                                <SwitchOn className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setDeleteConstitution(constitution)}
-                                title="Hapus Semua Versi"
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
+                            <NavArrowRight className="h-4 w-4" />
+                          </button>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                      </th>
+                      {visibleDynamicColumnsMobile.map((column) => (
+                        <th
+                          key={`mobile-${column.key}`}
+                          className="text-signal h-11 w-[38%] px-2 py-2 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
+                        >
+                          {column.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {constitutions.map((constitution) => (
+                      <tr key={constitution._id} className="group transition-colors hover:bg-muted/50">
+                        <td className="bg-slate-200/35 px-2 py-3 align-top group-hover:bg-slate-200/55 dark:bg-slate-900/55 dark:group-hover:bg-slate-800/70">
+                          <div className="text-narrative text-xs font-medium text-foreground">
+                            {constitution.name}
+                          </div>
+                          {constitution.description ? (
+                            <div className="text-narrative mt-1 break-words text-[11px] text-muted-foreground">
+                              {constitution.description}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="border-l border-border bg-gradient-to-r from-slate-300/45 to-card/40 px-1 py-3 dark:from-slate-900/80 dark:to-slate-900/40" />
+                        {visibleDynamicColumnsMobile.map((column) => (
+                          <td key={`${constitution._id}-mobile-${column.key}`} className="px-2 py-3 text-center align-top">
+                            <div className="inline-flex items-center justify-center">
+                              {renderDynamicCell(column.key, constitution)}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {constitutions.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-4">
-              Catatan: Jika tidak ada constitution yang aktif, Refrasa akan menggunakan hanya Layer 1 (Core Naturalness Criteria).
+            <p className="text-narrative mt-4 text-xs text-muted-foreground">
+              Catatan: Jika tidak ada constitution aktif, Refrasa hanya menggunakan Layer 1 (Core Naturalness Criteria).
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Create/Edit Dialog */}
       <Dialog

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { auth, currentUser } from "@clerk/nextjs/server"
-import { fetchMutation } from "convex/nextjs"
+import { fetchMutation, fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { GlobalHeader } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
@@ -32,7 +32,24 @@ async function ensureConvexUser() {
     }
     if (!convexToken) return
 
-    const user = await currentUser()
+    const convexOptions = { token: convexToken }
+
+    // Fast-path: user sudah ada di Convex, skip Clerk API call.
+    const existingUser = await fetchQuery(
+      api.users.getUserByClerkId,
+      { clerkUserId },
+      convexOptions
+    )
+    if (existingUser) return
+
+    let user = null
+    try {
+      user = await currentUser()
+    } catch (error) {
+      // Clerk API bisa gagal sementara (network/rate limit/internal). Jangan block render dashboard.
+      console.error("[ensureConvexUser] currentUser failed:", error)
+      return
+    }
     if (!user) return
 
     const primaryEmailAddress =
@@ -52,7 +69,7 @@ async function ensureConvexUser() {
       firstName,
       lastName,
       emailVerified,
-    }, { token: convexToken })
+    }, convexOptions)
 
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Convex sync timeout (5s)")), 5000)

@@ -120,3 +120,69 @@ export const demoteToUser = mutation({
     }
   },
 })
+
+/**
+ * Soft delete user in Convex (Clerk deletion handled by API route)
+ * - superadmin: can delete admin/user (not superadmin, not self)
+ * - admin: can delete regular user only
+ */
+export const softDeleteUser = mutation({
+  args: {
+    targetUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error("Tidak terautentikasi")
+    }
+
+    const requestor = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) =>
+        q.eq("clerkUserId", identity.subject)
+      )
+      .unique()
+
+    if (!requestor) {
+      throw new Error("User tidak ditemukan")
+    }
+
+    await requireRole(ctx.db, requestor._id, "admin")
+
+    const targetUser = await ctx.db.get(args.targetUserId)
+    if (!targetUser) {
+      throw new Error("User target tidak ditemukan")
+    }
+
+    if (targetUser._id === requestor._id) {
+      throw new Error("Tidak bisa menghapus akun sendiri")
+    }
+
+    if (targetUser.role === "superadmin") {
+      throw new Error("Tidak bisa menghapus superadmin")
+    }
+
+    if (requestor.role === "admin" && targetUser.role !== "user") {
+      throw new Error("Admin hanya bisa menghapus user biasa")
+    }
+
+    if (targetUser.clerkSyncStatus === "deleted") {
+      return {
+        success: true,
+        message: `User ${targetUser.email} sudah dihapus sebelumnya`,
+      }
+    }
+
+    const now = Date.now()
+    await ctx.db.patch(args.targetUserId, {
+      clerkSyncStatus: "deleted",
+      clerkDeletedAt: now,
+      updatedAt: now,
+    })
+
+    return {
+      success: true,
+      message: `User ${targetUser.email} berhasil dihapus`,
+    }
+  },
+})

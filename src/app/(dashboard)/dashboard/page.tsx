@@ -1,4 +1,4 @@
-import { auth, currentUser } from "@clerk/nextjs/server"
+import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { fetchQuery } from "convex/nextjs"
@@ -39,12 +39,12 @@ export default async function DashboardPage({
     redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)
   }
 
-  const user = await currentUser()
-  if (!user) {
+  let convexToken: string | null = null
+  try {
+    convexToken = await getToken({ template: "convex" })
+  } catch {
     redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)
   }
-
-  const convexToken = await getToken({ template: "convex" })
   if (!convexToken) {
     return (
       <div className="max-w-2xl mx-auto p-6">
@@ -61,7 +61,7 @@ export default async function DashboardPage({
   const convexOptions = { token: convexToken }
 
   const convexUser = await fetchQuery(api.users.getUserByClerkId, {
-    clerkUserId: user.id,
+    clerkUserId,
   }, convexOptions)
 
   if (!convexUser) {

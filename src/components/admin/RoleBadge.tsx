@@ -19,7 +19,8 @@ export function RoleBadge({ role, className }: RoleBadgeProps) {
     },
     user: {
       label: "User",
-      className: "bg-slate-800 text-slate-300 border border-hairline",
+      className:
+        "border border-border bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100",
     },
   }
 

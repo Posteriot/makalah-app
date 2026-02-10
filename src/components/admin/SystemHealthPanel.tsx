@@ -74,11 +74,11 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
   // Loading state
   if (activePrompt === undefined || alertCount === undefined) {
     return (
-      <div className="rounded-shell border border-hairline bg-slate-900/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-hairline">
+      <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
+        <div className="border-b border-border bg-slate-200/45 px-6 py-5 dark:bg-slate-900/50">
           <div className="flex items-center gap-2">
-            <Refresh className="h-4 w-4 text-slate-500 animate-spin" />
-            <h3 className="text-interface text-sm font-semibold text-slate-200">System Health</h3>
+            <Refresh className="h-4 w-4 animate-spin text-muted-foreground" />
+            <h3 className="text-interface text-sm font-semibold text-foreground">System Health</h3>
           </div>
         </div>
         <div className="p-6">
@@ -95,19 +95,19 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
   const hasUnresolvedAlerts = (alertCount?.total ?? 0) > 0
 
   return (
-    <div className={cn("rounded-shell border border-hairline overflow-hidden", !isFallbackMode && "border-l-2 border-l-emerald-500")}>
-      <div className="px-6 py-5 border-b border-hairline bg-slate-900/40">
+    <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
+      <div className="border-b border-border bg-slate-200/45 px-6 py-5 dark:bg-slate-900/50">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
               {isFallbackMode ? (
                 <WarningCircle className="h-4 w-4 text-destructive" />
               ) : (
-                <CheckCircle className="h-4 w-4 text-emerald-400" />
+                <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               )}
-              <h3 className="text-interface text-sm font-semibold text-slate-200">System Health Monitoring</h3>
+              <h3 className="text-interface text-sm font-semibold text-foreground">System Health Monitoring</h3>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Status real-time system prompt dan indikator alert monitoring
             </p>
           </div>

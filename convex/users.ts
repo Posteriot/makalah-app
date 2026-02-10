@@ -5,9 +5,19 @@ import { requireAuthUserId } from "./auth"
 
 export type SubscriptionStatus = "free" | "pro" | "canceled"
 export type UserRole = "superadmin" | "admin" | "user"
+export type ClerkSyncStatus = "active" | "deleted"
 
 // Hardcoded superadmin email
 const SUPERADMIN_EMAIL = "erik.supit@gmail.com"
+
+const clerkSnapshotUserValidator = v.object({
+  clerkUserId: v.string(),
+  email: v.string(),
+  firstName: v.optional(v.string()),
+  lastName: v.optional(v.string()),
+  emailVerified: v.optional(v.boolean()),
+  lastSignInAt: v.optional(v.number()),
+})
 
 /**
  * Public mutation untuk create user dari Clerk webhook.
@@ -24,8 +34,12 @@ export const createUserFromWebhook = mutationGeneric({
     email: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
+    emailVerified: v.optional(v.boolean()),
   },
-  handler: async (ctx, { clerkUserId, email, firstName, lastName }): Promise<string> => {
+  handler: async (
+    ctx,
+    { clerkUserId, email, firstName, lastName, emailVerified }
+  ): Promise<string> => {
     const { db } = ctx
 
     // Check if user already exists by Clerk ID
@@ -33,10 +47,6 @@ export const createUserFromWebhook = mutationGeneric({
       .query("users")
       .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
       .unique()
-
-    if (existing) {
-      return existing._id
-    }
 
     // Check if pending admin exists with this email
     const allUsersWithEmail = await db
@@ -50,15 +60,35 @@ export const createUserFromWebhook = mutationGeneric({
 
     const now = Date.now()
 
+    if (existing) {
+      const shouldBeSuperadmin = email === SUPERADMIN_EMAIL && existing.role !== "superadmin"
+
+      await db.patch(existing._id, {
+        email,
+        firstName,
+        lastName,
+        emailVerified: emailVerified ?? existing.emailVerified,
+        lastLoginAt: now,
+        updatedAt: now,
+        clerkSyncStatus: "active" as ClerkSyncStatus,
+        clerkDeletedAt: undefined,
+        ...(shouldBeSuperadmin ? { role: "superadmin" as UserRole } : {}),
+      })
+      return existing._id
+    }
+
     if (pendingAdmin) {
       // Update pending admin with real Clerk ID, preserve role
       await db.patch(pendingAdmin._id, {
         clerkUserId,
+        email,
         firstName,
         lastName,
-        emailVerified: false,
+        emailVerified: emailVerified ?? false,
         lastLoginAt: now,
         updatedAt: now,
+        clerkSyncStatus: "active" as ClerkSyncStatus,
+        clerkDeletedAt: undefined,
       })
       return pendingAdmin._id
     }
@@ -73,10 +103,11 @@ export const createUserFromWebhook = mutationGeneric({
       firstName,
       lastName,
       role,
-      emailVerified: false,
+      emailVerified: emailVerified ?? false,
       subscriptionStatus: "free",
       createdAt: now,
       lastLoginAt: now,
+      clerkSyncStatus: "active" as ClerkSyncStatus,
     })
 
     return userId
@@ -154,14 +185,20 @@ export const checkIsSuperAdmin = queryGeneric({
 
 // USER-008: List all users (admin/superadmin only)
 export const listAllUsers = queryGeneric({
-  args: { requestorUserId: v.id("users") },
-  handler: async ({ db }, { requestorUserId }) => {
+  args: {
+    requestorUserId: v.id("users"),
+    includeDeleted: v.optional(v.boolean()),
+  },
+  handler: async ({ db }, { requestorUserId, includeDeleted }) => {
     // Permission check: requires admin or superadmin
     await requireRole(db, requestorUserId, "admin")
 
     const users = await db.query("users").order("desc").collect()
+    const visibleUsers = includeDeleted
+      ? users
+      : users.filter((u) => u.clerkSyncStatus !== "deleted")
 
-    return users.map((u) => ({
+    return visibleUsers.map((u) => ({
       _id: u._id,
       email: u.email,
       firstName: u.firstName,
@@ -169,9 +206,183 @@ export const listAllUsers = queryGeneric({
       role: u.role,
       emailVerified: u.emailVerified,
       subscriptionStatus: u.subscriptionStatus,
+      clerkSyncStatus: (u.clerkSyncStatus as ClerkSyncStatus | undefined) ?? "active",
       createdAt: u.createdAt,
       lastLoginAt: u.lastLoginAt,
     }))
+  },
+})
+
+// USER-008b: Get target user data for admin management actions
+export const getUserForAdminManagement = queryGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    targetUserId: v.id("users"),
+  },
+  handler: async ({ db }, { requestorUserId, targetUserId }) => {
+    await requireRole(db, requestorUserId, "admin")
+    const user = await db.get(targetUserId)
+    if (!user) return null
+
+    return {
+      _id: user._id,
+      clerkUserId: user.clerkUserId,
+      email: user.email,
+      role: user.role,
+      clerkSyncStatus: (user.clerkSyncStatus as ClerkSyncStatus | undefined) ?? "active",
+    }
+  },
+})
+
+// USER-008c: Mark user deleted based on Clerk webhook user.deleted event
+export const markUserDeletedFromWebhook = mutationGeneric({
+  args: { clerkUserId: v.string() },
+  handler: async ({ db }, { clerkUserId }) => {
+    const user = await db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
+      .unique()
+
+    if (!user) {
+      return { found: false }
+    }
+
+    const now = Date.now()
+    await db.patch(user._id, {
+      clerkSyncStatus: "deleted" as ClerkSyncStatus,
+      clerkDeletedAt: now,
+      updatedAt: now,
+    })
+
+    return { found: true, userId: user._id }
+  },
+})
+
+// USER-008d: Reconcile Convex users against Clerk snapshot (superadmin only)
+export const reconcileWithClerkSnapshot = mutationGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    clerkUsers: v.array(clerkSnapshotUserValidator),
+  },
+  handler: async ({ db }, { requestorUserId, clerkUsers }) => {
+    await requireRole(db, requestorUserId, "superadmin")
+
+    const now = Date.now()
+    const allUsers = await db.query("users").collect()
+
+    const clerkById = new Map(clerkUsers.map((user) => [user.clerkUserId, user]))
+    const pendingUsers = allUsers.filter((user) => user.clerkUserId.startsWith("pending_"))
+    const consumedPendingIds = new Set<string>()
+
+    let reactivated = 0
+    let updated = 0
+    let markedDeleted = 0
+    let inserted = 0
+    let linkedFromPending = 0
+
+    for (const user of allUsers) {
+      if (user.clerkUserId.startsWith("pending_")) {
+        continue
+      }
+
+      const snapshot = clerkById.get(user.clerkUserId)
+      if (!snapshot) {
+        if (user.clerkSyncStatus !== "deleted") {
+          await db.patch(user._id, {
+            clerkSyncStatus: "deleted" as ClerkSyncStatus,
+            clerkDeletedAt: now,
+            updatedAt: now,
+          })
+          markedDeleted += 1
+        }
+        continue
+      }
+
+      const shouldBeSuperadmin =
+        snapshot.email === SUPERADMIN_EMAIL && user.role !== "superadmin"
+      const nextSyncStatus = "active" as ClerkSyncStatus
+
+      const shouldPatch =
+        user.email !== snapshot.email ||
+        user.firstName !== snapshot.firstName ||
+        user.lastName !== snapshot.lastName ||
+        user.emailVerified !== (snapshot.emailVerified ?? user.emailVerified) ||
+        user.clerkSyncStatus !== nextSyncStatus ||
+        user.clerkDeletedAt !== undefined ||
+        user.lastLoginAt !== (snapshot.lastSignInAt ?? user.lastLoginAt) ||
+        shouldBeSuperadmin
+
+      if (shouldPatch) {
+        await db.patch(user._id, {
+          email: snapshot.email,
+          firstName: snapshot.firstName,
+          lastName: snapshot.lastName,
+          emailVerified: snapshot.emailVerified ?? user.emailVerified,
+          lastLoginAt: snapshot.lastSignInAt ?? user.lastLoginAt,
+          clerkSyncStatus: nextSyncStatus,
+          clerkDeletedAt: undefined,
+          updatedAt: now,
+          ...(shouldBeSuperadmin ? { role: "superadmin" as UserRole } : {}),
+        })
+        if (user.clerkSyncStatus === "deleted") {
+          reactivated += 1
+        } else {
+          updated += 1
+        }
+      }
+
+      clerkById.delete(user.clerkUserId)
+    }
+
+    for (const snapshot of clerkById.values()) {
+      const pendingMatch = pendingUsers.find(
+        (user) =>
+          !consumedPendingIds.has(String(user._id)) &&
+          user.email === snapshot.email
+      )
+
+      if (pendingMatch) {
+        await db.patch(pendingMatch._id, {
+          clerkUserId: snapshot.clerkUserId,
+          email: snapshot.email,
+          firstName: snapshot.firstName,
+          lastName: snapshot.lastName,
+          emailVerified: snapshot.emailVerified ?? pendingMatch.emailVerified,
+          lastLoginAt: snapshot.lastSignInAt ?? pendingMatch.lastLoginAt,
+          clerkSyncStatus: "active" as ClerkSyncStatus,
+          clerkDeletedAt: undefined,
+          updatedAt: now,
+        })
+        consumedPendingIds.add(String(pendingMatch._id))
+        linkedFromPending += 1
+        continue
+      }
+
+      const role: UserRole = snapshot.email === SUPERADMIN_EMAIL ? "superadmin" : "user"
+      await db.insert("users", {
+        clerkUserId: snapshot.clerkUserId,
+        email: snapshot.email,
+        firstName: snapshot.firstName,
+        lastName: snapshot.lastName,
+        role,
+        emailVerified: snapshot.emailVerified ?? false,
+        subscriptionStatus: "free",
+        createdAt: now,
+        lastLoginAt: snapshot.lastSignInAt ?? now,
+        clerkSyncStatus: "active" as ClerkSyncStatus,
+      })
+      inserted += 1
+    }
+
+    return {
+      scannedConvexUsers: allUsers.length,
+      snapshotUsers: clerkUsers.length,
+      updated,
+      reactivated,
+      markedDeleted,
+      inserted,
+      linkedFromPending,
+    }
   },
 })
 
@@ -215,6 +426,8 @@ export const createUser = mutationGeneric({
         emailVerified: emailVerified ?? existing.emailVerified,
         lastLoginAt: now,
         updatedAt: now,
+        clerkSyncStatus: "active" as ClerkSyncStatus,
+        clerkDeletedAt: undefined,
         ...(shouldBeSuperadmin ? { role: "superadmin" as UserRole } : {}),
       })
       return existing._id
@@ -234,11 +447,14 @@ export const createUser = mutationGeneric({
       // Update pending admin dengan real Clerk ID, PRESERVE role
       await db.patch(pendingAdmin._id, {
         clerkUserId,
+        email,
         firstName,
         lastName,
         emailVerified: emailVerified ?? false,
         lastLoginAt: now,
         updatedAt: now,
+        clerkSyncStatus: "active" as ClerkSyncStatus,
+        clerkDeletedAt: undefined,
       })
       return pendingAdmin._id
     }
@@ -257,6 +473,7 @@ export const createUser = mutationGeneric({
       subscriptionStatus: (subscriptionStatus as SubscriptionStatus) ?? "free",
       createdAt: now,
       lastLoginAt: now,
+      clerkSyncStatus: "active" as ClerkSyncStatus,
     })
 
     return userId
@@ -345,4 +562,3 @@ export const updateProfile = mutationGeneric({
     return { success: true }
   },
 })
-

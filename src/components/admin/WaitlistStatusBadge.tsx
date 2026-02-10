@@ -8,15 +8,15 @@ const STATUS_CONFIG: Record<
 > = {
   pending: {
     label: "Menunggu",
-    className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+    className: "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400",
   },
   invited: {
     label: "Diundang",
-    className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+    className: "border-sky-500/30 bg-sky-500/15 text-sky-600 dark:text-sky-400",
   },
   registered: {
     label: "Terdaftar",
-    className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+    className: "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
   },
 }
 
@@ -30,7 +30,7 @@ export function WaitlistStatusBadge({ status }: WaitlistStatusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border",
+        "inline-flex items-center rounded-badge border px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase",
         config.className
       )}
     >
