@@ -115,9 +115,14 @@ export function Footer() {
 
           {/* Bottom: Copyright + Socials */}
           <div className="flex flex-col items-center gap-6 pt-6 text-center md:flex-row md:justify-between md:text-left">
-            <p className="text-interface m-0 text-[12px] text-muted-foreground">
-              &copy; {new Date().getFullYear()} Makalah AI. Hak cipta dilindungi.
-            </p>
+            <div className="space-y-1">
+              <p className="text-interface m-0 text-[12px] text-muted-foreground">
+                Makalah AI adalah produk dari PT THE MANAGEMENT ASIA
+              </p>
+              <p className="text-interface m-0 text-[12px] text-muted-foreground">
+                &copy; {new Date().getFullYear()} Makalah AI. Hak cipta dilindungi.
+              </p>
+            </div>
             <div className="flex justify-center gap-6">
               {SOCIAL_LINKS.map((social) => (
                 <a
