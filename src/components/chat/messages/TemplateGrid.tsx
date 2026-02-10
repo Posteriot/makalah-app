@@ -113,7 +113,7 @@ function TemplateCard({
       className={cn(
         "flex items-start gap-3.5 p-4 text-left",
         // Mechanical Grace: .rounded-action (8px), .border-hairline
-        "rounded-lg border border-slate-800 bg-slate-900/50",
+        "rounded-action border border-border/50 bg-slate-900/50",
         "hover:bg-slate-800/50 hover:border-amber-500/50",
         "transition-all duration-150"
       )}
@@ -121,7 +121,7 @@ function TemplateCard({
       {/* Icon - 40x40px, Mechanical Grace colors */}
       <div
         className={cn(
-          "flex-shrink-0 w-10 h-10 rounded-lg",
+          "flex-shrink-0 w-10 h-10 rounded-action",
           "flex items-center justify-center",
           isPaper
             ? "bg-amber-500/15 text-amber-500"
@@ -140,7 +140,7 @@ function TemplateCard({
         {/* Badge - Mechanical Grace: Amber PAPER, Sky DIALOG */}
         <span
           className={cn(
-            "inline-block px-2 py-0.5 rounded",
+            "inline-block px-2 py-0.5 rounded-badge",
             "text-[11px] font-mono font-semibold uppercase tracking-wide",
             "mb-1.5",
             isPaper

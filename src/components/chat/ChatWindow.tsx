@@ -399,7 +399,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile Header */}
-        <div className="md:hidden p-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="md:hidden p-4 border-b border-border/50 flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
             <Menu className="h-5 w-5" />
           </Button>
@@ -411,7 +411,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="max-w-md text-center space-y-6">
             {/* Icon - Mechanical Grace: Sky system color */}
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center">
+            <div className="mx-auto w-16 h-16 rounded-shell bg-sky-500/10 flex items-center justify-center">
               <Sparks className="w-8 h-8 text-sky-400" />
             </div>
 
@@ -426,14 +426,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
             {/* Features - Mechanical Grace styling */}
             <div className="grid grid-cols-1 gap-3 text-left text-sm">
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+              <div className="flex items-start gap-3 p-3 rounded-action bg-slate-800/50 border border-border/50">
                 <Page className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Tulis Makalah</p>
                   <p className="text-muted-foreground text-xs font-mono">Panduan step-by-step menulis paper akademik</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+              <div className="flex items-start gap-3 p-3 rounded-action bg-slate-800/50 border border-border/50">
                 <Search className="w-5 h-5 text-sky-400 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Riset & Referensi</p>
@@ -462,7 +462,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (conversationNotFound) {
     return (
       <div className="flex-1 flex flex-col h-full">
-        <div className="md:hidden p-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="md:hidden p-4 border-b border-border/50 flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
             <Menu className="h-5 w-5" />
           </Button>
@@ -484,7 +484,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
-      <div className="md:hidden p-4 border-b border-slate-800 flex items-center gap-2">
+      <div className="md:hidden p-4 border-b border-border/50 flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
           <Menu className="h-5 w-5" />
         </Button>
@@ -502,13 +502,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             // Loading skeleton - px-6 for consistent spacing
             <div className="space-y-4 px-6">
               <div className="flex justify-start">
-                <Skeleton className="h-12 w-[60%] rounded-lg" />
+                <Skeleton className="h-12 w-[60%] rounded-action" />
               </div>
               <div className="flex justify-end">
-                <Skeleton className="h-12 w-[60%] rounded-lg" />
+                <Skeleton className="h-12 w-[60%] rounded-action" />
               </div>
               <div className="flex justify-start">
-                <Skeleton className="h-24 w-[70%] rounded-lg" />
+                <Skeleton className="h-24 w-[70%] rounded-action" />
               </div>
             </div>
           ) : messages.length === 0 ? (
@@ -581,7 +581,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
           {/* Error State Overlay - Mechanical Grace: Rose error */}
           {error && (
-            <div className="absolute bottom-4 left-6 right-6 bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-lg flex items-center justify-between text-sm shadow-sm backdrop-blur-sm">
+            <div className="absolute bottom-4 left-6 right-6 bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-action flex items-center justify-between text-sm shadow-sm backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <WarningCircle className="h-4 w-4" />
                 <span className="font-mono">Gagal mengirim pesan.</span>
