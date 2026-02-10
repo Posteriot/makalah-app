@@ -116,11 +116,11 @@ export function PanelResizer({
       className={cn(
         // Base styles
         "relative z-20 flex-shrink-0",
-        "w-1 cursor-col-resize",
+        "w-0.5 cursor-col-resize",
         "transition-colors duration-150",
-        // Default: transparent, hover/drag: Sky feedback per Mechanical Grace spec
-        "bg-transparent hover:bg-sky-500/30",
-        isDragging && "bg-sky-500/50",
+        // Default: transparent, hover/drag: Amber feedback per chat-shell-redesign spec
+        "bg-transparent hover:bg-amber-500/40",
+        isDragging && "bg-amber-500/60",
         // Position-specific margins for overlap
         position === "left" && "-mx-0.5",
         position === "right" && "-mx-0.5",
