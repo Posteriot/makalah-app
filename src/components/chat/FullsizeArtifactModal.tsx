@@ -284,18 +284,18 @@ export function FullsizeArtifactModal({
                         "w-[calc(100vw-80px)] h-[calc(100vh-52px-32px-40px)]", // Full width minus margin, height minus header/footer
                         "mt-[52px]", // Below app header (52px)
                         // Mechanical Grace: .rounded-shell (16px), dark bg
-                        "bg-slate-950 rounded-2xl border border-slate-800",
+                        "bg-slate-950 rounded-shell border border-border/50",
                         "shadow-2xl overflow-hidden"
                     )}
                 >
                     {/* Header - Mechanical Grace dark */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900 shrink-0">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 bg-slate-900 shrink-0">
                         <div className="flex items-center gap-3">
                             <h2 className="text-lg font-semibold text-foreground">
                                 {artifact.title}
                             </h2>
                             {/* Version badge - Mechanical Grace Mono */}
-                            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-badge bg-amber-500/20 text-amber-400 border border-amber-500/30">
                                 v{artifact.version}
                             </span>
                         </div>
@@ -306,7 +306,7 @@ export function FullsizeArtifactModal({
                                     <button
                                         onClick={onClose}
                                         className={cn(
-                                            "w-8 h-8 flex items-center justify-center rounded-md",
+                                            "w-8 h-8 flex items-center justify-center rounded-action",
                                             "text-muted-foreground hover:text-foreground",
                                             "hover:bg-accent transition-colors"
                                         )}
@@ -323,7 +323,7 @@ export function FullsizeArtifactModal({
                                     <button
                                         onClick={onClose}
                                         className={cn(
-                                            "w-8 h-8 flex items-center justify-center rounded-md",
+                                            "w-8 h-8 flex items-center justify-center rounded-action",
                                             "text-muted-foreground",
                                             "hover:bg-rose-500/90 hover:text-white transition-colors"
                                         )}
@@ -359,7 +359,7 @@ export function FullsizeArtifactModal({
                                 className={cn(
                                     "w-full h-full min-h-[300px] p-4",
                                     // Mechanical Grace: .border-ai + Amber focus
-                                    "bg-slate-900 rounded-lg border border-dashed border-sky-500/50",
+                                    "bg-slate-900 rounded-action border border-dashed border-sky-500/50",
                                     "text-base leading-relaxed text-foreground",
                                     "focus:outline-none focus:ring-2 focus:ring-amber-500",
                                     "resize-none"
@@ -390,7 +390,7 @@ export function FullsizeArtifactModal({
                                         sources={artifact.sources}
                                     />
                                 ) : (
-                                    <pre className="whitespace-pre-wrap font-sans bg-muted p-6 rounded-lg">
+                                    <pre className="whitespace-pre-wrap font-sans bg-muted p-6 rounded-action">
                                         {artifact.content}
                                     </pre>
                                 )}
@@ -399,7 +399,7 @@ export function FullsizeArtifactModal({
                     </div>
 
                     {/* Actions Bar - Mechanical Grace dark */}
-                    <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800 bg-slate-900 shrink-0">
+                    <div className="flex items-center justify-between px-5 py-3 border-t border-border/50 bg-slate-900 shrink-0">
                         {/* Left Actions */}
                         <div className="flex items-center gap-2">
                             {/* Download Dropdown */}
