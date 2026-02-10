@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { RefreshDouble } from "iconoir-react"
+import { RefreshDouble, SidebarExpand } from "iconoir-react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { DocumentationSection, NavigationGroup, SearchRecord } from "./types"
@@ -10,7 +10,7 @@ import { tokensFromText, scoreDoc, baseNorm, tokenize, stemToken } from "./utils
 import { DottedPattern } from "@/components/marketing/SectionBackground"
 import { DocSidebar } from "./DocSidebar"
 import { DocArticle } from "./DocArticle"
-import { DocMobileSidebar } from "./DocMobileSidebar"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 function DocumentationContent() {
   const router = useRouter()
@@ -20,7 +20,7 @@ function DocumentationContent() {
     | DocumentationSection[]
     | undefined
   const [activeSection, setActiveSection] = useState<string | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchRecord[]>([])
 
@@ -74,11 +74,13 @@ function DocumentationContent() {
     [updateUrl]
   )
 
-  useEffect(() => {
-    const handleToggle = () => setSidebarOpen((open) => !open)
-    window.addEventListener("documentation:toggle-sidebar", handleToggle)
-    return () => window.removeEventListener("documentation:toggle-sidebar", handleToggle)
-  }, [])
+  const handleMobileSelect = useCallback(
+    (sectionId: string) => {
+      handleSetActiveSection(sectionId)
+      setMobileNavOpen(false)
+    },
+    [handleSetActiveSection]
+  )
 
   useEffect(() => {
     if (!orderedSections.length) return
@@ -151,35 +153,60 @@ function DocumentationContent() {
     <div className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)] pt-[var(--header-h)]">
       <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 lg:px-8">
-      <div className="grid grid-cols-1 gap-comfort pb-6 md:grid-cols-16">
-        <DocSidebar
-          query={query}
-          onQueryChange={setQuery}
-          onSelectSection={handleSetActiveSection}
-          activeSection={activeSection}
-          navigationGroups={navigationGroups}
-          results={results}
-        />
+        <div className="grid grid-cols-1 gap-comfort pb-6 md:grid-cols-16">
+          <aside className="hidden md:col-span-4 md:block">
+            <div className="mt-4 rounded-shell border-hairline bg-card/90 p-comfort backdrop-blur-[1px] dark:bg-slate-900">
+              <DocSidebar
+                query={query}
+                onQueryChange={setQuery}
+                onSelectSection={handleSetActiveSection}
+                activeSection={activeSection}
+                navigationGroups={navigationGroups}
+                results={results}
+              />
+            </div>
+          </aside>
 
-        <DocArticle
-          activeContent={activeContent}
-          previousSection={previousSection}
-          nextSection={nextSectionNav}
-          onSelectSection={handleSetActiveSection}
-        />
-      </div>
+          <div className="col-span-1 pt-4 md:col-span-12">
+            <div className="mb-4 flex justify-end md:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(true)}
+                className="rounded-action p-1 text-foreground transition-colors hover:text-foreground/70"
+                aria-label="Buka navigasi"
+              >
+                <SidebarExpand className="h-7 w-7" strokeWidth={1.5} />
+              </button>
+            </div>
+            <DocArticle
+              activeContent={activeContent}
+              previousSection={previousSection}
+              nextSection={nextSectionNav}
+              onSelectSection={handleSetActiveSection}
+            />
+          </div>
+        </div>
       </div>
 
-      <DocMobileSidebar
-        open={sidebarOpen}
-        onOpenChange={setSidebarOpen}
-        query={query}
-        onQueryChange={setQuery}
-        onSelectSection={handleSetActiveSection}
-        activeSection={activeSection}
-        navigationGroups={navigationGroups}
-        results={results}
-      />
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="right" className="w-72 p-0">
+          <SheetHeader className="border-b border-border px-5 py-4">
+            <SheetTitle className="text-signal text-[10px] font-bold tracking-widest text-foreground">
+              Navigasi Dokumentasi
+            </SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto p-comfort">
+            <DocSidebar
+              query={query}
+              onQueryChange={setQuery}
+              onSelectSection={handleMobileSelect}
+              activeSection={activeSection}
+              navigationGroups={navigationGroups}
+              results={results}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

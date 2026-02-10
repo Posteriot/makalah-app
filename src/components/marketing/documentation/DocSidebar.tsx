@@ -26,8 +26,7 @@ export function DocSidebar({
   results,
 }: DocSidebarProps) {
   return (
-    <aside className="hidden md:col-span-4 md:block">
-      <div className="mt-4 rounded-shell border-hairline bg-card/90 p-comfort backdrop-blur-[1px] dark:bg-slate-900">
+    <div>
       <div className="mb-6 rounded-action bg-background/70 px-3 py-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -40,7 +39,7 @@ export function DocSidebar({
               }
             }}
             placeholder="Cari dokumentasi..."
-            className="text-interface focus-ring h-10 w-full rounded-action border-main border border-border bg-background pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20"
+            className="blog-neutral-input text-interface h-10 w-full rounded-action border-main border border-slate-300 bg-background pl-10 pr-3 text-xs text-foreground placeholder:text-muted-foreground dark:border-slate-600"
           />
         </div>
         {query.length > 0 && (
@@ -120,7 +119,6 @@ export function DocSidebar({
           </div>
         ))}
       </nav>
-      </div>
-    </aside>
+    </div>
   )
 }
