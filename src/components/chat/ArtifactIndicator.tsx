@@ -37,7 +37,7 @@ export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndic
             onKeyDown={handleKeyDown}
             className={cn(
                 "flex items-center gap-3 w-full text-left",
-                "px-3 py-2.5 rounded-md",
+                "px-3 py-2.5 rounded-action",
                 // Mechanical Grace: .border-ai (dashed Sky)
                 "bg-sky-500/10 border border-dashed border-sky-500/50",
                 "hover:bg-sky-500/20 hover:border-sky-500/70",
@@ -54,7 +54,7 @@ export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndic
             {/* Content */}
             <div className="flex-1 min-w-0 flex items-center gap-2">
                 {/* SYSTEM_OUTPUT Badge - Mechanical Grace */}
-                <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold uppercase tracking-wide bg-sky-500/20 text-sky-400 border border-dashed border-sky-500/30">
+                <span className="inline-flex px-2 py-0.5 rounded-badge text-[10px] font-mono font-semibold uppercase tracking-wide bg-sky-500/20 text-sky-400 border border-dashed border-sky-500/30">
                     SYSTEM_OUTPUT
                 </span>
 
