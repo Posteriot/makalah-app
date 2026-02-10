@@ -31,12 +31,24 @@ Integrasi utama:
 
 ## Komponen dan Tanggung Jawab
 
-- `Footer.tsx`: menyusun grid footer, link navigasi, social links, dan copyright.
+- `Footer.tsx`: menyusun grid footer 16-kolom, link navigasi (3 grup), logo dengan theme switching, social links, hairline separator, dan copyright.
 
 ## Perilaku Ringkas
 
 - Menggunakan `new Date().getFullYear()` untuk tahun copyright.
 - Social links membuka tab baru (`target="_blank"`, `rel="noopener noreferrer"`).
+- Logo otomatis switch antara light/dark variant berdasarkan tema:
+  - Light mode: `makalah_logo_dark.svg` (`block dark:hidden`)
+  - Dark mode: `makalah_logo_light.svg` (`hidden dark:block`)
+
+## Layout & Grid
+
+- 16-column grid system (`grid grid-cols-16 gap-comfort`).
+- Brand area: `col-span-16 md:col-span-4` (full-width mobile, 4 kolom desktop).
+- Links area: `col-span-16 md:col-span-7 md:col-start-10 md:grid-cols-3` (full-width mobile, 7 kolom mulai kolom 10 desktop, 3-column sub-grid).
+- Responsive behavior:
+  - Mobile: semua centered, stacked vertical.
+  - Desktop: brand kiri, links kanan (3 kolom sejajar), bottom bar flex row `justify-between`.
 
 ## Data & Konstanta
 
@@ -53,26 +65,47 @@ Integrasi utama:
   - `/about#privacy-policy` → "Privacy"
   - `/about#terms` → "Terms"
 - `SOCIAL_LINKS`:
-  - `#` → "X" (Twitter icon)
-  - `#` → "LinkedIn" (Linkedin icon)
-  - `#` → "Instagram" (Instagram icon)
+  - `#` → "X" (`XIcon` dari iconoir-react)
+  - `#` → "LinkedIn" (`Linkedin` dari iconoir-react)
+  - `#` → "Instagram" (`Instagram` dari iconoir-react)
 
 Catatan:
 - `SOCIAL_LINKS` saat ini masih placeholder (`href: "#"`) di semua item.
 
 ## Konten yang Ditampilkan
 
+- Logo brand (32x32, theme-aware).
 - Section "Sumber Daya", "Perusahaan", dan "Legal" beserta link-linknya.
+- Hairline separator (`h-[0.5px] bg-[color:var(--border-hairline)]`).
 - Copyright:
   - `© {tahun sekarang} Makalah AI. Hak cipta dilindungi.`
-- Social icons: X, LinkedIn, Instagram.
+- Social icons: X, LinkedIn, Instagram (masing-masing `icon-interface` = 16px).
 
 ## Styling
 
-- Wrapper luar: `id="footer"`, `bg-[#f8f8f8]` (light) dan `dark:bg-black`.
-- Container utama: `max-w-[1200px] px-6 py-12 md:py-16`.
-- Pattern background: `.footer-diagonal-stripes` (didefinisikan di `src/app/globals.css`).
-- Border top pada bagian bawah: `border-black/[0.08]` (light), `dark:border-white/[0.05]`.
+### Wrapper & Background
+- Wrapper luar: `id="footer"`, `bg-background text-foreground` (CSS variable tokens).
+- Footer element: `bg-[color:var(--footer-background)]` dengan `relative overflow-hidden`.
+- Pattern background: `<DiagonalStripes className="opacity-40" />` (React component dari `@/components/marketing/SectionBackground`).
+
+### Container
+- Content container: `max-w-7xl px-4 py-6 md:px-8 md:py-8` (1280px max, responsive padding).
+- Positioned `relative z-[1]` di atas background pattern.
+
+### Typography
+- Section headings ("Sumber Daya", dll): `text-narrative text-[14px] font-medium text-foreground`.
+- Section links: `text-narrative text-[14px] font-medium text-muted-foreground`.
+- Copyright: `text-interface text-[12px] text-muted-foreground` (Geist Mono).
+
+### Separator
+- Hairline div: `h-[0.5px] w-full bg-[color:var(--border-hairline)]` (bukan CSS border, melainkan elemen div tipis).
+
+### Hover & Transitions
+- Links: `transition-colors duration-300 hover:text-foreground` (dari muted ke foreground).
+- Social icons: `transition-colors duration-300 hover:text-foreground`.
+
+### Icon Sizing
+- Social icons: `icon-interface` (16px, dari Mechanical Grace design system).
 
 ## Client Components
 
@@ -82,4 +115,5 @@ Komponen yang memakai `"use client"`:
 ## Dependencies
 
 - `next/link`, `next/image`
-- `lucide-react` (`Twitter`, `Linkedin`, `Instagram`)
+- `iconoir-react` (`X as XIcon`, `Linkedin`, `Instagram`)
+- `@/components/marketing/SectionBackground` (`DiagonalStripes`)
