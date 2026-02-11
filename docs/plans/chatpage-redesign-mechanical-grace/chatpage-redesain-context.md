@@ -1,6 +1,6 @@
 # Context Document: Chat Page Redesign - Mechanical Grace
 
-> **Tujuan dokumen ini:** Context refresher untuk Claude. Baca ini saat memulai sesi baru atau setelah context window penuh. Dokumen ini berisi SEMUA konteks yang diperlukan untuk melanjutkan pekerjaan redesign chat page.
+> **Tujuan dokumen ini:** Context refresher untuk Claude. Baca ini saat memulai sesi baru atau setelah context window penuh. Dokumen ini berisi SEMUA konteks yang diperlukan untuk melanjutkan pekerjaan styling chat page.
 
 ---
 
@@ -8,14 +8,17 @@
 
 ### Apa yang sedang dikerjakan
 
-Redesign/restyling halaman chat (`/chat/*`) di Makalah App agar compliant dengan **Mechanical Grace Design System**. Halaman-halaman lain (home, docs, blog, admin, auth) sudah compliant - chat page adalah yang terakhir.
+Styling halaman chat (`/chat/*`) di Makalah App agar fully compliant dengan **Mechanical Grace Design System**. Halaman lain (home, docs, blog, admin, auth) sudah compliant — chat page adalah yang terakhir.
 
-### Apa yang TIDAK berubah
+Layout structure sudah final (6-column CSS Grid). Pekerjaan selanjutnya fokus pada **styling compliance**: warna, tipografi, radius, border, dark mode.
 
-- **Zero logic changes** - Tidak ada perubahan behavior, state management, API calls, atau data flow
-- **Zero new dependencies** - Hanya mengubah Tailwind classes dan CSS variable references
-- **globals.css tidak diubah** - Semua CSS variables/tokens sudah correctly defined
-- **File structure tidak berubah** - Tidak ada file baru, tidak ada file dihapus
+### Scope pekerjaan styling
+
+- Mengganti hardcoded color values ke semantic tokens
+- Memperbaiki dark mode yang broken/low-contrast
+- Menstandarkan radius, border, dan typography classes
+- **Tidak mengubah** layout structure, behavior, state management, API calls, atau data flow
+- **globals.css tidak diubah** — semua CSS variables/tokens sudah correctly defined
 
 ### Branch
 
@@ -23,15 +26,12 @@ Redesign/restyling halaman chat (`/chat/*`) di Makalah App agar compliant dengan
 feat/chatpage-redesign-mechanical-grace
 ```
 
-Branched from `main`. Dibuat 2026-02-11.
+### Dokumen Pendukung
 
-### State Document (Existing State)
-
-```
-docs/plans/chatpage-redesign-mechanical-grace/existing-state.md
-```
-
-Mendokumentasikan keadaan terkini semua komponen chat page per user journey phase, termasuk token yang sedang dipakai dan issue compliance. Bukan rencana aksi — detail perubahan ada di dokumen task terpisah.
+| Dokumen | Isi |
+|---------|-----|
+| `existing-state.md` | Audit styling per komponen, compliance score, pattern masalah |
+| `chat-page-layout-structure-shell/README.md` | Arsitektur layout (grid, dimensi, state management) |
 
 ---
 
@@ -111,9 +111,9 @@ Base unit: 4px grid.
 ### 3.6 Chat-Specific Layout Rules
 
 - **Zero Chrome:** No Global Header/Footer di `/chat/*`
-- Navigation back via brand logo di Sidebar Header only
+- Navigation back via brand logo di Activity Bar
 - Mini-footer: single line, Mono 10px, copyright only
-- 16-column grid workbench, maximized vertical real-estate
+- 6-column CSS Grid workbench, maximized vertical real-estate
 
 ### 3.7 Background Patterns (Industrial Textures)
 
@@ -194,13 +194,14 @@ z-base(0) -> z-overlay(10) -> z-popover(20) -> z-drawer(50) -> z-command(100)
 ### Chat Layout Dimensions (CSS Variables)
 
 ```css
---shell-header-h:       72px
---shell-footer-h:       0px
---shell-activity-bar-w: 48px
---shell-sidebar-w:      280px
---shell-panel-w:        360px
---shell-tab-bar-h:      36px
---shell-input-bar-h:    112px
+--activity-bar-width:   48px
+--sidebar-width:        280px       /* default, resizable 180px–50% */
+--sidebar-min-width:    180px
+--sidebar-max-width:    50%
+--panel-width:          360px       /* default, resizable 280px–50% */
+--panel-min-width:      280px
+--panel-max-width:      50%
+--shell-footer-h:       32px
 ```
 
 ---
@@ -219,7 +220,7 @@ PHASE 6: Artifacts Muncul        → Panel kanan terbuka, viewer aktif
 PHASE 7: Advanced Features       → Edit artifact, fullscreen, refrasa, notifikasi
 ```
 
-### 5A. Files yang TIDAK perlu diubah
+### 5A. Files yang TIDAK perlu diubah (styling)
 
 | File | Alasan |
 |------|--------|
@@ -227,100 +228,98 @@ PHASE 7: Advanced Features       → Edit artifact, fullscreen, refrasa, notifik
 | `src/app/chat/layout.tsx` | Minimal wrapper |
 | `src/app/chat/page.tsx` | Minimal wrapper |
 | `src/components/chat/ChatContainer.tsx` | Pure logic orchestrator, no UI |
-| `src/components/chat/layout/useResizer.ts` | Hook, no UI |
+| `src/lib/hooks/useArtifactTabs.ts` | Hook, no UI |
+| `src/components/chat/layout/ChatLayout.tsx` | Fully compliant |
+| `src/components/chat/ArtifactTabs.tsx` | Fully compliant |
+| `src/components/chat/ArtifactPanel.tsx` | Fully compliant |
+| `src/components/chat/ArtifactList.tsx` | Fully compliant |
+| `src/components/chat/FileUploadButton.tsx` | Fully compliant |
 
-### 5B. Files yang PERLU diubah - Per Phase (User Journey Order)
+### 5B. Files yang PERLU styling — Per Phase (User Journey Order)
 
-**PHASE 1 - Shell + Empty State (first impression - 5 files)**
+**PHASE 1 — Shell + Empty State (5 files)**
 
 | File | Issue |
 |------|-------|
-| `src/components/chat/shell/ShellHeader.tsx` | `bg-amber-500` badge -> `bg-primary` |
-| `src/components/chat/shell/ActivityBar.tsx` | `border-amber-500` -> `border-primary` |
-| `src/components/chat/ChatWindow.tsx` | `bg-slate-200` empty state - invisible dark -> `bg-muted` |
+| `src/components/chat/shell/TopBar.tsx` | Minor: badge `rounded-full` → `rounded-badge` |
+| `src/components/chat/shell/ActivityBar.tsx` | `border-amber-500` → `border-primary` |
+| `src/components/chat/ChatWindow.tsx` | `bg-slate-200` empty state invisible di dark → `bg-muted` |
 | `src/components/chat/messages/TemplateGrid.tsx` | `bg-slate-200` icon box no dark mode |
-| `src/components/chat/ChatMiniFooter.tsx` | 95% compliant - verify only |
+| `src/components/chat/ChatMiniFooter.tsx` | ~95% compliant — verify only |
 
-**PHASE 2 - Sidebar Opens (2 files)**
-
-| File | Issue |
-|------|-------|
-| `src/components/chat/ChatSidebar.tsx` | oklch hardcoded hover |
-| `src/components/chat/sidebar/SidebarChatHistory.tsx` | Custom list tokens, opacity |
-
-**PHASE 3 - Conversation Active (5 files)**
+**PHASE 2 — Sidebar Opens (2 files)**
 
 | File | Issue |
 |------|-------|
-| `src/components/chat/layout/ChatLayout.tsx` | `bg-[color:var(--section-bg-alt)]` non-standard |
-| `src/components/chat/layout/PanelResizer.tsx` | `hover:bg-amber-500/40` -> `hover:bg-primary/40` |
+| `src/components/chat/ChatSidebar.tsx` | Upgrade button oklch hardcoded hover |
+| `src/components/chat/sidebar/SidebarChatHistory.tsx` | Custom list tokens, opacity dark |
+
+**PHASE 3 — Conversation Active (4 files)**
+
+| File | Issue |
+|------|-------|
+| `src/components/chat/layout/PanelResizer.tsx` | `hover:bg-amber-500/40` → `hover:bg-primary/40` |
 | `src/components/chat/ChatInput.tsx` | `focus-ring` verification |
 | `src/components/chat/MessageBubble.tsx` | `bg-info/20` faint dark, hardcoded focus ring |
 | `src/components/chat/MarkdownRenderer.tsx` | Missing `.text-narrative`, thick blockquote border |
 
-**PHASE 4 - Chat Features (7 files)**
+**PHASE 4 — Chat Features (6 files)**
 
 | File | Issue |
 |------|-------|
-| `src/components/chat/InlineCitationChip.tsx` | Chip radius, popover |
-| `src/components/chat/SourcesIndicator.tsx` | Citation list styling |
-| `src/components/chat/SearchStatusIndicator.tsx` | AI Sky color |
-| `src/components/chat/ThinkingIndicator.tsx` | Dot animation visibility |
-| `src/components/chat/ToolStateIndicator.tsx` | Tool states |
-| `src/components/chat/QuickActions.tsx` | Color audit |
-| `src/components/chat/FileUploadButton.tsx` | Upload UI |
+| `src/components/chat/InlineCitationChip.tsx` | Chip radius, popover sub-components |
+| `src/components/chat/SourcesIndicator.tsx` | `emerald-500` hardcoded, `text-sky-400` → semantic |
+| `src/components/chat/SearchStatusIndicator.tsx` | `sky-500`/`emerald-500`/`rose-500` → semantic tokens |
+| `src/components/chat/ThinkingIndicator.tsx` | `bg-slate-900/80` hardcoded dark → semantic |
+| `src/components/chat/ToolStateIndicator.tsx` | `sky-500`/`rose-500` hardcoded → semantic |
+| `src/components/chat/QuickActions.tsx` | `text-emerald-500` minor |
 
-**PHASE 5 - Paper Workflow (4 files)**
-
-| File | Issue |
-|------|-------|
-| `src/components/chat/shell/ChatTabs.tsx` | `border-b-amber-500` -> `border-b-primary` |
-| `src/components/chat/sidebar/SidebarPaperSessions.tsx` | `bg-amber-500/10` no dark variant |
-| `src/components/chat/sidebar/SidebarProgress.tsx` | `bg-slate-800` progress track invisible light -> `bg-muted` |
-| `src/components/chat/QuotaWarningBanner.tsx` | Warning semantics |
-
-**PHASE 6 - Artifacts (4 files)**
+**PHASE 5 — Paper Workflow (4 files)**
 
 | File | Issue |
 |------|-------|
-| `src/components/chat/ArtifactPanel.tsx` | `bg-slate-950` hardcoded KEDUA mode -> `bg-card` |
-| `src/components/chat/ArtifactViewer.tsx` | Invalidation badge opacity dark |
-| `src/components/chat/ArtifactList.tsx` | Selected state verify |
-| `src/components/chat/ArtifactIndicator.tsx` | `text-sky-400` light mode contrast |
+| `src/components/chat/sidebar/SidebarPaperSessions.tsx` | `amber-500`/`emerald-500`/`sky-500` hardcoded, generic `rounded` |
+| `src/components/chat/sidebar/SidebarProgress.tsx` | `bg-slate-800` progress track invisible light, hardcoded colors |
+| `src/components/chat/QuotaWarningBanner.tsx` | `bg-slate-900` hardcoded dark, warning color semantics |
+| `src/components/chat/ArtifactToolbar.tsx` | Minor: `text-emerald-500` copy icon → `text-success` |
 
-**PHASE 7 - Advanced Features (4 files)**
+**PHASE 6 — Artifacts (2 files)**
 
 | File | Issue |
 |------|-------|
-| `src/components/chat/ArtifactEditor.tsx` | Edit border opacity |
-| `src/components/chat/FullsizeArtifactModal.tsx` | Modal bg, toolbar verification |
-| `src/components/chat/VersionHistoryDialog.tsx` | Dialog styling |
-| `src/components/chat/shell/NotificationDropdown.tsx` | `rounded-lg` generik |
+| `src/components/chat/ArtifactViewer.tsx` | Invalidation badge hardcoded amber, `borderRadius` inline |
+| `src/components/chat/ArtifactIndicator.tsx` | `sky-500`/`sky-400` hardcoded → `--info`, low contrast light mode |
+
+**PHASE 7 — Advanced Features (5 files)**
+
+| File | Issue |
+|------|-------|
+| `src/components/chat/ArtifactEditor.tsx` | `focus:ring-amber-500`, `border-sky-500/50` dark variant |
+| `src/components/chat/FullsizeArtifactModal.tsx` | CRITICAL: `bg-slate-950`/`bg-slate-900` hardcoded, `prose-invert` |
+| `src/components/chat/VersionHistoryDialog.tsx` | `amber-500` hardcoded badges/dots/focus |
+| `src/components/chat/shell/NotificationDropdown.tsx` | 4x `rounded-lg` generic → `rounded-action`/`rounded-shell` |
+| `src/components/layout/header/UserDropdown.tsx` | Hardcoded slate/rose, manual `dark:`, `rounded-md` |
 
 ---
 
 ## 6. Compliance Score
 
-| Metric | Baseline | Target |
+| Metric | Saat Ini | Target |
 |--------|----------|--------|
-| Color Signal Theory | 60/100 | 95 |
-| Typography System | 65/100 | 92 |
-| Border System | 70/100 | 95 |
-| Spacing/Layout | 80/100 | 92 |
-| **Dark Mode** | **50/100** | **95** |
-| Accessibility | 75/100 | 92 |
-| **Overall** | **65/100** | **93** |
+| Color Signal Theory | 65/100 | 95 |
+| Typography System | 70/100 | 92 |
+| Border System | 75/100 | 95 |
+| Spacing/Layout | 85/100 | 92 |
+| **Dark Mode** | **55/100** | **95** |
+| Accessibility | 80/100 | 92 |
+| **Overall** | **70/100** | **93** |
 
-### Projection Per Tier
+### Top Priority Issues
 
-```
-Baseline:  65/100
-After T1:  72/100  (+7)  fixes broken
-After T2:  81/100  (+9)  token alignment
-After T3:  87/100  (+6)  polish
-After T4:  90/100  (+3)  minor tuning
-After T5:  93/100  (+3)  final audit
-```
+1. **Dark mode broken** (55/100) — `bg-slate-950/900` hardcoded di 3 komponen (FullsizeArtifactModal, ThinkingIndicator, QuotaWarningBanner)
+2. **Hardcoded amber** — 6+ komponen pakai `amber-500` langsung, bukan `--primary`
+3. **Hardcoded sky** — 5+ komponen pakai `sky-500/400`, bukan `--info`
+4. **Missing dark mode opacity** — 6+ komponen punya `/10`–`/20` backgrounds tanpa `dark:` adjustment
 
 ---
 
@@ -371,25 +370,7 @@ After T5:  93/100  (+3)  final audit
 
 ---
 
-## 8. Screenshots Referensi (Kondisi SEBELUM Redesign)
-
-9 screenshots di `screenshots/`:
-
-| File | State |
-|------|-------|
-| `Screen Shot 2026-02-11 at 19.27.01.png` | Dark - landing page + sidebar |
-| `Screen Shot 2026-02-11 at 19.27.09.png` | Light - landing page + sidebar |
-| `Screen Shot 2026-02-11 at 19.27.28.png` | Light - conversation + citations |
-| `Screen Shot 2026-02-11 at 19.27.36.png` | Dark - conversation |
-| `Screen Shot 2026-02-11 at 19.28.01.png` | Dark - paper session + artifact (3-col) |
-| `Screen Shot 2026-02-11 at 19.28.12.png` | Dark - paper sessions sidebar |
-| `Screen Shot 2026-02-11 at 19.28.17.png` | Dark - 13-stage progress + artifact |
-| `Screen Shot 2026-02-11 at 19.28.31.png` | Dark - fullscreen artifact + toolbar |
-| `Screen Shot 2026-02-11 at 19.29.21.png` | Dark - Refrasa modal (diff view) |
-
----
-
-## 9. Style Reference Documents
+## 8. Style Reference Documents
 
 8 dokumen styling dari halaman compliant:
 
@@ -406,27 +387,27 @@ docs/tailwind-styling-consistency/home-benefits/home-benefits-style.md
 
 ---
 
-## 10. Cara Melanjutkan Pekerjaan
+## 9. Cara Melanjutkan Pekerjaan
 
 ### Memulai sesi baru:
 
 1. **Baca dokumen ini** (`chatpage-redesain-context.md`)
-2. **Baca existing state** (`existing-state.md`) untuk kondisi terkini komponen
+2. **Baca existing state** (`existing-state.md`) untuk audit styling per komponen
 3. **Baca task document** (jika sudah ada) untuk detail perubahan
 4. **Cek CLAUDE.md** di root untuk project rules
-4. **Cek git status:**
+5. **Cek git status:**
    ```bash
    git log --oneline -10
    git status
    git diff --stat
    ```
-5. Lanjutkan dari tier/task terakhir yang belum complete
+6. Lanjutkan dari phase/task yang belum complete
 
 ### Melanjutkan sesi yang sama:
 
 1. Cek phase mana yang sedang dikerjakan
 2. Baca task berikutnya di task document
-3. **Baca file SEBELUM edit** - pahami existing code dulu
+3. **Baca file SEBELUM edit** — pahami existing code dulu
 4. **Test visual di light + dark** setelah setiap perubahan
 5. Commit per task
 
@@ -440,7 +421,7 @@ npm run lint         # Verify no lint errors
 
 ---
 
-## 11. Aturan Komunikasi & Kerja
+## 10. Aturan Komunikasi & Kerja
 
 Dari `CLAUDE.md`:
 - Komunikasi: **Jakarta-style Indonesian (gue-lo)**

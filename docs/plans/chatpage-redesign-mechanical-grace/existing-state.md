@@ -1,14 +1,18 @@
 # Chat Page Existing State - Mechanical Grace Audit
 
 > Dokumen ini mendokumentasikan keadaan terkini (existing state)
-> komponen-komponen chat page sebelum redesign. Disusun berdasarkan
-> user journey flow: dari hal pertama yang user lihat sampai fitur
-> paling dalam.
+> komponen-komponen chat page. Disusun berdasarkan user journey
+> flow: dari hal pertama yang user lihat sampai fitur paling dalam.
+>
+> **Updated** setelah layout restructuring (branch
+> `feat/chatpage-redesign-mechanical-grace`). Komponen deprecated
+> (ShellHeader, ChatTabs, useTabState) sudah diganti dengan
+> komponen baru (TopBar, ArtifactTabs, ArtifactToolbar).
 >
 > Dokumen ini BUKAN rencana aksi. Untuk detail perubahan, lihat
 > dokumen task terpisah (dibuat setelah brainstorming).
 
-**Compliance Score Saat Ini:** 65/100
+**Compliance Score Saat Ini:** 70/100
 
 | Metric | Score |
 |--------|-------|
@@ -42,29 +46,44 @@ PHASE 7: Advanced Features    → Edit, fullscreen, notifikasi
 > Screenshots: `20.03.50.png` (dark, collapsed), `20.03.58.png`
 > (light, collapsed)
 
-### ShellHeader.tsx
-`src/components/chat/shell/ShellHeader.tsx`
+### TopBar.tsx *(menggantikan ShellHeader.tsx yang sudah dihapus)*
+`src/components/chat/shell/TopBar.tsx`
 
 **Token saat ini:**
-- Artifact count badge: `bg-amber-500 text-white`
-- Buttons: `hover:text-foreground hover:bg-accent`
-- Border bottom: `bg-border/50`
+- Background: `bg-[color:var(--section-bg-alt)]` ✓
+- Buttons: `rounded-action` ✓
+- Button colors: `text-muted-foreground hover:text-foreground
+  hover:bg-accent/80` ✓
+- Transition: `transition-colors duration-150` ✓
+- Tooltips: `font-mono text-xs` ✓
+- Artifact count badge: `bg-primary text-primary-foreground` ✓
+- Badge radius: `rounded-full`
+- Icons: Iconoir (`SunLight`, `HalfMoon`, `SidebarExpand`,
+  `SidebarCollapse`, `FastArrowRight`) ✓
 
-**Issue:** Badge pakai hardcoded `bg-amber-500 text-white`
-— bukan semantic token `bg-primary text-primary-foreground`.
+**Issue:** Badge `rounded-full` bukan `rounded-badge` (6px).
+Selain itu fully compliant — semua warna semantic.
 
 ---
 
-### ActivityBar.tsx
+### ActivityBar.tsx *(updated — logo dipindah ke sini)*
 `src/components/chat/shell/ActivityBar.tsx`
 
 **Token saat ini:**
-- Active indicator: `border-amber-500`
+- Container: `bg-sidebar` ✓
+- Border: `border-border/50` ✓
+- Separator: `bg-border/50` ✓
+- Active indicator: `border-l-2 border-amber-500`
 - Active background: `bg-amber-500/10`
-- Container: `bg-sidebar`
+- Hover: `hover:text-sidebar-foreground hover:bg-sidebar-accent` ✓
+- Focus: `focus-visible:ring-info focus-visible:ring-offset-sidebar` ✓
+- Logo: `w-10 h-10 rounded-action hover:bg-sidebar-accent` ✓
+- Tooltip: `font-mono text-xs` ✓
+- Icons: Iconoir (`ChatBubble`, `Page`, `GitBranch`) ✓
 
-**Issue:** Active state pakai hardcoded `amber-500` — bukan
-`border-primary` / `bg-primary/10`.
+**Issue:** Active nav state pakai hardcoded `border-amber-500`
+dan `bg-amber-500/10` — bukan `border-primary` / `bg-primary/10`.
+Focus ring sudah compliant (`ring-info`).
 
 ---
 
@@ -118,18 +137,26 @@ Error state pakai `rose` langsung bukan `destructive` token.
 > Screenshots: `20.04.12.png` (light, expanded), `20.04.20.png`
 > (dark, expanded)
 
-### ChatSidebar.tsx
+### ChatSidebar.tsx *(updated — header disederhanakan)*
 `src/components/chat/ChatSidebar.tsx`
 
 **Token saat ini:**
-- Upgrade button hover: `hover:bg-[oklch(0.65_0.181_125.2)]`
+- Container: `bg-sidebar` ✓
+- Collapse toggle: `rounded-action text-muted-foreground
+  hover:text-foreground hover:bg-sidebar-accent` ✓
+- Header border: `border-border/50` ✓
 - New Chat button: `bg-primary hover:bg-primary/90 text-white
   rounded-action` ✓
 - Label: `text-[10px] font-mono font-bold uppercase
   tracking-widest text-muted-foreground` ✓
+- Upgrade button: `bg-[var(--success)]
+  hover:bg-[oklch(0.65_0.181_125.2)] text-white`
+- Icons: Iconoir (`ArrowUpCircle`, `RefreshDouble`, `Plus`,
+  `FastArrowLeft`) ✓
 
-**Issue:** Upgrade button pakai oklch hardcoded di hover state
-— bukan semantic token atau CSS variable.
+**Issue:** Upgrade button hover pakai hardcoded OKLCH value
+`oklch(0.65_0.181_125.2)` — bukan semantic token. Base color
+`bg-[var(--success)]` ✓ sudah benar.
 
 ---
 
@@ -158,29 +185,41 @@ perlu dicek visibility di dark mode.
 > Screenshots: `19.27.28.png` (light, active conversation),
 > `19.27.36.png` (dark, active conversation)
 
-### ChatLayout.tsx
+### ChatLayout.tsx *(updated — 6-column CSS Grid)*
 `src/components/chat/layout/ChatLayout.tsx`
 
 **Token saat ini:**
-- Beberapa area: `bg-[color:var(--section-bg-alt)]`
-- Container: `bg-sidebar`, `bg-card`, `bg-background`
-- Dividers: `border-border/50`
-- Transition: `transition-[grid-template-columns] duration-300`
+- Main area: `bg-[color:var(--section-bg-alt)]` ✓
+- Sidebar container: `bg-sidebar border-border/50` ✓
+- Panel container: `bg-card border-border/50` ✓
+- Grid transition: `transition-[grid-template-columns]
+  duration-300 ease-in-out` ✓
+- Collapsed states: `w-0 border-r-0` / `w-0 border-l-0` ✓
+- Responsive: `hidden md:flex` / `hidden md:block` ✓
+- Mobile sheet: `p-0 w-[300px]` ✓
+- Layout: `h-dvh flex flex-col` ✓
 
-**Issue:** `bg-[color:var(--section-bg-alt)]` bukan semantic
-token standar — tidak konsisten dengan pattern halaman lain
-yang pakai `bg-muted` atau `bg-sidebar`.
+**Issue:** Fully compliant. Semua token semantic. `--section-bg-alt`
+adalah CSS variable custom yang didefinisikan di globals.css,
+konsisten digunakan di TopBar dan main content area.
 
 ---
 
-### PanelResizer.tsx
+### PanelResizer.tsx *(updated)*
 `src/components/chat/layout/PanelResizer.tsx`
 
 **Token saat ini:**
+- Default: `bg-transparent` ✓
 - Hover: `hover:bg-amber-500/40`
 - Dragging: `bg-amber-500/60`
+- Width: `w-0.5` (2px visible) ✓
+- Hit area: `w-3 -left-1` (12px clickable) ✓
+- Transition: `transition-colors duration-150` ✓
+- A11y: `role="separator" aria-orientation="vertical"` ✓
+- Keyboard: Arrow key resize, Home to reset ✓
 
-**Issue:** Hardcoded `amber-500` — bukan `primary` token.
+**Issue:** Hover dan dragging pakai hardcoded `amber-500` —
+bukan `bg-primary/40` dan `bg-primary/60`.
 
 ---
 
@@ -381,27 +420,30 @@ diterima. Minor issue.
 > Screenshots: `19.28.12.png` (paper sessions sidebar),
 > `19.28.17.png` (stage progress sidebar)
 
-### ChatTabs.tsx
-`src/components/chat/shell/ChatTabs.tsx`
+### ArtifactTabs.tsx *(menggantikan ChatTabs.tsx yang sudah dihapus)*
+`src/components/chat/ArtifactTabs.tsx`
 
 **Token saat ini:**
 - Container: `bg-background border-b border-border/50` ✓
-- Active tab: `bg-card border-b-amber-500`
+- Active tab: `bg-card border-b-primary` ✓
 - Active icon: `text-primary` ✓
-- Tab text: `font-mono text-sm` ✓
+- Tab text: `font-mono text-xs` ✓
 - Hover: `hover:bg-accent` ✓
 - Close button: `rounded-action`,
   `hover:bg-destructive hover:text-destructive-foreground` ✓
-- Focus: `focus-visible:ring-primary` ✓
+- Focus: `focus-visible:ring-2 focus-visible:ring-primary` ✓
 - Scroll buttons: `rounded-action`,
   `hover:bg-accent hover:text-foreground` ✓
 - Fade gradients: `from-background to-transparent` ✓
 - Tab separator: `after:bg-border` ✓
-- Icons: Iconoir (`ChatBubble`, `Page`, `Xmark`,
-  `NavArrowLeft`, `NavArrowRight`) ✓
+- Foreground: `text-muted-foreground`, `text-foreground` ✓
+- Icons: Iconoir (`Code`, `List`, `Page`, `Table2Columns`,
+  `Book`, `Calculator`, `Xmark`, `NavArrowLeft`,
+  `NavArrowRight`) ✓
 
-**Issue:** Active tab pakai `border-b-amber-500` hardcoded —
-bukan `border-b-primary`. Sisanya sangat compliant.
+**Issue:** Fully compliant. Active tab sekarang pakai
+`border-b-primary` (bukan hardcoded `amber-500` seperti
+ChatTabs lama). Semua token semantic.
 
 ---
 
@@ -501,36 +543,47 @@ bukan bagian dari Mechanical Grace color system.
 >
 > Screenshots: `19.28.01.png` (3-column with artifact panel)
 
-### ArtifactPanel.tsx
+### ArtifactPanel.tsx *(refactored — tabs/toolbar diekstrak)*
 `src/components/chat/ArtifactPanel.tsx`
 
 **Token saat ini:**
-- Container: `bg-slate-950 rounded-shell border border-border/50`
-- Header title: `text-xs font-mono font-medium uppercase
-  tracking-wide text-foreground` ✓
-- Count badge: `rounded-badge bg-muted text-muted-foreground` ✓
+- Container: `bg-card rounded-shell border border-border/50` ✓
+- Layout: `flex flex-col h-full w-full` ✓
+- Transition: `transition-all duration-300 ease-in-out` ✓
+- Empty state icon: `text-muted-foreground opacity-50` ✓
+- Empty state text: `text-[13px] text-muted-foreground` ✓
+- Container query: `@container/artifact` ✓
+- Icons: Iconoir (`Page`) ✓
+
+**Issue:** Fully compliant setelah refactor. CRITICAL issue
+lama (`bg-slate-950` hardcoded) sudah diperbaiki — sekarang
+pakai `bg-card` semantic token. Tabs dan toolbar logic
+diekstrak ke komponen terpisah (lihat ArtifactTabs.tsx dan
+ArtifactToolbar.tsx di bawah).
+
+---
+
+### ArtifactToolbar.tsx *(baru — diekstrak dari ArtifactPanel)*
+`src/components/chat/ArtifactToolbar.tsx`
+
+**Token saat ini:**
+- Container: `h-9 border-b border-border/50` ✓
+- Type badge: shadcn `Badge variant="outline"`,
+  `text-[10px] font-mono rounded-badge` ✓
+- Version badge: shadcn `Badge variant="secondary"`,
+  `text-[10px] font-mono rounded-badge` ✓
+- Date: `text-[11px] font-mono text-muted-foreground` ✓
 - Action buttons: `h-7 w-7 rounded-action text-muted-foreground
   hover:bg-accent hover:text-foreground` ✓
 - Copy check icon: `text-emerald-500`
-- Separator: `bg-border` ✓
-- Collapsible trigger: `hover:bg-accent/30` ✓
-- Version badge: shadcn `Badge variant="secondary"`,
-  `rounded-badge font-mono` ✓
-- Type badge: shadcn `Badge variant="outline"`,
-  `rounded-badge font-mono` ✓
-- Borders: `border-t border-border` ✓
-- Empty state: `text-muted-foreground opacity-50` ✓
-- Tooltips: `font-mono text-xs` ✓
-- Icons: ALL Iconoir (`Page`, `Xmark`, `Expand`, `Download`,
-  `EditPencil`, `MagicWand`, `Copy`, `Check`, `MoreVert`,
-  `NavArrowDown`, `Code`, `List`, `Table2Columns`, `Book`,
-  `Calculator`) ✓
+- Container query: `@container/toolbar` ✓
+- Responsive: `@[320px]/toolbar` wide vs 3-dot menu ✓
+- Icons: ALL Iconoir (`Download`, `EditPencil`, `MagicWand`,
+  `Copy`, `Check`, `Expand`, `MoreVert`) ✓
 
-**Issue:** CRITICAL — `bg-slate-950` hardcoded, gelap di KEDUA
-mode. Di light mode, teks dan kontrol tidak terbaca. Sama
-seperti ThinkingIndicator dan QuotaWarningBanner.
-`text-emerald-500` pada copy check hardcoded (minor). Date
-span tidak pakai `font-mono`.
+**Issue:** Copy check icon `text-emerald-500` hardcoded —
+bukan `text-success` semantic token. Minor issue,
+sisanya fully compliant.
 
 ---
 
@@ -729,6 +782,53 @@ Icon bg opacity `/15` mungkin terlalu tipis di dark mode.
 
 ---
 
+### UserDropdown.tsx *(baru — ditambahkan variant compact untuk chat)*
+`src/components/layout/header/UserDropdown.tsx`
+
+**Token saat ini (variant="default" — GlobalHeader):**
+- Button: `rounded-action` ✓
+- Typography: `text-narrative text-sm font-medium` ✓
+- Focus: `focus-ring` ✓
+- Animation: `btn-stripes-pattern` diagonal stripes ✓
+- Chevron: `icon-interface` ✓
+- Colors: `var(--slate-800)`, `var(--slate-100)`,
+  `var(--slate-600)`, `var(--slate-400)` — hardcoded slate
+  CSS variables dengan manual `dark:` prefix
+
+**Token saat ini (variant="compact" — TopBar chat):**
+- Button: `w-8 h-8 rounded-full` ✓
+- Icon: `User h-[18px] w-[18px]` ✓ (Iconoir)
+- Colors: `text-muted-foreground hover:text-foreground
+  hover:bg-accent/80` ✓
+- Active: `text-foreground bg-accent/80` ✓
+- Status dot: `bg-emerald-500 rounded-full`
+- Dot border: `border-[color:var(--section-bg-alt)]`
+
+**Token saat ini (dropdown menu — shared):**
+- Panel: `rounded-md bg-popover border-border z-drawer` ✓
+- Menu items: `rounded-action gap-dense p-dense` ✓
+- Typography: `text-sm font-medium text-narrative` ✓
+- Icons: `icon-interface` ✓ (Iconoir `User`, `CreditCard`,
+  `Settings`, `LogOut`, `RefreshDouble`)
+- Hover: `hover:bg-slate-900 hover:text-slate-50`
+  `dark:hover:bg-slate-100 dark:hover:text-slate-900`
+- Sign out: `text-rose-400 hover:bg-rose-900 hover:text-rose-50`
+- Disabled: `text-muted-foreground cursor-not-allowed` ✓
+- Spinner: `animate-spin` ✓
+
+**Issue:**
+1. Status dot `bg-emerald-500` hardcoded — bukan
+   `--success` semantic token
+2. Menu item hover pakai hardcoded `slate-900`/`slate-50`
+   dengan manual `dark:` prefix — bukan `hover:bg-accent`
+3. Sign out pakai hardcoded `rose-400`/`rose-900` — bukan
+   `--destructive` semantic token
+4. Default variant colors pakai CSS variable slate hardcoded
+   dengan manual dark mode handling
+5. Dropdown panel `rounded-md` — bukan `rounded-shell`
+
+---
+
 ## Files yang TIDAK Perlu Diubah
 
 | File | Alasan |
@@ -737,31 +837,49 @@ Icon bg opacity `/15` mungkin terlalu tipis di dark mode.
 | `src/app/chat/layout.tsx` | Minimal wrapper |
 | `src/app/chat/page.tsx` | Minimal wrapper |
 | `src/components/chat/ChatContainer.tsx` | Pure logic orchestrator, no UI |
-| `src/components/chat/layout/useResizer.ts` | Hook, no UI |
+| `src/lib/hooks/useArtifactTabs.ts` | Hook, no UI |
 | `src/app/globals.css` | Semua tokens sudah correctly defined |
 
 ---
 
 ## Compliance Score Saat Ini
 
+> *Updated setelah layout restructuring — beberapa komponen
+> baru (TopBar, ArtifactTabs, ArtifactPanel refactored) sudah
+> fully compliant, meningkatkan skor overall.*
+
 | Metric | Score | Catatan |
 |--------|-------|---------|
-| Color Signal Theory | 60/100 | Banyak hardcoded `amber-500`, `sky-500`, `slate-*` |
-| Typography System | 65/100 | `.text-narrative` missing di MarkdownRenderer headings |
-| Border System | 70/100 | `rounded-lg` generik di NotificationDropdown |
-| Spacing/Layout | 80/100 | Relatif baik, pakai CSS Grid variables |
-| **Dark Mode** | **50/100** | Terburuk — `bg-slate-950/900` hardcoded di 4+ komponen |
-| Accessibility | 75/100 | ARIA attributes ada, focus rings perlu standardisasi |
-| **Overall** | **65/100** | |
+| Color Signal Theory | 65/100 | Masih banyak hardcoded, tapi komponen baru sudah semantic |
+| Typography System | 70/100 | Komponen baru consistent, MarkdownRenderer masih missing `.text-narrative` |
+| Border System | 75/100 | `rounded-lg` di NotificationDropdown, `rounded-md` di UserDropdown |
+| Spacing/Layout | 85/100 | CSS Grid + CSS variables, TopBar alignment ✓ |
+| **Dark Mode** | **55/100** | `bg-slate-950/900` berkurang (ArtifactPanel fixed), masih 3 komponen |
+| Accessibility | 80/100 | PanelResizer keyboard ✓, ArtifactTabs ARIA ✓, focus rings lebih konsisten |
+| **Overall** | **70/100** | Naik dari 65 — layout restructuring memperbaiki beberapa issue |
+
+### Komponen yang Sudah Fully Compliant
+
+| Komponen | Status |
+|----------|--------|
+| ChatLayout.tsx | ✅ Fully compliant |
+| ArtifactTabs.tsx | ✅ Fully compliant |
+| ArtifactPanel.tsx | ✅ Fully compliant (setelah refactor) |
+| ArtifactList.tsx | ✅ Fully compliant |
+| FileUploadButton.tsx | ✅ Fully compliant |
+| ChatMiniFooter.tsx | ✅ ~95% compliant |
+| TopBar.tsx | ✅ ~95% compliant (minor: badge `rounded-full`) |
 
 ### Pattern Masalah yang Berulang
 
 | Pattern | Frekuensi | Komponen Terdampak |
 |---------|-----------|-------------------|
-| `bg-slate-950/900` hardcoded dark | 4 komponen | ArtifactPanel, FullsizeArtifactModal, ThinkingIndicator, QuotaWarningBanner |
-| `amber-500` hardcoded (bukan `--primary`) | 8+ komponen | ShellHeader, ActivityBar, ChatTabs, PanelResizer, SidebarProgress, FullsizeArtifactModal, VersionHistoryDialog, ArtifactEditor |
+| `bg-slate-950/900` hardcoded dark | 3 komponen | FullsizeArtifactModal, ThinkingIndicator, QuotaWarningBanner |
+| `amber-500` hardcoded (bukan `--primary`) | 6+ komponen | ActivityBar, PanelResizer, SidebarProgress, FullsizeArtifactModal, VersionHistoryDialog, ArtifactEditor |
 | `sky-500/400` hardcoded (bukan `--info`) | 5+ komponen | ToolStateIndicator, SearchStatusIndicator, ArtifactIndicator, SourcesIndicator, SidebarProgress |
-| `rounded-lg` generik | 1 komponen | NotificationDropdown (4 instances) |
+| `rounded-lg`/`rounded-md` generik | 2 komponen | NotificationDropdown (4 instances), UserDropdown (1 instance) |
 | `focus:ring-amber-500` (bukan `--primary`) | 3 komponen | ArtifactEditor, FullsizeArtifactModal, VersionHistoryDialog |
 | Missing dark mode opacity variants | 6+ komponen | MessageBubble, SearchStatusIndicator, ToolStateIndicator, SidebarPaperSessions, ArtifactIndicator, NotificationDropdown |
-| `emerald-500` hardcoded (bukan `--success`) | 4+ komponen | SourcesIndicator, SearchStatusIndicator, QuickActions, SidebarPaperSessions |
+| `emerald-500` hardcoded (bukan `--success`) | 5+ komponen | SourcesIndicator, SearchStatusIndicator, QuickActions, SidebarPaperSessions, ArtifactToolbar, UserDropdown |
+| Hardcoded slate + manual `dark:` | 2 komponen | UserDropdown (default variant + menu items) |
+| `rose-*` hardcoded (bukan `--destructive`) | 1 komponen | UserDropdown (sign out button) |

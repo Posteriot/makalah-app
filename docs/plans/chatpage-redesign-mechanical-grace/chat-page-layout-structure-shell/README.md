@@ -1,6 +1,34 @@
-# Layout Halaman Chat — Current State
+# Chat Page Layout Structure & Shell — Current State
 
-> Dokumentasi keadaan layout halaman chat (`/chat`, `/chat/[conversationId]`) setelah implementasi layout restructuring (branch `feat/chatpage-redesign-mechanical-grace`).
+> Dokumentasi arsitektur spasial dan shell halaman chat (`/chat`, `/chat/[conversationId]`) setelah implementasi layout restructuring (branch `feat/chatpage-redesign-mechanical-grace`).
+
+## Scope Dokumen
+
+Dokumen ini mencakup **layout structure dan shell** — bagaimana halaman chat disusun secara spasial (grid, panel, bar, resizer) dan bagaimana state layout-nya dikelola.
+
+**Tercakup:**
+- Grid architecture (6 kolom, dimensi, constraints, CSS variables)
+- Shell components (ActivityBar, TopBar, ChatSidebar header, PanelResizer)
+- Layout state management (sidebar collapse, panel width, active panel)
+- Artifact tab state model (useArtifactTabs)
+- Container orchestration (ChatContainer → ChatLayout prop flow)
+- Layout interactions (collapse/expand, resize, grid transitions)
+- UserDropdown variant system (default vs compact)
+- Mobile layout (Sheet mechanism)
+
+**Tidak tercakup:**
+- Konten pesan (MessageBubble, MarkdownRenderer, InlineCitationChip)
+- Chat input (ChatInput, file upload, template selection)
+- AI/streaming layer (useChat, transport, status handling)
+- Paper mode (PaperValidationPanel, stage management, rewind)
+- Konten sidebar (SidebarChatHistory, SidebarPaperSessions, SidebarProgress internals)
+- Artifact viewer (ArtifactViewer, FullsizeArtifactModal, Refrasa)
+- Data flow (useMessages, useConversations, Convex queries)
+- Notifikasi (NotificationDropdown internals)
+- Billing/quota (QuotaWarningBanner)
+- Routing (`/chat` vs `/chat/[conversationId]` page components)
+
+---
 
 ## Arsitektur Grid
 
