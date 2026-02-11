@@ -60,7 +60,7 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
                 <div className="flex-1">
                     <textarea
                         ref={textareaRef}
-                        className="w-full border border-border/50 rounded-shell p-3 resize-none bg-background focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 min-h-[88px] text-sm leading-relaxed placeholder:font-mono placeholder:text-sm"
+                        className="w-full border border-border/50 rounded-action p-3 resize-none bg-card/90 focus:outline-none focus-ring min-h-[88px] text-interface text-sm leading-relaxed placeholder:text-sm"
                         value={input}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDown}

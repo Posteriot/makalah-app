@@ -27,8 +27,7 @@ import { ChatMiniFooter } from "../ChatMiniFooter"
  * - Column 6: Panel (360px default, resizable)
  *
  * Grid rows:
- * - Row 1: Header (72px) - spans all columns
- * - Row 2: Content (1fr) - all content area
+ * - Single row, full height. Header is inside main column (not spanning all columns)
  *
  * Constraints:
  * - Sidebar: min 180px, max 50% viewport
@@ -291,17 +290,10 @@ export function ChatLayout({
 
   return (
     <div
-      className="flex flex-col h-[calc(100dvh-var(--shell-footer-h))]"
+      className="flex flex-col h-dvh"
       style={CSS_VARS}
     >
-      {/* Header - Outside grid to prevent transition bounce */}
-      <ShellHeader
-        isPanelCollapsed={!isArtifactPanelOpen}
-        onTogglePanel={handleExpandPanel}
-        artifactCount={artifactCount}
-      />
-
-      {/* Grid Content - Below header */}
+      {/* Grid Content - Full height, header inside main column */}
       <div
         data-testid="chat-layout"
         className={cn(
@@ -356,8 +348,15 @@ export function ChatLayout({
       )}
       {isSidebarCollapsed && <div className="hidden md:block" />}
 
-      {/* Row 2, Column 4: Main Content (with ChatTabs) */}
-      <main className="flex flex-col overflow-hidden bg-chat-background">
+      {/* Column 4: Main Content (Header + Tabs + Content) */}
+      <main className="flex flex-col overflow-hidden bg-[color:var(--section-bg-alt)]">
+        {/* Shell Header — action controls */}
+        <ShellHeader
+          isPanelCollapsed={!isArtifactPanelOpen}
+          onTogglePanel={handleExpandPanel}
+          artifactCount={artifactCount}
+        />
+
         {/* Chat Tabs Bar */}
         <ChatTabs
           tabs={tabs}

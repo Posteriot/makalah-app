@@ -561,8 +561,8 @@
   --chat-background: var(--background);
   --chat-input: var(--slate-100);
   --user-message-bg: var(--slate-100);
-  --list-hover-bg: var(--slate-100-a80);
-  --list-selected-bg: var(--slate-200);
+  --list-hover-bg: var(--slate-200);
+  --list-selected-bg: var(--slate-300);
 
   /* Chart Colors (Makalah-Carbon Data Viz) */
   --chart-1: var(--sky-500);
@@ -571,12 +571,12 @@
   --chart-4: var(--rose-500);
   --chart-5: var(--teal-500);
 
-  /* Sidebar Colors */
-  --sidebar: var(--slate-50);
+  /* Sidebar Colors — one shade darker than content for zone distinction */
+  --sidebar: var(--slate-100);
   --sidebar-foreground: var(--neutral-950);
   --sidebar-primary: var(--amber-500);
   --sidebar-primary-foreground: var(--neutral-0);
-  --sidebar-accent: var(--slate-100);
+  --sidebar-accent: var(--slate-200);
   --sidebar-accent-foreground: var(--neutral-950);
   --sidebar-border: var(--slate-200);
   --sidebar-ring: var(--ring);

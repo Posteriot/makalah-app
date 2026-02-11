@@ -411,13 +411,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="max-w-md text-center space-y-6">
             {/* Icon - Mechanical Grace: Sky system color */}
-            <div className="mx-auto w-16 h-16 rounded-shell bg-sky-500/10 flex items-center justify-center">
-              <Sparks className="w-8 h-8 text-sky-400" />
+            <div className="mx-auto w-16 h-16 rounded-shell bg-slate-200 flex items-center justify-center">
+              <Sparks className="w-8 h-8 text-slate-500" />
             </div>
 
             {/* Title & Description */}
             <div className="space-y-2">
-              <h2 className="text-xl font-semibold">Selamat Datang di Makalah Chat</h2>
+              <h2 className="text-narrative text-xl font-medium tracking-tight">Selamat Datang di Makalah Chat</h2>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Asisten AI untuk membantu riset, menulis makalah ilmiah, dan menjawab pertanyaan akademik.
                 Mulai percakapan baru atau pilih dari riwayat di sidebar.
@@ -426,18 +426,18 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
             {/* Features - Mechanical Grace styling */}
             <div className="grid grid-cols-1 gap-3 text-left text-sm">
-              <div className="flex items-start gap-3 p-3 rounded-action bg-slate-800/50 border border-border/50">
-                <Page className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 p-3 rounded-shell border-hairline bg-card/90 backdrop-blur-[1px]">
+                <Page className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium">Tulis Makalah</p>
-                  <p className="text-muted-foreground text-xs font-mono">Panduan step-by-step menulis paper akademik</p>
+                  <p className="text-interface text-sm font-medium">Tulis Makalah</p>
+                  <p className="text-interface text-xs text-muted-foreground">Panduan step-by-step menulis paper akademik</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 rounded-action bg-slate-800/50 border border-border/50">
-                <Search className="w-5 h-5 text-sky-400 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 p-3 rounded-shell border-hairline bg-card/90 backdrop-blur-[1px]">
+                <Search className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium">Riset & Referensi</p>
-                  <p className="text-muted-foreground text-xs font-mono">Cari jurnal dan sumber ilmiah terpercaya</p>
+                  <p className="text-interface text-sm font-medium">Riset & Referensi</p>
+                  <p className="text-interface text-xs text-muted-foreground">Cari jurnal dan sumber ilmiah terpercaya</p>
                 </div>
               </div>
             </div>
@@ -446,7 +446,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             <Button
               onClick={handleStartNewChat}
               disabled={!userId || isCreatingChat}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-mono"
+              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-50 font-mono"
               size="lg"
             >
               <ChatPlusIn className="w-5 h-5 mr-2" />
