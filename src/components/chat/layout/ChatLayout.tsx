@@ -2,14 +2,11 @@
 
 import { useState, useCallback, useEffect, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { usePathname } from "next/navigation"
 import { ActivityBar, type PanelType } from "../shell/ActivityBar"
-import { ShellHeader } from "../shell/ShellHeader"
-import { ChatTabs } from "../shell/ChatTabs"
+import { TopBar } from "../shell/TopBar"
 import { ChatSidebar } from "../ChatSidebar"
 import { PanelResizer } from "./PanelResizer"
 import { useConversations } from "@/lib/hooks/useConversations"
-import { useTabState } from "@/lib/hooks/useTabState"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -70,8 +67,6 @@ const CSS_VARS = {
   "--panel-width": `${DEFAULT_PANEL_WIDTH}px`,
   "--panel-min-width": `${MIN_PANEL_WIDTH}px`,
   "--panel-max-width": "50%",
-  "--header-height": "72px",
-  "--tab-bar-height": "36px",
   "--shell-footer-h": "32px",
 } as React.CSSProperties
 
@@ -87,7 +82,6 @@ export function ChatLayout({
   onMobileSidebarOpenChange,
 }: ChatLayoutProps) {
   const router = useRouter()
-  const pathname = usePathname()
 
   // Layout state
   const [activePanel, setActivePanel] = useState<PanelType>("chat-history")
@@ -100,17 +94,6 @@ export function ChatLayout({
   const isMobileOpen = mobileSidebarOpen ?? internalMobileOpen
   const setIsMobileOpen = onMobileSidebarOpenChange ?? setInternalMobileOpen
 
-  // Tab state management
-  const {
-    tabs,
-    activeTabId,
-    openTab,
-    closeTab,
-    closeAllTabs,
-    setActiveTab,
-    updateTabTitle,
-  } = useTabState(pathname)
-
   // Conversations hook
   const {
     conversations,
@@ -119,19 +102,6 @@ export function ChatLayout({
     updateConversationTitle,
     isLoading,
   } = useConversations()
-
-  // Auto-open tab when conversation changes
-  useEffect(() => {
-    if (conversationId && conversations) {
-      const conversation = conversations.find((c) => c._id === conversationId)
-      if (conversation) {
-        // For now, default to "chat" type. Paper session detection can be added later.
-        // TODO: Check if conversation has associated paper session to set type as "paper"
-        const tabType = "chat" as const
-        openTab(conversationId, conversation.title || "New Chat", tabType)
-      }
-    }
-  }, [conversationId, conversations, openTab])
 
   // Auto-collapse sidebar in empty state, auto-expand when conversation is active
   useEffect(() => {
@@ -233,8 +203,6 @@ export function ChatLayout({
 
   // Delete conversation handler
   const handleDeleteConversation = async (id: string) => {
-    // Close tab if open
-    closeTab(id)
     // Delete from database
     await deleteConversation(id as Id<"conversations">)
     // If we deleted current conversation, navigate away
@@ -249,25 +217,7 @@ export function ChatLayout({
     title: string
   ) => {
     await updateConversationTitle(id, title)
-    // Update tab title if open
-    updateTabTitle(id, title)
   }
-
-  // Tab change handler (navigate to conversation)
-  const handleTabChange = useCallback(
-    (tabId: string) => {
-      setActiveTab(tabId)
-    },
-    [setActiveTab]
-  )
-
-  // Tab close handler
-  const handleTabClose = useCallback(
-    (tabId: string) => {
-      closeTab(tabId)
-    },
-    [closeTab]
-  )
 
   // Handle panel expand
   const handleExpandPanel = useCallback(() => {
@@ -293,7 +243,7 @@ export function ChatLayout({
       className="flex flex-col h-dvh"
       style={CSS_VARS}
     >
-      {/* Grid Content - Full height, header inside main column */}
+      {/* Grid Content — full height, no header bar above */}
       <div
         data-testid="chat-layout"
         className={cn(
@@ -307,79 +257,70 @@ export function ChatLayout({
         }}
       >
         {/* Column 1: Activity Bar */}
-      <ActivityBar
-        activePanel={activePanel}
-        onPanelChange={handlePanelChange}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={handleToggleSidebar}
-      />
-
-      {/* Row 2, Column 2: Sidebar */}
-      <aside
-        className={cn(
-          "flex flex-col border-r border-border/50 bg-sidebar overflow-hidden",
-          "hidden md:flex",
-          isSidebarCollapsed && "w-0 border-r-0"
-        )}
-      >
-        <ChatSidebar
+        <ActivityBar
           activePanel={activePanel}
-          conversations={conversations}
-          currentConversationId={conversationId}
-          onNewChat={handleNewChat}
-          onDeleteConversation={handleDeleteConversation}
-          onUpdateConversationTitle={handleUpdateConversationTitle}
-          onArtifactSelect={onArtifactSelect}
-          isArtifactPanelOpen={isArtifactPanelOpen}
-          onArtifactPanelToggle={onArtifactPanelToggle}
-          isLoading={isLoading}
-          isCreating={isCreating}
-        />
-      </aside>
-
-      {/* Row 2, Column 3: Left Resizer (Sidebar-Main) */}
-      {!isSidebarCollapsed && (
-        <PanelResizer
-          position="left"
-          onResize={handleSidebarResize}
-          onDoubleClick={handleSidebarReset}
-          className="hidden md:flex"
-        />
-      )}
-      {isSidebarCollapsed && <div className="hidden md:block" />}
-
-      {/* Column 4: Main Content (Header + Tabs + Content) */}
-      <main className="flex flex-col overflow-hidden bg-[color:var(--section-bg-alt)]">
-        {/* Shell Header — action controls */}
-        <ShellHeader
-          isPanelCollapsed={!isArtifactPanelOpen}
-          onTogglePanel={handleExpandPanel}
-          artifactCount={artifactCount}
+          onPanelChange={handlePanelChange}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebar={handleToggleSidebar}
         />
 
-        {/* Chat Tabs Bar */}
-        <ChatTabs
-          tabs={tabs}
-          activeTabId={activeTabId}
-          onTabChange={handleTabChange}
-          onTabClose={handleTabClose}
-          onCloseAll={closeAllTabs}
-        />
+        {/* Column 2: Sidebar */}
+        <aside
+          className={cn(
+            "flex flex-col border-r border-border/50 bg-sidebar overflow-hidden",
+            "hidden md:flex",
+            isSidebarCollapsed && "w-0 border-r-0"
+          )}
+        >
+          <ChatSidebar
+            activePanel={activePanel}
+            conversations={conversations}
+            currentConversationId={conversationId}
+            onNewChat={handleNewChat}
+            onDeleteConversation={handleDeleteConversation}
+            onUpdateConversationTitle={handleUpdateConversationTitle}
+            onArtifactSelect={onArtifactSelect}
+            isArtifactPanelOpen={isArtifactPanelOpen}
+            onArtifactPanelToggle={onArtifactPanelToggle}
+            isLoading={isLoading}
+            isCreating={isCreating}
+            onCollapseSidebar={handleToggleSidebar}
+          />
+        </aside>
 
-        {/* Main Chat Content */}
-        <div className="flex-1 overflow-hidden">{children}</div>
-      </main>
+        {/* Column 3: Left Resizer */}
+        {!isSidebarCollapsed && (
+          <PanelResizer
+            position="left"
+            onResize={handleSidebarResize}
+            onDoubleClick={handleSidebarReset}
+            className="hidden md:flex"
+          />
+        )}
+        {isSidebarCollapsed && <div className="hidden md:block" />}
 
-      {/* Row 2, Column 5: Right Resizer (Main-Panel) */}
-      {isArtifactPanelOpen && (
-        <PanelResizer
-          position="right"
-          onResize={handlePanelResize}
-          onDoubleClick={handlePanelReset}
-          className="hidden md:flex"
-        />
-      )}
-      {!isArtifactPanelOpen && <div className="hidden md:block" />}
+        {/* Column 4: Main Content — NO ShellHeader, NO ChatTabs */}
+        <main className="flex flex-col overflow-hidden bg-[color:var(--section-bg-alt)]">
+          <TopBar
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={handleToggleSidebar}
+            isPanelCollapsed={!isArtifactPanelOpen}
+            onTogglePanel={handleExpandPanel}
+            artifactCount={artifactCount}
+          />
+          <div className="flex-1 overflow-hidden">{children}</div>
+        </main>
+
+        {/* Column 5: Right Resizer */}
+        {isArtifactPanelOpen && (
+          <PanelResizer
+            position="right"
+            onResize={handlePanelResize}
+            onDoubleClick={handlePanelReset}
+            className="hidden md:flex"
+          />
+        )}
+        {!isArtifactPanelOpen && <div className="hidden md:block" />}
 
         {/* Column 6: Artifact Panel */}
         <aside
@@ -393,7 +334,7 @@ export function ChatLayout({
         </aside>
       </div>
 
-      {/* Mobile Sidebar (Sheet) - Outside grid */}
+      {/* Mobile Sidebar Sheet */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
         <SheetContent side="left" className="p-0 w-[300px]">
           <SheetHeader className="sr-only">
@@ -417,7 +358,7 @@ export function ChatLayout({
         </SheetContent>
       </Sheet>
 
-      {/* App Footer - Mechanical Grace Mini Footer */}
+      {/* Footer */}
       <ChatMiniFooter />
     </div>
   )

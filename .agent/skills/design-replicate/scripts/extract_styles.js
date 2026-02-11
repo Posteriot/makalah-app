@@ -3,10 +3,10 @@
  * Run this in the browser console to extract technical data from elements.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in browser console
 const styleExtractor = {
     // 1. Get all CSS Variables from :root
     getVariables: () => {
-        const rootStyles = getComputedStyle(document.documentElement);
         const vars = {};
         for (let i = 0; i < document.styleSheets.length; i++) {
             try {
@@ -24,7 +24,7 @@ const styleExtractor = {
                         }
                     }
                 }
-            } catch (e) { /* Cross-origin stylesheet skip */ }
+            } catch { /* Cross-origin stylesheet skip */ }
         }
         return vars;
     },
@@ -68,7 +68,7 @@ const styleExtractor = {
                         keyframes.push(rules[j].cssText);
                     }
                 }
-            } catch (e) { }
+            } catch { }
         }
         return keyframes;
     }

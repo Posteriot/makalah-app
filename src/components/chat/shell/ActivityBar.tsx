@@ -8,8 +8,6 @@ import {
   ChatBubble,
   Page,
   GitBranch,
-  FastArrowLeft,
-  FastArrowRight,
 } from "iconoir-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -196,68 +194,34 @@ export function ActivityBar({
         data-testid="activity-bar"
         onKeyDown={handleKeyDown}
       >
-        {/* Logo — Home link */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/"
-              className={cn(
-                "flex items-center justify-center",
-                "w-10 h-10 rounded-action mb-1",
-                "hover:bg-sidebar-accent transition-colors"
-              )}
-              aria-label="Home"
-            >
-              <Image
-                src="/logo/makalah_logo_light.svg"
-                alt="Makalah"
-                width={22}
-                height={22}
-                className="hidden dark:block"
-              />
-              <Image
-                src="/logo/makalah_logo_dark.svg"
-                alt="Makalah"
-                width={22}
-                height={22}
-                className="block dark:hidden"
-              />
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8} className="font-mono text-xs">
-            Home
-          </TooltipContent>
-        </Tooltip>
+        {/* Logo */}
+        <Link
+          href="/"
+          className={cn(
+            "flex items-center justify-center",
+            "w-10 h-10 rounded-action",
+            "hover:bg-sidebar-accent transition-colors"
+          )}
+          aria-label="Home"
+        >
+          <Image
+            src="/logo/makalah_logo_light.svg"
+            alt="Makalah"
+            width={20}
+            height={20}
+            className="hidden dark:block"
+          />
+          <Image
+            src="/logo/makalah_logo_dark.svg"
+            alt="Makalah"
+            width={20}
+            height={20}
+            className="block dark:hidden"
+          />
+        </Link>
 
-        {/* Sidebar Toggle Button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "w-10 h-10 rounded-action mb-2",
-                "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent",
-                "focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-              )}
-              onClick={onToggleSidebar}
-              aria-label={
-                isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
-              }
-              aria-expanded={!isSidebarCollapsed}
-              aria-controls="chat-sidebar"
-            >
-              {isSidebarCollapsed ? (
-                <FastArrowRight className="h-5 w-5" aria-hidden="true" />
-              ) : (
-                <FastArrowLeft className="h-5 w-5" aria-hidden="true" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8} className="font-mono text-xs">
-            {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          </TooltipContent>
-        </Tooltip>
+        {/* Separator */}
+        <div className="w-6 h-px bg-border/50 my-1" aria-hidden="true" />
 
         {/* Panel Navigation Items */}
         <div

@@ -15,7 +15,12 @@ import {
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
-export function UserDropdown() {
+interface UserDropdownProps {
+  /** "default" = full name + chevron (marketing/dashboard), "compact" = icon only (chat) */
+  variant?: "default" | "compact"
+}
+
+export function UserDropdown({ variant = "default" }: UserDropdownProps) {
   const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
   const [isOpen, setIsOpen] = useState(false)
@@ -83,50 +88,72 @@ export function UserDropdown() {
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Trigger */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          // Structure for stripes animation
-          "group relative overflow-hidden",
-          // Base layout
-          "flex items-center justify-center gap-2 rounded-action px-2 py-1",
-          // Typography
-          "text-sm font-medium text-narrative",
-          // Light mode diam: dark button
-          "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
-          // Light mode hover/expanded: text & border darken
-          "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
-          "aria-expanded:text-[color:var(--slate-800)] aria-expanded:border-[color:var(--slate-600)]",
-          // Dark mode diam: light button
-          "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
-          // Dark mode hover/expanded: text & border lighten
-          "dark:hover:text-[color:var(--slate-100)] dark:hover:border-[color:var(--slate-400)]",
-          "dark:aria-expanded:text-[color:var(--slate-100)] dark:aria-expanded:border-[color:var(--slate-400)]",
-          // Transition & focus
-          "transition-colors focus-ring"
-        )}
-        aria-expanded={isOpen}
-        aria-haspopup="true"
-      >
-        {/* Diagonal stripes overlay - slides in on hover or when expanded */}
-        <span
-          className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0 group-aria-expanded:translate-x-0"
-          aria-hidden="true"
-        />
-
-        {/* Name (hidden on mobile) */}
-        <span className="relative z-10 hidden sm:block text-sm font-medium text-narrative max-w-[120px] truncate">
-          {fullName}
-        </span>
-
-        {/* Chevron */}
-        <NavArrowDown
+      {variant === "compact" ? (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "relative z-10 icon-interface transition-transform duration-200",
-            isOpen && "rotate-180"
+            "relative flex items-center justify-center",
+            "w-8 h-8 rounded-full",
+            "text-muted-foreground hover:text-foreground hover:bg-accent/80",
+            "transition-colors duration-150",
+            isOpen && "text-foreground bg-accent/80"
           )}
-        />
-      </button>
+          aria-expanded={isOpen}
+          aria-haspopup="true"
+          aria-label="User menu"
+        >
+          <User className="h-[18px] w-[18px]" />
+          <span
+            className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[color:var(--section-bg-alt)]"
+            aria-hidden="true"
+          />
+        </button>
+      ) : (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            // Structure for stripes animation
+            "group relative overflow-hidden",
+            // Base layout
+            "flex items-center justify-center gap-2 rounded-action px-2 py-1",
+            // Typography
+            "text-sm font-medium text-narrative",
+            // Light mode diam: dark button
+            "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
+            // Light mode hover/expanded: text & border darken
+            "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
+            "aria-expanded:text-[color:var(--slate-800)] aria-expanded:border-[color:var(--slate-600)]",
+            // Dark mode diam: light button
+            "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
+            // Dark mode hover/expanded: text & border lighten
+            "dark:hover:text-[color:var(--slate-100)] dark:hover:border-[color:var(--slate-400)]",
+            "dark:aria-expanded:text-[color:var(--slate-100)] dark:aria-expanded:border-[color:var(--slate-400)]",
+            // Transition & focus
+            "transition-colors focus-ring"
+          )}
+          aria-expanded={isOpen}
+          aria-haspopup="true"
+        >
+          {/* Diagonal stripes overlay - slides in on hover or when expanded */}
+          <span
+            className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0 group-aria-expanded:translate-x-0"
+            aria-hidden="true"
+          />
+
+          {/* Name (hidden on mobile) */}
+          <span className="relative z-10 hidden sm:block text-sm font-medium text-narrative max-w-[120px] truncate">
+            {fullName}
+          </span>
+
+          {/* Chevron */}
+          <NavArrowDown
+            className={cn(
+              "relative z-10 icon-interface transition-transform duration-200",
+              isOpen && "rotate-180"
+            )}
+          />
+        </button>
+      )}
 
       {/* Dropdown Menu */}
       {isOpen && (
