@@ -30,7 +30,7 @@ export function SearchStatusIndicator({ status, message }: SearchStatusIndicator
         <div
             className={cn(
                 // Base styles - full width horizontal bar, Mechanical Grace
-                "flex items-center gap-2.5 px-3 py-2 rounded-md",
+                "flex items-center gap-2.5 px-3 py-2 rounded-badge",
                 "text-[11px] font-mono uppercase tracking-wide transition-all duration-300",
                 "animate-in fade-in slide-in-from-left-2",
                 // Left border accent

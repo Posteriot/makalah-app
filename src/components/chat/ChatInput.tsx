@@ -36,11 +36,11 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
     }
 
     return (
-        <div className="py-4 px-5 border-t bg-chat-input">
+        <div className="py-4 px-5 border-t border-border/50 bg-background">
             {uploadedFileIds.length > 0 && (
                 <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
                     {uploadedFileIds.map((id) => (
-                        <div key={id} className="flex items-center gap-2 bg-muted p-2 rounded text-xs text-muted-foreground whitespace-nowrap">
+                        <div key={id} className="flex items-center gap-2 bg-muted p-2 rounded-badge text-xs font-mono text-muted-foreground whitespace-nowrap">
                             <Page className="h-3 w-3" />
                             <span>File attached</span>
                         </div>
@@ -60,7 +60,7 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
                 <div className="flex-1">
                     <textarea
                         ref={textareaRef}
-                        className="w-full border border-border rounded-lg p-3 resize-none bg-background focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 min-h-[88px] text-sm leading-relaxed"
+                        className="w-full border border-border/50 rounded-action p-3 resize-none bg-card/90 focus:outline-none focus-ring min-h-[88px] text-interface text-sm leading-relaxed placeholder:text-sm"
                         value={input}
                         onChange={onInputChange}
                         onKeyDown={handleKeyDown}
@@ -75,7 +75,7 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
                 <button
                     type="submit"
                     disabled={!input.trim() || isLoading}
-                    className="w-10 h-10 flex items-center justify-center rounded-lg bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed mt-3"
+                    className="w-10 h-10 flex items-center justify-center rounded-action hover-slash bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed mt-3"
                     aria-label="Send message"
                 >
                     <Send className="h-5 w-5" />

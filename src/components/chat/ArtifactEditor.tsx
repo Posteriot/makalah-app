@@ -61,7 +61,7 @@ export function ArtifactEditor({ content, onSave, onCancel, isLoading = false }:
                     value={editedContent}
                     onChange={(e) => setEditedContent(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className="w-full h-full resize-none bg-muted rounded-lg p-4 text-sm font-mono border border-dashed border-sky-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full h-full resize-none bg-muted rounded-action p-4 text-sm font-mono border border-dashed border-sky-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Masukkan konten artifact..."
                     disabled={isLoading}
                     aria-label="Edit artifact content"
@@ -101,7 +101,7 @@ export function ArtifactEditor({ content, onSave, onCancel, isLoading = false }:
 
             {/* Keyboard shortcuts hint */}
             <div className="px-4 pb-2 text-xs text-muted-foreground">
-                <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">⌘</kbd>+<kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Enter</kbd> simpan • <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Esc</kbd> batal
+                <kbd className="px-1 py-0.5 bg-muted rounded-badge text-[10px]">⌘</kbd>+<kbd className="px-1 py-0.5 bg-muted rounded-badge text-[10px]">Enter</kbd> simpan • <kbd className="px-1 py-0.5 bg-muted rounded-badge text-[10px]">Esc</kbd> batal
             </div>
         </div>
     )

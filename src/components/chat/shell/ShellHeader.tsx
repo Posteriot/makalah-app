@@ -1,11 +1,8 @@
 "use client"
 
-import Image from "next/image"
-import Link from "next/link"
 import { useTheme } from "next-themes"
 import { SunLight, HalfMoon, SidebarExpand, SidebarCollapse } from "iconoir-react"
 import { cn } from "@/lib/utils"
-import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { NotificationDropdown } from "./NotificationDropdown"
 import { UserDropdown } from "@/components/layout/header"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
@@ -23,20 +20,13 @@ interface ShellHeaderProps {
 /**
  * ShellHeader - Standalone chat page header
  *
- * Height: 72px (56px content + 16px stripes/spacing)
- *
  * Components:
- * - Logo + brand text (left)
- * - Segment badge (left, next to logo)
  * - Notifications dropdown (right)
  * - Theme toggle (right)
  * - Panel expand button (right, visible when panel collapsed)
  * - User dropdown (right)
  *
- * Features:
- * - Diagonal stripes separator (10px height, industrial accent)
- * - Horizontal line border below stripes
- * - Reuses existing UserDropdown component
+ * Note: Logo + brand moved to ActivityBar + ChatSidebar header
  */
 export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0 }: ShellHeaderProps) {
   const { resolvedTheme, setTheme } = useTheme()
@@ -49,61 +39,11 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
   return (
     <header
       className={cn(
-        "relative flex items-center justify-between",
-        "h-[var(--shell-header-h,72px)] px-4 pt-3 pb-4",
+        "relative flex items-center justify-end",
+        "h-[var(--shell-header-h)] px-4 py-2",
         "bg-background"
       )}
-      style={{
-        // CSS variable for header height
-        "--shell-header-h": "72px",
-      } as React.CSSProperties}
     >
-      {/* Left Section: Logo + Brand + Segment Badge */}
-      <div className="flex items-center gap-3">
-        <Link href="/" className="flex items-center gap-2">
-          {/* Light logo icon (for dark mode) */}
-          <Image
-            src="/logo/makalah_logo_light.svg"
-            alt="Makalah"
-            width={24}
-            height={24}
-            className="logo-img logo-img-light"
-          />
-          {/* Dark logo icon (for light mode) */}
-          <Image
-            src="/logo/makalah_logo_dark.svg"
-            alt="Makalah"
-            width={24}
-            height={24}
-            className="logo-img logo-img-dark"
-          />
-          {/* White brand text (for dark mode) */}
-          <Image
-            src="/logo-makalah-ai-white.svg"
-            alt="Makalah"
-            width={80}
-            height={18}
-            className="logo-brand-text logo-brand-light"
-          />
-          {/* Black brand text (for light mode) */}
-          <Image
-            src="/logo-makalah-ai-black.svg"
-            alt="Makalah"
-            width={80}
-            height={18}
-            className="logo-brand-text logo-brand-dark"
-          />
-        </Link>
-
-        {/* Segment Badge */}
-        {!isLoading && user && (
-          <SegmentBadge
-            role={user.role}
-            subscriptionStatus={user.subscriptionStatus}
-          />
-        )}
-      </div>
-
       {/* Right Section: Notifications, Theme Toggle, Panel Expand, User */}
       <div className="flex items-center gap-2">
         {/* Notifications Dropdown */}
@@ -117,7 +57,7 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
                 onClick={toggleTheme}
                 className={cn(
                   "flex items-center justify-center",
-                  "w-9 h-9 rounded-lg",
+                  "w-9 h-9 rounded-action",
                   "text-muted-foreground hover:text-foreground hover:bg-accent",
                   "transition-colors duration-150"
                 )}
@@ -141,7 +81,7 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
                 onClick={onTogglePanel}
                 className={cn(
                   "relative flex items-center justify-center",
-                  "w-9 h-9 rounded-lg",
+                  "w-9 h-9 rounded-action",
                   "text-muted-foreground hover:text-foreground hover:bg-accent",
                   "transition-colors duration-150"
                 )}
@@ -181,40 +121,8 @@ export function ShellHeader({ isPanelCollapsed, onTogglePanel, artifactCount = 0
         <UserDropdown />
       </div>
 
-      {/* Diagonal Stripes Separator (Industrial Accent) */}
-      <svg
-        className={cn(
-          "absolute bottom-0 left-0 right-0",
-          "w-full h-[10px]",
-          "text-muted-foreground opacity-30",
-          "pointer-events-none"
-        )}
-        aria-hidden="true"
-        preserveAspectRatio="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <pattern
-            id="shell-diagonal-stripes"
-            x="0"
-            y="0"
-            width="10"
-            height="10"
-            patternUnits="userSpaceOnUse"
-          >
-            <line x1="0" y1="10" x2="10" y2="0" stroke="currentColor" strokeWidth="1" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#shell-diagonal-stripes)" />
-      </svg>
-
-      {/* Horizontal line border below stripes */}
-      <div
-        className={cn(
-          "absolute bottom-0 left-0 right-0",
-          "h-px bg-border"
-        )}
-      />
+      {/* Bottom border */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-border/50" />
     </header>
   )
 }

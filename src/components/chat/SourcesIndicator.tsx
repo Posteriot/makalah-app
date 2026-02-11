@@ -48,7 +48,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                 className={cn(
                     "flex items-center gap-2.5 px-3 py-2",
                     // Mechanical Grace: .rounded-badge (6px) + Emerald border
-                    "rounded-md bg-emerald-500/10 border-l-4 border-l-emerald-500",
+                    "rounded-badge bg-emerald-500/10 border-l-4 border-l-emerald-500",
                     "text-sm"
                 )}
             >
@@ -63,7 +63,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                 open={isOpen}
                 onOpenChange={setIsOpen}
                 // Mechanical Grace: .border-hairline + .rounded-badge
-                className="rounded-md border border-slate-800 bg-muted/30"
+                className="rounded-badge border border-border/50 bg-muted/30"
             >
                 {/* Collapsed Header */}
                 <CollapsibleTrigger asChild>
@@ -71,8 +71,8 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                         className={cn(
                             "flex w-full items-center justify-between gap-3",
                             "px-3 py-2 text-sm",
-                            "hover:bg-accent/50 transition-colors rounded-md",
-                            isOpen && "border-b border-slate-800 rounded-b-none"
+                            "hover:bg-accent/50 transition-colors rounded-badge",
+                            isOpen && "border-b border-border/50 rounded-b-none"
                         )}
                     >
                         <span className="font-mono font-medium text-foreground">
@@ -90,7 +90,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                 {/* Expanded Content */}
                 <CollapsibleContent className="px-3 py-2">
                     {/* Mechanical Grace: .border-hairline dividers */}
-                    <div className="flex flex-col divide-y divide-slate-800">
+                    <div className="flex flex-col divide-y divide-border/50">
                         {displayedSources.map(({ source, idx }) => {
                             const parts = getWebCitationDisplayParts(source)
                             return (

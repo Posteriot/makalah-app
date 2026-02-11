@@ -15,7 +15,7 @@ export function ThinkingIndicator({ visible }: ThinkingIndicatorProps) {
                 // Base styles matching mockup .thinking-indicator
                 "flex items-center gap-2.5",
                 "px-4 py-3 mx-4 my-4",
-                "bg-slate-900/80 border border-slate-700 rounded-lg",
+                "bg-slate-900/80 border border-border/50 rounded-action",
                 // Animation
                 "transition-all duration-300",
                 "animate-in fade-in slide-in-from-bottom-2"

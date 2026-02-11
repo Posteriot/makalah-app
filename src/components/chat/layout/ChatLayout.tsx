@@ -13,6 +13,7 @@ import { useTabState } from "@/lib/hooks/useTabState"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { ChatMiniFooter } from "../ChatMiniFooter"
 
 /**
  * ChatLayout - 6-column CSS Grid orchestrator
@@ -26,8 +27,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
  * - Column 6: Panel (360px default, resizable)
  *
  * Grid rows:
- * - Row 1: Header (72px) - spans all columns
- * - Row 2: Content (1fr) - all content area
+ * - Single row, full height. Header is inside main column (not spanning all columns)
  *
  * Constraints:
  * - Sidebar: min 180px, max 50% viewport
@@ -290,17 +290,10 @@ export function ChatLayout({
 
   return (
     <div
-      className="flex flex-col h-[calc(100dvh-var(--shell-footer-h))]"
+      className="flex flex-col h-dvh"
       style={CSS_VARS}
     >
-      {/* Header - Outside grid to prevent transition bounce */}
-      <ShellHeader
-        isPanelCollapsed={!isArtifactPanelOpen}
-        onTogglePanel={handleExpandPanel}
-        artifactCount={artifactCount}
-      />
-
-      {/* Grid Content - Below header */}
+      {/* Grid Content - Full height, header inside main column */}
       <div
         data-testid="chat-layout"
         className={cn(
@@ -324,7 +317,7 @@ export function ChatLayout({
       {/* Row 2, Column 2: Sidebar */}
       <aside
         className={cn(
-          "flex flex-col border-r bg-sidebar overflow-hidden",
+          "flex flex-col border-r border-border/50 bg-sidebar overflow-hidden",
           "hidden md:flex",
           isSidebarCollapsed && "w-0 border-r-0"
         )}
@@ -355,8 +348,15 @@ export function ChatLayout({
       )}
       {isSidebarCollapsed && <div className="hidden md:block" />}
 
-      {/* Row 2, Column 4: Main Content (with ChatTabs) */}
-      <main className="flex flex-col overflow-hidden bg-chat-background">
+      {/* Column 4: Main Content (Header + Tabs + Content) */}
+      <main className="flex flex-col overflow-hidden bg-[color:var(--section-bg-alt)]">
+        {/* Shell Header — action controls */}
+        <ShellHeader
+          isPanelCollapsed={!isArtifactPanelOpen}
+          onTogglePanel={handleExpandPanel}
+          artifactCount={artifactCount}
+        />
+
         {/* Chat Tabs Bar */}
         <ChatTabs
           tabs={tabs}
@@ -385,7 +385,7 @@ export function ChatLayout({
         <aside
           className={cn(
             "hidden md:flex flex-col overflow-hidden",
-            "border-l bg-card",
+            "border-l border-border/50 bg-card",
             !isArtifactPanelOpen && "w-0 border-l-0"
           )}
         >
@@ -417,14 +417,8 @@ export function ChatLayout({
         </SheetContent>
       </Sheet>
 
-      {/* App Footer - Fixed bottom bar */}
-      <footer className="fixed bottom-0 left-0 right-0 h-8 flex items-center justify-center gap-2 text-xs text-muted-foreground bg-background border-t z-10">
-        <span className="font-medium">Makalah AI</span>
-        <span className="opacity-50">·</span>
-        <span className="opacity-80">© 2026</span>
-        <span className="opacity-50">·</span>
-        <span className="opacity-80">v1.0</span>
-      </footer>
+      {/* App Footer - Mechanical Grace Mini Footer */}
+      <ChatMiniFooter />
     </div>
   )
 }

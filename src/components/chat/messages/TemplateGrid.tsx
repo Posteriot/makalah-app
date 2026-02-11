@@ -73,10 +73,10 @@ export function TemplateGrid({ onTemplateSelect }: TemplateGridProps) {
     <div className="w-full max-w-[640px] mx-auto px-4">
       {/* Header - mockup: 24px title, 32px margin-bottom */}
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-semibold text-foreground mb-2">
+        <h2 className="text-narrative text-2xl font-medium tracking-tight text-foreground mb-2">
           Mulai Interaksi Baru
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-narrative text-sm text-muted-foreground">
           Pilih template di bawah atau ketik pesan langsung
         </p>
       </div>
@@ -112,20 +112,16 @@ function TemplateCard({
       onClick={() => onSelect(template)}
       className={cn(
         "flex items-start gap-3.5 p-4 text-left",
-        // Mechanical Grace: .rounded-action (8px), .border-hairline
-        "rounded-lg border border-slate-800 bg-slate-900/50",
-        "hover:bg-slate-800/50 hover:border-amber-500/50",
-        "transition-all duration-150"
+        "rounded-shell border-hairline bg-card/90 backdrop-blur-[1px]",
+        "hover:bg-card transition-all duration-150"
       )}
     >
       {/* Icon - 40x40px, Mechanical Grace colors */}
       <div
         className={cn(
-          "flex-shrink-0 w-10 h-10 rounded-lg",
+          "flex-shrink-0 w-10 h-10 rounded-action",
           "flex items-center justify-center",
-          isPaper
-            ? "bg-amber-500/15 text-amber-500"
-            : "bg-sky-500/15 text-sky-400"
+          "bg-slate-200 text-slate-500"
         )}
       >
         {isPaper ? (
@@ -140,24 +136,22 @@ function TemplateCard({
         {/* Badge - Mechanical Grace: Amber PAPER, Sky DIALOG */}
         <span
           className={cn(
-            "inline-block px-2 py-0.5 rounded",
-            "text-[11px] font-mono font-semibold uppercase tracking-wide",
+            "text-signal inline-block px-2 py-0.5 rounded-badge",
+            "text-[10px] font-bold",
             "mb-1.5",
-            isPaper
-              ? "bg-amber-500/15 text-amber-500"
-              : "bg-sky-500/15 text-sky-400"
+            "bg-slate-200 text-slate-600 border border-slate-300"
           )}
         >
           {template.badge}
         </span>
 
         {/* Title */}
-        <h3 className="font-medium text-sm text-foreground mb-1">
+        <h3 className="text-narrative font-medium text-sm text-foreground mb-1">
           {template.title}
         </h3>
 
         {/* Description */}
-        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 font-mono">
+        <p className="text-interface text-xs text-muted-foreground leading-relaxed line-clamp-2">
           {template.description}
         </p>
       </div>

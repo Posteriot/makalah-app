@@ -178,7 +178,7 @@ function MilestoneItem({
           <div
             className={cn(
               "w-0.5 flex-1 min-h-[24px]",
-              state === "completed" ? "bg-amber-500" : "bg-slate-700"
+              state === "completed" ? "bg-amber-500" : "bg-border"
             )}
           />
         )}
@@ -367,8 +367,8 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     <>
       <div className="flex flex-col h-full">
         {/* Header - Mechanical Grace: .border-hairline */}
-        <div className="p-4 border-b border-slate-800">
-          <div className="text-sm font-semibold mb-1">Progress</div>
+        <div className="p-4 border-b border-border/50">
+          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground mb-1">Progress</div>
           <div className="text-xs font-mono text-muted-foreground truncate mb-3">
             {paperTitle}
           </div>

@@ -94,9 +94,9 @@ export function VersionHistoryDialog({
                                         key={version._id}
                                         onClick={() => onSelectVersion(version._id)}
                                         className={cn(
-                                            "w-full text-left p-3 rounded-lg transition-colors",
+                                            "w-full text-left p-3 rounded-action transition-colors",
                                             // Mechanical Grace: .border-hairline
-                                            "border border-slate-800 hover:border-slate-700",
+                                            "border border-border/50 hover:border-border",
                                             "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-amber-500",
                                             isCurrentVersion && "bg-accent border-amber-500/50"
                                         )}
@@ -143,7 +143,7 @@ export function VersionHistoryDialog({
                 </div>
 
                 {/* Footer info - Mechanical Grace: .border-hairline + Mono */}
-                <div className="pt-4 border-t border-slate-800 text-xs font-mono text-muted-foreground text-center">
+                <div className="pt-4 border-t border-border/50 text-xs font-mono text-muted-foreground text-center">
                     Total {versionHistory?.length ?? 0} versi
                 </div>
             </DialogContent>

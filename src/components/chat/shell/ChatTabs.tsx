@@ -182,7 +182,7 @@ export function ChatTabs({
       className={cn(
         "flex items-stretch",
         "h-9 min-h-[36px]",
-        "bg-muted border-b border-border",
+        "bg-background border-b border-border/50",
         "flex-shrink-0"
       )}
       role="tablist"
@@ -200,7 +200,7 @@ export function ChatTabs({
         <div
           className={cn(
             "absolute left-0 top-0 bottom-0 w-8",
-            "bg-gradient-to-r from-muted to-transparent",
+            "bg-gradient-to-r from-background to-transparent",
             "pointer-events-none z-10",
             "transition-opacity duration-150",
             hasOverflowLeft ? "opacity-100" : "opacity-0"
@@ -212,7 +212,7 @@ export function ChatTabs({
         <div
           className={cn(
             "absolute right-0 top-0 bottom-0 w-8",
-            "bg-gradient-to-l from-muted to-transparent",
+            "bg-gradient-to-l from-background to-transparent",
             "pointer-events-none z-10",
             "transition-opacity duration-150",
             hasOverflowRight ? "opacity-100" : "opacity-0"
@@ -258,7 +258,7 @@ export function ChatTabs({
                 // Responsive sizing
                 "flex-1 min-w-[140px] max-w-[320px]",
                 // Active state - Amber-500 underline per Mechanical Grace spec
-                activeTabId === tab.id && "bg-background border-b-amber-500",
+                activeTabId === tab.id && "bg-card border-b-amber-500",
                 // Separator line between tabs (except last)
                 index < tabs.length - 1 &&
                   activeTabId !== tab.id &&
@@ -293,10 +293,10 @@ export function ChatTabs({
                 onClick={(e) => handleCloseClick(e, tab.id)}
                 className={cn(
                   "flex items-center justify-center",
-                  "w-[18px] h-[18px] rounded",
+                  "w-[18px] h-[18px] rounded-action",
                   "text-muted-foreground flex-shrink-0",
                   "opacity-0 group-hover:opacity-100",
-                  "hover:bg-destructive hover:text-white",
+                  "hover:bg-destructive hover:text-destructive-foreground",
                   "focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary",
                   "transition-all duration-150",
                   activeTabId === tab.id && "opacity-100"
@@ -324,7 +324,7 @@ export function ChatTabs({
           disabled={!hasOverflowLeft}
           className={cn(
             "flex items-center justify-center",
-            "w-6 h-6 rounded",
+            "w-6 h-6 rounded-action",
             "text-muted-foreground",
             "hover:bg-accent hover:text-foreground",
             "focus-visible:ring-2 focus-visible:ring-primary",
@@ -343,7 +343,7 @@ export function ChatTabs({
           disabled={!hasOverflowRight}
           className={cn(
             "flex items-center justify-center",
-            "w-6 h-6 rounded",
+            "w-6 h-6 rounded-action",
             "text-muted-foreground",
             "hover:bg-accent hover:text-foreground",
             "focus-visible:ring-2 focus-visible:ring-primary",
@@ -364,9 +364,9 @@ export function ChatTabs({
           onClick={onCloseAll}
           className={cn(
             "flex items-center justify-center",
-            "w-6 h-6 rounded",
+            "w-6 h-6 rounded-action",
             "text-muted-foreground",
-            "hover:bg-destructive hover:text-white",
+            "hover:bg-destructive hover:text-destructive-foreground",
             "focus-visible:ring-2 focus-visible:ring-primary",
             "transition-colors duration-150"
           )}

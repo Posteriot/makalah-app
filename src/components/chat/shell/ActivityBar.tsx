@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback } from "react"
+import Image from "next/image"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import {
   ChatBubble,
@@ -55,10 +57,10 @@ function ActivityBarItem({
           variant="ghost"
           size="icon"
           className={cn(
-            "w-10 h-10 rounded-lg transition-all duration-150",
-            "text-muted-foreground hover:text-foreground hover:bg-accent",
-            "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-            isActive && "text-foreground border-l-2 border-amber-500 bg-amber-500/10"
+            "w-10 h-10 rounded-action transition-all duration-150",
+            "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent",
+            "focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+            isActive && "text-sidebar-foreground border-l-2 border-amber-500 bg-amber-500/10"
           )}
           onClick={onClick}
           aria-label={`${label} panel`}
@@ -189,11 +191,44 @@ export function ActivityBar({
         className={cn(
           "flex flex-col items-center py-2 gap-1",
           "w-[var(--activity-bar-width)] min-w-[48px]",
-          "border-r bg-sidebar"
+          "border-r border-border/50 bg-sidebar"
         )}
         data-testid="activity-bar"
         onKeyDown={handleKeyDown}
       >
+        {/* Logo — Home link */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/"
+              className={cn(
+                "flex items-center justify-center",
+                "w-10 h-10 rounded-action mb-1",
+                "hover:bg-sidebar-accent transition-colors"
+              )}
+              aria-label="Home"
+            >
+              <Image
+                src="/logo/makalah_logo_light.svg"
+                alt="Makalah"
+                width={22}
+                height={22}
+                className="hidden dark:block"
+              />
+              <Image
+                src="/logo/makalah_logo_dark.svg"
+                alt="Makalah"
+                width={22}
+                height={22}
+                className="block dark:hidden"
+              />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8} className="font-mono text-xs">
+            Home
+          </TooltipContent>
+        </Tooltip>
+
         {/* Sidebar Toggle Button */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -201,9 +236,9 @@ export function ActivityBar({
               variant="ghost"
               size="icon"
               className={cn(
-                "w-10 h-10 rounded-lg mb-2",
-                "text-muted-foreground hover:text-foreground hover:bg-accent",
-                "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                "w-10 h-10 rounded-action mb-2",
+                "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent",
+                "focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
               )}
               onClick={onToggleSidebar}
               aria-label={

@@ -3,6 +3,7 @@
 import { Copy, Check } from "iconoir-react"
 import { useState } from "react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 // ============================================================================
 // HIDDEN FEATURES (Not Yet Implemented)
@@ -34,9 +35,10 @@ export function QuickActions({ content }: QuickActionsProps) {
                 <TooltipTrigger asChild>
                     <button
                         onClick={handleCopy}
-                        className={`flex items-center gap-1 text-[10px] font-mono transition-colors p-1.5 rounded-md hover:bg-muted ${
+                        className={cn(
+                            "flex items-center gap-1 text-[10px] font-mono transition-colors p-1.5 rounded-action hover:bg-muted",
                             isCopied ? "text-emerald-500" : "text-muted-foreground hover:text-foreground"
-                        }`}
+                        )}
                         aria-label="Copy to clipboard"
                     >
                         {isCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}

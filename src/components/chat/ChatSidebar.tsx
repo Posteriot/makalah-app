@@ -1,11 +1,13 @@
 "use client"
 
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ArrowUpCircle, RefreshDouble, Plus } from "iconoir-react"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { SidebarChatHistory } from "./sidebar/SidebarChatHistory"
 import { SidebarPaperSessions } from "./sidebar/SidebarPaperSessions"
 import { SidebarProgress } from "./sidebar/SidebarProgress"
@@ -122,6 +124,30 @@ export function ChatSidebar({
         className
       )}
     >
+      {/* Brand Header — visible for all panels */}
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0">
+        <Image
+          src="/logo-makalah-ai-white.svg"
+          alt="Makalah"
+          width={80}
+          height={18}
+          className="hidden dark:block"
+        />
+        <Image
+          src="/logo-makalah-ai-black.svg"
+          alt="Makalah"
+          width={80}
+          height={18}
+          className="block dark:hidden"
+        />
+        {user && (
+          <SegmentBadge
+            role={user.role}
+            subscriptionStatus={user.subscriptionStatus}
+          />
+        )}
+      </div>
+
       {/* Header - Only show New Chat for chat-history panel */}
       {activePanel === "chat-history" && (
         <div className="pt-4 px-4 pb-3 border-b shrink-0">
@@ -130,7 +156,7 @@ export function ChatSidebar({
               onNewChat()
               onCloseMobile?.()
             }}
-            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-white font-medium rounded-[10px] gap-2 text-sm"
+            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-white font-medium rounded-action gap-2 text-sm"
             aria-label="Start new chat"
             aria-busy={isCreating}
             disabled={isCreating}
@@ -152,8 +178,8 @@ export function ChatSidebar({
 
       {/* Section Label - Only show for chat-history panel */}
       {activePanel === "chat-history" && (
-        <div className="py-2 px-4 text-xs text-muted-foreground">
-          Conversations <span className="ml-2">{conversations.length}</span>
+        <div className="py-2 px-4 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+          Riwayat Chat <span className="ml-2 font-mono">{conversations.length}</span>
         </div>
       )}
 

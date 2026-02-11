@@ -148,7 +148,7 @@ export function ArtifactPanel({
         "@container/artifact",
         "flex flex-col h-full w-full",
         // Mechanical Grace: dark panel, rounded-shell, hairline border
-        "bg-slate-950 rounded-2xl border border-slate-800",
+        "bg-slate-950 rounded-shell border border-border/50",
         "transition-all duration-300 ease-in-out"
       )}
     >
@@ -160,8 +160,8 @@ export function ArtifactPanel({
           {artifactCount > 0 && (
             <span
               className={cn(
-                "text-xs font-medium shrink-0",
-                "px-2 py-0.5 rounded-full",
+                "text-xs font-mono font-medium shrink-0",
+                "px-2 py-0.5 rounded-badge",
                 "bg-muted text-muted-foreground"
               )}
             >
@@ -186,7 +186,7 @@ export function ArtifactPanel({
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            "h-7 w-7 rounded",
+                            "h-7 w-7 rounded-action",
                             "text-muted-foreground",
                             "hover:bg-accent hover:text-foreground",
                             "transition-all duration-150"
@@ -235,7 +235,7 @@ export function ArtifactPanel({
                       size="icon"
                       onClick={() => viewerRef.current?.startEdit()}
                       className={cn(
-                        "h-7 w-7 rounded",
+                        "h-7 w-7 rounded-action",
                         "text-muted-foreground",
                         "hover:bg-accent hover:text-foreground",
                         "transition-all duration-150"
@@ -256,7 +256,7 @@ export function ArtifactPanel({
                       size="icon"
                       onClick={() => viewerRef.current?.triggerRefrasa()}
                       className={cn(
-                        "h-7 w-7 rounded",
+                        "h-7 w-7 rounded-action",
                         "text-muted-foreground",
                         "hover:bg-accent hover:text-foreground",
                         "transition-all duration-150"
@@ -281,7 +281,7 @@ export function ArtifactPanel({
                         setTimeout(() => setCopied(false), 2000)
                       }}
                       className={cn(
-                        "h-7 w-7 rounded",
+                        "h-7 w-7 rounded-action",
                         "text-muted-foreground",
                         "hover:bg-accent hover:text-foreground",
                         "transition-all duration-150"
@@ -312,7 +312,7 @@ export function ArtifactPanel({
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            "h-7 w-7 rounded",
+                            "h-7 w-7 rounded-action",
                             "text-muted-foreground",
                             "hover:bg-accent hover:text-foreground",
                             "transition-all duration-150"
@@ -404,7 +404,7 @@ export function ArtifactPanel({
                 disabled={!selectedArtifactId}
                 className={cn(
                   "hidden @[280px]/artifact:flex",
-                  "h-7 w-7 rounded",
+                  "h-7 w-7 rounded-action",
                   "text-muted-foreground",
                   "hover:bg-accent hover:text-foreground",
                   "disabled:opacity-30 disabled:cursor-not-allowed",
@@ -426,7 +426,7 @@ export function ArtifactPanel({
                 size="icon"
                 onClick={onToggle}
                 className={cn(
-                  "h-7 w-7 rounded shrink-0",
+                  "h-7 w-7 rounded-action shrink-0",
                   "text-muted-foreground",
                   "hover:bg-accent hover:text-foreground",
                   "transition-all duration-150"
@@ -482,7 +482,7 @@ export function ArtifactPanel({
                               </span>
                               <Badge
                                 variant="secondary"
-                                className="shrink-0 text-[10px] px-1.5 py-0"
+                                className="shrink-0 text-[10px] font-mono px-1.5 py-0 rounded-badge"
                               >
                                 v{selectedArtifact.version}
                               </Badge>
@@ -497,7 +497,7 @@ export function ArtifactPanel({
                             <div className="flex items-center gap-2 mt-1">
                               <Badge
                                 variant="outline"
-                                className="text-[10px] px-1.5 py-0 capitalize"
+                                className="text-[10px] font-mono px-1.5 py-0 rounded-badge capitalize"
                               >
                                 {typeLabels[selectedArtifact.type as ArtifactType]}
                               </Badge>
