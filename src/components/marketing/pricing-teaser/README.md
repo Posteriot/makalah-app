@@ -10,18 +10,19 @@ README ini untuk dev internal/agent agar paham struktur, perilaku, dan sumber ko
 
 ```
 pricing-teaser/
-├── PricingTeaser.tsx       # Wrapper section + data fetch
-├── PricingTeaserBadge.tsx  # Badge "Pemakaian & Harga"
-├── PricingTeaserTitle.tsx  # Heading section
-├── TeaserCard.tsx          # Card pricing individual
-├── TeaserCarousel.tsx      # Carousel mobile
-├── TeaserSkeleton.tsx      # Loading state
-├── TeaserCTA.tsx           # CTA ke /pricing
-├── backgroundPatterns.ts   # Inline background styles
+├── PricingTeaser.tsx       # Wrapper section + data fetch (client)
+├── PricingTeaserBadge.tsx  # Badge "Pemakaian & Harga" (server, delegates to SectionBadge)
+├── PricingTeaserTitle.tsx  # Heading section (server)
+├── TeaserCard.tsx          # Card pricing individual (server)
+├── TeaserCarousel.tsx      # Carousel mobile (client)
+├── TeaserSkeleton.tsx      # Loading state (server)
+├── TeaserCTA.tsx           # CTA ke /pricing (server, delegates to SectionCTA)
 ├── types.ts                # Type TeaserPlan
 ├── index.ts                # Re-exports
 └── README.md               # Dokumentasi ini
 ```
+
+> **Catatan:** `backgroundPatterns.ts` sudah dihapus. Background sekarang menggunakan `GridPattern` dan `DottedPattern` dari `@/components/marketing/SectionBackground`.
 
 ## Penggunaan
 
@@ -40,40 +41,106 @@ Integrasi utama ada di `src/app/(marketing)/page.tsx`.
 - `TeaserCarousel`
 - `TeaserSkeleton`
 - `TeaserCTA`
-- `TeaserPlan`
-- `gridStyle`, `gridStyleDark`, `dotsStyle`, `dotsStyleDark`
+- `TeaserPlan` (type)
+
+> **Tidak ada ekspor** `gridStyle`, `gridStyleDark`, `dotsStyle`, `dotsStyleDark` — inline style patterns sudah dihapus, diganti React components (`GridPattern`, `DottedPattern`).
 
 ## Komponen dan Tanggung Jawab
 
-- `PricingTeaser.tsx`: fetch data dari Convex, transform ke `TeaserPlan`, render layout desktop + mobile.
-- `PricingTeaserBadge.tsx`: badge label "Pemakaian & Harga".
-- `PricingTeaserTitle.tsx`: heading utama "Investasi untuk / Masa Depan Akademik."
-- `TeaserCard.tsx`: kartu pricing individual + label "Solusi Terbaik" untuk plan highlighted.
-- `TeaserCarousel.tsx`: carousel mobile (swipe + dots).
-- `TeaserSkeleton.tsx`: skeleton loading saat data belum ada.
-- `TeaserCTA.tsx`: CTA global ke `/pricing`.
-- `backgroundPatterns.ts`: inline style untuk grid/dots (light + dark).
-- `types.ts`: definisi `TeaserPlan`.
+### PricingTeaser.tsx (client)
 
-## Perilaku Ringkas
-
-**PricingTeaser**
+- Section wrapper utama. Satu-satunya client component di level section.
 - Fetch data: `useQuery(api.pricingPlans.getActivePlans)`.
-- Jika data belum ada (`!plansData`) → render `TeaserSkeleton`.
-- Jika data kosong (`plansData.length === 0`) → return `null`.
-- Layout:
-  - Desktop (`md+`): grid 3 kolom.
-  - Mobile (`<md`): `TeaserCarousel`.
+- Transform ke `TeaserPlan[]` menggunakan `plan.teaserDescription || ""` dan `plan.teaserCreditNote || ""` dari database (bukan hardcoded `getCardContent()`).
+- Loading: render `TeaserSkeleton` saat `!plansData`.
+- Empty: return `null` saat `plansData.length === 0`.
+- Layout: 16-column grid (`grid-cols-16`), content centered di `col-span-12 col-start-3`.
+  - Desktop (`md+`): `grid-cols-3 gap-6` (hidden di mobile).
+  - Mobile (`<md`): `TeaserCarousel` (hidden di desktop via `md:hidden` di carousel).
+- Section wrapper: `relative h-[100svh] flex flex-col justify-center overflow-hidden bg-background`.
 - Section id: `pemakaian-harga`.
+- Background: `GridPattern` (z-0) + `DottedPattern` (spacing=24, withRadialMask=false, z-0) — keduanya dari `@/components/marketing/SectionBackground`.
 
-**TeaserCarousel**
-- Slide awal memilih plan yang `isHighlighted`.
-- Swipe detection pakai pointer events + threshold 48px.
-- Dots navigasi bisa klik untuk pindah slide.
+### PricingTeaserBadge.tsx (server)
 
-## Data & Konstanta
+- **Delegates to `SectionBadge`** dari `@/components/ui/section-badge`.
+- Tidak punya styling sendiri. SectionBadge menyediakan: emerald-600 bg, amber-500 animated dot, `text-signal` uppercase text, `rounded-badge`.
+- Text: "Pemakaian & Harga".
 
-**TeaserPlan (types.ts)**
+### PricingTeaserTitle.tsx (server)
+
+- Font: `text-narrative` (Geist Sans, bukan Geist Mono — JSDoc di file salah).
+- Classes: `text-2xl sm:text-[2rem] md:text-[2.5rem] font-medium leading-[1.3] text-foreground`.
+- Content: "Investasi untuk" + `<br />` + "Masa Depan Akademik."
+
+### TeaserCard.tsx (server)
+
+- Card pricing individual. Menerima prop `plan: TeaserPlan`.
+- **Outer wrapper:** `group relative h-full` — group untuk hover effects.
+- **Card body:**
+  - `rounded-shell` (16px border radius)
+  - `border-1 border-[color:var(--slate-400)]` (default)
+  - Highlighted card: `border-2 border-[color:var(--emerald-500)]` (override)
+  - `min-h-[240px] md:min-h-[280px]`
+  - `p-comfort md:p-airy` (16px → 24px+)
+  - Hover: `group-hover:bg-[color:var(--slate-200)] dark:group-hover:bg-[color:var(--slate-700)]` + `group-hover:-translate-y-1` (lift effect) + `transition-all duration-300`
+- **Highlight tag** (saat `isHighlighted`):
+  - Positioned: `absolute -top-3 left-1/2 -translate-x-1/2 z-10`
+  - Colors: `bg-[color:var(--emerald-500)] text-[color:var(--slate-50)]`
+  - Typography: `text-[11px] font-semibold uppercase tracking-wide`
+  - Shape: `rounded-full` (pill shape)
+  - Hover: `group-hover:-translate-y-1` (lifts with card)
+  - Text: "Solusi Terbaik"
+- **Dot indicator:**
+  - Color: **`bg-[color:var(--rose-500)]`** (rose, bukan amber — berbeda dari benefits section)
+  - Effect: `animate-pulse shadow-[0_0_8px_var(--rose-500)]` (glow)
+  - Size: `w-2 h-2 min-w-2 rounded-full`
+- **Plan name:** `text-narrative font-light text-xl md:text-2xl text-foreground text-center`
+- **Price:** `text-interface text-3xl font-medium tracking-tight tabular-nums text-foreground text-center`
+- **Unit (optional):** `text-interface text-sm font-normal text-muted-foreground`
+- **Description:** `text-interface font-normal text-sm leading-relaxed text-foreground`
+- **Credit note:** `text-interface text-xs leading-relaxed text-foreground`
+- **Tidak menggunakan** token bento (`hover:bg-bento-light-hover`, `dark:hover:bg-bento-hover`). Hover colors didefinisikan langsung via CSS vars.
+
+### TeaserCarousel.tsx (client)
+
+- Mobile-only: wrapper `md:hidden`.
+- Initial slide: `plans.findIndex(p => p.isHighlighted)` — default ke highlighted plan (BPP).
+- **Swipe mechanism:**
+  - Pointer events: `onPointerDown`, `onPointerUp`, `onPointerCancel`.
+  - Pointer capture: `setPointerCapture()` / `releasePointerCapture()` untuk reliable tracking.
+  - Threshold: **48px** minimum swipe distance.
+  - Index clamping: `Math.max(0, Math.min(index, plans.length - 1))`.
+- **Slide layout:** `flex-shrink-0 w-full px-2`, inner `max-w-[300px] mx-auto`.
+- **Transform:** `translateX(-${activeSlide * 100}%)` + `transition-transform duration-300 ease-out`.
+- **Touch:** `touch-pan-y` pada wrapper dan track (allows vertical scroll, captures horizontal).
+- **Navigation dots:**
+  - Active: `bg-brand`
+  - Inactive: `bg-black/20 dark:bg-white/30`
+  - Size: `w-2 h-2 rounded-full`
+  - Clickable via `onClick`.
+  - Gap: `gap-2`, centered `flex justify-center mt-6`.
+
+### TeaserSkeleton.tsx (server)
+
+- Background: `GridPattern` (z-0) dari `@/components/marketing/SectionBackground`.
+- Section: `relative py-20 md:py-28 px-4 md:px-6 overflow-hidden bg-background`, id=`pemakaian-harga`.
+- Container: `max-w-[var(--container-max-width)]` (bukan `max-w-7xl`).
+- Header skeleton: pill badge placeholder + title placeholder.
+- Desktop grid: `hidden md:grid grid-cols-3 gap-6` (mobile hidden).
+- Cards: `p-6 md:p-8 bg-card border border-border rounded-2xl animate-pulse` (3 placeholder cards).
+
+### TeaserCTA.tsx (server)
+
+- **Delegates to `SectionCTA`** dari `@/components/ui/section-cta`.
+- Tidak punya styling sendiri. SectionCTA menyediakan: inverted Slate bg, `text-signal` uppercase, `btn-stripes-pattern` hover overlay, `rounded-action`.
+- Props: `href="/pricing"`, children="LIHAT DETAIL PAKET".
+- Wrapper: `flex justify-center mt-8`.
+
+## Data
+
+### TeaserPlan (types.ts)
+
 ```ts
 type TeaserPlan = {
   _id: string
@@ -86,58 +153,51 @@ type TeaserPlan = {
 }
 ```
 
-**getCardContent (PricingTeaser.tsx)**
-- `gratis`:
-  - description: "Cocok untuk mencoba 13 tahap workflow dan menyusun draft awal tanpa biaya."
-  - creditNote: "Mendapat 50 kredit, untuk diksusi dan membentuk draft"
-- `bpp`:
-  - description: "Tepat untuk menyelesaikan satu paper utuh hingga ekspor Word/PDF."
-  - creditNote: "Mendapat 300 kredit, untuk menyusun 1 paper setara 15 halaman A4 dan dikusi kontekstual."
-- `pro`:
-  - description: "Ideal untuk penyusunan banyak paper dengan diskusi sepuasnya."
-  - creditNote: "Mendapat 2000 kredit, untuk menyusun 5-6 paper setara @15 halaman dan diskusi mendalam"
+### Data Source
 
-Catatan:
-- Jika slug tidak dikenali, `description` dan `creditNote` dikembalikan kosong.
+Data berasal dari tabel `pricingPlans` di Convex via `api.pricingPlans.getActivePlans`.
 
-## Konten yang Ditampilkan
+Transform di `PricingTeaser.tsx`:
+```ts
+const teaserPlans: TeaserPlan[] = (plansData || []).map((plan) => ({
+  _id: plan._id,
+  name: plan.name,
+  price: plan.price,
+  unit: plan.unit,
+  isHighlighted: plan.isHighlighted,
+  description: plan.teaserDescription || "",
+  creditNote: plan.teaserCreditNote || "",
+}))
+```
 
-**PricingTeaserBadge**
-- Text: "Pemakaian & Harga"
+> **Tidak ada lagi** `getCardContent()` dengan hardcoded descriptions per slug. Konten `description` dan `creditNote` sekarang dari field `teaserDescription` dan `teaserCreditNote` di database.
 
-**PricingTeaserTitle**
-- "Investasi untuk"
-- "Masa Depan Akademik."
+## Client vs Server Components
 
-**TeaserCard**
-- Label highlight: "Solusi Terbaik" (muncul saat `isHighlighted === true`).
-- Harga menampilkan `unit` jika tersedia.
+| Component | Type | Reason |
+|-----------|------|--------|
+| PricingTeaser | Client (`"use client"`) | `useQuery` hook untuk data fetch |
+| TeaserCarousel | Client (`"use client"`) | `useState`, `useRef`, pointer event handlers |
+| PricingTeaserBadge | Server | Pure render, delegasi ke SectionBadge |
+| PricingTeaserTitle | Server | Pure render |
+| TeaserCard | Server | Pure render, props only |
+| TeaserSkeleton | Server | Pure render |
+| TeaserCTA | Server | Pure render, delegasi ke SectionCTA |
 
-**TeaserCTA**
-- Label tombol: "LIHAT DETAIL PAKET"
-- Link: `/pricing`
+## Page Position
 
-## Styling
-
-- Wrapper section:
-  - `className="relative h-dvh min-h-[580px] md:min-h-[700px] ... bg-muted/30 dark:bg-black"`
-  - `id="pemakaian-harga"`
-- Background pattern:
-  - Light mode: `gridStyle` + `dotsStyle`
-  - Dark mode: `gridStyleDark` + `dotsStyleDark`
-- `TeaserCard` menggunakan tokens bento:
-  - `hover:bg-bento-light-hover` / `dark:hover:bg-bento-hover`
-- `TeaserCTA` memakai class `.btn-brand` (didefinisikan di `src/app/globals.css`).
-
-## Client Components
-
-Komponen yang memakai `"use client"`:
-- `PricingTeaser.tsx`
-- `TeaserCarousel.tsx`
+Di `src/app/(marketing)/page.tsx`, urutan sections:
+1. Hero
+2. Benefits
+3. **Pricing Teaser** ← section ini
+4. (sections berikutnya)
 
 ## Dependencies
 
-- `convex/react` (`useQuery`)
-- `@convex/_generated/api`
-- `next/link`
-- `@/lib/utils` (`cn`)
+- `convex/react` — `useQuery`
+- `@convex/_generated/api` — `api.pricingPlans.getActivePlans`
+- `@/components/marketing/SectionBackground` — `GridPattern`, `DottedPattern`
+- `@/components/ui/section-badge` — `SectionBadge` (via PricingTeaserBadge)
+- `@/components/ui/section-cta` — `SectionCTA` (via TeaserCTA)
+- `@/lib/utils` — `cn` (class merging)
+- `react` — `useState`, `useRef`, `useCallback` (TeaserCarousel)
