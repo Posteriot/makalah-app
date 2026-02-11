@@ -196,7 +196,7 @@ export function SidebarChatHistory({
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      <div className="flex-1 overflow-y-auto px-1 pb-2 scrollbar-thin">
         {conversations.map((conv) => {
           const paperSession = paperSessionMap.get(conv._id)
           const isEditing = editingId === conv._id
@@ -205,17 +205,18 @@ export function SidebarChatHistory({
 
           // Shared classes for both Link and div
           const itemClasses = cn(
-            "group flex items-center w-full p-2.5 transition-colors text-left",
+            "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center rounded-action border px-2.5 py-2.5 text-left transition-colors",
+            "border-transparent",
             currentConversationId === conv._id
-              ? "bg-list-selected-bg"
-              : "hover:bg-list-hover-bg"
+              ? "border-slate-300/90 bg-slate-50 shadow-[inset_0_1px_0_var(--border-hairline-soft)] dark:border-slate-700 dark:bg-slate-900/60"
+              : "hover:bg-slate-300 dark:hover:bg-slate-600/60"
           )
 
           // Content yang sama untuk edit mode dan normal mode
           const renderContent = () => (
             <>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 pb-0.5">
                   {isEditing ? (
                     <Input
                       ref={editInputRef}
@@ -284,7 +285,7 @@ export function SidebarChatHistory({
                               handleStartEdit(conv._id, conv.title)
                             }
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-accent rounded-md transition-all focus:opacity-100"
+                          className="rounded-action p-1.5 opacity-0 transition-all hover:bg-foreground/8 focus:opacity-100 group-hover:opacity-100"
                           aria-label="Edit judul"
                         >
                           <EditPencil className="h-4 w-4" />
@@ -315,7 +316,7 @@ export function SidebarChatHistory({
                             handleDeleteClick(conv._id, conv.title)
                           }
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all focus:opacity-100"
+                        className="rounded-action p-1.5 opacity-0 transition-all hover:bg-foreground/8 focus:opacity-100 group-hover:opacity-100"
                         aria-label="Hapus percakapan"
                       >
                         <Trash className="h-4 w-4" />

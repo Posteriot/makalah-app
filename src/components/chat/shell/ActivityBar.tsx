@@ -55,10 +55,10 @@ function ActivityBarItem({
           variant="ghost"
           size="icon"
           className={cn(
-            "w-10 h-10 rounded-action transition-all duration-150",
-            "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent",
-            "focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
-            isActive && "text-sidebar-foreground border-l-2 border-amber-500 bg-amber-500/10"
+            "h-10 w-10 rounded-action border border-transparent transition-all duration-150",
+            "text-slate-600 hover:bg-slate-200/80 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+            "focus-visible:ring-2 focus-visible:ring-muted-foreground/40 focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--section-bg-alt)]",
+            isActive && "border-slate-500/80 bg-slate-200 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           )}
           onClick={onClick}
           aria-label={`${label} panel`}
@@ -187,9 +187,9 @@ export function ActivityBar({
         role="navigation"
         aria-label="Sidebar navigation"
         className={cn(
-          "flex flex-col items-center py-2 gap-1",
+          "flex flex-col items-center gap-0 py-0",
           "w-[var(--activity-bar-width)] min-w-[48px]",
-          "border-r border-border/50 bg-sidebar"
+          "border-r border-slate-400/90 bg-slate-300 dark:border-slate-700/90 dark:bg-slate-950"
         )}
         data-testid="activity-bar"
         onKeyDown={handleKeyDown}
@@ -199,8 +199,8 @@ export function ActivityBar({
           href="/"
           className={cn(
             "flex items-center justify-center",
-            "w-10 h-10 rounded-action",
-            "hover:bg-sidebar-accent transition-colors"
+            "h-11 w-full rounded-none border-b border-slate-400/90 dark:border-slate-700/80",
+            "hover:bg-slate-200/80 transition-colors dark:hover:bg-slate-800"
           )}
           aria-label="Home"
         >
@@ -220,15 +220,12 @@ export function ActivityBar({
           />
         </Link>
 
-        {/* Separator */}
-        <div className="w-6 h-px bg-border/50 my-1" aria-hidden="true" />
-
         {/* Panel Navigation Items */}
         <div
           role="tablist"
           aria-label="Panel selection"
           aria-orientation="vertical"
-          className="flex flex-col items-center gap-1"
+          className="mt-3 flex flex-col items-center gap-1"
         >
           {panelItems.map((item) => (
             <ActivityBarItem

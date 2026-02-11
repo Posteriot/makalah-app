@@ -267,9 +267,9 @@ export function ChatLayout({
         {/* Column 2: Sidebar */}
         <aside
           className={cn(
-            "flex flex-col border-r border-border/50 bg-sidebar overflow-hidden",
+            "flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-800",
             "hidden md:flex",
-            isSidebarCollapsed && "w-0 border-r-0"
+            isSidebarCollapsed && "w-0"
           )}
         >
           <ChatSidebar

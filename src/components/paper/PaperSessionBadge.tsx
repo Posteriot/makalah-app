@@ -23,7 +23,7 @@ export const PaperSessionBadge: React.FC<PaperSessionBadgeProps> = ({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-badge text-[10px] font-mono font-bold tracking-wide bg-sky-500/15 text-sky-400 border border-sky-500/30",
+        "inline-flex items-center gap-1 rounded-badge border border-emerald-800/80 bg-emerald-700 px-1.5 py-0.5 text-[10px] font-mono font-bold tracking-wide text-white dark:border-emerald-500/90 dark:bg-emerald-600",
         className
       )}
       title={`Paper mode: Tahap ${stageNumber} dari ${totalStages}`}

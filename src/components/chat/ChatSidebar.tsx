@@ -121,19 +121,20 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "w-full h-full flex flex-col bg-sidebar overflow-hidden",
+        "h-full w-full overflow-hidden border-r border-slate-300/90 bg-slate-200 dark:border-slate-700/80 dark:bg-slate-800",
+        "flex flex-col",
         className
       )}
     >
       {/* Sidebar Header — Collapse toggle */}
       {onCollapseSidebar && (
-        <div className="flex items-center justify-end px-3 h-11 shrink-0 border-b border-border/50">
+        <div className="flex h-11 shrink-0 items-center justify-end border-b border-slate-300/90 px-3 dark:border-slate-700/80">
           <button
             onClick={onCollapseSidebar}
             className={cn(
               "flex items-center justify-center",
               "w-7 h-7 rounded-action",
-              "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent",
+              "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
               "transition-colors duration-150"
             )}
             aria-label="Collapse sidebar"
@@ -145,27 +146,30 @@ export function ChatSidebar({
 
       {/* Header - Only show New Chat for chat-history panel */}
       {activePanel === "chat-history" && (
-        <div className="pt-4 px-4 pb-3 border-b shrink-0">
+        <div className="shrink-0 border-y border-slate-400/95 px-3 pb-3 pt-3 dark:border-slate-600/90">
           <Button
             onClick={() => {
               onNewChat()
               onCloseMobile?.()
             }}
-            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-white font-medium rounded-action gap-2 text-sm"
+            className={cn(
+              "h-10 w-full items-center justify-center gap-2 rounded-action border border-slate-500/60 bg-slate-600 px-4 py-0 text-sm font-medium leading-none text-slate-100",
+              "hover:bg-slate-600 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-600"
+            )}
             aria-label="Start new chat"
             aria-busy={isCreating}
             disabled={isCreating}
           >
             {isCreating ? (
-              <>
+              <span className="inline-flex items-center gap-2 leading-none">
                 <RefreshDouble className="h-4 w-4 animate-spin" />
                 Membuat...
-              </>
+              </span>
             ) : (
-              <>
+              <span className="inline-flex items-center gap-2 leading-none">
                 <Plus className="h-4 w-4" />
                 Percakapan Baru
-              </>
+              </span>
             )}
           </Button>
         </div>
@@ -173,7 +177,7 @@ export function ChatSidebar({
 
       {/* Section Label - Only show for chat-history panel */}
       {activePanel === "chat-history" && (
-        <div className="py-2 px-4 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+        <div className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
           Riwayat Chat <span className="ml-2 font-mono">{conversations.length}</span>
         </div>
       )}
@@ -182,13 +186,15 @@ export function ChatSidebar({
       <div className="flex-1 flex flex-col overflow-hidden">{renderContent()}</div>
 
       {/* Footer - Upgrade CTA for BPP/Gratis users */}
-      {/* Standar: var(--success) grass green + text-white */}
       {showUpgradeCTA && (
-        <div className="p-3 border-t shrink-0">
+        <div className="shrink-0 border-t border-slate-300/90 p-3 dark:border-slate-700/80">
           <Button
             variant="default"
             size="sm"
-            className="w-full font-semibold bg-[var(--success)] hover:bg-[oklch(0.65_0.181_125.2)] text-white"
+            className={cn(
+              "w-full rounded-action border border-slate-300/90 bg-slate-100 font-semibold text-foreground",
+              "hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700/60 dark:hover:bg-slate-700/80"
+            )}
             onClick={() => router.push("/subscription/upgrade")}
           >
             <ArrowUpCircle className="h-4 w-4 mr-1.5" />
