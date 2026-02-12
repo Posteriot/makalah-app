@@ -1,3 +1,12 @@
+> **⚠️ DOKUMEN ARSIP — JANGAN GUNAKAN SEBAGAI REFERENSI AKTIF**
+>
+> Dokumen ini adalah arsip historis dari fase perencanaan awal billing-tier-enforcement.
+> Banyak keputusan di dokumen ini yang sudah berubah selama implementasi.
+>
+> **Referensi aktif:** [`docs/billing-tier-enforcement/README.md`](./README.md)
+>
+> ---
+
 # Task Breakdown: End-to-End Subscription Tier Enforcement
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
