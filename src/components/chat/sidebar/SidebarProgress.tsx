@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useQuery } from "convex/react"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import {
   STAGE_ORDER,
@@ -19,6 +21,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip"
+import { resolvePaperDisplayTitle } from "@/lib/paper/title-resolver"
 
 // ============================================================================
 // CONSTANTS
@@ -244,6 +247,11 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     isLoading,
   } = usePaperSession(conversationId as Id<"conversations"> | undefined)
 
+  const conversation = useQuery(
+    api.conversations.getConversation,
+    conversationId ? { conversationId: conversationId as Id<"conversations"> } : "skip"
+  )
+
   // Rewind dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
   const [targetStageForRewind, setTargetStageForRewind] =
@@ -334,7 +342,11 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
   const stageNumber = getStageNumber(currentStage)
   const totalStages = STAGE_ORDER.length
   const progressPercent = Math.round((stageNumber / totalStages) * 100)
-  const paperTitle = session.paperTitle || "Paper Tanpa Judul"
+  const { displayTitle: paperTitle } = resolvePaperDisplayTitle({
+    paperTitle: session.paperTitle,
+    workingTitle: session.workingTitle,
+    conversationTitle: conversation?.title,
+  })
 
   // Determine state for each milestone
   const getMilestoneState = (stageId: PaperStageId): MilestoneState => {

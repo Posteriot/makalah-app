@@ -3,6 +3,18 @@ import { auth, currentUser } from "@clerk/nextjs/server"
 import { fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 
+function isDynamicServerUsageError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+
+  const maybeError = error as { digest?: unknown; description?: unknown }
+
+  return (
+    maybeError.digest === "DYNAMIC_SERVER_USAGE" ||
+    (typeof maybeError.description === "string" &&
+      maybeError.description.includes("Dynamic server usage"))
+  )
+}
+
 async function ensureConvexUser() {
   try {
     const { userId: clerkUserId, getToken } = await auth()
@@ -43,6 +55,7 @@ async function ensureConvexUser() {
 
     await Promise.race([syncPromise, timeoutPromise])
   } catch (error) {
+    if (isDynamicServerUsageError(error)) return
     console.error("[ensureConvexUser] Sync failed:", error)
   }
 }

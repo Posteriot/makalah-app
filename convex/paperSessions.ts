@@ -9,6 +9,10 @@ import {
     getConversationIfOwner,
 } from "./auth";
 
+const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
+const MAX_WORKING_TITLE_LENGTH = 80;
+const PLACEHOLDER_CONVERSATION_TITLES = new Set(["Percakapan baru", "New Chat"]);
+
 // ═══════════════════════════════════════════════════════════
 // STAGE DATA KEY WHITELIST (Task 1.3.1)
 // ═══════════════════════════════════════════════════════════
@@ -87,6 +91,37 @@ function validateStageDataKeys(stage: string, data: Record<string, unknown>): st
 
     const dataKeys = Object.keys(data);
     return dataKeys.filter(key => !allowedKeys.includes(key));
+}
+
+function normalizePaperTitle(title: string): string {
+    return title.trim().replace(/\s+/g, " ");
+}
+
+function getInitialWorkingTitle(conversationTitle?: string): string {
+    if (!conversationTitle) return DEFAULT_WORKING_TITLE;
+
+    const normalized = normalizePaperTitle(conversationTitle);
+    if (!normalized || PLACEHOLDER_CONVERSATION_TITLES.has(normalized)) {
+        return DEFAULT_WORKING_TITLE;
+    }
+
+    return normalized;
+}
+
+function validateWorkingTitle(title: string): string {
+    const normalized = normalizePaperTitle(title);
+
+    if (!normalized) {
+        throw new Error("Working title tidak boleh kosong.");
+    }
+
+    if (normalized.length > MAX_WORKING_TITLE_LENGTH) {
+        throw new Error(
+            `Working title terlalu panjang (maksimal ${MAX_WORKING_TITLE_LENGTH} karakter).`
+        );
+    }
+
+    return normalized;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -359,6 +394,7 @@ export const create = mutation({
             conversationId: args.conversationId,
             currentStage: "gagasan",
             stageStatus: "drafting",
+            workingTitle: getInitialWorkingTitle(conversation.title),
             stageData: {
                 gagasan: args.initialIdea ? {
                     ideKasar: args.initialIdea,
@@ -602,7 +638,9 @@ export const approveStage = mutation({
             const judulData = updatedStageData.judul;
             const judulTerpilih = judulData?.judulTerpilih;
             if (typeof judulTerpilih === "string" && judulTerpilih.trim().length > 0) {
-                patchData.paperTitle = judulTerpilih;
+                const normalizedFinalTitle = normalizePaperTitle(judulTerpilih);
+                patchData.paperTitle = normalizedFinalTitle;
+                patchData.workingTitle = normalizedFinalTitle;
             }
         }
 
@@ -793,12 +831,14 @@ export const syncPaperTitle = mutation({
             return { success: false, reason: "No judulTerpilih found in stageData.judul" };
         }
 
+        const normalizedFinalTitle = normalizePaperTitle(judulTerpilih);
         await ctx.db.patch(args.sessionId, {
-            paperTitle: judulTerpilih,
+            paperTitle: normalizedFinalTitle,
+            workingTitle: normalizedFinalTitle,
             updatedAt: Date.now(),
         });
 
-        return { success: true, paperTitle: judulTerpilih };
+        return { success: true, paperTitle: normalizedFinalTitle };
     },
 });
 
@@ -816,13 +856,46 @@ export const updatePaperTitle = mutation({
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
+        const normalizedTitle = normalizePaperTitle(args.title);
 
         await ctx.db.patch(args.sessionId, {
-            paperTitle: args.title,
+            paperTitle: normalizedTitle,
+            workingTitle: normalizedTitle,
             updatedAt: Date.now(),
         });
 
         return { success: true };
+    },
+});
+
+/**
+ * Update working title manually.
+ * Working title only editable before final paperTitle is set.
+ */
+export const updateWorkingTitle = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        userId: v.id("users"),
+        title: v.string(),
+    },
+    handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        if (session.userId !== args.userId) throw new Error("Unauthorized");
+
+        if (typeof session.paperTitle === "string" && session.paperTitle.trim().length > 0) {
+            throw new Error("Judul final sudah ditetapkan. Working title tidak bisa diubah lagi.");
+        }
+
+        const normalizedTitle = validateWorkingTitle(args.title);
+
+        await ctx.db.patch(args.sessionId, {
+            workingTitle: normalizedTitle,
+            updatedAt: Date.now(),
+        });
+
+        return { success: true, workingTitle: normalizedTitle };
     },
 });
 

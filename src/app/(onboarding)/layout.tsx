@@ -4,6 +4,18 @@ import { fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader"
 
+function isDynamicServerUsageError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+
+  const maybeError = error as { digest?: unknown; description?: unknown }
+
+  return (
+    maybeError.digest === "DYNAMIC_SERVER_USAGE" ||
+    (typeof maybeError.description === "string" &&
+      maybeError.description.includes("Dynamic server usage"))
+  )
+}
+
 /**
  * Sync Clerk user ke Convex database.
  * Fallback mechanism jika webhook gagal atau untuk new signups.
@@ -45,6 +57,7 @@ async function ensureConvexUser() {
 
     await Promise.race([syncPromise, timeoutPromise])
   } catch (error) {
+    if (isDynamicServerUsageError(error)) return
     console.error("[ensureConvexUser] Onboarding layout sync failed:", error)
   }
 }
