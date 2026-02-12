@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { getStageLabel, getStageNumber, STAGE_ORDER, type PaperStageId } from "@convex/paperSessions/constants"
+import { resolvePaperDisplayTitle } from "@/lib/paper/title-resolver"
 
 interface PaperSessionCardProps {
   session: Doc<"paperSessions">
@@ -67,7 +68,11 @@ export function PaperSessionCard({ session, userId }: PaperSessionCardProps) {
   const deleteSession = useMutation(api.paperSessions.deleteSession)
 
   // Derive display title
-  const displayTitle = getDisplayTitle(session, conversation)
+  const { displayTitle } = resolvePaperDisplayTitle({
+    paperTitle: session.paperTitle,
+    workingTitle: session.workingTitle,
+    conversationTitle: conversation?.title,
+  })
 
   // Status indicators
   const isCompleted = session.currentStage === "completed"
@@ -302,32 +307,6 @@ function StatusBadge({ isCompleted, isArchived }: { isCompleted: boolean; isArch
       In Progress
     </Badge>
   )
-}
-
-// Helper functions
-function getDisplayTitle(
-  session: Doc<"paperSessions">,
-  conversation: Doc<"conversations"> | null | undefined
-): string {
-  // Priority 1: paperTitle field
-  if (session.paperTitle) {
-    return session.paperTitle
-  }
-
-  // Priority 2: stageData.judul.judulTerpilih
-  const stageData = session.stageData as Record<string, Record<string, unknown>>
-  const judulData = stageData?.judul
-  if (judulData?.judulTerpilih && typeof judulData.judulTerpilih === "string") {
-    return judulData.judulTerpilih
-  }
-
-  // Priority 3: Conversation title
-  if (conversation?.title && conversation.title !== "Percakapan baru") {
-    return conversation.title
-  }
-
-  // Fallback
-  return "Untitled Paper"
 }
 
 function formatDate(timestamp: number): string {

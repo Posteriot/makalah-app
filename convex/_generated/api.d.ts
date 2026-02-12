@@ -29,6 +29,7 @@ import type * as messages from "../messages.js";
 import type * as migrations_addRoleToExistingUsers from "../migrations/addRoleToExistingUsers.js";
 import type * as migrations_backfillCreditBalances from "../migrations/backfillCreditBalances.js";
 import type * as migrations_backfillProviderKeys from "../migrations/backfillProviderKeys.js";
+import type * as migrations_backfillWorkingTitle from "../migrations/backfillWorkingTitle.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
 import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/fixAgentPersonaAndCapabilities.js";
 import type * as migrations_reconcileClerkUsers from "../migrations/reconcileClerkUsers.js";
@@ -83,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/addRoleToExistingUsers": typeof migrations_addRoleToExistingUsers;
   "migrations/backfillCreditBalances": typeof migrations_backfillCreditBalances;
   "migrations/backfillProviderKeys": typeof migrations_backfillProviderKeys;
+  "migrations/backfillWorkingTitle": typeof migrations_backfillWorkingTitle;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
   "migrations/fixAgentPersonaAndCapabilities": typeof migrations_fixAgentPersonaAndCapabilities;
   "migrations/reconcileClerkUsers": typeof migrations_reconcileClerkUsers;
