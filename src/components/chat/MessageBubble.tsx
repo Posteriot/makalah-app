@@ -7,7 +7,7 @@ import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
 import { SearchStatusIndicator, type SearchStatus } from "./SearchStatusIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
-import { useState, useRef, useMemo } from "react"
+import { useState, useRef, useMemo, useEffect } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { isEditAllowed } from "@/lib/utils/paperPermissions"
@@ -55,6 +55,7 @@ export function MessageBubble({
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const editAreaRef = useRef<HTMLDivElement>(null)
 
     const isUser = message.role === 'user'
     const isAssistant = message.role === 'assistant'
@@ -251,6 +252,26 @@ export function MessageBubble({
         }
     }
 
+    useEffect(() => {
+        if (!isEditing) return
+
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            const target = event.target as Node | null
+            if (!target) return
+            if (editAreaRef.current?.contains(target)) return
+            setIsEditing(false)
+            setEditContent(content)
+        }
+
+        document.addEventListener("mousedown", handleClickOutside, true)
+        document.addEventListener("touchstart", handleClickOutside, true)
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside, true)
+            document.removeEventListener("touchstart", handleClickOutside, true)
+        }
+    }, [isEditing, content])
+
     const annotations = (message as { annotations?: { type?: string; fileIds?: string[] }[] }).annotations
     const fileAnnotations = annotations?.find((annotation) => annotation.type === "file_ids")
     const fileIds = fileAnnotations?.fileIds ?? []
@@ -362,7 +383,7 @@ export function MessageBubble({
 
                     {/* Message Content */}
                     {isEditing ? (
-                        <div className="flex flex-col gap-2">
+                        <div ref={editAreaRef} className="flex flex-col gap-2">
                             <textarea
                                 ref={textareaRef}
                                 value={editContent}
