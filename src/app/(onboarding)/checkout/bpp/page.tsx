@@ -24,23 +24,16 @@ import Image from "next/image"
 import { QRCodeSVG } from "qrcode.react"
 
 // ════════════════════════════════════════════════════════════════
-// Types
+// Constants — Single BPP package (300 kredit = Rp 80.000)
 // ════════════════════════════════════════════════════════════════
 
-interface CreditPackage {
-  type: "paper" | "extension_s" | "extension_m"
-  credits: number
-  tokens: number
-  priceIDR: number
-  label: string
-  description?: string
-  ratePerCredit?: number
-  popular?: boolean
+const BPP_PACKAGE = {
+  type: "paper" as const,
+  credits: 300,
+  priceIDR: 80_000,
+  label: "Paket Paper",
+  description: "1 paper lengkap (~15 halaman)",
 }
-
-// ════════════════════════════════════════════════════════════════
-// Constants
-// ════════════════════════════════════════════════════════════════
 
 const PAYMENT_METHODS = [
   { id: "qris" as const, label: "QRIS", icon: QrCode, description: "Scan dengan e-wallet" },
@@ -85,16 +78,12 @@ export default function CheckoutBPPPage() {
   const onboardingCompletedRef = useRef(false)
 
   // Auto-complete onboarding when user lands on checkout page
-  // This handles the case where user came from /pricing → /sign-up?redirect=/checkout/bpp
   useEffect(() => {
     if (!hasCompletedOnboarding && !onboardingCompletedRef.current) {
       onboardingCompletedRef.current = true
       completeOnboarding()
     }
   }, [hasCompletedOnboarding, completeOnboarding])
-
-  // Fetch credit packages for BPP
-  const creditPackagesResult = useQuery(api.pricingPlans.getCreditPackagesForPlan, { slug: "bpp" })
 
   // Get current credit balance
   const creditBalance = useQuery(
@@ -103,7 +92,6 @@ export default function CheckoutBPPPage() {
   )
 
   // Payment state
-  const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("qris")
   const [selectedVAChannel, setSelectedVAChannel] = useState(VA_CHANNELS[0].code)
   const [selectedEWalletChannel, setSelectedEWalletChannel] = useState(EWALLET_CHANNELS[0].code)
@@ -112,16 +100,8 @@ export default function CheckoutBPPPage() {
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Derive selected package from query results
-  const creditPackages = creditPackagesResult?.creditPackages ?? []
-  const derivedSelectedPackage = selectedPackage ?? (
-    creditPackages.length > 0
-      ? (creditPackages.find((p) => p.popular) || creditPackages[0])
-      : null
-  )
-
   const handleTopUp = useCallback(async () => {
-    if (isProcessing || !derivedSelectedPackage) return
+    if (isProcessing) return
 
     // Validate mobile number for OVO
     if (selectedMethod === "ewallet" && selectedEWalletChannel === "OVO") {
@@ -138,11 +118,9 @@ export default function CheckoutBPPPage() {
     try {
       const response = await fetch("/api/payments/topup", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          packageType: derivedSelectedPackage.type,
+          packageType: BPP_PACKAGE.type,
           paymentMethod: selectedMethod,
           vaChannel: selectedMethod === "va" ? selectedVAChannel : undefined,
           ewalletChannel: selectedMethod === "ewallet" ? selectedEWalletChannel : undefined,
@@ -169,7 +147,7 @@ export default function CheckoutBPPPage() {
     } finally {
       setIsProcessing(false)
     }
-  }, [isProcessing, derivedSelectedPackage, selectedMethod, selectedVAChannel, selectedEWalletChannel, mobileNumber])
+  }, [isProcessing, selectedMethod, selectedVAChannel, selectedEWalletChannel, mobileNumber])
 
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text)
@@ -182,7 +160,7 @@ export default function CheckoutBPPPage() {
   }, [])
 
   // Loading state
-  if (userLoading || creditPackagesResult === undefined) {
+  if (userLoading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse space-y-4">
@@ -222,6 +200,9 @@ export default function CheckoutBPPPage() {
               <p className="text-sm text-muted-foreground">Total Pembayaran</p>
               <p className="text-3xl font-bold">
                 Rp {paymentResult.amount.toLocaleString("id-ID")}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {BPP_PACKAGE.credits} kredit ({BPP_PACKAGE.description})
               </p>
             </div>
 
@@ -349,7 +330,7 @@ export default function CheckoutBPPPage() {
           <h1 className="text-xl font-semibold">Beli Kredit</h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Bayar Per Paper
+          Bayar Per Paper — 1 paper lengkap
         </p>
       </div>
 
@@ -364,8 +345,8 @@ export default function CheckoutBPPPage() {
         </div>
       )}
 
-      {/* Current Balance Info */}
-      <div className="bg-muted/30 border border-border rounded-xl p-4">
+      {/* Package Info + Current Balance (single card, no selection needed) */}
+      <div className="bg-card border border-border rounded-xl p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Saldo kredit saat ini</p>
@@ -373,51 +354,15 @@ export default function CheckoutBPPPage() {
               {currentCredits} <span className="text-base font-normal text-muted-foreground">kredit</span>
             </p>
           </div>
-          <CreditCard className="h-8 w-8 text-muted-foreground/50" />
-        </div>
-      </div>
-
-      {/* Package Selection */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <h2 className="font-medium mb-3">Pilih Paket Kredit</h2>
-        <div className="grid grid-cols-1 gap-3">
-          {creditPackages.map((pkg) => (
-            <button
-              key={pkg.type}
-              onClick={() => setSelectedPackage(pkg)}
-              disabled={isProcessing}
-              className={cn(
-                "relative p-4 border rounded-lg text-left transition-colors",
-                derivedSelectedPackage?.type === pkg.type
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50",
-                isProcessing && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              {pkg.popular && (
-                <span className="absolute -top-2 right-2 text-[10px] font-medium bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
-                  Populer
-                </span>
-              )}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold">{pkg.label}</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {pkg.credits} kredit
-                  </p>
-                </div>
-                <p className="text-lg font-semibold">
-                  Rp {pkg.priceIDR.toLocaleString("id-ID")}
-                </p>
-              </div>
-              {pkg.description && (
-                <p className="text-xs text-muted-foreground mt-2">{pkg.description}</p>
-              )}
-              {derivedSelectedPackage?.type === pkg.type && (
-                <CheckCircle className="absolute top-4 right-4 h-5 w-5 text-primary" />
-              )}
-            </button>
-          ))}
+          <div className="text-right">
+            <p className="text-signal text-[10px] text-muted-foreground">Paket Paper</p>
+            <p className="font-mono text-lg font-bold text-primary">
+              {BPP_PACKAGE.credits} kredit
+            </p>
+            <p className="font-mono text-sm text-muted-foreground">
+              Rp {BPP_PACKAGE.priceIDR.toLocaleString("id-ID")}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -551,18 +496,18 @@ export default function CheckoutBPPPage() {
         <div className="flex items-center justify-between mb-2">
           <span className="text-muted-foreground">Total Pembayaran</span>
           <span className="text-xl font-semibold">
-            Rp {(derivedSelectedPackage?.priceIDR ?? 0).toLocaleString("id-ID")}
+            Rp {BPP_PACKAGE.priceIDR.toLocaleString("id-ID")}
           </span>
         </div>
         <div className="flex items-center justify-between mb-4 text-sm">
           <span className="text-muted-foreground">Kredit setelah top up</span>
           <span className="font-medium">
-            {currentCredits + (derivedSelectedPackage?.credits ?? 0)} kredit
+            {currentCredits + BPP_PACKAGE.credits} kredit
           </span>
         </div>
         <button
           onClick={handleTopUp}
-          disabled={isProcessing || !derivedSelectedPackage}
+          disabled={isProcessing}
           className={cn(
             "w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
             "onboarding-btn-primary",
@@ -580,7 +525,7 @@ export default function CheckoutBPPPage() {
               Lanjut ke {selectedEWalletChannel}
             </>
           ) : (
-            <>Bayar Sekarang</>
+            <>Bayar Rp {BPP_PACKAGE.priceIDR.toLocaleString("id-ID")}</>
           )}
         </button>
         <p className="text-xs text-muted-foreground text-center mt-3">

@@ -5,7 +5,7 @@ import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
-import { TOKENS_PER_CREDIT } from "@convex/billing/constants"
+import { TOKENS_PER_CREDIT, TIER_LIMITS, type TierType } from "@convex/billing/constants"
 
 export type CreditMeterLevel = "normal" | "warning" | "critical" | "depleted"
 
@@ -105,7 +105,9 @@ export function useCreditMeter(): CreditMeterData {
 
   // Gratis / Pro tier — token-based, convert to kredit
   const usedTokens = quotaStatus?.usedTokens ?? 0
-  const allottedTokens = quotaStatus?.allottedTokens ?? 0
+  // When quota not initialized (needsInit), use tier's expected monthly allocation
+  const tierMonthlyTokens = TIER_LIMITS[tier as TierType]?.monthlyTokens ?? 0
+  const allottedTokens = quotaStatus?.allottedTokens ?? tierMonthlyTokens
   const used = Math.ceil(usedTokens / TOKENS_PER_CREDIT)
   const total = Math.floor(allottedTokens / TOKENS_PER_CREDIT)
   const remaining = Math.max(0, total - used)

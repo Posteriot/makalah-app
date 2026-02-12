@@ -122,6 +122,66 @@ export const demoteToUser = mutation({
 })
 
 /**
+ * Update user subscription tier
+ * Requires admin permission (admin or superadmin)
+ * Cannot change tier for admin/superadmin users (they always have unlimited access)
+ */
+export const updateSubscriptionTier = mutation({
+  args: {
+    targetUserId: v.id("users"),
+    newTier: v.union(v.literal("free"), v.literal("bpp"), v.literal("pro")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error("Tidak terautentikasi")
+    }
+
+    const requestor = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) =>
+        q.eq("clerkUserId", identity.subject)
+      )
+      .unique()
+
+    if (!requestor) {
+      throw new Error("User tidak ditemukan")
+    }
+
+    await requireRole(ctx.db, requestor._id, "admin")
+
+    const targetUser = await ctx.db.get(args.targetUserId)
+    if (!targetUser) {
+      throw new Error("User target tidak ditemukan")
+    }
+
+    // Cannot change tier for admin/superadmin (they always get unlimited via getEffectiveTier)
+    if (targetUser.role === "admin" || targetUser.role === "superadmin") {
+      throw new Error("Tidak bisa mengubah tier admin/superadmin (selalu unlimited)")
+    }
+
+    // No-op if same tier
+    if (targetUser.subscriptionStatus === args.newTier) {
+      throw new Error(`User sudah di tier "${args.newTier}"`)
+    }
+
+    const tierLabels: Record<string, string> = { free: "Gratis", bpp: "BPP", pro: "Pro" }
+    const oldLabel = tierLabels[targetUser.subscriptionStatus ?? "free"] ?? targetUser.subscriptionStatus
+    const newLabel = tierLabels[args.newTier]
+
+    await ctx.db.patch(args.targetUserId, {
+      subscriptionStatus: args.newTier,
+      updatedAt: Date.now(),
+    })
+
+    return {
+      success: true,
+      message: `Tier ${targetUser.email} berhasil diubah: ${oldLabel} → ${newLabel}`,
+    }
+  },
+})
+
+/**
  * Soft delete user in Convex (Clerk deletion handled by API route)
  * - superadmin: can delete admin/user (not superadmin, not self)
  * - admin: can delete regular user only

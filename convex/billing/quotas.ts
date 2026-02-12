@@ -221,15 +221,14 @@ export const deductQuota = mutation({
     const newRemainingTokens = Math.max(0, quota.allottedTokens - newUsedTokens)
     const newDailyUsedTokens = dailyUsedTokens + args.tokens
 
-    // Check for overage (Pro tier only)
+    // Track overage tokens (for analytics only — all tiers now hard-block via checkQuota)
     let overageTokens = quota.overageTokens
-    let overageCostIDR = quota.overageCostIDR
+    const overageCostIDR = quota.overageCostIDR
 
-    if (quota.tier === "pro" && newUsedTokens > quota.allottedTokens) {
+    if (newUsedTokens > quota.allottedTokens) {
       const newOverage = newUsedTokens - quota.allottedTokens - quota.overageTokens
       if (newOverage > 0) {
         overageTokens += newOverage
-        overageCostIDR += newOverage * TIER_LIMITS.pro.overageRatePerToken
       }
     }
 
@@ -359,31 +358,47 @@ export const checkQuota = query({
       }
     }
 
-    // Check monthly limit
+    // Check monthly limit — block when quota exhausted
     if (quota.remainingTokens < args.estimatedTokens) {
-      if (limits.hardLimit) {
+      // Pro: fallback to credit balance when quota exhausted
+      if (tier === "pro") {
+        const balance = await ctx.db
+          .query("creditBalances")
+          .withIndex("by_user", (q) => q.eq("userId", args.userId))
+          .first()
+
+        const estimatedCredits = tokensToCredits(args.estimatedTokens)
+        const currentCredits = balance?.remainingCredits ?? 0
+
+        if (currentCredits >= estimatedCredits) {
+          return {
+            allowed: true,
+            tier: "pro",
+            useCredits: true,
+            currentCredits,
+            remainingTokens: 0,
+          }
+        }
+
+        // No credits either — block with topup action
         return {
           allowed: false,
           reason: "monthly_limit",
-          message: `Quota bulanan habis. Upgrade ke Pro untuk akses unlimited.`,
-          action: "upgrade",
+          message: "Quota bulanan habis dan tidak ada credit tambahan. Top up credit untuk melanjutkan.",
+          action: "topup" as const,
           used: quota.usedTokens,
           allotted: quota.allottedTokens,
         }
       }
 
-      // Soft limit (Pro): Allow with overage warning
-      if (limits.overageAllowed) {
-        const overage = args.estimatedTokens - quota.remainingTokens
-        const overageCost = Math.ceil(overage * limits.overageRatePerToken)
-
-        return {
-          allowed: true,
-          tier: "pro",
-          warning: `Estimasi overage: ${overage.toLocaleString("id-ID")} tokens = Rp ${overageCost.toLocaleString("id-ID")}`,
-          overageTokens: overage,
-          overageCost,
-        }
+      // Gratis: block with upgrade action
+      return {
+        allowed: false,
+        reason: "monthly_limit",
+        message: "Quota bulanan habis. Upgrade ke Pro atau top up credit untuk melanjutkan.",
+        action: "upgrade" as const,
+        used: quota.usedTokens,
+        allotted: quota.allottedTokens,
       }
     }
 

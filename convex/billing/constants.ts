@@ -134,9 +134,9 @@ export const TOP_UP_PACKAGES = [
 
 export const TIER_LIMITS = {
   gratis: {
-    // Sinkron dengan pricingPlans: "Pemakaian harian terbatas"
+    // 100 kredit/bulan, tanpa limit harian — pakai kapan saja selama masih ada
     monthlyTokens: 100_000,
-    dailyTokens: 50_000,
+    dailyTokens: Infinity,
     monthlyPapers: 2,
     hardLimit: true, // Block saat quota habis
     overageAllowed: false,
@@ -156,11 +156,10 @@ export const TIER_LIMITS = {
     // Sinkron dengan pricingPlans: "Menyusun 5-6 Paper" per bulan
     // 5-6 paper × 800K tokens = 4M-4.8M tokens, dibulatkan ke 5M
     monthlyTokens: 5_000_000,
-    dailyTokens: 200_000,
+    dailyTokens: Infinity,
     monthlyPapers: Infinity,
-    hardLimit: false,
-    overageAllowed: true,
-    overageRatePerToken: 0.00005, // Rp 0.05/1K = Rp 50/1M tokens
+    hardLimit: true, // Block saat quota habis (sama seperti Gratis)
+    overageAllowed: false,
     creditBased: false,
   },
 } as const

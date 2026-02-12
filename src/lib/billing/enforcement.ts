@@ -155,8 +155,44 @@ export async function recordUsageAfterOperation(params: {
           console.warn("[Billing] Credit deduction failed:", error)
         }
       }
+    } else if (tier === "pro") {
+      // Pro: Deduct from quota first, fallback to credits if quota exhausted
+      const quota = await fetchQuery(api.billing.quotas.getUserQuota, {
+        userId: params.userId,
+      }, convexOptions)
+
+      const quotaRemaining = quota?.remainingTokens ?? 0
+
+      if (quotaRemaining >= params.totalTokens) {
+        // Quota has room — normal deduction
+        await fetchMutation(api.billing.quotas.deductQuota, {
+          userId: params.userId,
+          tokens: params.totalTokens,
+        }, convexOptions)
+      } else {
+        // Quota exhausted — deduct from credit balance
+        try {
+          const deductResult = await fetchMutation(api.billing.credits.deductCredits, {
+            userId: params.userId,
+            tokensUsed: params.totalTokens,
+          }, convexOptions)
+
+          console.log(`[Billing] Pro credit fallback:`, {
+            userId: params.userId,
+            tokensUsed: params.totalTokens,
+            creditsDeducted: deductResult.creditsDeducted,
+            remainingCredits: deductResult.remainingCredits,
+          })
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("Insufficient credits")) {
+            console.warn("[Billing] Pro credit fallback - insufficient:", error.message)
+          } else {
+            console.warn("[Billing] Pro credit deduction failed:", error)
+          }
+        }
+      }
     } else {
-      // Gratis/Pro: Deduct from quota
+      // Gratis: Deduct from quota
       await fetchMutation(api.billing.quotas.deductQuota, {
         userId: params.userId,
         tokens: params.totalTokens,
