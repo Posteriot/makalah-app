@@ -112,9 +112,12 @@ export default function SubscriptionOverviewPage() {
   // For BPP users, show credit balance
   const isBPP = quotaStatus?.creditBased || tier === "bpp"
 
+  // Admin/superadmin: unlimited access (backend returns { unlimited: true } without token fields)
+  const isUnlimited = quotaStatus?.unlimited === true
+
   // Calculate usage percentage (for non-BPP)
   const usedTokens = quotaStatus?.usedTokens ?? 0
-  const allottedTokens = quotaStatus?.allottedTokens ?? 100000
+  const allottedTokens = quotaStatus?.allottedTokens ?? (isUnlimited ? 0 : 100000)
   const rawUsagePercentage =
     quotaStatus?.percentageUsed ??
     (allottedTokens > 0 ? (usedTokens / allottedTokens) * 100 : 0)
@@ -216,68 +219,84 @@ export default function SubscriptionOverviewPage() {
         <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-interface text-sm font-medium text-slate-200">Penggunaan Bulan Ini</h2>
-            <span className="text-[10px] font-mono text-slate-500">
-              Reset: {resetDate}
-            </span>
+            {!isUnlimited && (
+              <span className="text-[10px] font-mono text-slate-500">
+                Reset: {resetDate}
+              </span>
+            )}
           </div>
 
-          {/* Progress Bar */}
-          <div className="relative h-3 bg-muted rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "absolute left-0 top-0 h-full rounded-full transition-all",
-                isBlocked ? "bg-destructive" : isLowQuota ? "bg-amber-500" : "bg-primary"
+          {isUnlimited ? (
+            <>
+              {/* Admin/superadmin: unlimited access */}
+              <p className="font-mono text-xl font-bold text-foreground">
+                Unlimited
+              </p>
+              <p className="mt-1 font-mono text-xs text-muted-foreground">
+                Akses tidak terbatas (admin)
+              </p>
+            </>
+          ) : (
+            <>
+              {/* Progress Bar */}
+              <div className="relative h-3 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    "absolute left-0 top-0 h-full rounded-full transition-all",
+                    isBlocked ? "bg-destructive" : isLowQuota ? "bg-amber-500" : "bg-primary"
+                  )}
+                  style={{ width: `${Math.min(usagePercentage, 100)}%` }}
+                />
+              </div>
+
+              {/* Stats — kredit as primary, tokens as secondary */}
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xl font-bold">
+                    <span className={cn("text-foreground", (isLowQuota || isBlocked) && "text-destructive")}>
+                      {usedKredit.toLocaleString("id-ID")}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {" / "}
+                      {totalKredit.toLocaleString("id-ID")}
+                    </span>
+                    {" "}
+                    <span className="text-signal text-[10px] text-muted-foreground">kredit</span>
+                  </span>
+                  <span
+                    className={cn(
+                      "font-mono text-sm font-medium",
+                      isBlocked ? "text-destructive" : isLowQuota ? "text-amber-600" : "text-muted-foreground"
+                    )}
+                  >
+                    {usagePercentage}%
+                  </span>
+                </div>
+                <p className="font-mono text-xs text-muted-foreground">
+                  {usedTokens.toLocaleString("id-ID")} / {allottedTokens.toLocaleString("id-ID")} tokens
+                </p>
+              </div>
+
+              {isBlocked && (
+                <p className="text-xs text-destructive mt-2">
+                  Quota bulanan habis. Upgrade ke Pro atau top up credit untuk melanjutkan.
+                </p>
               )}
-              style={{ width: `${Math.min(usagePercentage, 100)}%` }}
-            />
-          </div>
 
-          {/* Stats — kredit as primary, tokens as secondary */}
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xl font-bold">
-                <span className={cn("text-foreground", (isLowQuota || isBlocked) && "text-destructive")}>
-                  {usedKredit.toLocaleString("id-ID")}
-                </span>
-                <span className="text-muted-foreground">
-                  {" / "}
-                  {totalKredit.toLocaleString("id-ID")}
-                </span>
-                {" "}
-                <span className="text-signal text-[10px] text-muted-foreground">kredit</span>
-              </span>
-              <span
-                className={cn(
-                  "font-mono text-sm font-medium",
-                  isBlocked ? "text-destructive" : isLowQuota ? "text-amber-600" : "text-muted-foreground"
-                )}
-              >
-                {usagePercentage}%
-              </span>
-            </div>
-            <p className="font-mono text-xs text-muted-foreground">
-              {usedTokens.toLocaleString("id-ID")} / {allottedTokens.toLocaleString("id-ID")} tokens
-            </p>
-          </div>
+              {isLowQuota && !isBlocked && (
+                <p className="text-xs text-amber-600 mt-2">
+                  Quota hampir habis. Pertimbangkan untuk upgrade atau top up credit.
+                </p>
+              )}
 
-          {isBlocked && (
-            <p className="text-xs text-destructive mt-2">
-              Quota bulanan habis. Upgrade ke Pro atau top up credit untuk melanjutkan.
-            </p>
-          )}
-
-          {isLowQuota && !isBlocked && (
-            <p className="text-xs text-amber-600 mt-2">
-              Quota hampir habis. Pertimbangkan untuk upgrade atau top up credit.
-            </p>
-          )}
-
-          {/* Pro tier overage info */}
-          {quotaStatus?.overageTokens && quotaStatus.overageTokens > 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Overage: {quotaStatus.overageTokens.toLocaleString("id-ID")} tokens
-              (Rp {quotaStatus.overageCostIDR?.toLocaleString("id-ID") ?? 0})
-            </p>
+              {/* Pro tier overage info */}
+              {quotaStatus?.overageTokens && quotaStatus.overageTokens > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Overage: {quotaStatus.overageTokens.toLocaleString("id-ID")} tokens
+                  (Rp {quotaStatus.overageCostIDR?.toLocaleString("id-ID") ?? 0})
+                </p>
+              )}
+            </>
           )}
         </div>
       )}

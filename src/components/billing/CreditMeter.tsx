@@ -52,8 +52,27 @@ export function CreditMeter({ variant, className, onClick }: CreditMeterProps) {
   const { user } = useCurrentUser()
   const meter = useCreditMeter()
 
-  // Admin/superadmin: hidden
-  if (meter.isAdmin) return null
+  // Admin/superadmin: show "Unlimited" label (no progress bar)
+  if (meter.isAdmin) {
+    const AdminWrapper = onClick ? "button" : "div"
+    const adminProps = onClick
+      ? { onClick, type: "button" as const, className: cn("w-full text-left", className) }
+      : { className }
+
+    return (
+      <AdminWrapper {...adminProps}>
+        <div className="px-3 py-2">
+          <p className="font-mono text-sm font-semibold text-foreground">
+            Unlimited
+          </p>
+          <div className="mt-1 flex items-center gap-1.5">
+            <SegmentBadge role={user?.role} subscriptionStatus={user?.subscriptionStatus} />
+            <span className="font-mono text-[10px] text-muted-foreground">Admin</span>
+          </div>
+        </div>
+      </AdminWrapper>
+    )
+  }
 
   // Loading state
   if (meter.isLoading) {
