@@ -189,7 +189,7 @@ export function ActivityBar({
         className={cn(
           "flex flex-col items-center gap-0 py-0",
           "w-[var(--activity-bar-width)] min-w-[48px]",
-          "border-r border-slate-400/90 bg-slate-300 dark:border-slate-700/90 dark:bg-slate-950"
+          "border-r border-slate-400/90 bg-slate-300 dark:border-slate-700/90 dark:bg-slate-900"
         )}
         data-testid="activity-bar"
         onKeyDown={handleKeyDown}
