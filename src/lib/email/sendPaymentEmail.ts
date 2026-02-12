@@ -19,8 +19,9 @@ interface PaymentSuccessParams {
   to: string
   userName?: string
   amount: number
-  credits?: number // New: credits purchased
-  newTotalCredits?: number // New: total credits after purchase
+  credits?: number // Credits purchased (BPP)
+  newTotalCredits?: number // Total credits after purchase (BPP)
+  subscriptionPlanLabel?: string // Subscription plan label (Pro) e.g. "Pro Bulanan"
   newBalance?: number // Deprecated: kept for backward compat
   transactionId: string
   paidAt: Date | number
@@ -75,6 +76,7 @@ export async function sendPaymentSuccessEmail(
         amount: params.amount,
         credits: params.credits,
         newTotalCredits: params.newTotalCredits,
+        subscriptionPlanLabel: params.subscriptionPlanLabel,
         transactionId: params.transactionId,
         paidAt: formatDate(params.paidAt),
         appUrl,

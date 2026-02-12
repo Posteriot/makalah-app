@@ -29,7 +29,10 @@ import {
 import { cn } from "@/lib/utils"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
+import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
 import { toast } from "sonner"
+
+type ProPlanType = keyof typeof SUBSCRIPTION_PRICING
 
 // ════════════════════════════════════════════════════════════════
 // Types
@@ -135,11 +138,30 @@ export default function PlansHubPage() {
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Real-time payment status subscription
+  // Pro card state (isolated from BPP)
+  const [isProExpanded, setIsProExpanded] = useState(false)
+  const [selectedProPlan, setSelectedProPlan] = useState<ProPlanType>("pro_monthly")
+  const [proPaymentResult, setProPaymentResult] = useState<PaymentResult | null>(null)
+  const [isProProcessing, setIsProProcessing] = useState(false)
+  const [proError, setProError] = useState<string | null>(null)
+  const [proSelectedMethod, setProSelectedMethod] = useState<PaymentMethod>("qris")
+  const [proSelectedVAChannel, setProSelectedVAChannel] = useState(VA_CHANNELS[0].code)
+  const [proSelectedEWalletChannel, setProSelectedEWalletChannel] = useState(EWALLET_CHANNELS[0].code)
+  const [proMobileNumber, setProMobileNumber] = useState("")
+
+  // Real-time payment status subscription (BPP)
   const paymentStatus = useQuery(
     api.billing.payments.watchPaymentStatus,
     paymentResult?.convexPaymentId
       ? { paymentId: paymentResult.convexPaymentId as Id<"payments"> }
+      : "skip"
+  )
+
+  // Real-time payment status subscription (Pro)
+  const proPaymentStatus = useQuery(
+    api.billing.payments.watchPaymentStatus,
+    proPaymentResult?.convexPaymentId
+      ? { paymentId: proPaymentResult.convexPaymentId as Id<"payments"> }
       : "skip"
   )
 
@@ -168,6 +190,21 @@ export default function PlansHubPage() {
   useEffect(() => {
     handlePaymentStatusChange()
   }, [handlePaymentStatusChange])
+
+  // Handle Pro payment success via real-time subscription
+  const handleProPaymentStatusChange = useCallback(() => {
+    if (proPaymentStatus?.status === "SUCCEEDED" && proPaymentResult) {
+      toast.success("Pembayaran berhasil! Langganan Pro telah aktif.")
+      setTimeout(() => {
+        setProPaymentResult(null)
+        setIsProExpanded(false)
+      }, 3000)
+    }
+  }, [proPaymentStatus?.status, proPaymentResult])
+
+  useEffect(() => {
+    handleProPaymentStatusChange()
+  }, [handleProPaymentStatusChange])
 
   const handleTopUp = useCallback(async () => {
     if (isProcessing || !derivedSelectedPackage) return
@@ -218,6 +255,53 @@ export default function PlansHubPage() {
     }
   }, [isProcessing, derivedSelectedPackage, selectedMethod, selectedVAChannel, selectedEWalletChannel, mobileNumber])
 
+  const handleProSubscribe = useCallback(async () => {
+    if (isProProcessing) return
+
+    if (proSelectedMethod === "ewallet" && proSelectedEWalletChannel === "OVO") {
+      if (!proMobileNumber.trim()) {
+        setProError("Nomor HP wajib diisi untuk pembayaran OVO")
+        toast.error("Nomor HP wajib diisi untuk pembayaran OVO")
+        return
+      }
+    }
+
+    setIsProProcessing(true)
+    setProError(null)
+
+    try {
+      const response = await fetch("/api/payments/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planType: selectedProPlan,
+          paymentMethod: proSelectedMethod,
+          vaChannel: proSelectedMethod === "va" ? proSelectedVAChannel : undefined,
+          ewalletChannel: proSelectedMethod === "ewallet" ? proSelectedEWalletChannel : undefined,
+          mobileNumber: proSelectedMethod === "ewallet" && proSelectedEWalletChannel === "OVO" ? proMobileNumber : undefined,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Gagal membuat pembayaran")
+      }
+
+      setProPaymentResult(data)
+
+      if (proSelectedMethod === "ewallet" && data.redirectUrl) {
+        window.open(data.redirectUrl, "_blank")
+      }
+    } catch (err) {
+      console.error("[PlansHub] Pro subscription error:", err)
+      setProError(err instanceof Error ? err.message : "Terjadi kesalahan")
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan")
+    } finally {
+      setIsProProcessing(false)
+    }
+  }, [isProProcessing, selectedProPlan, proSelectedMethod, proSelectedVAChannel, proSelectedEWalletChannel, proMobileNumber])
+
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text)
     toast.success("Berhasil disalin!")
@@ -226,6 +310,11 @@ export default function PlansHubPage() {
   const resetPayment = useCallback(() => {
     setPaymentResult(null)
     setError(null)
+  }, [])
+
+  const resetProPayment = useCallback(() => {
+    setProPaymentResult(null)
+    setProError(null)
   }, [])
 
   // Loading state
@@ -575,14 +664,204 @@ export default function PlansHubPage() {
                   </>
                 )}
 
-                {/* Pro Plan - Coming Soon */}
+                {/* Pro Plan - Expandable Checkout */}
                 {isPro && (
-                  <button
-                    disabled
-                    className="w-full py-2.5 rounded-lg font-medium bg-muted text-muted-foreground cursor-not-allowed"
-                  >
-                    {plan.ctaText}
-                  </button>
+                  isCurrentTier ? (
+                    <div className="text-center py-2 text-sm text-muted-foreground">
+                      Tier aktif Anda
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setIsProExpanded(!isProExpanded)}
+                        className={cn(
+                          "w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
+                          "bg-primary text-primary-foreground hover:bg-primary/90"
+                        )}
+                      >
+                        {plan.ctaText}
+                        {isProExpanded ? (
+                          <NavArrowUp className="h-4 w-4" />
+                        ) : (
+                          <NavArrowDown className="h-4 w-4" />
+                        )}
+                      </button>
+
+                      {/* Expanded Pro Checkout */}
+                      {isProExpanded && (
+                        <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                          {/* Payment Result State */}
+                          {proPaymentResult && (
+                            <PaymentResultSection
+                              variant="pro"
+                              paymentResult={proPaymentResult}
+                              paymentStatus={proPaymentStatus}
+                              selectedMethod={proSelectedMethod}
+                              selectedEWalletChannel={proSelectedEWalletChannel}
+                              onReset={resetProPayment}
+                              onCopy={copyToClipboard}
+                              currentCredits={currentCredits}
+                            />
+                          )}
+
+                          {/* Normal Checkout Flow */}
+                          {!proPaymentResult && (
+                            <>
+                              {/* Error Banner */}
+                              {proError && (
+                                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
+                                  <WarningCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                                  <p className="text-sm text-destructive">{proError}</p>
+                                </div>
+                              )}
+
+                              {/* Plan Selection */}
+                              <div>
+                                <p className="text-sm font-medium mb-2">Pilih Paket Langganan</p>
+                                <div className="grid grid-cols-1 gap-2">
+                                  {(Object.entries(SUBSCRIPTION_PRICING) as [ProPlanType, (typeof SUBSCRIPTION_PRICING)[ProPlanType]][]).map(([type, pricing]) => (
+                                    <button
+                                      key={type}
+                                      onClick={() => setSelectedProPlan(type)}
+                                      disabled={isProProcessing}
+                                      className={cn(
+                                        "relative p-3 border rounded-lg text-left transition-colors",
+                                        selectedProPlan === type
+                                          ? "border-primary bg-primary/5"
+                                          : "border-border hover:border-primary/50",
+                                        isProProcessing && "opacity-50 cursor-not-allowed"
+                                      )}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-semibold">{pricing.label}</span>
+                                        <span className="text-sm font-medium">
+                                          Rp {pricing.priceIDR.toLocaleString("id-ID")}
+                                        </span>
+                                      </div>
+                                      {type === "pro_yearly" && (
+                                        <p className="text-xs text-primary mt-1">Hemat 2 bulan</p>
+                                      )}
+                                      {selectedProPlan === type && (
+                                        <CheckCircle className="absolute top-3 right-3 h-4 w-4 text-primary" />
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Payment Method */}
+                              <div>
+                                <p className="text-sm font-medium mb-2">Metode Pembayaran</p>
+                                <div className="space-y-2">
+                                  {PAYMENT_METHODS.map((method) => {
+                                    const Icon = method.icon
+                                    const isSelected = proSelectedMethod === method.id
+                                    return (
+                                      <button
+                                        key={method.id}
+                                        onClick={() => setProSelectedMethod(method.id)}
+                                        disabled={isProProcessing}
+                                        className={cn(
+                                          "w-full flex items-center gap-2 p-2 border rounded-lg text-left transition-colors",
+                                          isSelected
+                                            ? "border-primary bg-primary/5"
+                                            : "border-border hover:border-primary/50",
+                                          isProProcessing && "opacity-50 cursor-not-allowed"
+                                        )}
+                                      >
+                                        <Icon className={cn("h-4 w-4", isSelected ? "text-primary" : "text-muted-foreground")} />
+                                        <div className="flex-1">
+                                          <p className="text-sm font-medium">{method.label}</p>
+                                        </div>
+                                        {isSelected && <CheckCircle className="h-4 w-4 text-primary" />}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+
+                                {/* VA Channel Selection */}
+                                {proSelectedMethod === "va" && (
+                                  <div className="mt-3 grid grid-cols-2 gap-2">
+                                    {VA_CHANNELS.map((channel) => (
+                                      <button
+                                        key={channel.code}
+                                        onClick={() => setProSelectedVAChannel(channel.code)}
+                                        disabled={isProProcessing}
+                                        className={cn(
+                                          "p-2 border rounded-lg text-center text-sm transition-colors",
+                                          proSelectedVAChannel === channel.code
+                                            ? "border-primary bg-primary/5"
+                                            : "border-border hover:border-primary/50"
+                                        )}
+                                      >
+                                        {channel.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* E-Wallet Selection */}
+                                {proSelectedMethod === "ewallet" && (
+                                  <div className="mt-3 space-y-3">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {EWALLET_CHANNELS.map((channel) => (
+                                        <button
+                                          key={channel.code}
+                                          onClick={() => setProSelectedEWalletChannel(channel.code)}
+                                          disabled={isProProcessing}
+                                          className={cn(
+                                            "p-2 border rounded-lg text-center text-sm transition-colors",
+                                            proSelectedEWalletChannel === channel.code
+                                              ? "border-primary bg-primary/5"
+                                              : "border-border hover:border-primary/50"
+                                          )}
+                                        >
+                                          {channel.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    {proSelectedEWalletChannel === "OVO" && (
+                                      <input
+                                        type="tel"
+                                        value={proMobileNumber}
+                                        onChange={(e) => setProMobileNumber(e.target.value)}
+                                        placeholder="08123456789"
+                                        disabled={isProProcessing}
+                                        className="w-full p-2 border border-border rounded-lg bg-background text-sm"
+                                      />
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Pay Button */}
+                              <button
+                                onClick={handleProSubscribe}
+                                disabled={isProProcessing}
+                                className={cn(
+                                  "w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
+                                  "bg-primary text-primary-foreground hover:bg-primary/90",
+                                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                                )}
+                              >
+                                {isProProcessing ? (
+                                  <>
+                                    <RefreshDouble className="h-4 w-4 animate-spin" />
+                                    Memproses...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CreditCard className="h-4 w-4" />
+                                    Bayar {SUBSCRIPTION_PRICING[selectedProPlan].label}
+                                  </>
+                                )}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )
                 )}
               </div>
             </div>
@@ -604,7 +883,7 @@ export default function PlansHubPage() {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary">3.</span>
-            <span><strong>Pro:</strong> Rp 200.000/bulan untuk menyusun 5-6 paper (segera hadir)</span>
+            <span><strong>Pro:</strong> Rp 200.000/bulan untuk menyusun 5-6 paper</span>
           </li>
         </ul>
       </div>
@@ -617,6 +896,7 @@ export default function PlansHubPage() {
 // ════════════════════════════════════════════════════════════════
 
 interface PaymentResultSectionProps {
+  variant?: "bpp" | "pro"
   paymentResult: PaymentResult
   paymentStatus: { status: string; amount: number; paidAt?: number } | null | undefined
   selectedMethod: PaymentMethod
@@ -634,6 +914,7 @@ function formatCountdown(seconds: number): string {
 }
 
 function PaymentResultSection({
+  variant = "bpp",
   paymentResult,
   paymentStatus,
   selectedMethod,
@@ -702,15 +983,21 @@ function PaymentResultSection({
         </div>
         <div>
           <p className="font-semibold text-green-700 dark:text-green-400">Pembayaran Berhasil!</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            +{purchasedCredits} kredit → Total: <strong>{currentCredits + purchasedCredits} kredit</strong>
-          </p>
+          {variant === "pro" ? (
+            <p className="text-sm text-muted-foreground mt-1">
+              Langganan Pro Anda telah aktif. Nikmati semua fitur premium!
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-1">
+              +{purchasedCredits} kredit → Total: <strong>{currentCredits + purchasedCredits} kredit</strong>
+            </p>
+          )}
         </div>
         <Link
           href="/chat"
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
         >
-          Mulai Menyusun Paper
+          {variant === "pro" ? "Mulai Menggunakan Pro" : "Mulai Menyusun Paper"}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>

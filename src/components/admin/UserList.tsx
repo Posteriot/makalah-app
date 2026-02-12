@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import { RoleBadge } from "./RoleBadge"
 import {
   AlertDialog,
@@ -15,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowUp, ArrowDown, Trash, NavArrowLeft, NavArrowRight } from "iconoir-react"
+import { ArrowUp, ArrowDown, Trash, NavArrowLeft, NavArrowRight, EditPencil } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 
 export interface User {
@@ -34,7 +35,14 @@ interface UserListProps {
   currentUserRole: "superadmin" | "admin" | "user"
 }
 
-type DialogAction = "promote" | "demote" | "delete"
+type SubscriptionTier = "free" | "bpp" | "pro"
+type DialogAction = "promote" | "demote" | "delete" | "changeTier"
+
+const TIER_OPTIONS: Array<{ value: SubscriptionTier; label: string; color: string }> = [
+  { value: "free", label: "GRATIS", color: "bg-segment-gratis text-white" },
+  { value: "bpp", label: "BPP", color: "bg-segment-bpp text-white" },
+  { value: "pro", label: "PRO", color: "bg-segment-pro text-black" },
+]
 type DynamicColumnKey =
   | "role"
   | "subscription"
@@ -74,8 +82,11 @@ export function UserList({ users, currentUserRole }: UserListProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [dynamicColumnStart, setDynamicColumnStart] = useState(0)
 
+  const [pendingTier, setPendingTier] = useState<SubscriptionTier | null>(null)
+
   const promoteToAdmin = useMutation(api.adminUserManagement.promoteToAdmin)
   const demoteToUser = useMutation(api.adminUserManagement.demoteToUser)
+  const updateTier = useMutation(api.adminUserManagement.updateSubscriptionTier)
 
   const handlePromoteClick = (user: User) => {
     setSelectedUser(user)
@@ -90,6 +101,14 @@ export function UserList({ users, currentUserRole }: UserListProps) {
   const handleDeleteClick = (user: User) => {
     setSelectedUser(user)
     setDialogAction("delete")
+  }
+
+  const handleTierClick = (user: User) => {
+    // Only allow for regular users (admin/superadmin always unlimited)
+    if (user.role === "admin" || user.role === "superadmin") return
+    setSelectedUser(user)
+    setPendingTier(null)
+    setDialogAction("changeTier")
   }
 
   const deleteUserFromAdmin = async (user: User) => {
@@ -115,7 +134,13 @@ export function UserList({ users, currentUserRole }: UserListProps) {
 
     setIsLoading(true)
     try {
-      if (dialogAction === "promote") {
+      if (dialogAction === "changeTier" && pendingTier) {
+        const result = await updateTier({
+          targetUserId: selectedUser._id,
+          newTier: pendingTier,
+        })
+        toast.success(result.message)
+      } else if (dialogAction === "promote") {
         const result = await promoteToAdmin({
           targetUserId: selectedUser._id,
         })
@@ -125,7 +150,7 @@ export function UserList({ users, currentUserRole }: UserListProps) {
           targetUserId: selectedUser._id,
         })
         toast.success(result.message)
-      } else {
+      } else if (dialogAction === "delete") {
         const message = await deleteUserFromAdmin(selectedUser)
         toast.success(message)
       }
@@ -137,12 +162,14 @@ export function UserList({ users, currentUserRole }: UserListProps) {
       setIsLoading(false)
       setSelectedUser(null)
       setDialogAction(null)
+      setPendingTier(null)
     }
   }
 
   const handleCancel = () => {
     setSelectedUser(null)
     setDialogAction(null)
+    setPendingTier(null)
   }
 
   const getFullName = (user: User) => {
@@ -315,9 +342,29 @@ export function UserList({ users, currentUserRole }: UserListProps) {
     }
 
     if (columnKey === "subscription") {
-      return (
-        <span className="inline-flex items-center rounded-badge border border-border bg-slate-200 px-2.5 py-1 text-[10px] font-bold tracking-wide text-slate-700 uppercase dark:bg-slate-700 dark:text-slate-100">
-          {user.subscriptionStatus}
+      const canChangeTier = user.role !== "admin" && user.role !== "superadmin"
+      const tierOption = TIER_OPTIONS.find((t) => t.value === user.subscriptionStatus)
+      return canChangeTier ? (
+        <button
+          type="button"
+          onClick={() => handleTierClick(user)}
+          disabled={isLoading}
+          className="group/tier inline-flex items-center gap-1 rounded-badge border border-transparent px-2.5 py-1 transition-colors hover:border-border hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <span className={cn(
+            "inline-flex items-center rounded-badge px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
+            tierOption?.color ?? "bg-slate-700 text-slate-100"
+          )}>
+            {tierOption?.label ?? user.subscriptionStatus}
+          </span>
+          <EditPencil className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover/tier:opacity-100" />
+        </button>
+      ) : (
+        <span className={cn(
+          "inline-flex items-center rounded-badge px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase",
+          tierOption?.color ?? "bg-slate-700 text-slate-100"
+        )}>
+          {tierOption?.label ?? user.subscriptionStatus}
         </span>
       )
     }
@@ -521,26 +568,79 @@ export function UserList({ users, currentUserRole }: UserListProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {dialogAction === "promote"
-                ? "Promote ke Admin"
-                : dialogAction === "demote"
-                  ? "Demote ke User"
-                  : "Hapus User"}
+              {dialogAction === "changeTier"
+                ? "Ubah Subscription Tier"
+                : dialogAction === "promote"
+                  ? "Promote ke Admin"
+                  : dialogAction === "demote"
+                    ? "Demote ke User"
+                    : "Hapus User"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {dialogAction === "promote"
-                ? `Apakah Anda yakin ingin promote ${selectedUser?.email} menjadi admin? User akan mendapatkan akses ke admin panel.`
-                : dialogAction === "demote"
-                  ? `Apakah Anda yakin ingin demote ${selectedUser?.email} menjadi user biasa? User akan kehilangan akses admin panel.`
-                  : `Apakah Anda yakin ingin menghapus ${selectedUser?.email}? User akan dihapus dari Clerk dan tidak bisa login lagi.`}
+            <AlertDialogDescription asChild>
+              {dialogAction === "changeTier" ? (
+                <div className="space-y-3">
+                  <p>
+                    Pilih tier baru untuk <span className="font-medium text-foreground">{selectedUser?.email}</span>:
+                  </p>
+                  <div className="flex gap-2">
+                    {TIER_OPTIONS.map((option) => {
+                      const isCurrent = option.value === selectedUser?.subscriptionStatus
+                      const isSelected = option.value === pendingTier
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          disabled={isCurrent}
+                          onClick={() => setPendingTier(option.value)}
+                          className={cn(
+                            "flex-1 rounded-action border-2 px-3 py-2 text-center transition-all",
+                            isCurrent
+                              ? "cursor-not-allowed border-border opacity-40"
+                              : isSelected
+                                ? "border-primary bg-primary/10"
+                                : "border-border hover:border-muted-foreground"
+                          )}
+                        >
+                          <span className={cn(
+                            "inline-flex items-center rounded-badge px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
+                            option.color
+                          )}>
+                            {option.label}
+                          </span>
+                          {isCurrent && (
+                            <p className="mt-1 font-mono text-[10px] text-muted-foreground">Saat ini</p>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p>
+                  {dialogAction === "promote"
+                    ? `Apakah Anda yakin ingin promote ${selectedUser?.email} menjadi admin? User akan mendapatkan akses ke admin panel.`
+                    : dialogAction === "demote"
+                      ? `Apakah Anda yakin ingin demote ${selectedUser?.email} menjadi user biasa? User akan kehilangan akses admin panel.`
+                      : `Apakah Anda yakin ingin menghapus ${selectedUser?.email}? User akan dihapus dari Clerk dan tidak bisa login lagi.`}
+                </p>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancel} disabled={isLoading}>
               Batal
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm} disabled={isLoading}>
-              {isLoading ? "Memproses..." : dialogAction === "delete" ? "Hapus" : "Konfirmasi"}
+            <AlertDialogAction
+              onClick={handleConfirm}
+              disabled={isLoading || (dialogAction === "changeTier" && !pendingTier)}
+            >
+              {isLoading
+                ? "Memproses..."
+                : dialogAction === "delete"
+                  ? "Hapus"
+                  : dialogAction === "changeTier"
+                    ? "Ubah Tier"
+                    : "Konfirmasi"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,16 +1,15 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ArrowUpCircle, RefreshDouble, Plus, FastArrowLeft } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft } from "iconoir-react"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
-import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { SidebarChatHistory } from "./sidebar/SidebarChatHistory"
 import { SidebarPaperSessions } from "./sidebar/SidebarPaperSessions"
 import { SidebarProgress } from "./sidebar/SidebarProgress"
 import type { PanelType } from "./shell/ActivityBar"
-import { getEffectiveTier } from "@/lib/utils/subscription"
+import { CreditMeter } from "@/components/billing/CreditMeter"
 
 /**
  * ChatSidebar Props
@@ -63,7 +62,7 @@ interface ChatSidebarProps {
  *
  * Common elements:
  * - Sidebar header with "New Chat" button (only for chat-history)
- * - Sidebar footer for upgrade CTA (BPP/Gratis users only)
+ * - Sidebar footer with CreditMeter (all tiers, admin-hidden)
  */
 export function ChatSidebar({
   activePanel = "chat-history",
@@ -81,12 +80,7 @@ export function ChatSidebar({
   isCreating,
   onCollapseSidebar,
 }: ChatSidebarProps) {
-  const { user } = useCurrentUser()
   const router = useRouter()
-
-  // Determine if user needs upgrade CTA (non-PRO users only)
-  const showUpgradeCTA =
-    user && getEffectiveTier(user.role, user.subscriptionStatus) !== "pro"
 
   // Render sidebar content based on active panel
   const renderContent = () => {
@@ -185,23 +179,20 @@ export function ChatSidebar({
       {/* Content - Conditionally rendered based on activePanel */}
       <div className="flex-1 flex flex-col overflow-hidden">{renderContent()}</div>
 
-      {/* Footer - Upgrade CTA for BPP/Gratis users */}
-      {showUpgradeCTA && (
-        <div className="shrink-0 border-t border-slate-300/90 p-3 dark:border-slate-700/80">
-          <Button
-            variant="default"
-            size="sm"
-            className={cn(
-              "w-full rounded-action border border-slate-300/90 bg-slate-100 font-semibold text-foreground",
-              "hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700/60 dark:hover:bg-slate-700/80"
-            )}
-            onClick={() => router.push("/subscription/upgrade")}
-          >
-            <ArrowUpCircle className="h-4 w-4 mr-1.5" />
-            Upgrade
-          </Button>
-        </div>
-      )}
+      {/* Credit Meter — visible for all tiers, hidden for admin (handled by CreditMeter) */}
+      <div className="shrink-0 border-t border-hairline">
+        <CreditMeter
+          variant="compact"
+          onClick={() => router.push("/subscription/overview")}
+        />
+      </div>
+
+      {/* Mini-footer */}
+      <div className="shrink-0 border-t border-hairline px-3 py-2">
+        <p className="text-center font-mono text-[10px] text-muted-foreground">
+          &copy; 2026 Makalah AI
+        </p>
+      </div>
     </aside>
   )
 }

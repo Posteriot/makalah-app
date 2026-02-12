@@ -4,6 +4,7 @@ import Link from "next/link"
 import { ArrowUpCircle, BadgeCheck } from "iconoir-react"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
+import { CreditMeter } from "@/components/billing/CreditMeter"
 import { RoleBadge } from "@/components/admin/RoleBadge"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
 
@@ -79,26 +80,37 @@ export function StatusTab({ primaryEmail, convexUser, isConvexLoading }: StatusT
               const tierKey = getEffectiveTier(convexUser?.role, convexUser?.subscriptionStatus)
               const tierConfig = TIER_CONFIG[tierKey]
               return (
-                <div className="flex items-center justify-between max-sm:flex-col max-sm:items-start max-sm:gap-3">
-                  <SegmentBadge
-                    role={convexUser?.role}
-                    subscriptionStatus={convexUser?.subscriptionStatus}
-                  />
-                  {tierConfig.showUpgrade && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between max-sm:flex-col max-sm:items-start max-sm:gap-3">
+                    <SegmentBadge
+                      role={convexUser?.role}
+                      subscriptionStatus={convexUser?.subscriptionStatus}
+                    />
+                    {tierConfig.showUpgrade && (
+                      <Link
+                        href="/subscription/upgrade"
+                        className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring"
+                      >
+                        <span
+                          className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                          aria-hidden="true"
+                        />
+                        <span className="relative z-10 inline-flex items-center gap-1.5">
+                          <ArrowUpCircle className="h-4 w-4" />
+                          Upgrade
+                        </span>
+                      </Link>
+                    )}
+                  </div>
+                  <CreditMeter variant="standard" />
+                  <div>
                     <Link
-                      href="/subscription/upgrade"
-                      className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring"
+                      href="/subscription/overview"
+                      className="font-mono text-xs text-primary hover:underline"
                     >
-                      <span
-                        className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
-                        aria-hidden="true"
-                      />
-                      <span className="relative z-10 inline-flex items-center gap-1.5">
-                        <ArrowUpCircle className="h-4 w-4" />
-                        Upgrade
-                      </span>
+                      Lihat Detail
                     </Link>
-                  )}
+                  </div>
                 </div>
               )
             })()

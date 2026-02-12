@@ -7,6 +7,7 @@ import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { getEffectiveTier } from "@/lib/utils/subscription"
+import { OPERATION_COST_MULTIPLIERS } from "@convex/billing/constants"
 // Note: tokensToCredits conversion handled internally by deductCredits mutation
 
 // Token estimation: ~4 chars = 1 token for English, ~2-3 chars for Indonesian
@@ -56,15 +57,8 @@ export function estimateTotalTokens(
 ): number {
   const inputTokens = estimateTokens(inputText)
 
-  // Multipliers based on operation type
-  const outputMultipliers: Record<OperationType, number> = {
-    chat_message: 1.5,
-    paper_generation: 2.5,
-    web_search: 2.0,
-    refrasa: 1.2,
-  }
-
-  const multiplier = outputMultipliers[operationType] ?? 1.5
+  // Multipliers from single source of truth (convex/billing/constants.ts)
+  const multiplier = OPERATION_COST_MULTIPLIERS[operationType] ?? 1.0
   return Math.ceil(inputTokens * (1 + multiplier))
 }
 
@@ -161,8 +155,44 @@ export async function recordUsageAfterOperation(params: {
           console.warn("[Billing] Credit deduction failed:", error)
         }
       }
+    } else if (tier === "pro") {
+      // Pro: Deduct from quota first, fallback to credits if quota exhausted
+      const quota = await fetchQuery(api.billing.quotas.getUserQuota, {
+        userId: params.userId,
+      }, convexOptions)
+
+      const quotaRemaining = quota?.remainingTokens ?? 0
+
+      if (quotaRemaining >= params.totalTokens) {
+        // Quota has room — normal deduction
+        await fetchMutation(api.billing.quotas.deductQuota, {
+          userId: params.userId,
+          tokens: params.totalTokens,
+        }, convexOptions)
+      } else {
+        // Quota exhausted — deduct from credit balance
+        try {
+          const deductResult = await fetchMutation(api.billing.credits.deductCredits, {
+            userId: params.userId,
+            tokensUsed: params.totalTokens,
+          }, convexOptions)
+
+          console.log(`[Billing] Pro credit fallback:`, {
+            userId: params.userId,
+            tokensUsed: params.totalTokens,
+            creditsDeducted: deductResult.creditsDeducted,
+            remainingCredits: deductResult.remainingCredits,
+          })
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("Insufficient credits")) {
+            console.warn("[Billing] Pro credit fallback - insufficient:", error.message)
+          } else {
+            console.warn("[Billing] Pro credit deduction failed:", error)
+          }
+        }
+      }
     } else {
-      // Gratis/Pro: Deduct from quota
+      // Gratis: Deduct from quota
       await fetchMutation(api.billing.quotas.deductQuota, {
         userId: params.userId,
         tokens: params.totalTokens,

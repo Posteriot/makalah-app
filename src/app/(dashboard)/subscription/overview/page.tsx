@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
+import { TOKENS_PER_CREDIT, TIER_LIMITS, type TierType } from "@convex/billing/constants"
 
 // Tier configuration
 const TIER_CONFIG: Record<EffectiveTier, { label: string; description: string; color: string; textColor: string }> = {
@@ -111,9 +112,14 @@ export default function SubscriptionOverviewPage() {
   // For BPP users, show credit balance
   const isBPP = quotaStatus?.creditBased || tier === "bpp"
 
+  // Admin/superadmin: unlimited access (backend returns { unlimited: true } without token fields)
+  const isUnlimited = quotaStatus?.unlimited === true
+
   // Calculate usage percentage (for non-BPP)
   const usedTokens = quotaStatus?.usedTokens ?? 0
-  const allottedTokens = quotaStatus?.allottedTokens ?? 100000
+  // Use TIER_LIMITS as fallback when quota not initialized (needsInit)
+  const tierMonthlyTokens = TIER_LIMITS[tier as TierType]?.monthlyTokens ?? 0
+  const allottedTokens = quotaStatus?.allottedTokens ?? (isUnlimited ? 0 : tierMonthlyTokens)
   const rawUsagePercentage =
     quotaStatus?.percentageUsed ??
     (allottedTokens > 0 ? (usedTokens / allottedTokens) * 100 : 0)
@@ -128,6 +134,10 @@ export default function SubscriptionOverviewPage() {
 
   // Credit balance for BPP (now in credits, not IDR)
   const currentCreditBalance = creditBalance?.remainingCredits ?? 0
+
+  // Kredit conversion (1 kredit = 1.000 tokens)
+  const usedKredit = Math.ceil(usedTokens / TOKENS_PER_CREDIT)
+  const totalKredit = Math.floor(allottedTokens / TOKENS_PER_CREDIT)
 
   return (
     <div className="space-y-6">
@@ -179,30 +189,70 @@ export default function SubscriptionOverviewPage() {
           )}
         </div>
 
-        {/* Credit Balance Card */}
+        {/* Right Card — tier-aware */}
         <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-signal text-[10px] text-slate-500">
-                Saldo Credit
-              </p>
-              <p className="text-interface text-2xl font-semibold mt-1 text-slate-100">
-                {currentCreditBalance.toLocaleString("id-ID")} kredit
-              </p>
-              <p className="text-sm text-slate-400 mt-1">
-                Saldo untuk tier Bayar Per Paper
-              </p>
-            </div>
-            <CreditCard className="h-5 w-5 text-slate-500" />
-          </div>
-
-          <Link
-            href="/subscription/topup"
-            className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
-          >
-            <CreditCard className="h-4 w-4" />
-            Top Up
-          </Link>
+          {isBPP ? (
+            <>
+              {/* BPP: Credit balance + Top Up */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-signal text-[10px] text-slate-500">
+                    Saldo Credit
+                  </p>
+                  <p className="text-interface text-2xl font-semibold mt-1 text-slate-100">
+                    {currentCreditBalance.toLocaleString("id-ID")} kredit
+                  </p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    ≈ {(currentCreditBalance * 1000).toLocaleString("id-ID")} tokens tersedia
+                  </p>
+                </div>
+                <CreditCard className="h-5 w-5 text-slate-500" />
+              </div>
+              <Link
+                href="/subscription/topup"
+                className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
+              >
+                <CreditCard className="h-4 w-4" />
+                Top Up
+              </Link>
+            </>
+          ) : isUnlimited ? (
+            <>
+              {/* Admin: Unlimited access */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-signal text-[10px] text-slate-500">
+                    Akses
+                  </p>
+                  <p className="text-interface text-2xl font-semibold mt-1 text-slate-100">
+                    Unlimited
+                  </p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Akses tidak terbatas (admin)
+                  </p>
+                </div>
+                <Sparks className="h-5 w-5 text-amber-500" />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Gratis / Pro: Monthly quota info */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-signal text-[10px] text-slate-500">
+                    Kuota Bulanan
+                  </p>
+                  <p className="text-interface text-2xl font-semibold mt-1 text-slate-100">
+                    {totalKredit.toLocaleString("id-ID")} kredit
+                  </p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Reset: {resetDate}
+                  </p>
+                </div>
+                <GraphUp className="h-5 w-5 text-slate-500" />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -211,86 +261,123 @@ export default function SubscriptionOverviewPage() {
         <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-interface text-sm font-medium text-slate-200">Penggunaan Bulan Ini</h2>
-            <span className="text-[10px] font-mono text-slate-500">
-              Reset: {resetDate}
-            </span>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="relative h-3 bg-muted rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "absolute left-0 top-0 h-full rounded-full transition-all",
-                isBlocked ? "bg-destructive" : isLowQuota ? "bg-amber-500" : "bg-primary"
-              )}
-              style={{ width: `${Math.min(usagePercentage, 100)}%` }}
-            />
-          </div>
-
-          {/* Stats */}
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-sm">
-              <span className={cn("text-interface font-semibold", (isLowQuota || isBlocked) && "text-destructive")}>
-                {usedTokens.toLocaleString("id-ID")}
+            {!isUnlimited && (
+              <span className="text-[10px] font-mono text-slate-500">
+                Reset: {resetDate}
               </span>
-              <span className="text-slate-500">
-                {" / "}
-                {allottedTokens.toLocaleString("id-ID")} tokens
-              </span>
-            </span>
-            <span
-              className={cn(
-                "text-sm font-medium",
-                isBlocked ? "text-destructive" : isLowQuota ? "text-amber-600" : "text-muted-foreground"
-              )}
-            >
-              {usagePercentage}%
-            </span>
+            )}
           </div>
 
-          {isBlocked && (
-            <p className="text-xs text-destructive mt-2">
-              Quota bulanan habis. Upgrade ke Pro atau top up credit untuk melanjutkan.
-            </p>
-          )}
+          {isUnlimited ? (
+            <>
+              {/* Admin/superadmin: unlimited access */}
+              <p className="font-mono text-xl font-bold text-foreground">
+                Unlimited
+              </p>
+              <p className="mt-1 font-mono text-xs text-muted-foreground">
+                Akses tidak terbatas (admin)
+              </p>
+            </>
+          ) : (
+            <>
+              {/* Progress Bar */}
+              <div className="relative h-3 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    "absolute left-0 top-0 h-full rounded-full transition-all",
+                    isBlocked ? "bg-destructive" : isLowQuota ? "bg-amber-500" : "bg-primary"
+                  )}
+                  style={{ width: `${Math.min(usagePercentage, 100)}%` }}
+                />
+              </div>
 
-          {isLowQuota && !isBlocked && (
-            <p className="text-xs text-amber-600 mt-2">
-              Quota hampir habis. Pertimbangkan untuk upgrade atau top up credit.
-            </p>
-          )}
+              {/* Stats — kredit as primary, tokens as secondary */}
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xl font-bold">
+                    <span className={cn("text-foreground", (isLowQuota || isBlocked) && "text-destructive")}>
+                      {usedKredit.toLocaleString("id-ID")}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {" / "}
+                      {totalKredit.toLocaleString("id-ID")}
+                    </span>
+                    {" "}
+                    <span className="text-signal text-[10px] text-muted-foreground">kredit</span>
+                  </span>
+                  <span
+                    className={cn(
+                      "font-mono text-sm font-medium",
+                      isBlocked ? "text-destructive" : isLowQuota ? "text-amber-600" : "text-muted-foreground"
+                    )}
+                  >
+                    {usagePercentage}%
+                  </span>
+                </div>
+                <p className="font-mono text-xs text-muted-foreground">
+                  {usedTokens.toLocaleString("id-ID")} / {allottedTokens.toLocaleString("id-ID")} tokens
+                </p>
+              </div>
 
-          {/* Pro tier overage info */}
-          {quotaStatus?.overageTokens && quotaStatus.overageTokens > 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Overage: {quotaStatus.overageTokens.toLocaleString("id-ID")} tokens
-              (Rp {quotaStatus.overageCostIDR?.toLocaleString("id-ID") ?? 0})
-            </p>
+              {isBlocked && (
+                <div className="mt-2 space-y-2">
+                  <p className="text-xs text-destructive">
+                    {tier === "pro"
+                      ? "Quota bulanan habis. Top up credit untuk melanjutkan."
+                      : "Quota bulanan habis. Upgrade ke Pro atau top up credit untuk melanjutkan."}
+                  </p>
+                  <Link
+                    href="/subscription/topup"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
+                  >
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Top Up Credit
+                  </Link>
+                </div>
+              )}
+
+              {isLowQuota && !isBlocked && (
+                <p className="text-xs text-amber-600 mt-2">
+                  Quota hampir habis. Pertimbangkan untuk top up credit.
+                </p>
+              )}
+
+            </>
           )}
         </div>
       )}
 
-      {/* BPP Credit Status Card */}
+      {/* BPP Credit Detail Card */}
       {isBPP && (
         <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-interface text-sm font-medium text-slate-200">Status Credit</h2>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <p className="text-interface text-3xl font-bold text-slate-100">
-                {currentCreditBalance.toLocaleString("id-ID")} kredit
-              </p>
-              <p className="text-sm text-slate-400 mt-1">
-                ≈ {(currentCreditBalance * 1000).toLocaleString("id-ID")} tokens tersedia
-              </p>
-            </div>
+            <h2 className="text-interface text-sm font-medium text-slate-200">Detail Credit</h2>
             {creditBalance && currentCreditBalance < 100 && (
               <div className="px-3 py-1.5 bg-amber-500/15 text-amber-400 text-xs font-mono rounded-badge border border-amber-500/30">
                 Saldo Rendah
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-signal text-[10px] text-slate-500">Tersisa</p>
+              <p className="font-mono text-lg font-bold text-slate-100">
+                {currentCreditBalance.toLocaleString("id-ID")}
+              </p>
+            </div>
+            <div>
+              <p className="text-signal text-[10px] text-slate-500">Terpakai</p>
+              <p className="font-mono text-lg font-bold text-slate-400">
+                {(creditBalance?.usedCredits ?? 0).toLocaleString("id-ID")}
+              </p>
+            </div>
+            <div>
+              <p className="text-signal text-[10px] text-slate-500">Total Dibeli</p>
+              <p className="font-mono text-lg font-bold text-slate-400">
+                {(creditBalance?.totalCredits ?? 0).toLocaleString("id-ID")}
+              </p>
+            </div>
           </div>
 
           {creditBalance?.lastPurchaseAt && (
@@ -325,6 +412,9 @@ export default function SubscriptionOverviewPage() {
                     Tipe
                   </th>
                   <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
+                    Kredit
+                  </th>
+                  <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
                     Tokens
                   </th>
                   <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
@@ -343,6 +433,9 @@ export default function SubscriptionOverviewPage() {
                           <span className="text-slate-200">{item.type}</span>
                         </div>
                       </td>
+                      <td className="text-right px-4 py-3 tabular-nums text-slate-200">
+                        {Math.ceil(item.tokens / TOKENS_PER_CREDIT).toLocaleString("id-ID")}
+                      </td>
                       <td className="text-right px-4 py-3 tabular-nums text-slate-100">
                         {item.tokens.toLocaleString("id-ID")}
                       </td>
@@ -357,6 +450,9 @@ export default function SubscriptionOverviewPage() {
                 <tr className="bg-slate-800/40 font-semibold">
                   <td className="px-4 py-2 text-slate-200">Total</td>
                   <td className="text-right px-4 py-2 tabular-nums text-slate-100">
+                    {Math.ceil(usageBreakdown.totalTokens / TOKENS_PER_CREDIT).toLocaleString("id-ID")}
+                  </td>
+                  <td className="text-right px-4 py-2 tabular-nums text-slate-100">
                     {usageBreakdown.totalTokens.toLocaleString("id-ID")}
                   </td>
                   <td className="text-right px-4 py-2 tabular-nums text-slate-200">
@@ -369,6 +465,11 @@ export default function SubscriptionOverviewPage() {
         )}
       </div>
 
+      {/* Conversion note */}
+      <p className="font-mono text-[10px] text-muted-foreground px-1">
+        1 kredit = 1.000 tokens. Estimasi biaya berdasarkan harga rata-rata model AI.
+      </p>
+
       {/* Hybrid Model Info */}
       <div className="bg-slate-800/30 border border-hairline rounded-shell p-4">
         <h3 className="text-interface text-sm font-medium text-slate-200 mb-2">Cara Kerja Pembayaran</h3>
@@ -376,7 +477,7 @@ export default function SubscriptionOverviewPage() {
           <li className="flex items-start gap-2">
             <span className="text-amber-500">1.</span>
             <span>
-              <strong>Gratis:</strong> 100K tokens/bulan untuk mencoba fitur dasar
+              <strong>Gratis:</strong> 100 kredit/bulan untuk mencoba fitur dasar
             </span>
           </li>
           <li className="flex items-start gap-2">

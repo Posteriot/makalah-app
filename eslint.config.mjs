@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     ".development/**",
     ".references/**",
     "convex/_generated/**",
+    "worktrees/**",
   ]),
 ]);
 
