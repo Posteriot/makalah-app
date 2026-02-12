@@ -127,18 +127,19 @@ function SourceItem({ parts }: { parts: ReturnType<typeof getWebCitationDisplayP
             rel="noopener noreferrer"
             className={cn(
                 "group flex flex-col gap-0.5 py-2",
-                "hover:bg-accent/30 -mx-1 px-1 rounded transition-colors"
+                "-mx-1 px-1 rounded transition-colors",
+                "hover:bg-slate-200/80 dark:hover:bg-slate-800/70"
             )}
         >
             {/* Title */}
-            <span className="text-sm font-medium text-foreground group-hover:text-sky-400 flex items-center gap-1">
+            <span className="text-sm font-medium text-foreground flex items-center gap-1">
                 {parts.title}
                 {/* Mechanical Grace: .icon-micro (12px) */}
                 <OpenNewWindow className="h-3 w-3 opacity-0 group-hover:opacity-70 transition-opacity" />
             </span>
 
             {/* URL - Mechanical Grace: Mono typography */}
-            <span className="text-xs font-mono text-muted-foreground truncate">
+            <span className="text-xs font-mono text-muted-foreground truncate hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
                 {parts.url}
             </span>
         </a>
