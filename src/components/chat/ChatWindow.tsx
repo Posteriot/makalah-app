@@ -501,7 +501,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       {/* Messages Area */}
       <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
         {/* Message Container - padding handled at item level for Virtuoso compatibility */}
-        <div className="flex-1 overflow-hidden relative py-4">
+        <div className="flex-1 overflow-hidden relative py-2">
           {(isHistoryLoading || isConversationLoading) && messages.length === 0 ? (
             // Loading skeleton - keep horizontal boundary in sync with ChatInput
             <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>

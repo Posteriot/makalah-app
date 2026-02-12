@@ -65,7 +65,7 @@ export function TopBar({
       <div
         className={cn(
           "flex items-center justify-between",
-          "pl-4 pr-6 py-2",
+          "pl-4 pr-6 py-0",
           "shrink-0 bg-slate-50 dark:bg-slate-900"
         )}
       >
