@@ -6,100 +6,34 @@ import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { ArtifactViewer, ArtifactViewerRef } from "./ArtifactViewer"
-import { ArtifactList } from "./ArtifactList"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from "@/components/ui/dropdown-menu"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import { Badge } from "@/components/ui/badge"
-import {
-  Page,
-  Xmark,
-  Expand,
-  Download,
-  EditPencil,
-  MagicWand,
-  Copy,
-  Check,
-  MoreVert,
-  NavArrowDown,
-  Code,
-  List,
-  Table2Columns,
-  Book,
-  Calculator,
-} from "iconoir-react"
+import { ArtifactTabs } from "./ArtifactTabs"
+import { ArtifactToolbar } from "./ArtifactToolbar"
+import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
+import { Page } from "iconoir-react"
 import { cn } from "@/lib/utils"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { FullsizeArtifactModal } from "./FullsizeArtifactModal"
-
-// Artifact type from Convex
-type ArtifactType =
-  | "code"
-  | "outline"
-  | "section"
-  | "table"
-  | "citation"
-  | "formula"
-
-// Map artifact type to icon (Iconoir)
-const typeIcons: Record<ArtifactType, React.ElementType> = {
-  code: Code,
-  outline: List,
-  section: Page,
-  table: Table2Columns,
-  citation: Book,
-  formula: Calculator,
-}
-
-// Map artifact type to display label
-const typeLabels: Record<ArtifactType, string> = {
-  code: "Code",
-  outline: "Outline",
-  section: "Section",
-  table: "Tabel",
-  citation: "Sitasi",
-  formula: "Formula",
-}
-
-// Format timestamp to readable date
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
 
 interface ArtifactPanelProps {
   conversationId: Id<"conversations"> | null
   isOpen: boolean
   onToggle: () => void
-  selectedArtifactId: Id<"artifacts"> | null
-  onSelectArtifact: (id: Id<"artifacts">) => void
+  // Tab-related props
+  openTabs: ArtifactTab[]
+  activeTabId: Id<"artifacts"> | null
+  onTabChange: (tabId: Id<"artifacts">) => void
+  onTabClose: (tabId: Id<"artifacts">) => void
 }
 
 /**
- * ArtifactPanel - Artifact viewer panel
+ * ArtifactPanel - Artifact viewer panel with tabbed document switching
  *
  * Features:
- * - Viewer-focused layout (no tools grid per mockup)
- * - Artifact list with type filter
- * - Selected artifact state management
+ * - ArtifactTabs for switching between open artifact documents
+ * - ArtifactToolbar with metadata and action buttons
+ * - ArtifactViewer for rendering artifact content
+ * - Fullsize modal for expanded viewing
  * - Width controlled by parent resizer
- * - Collapse/expand trigger moved to ShellHeader
+ * - Panel close via TopBar (no close button in panel)
  *
  * Styling:
  * - Uses CSS variables for theme consistency
@@ -110,20 +44,18 @@ export function ArtifactPanel({
   conversationId,
   isOpen,
   onToggle,
-  selectedArtifactId,
-  onSelectArtifact,
+  openTabs,
+  activeTabId,
+  onTabChange,
+  onTabClose,
 }: ArtifactPanelProps) {
   const [isFullsizeOpen, setIsFullsizeOpen] = useState(false)
-  const [isArtifactListOpen, setIsArtifactListOpen] = useState(false)
   const { user: currentUser } = useCurrentUser()
 
   // Ref for ArtifactViewer actions
   const viewerRef = useRef<ArtifactViewerRef>(null)
 
-  // Local state for action icons (synced from viewer ref)
-  const [copied, setCopied] = useState(false)
-
-  // Fetch artifacts with optional type filter
+  // Fetch artifacts for this conversation
   const artifacts = useQuery(
     api.artifacts.listByConversation,
     conversationId && currentUser?._id
@@ -134,454 +66,75 @@ export function ArtifactPanel({
       : "skip"
   )
 
-  const artifactCount = artifacts?.length ?? 0
-
-  // Only render when panel is open (collapsed trigger moved to ShellHeader)
+  // Only render when panel is open
   if (!isOpen) {
     return null
   }
 
-  // Expanded state - show full panel
+  // Find active artifact data from query
+  const activeArtifact = activeTabId
+    ? artifacts?.find((a) => a._id === activeTabId)
+    : null
+
   return (
     <div
       className={cn(
         "@container/artifact",
         "flex flex-col h-full w-full",
-        // Mechanical Grace: dark panel, rounded-shell, hairline border
-        "bg-slate-950 rounded-shell border border-border/50",
+        "bg-card rounded-shell border border-border/50",
         "transition-all duration-300 ease-in-out"
       )}
     >
-      {/* Header - Clean style matching mockup */}
-      <div className="px-4 py-2 flex items-center justify-between shrink-0 min-w-0">
-        {/* Left: Title + Count (can shrink) */}
-        <div className="flex items-center gap-2 min-w-0 shrink">
-          <h2 className="text-xs font-mono font-medium uppercase tracking-wide text-foreground truncate">ARTIFACT</h2>
-          {artifactCount > 0 && (
-            <span
-              className={cn(
-                "text-xs font-mono font-medium shrink-0",
-                "px-2 py-0.5 rounded-badge",
-                "bg-muted text-muted-foreground"
-              )}
-            >
-              {artifactCount}
-            </span>
-          )}
-        </div>
+      {/* Artifact Tabs */}
+      <ArtifactTabs
+        tabs={openTabs}
+        activeTabId={activeTabId}
+        onTabChange={onTabChange}
+        onTabClose={onTabClose}
+      />
 
-        {/* Right: Actions (cannot shrink) */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Action Icons - only show when artifact selected */}
-          {selectedArtifactId && (
-            <>
-              {/* Wide view: Individual action buttons (hidden when narrow) */}
-              <div className="hidden @[280px]/artifact:flex items-center gap-1.5">
-                {/* Download Dropdown */}
-                <DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "h-7 w-7 rounded-action",
-                            "text-muted-foreground",
-                            "hover:bg-accent hover:text-foreground",
-                            "transition-all duration-150"
-                          )}
-                          aria-label="Unduh"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent className="font-mono text-xs">Unduh</TooltipContent>
-                  </Tooltip>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        viewerRef.current?.setDownloadFormat("docx")
-                        viewerRef.current?.download()
-                      }}
-                    >
-                      Unduh DOCX
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        viewerRef.current?.setDownloadFormat("pdf")
-                        viewerRef.current?.download()
-                      }}
-                    >
-                      Unduh PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        viewerRef.current?.setDownloadFormat("txt")
-                        viewerRef.current?.download()
-                      }}
-                    >
-                      Unduh TXT
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+      {/* Artifact Toolbar — metadata + actions */}
+      <ArtifactToolbar
+        artifact={
+          activeArtifact
+            ? {
+                title: activeArtifact.title,
+                type: activeArtifact.type,
+                version: activeArtifact.version,
+                createdAt: activeArtifact.createdAt ?? activeArtifact._creationTime,
+              }
+            : null
+        }
+        onDownload={(format) => {
+          viewerRef.current?.setDownloadFormat(format)
+          viewerRef.current?.download()
+        }}
+        onEdit={() => viewerRef.current?.startEdit()}
+        onRefrasa={() => viewerRef.current?.triggerRefrasa()}
+        onCopy={() => viewerRef.current?.copy()}
+        onExpand={() => setIsFullsizeOpen(true)}
+      />
 
-                {/* Edit Button */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => viewerRef.current?.startEdit()}
-                      className={cn(
-                        "h-7 w-7 rounded-action",
-                        "text-muted-foreground",
-                        "hover:bg-accent hover:text-foreground",
-                        "transition-all duration-150"
-                      )}
-                      aria-label="Edit"
-                    >
-                      <EditPencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="font-mono text-xs">Edit</TooltipContent>
-                </Tooltip>
-
-                {/* Refrasa Button */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => viewerRef.current?.triggerRefrasa()}
-                      className={cn(
-                        "h-7 w-7 rounded-action",
-                        "text-muted-foreground",
-                        "hover:bg-accent hover:text-foreground",
-                        "transition-all duration-150"
-                      )}
-                      aria-label="Refrasa"
-                    >
-                      <MagicWand className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="font-mono text-xs">Refrasa</TooltipContent>
-                </Tooltip>
-
-                {/* Copy Button */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        viewerRef.current?.copy()
-                        setCopied(true)
-                        setTimeout(() => setCopied(false), 2000)
-                      }}
-                      className={cn(
-                        "h-7 w-7 rounded-action",
-                        "text-muted-foreground",
-                        "hover:bg-accent hover:text-foreground",
-                        "transition-all duration-150"
-                      )}
-                      aria-label="Salin"
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4 text-emerald-500" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="font-mono text-xs">Salin</TooltipContent>
-                </Tooltip>
-
-                {/* Separator */}
-                <div className="w-px h-4 bg-border mx-0.5" />
-              </div>
-
-              {/* Narrow view: 3-dot menu (shown when narrow) */}
-              <div className="flex @[280px]/artifact:hidden">
-                <DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "h-7 w-7 rounded-action",
-                            "text-muted-foreground",
-                            "hover:bg-accent hover:text-foreground",
-                            "transition-all duration-150"
-                          )}
-                          aria-label="Aksi"
-                        >
-                          <MoreVert className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent className="font-mono text-xs">Aksi</TooltipContent>
-                  </Tooltip>
-                  <DropdownMenuContent align="end">
-                    {/* Download submenu */}
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <Download className="h-4 w-4 mr-2" />
-                        Unduh
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            viewerRef.current?.setDownloadFormat("docx")
-                            viewerRef.current?.download()
-                          }}
-                        >
-                          DOCX
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            viewerRef.current?.setDownloadFormat("pdf")
-                            viewerRef.current?.download()
-                          }}
-                        >
-                          PDF
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            viewerRef.current?.setDownloadFormat("txt")
-                            viewerRef.current?.download()
-                          }}
-                        >
-                          TXT
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                    <DropdownMenuItem onClick={() => viewerRef.current?.startEdit()}>
-                      <EditPencil className="h-4 w-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => viewerRef.current?.triggerRefrasa()}>
-                      <MagicWand className="h-4 w-4 mr-2" />
-                      Refrasa
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        viewerRef.current?.copy()
-                        setCopied(true)
-                        setTimeout(() => setCopied(false), 2000)
-                      }}
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4 mr-2 text-emerald-500" />
-                      ) : (
-                        <Copy className="h-4 w-4 mr-2" />
-                      )}
-                      Salin
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setIsFullsizeOpen(true)}
-                    >
-                      <Expand className="h-4 w-4 mr-2" />
-                      Fullscreen
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </>
-          )}
-
-          {/* Expand/Fullscreen Button (hidden in narrow, included in 3-dot menu) */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsFullsizeOpen(true)}
-                disabled={!selectedArtifactId}
-                className={cn(
-                  "hidden @[280px]/artifact:flex",
-                  "h-7 w-7 rounded-action",
-                  "text-muted-foreground",
-                  "hover:bg-accent hover:text-foreground",
-                  "disabled:opacity-30 disabled:cursor-not-allowed",
-                  "transition-all duration-150"
-                )}
-                aria-label="Expand artifact fullscreen"
-              >
-                <Expand className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Expand fullscreen</TooltipContent>
-          </Tooltip>
-
-          {/* Close Button - ALWAYS visible */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onToggle}
-                className={cn(
-                  "h-7 w-7 rounded-action shrink-0",
-                  "text-muted-foreground",
-                  "hover:bg-accent hover:text-foreground",
-                  "transition-all duration-150"
-                )}
-                aria-label="Close panel"
-              >
-                <Xmark className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Close panel</TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-
-      {/* Body: Viewer-focused layout */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Artifact Selector - Collapsible title dropdown (between header and viewer) */}
-        {artifactCount > 0 && (
-          <div className="shrink-0 border-t border-border">
-            <Collapsible
-              open={isArtifactListOpen}
-              onOpenChange={setIsArtifactListOpen}
-            >
-              {/* Trigger: Selected artifact info OR placeholder */}
-              <CollapsibleTrigger asChild>
-                <button
-                  className={cn(
-                    "w-full text-left transition-colors",
-                    "px-4 py-3",
-                    "hover:bg-accent/30",
-                    isArtifactListOpen && "bg-accent/20"
-                  )}
-                >
-                  {(() => {
-                    // Find selected artifact from list
-                    const selectedArtifact = artifacts?.find(
-                      (a) => a._id === selectedArtifactId
-                    )
-
-                    if (selectedArtifact) {
-                      const TypeIcon = typeIcons[selectedArtifact.type as ArtifactType]
-                      return (
-                        <div className="flex items-start gap-3">
-                          {/* Icon */}
-                          <TypeIcon className="h-5 w-5 mt-0.5 shrink-0 text-muted-foreground" />
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            {/* Title Row */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-foreground truncate">
-                                {selectedArtifact.title}
-                              </span>
-                              <Badge
-                                variant="secondary"
-                                className="shrink-0 text-[10px] font-mono px-1.5 py-0 rounded-badge"
-                              >
-                                v{selectedArtifact.version}
-                              </Badge>
-                              <NavArrowDown
-                                className={cn(
-                                  "h-4 w-4 ml-auto shrink-0 text-muted-foreground transition-transform duration-200",
-                                  isArtifactListOpen && "rotate-180"
-                                )}
-                              />
-                            </div>
-                            {/* Meta Row */}
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] font-mono px-1.5 py-0 rounded-badge capitalize"
-                              >
-                                {typeLabels[selectedArtifact.type as ArtifactType]}
-                              </Badge>
-                              <span className="text-[11px] text-muted-foreground">
-                                {formatDate(selectedArtifact.createdAt)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    }
-
-                    // No artifact selected - show placeholder
-                    return (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">
-                          Pilih artifact ({artifactCount})
-                        </span>
-                        <NavArrowDown
-                          className={cn(
-                            "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                            isArtifactListOpen && "rotate-180"
-                          )}
-                        />
-                      </div>
-                    )
-                  })()}
-                </button>
-              </CollapsibleTrigger>
-
-              {/* Expanded content - artifact list */}
-              <CollapsibleContent>
-                <div className="max-h-56 overflow-y-auto border-t border-border">
-                  <ArtifactList
-                    artifacts={artifacts ?? []}
-                    selectedId={selectedArtifactId}
-                    onSelect={(id) => {
-                      onSelectArtifact(id)
-                      setIsArtifactListOpen(false) // Close after selection
-                    }}
-                  />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+      {/* Main viewer area */}
+      <div className="flex-1 overflow-hidden">
+        {activeTabId ? (
+          <ArtifactViewer ref={viewerRef} artifactId={activeTabId} />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full py-12 px-6 text-center">
+            <Page className="h-12 w-12 mb-4 text-muted-foreground opacity-50" />
+            <p className="text-[13px] text-muted-foreground max-w-[200px]">
+              {openTabs.length > 0
+                ? "Pilih tab artifact di atas"
+                : "Buka artifact dari Paper Sessions di sidebar"}
+            </p>
           </div>
         )}
-
-        {/* Main viewer area */}
-        <div
-          className={cn(
-            "flex-1 overflow-hidden",
-            "border-t border-border"
-          )}
-        >
-          {selectedArtifactId ? (
-            <ArtifactViewer ref={viewerRef} artifactId={selectedArtifactId} />
-          ) : (
-            // Empty state when no artifact selected
-            <div
-              className={cn(
-                "flex flex-col items-center justify-center",
-                "h-full py-12 px-6 text-center"
-              )}
-            >
-              <Page
-                className={cn(
-                  "h-12 w-12 mb-4",
-                  "text-muted-foreground opacity-50"
-                )}
-              />
-              <p className="text-[13px] text-muted-foreground max-w-[200px]">
-                {artifactCount > 0
-                  ? "Pilih artifact dari dropdown di atas"
-                  : "Belum ada artifact. AI akan membuat dokumen untuk Anda di sini."}
-              </p>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Fullsize Artifact Modal */}
-      {selectedArtifactId && (
+      {/* Fullsize Modal */}
+      {activeTabId && (
         <FullsizeArtifactModal
-          artifactId={selectedArtifactId}
+          artifactId={activeTabId}
           isOpen={isFullsizeOpen}
           onClose={() => setIsFullsizeOpen(false)}
         />

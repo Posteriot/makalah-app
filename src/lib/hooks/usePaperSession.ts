@@ -103,6 +103,7 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
     const approveStageMutation = useMutation(api.paperSessions.approveStage);
     const requestRevisionMutation = useMutation(api.paperSessions.requestRevision);
     const updateStageDataMutation = useMutation(api.paperSessions.updateStageData);
+    const updateWorkingTitleMutation = useMutation(api.paperSessions.updateWorkingTitle);
     const markStageAsDirtyMutation = useMutation(api.paperSessions.markStageAsDirty);
     const rewindToStageMutation = useMutation(api.paperSessions.rewindToStage);
     const createMessageMutation = useMutation(api.messages.createMessage);
@@ -132,6 +133,15 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
             sessionId: session._id,
             stage,
             data,
+        });
+    };
+
+    const updateWorkingTitle = async (userId: Id<"users">, title: string) => {
+        if (!session) return;
+        return await updateWorkingTitleMutation({
+            sessionId: session._id,
+            userId,
+            title,
         });
     };
 
@@ -224,6 +234,7 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
         approveStage,
         requestRevision,
         updateStageData,
+        updateWorkingTitle,
         markStageAsDirty,
         // Rewind Feature
         rewindToStage,

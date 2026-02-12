@@ -421,6 +421,7 @@ export default defineSchema({
     }),
 
     // Paper metadata (Phase 5)
+    workingTitle: v.optional(v.string()),
     paperTitle: v.optional(v.string()),
     archivedAt: v.optional(v.number()), // Soft delete timestamp untuk archive
 

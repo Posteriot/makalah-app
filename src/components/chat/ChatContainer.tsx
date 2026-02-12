@@ -9,12 +9,11 @@ import { ArtifactPanel } from "./ArtifactPanel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { useCleanupEmptyConversations } from "@/lib/hooks/useCleanupEmptyConversations"
 import { Id } from "../../../convex/_generated/dataModel"
+import { useArtifactTabs } from "@/lib/hooks/useArtifactTabs"
 
 interface ChatContainerProps {
   conversationId: string | null
 }
-
-type ArtifactState = { isOpen: boolean; selectedId: Id<"artifacts"> | null }
 
 /**
  * ChatContainer - Main container for chat page
@@ -22,15 +21,14 @@ type ArtifactState = { isOpen: boolean; selectedId: Id<"artifacts"> | null }
  * Integrates:
  * - ChatLayout (6-column CSS Grid with Activity Bar, Sidebar, Tabs, Resizers)
  * - ChatWindow (messages, input, empty state)
- * - ArtifactPanel (artifact viewer with list)
+ * - ArtifactPanel (artifact viewer with tabs)
  *
  * State Management:
- * - Artifact panel open/close state
- * - Selected artifact ID
- * - Passes artifact panel to ChatLayout as prop
+ * - Artifact tab state via useArtifactTabs (multi-tab model)
+ * - Panel is open when there are open artifact tabs
+ * - Passes artifact tab props to ArtifactPanel
  *
  * Preserved Functionality:
- * - Artifact panel state management
  * - Artifact selection handler
  * - Mobile sidebar integration (handled by ChatLayout)
  * - useConversations integration (handled by ChatLayout)
@@ -49,19 +47,20 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     ? (conversationId as Id<"conversations">)
     : null
 
-  const [artifactStateByConversation, setArtifactStateByConversation] = useState<
-    Record<string, ArtifactState>
-  >({})
+  // Artifact tab state management (multi-tab model)
+  const {
+    openTabs: artifactTabs,
+    activeTabId: activeArtifactTabId,
+    openTab: openArtifactTab,
+    closeTab: closeArtifactTab,
+    setActiveTab: setActiveArtifactTab,
+    closeAllTabs: closeAllArtifactTabs,
+  } = useArtifactTabs()
 
-  const conversationKey = safeConversationId ?? "no-conversation"
-  const currentArtifactState = artifactStateByConversation[conversationKey] ?? {
-    isOpen: false,
-    selectedId: null,
-  }
-  const artifactPanelOpen = currentArtifactState.isOpen
-  const selectedArtifactId = currentArtifactState.selectedId
+  // Panel is open when there are open tabs
+  const artifactPanelOpen = artifactTabs.length > 0
 
-  // Query artifacts for count (used in header badge)
+  // Query artifacts for count (used in header badge) and for looking up artifact details
   const artifacts = useQuery(
     api.artifacts.listByConversation,
     safeConversationId && user?._id
@@ -70,31 +69,29 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   )
   const artifactCount = artifacts?.length ?? 0
 
-  // Handler when artifact is created or selected
-  const updateArtifactState = (updater: (state: ArtifactState) => ArtifactState) => {
-    setArtifactStateByConversation((prev) => {
-      const prevState = prev[conversationKey] ?? { isOpen: false, selectedId: null }
-      return {
-        ...prev,
-        [conversationKey]: updater(prevState),
-      }
+  // Handler when artifact is created or selected — opens a tab
+  const handleArtifactSelect = (artifactId: Id<"artifacts">) => {
+    // Look up artifact data from the query to get real title and type
+    const artifact = artifacts?.find((a) => a._id === artifactId)
+    openArtifactTab({
+      id: artifactId,
+      title: artifact?.title ?? "Loading...",
+      type: artifact?.type ?? "section",
     })
   }
 
-  const handleArtifactSelect = (artifactId: Id<"artifacts">) => {
-    updateArtifactState((state) => ({
-      ...state,
-      selectedId: artifactId,
-      isOpen: true,
-    }))
-  }
-
-  // Toggle artifact panel
+  // Toggle artifact panel — close all tabs when open, open most recent when closed
   const toggleArtifactPanel = () => {
-    updateArtifactState((state) => ({
-      ...state,
-      isOpen: !state.isOpen,
-    }))
+    if (artifactPanelOpen) {
+      closeAllArtifactTabs()
+    } else if (artifacts && artifacts.length > 0) {
+      const latest = artifacts[0]
+      openArtifactTab({
+        id: latest._id,
+        title: latest.title ?? "Untitled",
+        type: latest.type ?? "section",
+      })
+    }
   }
 
   return (
@@ -112,8 +109,10 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
           conversationId={safeConversationId}
           isOpen={artifactPanelOpen}
           onToggle={toggleArtifactPanel}
-          selectedArtifactId={selectedArtifactId}
-          onSelectArtifact={handleArtifactSelect}
+          openTabs={artifactTabs}
+          activeTabId={activeArtifactTabId}
+          onTabChange={setActiveArtifactTab}
+          onTabClose={closeArtifactTab}
         />
       }
     >

@@ -5,6 +5,18 @@ import { api } from "@convex/_generated/api"
 import { GlobalHeader } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 
+function isDynamicServerUsageError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+
+  const maybeError = error as { digest?: unknown; description?: unknown }
+
+  return (
+    maybeError.digest === "DYNAMIC_SERVER_USAGE" ||
+    (typeof maybeError.description === "string" &&
+      maybeError.description.includes("Dynamic server usage"))
+  )
+}
+
 /**
  * Sync Clerk user ke Convex database.
  *
@@ -46,6 +58,7 @@ async function ensureConvexUser() {
     try {
       user = await currentUser()
     } catch (error) {
+      if (isDynamicServerUsageError(error)) return
       // Clerk API bisa gagal sementara (network/rate limit/internal). Jangan block render dashboard.
       console.error("[ensureConvexUser] currentUser failed:", error)
       return
@@ -77,6 +90,7 @@ async function ensureConvexUser() {
 
     await Promise.race([syncPromise, timeoutPromise])
   } catch (error) {
+    if (isDynamicServerUsageError(error)) return
     // Log error tapi jangan block user dari accessing dashboard
     // Sync akan di-retry otomatis di page/request berikutnya
     console.error("[ensureConvexUser] Sync failed:", error)

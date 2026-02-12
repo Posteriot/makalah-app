@@ -8,8 +8,6 @@ import {
   ChatBubble,
   Page,
   GitBranch,
-  FastArrowLeft,
-  FastArrowRight,
 } from "iconoir-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -57,10 +55,10 @@ function ActivityBarItem({
           variant="ghost"
           size="icon"
           className={cn(
-            "w-10 h-10 rounded-action transition-all duration-150",
-            "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent",
-            "focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
-            isActive && "text-sidebar-foreground border-l-2 border-amber-500 bg-amber-500/10"
+            "h-10 w-10 rounded-action border border-transparent transition-all duration-150",
+            "text-slate-600 hover:bg-slate-200/80 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+            "focus-visible:ring-2 focus-visible:ring-muted-foreground/40 focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--section-bg-alt)]",
+            isActive && "border-slate-500/80 bg-slate-200 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           )}
           onClick={onClick}
           aria-label={`${label} panel`}
@@ -189,82 +187,45 @@ export function ActivityBar({
         role="navigation"
         aria-label="Sidebar navigation"
         className={cn(
-          "flex flex-col items-center py-2 gap-1",
+          "flex flex-col items-center gap-0 py-0",
           "w-[var(--activity-bar-width)] min-w-[48px]",
-          "border-r border-border/50 bg-sidebar"
+          "border-r border-slate-400/90 bg-slate-300 dark:border-slate-700/90 dark:bg-slate-950"
         )}
         data-testid="activity-bar"
         onKeyDown={handleKeyDown}
       >
-        {/* Logo — Home link */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/"
-              className={cn(
-                "flex items-center justify-center",
-                "w-10 h-10 rounded-action mb-1",
-                "hover:bg-sidebar-accent transition-colors"
-              )}
-              aria-label="Home"
-            >
-              <Image
-                src="/logo/makalah_logo_light.svg"
-                alt="Makalah"
-                width={22}
-                height={22}
-                className="hidden dark:block"
-              />
-              <Image
-                src="/logo/makalah_logo_dark.svg"
-                alt="Makalah"
-                width={22}
-                height={22}
-                className="block dark:hidden"
-              />
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8} className="font-mono text-xs">
-            Home
-          </TooltipContent>
-        </Tooltip>
-
-        {/* Sidebar Toggle Button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "w-10 h-10 rounded-action mb-2",
-                "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent",
-                "focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-              )}
-              onClick={onToggleSidebar}
-              aria-label={
-                isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
-              }
-              aria-expanded={!isSidebarCollapsed}
-              aria-controls="chat-sidebar"
-            >
-              {isSidebarCollapsed ? (
-                <FastArrowRight className="h-5 w-5" aria-hidden="true" />
-              ) : (
-                <FastArrowLeft className="h-5 w-5" aria-hidden="true" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8} className="font-mono text-xs">
-            {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          </TooltipContent>
-        </Tooltip>
+        {/* Logo */}
+        <Link
+          href="/"
+          className={cn(
+            "flex items-center justify-center",
+            "h-11 w-full rounded-none border-b border-slate-400/90 dark:border-slate-700/80",
+            "hover:bg-slate-200/80 transition-colors dark:hover:bg-slate-800"
+          )}
+          aria-label="Home"
+        >
+          <Image
+            src="/logo/makalah_logo_light.svg"
+            alt="Makalah"
+            width={20}
+            height={20}
+            className="hidden dark:block"
+          />
+          <Image
+            src="/logo/makalah_logo_dark.svg"
+            alt="Makalah"
+            width={20}
+            height={20}
+            className="block dark:hidden"
+          />
+        </Link>
 
         {/* Panel Navigation Items */}
         <div
           role="tablist"
           aria-label="Panel selection"
           aria-orientation="vertical"
-          className="flex flex-col items-center gap-1"
+          className="mt-3 flex flex-col items-center gap-1"
         >
           {panelItems.map((item) => (
             <ActivityBarItem

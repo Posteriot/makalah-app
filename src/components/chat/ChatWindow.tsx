@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { Menu, WarningCircle, Refresh, ChatPlusIn, Sparks, Page, Search } from "iconoir-react"
+import { Menu, WarningCircle, Refresh, Sparks, Page, Search } from "iconoir-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -394,7 +394,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }
 
   // Landing page empty state (no conversation selected)
-  // Shows informational content + CTA to start new conversation
+  // ChatInput is persistent — always visible at bottom, even in start state
   if (!conversationId) {
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -407,10 +407,10 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <div className="w-9" />
         </div>
 
-        {/* Empty State - Informational */}
+        {/* Empty State Content — fills available space above ChatInput */}
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="max-w-md text-center space-y-6">
-            {/* Icon - Mechanical Grace: Sky system color */}
+            {/* Icon */}
             <div className="mx-auto w-16 h-16 rounded-shell bg-slate-200 flex items-center justify-center">
               <Sparks className="w-8 h-8 text-slate-500" />
             </div>
@@ -424,7 +424,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               </p>
             </div>
 
-            {/* Features - Mechanical Grace styling */}
+            {/* Template Cards */}
             <div className="grid grid-cols-1 gap-3 text-left text-sm">
               <div className="flex items-start gap-3 p-3 rounded-shell border-hairline bg-card/90 backdrop-blur-[1px]">
                 <Page className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
@@ -441,19 +441,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 </div>
               </div>
             </div>
-
-            {/* CTA Button - Mechanical Grace: Amber action */}
-            <Button
-              onClick={handleStartNewChat}
-              disabled={!userId || isCreatingChat}
-              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-50 font-mono"
-              size="lg"
-            >
-              <ChatPlusIn className="w-5 h-5 mr-2" />
-              {isCreatingChat ? "Membuat..." : "Mulai Percakapan Baru"}
-            </Button>
           </div>
         </div>
+
+        {/* Persistent ChatInput — always visible, even in start state */}
+        <ChatInput
+          input={input}
+          onInputChange={handleInputChange}
+          onSubmit={async (e) => {
+            e.preventDefault()
+            if (!input.trim()) return
+            await handleStartNewChat()
+          }}
+          isLoading={isCreatingChat}
+          conversationId={conversationId}
+          uploadedFileIds={uploadedFileIds}
+          onFileUploaded={handleFileUploaded}
+        />
       </div>
     )
   }
