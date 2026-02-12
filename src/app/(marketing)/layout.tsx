@@ -4,6 +4,18 @@ import { auth, currentUser } from "@clerk/nextjs/server"
 import { fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 
+function isDynamicServerUsageError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+
+  const maybeError = error as { digest?: unknown; description?: unknown }
+
+  return (
+    maybeError.digest === "DYNAMIC_SERVER_USAGE" ||
+    (typeof maybeError.description === "string" &&
+      maybeError.description.includes("Dynamic server usage"))
+  )
+}
+
 /**
  * Sync Clerk user ke Convex database.
  * Fallback mechanism jika webhook gagal atau untuk existing users.
@@ -55,6 +67,7 @@ async function ensureConvexUser() {
       return
     }
   } catch (error) {
+    if (isDynamicServerUsageError(error)) return
     console.error("[ensureConvexUser] Marketing layout sync failed:", error)
   }
 }
