@@ -299,7 +299,7 @@ function PaperFolderItem({
       {/* Folder Header */}
       <div
         className={cn(
-          "flex items-center gap-2 py-2 px-4 cursor-pointer transition-colors",
+          "flex items-center gap-2 rounded-sm py-2 px-4 cursor-pointer transition-colors",
           "hover:bg-accent"
         )}
         onClick={onToggle}
@@ -346,7 +346,7 @@ function PaperFolderItem({
               }}
               disabled={isSavingTitle}
               autoFocus
-              className="h-7 w-full rounded-md border border-border/70 bg-background px-2 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-7 w-full rounded-sm border border-border/70 bg-background px-2 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-ring"
               aria-label="Edit working title"
             />
           ) : (
@@ -358,7 +358,7 @@ function PaperFolderItem({
           {!isFinalTitleLocked && (
             <button
               type="button"
-              className="h-6 w-6 shrink-0 rounded border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="h-6 w-6 shrink-0 rounded-sm border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               onMouseDown={(event) => event.preventDefault()}
               onClick={(event) => {
                 if (isEditingTitle) {
