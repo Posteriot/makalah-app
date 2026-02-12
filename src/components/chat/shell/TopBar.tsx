@@ -5,10 +5,10 @@ import { useTheme } from "next-themes"
 import {
   SunLight,
   HalfMoon,
-  SidebarExpand,
-  SidebarCollapse,
+  FastArrowRightSquare,
   FastArrowRight,
 } from "iconoir-react"
+import { FastArrowRightSquare as FastArrowRightSquareSolid } from "iconoir-react/solid"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { NotificationDropdown } from "./NotificationDropdown"
@@ -130,7 +130,7 @@ export function TopBar({
                 disabled={!hasArtifacts}
                 className={cn(
                   "relative flex items-center justify-center",
-                  "w-8 h-8 rounded-action",
+                  "w-8 h-8 rounded-action mr-1",
                   "text-muted-foreground hover:text-foreground hover:bg-accent/80",
                   "transition-colors duration-150",
                   !hasArtifacts && "opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
@@ -144,19 +144,19 @@ export function TopBar({
                 }
               >
                 {isPanelCollapsed ? (
-                  <SidebarExpand className="h-4 w-4" />
+                  <FastArrowRightSquare className="h-[18px] w-[18px] rotate-180" />
                 ) : (
-                  <SidebarCollapse className="h-4 w-4" />
+                  <FastArrowRightSquareSolid className="h-[18px] w-[18px]" />
                 )}
                 {hasArtifacts && isPanelCollapsed && (
                   <span
                     className={cn(
-                      "absolute -top-1 -right-1",
+                      "absolute -bottom-1 -right-1",
                       "min-w-[16px] h-[16px] px-1",
                       "flex items-center justify-center",
-                      "text-[9px] font-semibold font-mono",
-                      "bg-primary text-primary-foreground",
-                      "rounded-full"
+                      "text-[9px] font-semibold font-mono leading-none",
+                      "bg-emerald-500 text-white",
+                      "rounded-full border border-[color:var(--section-bg-alt)]"
                     )}
                   >
                     {artifactCount}
