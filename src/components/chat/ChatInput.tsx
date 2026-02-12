@@ -36,7 +36,7 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
     }
 
     return (
-        <div className="py-4 px-5 border-t border-border/50 bg-background">
+        <div className="py-4 bg-transparent" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
             {uploadedFileIds.length > 0 && (
                 <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
                     {uploadedFileIds.map((id) => (
@@ -47,39 +47,43 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
                     ))}
                 </div>
             )}
-            <form onSubmit={onSubmit} className="flex gap-3 items-start">
-                {/* Attachment Button */}
-                <div className="flex-none pt-3">
-                    <FileUploadButton
-                        conversationId={conversationId}
-                        onFileUploaded={onFileUploaded}
-                    />
-                </div>
+            <form onSubmit={onSubmit} className="flex">
+                <div className="grid w-full grid-cols-[auto_1fr_auto] items-end gap-x-2 gap-y-2 rounded-lg border border-slate-300/60 bg-card/90 px-3 py-2 dark:border-slate-700/60">
+                    {/* Input Field */}
+                    <div className="col-span-3">
+                        <textarea
+                            ref={textareaRef}
+                            className="w-full resize-none bg-transparent focus:outline-none min-h-[88px] px-2 py-1 text-interface text-sm leading-relaxed placeholder:text-sm"
+                            value={input}
+                            onChange={onInputChange}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Kirim percakapan..."
+                            disabled={isLoading && false}
+                            rows={3}
+                            aria-label="Message input"
+                        />
+                    </div>
 
-                {/* Input Field */}
-                <div className="flex-1">
-                    <textarea
-                        ref={textareaRef}
-                        className="w-full border border-border/50 rounded-action p-3 resize-none bg-card/90 focus:outline-none focus-ring min-h-[88px] text-interface text-sm leading-relaxed placeholder:text-sm"
-                        value={input}
-                        onChange={onInputChange}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Ketik pertanyaan atau instruksi tentang paper Anda..."
-                        disabled={isLoading && false}
-                        rows={3}
-                        aria-label="Message input"
-                    />
-                </div>
+                    {/* Attachment Button */}
+                    <div className="flex-none">
+                        <FileUploadButton
+                            conversationId={conversationId}
+                            onFileUploaded={onFileUploaded}
+                        />
+                    </div>
 
-                {/* Send Button - dims when loading */}
-                <button
-                    type="submit"
-                    disabled={!input.trim() || isLoading}
-                    className="w-10 h-10 flex items-center justify-center rounded-action hover-slash bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed mt-3"
-                    aria-label="Send message"
-                >
-                    <Send className="h-5 w-5" />
-                </button>
+                    <div />
+
+                    {/* Send Button - dims when loading */}
+                    <button
+                        type="submit"
+                        disabled={!input.trim() || isLoading}
+                        className="w-10 h-10 flex items-center justify-center rounded-lg hover-slash bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        aria-label="Send message"
+                    >
+                        <Send className="h-5 w-5" />
+                    </button>
+                </div>
             </form>
         </div>
     )

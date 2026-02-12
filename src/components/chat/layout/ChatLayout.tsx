@@ -238,10 +238,15 @@ export function ChatLayout({
     return `${activityBar} ${sidebar} ${leftResizer} ${main} ${rightResizer} ${panel}`
   }
 
+  const isBothSidePanelsCollapsed = isSidebarCollapsed && !isArtifactPanelOpen
+
   return (
     <div
       className="flex flex-col h-dvh"
-      style={CSS_VARS}
+      style={{
+        ...CSS_VARS,
+        "--chat-input-pad-x": isBothSidePanelsCollapsed ? "10rem" : "5rem",
+      } as React.CSSProperties}
     >
       {/* Grid Content — full height, no header bar above */}
       <div
