@@ -126,6 +126,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     const created: CreatedArtifact[] = []
 
     for (const part of uiMessage.parts ?? []) {
+      if (!part || typeof part !== "object") continue
+
       const maybeToolPart = part as unknown as {
         type?: unknown
         state?: unknown

@@ -87,6 +87,8 @@ export function MessageBubble({
         const created: CreatedArtifact[] = []
 
         for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
+
             const maybeToolPart = part as unknown as {
                 type?: unknown
                 state?: unknown
@@ -123,6 +125,8 @@ export function MessageBubble({
         const tools: { toolName: string; state: string; errorText?: string }[] = []
 
         for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
+
             const maybeToolPart = part as unknown as {
                 type?: string
                 state?: string
@@ -131,7 +135,7 @@ export function MessageBubble({
                 result?: unknown
             }
 
-            if (!maybeToolPart.type?.startsWith("tool-")) continue
+            if (typeof maybeToolPart.type !== "string" || !maybeToolPart.type.startsWith("tool-")) continue
 
             // Skip completed states (handled by ArtifactIndicator or just hidden)
             if (maybeToolPart.state === "output-available" || maybeToolPart.state === "result") continue
@@ -160,6 +164,7 @@ export function MessageBubble({
 
     const extractSearchStatus = (uiMessage: UIMessage): SearchStatus | null => {
         for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
             const maybeDataPart = part as unknown as { type?: string; data?: unknown }
             if (maybeDataPart.type !== "data-search") continue
 
@@ -181,6 +186,7 @@ export function MessageBubble({
 
     const extractCitedText = (uiMessage: UIMessage): string | null => {
         for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
             const maybeDataPart = part as unknown as { type?: string; data?: unknown }
             if (maybeDataPart.type !== "data-cited-text") continue
             const data = maybeDataPart.data as { text?: unknown } | null
@@ -192,6 +198,7 @@ export function MessageBubble({
 
     const extractCitedSources = (uiMessage: UIMessage): { url: string; title: string; publishedAt?: number | null }[] | null => {
         for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
             const maybeDataPart = part as unknown as { type?: string; data?: unknown }
             if (maybeDataPart.type !== "data-cited-sources") continue
             const data = maybeDataPart.data as { sources?: unknown } | null
