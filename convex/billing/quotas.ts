@@ -9,7 +9,6 @@ import {
   getTierLimits,
   getPeriodBoundaries,
   isSameDay,
-  TIER_LIMITS,
   tokensToCredits,
   type TierType,
 } from "./constants"
