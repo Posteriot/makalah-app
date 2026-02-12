@@ -64,7 +64,7 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
                         />
                     </div>
 
-                    <div className="col-span-3 mt-0.5 flex items-center justify-between border-t border-slate-800 pt-1">
+                    <div className="col-span-3 mt-0.5 flex items-center justify-between border-t border-slate-300/60 pt-1 dark:border-slate-700/60">
                         {/* Attachment Button */}
                         <div className="flex-none">
                             <FileUploadButton

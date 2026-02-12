@@ -322,7 +322,7 @@ export function MessageBubble({
                     // User: card style, max-width, text align left
                     isUser && [
                         "rounded-shell",
-                        "bg-card",
+                        "bg-slate-200 dark:bg-card",
                         "border border-border/50",
                         "max-w-[85%]",
                         // Keep edit state wide for better readability and stable layout.
