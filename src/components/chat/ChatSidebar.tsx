@@ -172,7 +172,7 @@ export function ChatSidebar({
       {/* Section Label - Only show for chat-history panel */}
       {activePanel === "chat-history" && (
         <div className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
-          Riwayat Chat <span className="ml-2 font-mono">{conversations.length}</span>
+          Riwayat <span className="ml-2 font-mono">{conversations.length}</span>
         </div>
       )}
 

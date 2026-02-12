@@ -304,6 +304,18 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     setDialogOpen(open)
   }, [])
 
+  // Initial state before any conversation is selected
+  if (!conversationId) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
+        <GitBranch className="h-8 w-8 mb-2" />
+        <span className="text-sm font-mono font-medium">
+          Belum ada linimasa progres penyusunan paper. Silakan mulai percakapan baru.
+        </span>
+      </div>
+    )
+  }
+
   // Loading state
   if (isLoading) {
     return (

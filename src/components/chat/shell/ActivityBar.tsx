@@ -172,12 +172,12 @@ export function ActivityBar({
     {
       panel: "paper",
       icon: <Page className="h-5 w-5" aria-hidden="true" />,
-      label: "Paper Sessions",
+      label: "Sesi paper",
     },
     {
       panel: "progress",
       icon: <GitBranch className="h-5 w-5" aria-hidden="true" />,
-      label: "Progress Timeline",
+      label: "Linimasa progres",
     },
   ]
 
