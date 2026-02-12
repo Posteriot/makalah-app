@@ -31,7 +31,12 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip"
 
 interface SidebarChatHistoryProps {
   conversations: Array<{
@@ -197,73 +202,116 @@ export function SidebarChatHistory({
   return (
     <>
       <div className="flex-1 overflow-y-auto px-1 pb-2 scrollbar-thin">
-        {conversations.map((conv) => {
-          const paperSession = paperSessionMap.get(conv._id)
-          const isEditing = editingId === conv._id
-          const hasPaperSession = !!paperSession
-          const isExceedingMaxLength = isEditing && editValue.length > 50
+        <TooltipProvider delayDuration={300}>
+          {conversations.map((conv) => {
+            const paperSession = paperSessionMap.get(conv._id)
+            const isEditing = editingId === conv._id
+            const hasPaperSession = !!paperSession
+            const isExceedingMaxLength = isEditing && editValue.length > 50
 
-          // Shared classes for both Link and div
-          const itemClasses = cn(
-            "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center rounded-action border px-2.5 py-2.5 text-left transition-colors",
-            "border-transparent",
-            currentConversationId === conv._id
-              ? "border-slate-300/90 bg-slate-50 shadow-[inset_0_1px_0_var(--border-hairline-soft)] dark:border-slate-700 dark:bg-slate-900/60"
-              : "hover:bg-slate-300 dark:hover:bg-slate-600/60"
-          )
+            // Shared classes for both Link and div
+            const itemClasses = cn(
+              "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center rounded-action border px-2.5 py-2.5 text-left transition-colors",
+              "border-transparent",
+              currentConversationId === conv._id
+                ? "border-slate-300/90 bg-slate-50 shadow-[inset_0_1px_0_var(--border-hairline-soft)] dark:border-slate-700 dark:bg-slate-900/60"
+                : "hover:bg-slate-300 dark:hover:bg-slate-600/60"
+            )
 
-          // Content yang sama untuk edit mode dan normal mode
-          const renderContent = () => (
-            <>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 pb-0.5">
-                  {isEditing ? (
-                    <Input
-                      ref={editInputRef}
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={handleEditKeyDown}
-                      onBlur={handleSaveEdit}
-                      disabled={isUpdating}
-                      className={`h-6 text-sm px-1 py-0 font-medium ${
-                        isExceedingMaxLength
-                          ? "border-destructive focus-visible:ring-destructive"
-                          : ""
-                      }`}
-                      aria-invalid={isExceedingMaxLength}
-                    />
-                  ) : (
-                    <span
-                      className="font-sans font-medium text-sm truncate"
-                      onDoubleClick={(e) => {
-                        if (hasPaperSession) return
-                        e.preventDefault()
-                        e.stopPropagation()
-                        handleStartEdit(conv._id, conv.title)
-                      }}
-                    >
-                      {conv.title}
-                    </span>
-                  )}
-                  {paperSession && !isEditing && (
-                    <PaperSessionBadge
-                      stageNumber={getStageNumber(
-                        paperSession.currentStage as PaperStageId | "completed"
-                      )}
-                    />
+            // Content yang sama untuk edit mode dan normal mode
+            const renderContent = () => (
+              <>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 pb-0.5">
+                    {isEditing ? (
+                      <Input
+                        ref={editInputRef}
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={handleEditKeyDown}
+                        onBlur={handleSaveEdit}
+                        disabled={isUpdating}
+                        className={`h-6 text-sm px-1 py-0 font-medium ${
+                          isExceedingMaxLength
+                            ? "border-destructive focus-visible:ring-destructive"
+                            : ""
+                        }`}
+                        aria-invalid={isExceedingMaxLength}
+                      />
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="font-sans font-medium text-sm truncate"
+                            onDoubleClick={(e) => {
+                              if (hasPaperSession) return
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleStartEdit(conv._id, conv.title)
+                            }}
+                          >
+                            {conv.title}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          sideOffset={8}
+                          className="max-w-[280px] font-mono text-xs"
+                        >
+                          {conv.title}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {paperSession && !isEditing && (
+                      <PaperSessionBadge
+                        stageNumber={getStageNumber(
+                          paperSession.currentStage as PaperStageId | "completed"
+                        )}
+                      />
+                    )}
+                  </div>
+                  {!isEditing && (
+                    <div className="text-xs text-muted-foreground font-mono">
+                      {formatRelativeTime(conv.lastMessageAt)}
+                    </div>
                   )}
                 </div>
+                {/* Action buttons - hidden saat editing */}
                 {!isEditing && (
-                  <div className="text-xs text-muted-foreground font-mono">
-                    {formatRelativeTime(conv.lastMessageAt)}
-                  </div>
-                )}
-              </div>
-              {/* Action buttons - hidden saat editing */}
-              {!isEditing && (
-                <div className="flex items-center gap-0.5">
-                  {/* Edit button - hidden untuk paper session */}
-                  {!hasPaperSession && (
+                  <div className="flex items-center gap-0.5">
+                    {/* Edit button - hidden untuk paper session */}
+                    {!hasPaperSession && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleStartEdit(conv._id, conv.title)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleStartEdit(conv._id, conv.title)
+                              }
+                            }}
+                            className="rounded-action p-1.5 opacity-0 transition-all hover:bg-foreground/8 focus:opacity-100 group-hover:opacity-100"
+                            aria-label="Edit judul"
+                          >
+                            <EditPencil className="h-4 w-4" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit judul</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {/* Delete button */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div
@@ -276,101 +324,71 @@ export function SidebarChatHistory({
                           onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
-                            handleStartEdit(conv._id, conv.title)
+                            handleDeleteClick(conv._id, conv.title)
                           }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault()
                               e.stopPropagation()
-                              handleStartEdit(conv._id, conv.title)
+                              handleDeleteClick(conv._id, conv.title)
                             }
                           }}
                           className="rounded-action p-1.5 opacity-0 transition-all hover:bg-foreground/8 focus:opacity-100 group-hover:opacity-100"
-                          aria-label="Edit judul"
+                          aria-label="Hapus percakapan"
                         >
-                          <EditPencil className="h-4 w-4" />
+                          <Trash className="h-4 w-4" />
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent>Edit judul</TooltipContent>
+                      <TooltipContent>Hapus percakapan</TooltipContent>
                     </Tooltip>
-                  )}
-                  {/* Delete button */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onMouseDown={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          handleDeleteClick(conv._id, conv.title)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            handleDeleteClick(conv._id, conv.title)
-                          }
-                        }}
-                        className="rounded-action p-1.5 opacity-0 transition-all hover:bg-foreground/8 focus:opacity-100 group-hover:opacity-100"
-                        aria-label="Hapus percakapan"
-                      >
-                        <Trash className="h-4 w-4" />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>Hapus percakapan</TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-              {/* Loading indicator saat updating */}
-              {isEditing && isUpdating && (
-                <RefreshDouble className="h-4 w-4 animate-spin text-muted-foreground" />
-              )}
-            </>
-          )
-
-          return (
-            <ContextMenu key={conv._id}>
-              <ContextMenuTrigger asChild>
-                {isEditing ? (
-                  // Saat editing: gunakan div, BUKAN Link
-                  <div className={itemClasses}>{renderContent()}</div>
-                ) : (
-                  // Saat tidak editing: gunakan Link untuk navigasi
-                  <Link
-                    href={`/chat/${conv._id}`}
-                    onClick={() => onCloseMobile?.()}
-                    className={itemClasses}
-                    aria-label={`Select conversation: ${conv.title}`}
-                  >
-                    {renderContent()}
-                  </Link>
+                  </div>
                 )}
-              </ContextMenuTrigger>
-              <ContextMenuContent>
-                <ContextMenuItem
-                  onClick={() => handleStartEdit(conv._id, conv.title)}
-                  disabled={hasPaperSession}
-                >
-                  <EditPencil className="h-4 w-4 mr-2" />
-                  Edit Judul
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem
-                  onClick={() => handleDeleteClick(conv._id, conv.title)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash className="h-4 w-4 mr-2" />
-                  Hapus
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenu>
-          )
-        })}
+                {/* Loading indicator saat updating */}
+                {isEditing && isUpdating && (
+                  <RefreshDouble className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </>
+            )
+
+            return (
+              <ContextMenu key={conv._id}>
+                <ContextMenuTrigger asChild>
+                  {isEditing ? (
+                    // Saat editing: gunakan div, BUKAN Link
+                    <div className={itemClasses}>{renderContent()}</div>
+                  ) : (
+                    // Saat tidak editing: gunakan Link untuk navigasi
+                    <Link
+                      href={`/chat/${conv._id}`}
+                      onClick={() => onCloseMobile?.()}
+                      className={itemClasses}
+                      aria-label={`Select conversation: ${conv.title}`}
+                    >
+                      {renderContent()}
+                    </Link>
+                  )}
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem
+                    onClick={() => handleStartEdit(conv._id, conv.title)}
+                    disabled={hasPaperSession}
+                  >
+                    <EditPencil className="h-4 w-4 mr-2" />
+                    Edit Judul
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    onClick={() => handleDeleteClick(conv._id, conv.title)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash className="h-4 w-4 mr-2" />
+                    Hapus
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
+            )
+          })}
+        </TooltipProvider>
       </div>
 
       {/* Delete Confirmation Dialog */}
