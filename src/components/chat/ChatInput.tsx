@@ -48,12 +48,12 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
                 </div>
             )}
             <form onSubmit={onSubmit} className="flex">
-                <div className="grid w-full grid-cols-[auto_1fr_auto] items-end gap-x-2 gap-y-2 rounded-lg border border-slate-300/60 bg-card/90 px-3 py-2 dark:border-slate-700/60">
+                <div className="grid w-full grid-cols-[auto_1fr_auto] items-end gap-x-2 gap-y-1 rounded-lg border border-slate-300/60 bg-card/90 px-3 py-1.5 dark:border-slate-700/60">
                     {/* Input Field */}
                     <div className="col-span-3">
                         <textarea
                             ref={textareaRef}
-                            className="w-full resize-none bg-transparent focus:outline-none min-h-[88px] px-2 py-1 text-interface text-sm leading-relaxed placeholder:text-sm"
+                            className="w-full resize-none bg-transparent focus:outline-none min-h-[72px] px-2 py-0.5 text-sm leading-relaxed text-foreground placeholder:text-sm"
                             value={input}
                             onChange={onInputChange}
                             onKeyDown={handleKeyDown}
@@ -64,25 +64,25 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
                         />
                     </div>
 
-                    {/* Attachment Button */}
-                    <div className="flex-none">
-                        <FileUploadButton
-                            conversationId={conversationId}
-                            onFileUploaded={onFileUploaded}
-                        />
+                    <div className="col-span-3 mt-0.5 flex items-center justify-between border-t border-slate-800 pt-1">
+                        {/* Attachment Button */}
+                        <div className="flex-none">
+                            <FileUploadButton
+                                conversationId={conversationId}
+                                onFileUploaded={onFileUploaded}
+                            />
+                        </div>
+
+                        {/* Send Button - dims when loading */}
+                        <button
+                            type="submit"
+                            disabled={!input.trim() || isLoading}
+                            className="w-10 h-10 flex items-center justify-center rounded-lg hover-slash bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            aria-label="Send message"
+                        >
+                            <Send className="h-5 w-5" />
+                        </button>
                     </div>
-
-                    <div />
-
-                    {/* Send Button - dims when loading */}
-                    <button
-                        type="submit"
-                        disabled={!input.trim() || isLoading}
-                        className="w-10 h-10 flex items-center justify-center rounded-lg hover-slash bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        aria-label="Send message"
-                    >
-                        <Send className="h-5 w-5" />
-                    </button>
                 </div>
             </form>
         </div>

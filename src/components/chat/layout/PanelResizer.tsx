@@ -116,14 +116,15 @@ export function PanelResizer({
       className={cn(
         // Base styles
         "relative z-20 flex-shrink-0",
-        "w-0.5 cursor-col-resize",
+        "w-full cursor-col-resize",
         "transition-colors duration-150",
-        // Default: transparent, hover/drag: Amber feedback per chat-shell-redesign spec
-        "bg-transparent hover:bg-amber-500/40",
-        isDragging && "bg-amber-500/60",
+        // Sidebar-main and main-panel separator tones
+        "bg-slate-50 dark:bg-slate-900",
+        "hover:bg-sky-300 dark:hover:bg-sky-700",
+        isDragging && "bg-sky-300 dark:bg-sky-700",
         // Position-specific margins for overlap
-        position === "left" && "-mx-0.5",
-        position === "right" && "-mx-0.5",
+        position === "left" && "mx-0",
+        position === "right" && "mx-0",
         className
       )}
       onMouseDown={handleMouseDown}

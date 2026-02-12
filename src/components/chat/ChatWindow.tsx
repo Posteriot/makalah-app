@@ -503,8 +503,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         {/* Message Container - padding handled at item level for Virtuoso compatibility */}
         <div className="flex-1 overflow-hidden relative py-4">
           {(isHistoryLoading || isConversationLoading) && messages.length === 0 ? (
-            // Loading skeleton - px-6 for consistent spacing
-            <div className="space-y-4 px-6">
+            // Loading skeleton - keep horizontal boundary in sync with ChatInput
+            <div className="space-y-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
               <div className="flex justify-start">
                 <Skeleton className="h-12 w-[60%] rounded-action" />
               </div>
@@ -516,8 +516,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               </div>
             </div>
           ) : messages.length === 0 ? (
-            // Empty state with TemplateGrid - px-6 for consistent spacing
-            <div className="flex flex-col items-center justify-center h-full px-6">
+            // Empty state with horizontal boundary in sync with ChatInput
+            <div className="flex flex-col items-center justify-center h-full" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
               <TemplateGrid onTemplateSelect={handleTemplateSelect} />
             </div>
           ) : (
@@ -538,7 +538,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 } as UIMessage
 
                 return (
-                  <div className="pb-4 px-6">
+                  <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     <MessageBubble
                       key={message.id}
                       message={displayMessage}
@@ -565,7 +565,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               style={{ height: "100%" }}
               components={{
                 Footer: () => (
-                  <div className="pb-4 px-6">
+                  <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - renders before ThinkingIndicator */}
                     {isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming' && (
                       <PaperValidationPanel
@@ -585,7 +585,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
           {/* Error State Overlay - Mechanical Grace: Rose error */}
           {error && (
-            <div className="absolute bottom-4 left-6 right-6 bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-action flex items-center justify-between text-sm shadow-sm backdrop-blur-sm">
+            <div
+              className="absolute bottom-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-action flex items-center justify-between text-sm shadow-sm backdrop-blur-sm"
+              style={{
+                left: "var(--chat-input-pad-x, 5rem)",
+                right: "var(--chat-input-pad-x, 5rem)",
+              }}
+            >
               <div className="flex items-center gap-2">
                 <WarningCircle className="h-4 w-4" />
                 <span className="font-mono">Gagal mengirim pesan.</span>
