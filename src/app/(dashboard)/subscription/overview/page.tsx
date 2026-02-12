@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
+import { TOKENS_PER_CREDIT } from "@convex/billing/constants"
 
 // Tier configuration
 const TIER_CONFIG: Record<EffectiveTier, { label: string; description: string; color: string; textColor: string }> = {
@@ -129,6 +130,10 @@ export default function SubscriptionOverviewPage() {
   // Credit balance for BPP (now in credits, not IDR)
   const currentCreditBalance = creditBalance?.remainingCredits ?? 0
 
+  // Kredit conversion (1 kredit = 1.000 tokens)
+  const usedKredit = Math.ceil(usedTokens / TOKENS_PER_CREDIT)
+  const totalKredit = Math.floor(allottedTokens / TOKENS_PER_CREDIT)
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -227,25 +232,32 @@ export default function SubscriptionOverviewPage() {
             />
           </div>
 
-          {/* Stats */}
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-sm">
-              <span className={cn("text-interface font-semibold", (isLowQuota || isBlocked) && "text-destructive")}>
-                {usedTokens.toLocaleString("id-ID")}
+          {/* Stats — kredit as primary, tokens as secondary */}
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xl font-bold">
+                <span className={cn("text-foreground", (isLowQuota || isBlocked) && "text-destructive")}>
+                  {usedKredit.toLocaleString("id-ID")}
+                </span>
+                <span className="text-muted-foreground">
+                  {" / "}
+                  {totalKredit.toLocaleString("id-ID")}
+                </span>
+                {" "}
+                <span className="text-signal text-[10px] text-muted-foreground">kredit</span>
               </span>
-              <span className="text-slate-500">
-                {" / "}
-                {allottedTokens.toLocaleString("id-ID")} tokens
+              <span
+                className={cn(
+                  "font-mono text-sm font-medium",
+                  isBlocked ? "text-destructive" : isLowQuota ? "text-amber-600" : "text-muted-foreground"
+                )}
+              >
+                {usagePercentage}%
               </span>
-            </span>
-            <span
-              className={cn(
-                "text-sm font-medium",
-                isBlocked ? "text-destructive" : isLowQuota ? "text-amber-600" : "text-muted-foreground"
-              )}
-            >
-              {usagePercentage}%
-            </span>
+            </div>
+            <p className="font-mono text-xs text-muted-foreground">
+              {usedTokens.toLocaleString("id-ID")} / {allottedTokens.toLocaleString("id-ID")} tokens
+            </p>
           </div>
 
           {isBlocked && (
@@ -325,6 +337,9 @@ export default function SubscriptionOverviewPage() {
                     Tipe
                   </th>
                   <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
+                    Kredit
+                  </th>
+                  <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
                     Tokens
                   </th>
                   <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
@@ -343,6 +358,9 @@ export default function SubscriptionOverviewPage() {
                           <span className="text-slate-200">{item.type}</span>
                         </div>
                       </td>
+                      <td className="text-right px-4 py-3 tabular-nums text-slate-200">
+                        {Math.ceil(item.tokens / TOKENS_PER_CREDIT).toLocaleString("id-ID")}
+                      </td>
                       <td className="text-right px-4 py-3 tabular-nums text-slate-100">
                         {item.tokens.toLocaleString("id-ID")}
                       </td>
@@ -357,6 +375,9 @@ export default function SubscriptionOverviewPage() {
                 <tr className="bg-slate-800/40 font-semibold">
                   <td className="px-4 py-2 text-slate-200">Total</td>
                   <td className="text-right px-4 py-2 tabular-nums text-slate-100">
+                    {Math.ceil(usageBreakdown.totalTokens / TOKENS_PER_CREDIT).toLocaleString("id-ID")}
+                  </td>
+                  <td className="text-right px-4 py-2 tabular-nums text-slate-100">
                     {usageBreakdown.totalTokens.toLocaleString("id-ID")}
                   </td>
                   <td className="text-right px-4 py-2 tabular-nums text-slate-200">
@@ -368,6 +389,11 @@ export default function SubscriptionOverviewPage() {
           </div>
         )}
       </div>
+
+      {/* Conversion note */}
+      <p className="font-mono text-[10px] text-muted-foreground px-1">
+        1 kredit = 1.000 tokens. Estimasi biaya berdasarkan harga rata-rata model AI.
+      </p>
 
       {/* Hybrid Model Info */}
       <div className="bg-slate-800/30 border border-hairline rounded-shell p-4">

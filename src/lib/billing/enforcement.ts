@@ -7,6 +7,7 @@ import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { getEffectiveTier } from "@/lib/utils/subscription"
+import { OPERATION_COST_MULTIPLIERS } from "@convex/billing/constants"
 // Note: tokensToCredits conversion handled internally by deductCredits mutation
 
 // Token estimation: ~4 chars = 1 token for English, ~2-3 chars for Indonesian
@@ -56,15 +57,8 @@ export function estimateTotalTokens(
 ): number {
   const inputTokens = estimateTokens(inputText)
 
-  // Multipliers based on operation type
-  const outputMultipliers: Record<OperationType, number> = {
-    chat_message: 1.5,
-    paper_generation: 2.5,
-    web_search: 2.0,
-    refrasa: 1.2,
-  }
-
-  const multiplier = outputMultipliers[operationType] ?? 1.5
+  // Multipliers from single source of truth (convex/billing/constants.ts)
+  const multiplier = OPERATION_COST_MULTIPLIERS[operationType] ?? 1.0
   return Math.ceil(inputTokens * (1 + multiplier))
 }
 
