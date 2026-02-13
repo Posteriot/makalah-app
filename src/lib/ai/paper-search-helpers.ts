@@ -30,21 +30,6 @@ export const STAGE_RESEARCH_REQUIREMENTS: Partial<Record<PaperStageId, {
         minCount: 3,
         description: "referensi pendukung untuk memperkuat topik"
     },
-    tinjauan_literatur: {
-        requiredField: "referensi",
-        minCount: 5,
-        description: "referensi untuk tinjauan literatur"
-    },
-    pendahuluan: {
-        requiredField: "sitasiAPA",
-        minCount: 2,
-        description: "sitasi untuk latar belakang"
-    },
-    diskusi: {
-        requiredField: "sitasiTambahan",
-        minCount: 2,
-        description: "sitasi untuk mendukung diskusi"
-    },
 }
 
 /**
@@ -108,7 +93,11 @@ export const isExplicitSaveSubmitRequest = (text: string): boolean => {
         /\b(simpan|save)\b/,
         /\bsubmit\b/,
         /\bapprove\s*(draf|draft)?\b/,
+        /\bapproved\b/,
+        /\bdisetujui\b/,
+        /\[\s*(approved|disetujui)\s*:/i,
         /\blanjut\s*(ke\s*)?(tahap|stage)\s*(berikut|selanjut)/,
+        /\bapprove\s*&\s*lanjut\b/,
         /\bselesai(kan)?\s*(tahap|stage)?\b/,
     ]
     return savePatterns.some(p => p.test(normalized))
@@ -145,15 +134,21 @@ export const aiIndicatedSaveIntent = (previousAIMessage: string): boolean => {
  */
 export const isUserConfirmation = (text: string): boolean => {
     const normalized = text.toLowerCase().trim()
-    // Only match short confirmations (< 50 chars to avoid false positives)
-    if (normalized.length > 50) return false
+    // Keep it reasonably short, but allow structured auto-message like:
+    // [Approved: ...] Lanjut ke tahap berikutnya.
+    if (normalized.length > 220) return false
 
     const confirmationPatterns = [
         /^(ya|yes|yup|yep|ok|oke|okay|sip|siap|baik|boleh)\.?$/i,
+        /^\[\s*(approved|disetujui)\s*:/i,
         /^lakukan\.?$/i,
         /^lanjut(kan)?\.?$/i,
+        /^lanjut\s+ke\s+tahap\s+berikut(nya)?\.?$/i,
         /^silakan\.?$/i,
         /^setuju\.?$/i,
+        /^saya\s+setuju\.?$/i,
+        /^sudah\s+setuju\.?$/i,
+        /^setuju,\s*lanjut(kan)?\.?$/i,
         /^proses\.?$/i,
         /^eksekusi\.?$/i,
         /^jalankan\.?$/i,

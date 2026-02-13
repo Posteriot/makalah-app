@@ -45,9 +45,26 @@ export async function POST(req: Request) {
         }
 
         // 1.1. Ambil token Clerk untuk Convex auth guard
-        const convexToken = await getToken({ template: "convex" })
+        let convexToken: string | null = null
+        let tokenError: unknown = null
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+            try {
+                convexToken = await getToken({ template: "convex" })
+                if (convexToken) {
+                    break
+                }
+                tokenError = new Error("Convex auth token missing")
+            } catch (error) {
+                tokenError = error
+            }
+
+            if (attempt < 3) {
+                await new Promise((resolve) => setTimeout(resolve, attempt * 150))
+            }
+        }
         if (!convexToken) {
-            return new Response("Convex auth token missing", { status: 500 })
+            console.error("[Chat API] Failed to get Convex token from Clerk after retry:", tokenError)
+            return new Response("Session token unavailable. Please refresh and retry.", { status: 401 })
         }
         const convexOptions = { token: convexToken }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -400,6 +417,7 @@ export async function POST(req: Request) {
         // This enables AI to pass sources to createArtifact tool
         // ════════════════════════════════════════════════════════════════
         let sourcesContext = ""
+        let hasRecentSourcesInDb = false
         try {
             const recentSources = await fetchQueryWithToken(api.messages.getRecentSources, {
                 conversationId: currentConversationId as Id<"conversations">,
@@ -407,6 +425,7 @@ export async function POST(req: Request) {
             })
 
             if (recentSources && recentSources.length > 0) {
+                hasRecentSourcesInDb = true
                 const sourcesJson = JSON.stringify(recentSources, null, 2)
                 sourcesContext = `
 AVAILABLE_WEB_SOURCES (dari hasil web search sebelumnya):
@@ -532,21 +551,23 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
                 return true
             }
 
-            // For ACTIVE stages (stageEvidence === false), check ONLY the LAST assistant message
-            // This catches "AI just searched but hasn't saved yet" without false positives from old stages
+            // For ACTIVE stages (stageEvidence === false), check recent assistant messages.
+            // This catches "search done but save tool failed" scenario without forcing repeated search loops.
             if (stageEvidence === false) {
-                const lastAssistant = msgs
+                const recentAssistantMsgs = msgs
                     .filter((m): m is { role: string; content?: string } =>
                         typeof m === "object" && m !== null && "role" in m && (m as { role: string }).role === "assistant"
                     )
-                    .slice(-1)[0] // ONLY last 1 assistant message
+                    .slice(-3)
 
-                if (lastAssistant) {
-                    const content = typeof lastAssistant.content === "string" ? lastAssistant.content : ""
-                    // Check for citations in the LAST message only
+                for (const msg of recentAssistantMsgs) {
+                    const content = typeof msg.content === "string" ? msg.content : ""
+                    // Check for citations / search evidence in recent messages
                     if (/\[\d+(?:,\s*\d+)*\]/.test(content)) return true
                     if (/berdasarkan hasil pencarian/i.test(content)) return true
                     if (/menurut .+\(\d{4}\)/i.test(content)) return true
+                    if (/saya telah melakukan pencarian/i.test(content)) return true
+                    if (/rangkuman temuan/i.test(content)) return true
                 }
                 return false
             }
@@ -1000,7 +1021,7 @@ Aturan:
             const recentForRouter = modelMessages.slice(-8)
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
-            const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
+            const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession) || hasRecentSourcesInDb
 
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
@@ -1055,6 +1076,11 @@ Aturan:
                     // e.g., AI: "Saya akan menyimpan..." → User: "Lakukan"
                     enableWebSearch = false
                     activeStageSearchReason = "ai_promised_save_user_confirms"
+                } else if (userConfirms && !aiPromisedSearch) {
+                    // Priority 3b: User confirmation without explicit search promise
+                    // Prefer paper tools to avoid repetitive search loops.
+                    enableWebSearch = false
+                    activeStageSearchReason = "user_confirmation_prefer_paper_tools"
                 } else if (aiPromisedSearch) {
                     // Priority 4: AI promised search → honor search promise
                     enableWebSearch = !!wrappedGoogleSearchTool
@@ -1115,7 +1141,12 @@ Aturan:
             // Use isExplicitSaveSubmitRequest since isUserConfirmation is now scoped to else block
             const shouldForceSubmitValidation = !enableWebSearch
                 && !!paperModePrompt
-                && (activeStageSearchReason === "explicit_save_request" || isExplicitSaveSubmitRequest(lastUserContent))
+                && (
+                    activeStageSearchReason === "explicit_save_request" ||
+                    activeStageSearchReason === "ai_promised_save_user_confirms" ||
+                    activeStageSearchReason === "user_confirmation_prefer_paper_tools" ||
+                    isExplicitSaveSubmitRequest(lastUserContent)
+                )
                 && paperSession?.stageStatus === "drafting"
                 && hasStageRingkasan(paperSession)
 
