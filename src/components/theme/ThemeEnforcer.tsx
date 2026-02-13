@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useAuth } from "@clerk/nextjs"
+import { useSession } from "@/lib/auth-client"
 import { useTheme } from "next-themes"
 
 /**
@@ -17,18 +17,18 @@ import { useTheme } from "next-themes"
  * 4. Without this component, logged-out user would see light mode
  */
 export function ThemeEnforcer() {
-  const { isSignedIn, isLoaded } = useAuth()
+  const { data: session, isPending } = useSession()
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     // Wait for auth state to load
-    if (!isLoaded) return
+    if (isPending) return
 
     // Force dark mode for unauthenticated users
-    if (!isSignedIn && theme !== "dark") {
+    if (!session && theme !== "dark") {
       setTheme("dark")
     }
-  }, [isSignedIn, isLoaded, theme, setTheme])
+  }, [session, isPending, theme, setTheme])
 
   // This component doesn't render anything
   return null

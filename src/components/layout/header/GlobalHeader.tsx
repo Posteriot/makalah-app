@@ -21,7 +21,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { SignedIn, SignedOut, useUser, useClerk } from "@clerk/nextjs"
+import { Authenticated, Unauthenticated } from "convex/react"
+import { signOut, useSession } from "@/lib/auth-client"
 import { usePathname } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
@@ -74,9 +75,8 @@ export function GlobalHeader() {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
   }, [mobileMenuState.isOpen, mobileMenuState.pathname, pathname])
 
-  // Clerk and Convex user data for mobile menu
-  const { user: clerkUser } = useUser()
-  const { signOut } = useClerk()
+  // Auth session and Convex user data for mobile menu
+  const { data: session } = useSession()
   const { user: convexUser, isLoading: isConvexLoading } = useCurrentUser()
 
   const handleScroll = useCallback(() => {
@@ -145,13 +145,14 @@ export function GlobalHeader() {
     } catch (error) {
       console.error("Sign out failed:", error)
       toast.error("Gagal keluar. Silakan coba lagi.")
+    } finally {
       setIsSigningOut(false)
     }
   }
 
   // Derived user data for mobile menu
-  const firstName = clerkUser?.firstName || "User"
-  const lastName = clerkUser?.lastName || ""
+  const firstName = convexUser?.firstName || session?.user?.name?.split(" ")[0] || "User"
+  const lastName = convexUser?.lastName || session?.user?.name?.split(" ").slice(1).join(" ") || ""
   const fullName = `${firstName} ${lastName}`.trim()
   const initial = firstName.charAt(0).toUpperCase()
   const segment = getEffectiveTier(convexUser?.role, convexUser?.subscriptionStatus)
@@ -209,7 +210,7 @@ export function GlobalHeader() {
             />
           </Link>
           {/* Subscription Badge - shows when logged in */}
-          <SignedIn>
+          <Authenticated>
             {isConvexLoading ? (
               <RefreshDouble className="icon-interface animate-spin text-muted-foreground" />
             ) : convexUser ? (
@@ -219,7 +220,7 @@ export function GlobalHeader() {
                 className="shrink-0"
               />
             ) : null}
-          </SignedIn>
+          </Authenticated>
         </div>
 
         {/* Header Right - Nav, Theme Toggle & Auth */}
@@ -247,7 +248,7 @@ export function GlobalHeader() {
             })}
           </nav>
           {/* Theme Toggle - Mobile (icon only, left of hamburger) */}
-          <SignedIn>
+          <Authenticated>
             <button
               onClick={toggleTheme}
               className={cn(
@@ -282,7 +283,7 @@ export function GlobalHeader() {
                 )}
               </span>
             </button>
-          </SignedIn>
+          </Authenticated>
 
           {/* Mobile Menu Toggle */}
           <button
@@ -300,7 +301,7 @@ export function GlobalHeader() {
           </button>
 
           {/* Theme Toggle - Desktop only for logged-in users */}
-          <SignedIn>
+          <Authenticated>
             <button
               onClick={toggleTheme}
               className={cn(
@@ -328,23 +329,23 @@ export function GlobalHeader() {
               <SunLight className="relative z-10 icon-interface block dark:hidden" />
               <HalfMoon className="relative z-10 icon-interface hidden dark:block" />
             </button>
-          </SignedIn>
+          </Authenticated>
 
           {/* Auth State - Desktop only (mobile shows in panel) */}
-          <SignedOut>
+          <Unauthenticated>
             <Link
               href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
               className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-slate-950 bg-slate-950 px-2 py-1 text-xs font-medium text-narrative uppercase text-slate-50 transition-colors hover:bg-slate-900 dark:border-slate-50 dark:bg-slate-50 dark:text-slate-950 dark:hover:bg-slate-200 focus-ring"
             >
               Masuk
             </Link>
-          </SignedOut>
+          </Unauthenticated>
 
-          <SignedIn>
+          <Authenticated>
             <div className="hidden md:block">
               <UserDropdown />
             </div>
-          </SignedIn>
+          </Authenticated>
         </div>
       </div>
       {/* End header-inner */}
@@ -372,7 +373,7 @@ export function GlobalHeader() {
           })}
 
           {/* SignedOut: Show login button */}
-          <SignedOut>
+          <Unauthenticated>
             <Link
               href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
               className="mt-2 inline-flex items-center justify-center rounded-action border-main border-border px-3 py-2 text-signal text-[11px] font-bold uppercase tracking-widest text-foreground hover:bg-accent transition-colors"
@@ -380,10 +381,10 @@ export function GlobalHeader() {
             >
               Masuk
             </Link>
-          </SignedOut>
+          </Unauthenticated>
 
           {/* SignedIn: Auth section */}
-          <SignedIn>
+          <Authenticated>
             <div className="mt-3 rounded-shell border-hairline bg-slate-100 dark:bg-slate-900 p-3">
               <Accordion type="single" collapsible>
                 <AccordionItem value="user" className="border-none">
@@ -449,7 +450,7 @@ export function GlobalHeader() {
                 </AccordionItem>
               </Accordion>
             </div>
-          </SignedIn>
+          </Authenticated>
         </nav>
       )}
 

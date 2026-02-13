@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useState } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useSession } from "@/lib/auth-client"
 import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import {
@@ -44,13 +44,13 @@ export default function SettingsPage() {
 function SettingsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, isLoaded } = useUser()
+  const { data: session, isPending } = useSession()
   const { user: convexUser, isLoading: isConvexLoading } = useCurrentUser()
   const [activeTab, setActiveTab] = useState<SettingsTab>(
     () => parseTabParam(searchParams.get("tab"))
   )
 
-  const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? ""
+  const primaryEmail = convexUser?.email ?? session?.user?.email ?? ""
   const handleAccordionChange = (value: string) => {
     if (VALID_TABS.includes(value as SettingsTab)) {
       setActiveTab(value as SettingsTab)
@@ -203,7 +203,7 @@ function SettingsContent() {
                 </span>
               </AccordionTrigger>
               <AccordionContent className="pb-0">
-                <ProfileTab user={user} isLoaded={isLoaded} />
+                <ProfileTab convexUser={convexUser} session={session} isLoading={isConvexLoading || isPending} />
               </AccordionContent>
             </AccordionItem>
 
@@ -215,7 +215,7 @@ function SettingsContent() {
                 </span>
               </AccordionTrigger>
               <AccordionContent className="pb-0">
-                <SecurityTab user={user} isLoaded={isLoaded} />
+                <SecurityTab session={session} isLoading={isConvexLoading || isPending} />
               </AccordionContent>
             </AccordionItem>
 
@@ -239,11 +239,11 @@ function SettingsContent() {
 
         <div className="w-full relative z-10">
           <div className={cn(activeTab === "profile" ? "hidden md:block" : "hidden")}>
-            <ProfileTab user={user} isLoaded={isLoaded} />
+            <ProfileTab convexUser={convexUser} session={session} isLoading={isConvexLoading || isPending} />
           </div>
 
           <div className={cn(activeTab === "security" ? "hidden md:block" : "hidden")}>
-            <SecurityTab user={user} isLoaded={isLoaded} />
+            <SecurityTab session={session} isLoading={isConvexLoading || isPending} />
           </div>
 
           <div className={cn(activeTab === "status" ? "hidden md:block" : "hidden")}>
@@ -254,7 +254,7 @@ function SettingsContent() {
             />
           </div>
 
-          {!isLoaded && (
+          {isPending && (
             <div className="text-interface text-sm text-muted-foreground">Memuat...</div>
           )}
         </div>

@@ -1,17 +1,23 @@
 "use client"
 
-import { useState } from "react"
-import type { UserResource } from "@clerk/types"
-import { isClerkAPIResponseError } from "@clerk/nextjs/errors"
+import { useState, useEffect } from "react"
+import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
 import { Eye, EyeClosed, Shield } from "iconoir-react"
 
 interface SecurityTabProps {
-  user: UserResource | null | undefined
-  isLoaded: boolean
+  session: { user: { id: string; name: string | null; email: string; image: string | null; emailVerified: boolean; createdAt: Date; updatedAt: Date }; session: { id: string; userId: string; expiresAt: Date; token: string } } | null
+  isLoading: boolean
 }
 
-export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
+interface LinkedAccount {
+  id: string
+  provider: string
+  // BetterAuth may include additional fields
+  [key: string]: unknown
+}
+
+export function SecurityTab({ session, isLoading }: SecurityTabProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -21,10 +27,40 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const hasPassword = Boolean(user?.passwordEnabled)
+  const [hasPassword, setHasPassword] = useState(false)
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true)
+
+  // Fetch linked accounts to determine hasPassword and connected accounts
+  useEffect(() => {
+    if (!session) {
+      setIsLoadingAccounts(false)
+      return
+    }
+
+    let cancelled = false
+
+    async function fetchAccounts() {
+      try {
+        const result = await authClient.listAccounts()
+        if (cancelled) return
+
+        const accounts = (result.data ?? []) as LinkedAccount[]
+        setLinkedAccounts(accounts)
+        setHasPassword(accounts.some((a) => a.provider === "credential"))
+      } catch (err) {
+        console.error("[SecurityTab] listAccounts failed:", err)
+      } finally {
+        if (!cancelled) setIsLoadingAccounts(false)
+      }
+    }
+
+    fetchAccounts()
+    return () => { cancelled = true }
+  }, [session])
 
   const handleSave = async () => {
-    if (!user) return
+    if (!session) return
 
     if (!newPassword) {
       toast.error("Password baru wajib diisi.")
@@ -43,10 +79,10 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
 
     setIsSaving(true)
     try {
-      await user.updatePassword({
-        newPassword,
+      await authClient.changePassword({
         currentPassword: currentPassword || undefined,
-        signOutOfOtherSessions: signOutOthers,
+        newPassword,
+        revokeOtherSessions: signOutOthers,
       })
       toast.success(
         hasPassword
@@ -57,17 +93,20 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
+      // Update hasPassword since we just set/changed it
+      setHasPassword(true)
     } catch (error) {
-      const message = isClerkAPIResponseError(error)
-        ? error.errors[0]?.message ?? "Gagal memperbarui password."
-        : error instanceof Error
-          ? error.message
-          : "Gagal memperbarui password."
+      const message = error instanceof Error
+        ? error.message
+        : "Gagal memperbarui password."
       toast.error(message)
     } finally {
       setIsSaving(false)
     }
   }
+
+  // Filter to show only external (non-credential) accounts
+  const externalAccounts = linkedAccounts.filter((a) => a.provider !== "credential")
 
   return (
     <>
@@ -88,7 +127,9 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
           <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3 max-sm:grid-cols-1 max-sm:items-start">
             <span className="text-interface text-xs text-muted-foreground">Password</span>
             <div className="min-w-0 text-interface text-sm text-foreground">
-              {hasPassword ? (
+              {isLoadingAccounts ? (
+                <span className="text-interface text-xs text-muted-foreground">Memuat...</span>
+              ) : hasPassword ? (
                 <span className="tracking-[0.2em] text-muted-foreground">••••••••</span>
               ) : (
                 <span className="text-interface text-xs text-muted-foreground">
@@ -246,7 +287,7 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
                 className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
                 onClick={handleSave}
-                disabled={!isLoaded || isSaving}
+                disabled={isLoading || isSaving}
               >
                 <span
                   className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
@@ -264,9 +305,11 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
       <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
         <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">Akun Terhubung</div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800">
-          {user?.externalAccounts && user.externalAccounts.length > 0 ? (
+          {isLoadingAccounts ? (
+            <p className="text-interface text-xs text-muted-foreground">Memuat...</p>
+          ) : externalAccounts.length > 0 ? (
             <div className="flex flex-col gap-3">
-              {user.externalAccounts.map((account) => (
+              {externalAccounts.map((account) => (
                 <div
                   key={account.id}
                   className="grid grid-cols-[120px_1fr] items-center gap-3 max-sm:grid-cols-1 max-sm:items-start"
@@ -276,13 +319,11 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
                   </span>
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-interface text-sm text-foreground truncate">
-                      {account.emailAddress}
+                      {session?.user?.email ?? ""}
                     </span>
-                    {account.verification?.status === "verified" && (
-                      <span className="shrink-0 inline-flex items-center gap-1 rounded-badge bg-success/10 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-success">
-                        Terverifikasi
-                      </span>
-                    )}
+                    <span className="shrink-0 inline-flex items-center gap-1 rounded-badge bg-success/10 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-success">
+                      Terhubung
+                    </span>
                   </div>
                 </div>
               ))}

@@ -1,88 +1,75 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import type { UserResource } from "@clerk/types"
-import { isClerkAPIResponseError } from "@clerk/nextjs/errors"
+import { useEffect, useState } from "react"
+import { useMutation } from "convex/react"
+import { api } from "@convex/_generated/api"
 import Image from "next/image"
 import { toast } from "sonner"
 import { User as UserIcon } from "iconoir-react"
+import type { Doc } from "@convex/_generated/dataModel"
 
 interface ProfileTabProps {
-  user: UserResource | null | undefined
-  isLoaded: boolean
+  convexUser: Doc<"users"> | null
+  session: { user: { id: string; name: string | null; email: string; image: string | null; emailVerified: boolean; createdAt: Date; updatedAt: Date }; session: { id: string; userId: string; expiresAt: Date; token: string } } | null
+  isLoading: boolean
 }
 
-export function ProfileTab({ user, isLoaded }: ProfileTabProps) {
+export function ProfileTab({ convexUser, session, isLoading }: ProfileTabProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
-  const [profileImage, setProfileImage] = useState<File | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const updateProfile = useMutation(api.users.updateProfile)
 
   useEffect(() => {
-    if (!user) return
-    setFirstName(user.firstName ?? "")
-    setLastName(user.lastName ?? "")
-  }, [user])
-
-  const profilePreviewUrl = useMemo(() => {
-    if (!profileImage) return null
-    return URL.createObjectURL(profileImage)
-  }, [profileImage])
-
-  useEffect(() => {
-    return () => {
-      if (profilePreviewUrl) {
-        URL.revokeObjectURL(profilePreviewUrl)
-      }
+    if (convexUser) {
+      setFirstName(convexUser.firstName ?? "")
+      setLastName(convexUser.lastName ?? "")
+    } else if (session?.user?.name) {
+      const nameParts = session.user.name.split(" ")
+      setFirstName(nameParts[0] ?? "")
+      setLastName(nameParts.slice(1).join(" ") ?? "")
     }
-  }, [profilePreviewUrl])
+  }, [convexUser, session])
 
-  const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? ""
-  const fullName = [user?.firstName, user?.lastName]
+  const primaryEmail = convexUser?.email ?? session?.user?.email ?? ""
+  const fullName = [convexUser?.firstName ?? session?.user?.name?.split(" ")[0], convexUser?.lastName ?? session?.user?.name?.split(" ").slice(1).join(" ")]
     .filter(Boolean)
     .join(" ")
     .trim()
   const userInitial =
-    user?.firstName?.charAt(0).toUpperCase() ||
+    (convexUser?.firstName ?? session?.user?.name)?.charAt(0).toUpperCase() ||
     primaryEmail.charAt(0).toUpperCase() ||
     "U"
+  const avatarUrl = session?.user?.image ?? null
 
   const handleSave = async () => {
-    if (!user) return
+    if (!convexUser) return
 
     setIsSaving(true)
     try {
       const trimmedFirst = firstName.trim()
       const trimmedLast = lastName.trim()
-      const updatePayload: { firstName?: string | null; lastName?: string | null } = {}
 
-      if (trimmedFirst !== (user.firstName ?? "")) {
-        updatePayload.firstName = trimmedFirst ? trimmedFirst : null
-      }
+      await updateProfile({
+        userId: convexUser._id,
+        firstName: trimmedFirst || undefined,
+        lastName: trimmedLast || undefined,
+      })
 
-      if (trimmedLast !== (user.lastName ?? "")) {
-        updatePayload.lastName = trimmedLast ? trimmedLast : null
-      }
-
-      if (Object.keys(updatePayload).length > 0) {
-        await user.update(updatePayload)
-      }
-
-      if (profileImage) {
-        await user.setProfileImage({ file: profileImage })
+      // Also update BetterAuth user name if changed
+      const { authClient } = await import("@/lib/auth-client")
+      const newName = [trimmedFirst, trimmedLast].filter(Boolean).join(" ")
+      if (newName !== fullName) {
+        await authClient.updateUser({ name: newName })
       }
 
       toast.success("Profil berhasil diperbarui.")
       setIsEditing(false)
-      setProfileImage(null)
     } catch (error) {
-      const message = isClerkAPIResponseError(error)
-        ? error.errors[0]?.message ?? "Gagal memperbarui profil."
-        : error instanceof Error
-          ? error.message
-          : "Gagal memperbarui profil."
+      const message = error instanceof Error
+        ? error.message
+        : "Gagal memperbarui profil."
       toast.error(message)
     } finally {
       setIsSaving(false)
@@ -109,9 +96,9 @@ export function ProfileTab({ user, isLoaded }: ProfileTabProps) {
             <span className="text-interface text-xs text-muted-foreground">Profil</span>
             <div className="min-w-0 flex items-center gap-3 text-interface text-sm text-foreground max-sm:w-full">
               <div className="inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-                {user?.imageUrl ? (
+                {avatarUrl ? (
                   <Image
-                    src={user.imageUrl}
+                    src={avatarUrl}
                     alt={fullName || "User"}
                     width={40}
                     height={40}
@@ -145,19 +132,9 @@ export function ProfileTab({ user, isLoaded }: ProfileTabProps) {
             <div className="flex flex-col gap-5">
               <div className="flex items-center gap-3 max-sm:flex-col max-sm:items-start">
                 <div className="inline-flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground text-base font-semibold">
-                  {profilePreviewUrl ? (
+                  {avatarUrl ? (
                     <Image
-                      src={profilePreviewUrl}
-                      alt={fullName || "User"}
-                      width={48}
-                      height={48}
-                      className="h-full w-full object-cover"
-                      unoptimized
-                      loader={({ src }) => src}
-                    />
-                  ) : user?.imageUrl ? (
-                    <Image
-                      src={user.imageUrl}
+                      src={avatarUrl}
                       alt={fullName || "User"}
                       width={48}
                       height={48}
@@ -168,33 +145,6 @@ export function ProfileTab({ user, isLoaded }: ProfileTabProps) {
                   ) : (
                     <span>{userInitial}</span>
                   )}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <button
-                    className="group relative overflow-hidden inline-flex w-fit items-center justify-center gap-2 rounded-action px-3 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={!isLoaded}
-                  >
-                    <span
-                      className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
-                      aria-hidden="true"
-                    />
-                    <span className="relative z-10">Upload</span>
-                  </button>
-                  <span className="text-narrative text-xs text-muted-foreground">
-                    Ukuran rekomendasi 1:1, maksimal 10MB.
-                  </span>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0] ?? null
-                      setProfileImage(file)
-                    }}
-                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
@@ -235,7 +185,7 @@ export function ProfileTab({ user, isLoaded }: ProfileTabProps) {
                 className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
                 onClick={handleSave}
-                disabled={!isLoaded || isSaving}
+                disabled={isLoading || isSaving}
               >
                 <span
                   className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
