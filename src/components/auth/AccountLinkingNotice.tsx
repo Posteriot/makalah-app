@@ -40,19 +40,19 @@ export function AccountLinkingNotice() {
           <p className="font-sans text-xs font-semibold">
             Akun terhubung dengan Google
           </p>
-          <p className="font-sans text-[11px] text-muted-foreground leading-relaxed">
+          <p className="font-sans text-xs text-muted-foreground leading-relaxed">
             Anda sekarang bisa masuk pakai Google atau password — keduanya
-            terhubung ke akun yang sama.
+            terhubung ke akun yang sama. Kelola di{" "}
+            <a href="/settings" className="underline text-info hover:text-info/80">
+              Pengaturan Profil
+            </a>.
           </p>
         </div>
       </div>,
       {
         duration: Infinity,
-        className: "!border !border-info/30",
+        className: "!border !border-info/40",
         onDismiss: () => {
-          markSeen().catch(console.error)
-        },
-        onAutoClose: () => {
           markSeen().catch(console.error)
         },
       }
