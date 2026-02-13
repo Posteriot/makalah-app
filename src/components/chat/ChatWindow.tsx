@@ -646,12 +646,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 <button
                   type="button"
                   onClick={() =>
-                    void handleStarterPromptClick("Kita brainstorming, membahas gagasanku!")
+                    void handleStarterPromptClick("Ayo diskusi dulu!")
                   }
                   disabled={isCreatingChat}
                   className="w-fit max-w-full rounded-shell border-hairline bg-slate-200 dark:bg-card/90 px-5 py-2.5 text-center text-interface text-sm text-foreground hover:bg-slate-300 dark:hover:bg-card transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Kita brainstorming, membahas gagasanku!
+                  Ayo diskusi dulu!
                 </button>
                 <button
                   type="button"
