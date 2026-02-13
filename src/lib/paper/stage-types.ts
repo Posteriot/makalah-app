@@ -210,7 +210,7 @@ export interface OutlineSection {
   id: string
   judul?: string
   level?: number
-  parentId?: string
+  parentId?: string | null
   estimatedWordCount?: number
   status?: "complete" | "partial" | "empty"
 }
