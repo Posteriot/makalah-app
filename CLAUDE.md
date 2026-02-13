@@ -658,6 +658,20 @@ Server components receive `params` as `Promise<{...}>`. Must `await params` befo
 
 **Reference:** `.references/conversation-id-routing/` for full documentation
 
+## TODO: Google OAuth Branding Verification
+
+_BLOCKING for production launch. Remind user to complete this before go-live._
+
+Google OAuth consent screen currently shows "accounts.dev" instead of "Makalah AI" because branding verification has not passed. Custom credentials are configured (Google Cloud Console + Clerk Dashboard) and working in Testing mode.
+
+**Required to pass verification:**
+1. Create `/privacy` page (kebijakan privasi)
+2. Add visible link to privacy policy in homepage footer
+3. Ensure "Makalah AI" name and app purpose description are visible on homepage `https://makalah.ai/`
+4. After fixes: Google Cloud Console → OAuth consent screen → Publish app → "I have fixed the issues" → Google re-reviews (2-3 business days)
+
+**Reference:** Google Cloud Console → APIs & Services → OAuth consent screen → Branding
+
 ## TODO: CLAUDE.md Improvements
 
 _To be addressed later. Do not action these yet._
