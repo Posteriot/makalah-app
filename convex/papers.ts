@@ -1,6 +1,6 @@
 import { mutationGeneric, queryGeneric } from "convex/server"
 import { v } from "convex/values"
-import { requireAuthUserId } from "./auth"
+import { requireAuthUserId } from "./authHelpers"
 
 export const createPaperMetadata = mutationGeneric({
   args: {

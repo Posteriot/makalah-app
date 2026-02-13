@@ -5,7 +5,7 @@
 
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
-import { requireAuthUser, requireAuthUserId } from "../auth"
+import { requireAuthUser, requireAuthUserId } from "../authHelpers"
 import { requireRole } from "../permissions"
 
 function isInternalKeyValid(internalKey?: string) {

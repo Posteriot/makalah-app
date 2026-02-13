@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { requireAuthUser, requireAuthUserId, requireConversationOwner, getConversationIfOwner } from "./auth"
+import { requireAuthUser, requireAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
 
 // Get messages for conversation
 export const getMessages = query({

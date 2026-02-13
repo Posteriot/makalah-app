@@ -6,6 +6,7 @@ import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { magicLink } from "better-auth/plugins";
 import { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
+import { sendVerificationEmail, sendMagicLinkEmail, sendPasswordResetEmail } from "./authEmails";
 
 const siteUrl = process.env.SITE_URL!;
 
@@ -24,14 +25,12 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       enabled: true,
       requireEmailVerification: true,
       sendResetPassword: async ({ user, url }) => {
-        // TODO: Wire to Resend (Task 5)
-        console.log(`[Auth] Password reset for ${user.email}: ${url}`);
+        await sendPasswordResetEmail(user.email, url);
       },
     },
     emailVerification: {
       sendVerificationEmail: async ({ user, url }) => {
-        // TODO: Wire to Resend (Task 5)
-        console.log(`[Auth] Verification for ${user.email}: ${url}`);
+        await sendVerificationEmail(user.email, url);
       },
     },
     socialProviders: {
@@ -51,8 +50,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       convex({ authConfig }),
       magicLink({
         sendMagicLink: async ({ email, url }) => {
-          // TODO: Wire to Resend (Task 5)
-          console.log(`[Auth] Magic link for ${email}: ${url}`);
+          await sendMagicLinkEmail(email, url);
         },
         expiresIn: 300, // 5 minutes
       }),
