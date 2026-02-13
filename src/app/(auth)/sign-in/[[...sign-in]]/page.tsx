@@ -126,7 +126,9 @@ export default function SignInPage() {
         appearance={appearance}
       />
       <p className="text-muted-foreground text-[10px] font-sans mt-3 text-center leading-relaxed">
-        Akun Anda akan otomatis terhubung Google jika masuk menggunakan alamat email yang sama.
+        Akun Anda akan terhubung otomatis dengan Google,
+        <br />
+        jika masuk menggunakan alamat email yang sama.
       </p>
     </AuthWideCard>
   )
