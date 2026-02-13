@@ -17,7 +17,7 @@ Semua poin di bawah ditulis dari pembacaan kode aktual, termasuk dependensi lang
 
 ```txt
 (account)/
-├── layout.tsx                    # Server layout, sinkronisasi Clerk -> Convex + shell wrapper
+├── layout.tsx                    # Server layout, shell wrapper
 └── settings/
     └── page.tsx                  # Client page, state tab, desktop nav, mobile accordion
 
@@ -48,9 +48,8 @@ Halaman ini memakai kombinasi data:
 ## Komponen dan Tanggung Jawab
 
 - `layout.tsx` (server component):
-  - Menjalankan `ensureConvexUser()` sebelum render children.
-  - Mengambil auth BetterAuth session, generate token, lalu trigger `fetchMutation(api.users.createUser, ...)` dengan timeout 5 detik.
   - Menyediakan shell visual account page (grid background + container centering).
+  - User sync dilakukan client-side via `useCurrentUser` hook (auto-creates app user jika belum ada).
 
 - `page.tsx` (client component):
   - Definisi tab: `profile | security | status`.

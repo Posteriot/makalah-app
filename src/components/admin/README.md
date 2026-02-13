@@ -70,8 +70,8 @@ components/admin/
   - Validasi akses dan fallback error UI (auth/token/sync/permission).
   - Menjaga query string saat redirect login (`redirect_url`).
 - `layout.tsx`
-  - Jalankan `ensureConvexUser()` sebelum render children.
-  - Sync user Clerk ke Convex dengan timeout 5 detik + error-tolerant.
+  - Menyediakan shell layout dashboard (GlobalHeader + main + Footer).
+  - User sync dilakukan client-side via `useCurrentUser` hook.
 - `dashboard/papers/page.tsx`
   - Wrapper heading + `PaperSessionsContainer`.
 - `AdminPanelContainer.tsx`

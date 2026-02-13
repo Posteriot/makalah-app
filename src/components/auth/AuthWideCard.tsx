@@ -47,9 +47,9 @@ export function AuthWideCard({
                         {customLeftContent}
                     </div>
                 ) : (
-                    /* Inner wrapper - height and alignment sync with Clerk card */
+                    /* Inner wrapper - height and alignment sync with auth form */
                     <div className="relative z-10 w-full flex flex-col justify-between flex-grow">
-                        {/* Logo + Brand - Top, aligns with top edge of Clerk card */}
+                        {/* Logo + Brand - Top, aligns with top edge of auth form */}
                         <div className="flex flex-col">
                             <Link href="/" className="inline-flex items-center gap-2 group w-fit">
                                 {/* Logo Icon */}
@@ -63,7 +63,7 @@ export function AuthWideCard({
                             </Link>
                         </div>
 
-                        {/* Heading + Subheading - Bottom, aligns with bottom edge of Clerk card */}
+                        {/* Heading + Subheading - Bottom, aligns with bottom edge of auth form */}
                         <div className="space-y-3 mt-6 md:space-y-4 md:mt-auto">
                             <h1 className="font-sans text-2xl md:text-3xl font-medium text-foreground dark:text-slate-200 leading-[1.1]">
                                 {resolvedTitle}
@@ -83,7 +83,7 @@ export function AuthWideCard({
                 )}
             </div>
 
-            {/* Right Column: Interaction (Clerk Form) */}
+            {/* Right Column: Interaction (Auth Form) */}
             <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center bg-slate-100 dark:bg-slate-800 relative">
                 <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
                     {children}

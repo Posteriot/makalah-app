@@ -48,8 +48,7 @@ npm run dev
 # In separate terminal: Start Convex backend
 npm run convex:dev
 
-# In separate terminal: Start ngrok for Clerk webhooks
-ngrok http 3000
+# ngrok no longer needed (Clerk webhooks removed)
 ```
 
 ### Build, Lint, and Test
@@ -74,7 +73,7 @@ npm run convex:dashboard           # Open dashboard
 ### Tech Stack
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4
 - **Backend**: Convex (real-time database + serverless)
-- **Auth**: Clerk
+- **Auth**: BetterAuth (`better-auth` + `@convex-dev/better-auth` Convex component)
 - **AI/LLM**: Vercel AI SDK v5
   - Primary: Vercel AI Gateway → `google/gemini-2.5-flash`
   - Fallback: OpenRouter → `openai/gpt-5.1` (recommended, 10% cheaper than GPT-4o)
@@ -86,7 +85,7 @@ npm run convex:dashboard           # Open dashboard
 ### Key Directories
 - `src/app`: Next.js App Router
   - `(marketing)`: Public pages
-  - `(auth)`: Clerk sign-in/sign-up
+  - `(auth)`: Custom sign-in/sign-up (BetterAuth)
   - `(dashboard)`: Protected area (admin, settings, papers)
   - `chat`: AI chat interface (landing page)
   - `chat/[conversationId]`: Dynamic route for specific conversations
@@ -112,15 +111,26 @@ npm run convex:dashboard           # Open dashboard
   - **Normal mode**: tools = function tools only
 
 ### Authentication Flow
-1. Clerk handles auth UI/session
-2. JWT configured with audience "convex" (see `convex/auth.config.ts`)
-3. `src/proxy.ts` protects routes (Next.js 16 pattern)
-4. Dashboard layout syncs Clerk user to Convex via `ensureConvexUser()`
-5. Hooks: `useCurrentUser()` returns `{ user, isLoading }`, `usePermissions()`
+1. BetterAuth handles auth via custom sign-in/sign-up forms (no third-party UI)
+2. Auth methods: Email/Password, Google OAuth, Magic Link
+3. `convex/auth.ts` configures BetterAuth with Convex component adapter (`@convex-dev/better-auth`)
+4. `convex/auth.config.ts` defines JWT providers for Convex token validation
+5. `src/proxy.ts` protects routes via `better-auth.session_token` cookie (Next.js 16 pattern)
+6. Two-table strategy: BetterAuth manages its own `user` table; app has separate `users` table linked via `betterAuthUserId`
+7. Client-side user sync: `useCurrentUser()` hook auto-creates app user record if authenticated but no Convex record yet
+8. Hooks: `useCurrentUser()` returns `{ user, isLoading }`, `usePermissions()`
+
+**Key Auth Files:**
+- `convex/auth.ts` - BetterAuth server config (providers, plugins, email callbacks)
+- `convex/auth.config.ts` - JWT provider config for Convex
+- `convex/http.ts` - HTTP routes for BetterAuth API endpoints
+- `src/lib/auth-client.ts` - Client-side auth (`useSession`, `signIn`, `signUp`, `signOut`, `authClient`)
+- `src/lib/auth-server.ts` - Server-side auth (`isAuthenticated()`, `getToken()`, `fetchAuthQuery/Mutation()`)
+- `src/lib/providers.tsx` - `ConvexBetterAuthProvider` wrapping the app
 
 ### Database Schema (Key Tables)
 
-**users**: clerkUserId, email, role (superadmin|admin|user), firstName, lastName, subscriptionStatus
+**users**: betterAuthUserId, email, role (superadmin|admin|user), firstName, lastName, subscriptionStatus
 
 **conversations**: userId, title, titleLocked, createdAt, lastMessageAt
 
@@ -156,7 +166,7 @@ npm run convex:dashboard           # Open dashboard
 
 ### Environment Variables
 - **Convex**: `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_DEPLOYMENT`
-- **Clerk**: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`
+- **BetterAuth**: `BETTER_AUTH_SECRET`, `SITE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_CONVEX_SITE_URL`
 - **AI**: `VERCEL_AI_GATEWAY_API_KEY` (auto-aliased to `AI_GATEWAY_API_KEY`), `OPENROUTER_API_KEY`, `MODEL`, `APP_URL`
 - **Other**: `RESEND_API_KEY`, `OPENAI_API_KEY` (for image OCR)
 
@@ -329,6 +339,10 @@ Use `v` from `convex/values` for argument validation. Pattern: `query/mutation({
 
 ### useCurrentUser Hook
 **IMPORTANT:** Always returns `{ user, isLoading }`, never null. Handle loading state first, then check user existence.
+- Uses `useSession()` from BetterAuth to get auth state
+- Queries Convex `users` table via `getUserByBetterAuthId`
+- Auto-creates app user record via `createAppUser` mutation if authenticated but no Convex record exists
+- This replaces the old server-side `ensureConvexUser()` pattern
 
 ### Multi-provider AI Strategy
 - Primary: Vercel AI Gateway (via `createGateway` from `@ai-sdk/gateway`)
@@ -511,16 +525,13 @@ Uses Next.js API route (not Convex) because pdf-parse/mammoth need Node.js.
 - Check Convex connection (`npx convex dev` running)
 - Resolve alerts after fixing the issue
 
-### Clerk Auth
-- Verify both public and secret keys
-- Check `src/proxy.ts` for route protection
-- ngrok required for webhooks in development
-
-### Clerk Webhook Setup (Dev)
-1. `ngrok http 3000`
-2. Clerk Dashboard -> Webhooks -> Create endpoint with ngrok URL + `/api/webhooks/clerk`
-3. Subscribe: user.created, user.updated, user.deleted
-4. Update `CLERK_WEBHOOK_SECRET` in `.env.local`
+### BetterAuth Issues
+- Verify `BETTER_AUTH_SECRET` is set (generate via `openssl rand -base64 32`)
+- Verify `SITE_URL` matches your dev URL (e.g., `http://localhost:3000`)
+- Verify `NEXT_PUBLIC_CONVEX_SITE_URL` points to your Convex HTTP actions URL
+- Check `src/proxy.ts` for cookie-based route protection (`better-auth.session_token`)
+- Google OAuth: verify `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Google Cloud Console
+- No webhooks needed — BetterAuth runs server-side in Convex, no external callbacks
 
 ## Billing Enforcement
 
@@ -617,8 +628,9 @@ Deterministic helpers for web search mode decisions in paper workflow.
 
 ### Next.js 16: proxy.ts
 - This project uses `proxy.ts` instead of `middleware.ts` for route protection
-- Uses `clerkMiddleware` with `config.matcher`
-- Pattern choice for cleaner Clerk integration (Next.js 16 still supports both)
+- Reads `better-auth.session_token` cookie to determine auth state
+- Protected routes redirect to `/sign-in` with `redirect_url` param if no session cookie
+- Pattern choice for cleaner auth integration (Next.js 16 still supports both)
 
 ### React Grab
 - Development mode includes React Grab for visual debugging
@@ -662,7 +674,7 @@ Server components receive `params` as `Promise<{...}>`. Must `await params` befo
 
 _BLOCKING for production launch. Remind user to complete this before go-live._
 
-Google OAuth consent screen currently shows "accounts.dev" instead of "Makalah AI" because branding verification has not passed. Custom credentials are configured (Google Cloud Console + Clerk Dashboard) and working in Testing mode.
+Google OAuth consent screen currently shows "accounts.dev" instead of "Makalah AI" because branding verification has not passed. Custom credentials are configured (Google Cloud Console) and working in Testing mode.
 
 **Required to pass verification:**
 1. Create `/privacy` page (kebijakan privasi)
