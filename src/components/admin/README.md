@@ -31,7 +31,7 @@ README ini mendokumentasikan struktur, perilaku, data flow, dependensi, dan audi
 
 ```txt
 app/(dashboard)/
-├── layout.tsx                        # Shell dashboard + sync Clerk -> Convex
+├── layout.tsx                        # Shell dashboard + sync BetterAuth -> Convex
 └── dashboard/
     ├── page.tsx                      # Gate admin + entry point admin panel
     └── papers/page.tsx               # Daftar paper sessions
@@ -60,7 +60,7 @@ components/admin/
 ## Integrasi
 
 - Entry utama admin ada di `src/app/(dashboard)/dashboard/page.tsx`.
-- Page ini validasi auth Clerk, ambil token Convex, cek user Convex, lalu cek admin permission via `api.users.checkIsAdmin`.
+- Page ini validasi auth BetterAuth, ambil token Convex, cek user Convex, lalu cek admin permission via `api.users.checkIsAdmin`.
 - Jika lolos, render `AdminPanelContainer`.
 - Shell route group `(dashboard)` disediakan oleh `src/app/(dashboard)/layout.tsx` (`GlobalHeader` + `main.dashboard-main` + `Footer`).
 
@@ -204,7 +204,7 @@ Backend/data:
 - `@convex/_generated/dataModel`
 
 Auth:
-- `@clerk/nextjs/server`
+- `@/lib/auth-server` (BetterAuth server utilities)
 
 UI & util:
 - `iconoir-react`

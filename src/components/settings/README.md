@@ -42,14 +42,14 @@ Route settings diintegrasikan lewat App Router:
 - `src/app/(account)/settings/page.tsx` adalah entry point halaman settings.
 
 Halaman ini memakai kombinasi data:
-- Clerk (`useUser`) untuk data akun auth (nama, email, avatar, password API).
+- BetterAuth (`useSession`) untuk data akun auth (nama, email, session).
 - Convex (`useCurrentUser`) untuk role + subscription status.
 
 ## Komponen dan Tanggung Jawab
 
 - `layout.tsx` (server component):
   - Menjalankan `ensureConvexUser()` sebelum render children.
-  - Mengambil auth Clerk (`auth`, `currentUser`), generate token template `convex`, lalu trigger `fetchMutation(api.users.createUser, ...)` dengan timeout 5 detik.
+  - Mengambil auth BetterAuth session, generate token, lalu trigger `fetchMutation(api.users.createUser, ...)` dengan timeout 5 detik.
   - Menyediakan shell visual account page (grid background + container centering).
 
 - `page.tsx` (client component):
@@ -63,14 +63,13 @@ Halaman ini memakai kombinasi data:
 - `ProfileTab.tsx` (client component):
   - Menampilkan detail profil dan email utama.
   - Edit mode untuk nama depan/belakang.
-  - Upload avatar via `user.setProfileImage({ file })`.
-  - Menyimpan perubahan via `user.update(...)` hanya jika nilai benar-benar berubah.
+  - Menyimpan perubahan via Convex mutation hanya jika nilai benar-benar berubah.
   - Menangani feedback sukses/gagal dengan `toast`.
 
 - `SecurityTab.tsx` (client component):
-  - Menangani flow update password dari Clerk (`user.updatePassword`).
+  - Menangani flow update password via BetterAuth (`changePassword`).
   - Validasi lokal: password baru wajib, konfirmasi harus sama, current password wajib jika akun sudah punya password.
-  - Opsi `signOutOthers` untuk keluar dari sesi lain.
+  - Connected accounts section (Google, GitHub) dengan link/unlink.
   - Toggle visibilitas input password (show/hide).
 
 - `StatusTab.tsx` (client component):
@@ -98,17 +97,15 @@ Server component:
 - Mobile accordion memakai `value={activeTab}` + `onValueChange` untuk sinkron tab.
 
 **ProfileTab**
-- State awal nama diisi dari user Clerk saat `user` berubah.
-- Preview avatar lokal memakai `URL.createObjectURL`, dan dibersihkan dengan `URL.revokeObjectURL` saat cleanup.
+- State awal nama diisi dari Convex user saat data berubah.
 - Saat save:
   - Diff dulu field firstName/lastName.
-  - Panggil `user.update` jika ada perubahan.
-  - Panggil `user.setProfileImage` jika ada file baru.
+  - Panggil Convex mutation `updateProfile` jika ada perubahan.
 
 **SecurityTab**
 - Flow gagal cepat (early return) untuk validasi input.
 - Jika sukses, reset state form dan keluar dari mode edit.
-- Error Clerk diprioritaskan via `isClerkAPIResponseError`.
+- Connected accounts management via BetterAuth social linking API.
 
 **StatusTab**
 - Loading state Convex: tampilkan `Memuat...`.
@@ -147,10 +144,7 @@ Detail lengkap seluruh class dan token ada di:
 ## Dependencies
 
 Auth dan user data:
-- `@clerk/nextjs` (`useUser`)
-- `@clerk/nextjs/server` (`auth`, `currentUser`)
-- `@clerk/types` (`UserResource`)
-- `@clerk/nextjs/errors` (`isClerkAPIResponseError`)
+- `@/lib/auth-client` (`useSession`, `changePassword`, `linkSocial`, `unlinkAccount`)
 
 Backend:
 - `convex/nextjs` (`fetchMutation`)
