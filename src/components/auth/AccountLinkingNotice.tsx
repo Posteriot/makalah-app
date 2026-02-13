@@ -6,7 +6,7 @@ import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { toast } from "sonner"
-import { InfoCircle } from "iconoir-react"
+import { InfoCircle, Xmark } from "iconoir-react"
 
 export function AccountLinkingNotice() {
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser()
@@ -33,10 +33,10 @@ export function AccountLinkingNotice() {
 
     hasShownRef.current = true
 
-    toast(
-      <div className="flex gap-3">
+    const toastId = toast(
+      <div className="flex gap-3 w-full">
         <InfoCircle className="h-4 w-4 text-info shrink-0 mt-0.5" />
-        <div className="space-y-1">
+        <div className="space-y-1 flex-1">
           <p className="font-sans text-xs font-semibold">
             Akun terhubung dengan Google
           </p>
@@ -48,6 +48,14 @@ export function AccountLinkingNotice() {
             </a>.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => toast.dismiss(toastId)}
+          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors -mt-0.5 -mr-1"
+          aria-label="Tutup"
+        >
+          <Xmark className="h-4 w-4" />
+        </button>
       </div>,
       {
         duration: Infinity,
