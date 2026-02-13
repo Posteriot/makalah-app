@@ -4,11 +4,12 @@ import { useChat } from "@ai-sdk/react"
 import { UIMessage, DefaultChatTransport } from "ai"
 import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { Menu, WarningCircle, Refresh, Sparks, Page, Search } from "iconoir-react"
+import { Menu, WarningCircle, Refresh } from "iconoir-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -29,6 +30,48 @@ interface ChatWindowProps {
 }
 
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
+const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
+
+interface PendingStarterPromptPayload {
+  conversationId: string
+  prompt: string
+  createdAt: number
+}
+
+function setPendingStarterPrompt(conversationId: string, prompt: string) {
+  if (typeof window === "undefined") return
+  const payload: PendingStarterPromptPayload = {
+    conversationId,
+    prompt,
+    createdAt: Date.now(),
+  }
+  window.sessionStorage.setItem(PENDING_STARTER_PROMPT_KEY, JSON.stringify(payload))
+}
+
+function consumePendingStarterPrompt(conversationId: string): string | null {
+  if (typeof window === "undefined") return null
+
+  const raw = window.sessionStorage.getItem(PENDING_STARTER_PROMPT_KEY)
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PendingStarterPromptPayload>
+    if (
+      typeof parsed.conversationId !== "string" ||
+      typeof parsed.prompt !== "string" ||
+      parsed.conversationId !== conversationId ||
+      !parsed.prompt.trim()
+    ) {
+      return null
+    }
+
+    window.sessionStorage.removeItem(PENDING_STARTER_PROMPT_KEY)
+    return parsed.prompt.trim()
+  } catch {
+    window.sessionStorage.removeItem(PENDING_STARTER_PROMPT_KEY)
+    return null
+  }
+}
 
 export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect }: ChatWindowProps) {
   const router = useRouter()
@@ -55,6 +98,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const processHideTimeoutRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
+  const starterPromptAttemptedForConversationRef = useRef<string | null>(null)
 
   const { user: clerkUser } = useUser()
   const userId = useQuery(api.chatHelpers.getUserId, clerkUser?.id ? { clerkUserId: clerkUser.id } : "skip")
@@ -189,6 +233,22 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       toast.error("Terjadi kesalahan: " + (err.message || "Gagal memproses pesan"))
     }
   })
+
+  // Auto-send pending starter prompt after redirect from landing state.
+  useEffect(() => {
+    if (!conversationId || !isAuthenticated) return
+    if (status !== "ready") return
+    if (isHistoryLoading) return
+    if (messages.length > 0) return
+    if (starterPromptAttemptedForConversationRef.current === conversationId) return
+
+    starterPromptAttemptedForConversationRef.current = conversationId
+    const pendingPrompt = consumePendingStarterPrompt(conversationId)
+    if (!pendingPrompt) return
+
+    pendingScrollToBottomRef.current = true
+    sendMessage({ text: pendingPrompt })
+  }, [conversationId, isAuthenticated, isHistoryLoading, messages.length, sendMessage, status])
 
 
   // 3. Sync history messages to useChat state - only when conversation changes or history first loads
@@ -475,12 +535,17 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }
 
   // Handler for starting new chat from empty state
-  const handleStartNewChat = async () => {
+  const handleStartNewChat = async (initialPrompt?: string) => {
     if (!userId || isCreatingChat) return
+    const normalizedPrompt = initialPrompt?.trim() ?? ""
     setIsCreatingChat(true)
     try {
       const newId = await createConversation({ userId })
       if (newId) {
+        if (normalizedPrompt) {
+          setPendingStarterPrompt(newId, normalizedPrompt)
+          setInput("")
+        }
         router.push(`/chat/${newId}`)
       }
     } catch (error) {
@@ -489,6 +554,26 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     } finally {
       setIsCreatingChat(false)
     }
+  }
+
+  const handleStarterPromptClick = async (promptText: string) => {
+    if (isLoading || isCreatingChat) return
+    await handleStartNewChat(promptText)
+  }
+
+  const handleSidebarLinkClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches
+
+    if (isDesktop) {
+      const expandSidebarButton = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Expand sidebar"]'
+      )
+      expandSidebarButton?.click()
+      return
+    }
+
+    onMobileMenuClick?.()
   }
 
   // Landing page empty state (no conversation selected)
@@ -507,36 +592,77 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
         {/* Empty State Content — fills available space above ChatInput */}
         <div className="flex-1 flex items-center justify-center p-6">
-          <div className="max-w-md text-center space-y-6">
-            {/* Icon */}
-            <div className="mx-auto w-16 h-16 rounded-shell bg-slate-200 flex items-center justify-center">
-              <Sparks className="w-8 h-8 text-slate-500" />
+          <div className="max-w-2xl text-center space-y-6">
+            {/* Logo */}
+            <div className="mx-auto w-20 h-20 rounded-shell bg-card border border-border/60 flex items-center justify-center">
+              <Image
+                src="/logo/makalah_logo_dark.svg"
+                alt="Makalah Logo"
+                width={40}
+                height={40}
+                className="block dark:hidden"
+                priority
+              />
+              <Image
+                src="/logo/makalah_logo_light.svg"
+                alt="Makalah Logo"
+                width={40}
+                height={40}
+                className="hidden dark:block"
+                priority
+              />
             </div>
 
             {/* Title & Description */}
             <div className="space-y-2">
-              <h2 className="text-narrative text-xl font-medium tracking-tight">Selamat Datang di Makalah Chat</h2>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Agen untuk membantu riset, menulis makalah ilmiah, dan menjawab pertanyaan akademik.
-                Mulai percakapan baru atau pilih dari riwayat di sidebar.
+              <h2 className="text-narrative text-4xl font-medium tracking-tight text-foreground">
+                Selamat Datang!
+              </h2>
+              <p className="text-narrative text-muted-foreground text-sm leading-[1.4]">
+                <span className="block">
+                  Mau diskusi mengenai riset atau langsung menulis paper?
+                </span>
+                <span className="block">
+                  Silakan ketik maksud di kolom percakapan,
+                </span>
+                <span className="block">
+                  atau buka riwayat percakapan terdahulu di{" "}
+                  <button
+                    type="button"
+                    onClick={handleSidebarLinkClick}
+                    className="underline underline-offset-4 decoration-primary/60 hover:decoration-primary text-foreground transition-colors"
+                  >
+                    sidebar
+                  </button>
+                </span>
               </p>
             </div>
 
-            {/* Template Cards */}
-            <div className="grid grid-cols-1 gap-3 text-left text-sm">
-              <div className="flex items-start gap-3 p-3 rounded-shell border-hairline bg-card/90 backdrop-blur-[1px]">
-                <Page className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-interface text-sm font-medium">Tulis Makalah</p>
-                  <p className="text-interface text-xs text-muted-foreground">Panduan step-by-step menulis paper akademik</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 p-3 rounded-shell border-hairline bg-card/90 backdrop-blur-[1px]">
-                <Search className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-interface text-sm font-medium">Riset & Referensi</p>
-                  <p className="text-interface text-xs text-muted-foreground">Cari jurnal dan sumber ilmiah terpercaya</p>
-                </div>
+            <div className="pt-2">
+              <p className="text-narrative text-sm font-medium text-muted-foreground mb-3">
+                Atau gunakan template berikut:
+              </p>
+              <div className="flex flex-col items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleStarterPromptClick("Kita brainstorming, membahas gagasanku!")
+                  }
+                  disabled={isCreatingChat}
+                  className="w-fit max-w-full rounded-shell border-hairline bg-slate-200 dark:bg-card/90 px-5 py-2.5 text-center text-interface text-sm text-foreground hover:bg-slate-300 dark:hover:bg-card transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Kita brainstorming, membahas gagasanku!
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleStarterPromptClick("Ayo kolaborasi menyusun paper akademikku!")
+                  }
+                  disabled={isCreatingChat}
+                  className="w-fit max-w-full rounded-shell border-hairline bg-slate-200 dark:bg-card/90 px-5 py-2.5 text-center text-interface text-sm text-foreground hover:bg-slate-300 dark:hover:bg-card transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Ayo kolaborasi menyusun paper akademikku!
+                </button>
               </div>
             </div>
           </div>
@@ -549,7 +675,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           onSubmit={async (e) => {
             e.preventDefault()
             if (!input.trim()) return
-            await handleStartNewChat()
+            await handleStartNewChat(input.trim())
           }}
           isLoading={isCreatingChat}
           isGenerating={false}
