@@ -54,7 +54,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
             >
                 <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
                 <span className="text-emerald-500 font-medium font-mono uppercase text-xs tracking-wide">
-                    Found {sources.length} {sources.length === 1 ? "source" : "sources"}
+                    Menemukan {sources.length} {sources.length === 1 ? "rujukan" : "rujukan"}
                 </span>
             </div>
 
@@ -76,7 +76,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                         )}
                     >
                         <span className="font-mono font-medium text-foreground">
-                            {sources.length} {sources.length === 1 ? "source" : "sources"}
+                            {sources.length} {sources.length === 1 ? "rujukan" : "rujukan"}
                         </span>
                         <NavArrowDown
                             className={cn(
@@ -107,7 +107,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                             onClick={() => setShowAll(!showAll)}
                             className="h-7 w-full mt-2 text-xs font-mono text-muted-foreground hover:text-foreground"
                         >
-                            {showAll ? "Show less" : `Show ${remainingCount} more`}
+                            {showAll ? "Gulung" : `Tampilkan ${remainingCount} lagi`}
                         </Button>
                     )}
                 </CollapsibleContent>

@@ -30,7 +30,7 @@ export function SearchStatusIndicator({ status, message }: SearchStatusIndicator
         <div
             className={cn(
                 "flex items-center gap-2.5 px-1 py-1",
-                "text-[11px] font-mono uppercase tracking-wide transition-all duration-300",
+                "text-[11px] font-mono tracking-wide transition-all duration-300",
                 "animate-in fade-in slide-in-from-left-2",
                 // Status-specific text/icon tones only (no bg/border)
                 config.containerClass
@@ -70,7 +70,7 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
         case "searching":
             return {
                 icon: <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />,
-                text: customMessage || "PENCARIAN",
+                text: customMessage || "Pencarian",
                 containerClass: "",
                 iconClass: "text-slate-600 dark:text-slate-300",
                 textClass: "text-slate-600 dark:text-slate-300",
@@ -79,7 +79,7 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
         case "done":
             return {
                 icon: <CheckCircle className="h-4 w-4" />,
-                text: customMessage || "PENCARIAN_SELESAI",
+                text: customMessage || "Pencarian selesai",
                 containerClass: "",
                 iconClass: "text-emerald-600 dark:text-emerald-400",
                 textClass: "text-emerald-600 dark:text-emerald-400",
@@ -88,7 +88,7 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
         case "error":
             return {
                 icon: <XmarkCircle className="h-4 w-4" />,
-                text: customMessage || "PENCARIAN_ERROR",
+                text: customMessage || "Pencarian gagal",
                 containerClass: "",
                 iconClass: "text-rose-600 dark:text-rose-400",
                 textClass: "text-rose-600 dark:text-rose-400",
@@ -97,7 +97,7 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
         default:
             return {
                 icon: <Search className="h-4 w-4" />,
-                text: "PENCARIAN",
+                text: "Pencarian",
                 containerClass: "",
                 iconClass: "text-muted-foreground",
                 textClass: "text-muted-foreground",

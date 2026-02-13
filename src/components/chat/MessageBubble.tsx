@@ -1,7 +1,7 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { Attachment, EditPencil, Xmark, Send } from "iconoir-react"
+import { Attachment, EditPencil, Xmark, Send, CheckCircle } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
@@ -30,10 +30,25 @@ interface PermissionMessage {
     [key: string]: unknown;
 }
 
+type AutoUserAction =
+    | {
+        kind: "approved";
+        stageLabel: string;
+        followupText: string;
+    }
+    | {
+        kind: "revision";
+        stageLabel: string;
+        feedback: string;
+    }
+    | null;
+
 interface MessageBubbleProps {
     message: UIMessage
     onEdit?: (messageId: string, newContent: string) => void
     onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+    /** Keep process indicators visible until overall assistant response completes */
+    persistProcessIndicators?: boolean
     // Paper mode edit permissions
     isPaperMode?: boolean
     messageIndex?: number
@@ -46,6 +61,7 @@ export function MessageBubble({
     message,
     onEdit,
     onArtifactSelect,
+    persistProcessIndicators = false,
     isPaperMode = false,
     messageIndex = 0,
     currentStageStartIndex = 0,
@@ -59,6 +75,27 @@ export function MessageBubble({
 
     const isUser = message.role === 'user'
     const isAssistant = message.role === 'assistant'
+
+    const parseAutoUserAction = (rawContent: string): AutoUserAction => {
+        const approvedMatch = rawContent.match(/^\[Approved:\s*(.+?)\]\s*(.*)$/s)
+        if (approvedMatch) {
+            return {
+                kind: "approved",
+                stageLabel: approvedMatch[1].trim(),
+                followupText: (approvedMatch[2] ?? "").trim(),
+            }
+        }
+
+        const revisionMatch = rawContent.match(/^\[Revisi untuk\s*(.+?)\]\s*([\s\S]*)$/)
+        if (revisionMatch) {
+            return {
+                kind: "revision",
+                stageLabel: revisionMatch[1].trim(),
+                feedback: (revisionMatch[2] ?? "").trim(),
+            }
+        }
+        return null
+    }
 
     // Calculate edit permission for this message
     const editPermission = useMemo(() => {
@@ -137,13 +174,17 @@ export function MessageBubble({
 
             if (typeof maybeToolPart.type !== "string" || !maybeToolPart.type.startsWith("tool-")) continue
 
-            // Skip completed states (handled by ArtifactIndicator or just hidden)
-            if (maybeToolPart.state === "output-available" || maybeToolPart.state === "result") continue
+            // Keep completed state visible while response is still streaming to avoid flicker.
+            const isCompletedState = maybeToolPart.state === "output-available" || maybeToolPart.state === "result"
+            if (isCompletedState && !persistProcessIndicators) continue
 
             const toolName = maybeToolPart.type.replace("tool-", "")
             let errorText: string | undefined
+            const normalizedState = isCompletedState && persistProcessIndicators
+                ? "input-available"
+                : (maybeToolPart.state || "unknown")
 
-            if (maybeToolPart.state === "output-error" || maybeToolPart.state === "error") {
+            if (normalizedState === "output-error" || normalizedState === "error") {
                 const output = maybeToolPart.output ?? maybeToolPart.result
                 if (typeof output === "string") {
                     errorText = output
@@ -154,7 +195,7 @@ export function MessageBubble({
 
             tools.push({
                 toolName,
-                state: maybeToolPart.state || "unknown",
+                state: normalizedState,
                 errorText
             })
         }
@@ -183,6 +224,7 @@ export function MessageBubble({
     const content = message.parts
         ? message.parts.filter(part => part.type === 'text').map(part => part.text).join('')
         : ''
+    const autoUserAction = isUser ? parseAutoUserAction(content) : null
 
     const extractCitedText = (uiMessage: UIMessage): string | null => {
         for (const part of uiMessage.parts ?? []) {
@@ -288,6 +330,13 @@ export function MessageBubble({
     const inProgressTools = extractInProgressTools(message)
     const searchTools = inProgressTools.filter((t) => t.toolName === "google_search")
     const nonSearchTools = inProgressTools.filter((t) => t.toolName !== "google_search")
+    const hasProcessError = inProgressTools.some((tool) => tool.state === "output-error" || tool.state === "error")
+    const shouldShowProcessIndicators = !isEditing && isAssistant && (persistProcessIndicators || hasProcessError)
+    const showFallbackProcessIndicator =
+        persistProcessIndicators &&
+        nonSearchTools.length === 0 &&
+        searchTools.length === 0 &&
+        !searchStatus
 
     // Task 4.1: Extract sources (try annotations first, then fallback to property if we extend type)
     const sourcesFromAnnotation = (message as {
@@ -374,17 +423,37 @@ export function MessageBubble({
                         </div>
                     )}
 
-                    {/* Tool State Indicators (non-search) */}
-                    {nonSearchTools.length > 0 && (
+                    {/* Process Indicators - fixed slot above assistant content to prevent jumping */}
+                    {shouldShowProcessIndicators && (
                         <div className="mb-3 space-y-2">
                             {nonSearchTools.map((tool, index) => (
                                 <ToolStateIndicator
-                                    key={index}
+                                    key={`tool-${index}`}
                                     toolName={tool.toolName}
                                     state={tool.state}
                                     errorText={tool.errorText}
+                                    persistUntilDone={persistProcessIndicators}
                                 />
                             ))}
+                            {(persistProcessIndicators || searchStatus === "error") && searchStatus && (
+                                <SearchStatusIndicator status={searchStatus} />
+                            )}
+                            {searchTools.map((tool, index) => (
+                                <ToolStateIndicator
+                                    key={`search-tool-${index}`}
+                                    toolName={tool.toolName}
+                                    state={tool.state}
+                                    errorText={tool.errorText}
+                                    persistUntilDone={persistProcessIndicators}
+                                />
+                            ))}
+                            {showFallbackProcessIndicator && (
+                                <ToolStateIndicator
+                                    toolName="assistant_response"
+                                    state="input-available"
+                                    persistUntilDone
+                                />
+                            )}
                         </div>
                     )}
 
@@ -421,33 +490,44 @@ export function MessageBubble({
                                 </button>
                             </div>
                         </div>
+                    ) : autoUserAction ? (
+                        autoUserAction.kind === "approved" ? (
+                            <div className="rounded-action border border-emerald-600/35 bg-emerald-500/10 px-3 py-2">
+                                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wide">
+                                        Tahap disetujui
+                                    </span>
+                                </div>
+                                <div className="mt-1 text-sm font-medium text-foreground">
+                                    {autoUserAction.stageLabel}
+                                </div>
+                                <div className="mt-1 text-xs font-mono text-muted-foreground">
+                                    {autoUserAction.followupText || "Agen melanjutkan ke tahap berikutnya."}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="rounded-action border border-slate-500/40 bg-slate-500/10 px-3 py-2">
+                                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                                    <EditPencil className="h-4 w-4" />
+                                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wide">
+                                        Permintaan revisi
+                                    </span>
+                                </div>
+                                <div className="mt-1 text-sm font-medium text-foreground">
+                                    {autoUserAction.stageLabel}
+                                </div>
+                                <div className="mt-1 whitespace-pre-wrap text-xs font-mono leading-relaxed text-muted-foreground">
+                                    {autoUserAction.feedback || "Feedback revisi telah dikirim ke agen."}
+                                </div>
+                            </div>
+                        )
                     ) : (
                         <MarkdownRenderer
                             markdown={citedText ?? content}
                             className="space-y-2 text-sm leading-relaxed text-foreground"
                             sources={sources}
                         />
-                    )}
-
-                    {/* Search Status (data stream, below assistant text) */}
-                    {!isEditing && isAssistant && searchStatus && (
-                        <div className="mt-3">
-                            <SearchStatusIndicator status={searchStatus} />
-                        </div>
-                    )}
-
-                    {/* Search Tool Indicators (below assistant text) */}
-                    {!isEditing && isAssistant && searchTools.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                            {searchTools.map((tool, index) => (
-                                <ToolStateIndicator
-                                    key={`search-${index}`}
-                                    toolName={tool.toolName}
-                                    state={tool.state}
-                                    errorText={tool.errorText}
-                                />
-                            ))}
-                        </div>
                     )}
 
                     {/* Sources Indicator (after search status) */}

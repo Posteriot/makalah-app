@@ -117,9 +117,9 @@ function MilestoneItem({
   // Status text based on state (matches mockup: English labels)
   const statusText =
     state === "completed"
-      ? "Completed"
+      ? "Selesai"
       : state === "current"
-        ? "In Progress"
+        ? "Sedang berjalan"
         : undefined
 
   // Milestone dot element - Mechanical Grace: Emerald (completed), Amber (current)

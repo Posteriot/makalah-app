@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from "react"
 import { Send, Page } from "iconoir-react"
+import { Pause as PauseSolid } from "iconoir-react/solid"
 import { FileUploadButton } from "./FileUploadButton"
 import { Id } from "../../../convex/_generated/dataModel"
 
@@ -10,12 +11,24 @@ interface ChatInputProps {
     onInputChange: (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => void
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void
     isLoading: boolean
+    isGenerating?: boolean
+    onStop?: () => void
     conversationId: string | null
     uploadedFileIds: Id<"files">[]
     onFileUploaded: (fileId: Id<"files">) => void
 }
 
-export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversationId, uploadedFileIds, onFileUploaded }: ChatInputProps) {
+export function ChatInput({
+    input,
+    onInputChange,
+    onSubmit,
+    isLoading,
+    isGenerating = false,
+    onStop,
+    conversationId,
+    uploadedFileIds,
+    onFileUploaded
+}: ChatInputProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 
     // Auto-resize textarea
@@ -73,15 +86,25 @@ export function ChatInput({ input, onInputChange, onSubmit, isLoading, conversat
                             />
                         </div>
 
-                        {/* Send Button - dims when loading */}
-                        <button
-                            type="submit"
-                            disabled={!input.trim() || isLoading}
-                            className="w-10 h-10 flex items-center justify-center rounded-lg hover-slash bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            aria-label="Send message"
-                        >
-                            <Send className="h-5 w-5" />
-                        </button>
+                        {isGenerating ? (
+                            <button
+                                type="button"
+                                onClick={onStop}
+                                className="w-9 h-9 flex items-center justify-center rounded-md hover-slash bg-transparent text-muted-foreground hover:rounded-full hover:bg-accent hover:text-foreground transition-all"
+                                aria-label="Stop generating response"
+                            >
+                                <PauseSolid className="h-4 w-4" />
+                            </button>
+                        ) : (
+                            <button
+                                type="submit"
+                                disabled={!input.trim() || isLoading}
+                                className="w-9 h-9 flex items-center justify-center rounded-md hover-slash bg-transparent text-muted-foreground hover:rounded-full hover:bg-accent hover:text-foreground transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                aria-label="Send message"
+                            >
+                                <Send className="h-5 w-5" />
+                            </button>
+                        )}
                     </div>
                 </div>
             </form>

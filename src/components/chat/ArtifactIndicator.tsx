@@ -38,8 +38,8 @@ export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndic
             className={cn(
                 "flex items-center gap-3 w-full text-left",
                 "px-3 py-2.5 rounded-action",
-                // Mechanical Grace: .border-ai (dashed Sky)
-                "bg-sky-500/10 border border-dashed border-sky-500/50",
+                // Mechanical Grace: solid sky border
+                "bg-sky-500/10 border border-sky-500/50",
                 "hover:bg-sky-500/20 hover:border-sky-500/70",
                 "transition-all duration-150 cursor-pointer",
                 "group"
@@ -54,8 +54,8 @@ export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndic
             {/* Content */}
             <div className="flex-1 min-w-0 flex items-center gap-2">
                 {/* SYSTEM_OUTPUT Badge - Mechanical Grace */}
-                <span className="inline-flex px-2 py-0.5 rounded-badge text-[10px] font-mono font-semibold uppercase tracking-wide bg-sky-500/20 text-sky-400 border border-dashed border-sky-500/30">
-                    SYSTEM_OUTPUT
+                <span className="inline-flex px-2 py-0.5 rounded-badge text-[10px] font-mono font-semibold uppercase tracking-wide bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                    ARTIFAK
                 </span>
 
                 {/* Title */}
@@ -66,7 +66,7 @@ export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndic
 
             {/* View Button */}
             <span className="flex items-center gap-0.5 text-xs font-mono text-sky-400 font-medium flex-shrink-0 group-hover:underline uppercase">
-                VIEW
+                LIHAT
                 <NavArrowRight className="h-4 w-4" />
             </span>
         </button>

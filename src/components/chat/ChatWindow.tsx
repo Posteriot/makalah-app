@@ -6,6 +6,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
+import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { useMessages } from "@/lib/hooks/useMessages"
 import { Menu, WarningCircle, Refresh, Sparks, Page, Search } from "iconoir-react"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -15,7 +16,6 @@ import { Button } from "@/components/ui/button"
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
-import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { PaperValidationPanel } from "../paper/PaperValidationPanel"
 import { useUser } from "@clerk/nextjs"
@@ -28,6 +28,8 @@ interface ChatWindowProps {
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
 }
 
+type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
+
 export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect }: ChatWindowProps) {
   const router = useRouter()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
@@ -38,6 +40,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
   const [isCreatingChat, setIsCreatingChat] = useState(false)
+  const [processUi, setProcessUi] = useState<{
+    visible: boolean
+    status: ProcessVisualStatus
+    progress: number
+    message: string
+  }>({
+    visible: false,
+    status: "ready",
+    progress: 0,
+    message: "",
+  })
+  const processIntervalRef = useRef<number | null>(null)
+  const processHideTimeoutRef = useRef<number | null>(null)
+  const previousStatusRef = useRef<string>("ready")
+  const stoppedManuallyRef = useRef(false)
 
   const { user: clerkUser } = useUser()
   const userId = useQuery(api.chatHelpers.getUserId, clerkUser?.id ? { clerkUserId: clerkUser.id } : "skip")
@@ -159,7 +176,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     return created
   }
 
-  const { messages, sendMessage, status, setMessages, regenerate, error } = useChat({
+  const { messages, sendMessage, status, setMessages, regenerate, stop, error } = useChat({
     transport,
     onFinish: ({ message }) => {
       const createdArtifacts = extractCreatedArtifacts(message)
@@ -203,6 +220,79 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
+
+  const clearProcessTimers = useCallback(() => {
+    if (processIntervalRef.current !== null) {
+      window.clearInterval(processIntervalRef.current)
+      processIntervalRef.current = null
+    }
+    if (processHideTimeoutRef.current !== null) {
+      window.clearTimeout(processHideTimeoutRef.current)
+      processHideTimeoutRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const prevStatus = previousStatusRef.current
+    const hadGeneratingStatus = prevStatus === "submitted" || prevStatus === "streaming"
+
+    if (status === "submitted") {
+      clearProcessTimers()
+      stoppedManuallyRef.current = false
+      setProcessUi({
+        visible: true,
+        status: "submitted",
+        progress: 8,
+        message: "Menyiapkan respons...",
+      })
+    } else if (status === "streaming") {
+      clearProcessTimers()
+      setProcessUi((prev) => ({
+        visible: true,
+        status: "streaming",
+        progress: Math.max(prev.progress, 16),
+        message: "Agen menyusun jawaban...",
+      }))
+      processIntervalRef.current = window.setInterval(() => {
+        setProcessUi((prev) => {
+          if (!prev.visible) return prev
+          const nextProgress = Math.min(prev.progress + (prev.progress < 70 ? 4 : 2), 92)
+          return { ...prev, progress: nextProgress }
+        })
+      }, 220)
+    } else if (status === "ready" && hadGeneratingStatus) {
+      clearProcessTimers()
+      const wasStoppedManually = stoppedManuallyRef.current
+      setProcessUi({
+        visible: true,
+        status: wasStoppedManually ? "stopped" : "ready",
+        progress: 100,
+        message: wasStoppedManually ? "Proses dihentikan" : "Respons selesai",
+      })
+      processHideTimeoutRef.current = window.setTimeout(() => {
+        setProcessUi((prev) => ({ ...prev, visible: false }))
+        stoppedManuallyRef.current = false
+      }, 900)
+    } else if (status === "error" && hadGeneratingStatus) {
+      clearProcessTimers()
+      setProcessUi({
+        visible: true,
+        status: "error",
+        progress: 100,
+        message: "Terjadi kendala saat memproses jawaban",
+      })
+      processHideTimeoutRef.current = window.setTimeout(() => {
+        setProcessUi((prev) => ({ ...prev, visible: false }))
+      }, 1500)
+      stoppedManuallyRef.current = false
+    }
+
+    previousStatusRef.current = status
+  }, [status, clearProcessTimers])
+
+  useEffect(() => {
+    return () => clearProcessTimers()
+  }, [clearProcessTimers])
 
   const scheduleScrollToBottom = useCallback((behavior: "auto" | "smooth" = "auto") => {
     if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current)
@@ -271,6 +361,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
     regenerate()
   }
+
+  const handleStopGeneration = useCallback(() => {
+    if (!isGenerating) return
+    stoppedManuallyRef.current = true
+    stop()
+  }, [isGenerating, stop])
 
   const handleEdit = async (messageId: string, newContent: string) => {
     if (!safeConversationId) return
@@ -363,7 +459,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       await requestRevision(userId, feedback)
       // Bug fix 6.6.1: Send feedback as user message so AI can see it
       sendMessage({ text: `[Revisi untuk ${stageLabel}]\n\n${feedback}` })
-      toast.info("Feedback revisi telah dikirim ke AI.")
+      toast.info("Feedback revisi telah dikirim ke agen.")
     } catch (error) {
       console.error("Failed to request revision:", error)
       toast.error("Gagal mengirim feedback revisi.")
@@ -421,7 +517,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             <div className="space-y-2">
               <h2 className="text-narrative text-xl font-medium tracking-tight">Selamat Datang di Makalah Chat</h2>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Asisten AI untuk membantu riset, menulis makalah ilmiah, dan menjawab pertanyaan akademik.
+                Agen untuk membantu riset, menulis makalah ilmiah, dan menjawab pertanyaan akademik.
                 Mulai percakapan baru atau pilih dari riwayat di sidebar.
               </p>
             </div>
@@ -456,6 +552,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             await handleStartNewChat()
           }}
           isLoading={isCreatingChat}
+          isGenerating={false}
           conversationId={conversationId}
           uploadedFileIds={uploadedFileIds}
           onFileUploaded={handleFileUploaded}
@@ -546,6 +643,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                       message={displayMessage}
                       onEdit={handleEdit}
                       onArtifactSelect={onArtifactSelect}
+                      persistProcessIndicators={
+                        isGenerating &&
+                        index === messages.length - 1 &&
+                        message.role === "assistant"
+                      }
                       // Paper mode edit permission props
                       isPaperMode={isPaperMode}
                       messageIndex={index}
@@ -568,7 +670,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               components={{
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
-                    {/* Paper Validation Panel - renders before ThinkingIndicator */}
+                    {/* Paper Validation Panel - footer area before input */}
                     {isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming' && (
                       <PaperValidationPanel
                         stageLabel={stageLabel}
@@ -577,7 +679,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                         isLoading={isLoading}
                       />
                     )}
-                    <ThinkingIndicator visible={status === 'submitted'} />
                     <div className="h-4" />
                   </div>
                 )
@@ -607,12 +708,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
         </div>
 
+        <ChatProcessStatusBar
+          visible={processUi.visible}
+          status={processUi.status}
+          progress={processUi.progress}
+          message={processUi.message}
+        />
+
         {/* Input Area */}
         <ChatInput
           input={input}
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
           isLoading={isLoading}
+          isGenerating={isGenerating}
+          onStop={handleStopGeneration}
           conversationId={conversationId}
           uploadedFileIds={uploadedFileIds}
           onFileUploaded={handleFileUploaded}
