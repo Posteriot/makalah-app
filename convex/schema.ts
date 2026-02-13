@@ -65,6 +65,8 @@ export default defineSchema({
     // Clerk synchronization state
     clerkSyncStatus: v.optional(v.union(v.literal("active"), v.literal("deleted"))),
     clerkDeletedAt: v.optional(v.number()),
+    // Account linking UX: track if user has seen the linking toast
+    hasSeenLinkingNotice: v.optional(v.boolean()),
   })
     .index("by_clerkUserId", ["clerkUserId"])
     .index("by_role", ["role"])
