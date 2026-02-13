@@ -125,6 +125,9 @@ export default function SignInPage() {
         fallbackRedirectUrl="/chat"
         appearance={appearance}
       />
+      <p className="text-muted-foreground text-[10px] font-sans mt-3 text-center leading-relaxed">
+        Akun Anda akan otomatis terhubung Google jika masuk menggunakan alamat email yang sama.
+      </p>
     </AuthWideCard>
   )
 }
