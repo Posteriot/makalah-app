@@ -536,6 +536,33 @@ export const completeOnboarding = mutationGeneric({
   },
 })
 
+// LINKING-001: Mark account linking notice as seen
+export const markLinkingNoticeSeen = mutationGeneric({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error("Unauthorized")
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", identity.subject))
+      .unique()
+
+    if (!user) {
+      throw new Error("User not found")
+    }
+
+    await ctx.db.patch(user._id, {
+      hasSeenLinkingNotice: true,
+      updatedAt: Date.now(),
+    })
+
+    return { success: true }
+  },
+})
+
 // USER-009: Update user profile (self-edit)
 export const updateProfile = mutationGeneric({
   args: {
