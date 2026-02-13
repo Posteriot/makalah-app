@@ -83,6 +83,21 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
         newPassword,
         revokeOtherSessions: signOutOthers,
       })
+
+      if (signOutOthers) {
+        // revokeOtherSessions deletes ALL sessions (including current) and
+        // creates a new one. The Convex JWT becomes stale during the
+        // re-authentication window, causing "Unauthorized" on active queries.
+        // Redirect to sign-in for a clean auth state.
+        toast.success(
+          hasPassword
+            ? "Password berhasil diperbarui. Silakan masuk kembali."
+            : "Password berhasil dibuat. Silakan masuk kembali."
+        )
+        window.location.href = "/sign-in"
+        return
+      }
+
       toast.success(
         hasPassword
           ? "Password berhasil diperbarui."
@@ -92,7 +107,6 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
-      // Update hasPassword since we just set/changed it
       setHasPassword(true)
     } catch (error) {
       const message = error instanceof Error

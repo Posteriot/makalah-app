@@ -156,16 +156,22 @@ export default function SignUpPage() {
     setIsLoading(true)
     try {
       const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ")
-      const { error: apiError } = await signUp.email({
+      const result = await signUp.email({
         email: email.trim(),
         password,
         name: fullName,
         callbackURL,
       })
-      if (apiError) {
-        setError(apiError.message ?? "Terjadi kesalahan.")
+      if (result.error) {
+        setError(result.error.message ?? "Terjadi kesalahan.")
+      } else if (result.data?.redirect && result.data?.token) {
+        // Cross-domain: OTT redirect (when email verification is not required)
+        const url = new URL(result.data.url as string)
+        url.searchParams.set("ott", result.data.token as string)
+        window.location.href = url.toString()
+        return
       } else {
-        // BetterAuth auto-sends verification email
+        // Email verification required — show "Cek Email" UI
         setMode("verify-email")
       }
     } catch {

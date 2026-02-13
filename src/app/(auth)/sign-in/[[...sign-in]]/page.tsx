@@ -49,15 +49,26 @@ export default function SignInPage() {
 
     setIsLoading(true)
     try {
-      const { error: apiError } = await signIn.email({
+      const result = await signIn.email({
         email: email.trim(),
         password,
         callbackURL,
       })
-      if (apiError) {
-        setError(apiError.message ?? "Terjadi kesalahan.")
+      if (result.error) {
+        setError(result.error.message ?? "Terjadi kesalahan.")
+      } else if (result.data?.redirect && result.data?.token) {
+        // Cross-domain: server returns OTT (one-time token) instead of setting cookies.
+        // Navigate to the target URL with ?ott= so ConvexBetterAuthProvider
+        // can exchange the OTT for a real session on the frontend.
+        const url = new URL(result.data.url as string)
+        url.searchParams.set("ott", result.data.token as string)
+        window.location.href = url.toString()
+        return
+      } else {
+        // Non cross-domain fallback
+        window.location.href = callbackURL
+        return
       }
-      // On success, BetterAuth handles redirect via callbackURL
     } catch {
       toast.error("Terjadi kesalahan. Silakan coba lagi.")
     } finally {
