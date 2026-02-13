@@ -46,8 +46,8 @@ interface VerificationResult {
 
 export async function POST(request: NextRequest) {
   // Auth check via BetterAuth
-  const session = await isAuthenticated()
-  if (!session) {
+  const isAuthed = await isAuthenticated()
+  if (!isAuthed) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -59,9 +59,7 @@ export async function POST(request: NextRequest) {
 
   // Permission check (admin only)
   try {
-    const convexUser = await fetchQuery(api.users.getUserByBetterAuthId, {
-      betterAuthUserId: session.user.id,
-    }, convexOptions)
+    const convexUser = await fetchQuery(api.users.getMyUser, {}, convexOptions)
 
     if (
       !convexUser ||

@@ -31,8 +31,8 @@ interface TopUpRequest {
 export async function POST(req: NextRequest) {
   try {
     // 1. Auth check
-    const session = await isAuthenticated()
-    if (!session) {
+    const isAuthed = await isAuthenticated()
+    if (!isAuthed) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const convexOptions = { token: convexToken }
 
     // 2. Get Convex user
-    const convexUser = await fetchQuery(api.users.getUserByBetterAuthId, { betterAuthUserId: session.user.id }, convexOptions)
+    const convexUser = await fetchQuery(api.users.getMyUser, {}, convexOptions)
     if (!convexUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     // 7. Prepare metadata
     const metadata = {
       user_id: convexUser._id,
-      betterauth_user_id: session.user.id,
+      betterauth_user_id: convexUser.betterAuthUserId,
       payment_type: "credit_topup",
     }
 

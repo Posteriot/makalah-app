@@ -39,8 +39,8 @@ import {
 export async function POST(req: Request) {
     try {
         // 1. Authenticate with BetterAuth
-        const session = await isAuthenticated()
-        if (!session) {
+        const isAuthed = await isAuthenticated()
+        if (!isAuthed) {
             return new Response("Unauthorized", { status: 401 })
         }
 
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
         let tokenError: unknown = null
         for (let attempt = 1; attempt <= 3; attempt += 1) {
             try {
-                convexToken = await getToken()
+                convexToken = (await getToken()) ?? null
                 if (convexToken) {
                     break
                 }
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
         const { messages, conversationId, fileIds } = body
 
         // 3. Get Convex User ID
-        const userId = await fetchQueryWithToken(api.chatHelpers.getUserId, { betterAuthUserId: session.user.id })
+        const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
         if (!userId) {
             return new Response("User not found in database", { status: 404 })
         }

@@ -10,7 +10,7 @@ import { InfoCircle, Xmark } from "iconoir-react"
 
 interface LinkedAccount {
   id: string
-  provider: string
+  providerId: string
 }
 
 export function AccountLinkingNotice() {
@@ -52,8 +52,8 @@ export function AccountLinkingNotice() {
     if (convexUser.hasSeenLinkingNotice) return
 
     // Detection: user has BOTH password (credential) and external OAuth account
-    const hasPassword = accounts.some((a) => a.provider === "credential")
-    const hasOAuth = accounts.some((a) => a.provider !== "credential")
+    const hasPassword = accounts.some((a) => a.providerId === "credential")
+    const hasOAuth = accounts.some((a) => a.providerId !== "credential")
 
     if (!hasPassword || !hasOAuth) return
 

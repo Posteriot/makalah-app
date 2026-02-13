@@ -33,8 +33,8 @@ export const maxDuration = 300
 export async function POST(req: Request) {
   try {
     // 1. Authenticate with BetterAuth
-    const session = await isAuthenticated()
-    if (!session) {
+    const isAuthed = await isAuthenticated()
+    if (!isAuthed) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }

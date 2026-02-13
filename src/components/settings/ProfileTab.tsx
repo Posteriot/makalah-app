@@ -10,7 +10,7 @@ import type { Doc } from "@convex/_generated/dataModel"
 
 interface ProfileTabProps {
   convexUser: Doc<"users"> | null
-  session: { user: { id: string; name: string | null; email: string; image: string | null; emailVerified: boolean; createdAt: Date; updatedAt: Date }; session: { id: string; userId: string; expiresAt: Date; token: string } } | null
+  session: { user: { id: string; name: string | null; email: string; image?: string | null; emailVerified: boolean; createdAt: Date; updatedAt: Date }; session: { id: string; userId: string; expiresAt: Date; token: string } } | null
   isLoading: boolean
 }
 

@@ -55,7 +55,7 @@ export default function SignInPage() {
         callbackURL,
       })
       if (apiError) {
-        setError(apiError.message)
+        setError(apiError.message ?? "Terjadi kesalahan.")
       }
       // On success, BetterAuth handles redirect via callbackURL
     } catch {
@@ -96,7 +96,7 @@ export default function SignInPage() {
         callbackURL,
       })
       if (apiError) {
-        setError(apiError.message)
+        setError(apiError.message ?? "Terjadi kesalahan.")
       } else {
         setMode("magic-link-sent")
       }
@@ -118,12 +118,12 @@ export default function SignInPage() {
 
     setIsLoading(true)
     try {
-      const { error: apiError } = await authClient.forgetPassword({
+      const { error: apiError } = await authClient.requestPasswordReset({
         email: email.trim(),
         redirectTo: `${window.location.origin}/sign-in`,
       })
       if (apiError) {
-        setError(apiError.message)
+        setError(apiError.message ?? "Terjadi kesalahan.")
       } else {
         setMode("reset-sent")
       }
@@ -158,7 +158,7 @@ export default function SignInPage() {
         token: resetToken!,
       })
       if (apiError) {
-        setError(apiError.message)
+        setError(apiError.message ?? "Terjadi kesalahan.")
       } else {
         setMode("reset-success")
       }

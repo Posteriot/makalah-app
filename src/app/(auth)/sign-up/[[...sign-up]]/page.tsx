@@ -163,7 +163,7 @@ export default function SignUpPage() {
         callbackURL,
       })
       if (apiError) {
-        setError(apiError.message)
+        setError(apiError.message ?? "Terjadi kesalahan.")
       } else {
         // BetterAuth auto-sends verification email
         setMode("verify-email")

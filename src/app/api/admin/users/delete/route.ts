@@ -9,8 +9,8 @@ import type { Id } from "@convex/_generated/dataModel"
  * Soft-delete user in Convex.
  */
 export async function POST(request: NextRequest) {
-  const session = await isAuthenticated()
-  if (!session) {
+  const isAuthed = await isAuthenticated()
+  if (!isAuthed) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
   }
 
   const convexUser = await fetchQuery(
-    api.users.getUserByBetterAuthId,
-    { betterAuthUserId: session.user.id },
+    api.users.getMyUser,
+    {},
     convexOptions
   )
 

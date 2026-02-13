@@ -6,14 +6,13 @@ import { toast } from "sonner"
 import { Eye, EyeClosed, Shield } from "iconoir-react"
 
 interface SecurityTabProps {
-  session: { user: { id: string; name: string | null; email: string; image: string | null; emailVerified: boolean; createdAt: Date; updatedAt: Date }; session: { id: string; userId: string; expiresAt: Date; token: string } } | null
+  session: { user: { id: string; name: string | null; email: string; image?: string | null; emailVerified: boolean; createdAt: Date; updatedAt: Date }; session: { id: string; userId: string; expiresAt: Date; token: string } } | null
   isLoading: boolean
 }
 
 interface LinkedAccount {
   id: string
-  provider: string
-  // BetterAuth may include additional fields
+  providerId: string
   [key: string]: unknown
 }
 
@@ -47,7 +46,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
 
         const accounts = (result.data ?? []) as LinkedAccount[]
         setLinkedAccounts(accounts)
-        setHasPassword(accounts.some((a) => a.provider === "credential"))
+        setHasPassword(accounts.some((a) => a.providerId === "credential"))
       } catch (err) {
         console.error("[SecurityTab] listAccounts failed:", err)
       } finally {
@@ -80,7 +79,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
     setIsSaving(true)
     try {
       await authClient.changePassword({
-        currentPassword: currentPassword || undefined,
+        currentPassword: currentPassword || "",
         newPassword,
         revokeOtherSessions: signOutOthers,
       })
@@ -106,7 +105,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
   }
 
   // Filter to show only external (non-credential) accounts
-  const externalAccounts = linkedAccounts.filter((a) => a.provider !== "credential")
+  const externalAccounts = linkedAccounts.filter((a) => a.providerId !== "credential")
 
   return (
     <>
@@ -315,7 +314,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
                   className="grid grid-cols-[120px_1fr] items-center gap-3 max-sm:grid-cols-1 max-sm:items-start"
                 >
                   <span className="text-interface text-xs text-muted-foreground capitalize">
-                    {account.provider === "google" ? "Google" : account.provider}
+                    {account.providerId === "google" ? "Google" : account.providerId}
                   </span>
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-interface text-sm text-foreground truncate">

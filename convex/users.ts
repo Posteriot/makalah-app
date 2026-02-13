@@ -35,6 +35,21 @@ export const getUserById = queryGeneric({
   },
 })
 
+// Auth-context query: get current user from auth identity
+// No args needed - uses ctx.auth.getUserIdentity() to find the user
+export const getMyUser = queryGeneric({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) return null
+    return await ctx.db
+      .query("users")
+      .withIndex("by_betterAuthUserId", (q) =>
+        q.eq("betterAuthUserId", identity.subject)
+      )
+      .unique()
+  },
+})
+
 // USER-004: Get user by BetterAuth ID
 export const getUserByBetterAuthId = queryGeneric({
   args: { betterAuthUserId: v.string() },

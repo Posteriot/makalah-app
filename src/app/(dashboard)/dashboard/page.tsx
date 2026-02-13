@@ -31,17 +31,17 @@ export default async function DashboardPage({
 }: {
   searchParams?: Promise<SearchParams>
 }) {
-  const session = await isAuthenticated()
+  const isAuthed = await isAuthenticated()
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const redirectPath = `/dashboard${buildQueryString(resolvedSearchParams)}`
 
-  if (!session) {
+  if (!isAuthed) {
     redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)
   }
 
   let convexToken: string | null = null
   try {
-    convexToken = await getToken()
+    convexToken = (await getToken()) ?? null
   } catch {
     redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)
   }
@@ -60,9 +60,7 @@ export default async function DashboardPage({
   }
   const convexOptions = { token: convexToken }
 
-  const convexUser = await fetchQuery(api.users.getUserByBetterAuthId, {
-    betterAuthUserId: session.user.id,
-  }, convexOptions)
+  const convexUser = await fetchQuery(api.users.getMyUser, {}, convexOptions)
 
   if (!convexUser) {
     return (

@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Authenticate user via BetterAuth
-    const session = await isAuthenticated()
+    const isAuthed = await isAuthenticated()
 
-    if (!session) {
+    if (!isAuthed) {
       return NextResponse.json(
         {
           success: false,
@@ -66,10 +66,8 @@ export async function POST(request: NextRequest) {
     }
     const convexOptions = { token: convexToken }
 
-    // 3. Get Convex user by BetterAuth ID
-    const convexUser = await fetchQuery(api.users.getUserByBetterAuthId, {
-      betterAuthUserId: session.user.id,
-    }, convexOptions)
+    // 3. Get Convex user from auth identity
+    const convexUser = await fetchQuery(api.users.getMyUser, {}, convexOptions)
 
     if (!convexUser) {
       return NextResponse.json(
@@ -79,13 +77,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Fetch paper session dari Convex
-    const session = await fetchQuery(api.paperSessions.getById, {
+    const paperSession = await fetchQuery(api.paperSessions.getById, {
       sessionId: sessionId as Id<"paperSessions">,
     }, convexOptions)
 
     // 5. Validate dan compile content
     // getExportableContent akan throw ExportValidationError jika ada masalah
-    const content = getExportableContent(session, convexUser._id)
+    const content = getExportableContent(paperSession, convexUser._id)
 
     // 6. Generate PDF stream
     const pdfStream = generatePDFStream(content, { showPageNumbers: true })

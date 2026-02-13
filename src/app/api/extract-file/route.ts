@@ -132,8 +132,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Auth check + Convex token
-    const session = await isAuthenticated()
-    if (!session) {
+    const isAuthed = await isAuthenticated()
+    if (!isAuthed) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
