@@ -15,37 +15,37 @@ export function ThinkingIndicator({ visible }: ThinkingIndicatorProps) {
                 // Base styles matching mockup .thinking-indicator
                 "flex items-center gap-2.5",
                 "px-4 py-3 mx-4 my-4",
-                "bg-slate-900/80 border border-border/50 rounded-action",
+                "bg-transparent border-0",
                 // Animation
                 "transition-all duration-300",
                 "animate-in fade-in slide-in-from-bottom-2"
             )}
             role="status"
             aria-live="polite"
-            aria-label="AI sedang berpikir"
+            aria-label="Agen sedang berpikir"
         >
-            {/* Text - Terminal style, uppercase, Mono */}
-            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-                SYSTEM_PROCESSING
+            {/* Text - Terminal style, Mono */}
+            <span className="text-[11px] font-mono tracking-wider text-slate-600 dark:text-slate-300">
+                Agen memproses
             </span>
 
             {/* Animated dots matching mockup .thinking-dots */}
             <div className="flex items-center gap-1">
                 <span
                     className={cn(
-                        "h-1.5 w-1.5 rounded-full bg-muted-foreground",
+                        "h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-300",
                         "animate-thinking-dot thinking-dot-1"
                     )}
                 />
                 <span
                     className={cn(
-                        "h-1.5 w-1.5 rounded-full bg-muted-foreground",
+                        "h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-300",
                         "animate-thinking-dot thinking-dot-2"
                     )}
                 />
                 <span
                     className={cn(
-                        "h-1.5 w-1.5 rounded-full bg-muted-foreground",
+                        "h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-300",
                         "animate-thinking-dot thinking-dot-3"
                     )}
                 />

@@ -29,13 +29,10 @@ export function SearchStatusIndicator({ status, message }: SearchStatusIndicator
     return (
         <div
             className={cn(
-                // Base styles - full width horizontal bar, Mechanical Grace
-                "flex items-center gap-2.5 px-3 py-2 rounded-badge",
-                "text-[11px] font-mono uppercase tracking-wide transition-all duration-300",
+                "flex items-center gap-2.5 px-1 py-1",
+                "text-[11px] font-mono tracking-wide transition-all duration-300",
                 "animate-in fade-in slide-in-from-left-2",
-                // Left border accent
-                "border-l-4",
-                // Status-specific colors
+                // Status-specific text/icon tones only (no bg/border)
                 config.containerClass
             )}
             role="status"
@@ -47,9 +44,20 @@ export function SearchStatusIndicator({ status, message }: SearchStatusIndicator
             </span>
 
             {/* Text */}
-            <span className={config.textClass}>
-                {config.text}
-            </span>
+            {status === "searching" ? (
+                <span className={cn("inline-flex items-center gap-1.5", config.textClass)}>
+                    <span>{config.text}</span>
+                    <span className="inline-flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-thinking-dot thinking-dot-1" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-thinking-dot thinking-dot-2" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-thinking-dot thinking-dot-3" />
+                    </span>
+                </span>
+            ) : (
+                <span className={config.textClass}>
+                    {config.text}
+                </span>
+            )}
         </div>
     )
 }
@@ -62,35 +70,35 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
         case "searching":
             return {
                 icon: <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />,
-                text: customMessage || "SEARCHING...",
-                containerClass: "bg-sky-500/10 border-l-sky-500",
-                iconClass: "text-sky-500",
-                textClass: "text-sky-500",
+                text: customMessage || "Pencarian",
+                containerClass: "",
+                iconClass: "text-slate-600 dark:text-slate-300",
+                textClass: "text-slate-600 dark:text-slate-300",
             }
 
         case "done":
             return {
                 icon: <CheckCircle className="h-4 w-4" />,
-                text: customMessage || "SEARCH_COMPLETE",
-                containerClass: "bg-emerald-500/10 border-l-emerald-500",
-                iconClass: "text-emerald-500",
-                textClass: "text-emerald-500",
+                text: customMessage || "Pencarian selesai",
+                containerClass: "",
+                iconClass: "text-emerald-600 dark:text-emerald-400",
+                textClass: "text-emerald-600 dark:text-emerald-400",
             }
 
         case "error":
             return {
                 icon: <XmarkCircle className="h-4 w-4" />,
-                text: customMessage || "SEARCH_ERROR",
-                containerClass: "bg-rose-500/10 border-l-rose-500",
-                iconClass: "text-rose-500",
-                textClass: "text-rose-500",
+                text: customMessage || "Pencarian gagal",
+                containerClass: "",
+                iconClass: "text-rose-600 dark:text-rose-400",
+                textClass: "text-rose-600 dark:text-rose-400",
             }
 
         default:
             return {
                 icon: <Search className="h-4 w-4" />,
-                text: "SEARCH",
-                containerClass: "bg-muted border-l-muted-foreground",
+                text: "Pencarian",
+                containerClass: "",
                 iconClass: "text-muted-foreground",
                 textClass: "text-muted-foreground",
             }

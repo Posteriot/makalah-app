@@ -59,7 +59,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
             className={cn(
                 // Container - centered card style like mockup
                 "max-w-[80%] mx-auto my-4",
-                "bg-card border border-border rounded-lg",
+                "bg-slate-200 dark:bg-card border border-border rounded-lg",
                 "shadow-none",
                 "animate-in fade-in slide-in-from-bottom-4 duration-500"
             )}
@@ -104,9 +104,10 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             onClick={() => setShowRevisionForm(true)}
                             disabled={isSubmitting || isLoading}
                             className={cn(
-                                "gap-2 h-9 px-4",
-                                "border-red-500/50 text-red-500",
-                                "hover:bg-red-500/10 hover:border-red-500"
+                                "gap-2 h-9 px-4 rounded-action",
+                                "border-slate-400 text-slate-700",
+                                "hover:bg-slate-300/70 hover:border-slate-500",
+                                "dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700/40 dark:hover:border-slate-500"
                             )}
                         >
                             <EditPencil className="h-3.5 w-3.5" />
@@ -117,7 +118,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             onClick={handleApprove}
                             disabled={isSubmitting || isLoading}
                             className={cn(
-                                "gap-2 h-9 px-4",
+                                "gap-2 h-9 px-4 rounded-action",
                                 "bg-green-600 hover:bg-green-700",
                                 "text-white border-none"
                             )}

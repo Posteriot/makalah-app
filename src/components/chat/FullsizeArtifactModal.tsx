@@ -358,8 +358,8 @@ export function FullsizeArtifactModal({
                                 onChange={(e) => setEditContent(e.target.value)}
                                 className={cn(
                                     "w-full h-full min-h-[300px] p-4",
-                                    // Mechanical Grace: .border-ai + Amber focus
-                                    "bg-slate-900 rounded-action border border-dashed border-sky-500/50",
+                                    // Mechanical Grace: solid sky border + Amber focus
+                                    "bg-slate-900 rounded-action border border-sky-500/50",
                                     "text-base leading-relaxed text-foreground",
                                     "focus:outline-none focus:ring-2 focus:ring-amber-500",
                                     "resize-none"

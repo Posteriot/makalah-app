@@ -230,18 +230,23 @@ export function ChatLayout({
   const getGridTemplateColumns = () => {
     const activityBar = "var(--activity-bar-width)"
     const sidebar = isSidebarCollapsed ? "0px" : `${sidebarWidth}px`
-    const leftResizer = isSidebarCollapsed ? "0px" : "4px"
+    const leftResizer = isSidebarCollapsed ? "0px" : "2px"
     const main = "1fr"
-    const rightResizer = isArtifactPanelOpen ? "4px" : "0px"
+    const rightResizer = isArtifactPanelOpen ? "2px" : "0px"
     const panel = isArtifactPanelOpen ? `${panelWidth}px` : "0px"
 
     return `${activityBar} ${sidebar} ${leftResizer} ${main} ${rightResizer} ${panel}`
   }
 
+  const isBothSidePanelsCollapsed = isSidebarCollapsed && !isArtifactPanelOpen
+
   return (
     <div
       className="flex flex-col h-dvh"
-      style={CSS_VARS}
+      style={{
+        ...CSS_VARS,
+        "--chat-input-pad-x": isBothSidePanelsCollapsed ? "10rem" : "5rem",
+      } as React.CSSProperties}
     >
       {/* Grid Content — full height, no header bar above */}
       <div
@@ -300,7 +305,7 @@ export function ChatLayout({
         {isSidebarCollapsed && <div className="hidden md:block" />}
 
         {/* Column 4: Main Content — NO ShellHeader, NO ChatTabs */}
-        <main className="flex flex-col overflow-hidden bg-[color:var(--section-bg-alt)]">
+        <main className="flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
           <TopBar
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={handleToggleSidebar}

@@ -75,7 +75,7 @@ export default async function ChatLayout({ children }: { children: ReactNode }) 
   await ensureConvexUser()
 
   return (
-    <div className="min-h-screen bg-background text-foreground bg-dots">
+    <div className="min-h-screen bg-background text-foreground">
       {children}
     </div>
   )

@@ -239,7 +239,7 @@ export const OutlineData = v.object({
         id: v.string(), // Required - format: "pendahuluan", "hasil", "hasil.temuan1"
         judul: v.optional(v.string()),
         level: v.optional(v.number()), // 1 = bab, 2 = sub-bab, 3 = poin
-        parentId: v.optional(v.string()), // null untuk root, "hasil" untuk "hasil.temuan1"
+        parentId: v.optional(v.union(v.string(), v.null())), // null untuk root, "hasil" untuk "hasil.temuan1"
         estimatedWordCount: v.optional(v.number()),
         status: v.optional(v.union(
             v.literal("complete"),

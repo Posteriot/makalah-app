@@ -61,7 +61,7 @@ export function ArtifactEditor({ content, onSave, onCancel, isLoading = false }:
                     value={editedContent}
                     onChange={(e) => setEditedContent(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className="w-full h-full resize-none bg-muted rounded-action p-4 text-sm font-mono border border-dashed border-sky-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full h-full resize-none bg-muted rounded-action p-4 text-sm font-mono border border-sky-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Masukkan konten artifact..."
                     disabled={isLoading}
                     aria-label="Edit artifact content"

@@ -91,6 +91,26 @@ export function SidebarPaperSessions({
       : "skip"
   )
 
+  // Initial state before any conversation is selected
+  if (!currentConversationId) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="pt-5 px-4 pb-3">
+          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">Sesi Paper</div>
+          <div className="text-[11px] font-mono text-muted-foreground/70 mt-1">
+            Folder Artifak
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
+          <Page className="h-8 w-8 text-muted-foreground/50 mb-2" />
+          <span className="text-sm text-muted-foreground/70 font-medium font-mono">
+            Belum ada sesi penyusunan paper. Silakan mulai percakapan baru.
+          </span>
+        </div>
+      </div>
+    )
+  }
+
   // Loading state
   if (isLoading || isUserLoading || !user) {
     return (
@@ -123,7 +143,7 @@ export function SidebarPaperSessions({
         <div className="pt-5 px-4 pb-3">
           <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">Sesi Paper</div>
           <div className="text-[11px] font-mono text-muted-foreground/70 mt-1">
-            Folder * Artifak
+            Folder Artifak
           </div>
         </div>
         {/* Empty state - same messaging as SidebarProgress */}
@@ -158,7 +178,7 @@ export function SidebarPaperSessions({
       <div className="pt-5 px-4 pb-3">
         <div className="text-base font-semibold">Sesi Paper</div>
         <div className="text-[13px] font-mono text-muted-foreground">
-          Folder * Artifak
+          Folder Artifak
         </div>
       </div>
 
