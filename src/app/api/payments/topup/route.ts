@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
@@ -31,19 +31,19 @@ interface TopUpRequest {
 export async function POST(req: NextRequest) {
   try {
     // 1. Auth check
-    const { userId: clerkUserId, getToken } = await auth()
-    if (!clerkUserId) {
+    const session = await isAuthenticated()
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const convexToken = await getToken({ template: "convex" })
+    const convexToken = await getToken()
     if (!convexToken) {
       return NextResponse.json({ error: "Convex token missing" }, { status: 500 })
     }
     const convexOptions = { token: convexToken }
 
     // 2. Get Convex user
-    const convexUser = await fetchQuery(api.users.getUserByClerkId, { clerkUserId }, convexOptions)
+    const convexUser = await fetchQuery(api.users.getUserByBetterAuthId, { betterAuthUserId: session.user.id }, convexOptions)
     if (!convexUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     // 7. Prepare metadata
     const metadata = {
       user_id: convexUser._id,
-      clerk_user_id: clerkUserId,
+      betterauth_user_id: session.user.id,
       payment_type: "credit_topup",
     }
 

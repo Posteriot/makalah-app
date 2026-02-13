@@ -20,8 +20,8 @@ export const promoteToAdmin = mutation({
     // Get requestor user from Convex
     const requestor = await ctx.db
       .query("users")
-      .withIndex("by_clerkUserId", (q) =>
-        q.eq("clerkUserId", identity.subject)
+      .withIndex("by_betterAuthUserId", (q) =>
+        q.eq("betterAuthUserId", identity.subject)
       )
       .unique()
 
@@ -80,8 +80,8 @@ export const demoteToUser = mutation({
     // Get requestor user from Convex
     const requestor = await ctx.db
       .query("users")
-      .withIndex("by_clerkUserId", (q) =>
-        q.eq("clerkUserId", identity.subject)
+      .withIndex("by_betterAuthUserId", (q) =>
+        q.eq("betterAuthUserId", identity.subject)
       )
       .unique()
 
@@ -139,8 +139,8 @@ export const updateSubscriptionTier = mutation({
 
     const requestor = await ctx.db
       .query("users")
-      .withIndex("by_clerkUserId", (q) =>
-        q.eq("clerkUserId", identity.subject)
+      .withIndex("by_betterAuthUserId", (q) =>
+        q.eq("betterAuthUserId", identity.subject)
       )
       .unique()
 
@@ -182,7 +182,7 @@ export const updateSubscriptionTier = mutation({
 })
 
 /**
- * Soft delete user in Convex (Clerk deletion handled by API route)
+ * Soft delete user in Convex
  * - superadmin: can delete admin/user (not superadmin, not self)
  * - admin: can delete regular user only
  */
@@ -198,8 +198,8 @@ export const softDeleteUser = mutation({
 
     const requestor = await ctx.db
       .query("users")
-      .withIndex("by_clerkUserId", (q) =>
-        q.eq("clerkUserId", identity.subject)
+      .withIndex("by_betterAuthUserId", (q) =>
+        q.eq("betterAuthUserId", identity.subject)
       )
       .unique()
 
@@ -226,19 +226,7 @@ export const softDeleteUser = mutation({
       throw new Error("Admin hanya bisa menghapus user biasa")
     }
 
-    if (targetUser.clerkSyncStatus === "deleted") {
-      return {
-        success: true,
-        message: `User ${targetUser.email} sudah dihapus sebelumnya`,
-      }
-    }
-
-    const now = Date.now()
-    await ctx.db.patch(args.targetUserId, {
-      clerkSyncStatus: "deleted",
-      clerkDeletedAt: now,
-      updatedAt: now,
-    })
+    await ctx.db.delete(args.targetUserId)
 
     return {
       success: true,

@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated } from "@/lib/auth-server"
 import { redirect } from "next/navigation"
 import { ChatContainer } from "@/components/chat/ChatContainer"
 
@@ -28,9 +28,9 @@ interface PageProps {
 
 export default async function ChatConversationPage({ params, searchParams }: PageProps) {
   const { conversationId } = await params
-  const { userId } = await auth()
+  const session = await isAuthenticated()
 
-  if (!userId) {
+  if (!session) {
     const resolvedSearchParams = searchParams ? await searchParams : undefined
     const redirectPath = `/chat/${conversationId}${buildQueryString(resolvedSearchParams)}`
     redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)

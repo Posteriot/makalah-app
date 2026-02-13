@@ -3,7 +3,7 @@ import { convertToModelMessages, createUIMessageStream, createUIMessageStreamRes
 import { z } from "zod"
 import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
 
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { getSystemPrompt } from "@/lib/ai/chat-config"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../../convex/_generated/api"
@@ -38,18 +38,18 @@ import {
 
 export async function POST(req: Request) {
     try {
-        // 1. Authenticate with Clerk
-        const { userId: clerkUserId, getToken } = await auth()
-        if (!clerkUserId) {
+        // 1. Authenticate with BetterAuth
+        const session = await isAuthenticated()
+        if (!session) {
             return new Response("Unauthorized", { status: 401 })
         }
 
-        // 1.1. Ambil token Clerk untuk Convex auth guard
+        // 1.1. Ambil token BetterAuth untuk Convex auth guard
         let convexToken: string | null = null
         let tokenError: unknown = null
         for (let attempt = 1; attempt <= 3; attempt += 1) {
             try {
-                convexToken = await getToken({ template: "convex" })
+                convexToken = await getToken()
                 if (convexToken) {
                     break
                 }
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
             }
         }
         if (!convexToken) {
-            console.error("[Chat API] Failed to get Convex token from Clerk after retry:", tokenError)
+            console.error("[Chat API] Failed to get Convex token after retry:", tokenError)
             return new Response("Session token unavailable. Please refresh and retry.", { status: 401 })
         }
         const convexOptions = { token: convexToken }
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
         const { messages, conversationId, fileIds } = body
 
         // 3. Get Convex User ID
-        const userId = await fetchQueryWithToken(api.chatHelpers.getUserId, { clerkUserId })
+        const userId = await fetchQueryWithToken(api.chatHelpers.getUserId, { betterAuthUserId: session.user.id })
         if (!userId) {
             return new Response("User not found in database", { status: 404 })
         }

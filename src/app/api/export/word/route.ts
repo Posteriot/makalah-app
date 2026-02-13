@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
@@ -42,10 +42,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Authenticate user via Clerk
-    const { userId: clerkUserId, getToken } = await auth()
+    // 2. Authenticate user via BetterAuth
+    const session = await isAuthenticated()
 
-    if (!clerkUserId) {
+    if (!session) {
       return NextResponse.json(
         {
           success: false,
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const convexToken = await getToken({ template: "convex" })
+    const convexToken = await getToken()
     if (!convexToken) {
       return NextResponse.json(
         { success: false, error: "Convex token missing" },
@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
     }
     const convexOptions = { token: convexToken }
 
-    // 3. Get Convex user by Clerk ID
-    const convexUser = await fetchQuery(api.users.getUserByClerkId, {
-      clerkUserId,
+    // 3. Get Convex user by BetterAuth ID
+    const convexUser = await fetchQuery(api.users.getUserByBetterAuthId, {
+      betterAuthUserId: session.user.id,
     }, convexOptions)
 
     if (!convexUser) {

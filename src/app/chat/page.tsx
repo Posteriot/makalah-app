@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated } from "@/lib/auth-server"
 import { redirect } from "next/navigation"
 import { ChatContainer } from "@/components/chat/ChatContainer"
 
@@ -26,9 +26,9 @@ export default async function ChatPage({
 }: {
   searchParams?: Promise<SearchParams>
 }) {
-  const { userId } = await auth()
+  const session = await isAuthenticated()
 
-  if (!userId) {
+  if (!session) {
     const resolvedSearchParams = searchParams ? await searchParams : undefined
     const redirectPath = `/chat${buildQueryString(resolvedSearchParams)}`
     redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)

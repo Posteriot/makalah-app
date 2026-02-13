@@ -1,25 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth, clerkClient } from "@clerk/nextjs/server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { fetchMutation, fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 
-type ClerkApiError = {
-  status?: number
-  errors?: unknown
-}
-
 /**
  * POST /api/admin/users/delete
- * Delete user from Clerk, then soft-delete user in Convex.
+ * Soft-delete user in Convex.
  */
 export async function POST(request: NextRequest) {
-  const { userId, getToken } = await auth()
-  if (!userId) {
+  const session = await isAuthenticated()
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const convexToken = await getToken({ template: "convex" })
+  const convexToken = await getToken()
   if (!convexToken) {
     return NextResponse.json({ error: "Convex token missing" }, { status: 500 })
   }
@@ -40,8 +35,8 @@ export async function POST(request: NextRequest) {
   }
 
   const convexUser = await fetchQuery(
-    api.users.getUserByClerkId,
-    { clerkUserId: userId },
+    api.users.getUserByBetterAuthId,
+    { betterAuthUserId: session.user.id },
     convexOptions
   )
 
@@ -69,26 +64,6 @@ export async function POST(request: NextRequest) {
       { error: "User target tidak ditemukan" },
       { status: 404 }
     )
-  }
-
-  const shouldDeleteFromClerk =
-    target.clerkSyncStatus !== "deleted" &&
-    !target.clerkUserId.startsWith("pending_")
-
-  if (shouldDeleteFromClerk) {
-    try {
-      const client = await clerkClient()
-      await client.users.deleteUser(target.clerkUserId)
-    } catch (error: unknown) {
-      const clerkError = error as ClerkApiError
-      if (clerkError.status !== 404) {
-        console.error("[AdminDeleteUser] Failed to delete user in Clerk:", error)
-        return NextResponse.json(
-          { error: "Gagal menghapus user di Clerk" },
-          { status: 502 }
-        )
-      }
-    }
   }
 
   const result = await fetchMutation(

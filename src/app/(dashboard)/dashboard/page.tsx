@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { fetchQuery } from "convex/nextjs"
@@ -31,17 +31,17 @@ export default async function DashboardPage({
 }: {
   searchParams?: Promise<SearchParams>
 }) {
-  const { userId: clerkUserId, getToken } = await auth()
+  const session = await isAuthenticated()
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const redirectPath = `/dashboard${buildQueryString(resolvedSearchParams)}`
 
-  if (!clerkUserId) {
+  if (!session) {
     redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)
   }
 
   let convexToken: string | null = null
   try {
-    convexToken = await getToken({ template: "convex" })
+    convexToken = await getToken()
   } catch {
     redirect(`/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`)
   }
@@ -52,7 +52,7 @@ export default async function DashboardPage({
           <WarningCircle className="h-4 w-4" />
           <AlertTitle>Konfigurasi Auth Bermasalah</AlertTitle>
           <AlertDescription>
-            Token Convex tidak tersedia. Cek template JWT Clerk untuk Convex.
+            Token Convex tidak tersedia. Cek konfigurasi auth.
           </AlertDescription>
         </Alert>
       </div>
@@ -60,8 +60,8 @@ export default async function DashboardPage({
   }
   const convexOptions = { token: convexToken }
 
-  const convexUser = await fetchQuery(api.users.getUserByClerkId, {
-    clerkUserId,
+  const convexUser = await fetchQuery(api.users.getUserByBetterAuthId, {
+    betterAuthUserId: session.user.id,
   }, convexOptions)
 
   if (!convexUser) {
