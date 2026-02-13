@@ -259,6 +259,41 @@ export function SecurityTab({ user, isLoaded }: SecurityTabProps) {
         )}
         </div>
       </div>
+
+      {/* Connected Accounts Section */}
+      <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
+        <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">Akun Terhubung</div>
+        <div className="p-4 bg-slate-50 dark:bg-slate-800">
+          {user?.externalAccounts && user.externalAccounts.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {user.externalAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  className="grid grid-cols-[120px_1fr] items-center gap-3 max-sm:grid-cols-1 max-sm:items-start"
+                >
+                  <span className="text-interface text-xs text-muted-foreground capitalize">
+                    {account.provider === "google" ? "Google" : account.provider}
+                  </span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-interface text-sm text-foreground truncate">
+                      {account.emailAddress}
+                    </span>
+                    {account.verification?.status === "verified" && (
+                      <span className="shrink-0 inline-flex items-center gap-1 rounded-badge bg-success/10 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-success">
+                        Terverifikasi
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-interface text-xs text-muted-foreground">
+              Belum ada akun terhubung.
+            </p>
+          )}
+        </div>
+      </div>
     </>
   )
 }
