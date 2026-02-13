@@ -77,7 +77,7 @@ export function MessageBubble({
     const isAssistant = message.role === 'assistant'
 
     const parseAutoUserAction = (rawContent: string): AutoUserAction => {
-        const approvedMatch = rawContent.match(/^\[Approved:\s*(.+?)\]\s*(.*)$/s)
+        const approvedMatch = rawContent.match(/^\[Approved:\s*(.+?)\]\s*([\s\S]*)$/)
         if (approvedMatch) {
             return {
                 kind: "approved",
