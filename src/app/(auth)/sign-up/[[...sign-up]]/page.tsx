@@ -1,51 +1,16 @@
 "use client"
-import { useMemo, useState } from "react"
-import dynamic from "next/dynamic"
-import { dark } from "@clerk/themes"
-import { AuthWideCard } from "@/components/auth/AuthWideCard"
-import { useTheme } from "next-themes"
+
+import { useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { useQuery } from "convex/react"
-import { api } from "@convex/_generated/api"
 import Link from "next/link"
 import Image from "next/image"
-import { WarningCircle, CheckCircle, Mail } from "iconoir-react"
-import { getClerkRedirectUrl } from "@/lib/utils/redirectAfterAuth"
-
-const SHOW_SOCIAL_SKELETON = Boolean(
-  process.env.NEXT_PUBLIC_CLERK_SOCIAL_PROVIDERS?.trim()
-)
-
-const SignUp = dynamic(
-  () => import("@clerk/nextjs").then((mod) => mod.SignUp),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="space-y-4 animate-pulse">
-        {SHOW_SOCIAL_SKELETON && (
-          <>
-            <div className="space-y-3">
-              <div className="h-10 bg-muted rounded-md" />
-              <div className="h-10 bg-muted rounded-md" />
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-px bg-muted flex-1" />
-              <div className="h-2 w-14 bg-muted rounded" />
-              <div className="h-px bg-muted flex-1" />
-            </div>
-          </>
-        )}
-        <div className="space-y-3">
-          <div className="h-10 bg-muted rounded-md" />
-          <div className="h-10 bg-muted rounded-md" />
-          <div className="h-10 bg-muted rounded-md" />
-        </div>
-        <div className="h-10 bg-muted rounded-md" />
-        <div className="h-3 w-40 bg-muted rounded mx-auto" />
-      </div>
-    ),
-  }
-)
+import { toast } from "sonner"
+import { Eye, EyeClosed, WarningCircle, CheckCircle, Mail, RefreshDouble } from "iconoir-react"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
+import { signIn, signUp } from "@/lib/auth-client"
+import { AuthWideCard } from "@/components/auth/AuthWideCard"
+import { getRedirectUrl } from "@/lib/utils/redirectAfterAuth"
 
 // Custom left content for invited users
 function InvitedUserLeftContent({ email }: { email: string }) {
@@ -126,94 +91,253 @@ function InvalidTokenContent({ error }: { error: string }) {
   )
 }
 
+type SignUpMode = "sign-up" | "verify-email"
+
 export default function SignUpPage() {
-  const { resolvedTheme } = useTheme()
   const searchParams = useSearchParams()
   const inviteToken = searchParams.get("invite")
+  const callbackURL = getRedirectUrl(searchParams)
 
-  // Lock redirect URL on first render — Clerk strips query params during multi-step flow
-  // forceRedirectUrl needed here (not fallback) because env var SIGN_UP_FORCE_REDIRECT_URL
-  // would override Clerk's native redirect_url handling
-  const [redirectUrl] = useState(() => getClerkRedirectUrl(searchParams))
+  const [mode, setMode] = useState<SignUpMode>("sign-up")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  // Only validate token if present
+  // Only validate invite token if present
   const tokenValidation = useQuery(
     api.waitlist.getByToken,
     inviteToken ? { token: inviteToken } : "skip"
   )
 
-  // Auth pages always dark (ThemeEnforcer forces dark for unauthenticated)
-  // Treat undefined (still resolving) as dark to prevent re-render cascade
-  const isDark = resolvedTheme !== "light"
+  function clearError() {
+    if (error) setError("")
+  }
 
-  // Memoize appearance to prevent Clerk re-initialization on every render
-  const clerkAppearance = useMemo(() => ({
-    baseTheme: isDark ? dark : undefined,
-    elements: {
-      rootBox: "w-full border-none !shadow-none",
-      cardBox: "border-none !shadow-none",
-      card: "!shadow-none border-none bg-transparent p-0 w-full",
-      form: "border-none !shadow-none",
-      formContainer: "border-none !shadow-none",
-      formBox: "!shadow-none",
-      headerTitle: "hidden",
-      headerSubtitle: "hidden",
-      main: "p-0 border-none",
-      formFieldRow: "!flex !flex-col !gap-4",
-      socialButtonsBlockButtonBadge: "hidden",
-      socialButtonsBlockButton: `!relative !overflow-hidden inline-flex items-center justify-center gap-2 !rounded-[var(--radius-sm)] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors !border !border-solid !border-transparent before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:translate-x-[101%] before:transition-transform before:duration-300 before:ease-out hover:before:translate-x-0 btn-stripes-clerk [&>*]:relative [&>*]:z-10 hover:!border-[color:var(--slate-400)] ${
-        isDark
-          ? "!bg-[color:var(--slate-100)] !text-[color:var(--slate-800)] hover:!text-[color:var(--slate-100)]"
-          : "!bg-[color:var(--slate-800)] !text-[color:var(--slate-100)] hover:!text-[color:var(--slate-800)]"
-      }`,
-      formButtonPrimary: `!relative !overflow-hidden inline-flex items-center justify-center gap-2 !rounded-[var(--radius-sm)] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors !border-[1px] !border-solid !border-transparent !outline-none !ring-0 !shadow-none before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:translate-x-[101%] before:transition-transform before:duration-300 before:ease-out hover:before:translate-x-0 btn-stripes-clerk [&>*]:relative [&>*]:z-10 hover:!border-[color:var(--slate-400)] ${
-        isDark
-          ? "!bg-[color:var(--slate-100)] !text-[color:var(--slate-800)] hover:!text-[color:var(--slate-100)]"
-          : "!bg-[color:var(--slate-800)] !text-[color:var(--slate-100)] hover:!text-[color:var(--slate-800)]"
-      }`,
-      formFieldInput: `!rounded-md border-border h-10 !font-mono text-sm placeholder:!font-mono focus:ring-primary focus:border-primary transition-all ${isDark ? "!bg-[color:var(--slate-900)]" : "bg-background"}`,
-      otpCodeField: "w-full",
-      otpCodeFieldInputs: "grid !grid-cols-6 gap-2",
-      otpCodeFieldInputContainer: `cursor-text !rounded-md !border !border-border transition-colors ${
-        isDark
-          ? "!bg-[color:var(--slate-900)]/70 focus-within:!bg-amber-500/10 focus-within:!border-amber-400"
-          : "!bg-[color:var(--slate-100)]/70 focus-within:!bg-amber-500/10 focus-within:!border-amber-600"
-      }`,
-      otpCodeFieldInput: `!h-10 !w-full !rounded-md !border-0 !bg-transparent !font-mono !text-sm !cursor-text !caret-amber-400 transition-colors focus:!outline-none focus:!ring-2 focus:!ring-amber-500/35 focus:!bg-amber-500/10 active:!bg-amber-500/10 ${isDark ? "!text-[color:var(--slate-100)]" : "!text-foreground"}`,
-      footerActionLink: "!text-[color:var(--slate-50)] hover:!text-[color:var(--slate-300)] font-bold",
-      identityPreviewText: "text-foreground font-mono",
-      identityPreviewEditButtonIcon: "!text-slate-200",
-      formFieldLabel: "hidden",
-      formFieldHintText: "hidden",
-      identifierFieldInputOptionLastUsed: "hidden",
-      formFieldInputShowPasswordButton: "hover:!text-[color:var(--slate-200)]",
-      formFieldInputGroupSuffix: "hidden",
-      formFieldSuccessText: "hidden",
-      formResendCodeLink: "font-mono text-xs !text-slate-300 hover:!text-slate-50 hover:underline",
-      dividerText: "text-muted-foreground font-mono text-xs uppercase tracking-wider px-4",
-      dividerRow: "flex items-center gap-0 w-full",
-      dividerLine: "flex-1 h-[0.5px] !bg-[color:var(--slate-400)]",
-      footer: "!bg-transparent mt-4 [&]:!bg-transparent",
-      footerBox: "!bg-transparent !shadow-none",
-      footerAction: "!bg-transparent",
-      footerActionText: "text-muted-foreground font-sans text-xs !bg-transparent",
-      footerPages: "!bg-transparent",
-      footerPagesLink: "!bg-transparent",
-    },
-    variables: {
-      colorPrimary: "oklch(0.769 0.188 70.08)",
-      colorTextSecondary: "#a1a1aa",
-      colorBackground: "transparent",
-      colorTextOnPrimaryBackground: "white",
-      colorBorder: "oklch(0.372 0.044 257.287 / 0.5)",
-      borderRadius: "8px",
-    },
-    layout: {
-      showOptionalFields: true,
+  async function handleGoogleSignUp() {
+    clearError()
+    setIsLoading(true)
+    try {
+      await signIn.social({
+        provider: "google",
+        callbackURL,
+      })
+      // Navigates away
+    } catch {
+      toast.error("Gagal mendaftar dengan Google. Silakan coba lagi.")
+      setIsLoading(false)
     }
-  }), [isDark])
+  }
 
-  // If invite token present, check validation
+  async function handleEmailSignUp(e: React.FormEvent) {
+    e.preventDefault()
+    clearError()
+
+    if (!firstName.trim()) {
+      setError("Nama depan wajib diisi.")
+      return
+    }
+    if (!email.trim()) {
+      setError("Email wajib diisi.")
+      return
+    }
+    if (!password) {
+      setError("Password wajib diisi.")
+      return
+    }
+    if (password.length < 8) {
+      setError("Password minimal 8 karakter.")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ")
+      const { error: apiError } = await signUp.email({
+        email: email.trim(),
+        password,
+        name: fullName,
+        callbackURL,
+      })
+      if (apiError) {
+        setError(apiError.message)
+      } else {
+        // BetterAuth auto-sends verification email
+        setMode("verify-email")
+      }
+    } catch {
+      toast.error("Terjadi kesalahan. Silakan coba lagi.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // --- Sign-Up Form (shared between invite and non-invite) ---
+  function renderSignUpForm() {
+    return (
+      <div className="w-full space-y-5">
+        {/* Google OAuth */}
+        <button
+          type="button"
+          onClick={handleGoogleSignUp}
+          disabled={isLoading}
+          className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span
+            className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+            aria-hidden="true"
+          />
+          <span className="relative z-10 inline-flex items-center gap-2">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+            </svg>
+            DAFTAR DENGAN GOOGLE
+          </span>
+        </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4 w-full">
+          <div className="h-[0.5px] flex-1 bg-slate-400" />
+          <span className="text-muted-foreground font-mono text-xs uppercase tracking-wider">atau</span>
+          <div className="h-[0.5px] flex-1 bg-slate-400" />
+        </div>
+
+        {/* Email + Password Form */}
+        <form onSubmit={handleEmailSignUp} className="space-y-4">
+          {/* First + Last name row */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label htmlFor="sign-up-first-name" className="sr-only">Nama depan</label>
+              <input
+                id="sign-up-first-name"
+                type="text"
+                value={firstName}
+                onChange={(e) => { setFirstName(e.target.value); clearError() }}
+                placeholder="Nama depan"
+                autoComplete="given-name"
+                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+              />
+            </div>
+            <div className="flex-1">
+              <label htmlFor="sign-up-last-name" className="sr-only">Nama belakang</label>
+              <input
+                id="sign-up-last-name"
+                type="text"
+                value={lastName}
+                onChange={(e) => { setLastName(e.target.value); clearError() }}
+                placeholder="Nama belakang"
+                autoComplete="family-name"
+                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="sign-up-email" className="sr-only">Email</label>
+            <input
+              id="sign-up-email"
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); clearError() }}
+              placeholder="Email"
+              autoComplete="email"
+              className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="sign-up-password" className="sr-only">Password</label>
+            <div className="relative flex items-center">
+              <input
+                id="sign-up-password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); clearError() }}
+                placeholder="Password"
+                autoComplete="new-password"
+                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
+                aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              >
+                {showPassword ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-action border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono">
+              {error}
+            </div>
+          )}
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span
+              className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+              aria-hidden="true"
+            />
+            <span className="relative z-10 inline-flex items-center gap-2">
+              {isLoading ? <RefreshDouble className="h-4 w-4 animate-spin" /> : null}
+              DAFTAR
+            </span>
+          </button>
+        </form>
+
+        {/* Footer */}
+        <p className="text-muted-foreground text-xs font-sans text-center mt-4">
+          Sudah punya akun?{" "}
+          <Link href="/sign-in" className="text-slate-50 hover:text-slate-300 font-bold">
+            Masuk
+          </Link>
+        </p>
+
+        <p className="text-muted-foreground text-[10px] font-sans mt-3 text-center leading-relaxed">
+          Akun Anda akan terhubung otomatis dengan Google,
+          <br />
+          jika masuk menggunakan alamat email yang sama.
+        </p>
+      </div>
+    )
+  }
+
+  // --- Verify Email Mode ---
+  function renderVerifyEmail() {
+    return (
+      <div className="text-center space-y-4 w-full">
+        <Mail className="h-12 w-12 text-primary mx-auto" />
+        <h3 className="text-narrative text-lg font-medium">Cek Email Kamu</h3>
+        <p className="text-sm text-muted-foreground">
+          Link verifikasi sudah dikirim ke{" "}
+          <span className="font-mono text-foreground">{email}</span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Klik link di email untuk mengaktifkan akun kamu.
+        </p>
+        <Link
+          href="/sign-in"
+          className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Kembali ke masuk
+        </Link>
+      </div>
+    )
+  }
+
+  // --- Invite token flow ---
   if (inviteToken) {
     // Loading state
     if (tokenValidation === undefined) {
@@ -250,34 +374,18 @@ export default function SignUpPage() {
         subtitle="Kamu diundang untuk bergabung"
         customLeftContent={<InvitedUserLeftContent email={tokenValidation.email!} />}
       >
-        <SignUp
-          appearance={clerkAppearance}
-          forceRedirectUrl={redirectUrl}
-        />
-        <p className="text-muted-foreground text-[10px] font-sans mt-3 text-center leading-relaxed">
-          Akun Anda akan terhubung otomatis dengan Google,
-          <br />
-          jika masuk menggunakan alamat email yang sama.
-        </p>
+        {mode === "verify-email" ? renderVerifyEmail() : renderSignUpForm()}
       </AuthWideCard>
     )
   }
 
-  // Default sign-up (no invite token)
+  // --- Default sign-up (no invite token) ---
   return (
     <AuthWideCard
       title="Ayo bergabung!"
       subtitle="Kolaborasi dengan AI, menyusun paper bermutu & akuntable"
     >
-      <SignUp
-        appearance={clerkAppearance}
-        forceRedirectUrl={redirectUrl}
-      />
-      <p className="text-muted-foreground text-[10px] font-sans mt-3 text-center leading-relaxed">
-        Akun Anda akan terhubung otomatis dengan Google,
-        <br />
-        jika masuk menggunakan alamat email yang sama.
-      </p>
+      {mode === "verify-email" ? renderVerifyEmail() : renderSignUpForm()}
     </AuthWideCard>
   )
 }
