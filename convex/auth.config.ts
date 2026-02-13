@@ -1,14 +1,5 @@
-/**
- * Convex Authentication Configuration
- * Configures Clerk as the authentication provider
- */
-const authConfig = {
-  providers: [
-    {
-      domain: "https://artistic-hawk-97.clerk.accounts.dev",
-      applicationID: "convex",
-    },
-  ],
-}
-
-export default authConfig
+// convex/auth.config.ts
+// Auth configuration for BetterAuth Convex plugin
+// The convex() plugin uses this to validate auth tokens
+const authConfig = {};
+export default authConfig;
