@@ -7,6 +7,7 @@ import { ClerkProvider, useAuth } from "@clerk/nextjs"
 import { idID } from "@clerk/localizations"
 import { ThemeProvider } from "next-themes"
 import { ThemeEnforcer } from "@/components/theme/ThemeEnforcer"
+import { AccountLinkingNotice } from "@/components/auth/AccountLinkingNotice"
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
 const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
@@ -26,6 +27,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       {convexClient ? (
         <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
           {children}
+          <AccountLinkingNotice />
         </ConvexProviderWithClerk>
       ) : (
         children
