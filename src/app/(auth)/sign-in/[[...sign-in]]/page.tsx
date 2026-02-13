@@ -57,7 +57,7 @@ export default function SignInPage() {
       formContainer: "border-none !shadow-none",
       formBox: "!shadow-none",
       headerTitle: "hidden",
-      headerSubtitle: "hidden",
+      headerSubtitle: "text-muted-foreground !font-sans !text-xs !mt-1 !text-center",
       main: "p-0 border-none",
       socialButtonsBlockButton: `!relative !overflow-hidden inline-flex items-center justify-center gap-2 !rounded-[var(--radius-sm)] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors !border !border-solid !border-transparent before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:translate-x-[101%] before:transition-transform before:duration-300 before:ease-out hover:before:translate-x-0 btn-stripes-clerk [&>*]:relative [&>*]:z-10 hover:!border-slate-400 ${
         isDark
@@ -74,10 +74,10 @@ export default function SignInPage() {
       otpCodeFieldInputs: "grid !grid-cols-6 gap-2",
       otpCodeFieldInputContainer: `cursor-text !rounded-md !border !border-border transition-colors ${
         isDark
-          ? "!bg-slate-900/70 focus-within:!bg-amber-500/10 focus-within:!border-amber-400"
-          : "!bg-slate-100/70 focus-within:!bg-amber-500/10 focus-within:!border-amber-600"
+          ? "!bg-slate-900/70 focus-within:!bg-sky-500/10 focus-within:!border-sky-400"
+          : "!bg-slate-100/70 focus-within:!bg-sky-500/10 focus-within:!border-sky-600"
       }`,
-      otpCodeFieldInput: `!h-10 !w-full !rounded-md !border-0 !bg-transparent !font-mono !text-sm !cursor-text !caret-amber-400 transition-colors focus:!outline-none focus:!ring-2 focus:!ring-amber-500/35 focus:!bg-amber-500/10 active:!bg-amber-500/10 ${isDark ? "!text-slate-100" : "!text-foreground"}`,
+      otpCodeFieldInput: `!h-10 !w-full !rounded-md !border-0 !bg-transparent !font-mono !text-sm !cursor-text !caret-sky-400 transition-colors focus:!outline-none focus:!ring-2 focus:!ring-sky-500/35 focus:!bg-sky-500/10 active:!bg-sky-500/10 ${isDark ? "!text-slate-100" : "!text-foreground"}`,
       footerActionLink: "!text-slate-50 hover:!text-slate-300 font-bold",
       identityPreviewText: "text-foreground font-mono",
       identityPreviewEditButtonIcon: "!text-slate-200",

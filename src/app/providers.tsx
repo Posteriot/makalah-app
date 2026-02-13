@@ -69,8 +69,24 @@ export function AppProviders({ children }: { children: ReactNode }) {
         formFieldLabel__lastName: "",
         formFieldLabel__password: "",
         formFieldAction__forgotPassword: "Lupa password?",
+        reverification: {
+          ...((idID as Record<string, unknown>).reverification as Record<string, unknown>),
+          emailCode: {
+            title: "Kode telah terkirim ke email Anda, silakan cek!",
+            subtitle: "Kode telah terkirim ke email Anda, silakan cek!",
+          },
+        },
         signIn: {
           ...idID.signIn,
+          password: {
+            ...(idID.signIn?.password ?? {}),
+            subtitle: "Masukkan password yang terkait dengan akun Anda",
+          },
+          emailCode: {
+            ...(idID.signIn?.emailCode ?? {}),
+            title: "Kode telah terkirim ke email Anda, silakan cek!",
+            subtitle: "Kode telah terkirim ke email Anda, silakan cek!",
+          },
           alternativeMethods: {
             ...(idID.signIn?.alternativeMethods ?? {}),
             actionText: "Masih bermasalah?",
@@ -90,6 +106,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
           },
           start: {
             ...(idID.signIn?.start ?? {}),
+            subtitle: "",
             actionText: "Belum punya akun?",
             actionLink: "Daftar",
           },
