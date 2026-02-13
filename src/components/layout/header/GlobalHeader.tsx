@@ -30,7 +30,6 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
 
 const NAV_LINKS = [
   { href: "/pricing", label: "Harga" },
@@ -140,14 +139,22 @@ export function GlobalHeader() {
   const handleSignOut = async () => {
     if (isSigningOut) return
     setIsSigningOut(true)
+
+    // Clear browser cookie first — crossDomainClient clears localStorage
+    // in its init hook (before POST), which can unmount this component.
+    // Setting the cookie early ensures proxy.ts sees logged-out state.
+    document.cookie =
+      "ba_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+
     try {
       await signOut()
-    } catch (error) {
-      console.error("Sign out failed:", error)
-      toast.error("Gagal keluar. Silakan coba lagi.")
-    } finally {
-      setIsSigningOut(false)
+    } catch {
+      // Expected: crossDomainClient nullifies session atom before POST,
+      // component may unmount, and response can abort. Session is already
+      // cleared client-side regardless.
     }
+
+    window.location.href = "/"
   }
 
   // Derived user data for mobile menu

@@ -6,8 +6,11 @@ import { requireAuthUserId } from "./authHelpers"
 export type SubscriptionStatus = "free" | "pro" | "canceled"
 export type UserRole = "superadmin" | "admin" | "user"
 
-// Hardcoded superadmin email
-const SUPERADMIN_EMAIL = "erik.supit@gmail.com"
+// Superadmin emails — comma-separated list from env var
+const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean)
 
 // USER-003: Get user by ID
 export const getById = queryGeneric({
@@ -254,9 +257,13 @@ export const updateProfile = mutationGeneric({
 // ════════════════════════════════════════════════════════════════
 
 /**
- * Create a new application user record after BetterAuth signup.
+ * Create or link application user record after BetterAuth signup.
  * Called from the frontend after successful authentication.
- * Idempotent: returns existing user ID if already created.
+ *
+ * Linking priority:
+ * 1. Already linked by betterAuthUserId → return (idempotent)
+ * 2. Existing user with same email, no betterAuthUserId → link (migration path)
+ * 3. No match → create new user
  */
 export const createAppUser = mutationGeneric({
   args: {
@@ -271,17 +278,41 @@ export const createAppUser = mutationGeneric({
       throw new Error("Unauthorized")
     }
 
-    const existing = await ctx.db
+    // 1. Already linked by betterAuthUserId
+    const alreadyLinked = await ctx.db
       .query("users")
       .withIndex("by_betterAuthUserId", (q) =>
         q.eq("betterAuthUserId", betterAuthUserId)
       )
       .unique()
 
-    if (existing) return existing._id
+    if (alreadyLinked) return alreadyLinked._id
 
+    // 2. Find existing user by email (migration linking)
+    const existingByEmail = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect()
+
+    // Pick the best match: prefer active (no clerkDeletedAt), most recent login
+    const linkCandidate = existingByEmail
+      .filter((u) => !u.betterAuthUserId && !u.clerkDeletedAt)
+      .sort((a, b) => (b.lastLoginAt ?? 0) - (a.lastLoginAt ?? 0))[0]
+
+    if (linkCandidate) {
+      await ctx.db.patch(linkCandidate._id, {
+        betterAuthUserId,
+        lastLoginAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      return linkCandidate._id
+    }
+
+    // 3. No match — create new user
     const now = Date.now()
-    const role: UserRole = email === SUPERADMIN_EMAIL ? "superadmin" : "user"
+    const role: UserRole = SUPERADMIN_EMAILS.includes(email.toLowerCase())
+      ? "superadmin"
+      : "user"
 
     return await ctx.db.insert("users", {
       betterAuthUserId,

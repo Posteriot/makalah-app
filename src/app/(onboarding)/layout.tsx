@@ -1,26 +1,19 @@
-import { isAuthenticated } from "@/lib/auth-server"
-import { redirect } from "next/navigation"
+import type { ReactNode } from "react"
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader"
 
 /**
  * Onboarding Layout
- * - Auth protected (redirects to /sign-in if not authenticated)
+ * - Route protection handled by proxy.ts (middleware), not here
+ * - proxy.ts also allows OTT params through for BetterAuth cross-domain auth flow
  * - User sync handled by useCurrentUser hook (client-side)
  * - Minimal header with logo and close button
  * - Centered content container (max-width 600px)
  */
-export default async function OnboardingLayout({
+export default function OnboardingLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
-  const session = await isAuthenticated()
-
-  // Protected route - redirect to sign-in if not authenticated
-  if (!session) {
-    redirect("/sign-in")
-  }
-
   return (
     <div className="min-h-screen bg-background onboarding-bg">
       <OnboardingHeader />

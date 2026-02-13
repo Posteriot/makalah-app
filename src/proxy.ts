@@ -27,11 +27,16 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Lightweight cookie check — real auth validation happens per-page via <Authenticated>
-  // BetterAuth stores session in cookies
-  const sessionCookie =
-    request.cookies.get("better-auth.session_token") ??
-    request.cookies.get("__Secure-better-auth.session_token")
+  // Allow cross-domain OTT verification through (BetterAuth OAuth/magic-link callback)
+  // ConvexBetterAuthProvider handles OTT → session cookie exchange on the client
+  if (request.nextUrl.searchParams.has("ott")) {
+    return NextResponse.next()
+  }
+
+  // Lightweight cookie check — real auth validation happens via Convex queries.
+  // With cross-domain auth, the real session lives in localStorage.
+  // SessionCookieSync encodes the session into a `ba_session` browser cookie.
+  const sessionCookie = request.cookies.get("ba_session")
 
   if (!sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url)

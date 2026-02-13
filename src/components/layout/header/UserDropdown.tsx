@@ -12,7 +12,6 @@ import {
   User,
   CreditCard,
 } from "iconoir-react"
-import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 interface UserDropdownProps {
@@ -73,16 +72,21 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
 
   const handleSignOut = async () => {
     if (isSigningOut) return
-
     setIsSigningOut(true)
+
+    // Clear browser cookie first — crossDomainClient clears localStorage
+    // in its init hook (before POST), which can unmount this component.
+    document.cookie =
+      "ba_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+
     try {
       await signOut()
-    } catch (error) {
-      console.error("Sign out failed:", error)
-      toast.error("Gagal keluar. Silakan coba lagi.")
-    } finally {
-      setIsSigningOut(false)
+    } catch {
+      // Expected: component may unmount during sign-out, response can abort.
+      // Session is already cleared client-side.
     }
+
+    window.location.href = "/"
   }
 
   return (

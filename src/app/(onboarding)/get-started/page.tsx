@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { CheckCircle } from "iconoir-react"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 
 const GRATIS_FEATURES = [
   "50 kredit",
@@ -25,7 +26,8 @@ const PRO_FEATURES = [
 
 export default function GetStartedPage() {
   const router = useRouter()
-  const { completeOnboarding } = useOnboardingStatus()
+  const { isLoading: isOnboardingLoading, isAuthenticated, completeOnboarding } = useOnboardingStatus()
+  const { user, isLoading: isUserLoading } = useCurrentUser()
 
   const handleSkip = async () => {
     await completeOnboarding()
@@ -40,6 +42,17 @@ export default function GetStartedPage() {
   const handleUpgradePRO = async () => {
     await completeOnboarding()
     router.push("/checkout/pro")
+  }
+
+  // Wait for auth + app user record to be fully established
+  // useCurrentUser auto-creates app user record if missing (email-based linking for existing users)
+  if (isOnboardingLoading || !isAuthenticated || isUserLoading || !user) {
+    return (
+      <div className="text-center space-y-4 py-12">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-muted-foreground font-mono">Memproses login...</p>
+      </div>
+    )
   }
 
   return (

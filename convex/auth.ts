@@ -8,7 +8,10 @@ import { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
 import { sendVerificationEmail, sendMagicLinkEmail, sendPasswordResetEmail } from "./authEmails";
 
+// SITE_URL = frontend origin (http://localhost:3001) — for crossDomain redirects + trustedOrigins
+// CONVEX_SITE_URL = Convex HTTP actions URL — where BetterAuth API actually runs
 const siteUrl = process.env.SITE_URL!;
+const convexSiteUrl = process.env.CONVEX_SITE_URL!;
 
 // Create the BetterAuth component client
 export const authComponent = createClient<DataModel>(components.betterAuth, {
@@ -18,7 +21,7 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
 // BetterAuth configuration
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   ({
-    baseURL: siteUrl,
+    baseURL: convexSiteUrl,
     trustedOrigins: [siteUrl],
     database: authComponent.adapter(ctx),
     emailAndPassword: {

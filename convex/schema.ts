@@ -50,6 +50,10 @@ export default defineSchema({
   users: defineTable({
     // BetterAuth user ID (links to BetterAuth component's user table)
     betterAuthUserId: v.optional(v.string()),
+    // Legacy Clerk fields (kept optional for existing data compatibility)
+    clerkUserId: v.optional(v.string()),
+    clerkSyncStatus: v.optional(v.string()),
+    clerkDeletedAt: v.optional(v.number()),
     email: v.string(),
     role: v.string(), // "superadmin" | "admin" | "user"
     firstName: v.optional(v.string()),
