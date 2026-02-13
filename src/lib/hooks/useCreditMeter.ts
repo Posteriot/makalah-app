@@ -85,18 +85,20 @@ export function useCreditMeter(): CreditMeterData {
     }
   }
 
-  // BPP tier — credit-based, no progress bar
+  // BPP tier — credit-based
   if (tier === "bpp") {
+    const used = creditBalance?.usedCredits ?? 0
+    const totalCredits = creditBalance?.totalCredits ?? 0
     const remaining = creditBalance?.remainingCredits ?? quotaStatus?.currentCredits ?? 0
     const level: CreditMeterLevel =
       remaining < 30 ? "critical" : remaining < 100 ? "warning" : "normal"
 
     return {
       tier: "bpp",
-      used: creditBalance?.usedCredits ?? 0,
-      total: Infinity,
+      used,
+      total: totalCredits,
       remaining,
-      percentage: NaN,
+      percentage: totalCredits > 0 ? Math.round((used / totalCredits) * 100) : 0,
       level,
       isLoading: creditBalance === undefined,
       isAdmin: false,

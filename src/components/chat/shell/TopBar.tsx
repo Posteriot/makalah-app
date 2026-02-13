@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button"
 import { NotificationDropdown } from "./NotificationDropdown"
 import { UserDropdown } from "@/components/layout/header"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import {
   Tooltip,
   TooltipTrigger,
@@ -172,14 +171,6 @@ export function TopBar({
                   : "Close artifacts"}
             </TooltipContent>
           </Tooltip>
-
-          {/* Segment Badge */}
-          {!isLoading && user && (
-            <SegmentBadge
-              role={user.role}
-              subscriptionStatus={user.subscriptionStatus}
-            />
-          )}
 
           {/* User Dropdown */}
           <UserDropdown variant="compact" />

@@ -10,7 +10,6 @@ import { useConversations } from "@/lib/hooks/useConversations"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { ChatMiniFooter } from "../ChatMiniFooter"
 
 /**
  * ChatLayout - 6-column CSS Grid orchestrator
@@ -67,7 +66,7 @@ const CSS_VARS = {
   "--panel-width": `${DEFAULT_PANEL_WIDTH}px`,
   "--panel-min-width": `${MIN_PANEL_WIDTH}px`,
   "--panel-max-width": "50%",
-  "--shell-footer-h": "32px",
+  "--shell-footer-h": "0px",
 } as React.CSSProperties
 
 export function ChatLayout({
@@ -363,8 +362,6 @@ export function ChatLayout({
         </SheetContent>
       </Sheet>
 
-      {/* Footer */}
-      <ChatMiniFooter />
     </div>
   )
 }

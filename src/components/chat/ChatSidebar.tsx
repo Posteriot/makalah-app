@@ -179,20 +179,12 @@ export function ChatSidebar({
       {/* Content - Conditionally rendered based on activePanel */}
       <div className="flex-1 flex flex-col overflow-hidden">{renderContent()}</div>
 
-      {/* Credit Meter — visible for all tiers, hidden for admin (handled by CreditMeter) */}
-      <div className="shrink-0 border-t border-hairline">
-        <CreditMeter
-          variant="compact"
-          onClick={() => router.push("/subscription/overview")}
-        />
-      </div>
-
-      {/* Mini-footer */}
-      <div className="shrink-0 border-t border-hairline px-3 py-2">
-        <p className="text-center font-mono text-[10px] text-muted-foreground">
-          &copy; 2026 Makalah AI
-        </p>
-      </div>
+      {/* Credit Meter — border-top only, seamless with sidebar bg */}
+      <CreditMeter
+        variant="compact"
+        className="shrink-0 border-t-[0.5px] border-[color:var(--border-hairline)] bg-transparent"
+        onClick={() => router.push("/subscription/overview")}
+      />
     </aside>
   )
 }
