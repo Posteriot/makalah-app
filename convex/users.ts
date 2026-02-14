@@ -3,7 +3,7 @@ import { v } from "convex/values"
 import { requireRole } from "./permissions"
 import { requireAuthUserId } from "./authHelpers"
 
-export type SubscriptionStatus = "free" | "pro" | "canceled"
+export type SubscriptionStatus = "free" | "pro" | "canceled" | "unlimited"
 export type UserRole = "superadmin" | "admin" | "user"
 
 // Superadmin emails — comma-separated list from env var
@@ -321,7 +321,7 @@ export const createAppUser = mutationGeneric({
       lastName,
       role,
       emailVerified: false,
-      subscriptionStatus: "free",
+      subscriptionStatus: role === "superadmin" ? "unlimited" : "free",
       createdAt: now,
       lastLoginAt: now,
     })

@@ -643,7 +643,8 @@ export default defineSchema({
     tier: v.union(
       v.literal("gratis"),
       v.literal("bpp"),
-      v.literal("pro")
+      v.literal("pro"),
+      v.literal("unlimited")
     ),
 
     // Overage tracking (untuk Pro tier)

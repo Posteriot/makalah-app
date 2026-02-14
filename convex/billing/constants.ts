@@ -163,6 +163,15 @@ export const TIER_LIMITS = {
     overageAllowed: false,
     creditBased: false,
   },
+  unlimited: {
+    // Admin/superadmin — no limits, no billing
+    monthlyTokens: Infinity,
+    dailyTokens: Infinity,
+    monthlyPapers: Infinity,
+    hardLimit: false,
+    overageAllowed: false,
+    creditBased: false,
+  },
 } as const
 
 export type TierType = keyof typeof TIER_LIMITS
@@ -224,6 +233,7 @@ export function calculateTokensFromIDR(amountIDR: number): number {
  * Helper: Get tier limits for a user tier
  */
 export function getTierLimits(tier: string) {
+  if (tier === "unlimited") return TIER_LIMITS.unlimited
   const normalizedTier = tier === "free" ? "gratis" : tier
   return TIER_LIMITS[normalizedTier as TierType] ?? TIER_LIMITS.gratis
 }

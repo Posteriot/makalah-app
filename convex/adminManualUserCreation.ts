@@ -57,7 +57,7 @@ export const createAdminUser = mutation({
       firstName: args.firstName,
       lastName: args.lastName,
       emailVerified: false,
-      subscriptionStatus: "pro",
+      subscriptionStatus: "unlimited",
       createdAt: timestamp,
     })
 

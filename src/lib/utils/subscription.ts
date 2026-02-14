@@ -16,6 +16,7 @@ export function getEffectiveTier(role?: string, subscriptionStatus?: string): Ef
   // Regular users: check subscriptionStatus
   if (subscriptionStatus === "pro") return "pro"
   if (subscriptionStatus === "bpp") return "bpp"
+  if (subscriptionStatus === "unlimited") return "unlimited"
 
   // Default for "free", "canceled", undefined, or any unknown value
   return "gratis"

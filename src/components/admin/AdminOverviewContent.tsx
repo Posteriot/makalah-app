@@ -31,6 +31,7 @@ export function AdminOverviewContent({
   ).length
   const bppCount = users.filter((user) => user.subscriptionStatus === "bpp").length
   const proCount = users.filter((user) => user.subscriptionStatus === "pro").length
+  const unlimitedCount = users.filter((user) => user.subscriptionStatus === "unlimited").length
 
   return (
     <div className="space-y-4">
@@ -196,6 +197,19 @@ export function AdminOverviewContent({
             </div>
             <span className="text-interface text-sm font-medium text-foreground">
               {proCount}
+            </span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="rounded-badge border border-slate-500/30 bg-slate-500/15 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                UNLIMITED
+              </span>
+              <span className="text-narrative text-xs text-muted-foreground">
+                Admin / Superadmin
+              </span>
+            </div>
+            <span className="text-interface text-sm font-medium text-foreground">
+              {unlimitedCount}
             </span>
           </div>
         </div>

@@ -51,7 +51,7 @@ export const promoteToAdmin = mutation({
     // Update to admin
     await ctx.db.patch(args.targetUserId, {
       role: "admin",
-      subscriptionStatus: "pro",
+      subscriptionStatus: "unlimited",
       updatedAt: Date.now(),
     })
 
@@ -111,6 +111,7 @@ export const demoteToUser = mutation({
     // Update to user
     await ctx.db.patch(args.targetUserId, {
       role: "user",
+      subscriptionStatus: "free",
       updatedAt: Date.now(),
     })
 
