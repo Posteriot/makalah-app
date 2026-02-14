@@ -1,17 +1,28 @@
 import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
 import { cookies } from "next/headers";
 
-const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL!;
+// Lazy initialization — convexBetterAuthNextJs() throws if env vars are
+// missing, which happens during Vercel build's "Collecting page data" phase.
+// Deferring creation to first request ensures env vars are available.
+type RouteHandler = (req: Request) => Promise<Response>;
+let _authHandler: { GET: RouteHandler; POST: RouteHandler } | null = null;
 
-// Keep the handler export for api/auth/[...all]/route.ts — it proxies
-// auth API requests from the client to Convex and works fine with
-// crossDomainClient's Better-Auth-Cookie header.
-const { handler: authHandler } = convexBetterAuthNextJs({
-  convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
-  convexSiteUrl: CONVEX_SITE_URL,
-});
+function getAuthHandler() {
+  if (!_authHandler) {
+    const { handler: h } = convexBetterAuthNextJs({
+      convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
+      convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL!,
+    });
+    _authHandler = h as { GET: RouteHandler; POST: RouteHandler };
+  }
+  return _authHandler;
+}
 
-export const handler = authHandler;
+// Proxy object so `export const { GET, POST } = handler` works in route.ts
+export const handler = {
+  GET: (req: Request) => getAuthHandler().GET(req),
+  POST: (req: Request) => getAuthHandler().POST(req),
+};
 
 /**
  * Get the BetterAuth cookie string from the `ba_session` browser cookie.
@@ -53,7 +64,7 @@ export async function getToken(): Promise<string | null> {
   if (!betterAuthCookies) return null;
 
   try {
-    const response = await fetch(`${CONVEX_SITE_URL}/api/auth/convex/token`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/api/auth/convex/token`, {
       headers: {
         "Better-Auth-Cookie": betterAuthCookies,
       },
