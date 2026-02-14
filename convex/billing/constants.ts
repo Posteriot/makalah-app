@@ -154,7 +154,8 @@ export const TIER_LIMITS = {
   },
   pro: {
     // Sinkron dengan pricingPlans: "Menyusun 5-6 Paper" per bulan
-    // 5-6 paper × 800K tokens = 4M-4.8M tokens, dibulatkan ke 5M
+    // Per paper: ~300K kredit (soft cap) + ~500K-700K untuk eksplorasi/riset/diskusi ≈ 800K-1M total
+    // 5-6 paper × ~800K-1M tokens = 4M-6M tokens, dibulatkan ke 5M
     monthlyTokens: 5_000_000,
     dailyTokens: Infinity,
     monthlyPapers: Infinity,

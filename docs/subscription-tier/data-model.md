@@ -150,12 +150,16 @@ admin ──(demote to user)───→ user   (subscriptionStatus TIDAK di-res
 
 | Tier | Monthly Tokens | Daily Tokens | Monthly Papers | Hard Limit | Credit-Based |
 |------|---------------|-------------|----------------|------------|--------------|
-| **gratis** | 100,000 | 50,000 | 2 | Yes (blocks) | No |
-| **bpp** | Infinity | Infinity | Infinity | No (pay-as-go) | Yes |
-| **pro** | 5,000,000 | 200,000 | Infinity | No (soft + overage) | No |
+| **gratis** | 100.000 | Tanpa batas | 2 | Ya (blocked) | Tidak |
+| **bpp** | Tanpa batas (kredit prepaid) | Tanpa batas | Tanpa batas | Ya (blocked saat kredit habis) | Ya |
+| **pro** | 5.000.000 | Tanpa batas | Tanpa batas | Ya (blocked + credit fallback) | Tidak |
 
-### Overage (Pro only)
-Pro users yang melebihi 5M tokens/bulan dikenakan overage rate per token (soft limit, tidak block).
+### Pro Credit Fallback
+Pro users yang melebihi 5M tokens/bulan di-block (hard limit, `hardLimit: true`, `overageAllowed: false`).
+Jika user punya credit balance, sistem otomatis fallback ke credit deduction (`enforcement.ts` line 172-192).
+Jika credit balance juga habis, user di-block sepenuhnya dan diarahkan top up kredit.
+
+**Tidak ada sistem overage** — tidak ada tier yang mengenakan biaya overage per token.
 
 ---
 

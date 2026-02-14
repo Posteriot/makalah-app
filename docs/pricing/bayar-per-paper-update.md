@@ -1,8 +1,12 @@
 # Bayar Per Paper (BPP) – Implementasi Pembayaran & Kredit (UPDATE)
 
-> **Status:** Draft untuk implementasi
+> **Status:** Implementasi selesai (Feb 2026)
 > **Source of Truth:** `docs/tokens/kalkulasi-gemini-tokens.md`, `docs/tokens/kalkulasi-fallback-gpt51.md`
 > **Replaces:** `docs/pricing/bayar-per-paper.md`
+
+> **CATATAN (Feb 2026):** Migrasi dari IDR-based ke credit-based sudah selesai.
+> Section-section di bawah yang menunjukkan "KODE LAMA" atau "Perubahan yang Diperlukan"
+> sudah diimplementasikan di codebase. Dokumen ini dipertahankan sebagai referensi historis.
 
 ---
 

@@ -378,10 +378,9 @@ src/app/
 | Aspek | Value |
 |-------|-------|
 | Harga | Rp 0 |
-| Kredit | 50 kredit |
+| Kredit | 100 kredit / bulan |
 | Features | - Menggunakan 13 tahap workflow |
-| | - Diskusi dan menyusun draft |
-| | - Pemakaian harian terbatas |
+| | - Diskusi dan menyusun draft paper |
 
 ### Tier 2: BAYAR PER PAPER (BPP)
 | Aspek | Value |
@@ -393,17 +392,19 @@ src/app/
 | | - Draft hingga paper utuh |
 | | - Diskusi sesuai konteks paper |
 | | - Export Word & PDF |
+| | - Tanpa limit bulanan/harian |
 
 ### Tier 3: PRO
 | Aspek | Value |
 |-------|-------|
 | Harga | Rp 200.000 /bulan |
-| Kredit | 2000 kredit |
-| Features | - Menyusun sampai dengan 5 Paper (setara 75 halaman paper) |
+| Kredit | 5.000 kredit / bulan |
+| Features | - Menyusun 5-6 paper (setara 75-90 halaman) |
 | | - Full 13 tahap workflow |
 | | - Draft hingga paper utuh |
 | | - Diskusi tak terbatas |
 | | - Export Word & PDF |
+| | - Credit balance sebagai cadangan saat quota habis |
 
 **Status PRO:** UI/halaman checkout dibuat sekarang, tapi CTA menampilkan **"Segera Hadir"** (disabled). Backend payment untuk recurring subscription digarap menyusul. Ini memudahkan implementasi lanjutan karena struktur halaman sudah siap.
 
