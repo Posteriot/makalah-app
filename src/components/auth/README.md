@@ -44,7 +44,7 @@ Integrasi utamanya ada di:
 - `AuthWideCard.tsx`
   - Menyusun layout auth dua kolom responsif.
   - Kiri: branding/pesan (atau `customLeftContent`).
-  - Kanan: container untuk form/interaksi (Clerk atau custom form).
+  - Kanan: container untuk form/interaksi (BetterAuth custom form).
   - Memecah subtitle menjadi dua bagian (`subtitleLead` dan `subtitleEmphasis`) berdasarkan koma pertama.
 
 - `WaitlistForm.tsx`

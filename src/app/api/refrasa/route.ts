@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated } from "@/lib/auth-server"
 import { generateObject } from "ai"
 import { fetchQuery } from "convex/nextjs"
 import { NextResponse } from "next/server"
@@ -32,9 +32,9 @@ export const maxDuration = 300
  */
 export async function POST(req: Request) {
   try {
-    // 1. Authenticate with Clerk
-    const { userId: clerkUserId } = await auth()
-    if (!clerkUserId) {
+    // 1. Authenticate with BetterAuth
+    const isAuthed = await isAuthenticated()
+    if (!isAuthed) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }

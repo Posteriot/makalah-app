@@ -7,7 +7,7 @@ import {
     requireConversationOwner,
     requirePaperSessionOwner,
     getConversationIfOwner,
-} from "./auth";
+} from "./authHelpers";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
 const MAX_WORKING_TITLE_LENGTH = 80;

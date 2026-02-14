@@ -48,7 +48,12 @@ const documentationBlock = v.union(
 
 export default defineSchema({
   users: defineTable({
-    clerkUserId: v.string(),
+    // BetterAuth user ID (links to BetterAuth component's user table)
+    betterAuthUserId: v.optional(v.string()),
+    // Legacy Clerk fields (kept optional for existing data compatibility)
+    clerkUserId: v.optional(v.string()),
+    clerkSyncStatus: v.optional(v.string()),
+    clerkDeletedAt: v.optional(v.number()),
     email: v.string(),
     role: v.string(), // "superadmin" | "admin" | "user"
     firstName: v.optional(v.string()),
@@ -62,16 +67,12 @@ export default defineSchema({
     xenditCustomerId: v.optional(v.string()), // Xendit customer reference
     // Onboarding completion flag
     hasCompletedOnboarding: v.optional(v.boolean()), // true after first-time onboarding flow
-    // Clerk synchronization state
-    clerkSyncStatus: v.optional(v.union(v.literal("active"), v.literal("deleted"))),
-    clerkDeletedAt: v.optional(v.number()),
     // Account linking UX: track if user has seen the linking toast
     hasSeenLinkingNotice: v.optional(v.boolean()),
   })
-    .index("by_clerkUserId", ["clerkUserId"])
+    .index("by_betterAuthUserId", ["betterAuthUserId"])
     .index("by_role", ["role"])
-    .index("by_email", ["email"])
-    .index("by_clerkSyncStatus", ["clerkSyncStatus"]),
+    .index("by_email", ["email"]),
   papers: defineTable({
     userId: v.id("users"),
     title: v.string(),

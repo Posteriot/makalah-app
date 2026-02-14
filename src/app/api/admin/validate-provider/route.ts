@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createGateway } from "@ai-sdk/gateway"
 import { generateText } from "ai"
@@ -12,13 +12,13 @@ import { api } from "@convex/_generated/api"
  * Admin/superadmin only
  */
 export async function POST(request: NextRequest) {
-  // Auth check via Clerk
-  const { userId, getToken } = await auth()
-  if (!userId) {
+  // Auth check via BetterAuth
+  const isAuthed = await isAuthenticated()
+  if (!isAuthed) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const convexToken = await getToken({ template: "convex" })
+  const convexToken = await getToken()
   if (!convexToken) {
     return NextResponse.json({ error: "Convex token missing" }, { status: 500 })
   }
@@ -27,9 +27,7 @@ export async function POST(request: NextRequest) {
   // Permission check (admin only)
 
   try {
-    const convexUser = await fetchQuery(api.users.getUserByClerkId, {
-      clerkUserId: userId,
-    }, convexOptions)
+    const convexUser = await fetchQuery(api.users.getMyUser, {}, convexOptions)
 
     if (
       !convexUser ||

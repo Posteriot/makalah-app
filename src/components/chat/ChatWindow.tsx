@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { PaperValidationPanel } from "../paper/PaperValidationPanel"
-import { useUser } from "@clerk/nextjs"
+import { useSession } from "@/lib/auth-client"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
 
@@ -100,8 +100,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const stoppedManuallyRef = useRef(false)
   const starterPromptAttemptedForConversationRef = useRef<string | null>(null)
 
-  const { user: clerkUser } = useUser()
-  const userId = useQuery(api.chatHelpers.getUserId, clerkUser?.id ? { clerkUserId: clerkUser.id } : "skip")
+  const { data: session } = useSession()
+  const userId = useQuery(api.chatHelpers.getUserId, session?.user?.id ? { betterAuthUserId: session.user.id } : "skip")
   const createConversation = useMutation(api.conversations.createConversation)
 
   const isValidConvexId = (value: string | null): value is string =>
@@ -134,7 +134,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   // Auth is fully settled when userId query has resolved (not loading)
   // This prevents showing "not found" during auth sync race condition
-  const isAuthSettled = !clerkUser?.id || userId !== undefined
+  const isAuthSettled = !session?.user?.id || userId !== undefined
 
   // Loading if: query is loading OR auth is still settling (for newly created conversations)
   const isConversationLoading =

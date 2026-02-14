@@ -6,7 +6,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { calculateCostIDR } from "./constants"
-import { requireAuthUserId } from "../auth"
+import { requireAuthUserId } from "../authHelpers"
 
 /**
  * Record a token usage event

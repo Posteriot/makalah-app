@@ -12,7 +12,7 @@ import {
   tokensToCredits,
   type TierType,
 } from "./constants"
-import { requireAuthUserId } from "../auth"
+import { requireAuthUserId } from "../authHelpers"
 
 /**
  * Get or create user quota for current period

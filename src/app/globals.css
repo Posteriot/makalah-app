@@ -693,12 +693,6 @@
   }
 }
 
-/* Hide Clerk internal dev badges and background patterns */
-.cl-internal-y44tp9,
-.cl-internal-1fpq5at,
-.cl-internal-1dauvpw {
-  display: none !important;
-}
 
 /* ==========================================================================
  * CHAT LAYOUT STYLES
@@ -1697,174 +1691,8 @@
     );
   }
 
-  /* Clerk social button stripes - applied to ::before pseudo-element */
-  /* Light mode: stripes slide in with light bg */
-  .btn-stripes-clerk::before {
-    background-color: var(--slate-100);
-    background-image: repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 6px,
-      var(--slate-300) 6px,
-      var(--slate-300) 7px
-    );
-  }
-
-  /* Dark mode: stripes slide in with dark bg */
-  .dark .btn-stripes-clerk::before {
-    background-color: var(--slate-800);
-    background-image: repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 6px,
-      var(--slate-600) 6px,
-      var(--slate-600) 7px
-    );
-  }
 }
 
-/* ==========================================================================
- * CLERK OVERRIDES - Force transparent backgrounds
- * ========================================================================== */
-.cl-footer,
-.cl-footerAction,
-.cl-footerPages,
-.cl-card__footer,
-.cl-signIn-root,
-.cl-signUp-root,
-[class*="cl-footer"],
-[class*="cl-internal"],
-[class*="footer"] [class*="cl-"] {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-}
-
-/* Target Clerk internal footer wrapper */
-.cl-footerAction__signIn,
-.cl-footerAction__signUp {
-  background: transparent !important;
-  background-color: transparent !important;
-}
-
-/* Force Clerk auth input typography to mono (typed value + placeholder) */
-.cl-formFieldInput,
-input[data-cl-element='formFieldInput'] {
-  font-family: var(--font-mono) !important;
-}
-
-.cl-formFieldInput::placeholder,
-input[data-cl-element='formFieldInput']::placeholder {
-  font-family: var(--font-mono) !important;
-}
-
-/* ==========================================================================
- * CLERK - Reset "Email code" button to text link style
- * Parent .cl-alternativeMethods contains email code, while .cl-main contains
- * reset password. This targets only email code to keep it as a text link.
- * ========================================================================== */
-/* Inverted button style — shared by Reset Password & Email Bantuan.
- * isolation + z-index:-1 keeps ::before stripe behind bare text node. */
-.cl-main > .cl-alternativeMethodsBlockButton,
-.cl-signIn-havingTrouble .cl-button {
-  position: relative !important;
-  overflow: hidden !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 0.5rem !important;
-  border-radius: var(--radius-sm) !important;
-  padding: 0.5rem 1rem !important;
-  font-family: var(--font-sans) !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  text-transform: uppercase !important;
-  transition: color 0.15s, border-color 0.15s !important;
-  border: 1px solid transparent !important;
-  isolation: isolate !important;
-}
-
-.dark .cl-main > .cl-alternativeMethodsBlockButton,
-.dark .cl-signIn-havingTrouble .cl-button {
-  background-color: var(--slate-100) !important;
-  color: var(--slate-800) !important;
-}
-
-/* Keep auth buttons in sm radius even when Clerk variables use md radius for inputs */
-.cl-main .cl-socialButtonsBlockButton,
-.cl-main .cl-formButtonPrimary {
-  border-radius: var(--radius-sm) !important;
-}
-
-.cl-main > .cl-alternativeMethodsBlockButton:hover,
-.cl-signIn-havingTrouble .cl-button:hover {
-  border-color: var(--slate-400) !important;
-}
-
-.dark .cl-main > .cl-alternativeMethodsBlockButton:hover,
-.dark .cl-signIn-havingTrouble .cl-button:hover {
-  color: var(--slate-200) !important;
-}
-
-/* Stripe animation for inverted buttons */
-.cl-main > .cl-alternativeMethodsBlockButton::before,
-.cl-signIn-havingTrouble .cl-button::before {
-  content: '' !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: -1 !important;
-  pointer-events: none !important;
-  transform: translateX(101%) !important;
-  transition: transform 0.3s ease-out !important;
-}
-
-.dark .cl-main > .cl-alternativeMethodsBlockButton::before,
-.dark .cl-signIn-havingTrouble .cl-button::before {
-  background-color: var(--slate-800) !important;
-  background-image: repeating-linear-gradient(45deg, transparent, transparent 6px, var(--slate-600) 6px, var(--slate-600) 7px) !important;
-}
-
-.cl-main > .cl-alternativeMethodsBlockButton:hover::before,
-.cl-signIn-havingTrouble .cl-button:hover::before {
-  transform: translateX(0) !important;
-}
-
-/* Hide the arrow icon inside Email Bantuan button */
-.cl-signIn-havingTrouble .cl-button img {
-  display: none !important;
-}
-
-/* Email code link (parent: .cl-alternativeMethods) - text link style.
- * No Tailwind classes from appearance API, so plain CSS overrides work. */
-.cl-alternativeMethods .cl-alternativeMethodsBlockButton {
-  background: none !important;
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  overflow: visible !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.75rem !important;
-  font-weight: 400 !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  color: var(--slate-600) !important;
-  cursor: pointer !important;
-  transition: color 0.15s !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
-}
-
-.cl-alternativeMethods .cl-alternativeMethodsBlockButton:hover {
-  color: var(--slate-200) !important;
-  background: none !important;
-}
-
-.cl-alternativeMethods .cl-alternativeMethodsBlockButton::before {
-  display: none !important;
-}
 
 /* ==========================================================================
  * ANIMATIONS - Chat/Thinking
@@ -1947,6 +1775,19 @@ input[data-cl-element='formFieldInput']::placeholder {
 }
 
 /* ==========================================================================
+ * LOGO BREATHING ANIMATION
+ * Subtle scale pulse for loading states (e.g. onboarding redirect)
+ * ========================================================================== */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+.animate-breathe {
+  animation: breathe 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* ==========================================================================
  * REDUCED MOTION - Accessibility Support
  * ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
@@ -1955,6 +1796,7 @@ input[data-cl-element='formFieldInput']::placeholder {
   .animate-thinking-dot,
   .animate-cursor-blink,
   .animate-pulse,
+  .animate-breathe,
   .hero-text-shimmer,
   .hero-caret-blink,
   .animate-accordion-down,
@@ -2053,135 +1895,7 @@ input[data-cl-element='formFieldInput']::placeholder {
     opacity: 0.3;
   }
 
-  /* Nuclear Clerk Overrides - High Specificity Absolute Minimalist */
-  [data-cl-element='rootBox'] .cl-formFieldLabel,
-  [data-cl-element='rootBox'] .cl-formFieldHintText,
-  [data-cl-element='rootBox'] .cl-optionalText,
-  [data-cl-element='rootBox'] [class*='socialButtonsBlockButtonBadge'],
-  [data-cl-element='rootBox'] [data-cl-element*='badge'],
-  [data-cl-element='rootBox'] [data-cl-element*='Badge'],
-  .cl-rootBox .cl-formFieldLabel,
-  .cl-rootBox .cl-formFieldHintText,
-  .cl-rootBox [class*='socialButtonsBlockButtonBadge'],
-  div[class*='cl-socialButtonsBlockButtonBadge'],
-  span[class*='cl-socialButtonsBlockButtonBadge'] {
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-    height: 0 !important;
-    width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    position: absolute !important;
-    z-index: -9999 !important;
-  }
-
-  /* Hide "Terakhir digunakan" (Last used) badge on sign-in form */
-  [data-cl-element='rootBox'] [class*='identifierFieldInputOptionLastUsed'],
-  [data-cl-element='rootBox'] [class*='IdentifierFieldInputOptionLastUsed'],
-  [data-cl-element='rootBox'] [class*='lastUsed'],
-  [data-cl-element='rootBox'] [class*='LastUsed'],
-  .cl-rootBox [class*='identifierFieldInputOptionLastUsed'],
-  .cl-rootBox [class*='lastUsed'],
-  .cl-identifierFieldInputOptionLastUsed,
-  [class*='cl-identifierFieldInputOptionLastUsed'],
-  /* Alternative identifier method selectors */
-  .cl-alternativeMethodsBlockButton__lastUsed,
-  [class*='alternativeMethodsBlockButton__lastUsed'],
-  /* Form field related last used indicators */
-  .cl-formFieldInputGroup__lastUsed,
-  [class*='formFieldInputGroup__lastUsed'],
-  .cl-formFieldInputShowPasswordButton__lastUsed,
-  /* Badge/tag inside identifier field */
-  .cl-identifierField__emailAddress+span,
-  .cl-identifierField__phoneNumber+span,
-  .cl-formFieldInput__identifier+span,
-  /* Target the small tag/badge element near form field */
-  .cl-formField [class*='badge'],
-  .cl-formField [class*='Badge'],
-  .cl-formField [class*='tag'],
-  .cl-formField [class*='Tag'],
-  .cl-formField [class*='hint']:not(.cl-formFieldHintText),
-  /* Identifier preview related */
-  .cl-identifierPreview [class*='badge'],
-  .cl-identifierPreview [class*='Badge'] {
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    position: absolute !important;
-    z-index: -9999 !important;
-  }
-
-  /* Clerk autofill fix: force neutral slate, prevent browser blue tint */
-  [data-cl-element='rootBox'] input:-webkit-autofill,
-  [data-cl-element='rootBox'] input:-webkit-autofill:hover,
-  [data-cl-element='rootBox'] input:-webkit-autofill:focus,
-  [data-cl-element='rootBox'] input:-webkit-autofill:active,
-  .cl-rootBox input:-webkit-autofill,
-  .cl-rootBox input:-webkit-autofill:hover,
-  .cl-rootBox input:-webkit-autofill:focus,
-  .cl-rootBox input:-webkit-autofill:active,
-  .cl-formFieldInput:-webkit-autofill,
-  .cl-formFieldInput:-webkit-autofill:hover,
-  .cl-formFieldInput:-webkit-autofill:focus,
-  .cl-formFieldInput:-webkit-autofill:active,
-  input[data-cl-element='formFieldInput']:-webkit-autofill,
-  input[data-cl-element='formFieldInput']:-webkit-autofill:hover,
-  input[data-cl-element='formFieldInput']:-webkit-autofill:focus,
-  input[data-cl-element='formFieldInput']:-webkit-autofill:active {
-    background-color: var(--background) !important;
-    -webkit-box-shadow: 0 0 0 1000px var(--background) inset !important;
-    box-shadow: 0 0 0 1000px var(--background) inset !important;
-    -webkit-text-fill-color: var(--foreground) !important;
-    caret-color: var(--foreground) !important;
-    border-color: var(--border) !important;
-    transition: background-color 99999s ease-in-out 0s !important;
-  }
-
-  .dark [data-cl-element='rootBox'] input:-webkit-autofill,
-  .dark [data-cl-element='rootBox'] input:-webkit-autofill:hover,
-  .dark [data-cl-element='rootBox'] input:-webkit-autofill:focus,
-  .dark [data-cl-element='rootBox'] input:-webkit-autofill:active,
-  .dark .cl-rootBox input:-webkit-autofill,
-  .dark .cl-rootBox input:-webkit-autofill:hover,
-  .dark .cl-rootBox input:-webkit-autofill:focus,
-  .dark .cl-rootBox input:-webkit-autofill:active,
-  .dark .cl-formFieldInput:-webkit-autofill,
-  .dark .cl-formFieldInput:-webkit-autofill:hover,
-  .dark .cl-formFieldInput:-webkit-autofill:focus,
-  .dark .cl-formFieldInput:-webkit-autofill:active,
-  .dark input[data-cl-element='formFieldInput']:-webkit-autofill,
-  .dark input[data-cl-element='formFieldInput']:-webkit-autofill:hover,
-  .dark input[data-cl-element='formFieldInput']:-webkit-autofill:focus,
-  .dark input[data-cl-element='formFieldInput']:-webkit-autofill:active {
-    background-color: var(--slate-900) !important;
-    -webkit-box-shadow: 0 0 0 1000px var(--slate-900) inset !important;
-    box-shadow: 0 0 0 1000px var(--slate-900) inset !important;
-    -webkit-text-fill-color: var(--slate-100) !important;
-    caret-color: var(--slate-100) !important;
-    border-color: var(--neutral-0-a10) !important;
-  }
-
-  [data-cl-element='rootBox'] input:-moz-autofill,
-  [data-cl-element='rootBox'] input:-moz-autofill:focus,
-  .cl-rootBox input:-moz-autofill,
-  .cl-rootBox input:-moz-autofill:focus,
-  .cl-formFieldInput:-moz-autofill,
-  .cl-formFieldInput:-moz-autofill:focus,
-  input[data-cl-element='formFieldInput']:-moz-autofill,
-  input[data-cl-element='formFieldInput']:-moz-autofill:focus {
-    box-shadow: 0 0 0 1000px var(--background) inset !important;
-    color: var(--foreground) !important;
-    caret-color: var(--foreground) !important;
-    border-color: var(--border) !important;
-  }
-
-  /* Fallback: if Clerk internal selectors change, keep autofill neutral app-wide */
+  /* Autofill fix: force neutral slate, prevent browser blue tint */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,

@@ -1,14 +1,10 @@
-/**
- * Convex Authentication Configuration
- * Configures Clerk as the authentication provider
- */
-const authConfig = {
-  providers: [
-    {
-      domain: "https://artistic-hawk-97.clerk.accounts.dev",
-      applicationID: "convex",
-    },
-  ],
-}
+// convex/auth.config.ts
+// Auth configuration for BetterAuth Convex plugin
+// getAuthConfigProvider() generates a customJwt provider with applicationID "convex"
+// that the convex() plugin uses for JWT token validation
+import { getAuthConfigProvider } from "@convex-dev/better-auth/auth-config";
+import type { AuthConfig } from "convex/server";
 
-export default authConfig
+export default {
+  providers: [getAuthConfigProvider()],
+} satisfies AuthConfig;

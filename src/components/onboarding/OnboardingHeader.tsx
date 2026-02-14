@@ -15,7 +15,7 @@ import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 export function OnboardingHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const { completeOnboarding } = useOnboardingStatus()
+  const { completeOnboarding, isAuthenticated, isLoading } = useOnboardingStatus()
 
   // Determine close destination based on current path
   const getCloseDestination = () => {
@@ -25,9 +25,17 @@ export function OnboardingHeader() {
 
   const handleClose = async () => {
     // Set hasCompletedOnboarding = true when closing from /get-started
-    // This ensures user won't see welcome page again
-    if (pathname === "/get-started") {
-      await completeOnboarding()
+    // Only attempt if auth is established (JWT ready) — otherwise the mutation
+    // would throw "Unauthorized". This can happen when the layout renders the
+    // close button before the page's auth guard has passed (e.g. during OTT
+    // exchange after magic-link redirect).
+    if (pathname === "/get-started" && isAuthenticated) {
+      try {
+        await completeOnboarding()
+      } catch {
+        // Auth state mismatch (e.g. JWT expired between query and mutation) —
+        // navigate anyway; user will see get-started again on next visit.
+      }
     }
     router.push(getCloseDestination())
   }

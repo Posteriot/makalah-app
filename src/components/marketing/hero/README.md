@@ -186,7 +186,7 @@ Kedua mockup pakai permanent dark/stone theme (tidak ikut app theme toggle).
 
 - `next/image` untuk `HeroHeadingSvg`.
 - `next/link` via `SectionBadge` (indirect) untuk `PawangBadge`.
-- `@clerk/nextjs` (`useUser`) untuk status auth di `HeroCTA`.
+- `@/lib/auth-client` (`useSession`) untuk status auth di `HeroCTA`.
 - `useOnboardingStatus` dari `src/lib/hooks/useOnboardingStatus` untuk status onboarding.
 - `SectionBadge` dari `@/components/ui/section-badge` untuk `PawangBadge`.
 - `SectionCTA` dari `@/components/ui/section-cta` untuk `HeroCTA`.

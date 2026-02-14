@@ -1,6 +1,6 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
+import { useSession } from "@/lib/auth-client"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 import { SectionCTA } from "@/components/ui/section-cta"
 
@@ -13,7 +13,8 @@ import { SectionCTA } from "@/components/ui/section-cta"
  * - Signed in + not completed onboarding → /get-started
  */
 export function HeroCTA() {
-  const { isSignedIn, isLoaded: isUserLoaded } = useUser()
+  const { data: session, isPending: isSessionPending } = useSession()
+  const isSignedIn = !!session
   const { hasCompletedOnboarding, isLoading: isOnboardingLoading } = useOnboardingStatus()
 
   // Determine destination based on auth and onboarding state
@@ -30,7 +31,7 @@ export function HeroCTA() {
   }
 
   // Show loading state while checking auth/onboarding
-  const isLoading = !isUserLoaded || (isSignedIn && isOnboardingLoading)
+  const isLoading = isSessionPending || (isSignedIn && isOnboardingLoading)
 
   return (
     <div className="flex justify-center lg:justify-start w-full mt-4">

@@ -2,17 +2,17 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
-import { useUser } from "@clerk/nextjs"
+import { useSession } from "@/lib/auth-client"
 import { Id } from "../../../convex/_generated/dataModel"
 
 export function useConversations() {
-    const { user } = useUser()
-    const clerkUserId = user?.id
+    const { data: session } = useSession()
+    const betterAuthUserId = session?.user?.id
 
-    // 1. Resolve Clerk ID to Convex User ID
+    // 1. Resolve BetterAuth ID to Convex User ID
     const userId = useQuery(
         api.chatHelpers.getUserId,
-        clerkUserId ? { clerkUserId } : "skip"
+        betterAuthUserId ? { betterAuthUserId } : "skip"
     )
 
     // 2. Query conversations using Convex User ID

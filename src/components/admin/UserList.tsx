@@ -27,7 +27,6 @@ export interface User {
   role: string
   emailVerified: boolean
   subscriptionStatus: string
-  clerkSyncStatus?: "active" | "deleted"
 }
 
 interface UserListProps {
@@ -621,7 +620,7 @@ export function UserList({ users, currentUserRole }: UserListProps) {
                     ? `Apakah Anda yakin ingin promote ${selectedUser?.email} menjadi admin? User akan mendapatkan akses ke admin panel.`
                     : dialogAction === "demote"
                       ? `Apakah Anda yakin ingin demote ${selectedUser?.email} menjadi user biasa? User akan kehilangan akses admin panel.`
-                      : `Apakah Anda yakin ingin menghapus ${selectedUser?.email}? User akan dihapus dari Clerk dan tidak bisa login lagi.`}
+                      : `Apakah Anda yakin ingin menghapus ${selectedUser?.email}? User akan dihapus dan tidak bisa login lagi.`}
                 </p>
               )}
             </AlertDialogDescription>

@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { requireAuthUser, requireAuthUserId, requireFileOwner } from "./auth"
+import { requireAuthUser, requireAuthUserId, requireFileOwner } from "./authHelpers"
 
 // Upload file mutation (returns file ID)
 // Upload file mutation (returns file ID)
@@ -21,7 +21,7 @@ export const createFile = mutation({
 
         const user = await db
             .query("users")
-            .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", identity.subject))
+            .withIndex("by_betterAuthUserId", (q) => q.eq("betterAuthUserId", identity.subject))
             .unique()
 
         if (!user) {

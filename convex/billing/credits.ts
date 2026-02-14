@@ -8,7 +8,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { tokensToCredits } from "./constants"
-import { requireAuthUserId } from "../auth"
+import { requireAuthUserId } from "../authHelpers"
 
 function isInternalKeyValid(internalKey?: string) {
   const expected = process.env.CONVEX_INTERNAL_KEY

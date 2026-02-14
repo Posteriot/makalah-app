@@ -62,7 +62,7 @@ Integrasi utama:
   - Muncul di samping logo saat `SignedIn` (mobile dan desktop).
   - Menampilkan spinner `RefreshDouble` selama Convex user loading.
 - Sign out:
-  - `signOut()` dari Clerk.
+  - `signOut()` dari BetterAuth.
   - Loading state dengan spinner + disabled button.
   - Jika gagal, tampil toast error "Gagal keluar. Silakan coba lagi."
 
@@ -78,7 +78,7 @@ Integrasi utama:
   - "Atur Akun" → navigasi ke `/settings`.
   - "Subskripsi" → `/subscription/overview`.
   - "Admin Panel" → `/dashboard` (hanya jika role admin/superadmin).
-  - "Sign out" → `signOut()` dengan loading state.
+  - "Sign out" → `signOut()` (BetterAuth) dengan loading state.
 
 ## Data & Konstanta
 
@@ -143,7 +143,7 @@ Komponen yang memakai `"use client"`:
 
 - `next/link`, `next/image`
 - `next-themes` (`useTheme`)
-- `@clerk/nextjs` (`SignedIn`, `SignedOut`, `useUser`, `useClerk`)
+- `@/lib/auth-client` (`useSession`, `signOut`)
 - `next/navigation` (`usePathname`)
 - `iconoir-react` (`Menu`, `Xmark`, `SunLight`, `HalfMoon`, `User`, `CreditCard`, `Settings`, `LogOut`, `RefreshDouble`, `NavArrowDown`)
 - `sonner` (`toast`)

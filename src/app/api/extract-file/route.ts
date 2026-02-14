@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
@@ -132,15 +132,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Auth check + Convex token
-    const { userId: clerkUserId, getToken } = await auth()
-    if (!clerkUserId) {
+    const isAuthed = await isAuthenticated()
+    if (!isAuthed) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
       )
     }
 
-    const convexToken = await getToken({ template: "convex" })
+    const convexToken = await getToken()
     if (!convexToken) {
       return NextResponse.json(
         { success: false, error: "Convex token missing" },

@@ -1,6 +1,6 @@
 # Auth Pages
 
-Halaman autentikasi kustom berbasis Clerk untuk route group `(auth)`.
+Halaman autentikasi kustom berbasis BetterAuth untuk route group `(auth)`.
 
 ## Scope
 
@@ -21,16 +21,16 @@ README ini mendokumentasikan struktur, perilaku, data flow, dependensi, dan audi
 │   ├── page.tsx                      # Entry waiting list UI
 │   └── actions.ts                    # Server actions kirim email waitlist/invite
 ├── sign-up/
-│   └── [[...sign-up]]/page.tsx       # Clerk SignUp kustom + flow invite token
+│   └── [[...sign-up]]/page.tsx       # BetterAuth SignUp kustom + flow invite token
 └── sign-in/
-    └── [[...sign-in]]/page.tsx       # Clerk SignIn kustom
+    └── [[...sign-in]]/page.tsx       # BetterAuth SignIn kustom
 ```
 
 ## Integrasi
 
 - Semua route auth memakai `AuthLayout` sebagai wrapper visual konsisten.
 - `waiting-list/page.tsx` merender komponen UI auth (`AuthWideCard` + `WaitlistForm`).
-- `sign-in` dan `sign-up` merender komponen Clerk secara dynamic import (`ssr: false`) dengan custom `appearance.elements`.
+- `sign-in` dan `sign-up` merender form autentikasi kustom berbasis BetterAuth.
 
 ## Komponen dan Tanggung Jawab
 
@@ -47,18 +47,15 @@ README ini mendokumentasikan struktur, perilaku, data flow, dependensi, dan audi
   - `sendSingleInviteEmail(email, inviteToken)`: resend undangan tunggal.
 
 - `sign-in/[[...sign-in]]/page.tsx`
-  - Dynamic load `SignIn` dari Clerk untuk menghindari SSR issue.
-  - Skeleton fallback saat komponen Clerk belum siap.
-  - Bangun object `appearance` via `useMemo` supaya Clerk tidak re-init terus-menerus.
-  - Set redirect pasca-auth ke `/chat` via `fallbackRedirectUrl`.
+  - Form sign-in kustom dengan email/password + social OAuth (Google, GitHub).
+  - Redirect pasca-auth ke `/chat` atau URL dari query param.
 
 - `sign-up/[[...sign-up]]/page.tsx`
-  - Dynamic load `SignUp` dari Clerk + skeleton.
+  - Form sign-up kustom dengan email/password + social OAuth.
   - Support token undangan via query `invite`:
     - validasi token ke Convex (`api.waitlist.getByToken`)
     - state loading/invalid/valid.
   - Jika token valid, tampilkan konten kiri khusus (email undangan) sebelum form.
-  - Redirect URL dipin agar query Clerk multi-step tidak hilang (`getClerkRedirectUrl` + `useState`).
 
 ## Client dan Server Boundary
 
@@ -80,8 +77,8 @@ Server files:
 
 ### Sign-in
 
-- Tampilkan skeleton adaptif berdasarkan env `NEXT_PUBLIC_CLERK_SOCIAL_PROVIDERS`.
-- `appearance.elements` override styling Clerk: card transparan, tombol stripes, input mono, otp field kustom.
+- Form kustom BetterAuth dengan email/password dan social login (Google, GitHub).
+- Redirect pasca-auth ke `/chat` atau URL dari query param `redirect_url`.
 
 ### Sign-up
 
@@ -90,7 +87,7 @@ Server files:
   - `tokenValidation === undefined`: tampil skeleton validasi.
   - `!tokenValidation.valid`: tampil error card + CTA ke `/waiting-list`.
   - valid: tampil varian welcome card + info email undangan.
-- `forceRedirectUrl` dipakai agar flow Clerk multi-step tidak membuang query redirect.
+- Redirect pasca-auth ke `/chat` via `redirect_url` query param.
 
 ### Waiting-list actions
 
@@ -99,7 +96,6 @@ Server files:
 
 ## Data dan Konstanta Penting
 
-- `SHOW_SOCIAL_SKELETON` di sign-in/sign-up ditentukan dari env `NEXT_PUBLIC_CLERK_SOCIAL_PROVIDERS`.
 - `inviteToken` (query param `invite`) sebagai trigger flow undangan signup.
 - `redirectUrl` di sign-up dipin saat initial render untuk menjaga redirect consistency.
 
@@ -109,10 +105,7 @@ Pola styling auth pages:
 
 - Layout industrial grid dengan `--border-hairline`.
 - Auth card dua kolom (branding kiri, form kanan) lewat `AuthWideCard`.
-- Clerk customization via `appearance.elements` dengan class utility yang extensive.
-- Utility global khusus Clerk:
-  - `btn-stripes-clerk` (pseudo-element stripes)
-  - Clerk footer transparency overrides (`.cl-footer*`, `.cl-signIn-root`, `.cl-signUp-root`).
+- Form kustom BetterAuth dengan styling Tailwind langsung.
 
 Dokumen styling lengkap ada di:
 - `docs/tailwind-styling-consistency/auth-page/auth-page-style.md`
@@ -127,8 +120,7 @@ Core:
 - `next-themes`
 
 Auth:
-- `@clerk/nextjs` (`SignIn`, `SignUp` via dynamic import)
-- `@clerk/themes` (`dark`)
+- `@/lib/auth-client` (`signIn`, `signUp`, `useSession`)
 
 Data/backend:
 - `convex/react`

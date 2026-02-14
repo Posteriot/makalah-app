@@ -16,7 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Authenticate user via Clerk
-    const { userId: clerkUserId, getToken } = await auth()
+    // 2. Authenticate user via BetterAuth
+    const isAuthed = await isAuthenticated()
 
-    if (!clerkUserId) {
+    if (!isAuthed) {
       return NextResponse.json(
         {
           success: false,
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const convexToken = await getToken({ template: "convex" })
+    const convexToken = await getToken()
     if (!convexToken) {
       return NextResponse.json(
         { success: false, error: "Convex token missing" },
@@ -66,10 +66,8 @@ export async function POST(request: NextRequest) {
     }
     const convexOptions = { token: convexToken }
 
-    // 3. Get Convex user by Clerk ID
-    const convexUser = await fetchQuery(api.users.getUserByClerkId, {
-      clerkUserId,
-    }, convexOptions)
+    // 3. Get Convex user from auth identity
+    const convexUser = await fetchQuery(api.users.getMyUser, {}, convexOptions)
 
     if (!convexUser) {
       return NextResponse.json(
@@ -79,13 +77,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Fetch paper session dari Convex
-    const session = await fetchQuery(api.paperSessions.getById, {
+    const paperSession = await fetchQuery(api.paperSessions.getById, {
       sessionId: sessionId as Id<"paperSessions">,
     }, convexOptions)
 
     // 5. Validate dan compile content
     // getExportableContent akan throw ExportValidationError jika ada masalah
-    const content = getExportableContent(session, convexUser._id)
+    const content = getExportableContent(paperSession, convexUser._id)
 
     // 6. Generate PDF stream
     const pdfStream = generatePDFStream(content, { showPageNumbers: true })

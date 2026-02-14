@@ -1,6 +1,6 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
+import { useSession } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 import { SectionCTA } from "@/components/ui/section-cta"
 
@@ -27,7 +27,8 @@ function PricingCTA({
 }: {
   plan: PricingPlan
 }) {
-  const { isSignedIn } = useUser()
+  const { data: session } = useSession()
+  const isSignedIn = !!session
 
   const getHref = (): string => {
     const dest = plan.ctaHref || "/chat"
