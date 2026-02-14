@@ -164,12 +164,19 @@ export default function SignUpPage() {
       })
       if (result.error) {
         setError(result.error.message ?? "Terjadi kesalahan.")
-      } else if (result.data?.redirect && result.data?.token) {
-        // Cross-domain: OTT redirect (when email verification is not required)
-        const url = new URL(result.data.url as string)
-        url.searchParams.set("ott", result.data.token as string)
-        window.location.href = url.toString()
-        return
+      } else if (result.data) {
+        // Cross-domain plugin adds `redirect`, `url`, `token` at runtime
+        // but these aren't in signUp.email() type definitions.
+        const data = result.data as Record<string, unknown>
+        if (data.redirect && data.token) {
+          // OTT redirect (when email verification is not required)
+          const url = new URL(data.url as string)
+          url.searchParams.set("ott", data.token as string)
+          window.location.href = url.toString()
+          return
+        }
+        // Email verification required — show "Cek Email" UI
+        setMode("verify-email")
       } else {
         // Email verification required — show "Cek Email" UI
         setMode("verify-email")

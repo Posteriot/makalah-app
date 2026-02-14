@@ -56,15 +56,19 @@ export default function SignInPage() {
       })
       if (result.error) {
         setError(result.error.message ?? "Terjadi kesalahan.")
-      } else if (result.data?.redirect && result.data?.token) {
-        // Cross-domain: server returns OTT (one-time token) instead of setting cookies.
-        // Navigate to the target URL with ?ott= so ConvexBetterAuthProvider
-        // can exchange the OTT for a real session on the frontend.
-        const url = new URL(result.data.url as string)
-        url.searchParams.set("ott", result.data.token as string)
-        window.location.href = url.toString()
-        return
-      } else {
+      } else if (result.data) {
+        // Cross-domain plugin adds `redirect`, `url`, `token` at runtime
+        // but these aren't in signIn.email() type definitions.
+        const data = result.data as Record<string, unknown>
+        if (data.redirect && data.token) {
+          // OTT: server returns one-time token instead of setting cookies.
+          // Navigate to target URL with ?ott= so ConvexBetterAuthProvider
+          // can exchange the OTT for a real session on the frontend.
+          const url = new URL(data.url as string)
+          url.searchParams.set("ott", data.token as string)
+          window.location.href = url.toString()
+          return
+        }
         // Non cross-domain fallback
         window.location.href = callbackURL
         return
