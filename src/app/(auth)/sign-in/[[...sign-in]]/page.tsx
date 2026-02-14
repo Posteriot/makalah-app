@@ -33,9 +33,11 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showRecoveryHints, setShowRecoveryHints] = useState(false)
 
   function clearError() {
     if (error) setError("")
+    if (showRecoveryHints) setShowRecoveryHints(false)
   }
 
   async function handleEmailSignIn(e: React.FormEvent) {
@@ -55,7 +57,15 @@ export default function SignInPage() {
         callbackURL,
       })
       if (result.error) {
-        setError(result.error.message ?? "Terjadi kesalahan.")
+        const msg = result.error.message ?? ""
+        const isCredentialError = /invalid (email|password|credentials)/i.test(msg)
+          || /incorrect (email|password|credentials)/i.test(msg)
+        if (isCredentialError) {
+          setError("Email atau password tidak cocok.\nCoba gunakan cara lain untuk masuk:")
+          setShowRecoveryHints(true)
+        } else {
+          setError(msg || "Terjadi kesalahan.")
+        }
       } else if (result.data) {
         // Cross-domain plugin adds `redirect`, `url`, `token` at runtime
         // but these aren't in signIn.email() type definitions.
@@ -315,7 +325,25 @@ export default function SignInPage() {
 
             {error && (
               <div className="rounded-action border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono">
-                {error}
+                <p className="whitespace-pre-line">{error}</p>
+                {showRecoveryHints && (
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-destructive/20">
+                    <button
+                      type="button"
+                      onClick={() => switchMode("forgot-password")}
+                      className="text-xs font-mono text-destructive/80 hover:text-destructive transition-colors underline underline-offset-2"
+                    >
+                      Lupa password?
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchMode("magic-link")}
+                      className="text-xs font-mono text-destructive/80 hover:text-destructive transition-colors underline underline-offset-2"
+                    >
+                      Masuk via Magic Link
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
