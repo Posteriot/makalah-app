@@ -18,22 +18,29 @@ const ALLOWED_REDIRECT_PATHS = [
 const DEFAULT_REDIRECT = "/"
 
 /**
- * Validates and returns a safe redirect URL.
+ * Validates and returns a safe absolute redirect URL.
+ *
+ * Returns absolute URL (e.g. "http://localhost:3000/get-started") so that
+ * BetterAuth's crossDomain plugin preserves the origin instead of rewriting
+ * to the hardcoded SITE_URL. The plugin passes through absolute callbackURLs
+ * without modification.
  *
  * @param searchParams - URLSearchParams from the current URL
- * @param defaultUrl - Override the default redirect (e.g. "/get-started" for sign-up)
- * @returns Safe redirect URL (whitelisted path or default)
+ * @param defaultUrl - Override the default redirect path (e.g. "/get-started" for sign-up)
+ * @returns Safe absolute redirect URL (origin + whitelisted path)
  */
 export function getRedirectUrl(
   searchParams: URLSearchParams,
   defaultUrl: string = DEFAULT_REDIRECT,
 ): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : ""
+
   // Check redirect_url first (set by proxy.ts/middleware), then redirect (set by PricingCard)
   const redirect = searchParams.get("redirect_url") ?? searchParams.get("redirect")
 
   // If no redirect param, return default
   if (!redirect) {
-    return defaultUrl
+    return `${origin}${defaultUrl}`
   }
 
   // Decode if URL-encoded
@@ -45,10 +52,10 @@ export function getRedirectUrl(
   )
 
   if (isAllowed) {
-    return decodedRedirect
+    return `${origin}${decodedRedirect}`
   }
 
-  return defaultUrl
+  return `${origin}${defaultUrl}`
 }
 
 /**
@@ -59,5 +66,10 @@ export function getRedirectUrl(
  * @returns True if redirect is to a checkout page
  */
 export function isCheckoutRedirect(redirectUrl: string): boolean {
-  return redirectUrl.startsWith("/checkout/")
+  try {
+    const pathname = new URL(redirectUrl, "http://localhost").pathname
+    return pathname.startsWith("/checkout/")
+  } catch {
+    return redirectUrl.startsWith("/checkout/")
+  }
 }
