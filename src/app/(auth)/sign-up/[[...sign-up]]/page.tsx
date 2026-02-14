@@ -331,6 +331,7 @@ export default function SignUpPage() {
         <p className="text-sm text-muted-foreground">
           Link verifikasi sudah dikirim ke{" "}
           <span className="font-mono text-foreground">{email}</span>
+          . Kalau email belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.
         </p>
         <p className="text-xs text-muted-foreground">
           Klik link di email untuk mengaktifkan akun kamu.

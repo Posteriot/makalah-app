@@ -33,11 +33,9 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  const [showRecoveryHints, setShowRecoveryHints] = useState(false)
 
   function clearError() {
     if (error) setError("")
-    if (showRecoveryHints) setShowRecoveryHints(false)
   }
 
   async function handleEmailSignIn(e: React.FormEvent) {
@@ -61,8 +59,7 @@ export default function SignInPage() {
         const isCredentialError = /invalid (email|password|credentials)/i.test(msg)
           || /incorrect (email|password|credentials)/i.test(msg)
         if (isCredentialError) {
-          setError("Email atau password tidak cocok.\nCoba gunakan cara lain untuk masuk:")
-          setShowRecoveryHints(true)
+          setError("Email atau password tidak cocok.\nCoba gunakan fitur \"Lupa password?\" atau \"Magic Link\" untuk masuk.")
         } else {
           setError(msg || "Terjadi kesalahan.")
         }
@@ -219,11 +216,11 @@ export default function SignInPage() {
     },
     "magic-link-sent": {
       title: "Cek Email Kamu",
-      subtitle: "Link masuk sudah dikirim",
+      subtitle: "Link masuk sudah dikirim. Jika belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.",
     },
     "reset-sent": {
       title: "Cek Email Kamu",
-      subtitle: "Link reset password sudah dikirim",
+      subtitle: "Link reset password sudah dikirim. Jika belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.",
     },
     "reset-success": {
       title: "Password Direset",
@@ -324,26 +321,8 @@ export default function SignInPage() {
             </div>
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono">
+              <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
                 <p className="whitespace-pre-line">{error}</p>
-                {showRecoveryHints && (
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-destructive/20">
-                    <button
-                      type="button"
-                      onClick={() => switchMode("forgot-password")}
-                      className="text-xs font-mono text-destructive/80 hover:text-destructive transition-colors underline underline-offset-2"
-                    >
-                      Lupa password?
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => switchMode("magic-link")}
-                      className="text-xs font-mono text-destructive/80 hover:text-destructive transition-colors underline underline-offset-2"
-                    >
-                      Masuk via Magic Link
-                    </button>
-                  </div>
-                )}
               </div>
             )}
 
@@ -393,7 +372,7 @@ export default function SignInPage() {
             </div>
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono">
+              <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
                 {error}
               </div>
             )}
@@ -442,7 +421,7 @@ export default function SignInPage() {
             </div>
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono">
+              <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
                 {error}
               </div>
             )}
@@ -514,7 +493,7 @@ export default function SignInPage() {
             </div>
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono">
+              <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
                 {error}
               </div>
             )}
@@ -553,6 +532,7 @@ export default function SignInPage() {
           <p className="text-sm text-muted-foreground">
             Link masuk sudah dikirim ke{" "}
             <span className="font-mono text-foreground">{email}</span>
+            . Kalau email belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.
           </p>
           <button
             type="button"
@@ -572,6 +552,7 @@ export default function SignInPage() {
           <p className="text-sm text-muted-foreground">
             Link reset password sudah dikirim ke{" "}
             <span className="font-mono text-foreground">{email}</span>
+            . Kalau email belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.
           </p>
           <button
             type="button"

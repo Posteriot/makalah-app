@@ -46,7 +46,7 @@ export function WaitlistForm() {
 
       // Show success toast
       toast.success("Berhasil terdaftar!", {
-        description: "Cek email kamu untuk konfirmasi.",
+        description: "Cek email kamu untuk konfirmasi. Kalau belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.",
       })
 
       // Redirect after short delay
