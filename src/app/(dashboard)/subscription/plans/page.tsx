@@ -27,7 +27,6 @@ import {
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { getEffectiveTier } from "@/lib/utils/subscription"
-import type { EffectiveTier } from "@/lib/utils/subscription"
 import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
 import { toast } from "sonner"
 import { SectionCTA } from "@/components/ui/section-cta"
@@ -82,12 +81,6 @@ const EWALLET_CHANNELS = [
   { code: "OVO", label: "OVO" },
   { code: "GOPAY", label: "GoPay" },
 ]
-
-const TIER_BADGES: Record<EffectiveTier, { label: string; color: string }> = {
-  gratis: { label: "GRATIS", color: "bg-segment-gratis" },
-  bpp: { label: "BPP", color: "bg-segment-bpp" },
-  pro: { label: "PRO", color: "bg-segment-pro" },
-}
 
 // ════════════════════════════════════════════════════════════════
 // Main Component
@@ -224,7 +217,6 @@ export default function PlansHubPage() {
   }
 
   const currentTier = getEffectiveTier(user.role, user.subscriptionStatus)
-  const tierBadge = TIER_BADGES[currentTier]
   const currentCredits = creditBalance?.remainingCredits ?? 0
 
   return (
@@ -240,23 +232,6 @@ export default function PlansHubPage() {
         </p>
       </div>
 
-      {/* Current Tier Info */}
-      <div className="rounded-shell border-main border border-border bg-card/90 p-3 dark:bg-slate-900/90">
-        <div className="flex items-center gap-3">
-          <span className={cn("text-xs font-bold px-2 py-0.5 rounded-badge text-white", tierBadge.color)}>
-            {tierBadge.label}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            Tier saat ini
-          </span>
-          {currentTier === "bpp" && (
-            <span className="text-interface ml-auto text-sm">
-              Sisa: <strong>{currentCredits} kredit</strong>
-            </span>
-          )}
-        </div>
-      </div>
-
       {/* Plans Grid - Responsive */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {plans.map((plan) => {
@@ -264,7 +239,6 @@ export default function PlansHubPage() {
           const planView = { ...plan, isHighlighted: isCurrentTier }
           const isBPP = plan.slug === "bpp"
           const isPro = plan.slug === "pro"
-          const teaserDescription = plan.teaserDescription || plan.tagline
           const teaserCreditNote = plan.teaserCreditNote || plan.features[0] || ""
 
           return (
@@ -301,28 +275,19 @@ export default function PlansHubPage() {
                     </span>
                   )}
                 </p>
-                <p className="text-interface text-sm leading-relaxed text-foreground">
-                  {teaserDescription}
-                </p>
-                <p className="text-interface mb-6 pt-6 text-xs leading-relaxed text-foreground">
+                <p className="text-interface mb-6 mt-4 text-sm leading-relaxed text-foreground md:text-base">
                   {teaserCreditNote}
                 </p>
 
                 {/* CTA Section */}
                 {/* Gratis Plan */}
-                {plan.slug === "gratis" && (
-                  isCurrentTier ? (
-                    <div className="text-center py-2 text-sm text-muted-foreground mt-auto">
-                      Tier aktif Anda
-                    </div>
-                  ) : (
-                    <SectionCTA
-                      href="/chat"
-                      className="mt-auto flex w-full justify-center py-2.5"
-                    >
-                      {plan.ctaText}
-                    </SectionCTA>
-                  )
+                {plan.slug === "gratis" && !isCurrentTier && (
+                  <SectionCTA
+                    href="/chat"
+                    className="mt-auto flex w-full justify-center py-2.5"
+                  >
+                    {plan.ctaText}
+                  </SectionCTA>
                 )}
 
                 {/* BPP Plan - Direct to topup */}
@@ -336,31 +301,26 @@ export default function PlansHubPage() {
                 )}
 
                 {/* Pro Plan - Expandable Checkout */}
-                {isPro && (
-                  isCurrentTier ? (
-                    <div className="text-center py-2 text-sm text-muted-foreground">
-                      Tier aktif Anda
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => setIsProExpanded(!isProExpanded)}
-                        className={cn(
-                          "focus-ring mt-auto flex w-full items-center justify-center gap-2 rounded-action py-2.5 font-medium transition-colors",
-                          "bg-slate-900 text-slate-100 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-                        )}
-                      >
-                        {plan.ctaText}
-                        {isProExpanded ? (
-                          <NavArrowUp className="h-4 w-4" />
-                        ) : (
-                          <NavArrowDown className="h-4 w-4" />
-                        )}
-                      </button>
+                {isPro && !isCurrentTier && (
+                  <>
+                    <button
+                      onClick={() => setIsProExpanded(!isProExpanded)}
+                      className={cn(
+                        "focus-ring mt-auto flex w-full items-center justify-center gap-2 rounded-action py-2.5 font-medium transition-colors",
+                        "bg-slate-900 text-slate-100 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                      )}
+                    >
+                      {plan.ctaText}
+                      {isProExpanded ? (
+                        <NavArrowUp className="h-4 w-4" />
+                      ) : (
+                        <NavArrowDown className="h-4 w-4" />
+                      )}
+                    </button>
 
-                      {/* Expanded Pro Checkout */}
-                      {isProExpanded && (
-                        <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                    {/* Expanded Pro Checkout */}
+                    {isProExpanded && (
+                      <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
                           {/* Payment Result State */}
                           {proPaymentResult && (
                             <PaymentResultSection
@@ -529,10 +489,9 @@ export default function PlansHubPage() {
                               </button>
                             </>
                           )}
-                        </div>
-                      )}
-                    </>
-                  )
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

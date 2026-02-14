@@ -6,7 +6,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Dashboard,
-  CreditCard,
   Clock,
   ArrowUpCircle,
   NavArrowRight,
@@ -22,11 +21,6 @@ const SIDEBAR_ITEMS = [
     href: "/subscription/overview",
     label: "Overview",
     icon: Dashboard,
-  },
-  {
-    href: "/subscription/topup",
-    label: "Top Up",
-    icon: CreditCard,
   },
   {
     href: "/subscription/history",
@@ -56,18 +50,27 @@ function SidebarNav({
         <ul className="mt-3 space-y-1">
           {SIDEBAR_ITEMS.map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href
-            const sourceMenu = pathname.startsWith("/subscription/")
-              ? pathname.replace("/subscription/", "").split("/")[0] || "overview"
-              : "overview"
-            const href = item.href === "/subscription/topup"
-              ? `/subscription/topup?from=${sourceMenu}`
-              : item.href
+            const isActive = (() => {
+              if (item.href === "/subscription/upgrade") {
+                return (
+                  pathname === "/subscription/upgrade" ||
+                  pathname.startsWith("/subscription/upgrade/") ||
+                  pathname === "/subscription/plans" ||
+                  pathname.startsWith("/subscription/plans/")
+                )
+              }
+
+              if (item.href === "/subscription/overview") {
+                return pathname === "/subscription/overview" || pathname === "/subscription"
+              }
+
+              return pathname === item.href || pathname.startsWith(`${item.href}/`)
+            })()
 
             return (
               <li key={item.href}>
                 <Link
-                  href={href}
+                  href={item.href}
                   onClick={onSelect}
                   className={cn(
                     "text-interface flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition-colors",
