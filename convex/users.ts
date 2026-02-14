@@ -294,9 +294,9 @@ export const createAppUser = mutationGeneric({
       .withIndex("by_email", (q) => q.eq("email", email))
       .collect()
 
-    // Pick the best match: prefer active (no clerkDeletedAt), most recent login
+    // Pick the best match: prefer unlinked user, most recent login
     const linkCandidate = existingByEmail
-      .filter((u) => !u.betterAuthUserId && !u.clerkDeletedAt)
+      .filter((u) => !u.betterAuthUserId)
       .sort((a, b) => (b.lastLoginAt ?? 0) - (a.lastLoginAt ?? 0))[0]
 
     if (linkCandidate) {

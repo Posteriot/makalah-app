@@ -1,7 +1,6 @@
 /**
  * Auth Helper Functions (BetterAuth-based)
  *
- * Replaces the old Clerk-based auth helpers.
  * Uses identity.subject (BetterAuth user ID) to look up users
  * in the Convex users table via by_betterAuthUserId index.
  */
