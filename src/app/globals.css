@@ -1895,6 +1895,16 @@
     opacity: 0.3;
   }
 
+  /* Hide placeholder on focus for cleaner input interaction */
+  input::placeholder,
+  textarea::placeholder {
+    transition: opacity 150ms ease;
+  }
+  input:focus::placeholder,
+  textarea:focus::placeholder {
+    opacity: 0;
+  }
+
   /* Autofill fix: force neutral slate, prevent browser blue tint */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,

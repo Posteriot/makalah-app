@@ -223,32 +223,32 @@ export default function SignUpPage() {
 
         {/* Email + Password Form */}
         <form onSubmit={handleEmailSignUp} className="space-y-4">
-          {/* First + Last name row */}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label htmlFor="sign-up-first-name" className="sr-only">Nama depan</label>
-              <input
-                id="sign-up-first-name"
-                type="text"
-                value={firstName}
-                onChange={(e) => { setFirstName(e.target.value); clearError() }}
-                placeholder="Nama depan"
-                autoComplete="given-name"
-                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
-              />
-            </div>
-            <div className="flex-1">
-              <label htmlFor="sign-up-last-name" className="sr-only">Nama belakang</label>
-              <input
-                id="sign-up-last-name"
-                type="text"
-                value={lastName}
-                onChange={(e) => { setLastName(e.target.value); clearError() }}
-                placeholder="Nama belakang"
-                autoComplete="family-name"
-                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
-              />
-            </div>
+          {/* First name */}
+          <div>
+            <label htmlFor="sign-up-first-name" className="sr-only">Nama depan</label>
+            <input
+              id="sign-up-first-name"
+              type="text"
+              value={firstName}
+              onChange={(e) => { setFirstName(e.target.value); clearError() }}
+              placeholder="Nama depan"
+              autoComplete="given-name"
+              className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+            />
+          </div>
+
+          {/* Last name */}
+          <div>
+            <label htmlFor="sign-up-last-name" className="sr-only">Nama belakang</label>
+            <input
+              id="sign-up-last-name"
+              type="text"
+              value={lastName}
+              onChange={(e) => { setLastName(e.target.value); clearError() }}
+              placeholder="Nama belakang"
+              autoComplete="family-name"
+              className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+            />
           </div>
 
           <div>
@@ -318,11 +318,6 @@ export default function SignUpPage() {
           </Link>
         </p>
 
-        <p className="text-muted-foreground text-[10px] font-sans mt-3 text-center leading-relaxed">
-          Akun Anda akan terhubung otomatis dengan Google,
-          <br />
-          jika masuk menggunakan alamat email yang sama.
-        </p>
       </div>
     )
   }
