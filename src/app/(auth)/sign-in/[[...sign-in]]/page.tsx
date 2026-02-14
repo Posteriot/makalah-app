@@ -21,7 +21,7 @@ type SignInMode =
 export default function SignInPage() {
   const searchParams = useSearchParams()
   const resetToken = searchParams.get("token")
-  const callbackURL = getRedirectUrl(searchParams)
+  const callbackURL = getRedirectUrl(searchParams, "/get-started")
 
   const [mode, setMode] = useState<SignInMode>(() =>
     resetToken ? "reset-password" : "sign-in"

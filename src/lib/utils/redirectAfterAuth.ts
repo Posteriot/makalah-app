@@ -15,19 +15,25 @@ const ALLOWED_REDIRECT_PATHS = [
   "/settings",
 ]
 
+const DEFAULT_REDIRECT = "/"
+
 /**
  * Validates and returns a safe redirect URL.
  *
  * @param searchParams - URLSearchParams from the current URL
+ * @param defaultUrl - Override the default redirect (e.g. "/get-started" for sign-up)
  * @returns Safe redirect URL (whitelisted path or default)
  */
-export function getRedirectUrl(searchParams: URLSearchParams): string {
+export function getRedirectUrl(
+  searchParams: URLSearchParams,
+  defaultUrl: string = DEFAULT_REDIRECT,
+): string {
   // Check redirect_url first (set by proxy.ts/middleware), then redirect (set by PricingCard)
   const redirect = searchParams.get("redirect_url") ?? searchParams.get("redirect")
 
   // If no redirect param, return default
   if (!redirect) {
-    return "/get-started"
+    return defaultUrl
   }
 
   // Decode if URL-encoded
@@ -42,8 +48,7 @@ export function getRedirectUrl(searchParams: URLSearchParams): string {
     return decodedRedirect
   }
 
-  // Default: go to get-started for first-time users
-  return "/get-started"
+  return defaultUrl
 }
 
 /**

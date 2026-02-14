@@ -1,7 +1,10 @@
 "use client"
 
+import { useEffect } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { CheckCircle } from "iconoir-react"
+import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 
@@ -26,8 +29,15 @@ const PRO_FEATURES = [
 
 export default function GetStartedPage() {
   const router = useRouter()
-  const { isLoading: isOnboardingLoading, isAuthenticated, completeOnboarding } = useOnboardingStatus()
+  const { isLoading: isOnboardingLoading, isAuthenticated, hasCompletedOnboarding, completeOnboarding } = useOnboardingStatus()
   const { user, isLoading: isUserLoading } = useCurrentUser()
+
+  // Existing users who already completed onboarding → redirect to homepage
+  useEffect(() => {
+    if (!isOnboardingLoading && isAuthenticated && hasCompletedOnboarding) {
+      router.replace("/")
+    }
+  }, [isOnboardingLoading, isAuthenticated, hasCompletedOnboarding, router])
 
   const handleSkip = async () => {
     await completeOnboarding()
@@ -46,17 +56,25 @@ export default function GetStartedPage() {
 
   // Wait for auth + app user record to be fully established
   // useCurrentUser auto-creates app user record if missing (email-based linking for existing users)
-  if (isOnboardingLoading || !isAuthenticated || isUserLoading || !user) {
+  if (isOnboardingLoading || !isAuthenticated || isUserLoading || !user || hasCompletedOnboarding) {
     return (
-      <div className="text-center space-y-4 py-12">
-        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-muted-foreground font-mono">Memproses login...</p>
+      <div className="fixed inset-0 flex items-center justify-center">
+        <Image
+          src="/logo/makalah_logo_light.svg"
+          alt=""
+          width={48}
+          height={48}
+          className="animate-breathe"
+          priority
+        />
       </div>
     )
   }
 
   return (
-    <div className="text-center space-y-8">
+    <>
+    <OnboardingHeader />
+    <div className="text-center space-y-8 pt-16">
       {/* Welcome Header */}
       <div className="space-y-2">
         <div className="text-4xl">🎉</div>
@@ -136,5 +154,6 @@ export default function GetStartedPage() {
         Nanti saja - Langsung Mulai →
       </button>
     </div>
+    </>
   )
 }

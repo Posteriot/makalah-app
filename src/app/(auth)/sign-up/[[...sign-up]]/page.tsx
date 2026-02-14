@@ -96,7 +96,7 @@ type SignUpMode = "sign-up" | "verify-email"
 export default function SignUpPage() {
   const searchParams = useSearchParams()
   const inviteToken = searchParams.get("invite")
-  const callbackURL = getRedirectUrl(searchParams)
+  const callbackURL = getRedirectUrl(searchParams, "/get-started")
 
   const [mode, setMode] = useState<SignUpMode>("sign-up")
   const [firstName, setFirstName] = useState("")
