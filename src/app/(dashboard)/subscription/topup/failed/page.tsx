@@ -5,20 +5,20 @@ import { XmarkCircle, ArrowLeft, Refresh } from "iconoir-react"
 
 export default function TopUpFailedPage() {
   return (
-    <div className="space-y-6 max-w-md mx-auto text-center rounded-shell border border-hairline bg-slate-900/50 p-6">
+    <div className="mx-auto max-w-md space-y-6 rounded-shell border-main border border-border bg-card/90 p-6 text-center dark:bg-slate-900/90">
       {/* Failed Icon */}
       <div className="flex justify-center">
-        <div className="w-20 h-20 rounded-full bg-rose-500/15 border border-rose-500/30 flex items-center justify-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full border border-rose-500/30 bg-rose-500/15">
           <XmarkCircle className="h-10 w-10 text-rose-400" />
         </div>
       </div>
 
       {/* Message */}
       <div>
-        <h1 className="text-interface text-2xl font-semibold text-rose-400">
+        <h1 className="text-interface text-2xl font-semibold text-rose-500 dark:text-rose-400">
           Pembayaran Gagal
         </h1>
-        <p className="text-slate-400 mt-2">
+        <p className="text-narrative mt-2 text-muted-foreground">
           Pembayaran Anda tidak berhasil diproses. Silakan coba lagi atau gunakan metode pembayaran lain.
         </p>
       </div>
@@ -27,7 +27,7 @@ export default function TopUpFailedPage() {
       <div className="space-y-3 pt-4">
         <Link
           href="/subscription/topup"
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-action font-mono text-xs font-medium bg-amber-500 text-slate-950 hover:bg-amber-400 transition-colors"
+          className="focus-ring text-interface flex h-10 w-full items-center justify-center gap-2 rounded-action bg-slate-900 px-4 text-xs font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
         >
           <Refresh className="h-4 w-4" />
           Coba Lagi
@@ -35,7 +35,7 @@ export default function TopUpFailedPage() {
 
         <Link
           href="/subscription/overview"
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-action font-mono text-xs font-medium border border-hairline text-slate-300 hover:bg-slate-800 transition-colors"
+          className="focus-ring text-interface flex h-10 w-full items-center justify-center gap-2 rounded-action border-main border border-border px-4 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
         >
           <ArrowLeft className="h-4 w-4" />
           Kembali
@@ -43,7 +43,7 @@ export default function TopUpFailedPage() {
       </div>
 
       {/* Help */}
-      <p className="text-[10px] font-mono text-slate-500">
+      <p className="text-signal text-[10px] text-muted-foreground">
         Jika masalah berlanjut, hubungi tim support kami.
       </p>
     </div>

@@ -155,10 +155,10 @@ export default function SubscriptionOverviewPage() {
       {/* Top Cards: Tier + Credit - 2 columns 50%/50% */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Tier Card */}
-        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
+        <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-signal text-[10px] text-slate-500">
+              <p className="text-signal text-[10px] text-muted-foreground">
                 Tier Saat Ini
               </p>
               <div className="flex items-center gap-2 mt-1">
@@ -171,17 +171,17 @@ export default function SubscriptionOverviewPage() {
                   {tierConfig.label}
                 </span>
               </div>
-              <p className="text-sm text-slate-400 mt-2">
+              <p className="text-sm text-muted-foreground mt-2">
                 {tierConfig.description}
               </p>
             </div>
-            <GraphUp className="h-5 w-5 text-slate-500" />
+            <GraphUp className="h-5 w-5 text-muted-foreground" />
           </div>
 
           {tier !== "pro" && (
             <Link
               href="/subscription/upgrade"
-              className="mt-4 inline-flex items-center gap-1.5 text-xs font-mono font-medium text-amber-500 hover:text-amber-400"
+              className="focus-ring text-interface mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
             >
               <ArrowUpCircle className="h-4 w-4" />
               Upgrade ke Pro
@@ -190,23 +190,23 @@ export default function SubscriptionOverviewPage() {
         </div>
 
         {/* Right Card — tier-aware */}
-        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
+        <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
           {isBPP ? (
             <>
               {/* BPP: Credit balance + Top Up */}
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-signal text-[10px] text-slate-500">
+                  <p className="text-signal text-[10px] text-muted-foreground">
                     Saldo Credit
                   </p>
-                  <p className="text-interface text-2xl font-semibold mt-1 text-slate-100">
+                  <p className="text-interface text-2xl font-semibold mt-1 text-foreground">
                     {currentCreditBalance.toLocaleString("id-ID")} kredit
                   </p>
-                  <p className="text-sm text-slate-400 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     ≈ {(currentCreditBalance * 1000).toLocaleString("id-ID")} tokens tersedia
                   </p>
                 </div>
-                <CreditCard className="h-5 w-5 text-slate-500" />
+                <CreditCard className="h-5 w-5 text-muted-foreground" />
               </div>
               <Link
                 href="/subscription/topup"
@@ -221,13 +221,13 @@ export default function SubscriptionOverviewPage() {
               {/* Admin: Unlimited access */}
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-signal text-[10px] text-slate-500">
+                  <p className="text-signal text-[10px] text-muted-foreground">
                     Akses
                   </p>
-                  <p className="text-interface text-2xl font-semibold mt-1 text-slate-100">
+                  <p className="text-interface text-2xl font-semibold mt-1 text-foreground">
                     Unlimited
                   </p>
-                  <p className="text-sm text-slate-400 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     Akses tidak terbatas (admin)
                   </p>
                 </div>
@@ -239,17 +239,17 @@ export default function SubscriptionOverviewPage() {
               {/* Gratis / Pro: Monthly quota info */}
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-signal text-[10px] text-slate-500">
+                  <p className="text-signal text-[10px] text-muted-foreground">
                     Kuota Bulanan
                   </p>
-                  <p className="text-interface text-2xl font-semibold mt-1 text-slate-100">
+                  <p className="text-interface text-2xl font-semibold mt-1 text-foreground">
                     {totalKredit.toLocaleString("id-ID")} kredit
                   </p>
-                  <p className="text-sm text-slate-400 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     Reset: {resetDate}
                   </p>
                 </div>
-                <GraphUp className="h-5 w-5 text-slate-500" />
+                <GraphUp className="h-5 w-5 text-muted-foreground" />
               </div>
             </>
           )}
@@ -258,11 +258,11 @@ export default function SubscriptionOverviewPage() {
 
       {/* Usage Progress Card (for non-BPP users) */}
       {!isBPP && (
-        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
+        <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-interface text-sm font-medium text-slate-200">Penggunaan Bulan Ini</h2>
+            <h2 className="text-interface text-sm font-medium text-foreground">Penggunaan Bulan Ini</h2>
             {!isUnlimited && (
-              <span className="text-[10px] font-mono text-slate-500">
+              <span className="text-[10px] font-mono text-muted-foreground">
                 Reset: {resetDate}
               </span>
             )}
@@ -349,9 +349,9 @@ export default function SubscriptionOverviewPage() {
 
       {/* BPP Credit Detail Card */}
       {isBPP && (
-        <div className="bg-slate-900/50 border border-hairline rounded-shell p-4">
+        <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-interface text-sm font-medium text-slate-200">Detail Credit</h2>
+            <h2 className="text-interface text-sm font-medium text-foreground">Detail Credit</h2>
             {creditBalance && currentCreditBalance < 100 && (
               <div className="px-3 py-1.5 bg-amber-500/15 text-amber-400 text-xs font-mono rounded-badge border border-amber-500/30">
                 Saldo Rendah
@@ -361,27 +361,27 @@ export default function SubscriptionOverviewPage() {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <p className="text-signal text-[10px] text-slate-500">Tersisa</p>
-              <p className="font-mono text-lg font-bold text-slate-100">
+              <p className="text-signal text-[10px] text-muted-foreground">Tersisa</p>
+              <p className="font-mono text-lg font-bold text-foreground">
                 {currentCreditBalance.toLocaleString("id-ID")}
               </p>
             </div>
             <div>
-              <p className="text-signal text-[10px] text-slate-500">Terpakai</p>
-              <p className="font-mono text-lg font-bold text-slate-400">
+              <p className="text-signal text-[10px] text-muted-foreground">Terpakai</p>
+              <p className="font-mono text-lg font-bold text-muted-foreground">
                 {(creditBalance?.usedCredits ?? 0).toLocaleString("id-ID")}
               </p>
             </div>
             <div>
-              <p className="text-signal text-[10px] text-slate-500">Total Dibeli</p>
-              <p className="font-mono text-lg font-bold text-slate-400">
+              <p className="text-signal text-[10px] text-muted-foreground">Total Dibeli</p>
+              <p className="font-mono text-lg font-bold text-muted-foreground">
                 {(creditBalance?.totalCredits ?? 0).toLocaleString("id-ID")}
               </p>
             </div>
           </div>
 
           {creditBalance?.lastPurchaseAt && (
-            <p className="text-[10px] font-mono text-slate-500 mt-3">
+            <p className="text-[10px] font-mono text-muted-foreground mt-3">
               Pembelian terakhir: {formatDate(creditBalance.lastPurchaseAt)}
               ({creditBalance.lastPurchaseCredits ?? 0} kredit)
             </p>
@@ -390,9 +390,9 @@ export default function SubscriptionOverviewPage() {
       )}
 
       {/* Usage Breakdown Table */}
-      <div className="bg-slate-900/50 border border-hairline rounded-shell overflow-hidden">
-        <div className="px-4 py-3 border-b border-hairline">
-          <h2 className="text-interface text-sm font-medium text-slate-200">Breakdown Penggunaan</h2>
+      <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 overflow-hidden">
+        <div className="border-b border-border bg-slate-200/45 px-4 py-3 dark:bg-slate-900/50">
+          <h2 className="text-interface text-sm font-medium text-foreground">Breakdown Penggunaan</h2>
         </div>
 
         {usageBreakdown === undefined ? (
@@ -405,41 +405,41 @@ export default function SubscriptionOverviewPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs font-mono">
-              <thead>
-                <tr className="bg-slate-800/40">
-                  <th className="text-left px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
+            <table className="text-interface w-full table-fixed border-collapse text-left text-sm">
+              <thead className="border-b border-border bg-slate-300/70 dark:bg-slate-800/95">
+                <tr>
+                  <th className="text-signal h-12 w-[34%] bg-slate-200/75 px-4 py-3 text-[10px] font-bold tracking-wider text-muted-foreground uppercase dark:bg-slate-900/85">
                     Tipe
                   </th>
-                  <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="text-signal h-12 w-[22%] px-4 py-3 text-right text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                     Kredit
                   </th>
-                  <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="text-signal h-12 w-[22%] px-4 py-3 text-right text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                     Tokens
                   </th>
-                  <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="text-signal h-12 w-[22%] px-4 py-3 text-right text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                     Estimasi Biaya
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-border">
                 {usageBreakdown.breakdown.map((item) => {
                   const IconComponent = ICON_MAP[item.icon as keyof typeof ICON_MAP] || ChatBubble
                   return (
-                    <tr key={item.type} className="hover:bg-slate-800/30">
-                      <td className="px-4 py-3">
+                    <tr key={item.type} className="group transition-colors hover:bg-muted/50">
+                      <td className="bg-slate-200/35 px-4 py-3 group-hover:bg-slate-200/55 dark:bg-slate-900/55 dark:group-hover:bg-slate-800/70">
                         <div className="flex items-center gap-2">
-                          <IconComponent className="h-4 w-4 text-slate-500" />
-                          <span className="text-slate-200">{item.type}</span>
+                          <IconComponent className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-foreground">{item.type}</span>
                         </div>
                       </td>
-                      <td className="text-right px-4 py-3 tabular-nums text-slate-200">
+                      <td className="text-right px-4 py-3 tabular-nums text-foreground">
                         {Math.ceil(item.tokens / TOKENS_PER_CREDIT).toLocaleString("id-ID")}
                       </td>
-                      <td className="text-right px-4 py-3 tabular-nums text-slate-100">
+                      <td className="text-right px-4 py-3 tabular-nums text-foreground">
                         {item.tokens.toLocaleString("id-ID")}
                       </td>
-                      <td className="text-right px-4 py-3 tabular-nums text-slate-400">
+                      <td className="text-right px-4 py-3 tabular-nums text-muted-foreground">
                         Rp {item.cost.toLocaleString("id-ID")}
                       </td>
                     </tr>
@@ -447,15 +447,15 @@ export default function SubscriptionOverviewPage() {
                 })}
               </tbody>
               <tfoot>
-                <tr className="bg-slate-800/40 font-semibold">
-                  <td className="px-4 py-2 text-slate-200">Total</td>
-                  <td className="text-right px-4 py-2 tabular-nums text-slate-100">
+                <tr className="bg-slate-200/35 font-semibold dark:bg-slate-900/55">
+                  <td className="px-4 py-2 text-foreground">Total</td>
+                  <td className="text-right px-4 py-2 tabular-nums text-foreground">
                     {Math.ceil(usageBreakdown.totalTokens / TOKENS_PER_CREDIT).toLocaleString("id-ID")}
                   </td>
-                  <td className="text-right px-4 py-2 tabular-nums text-slate-100">
+                  <td className="text-right px-4 py-2 tabular-nums text-foreground">
                     {usageBreakdown.totalTokens.toLocaleString("id-ID")}
                   </td>
-                  <td className="text-right px-4 py-2 tabular-nums text-slate-200">
+                  <td className="text-right px-4 py-2 tabular-nums text-foreground">
                     Rp {usageBreakdown.totalCost.toLocaleString("id-ID")}
                   </td>
                 </tr>
@@ -471,9 +471,9 @@ export default function SubscriptionOverviewPage() {
       </p>
 
       {/* Hybrid Model Info */}
-      <div className="bg-slate-800/30 border border-hairline rounded-shell p-4">
-        <h3 className="text-interface text-sm font-medium text-slate-200 mb-2">Cara Kerja Pembayaran</h3>
-        <ul className="text-sm text-slate-400 space-y-1.5">
+      <div className="rounded-shell border-main border border-border bg-card/90 p-4 dark:bg-slate-900/90">
+        <h3 className="text-interface text-sm font-medium text-foreground mb-2">Cara Kerja Pembayaran</h3>
+        <ul className="text-sm text-muted-foreground space-y-1.5">
           <li className="flex items-start gap-2">
             <span className="text-amber-500">1.</span>
             <span>

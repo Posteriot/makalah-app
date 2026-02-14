@@ -1266,11 +1266,15 @@
 
   /* Override dashboard-main padding when subscription page is shown */
   .dashboard-main:has(.subscription-container) {
-    padding-top: 0;
+    padding: 0;
+    max-width: none;
+    margin-inline: 0;
   }
 
   .subscription-container {
     width: 100%;
+    max-width: none;
+    margin: 0;
   }
 
   .subscription-body {

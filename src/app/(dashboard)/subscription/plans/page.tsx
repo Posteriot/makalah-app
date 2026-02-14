@@ -336,7 +336,7 @@ export default function PlansHubPage() {
   if (!user) {
     return (
       <div className="space-y-2">
-        <h1 className="text-xl font-semibold">Pilih Paket</h1>
+        <h1 className="text-interface text-xl font-semibold">Pilih Paket</h1>
         <p className="text-sm text-muted-foreground">
           Sesi tidak aktif. Silakan login ulang.
         </p>
@@ -359,7 +359,7 @@ export default function PlansHubPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl font-semibold flex items-center gap-2">
+        <h1 className="text-interface text-xl font-semibold flex items-center gap-2">
           <Sparks className="h-5 w-5 text-primary" />
           Pilih Paket
         </h1>
@@ -369,18 +369,20 @@ export default function PlansHubPage() {
       </div>
 
       {/* Current Tier Info */}
-      <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-        <span className={cn("text-xs font-bold px-2 py-0.5 rounded text-white", tierBadge.color)}>
-          {tierBadge.label}
-        </span>
-        <span className="text-sm text-muted-foreground">
-          Tier saat ini
-        </span>
-        {currentTier === "bpp" && (
-          <span className="ml-auto text-sm">
-            Sisa: <strong>{currentCredits} kredit</strong>
+      <div className="rounded-shell border-main border border-border bg-card/90 p-3 dark:bg-slate-900/90">
+        <div className="flex items-center gap-3">
+          <span className={cn("text-xs font-bold px-2 py-0.5 rounded-badge text-white", tierBadge.color)}>
+            {tierBadge.label}
           </span>
-        )}
+          <span className="text-sm text-muted-foreground">
+            Tier saat ini
+          </span>
+          {currentTier === "bpp" && (
+            <span className="text-interface ml-auto text-sm">
+              Sisa: <strong>{currentCredits} kredit</strong>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Plans Grid - Responsive */}
@@ -394,32 +396,32 @@ export default function PlansHubPage() {
             <div
               key={plan._id}
               className={cn(
-                "bg-card border rounded-lg overflow-hidden transition-all",
+                "rounded-shell border-main border border-border bg-card/90 overflow-hidden transition-all dark:bg-slate-900/90",
                 plan.isHighlighted
                   ? "border-primary shadow-lg shadow-primary/10"
-                  : "border-border",
+                  : "",
                 isCurrentTier && "ring-2 ring-primary/50"
               )}
             >
               {/* Card Header */}
-              <div className="p-4 border-b border-border">
+              <div className="border-b border-border bg-slate-200/45 p-4 dark:bg-slate-900/50">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold">{plan.name}</h3>
+                    <h3 className="text-interface font-semibold text-foreground">{plan.name}</h3>
                     <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-2xl font-bold">{plan.price}</span>
+                      <span className="text-interface text-2xl font-bold text-foreground">{plan.price}</span>
                       {plan.unit && (
                         <span className="text-sm text-muted-foreground">{plan.unit}</span>
                       )}
                     </div>
                   </div>
                   {isCurrentTier && (
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                    <span className="rounded-badge border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary uppercase">
                       Saat ini
                     </span>
                   )}
                   {plan.isHighlighted && !isCurrentTier && (
-                    <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
+                    <span className="rounded-badge border border-primary/40 bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground uppercase">
                       Populer
                     </span>
                   )}
@@ -450,7 +452,7 @@ export default function PlansHubPage() {
                   ) : (
                     <Link
                       href="/chat"
-                      className="block w-full py-2.5 text-center rounded-lg border border-border hover:bg-muted transition-colors text-sm font-medium"
+                      className="focus-ring block w-full py-2.5 text-center rounded-action border-main border border-border hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
                     >
                       {plan.ctaText}
                     </Link>
@@ -463,10 +465,10 @@ export default function PlansHubPage() {
                     <button
                       onClick={() => setIsExpanded(!isExpanded)}
                       className={cn(
-                        "w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
+                        "focus-ring w-full py-2.5 rounded-action font-medium transition-colors flex items-center justify-center gap-2",
                         plan.isHighlighted
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "bg-muted hover:bg-muted/80"
+                          ? "bg-slate-900 text-slate-100 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                          : "border-main border border-border bg-card text-foreground hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
                       )}
                     >
                       {isCurrentTier ? "Beli Paket" : plan.ctaText}
@@ -498,7 +500,7 @@ export default function PlansHubPage() {
                           <>
                             {/* Error Banner */}
                             {error && (
-                              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
+                              <div className="bg-destructive/10 border border-destructive/30 rounded-action p-3 flex items-start gap-2">
                                 <WarningCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                                 <p className="text-sm text-destructive">{error}</p>
                               </div>
@@ -516,7 +518,7 @@ export default function PlansHubPage() {
                                     onClick={() => setSelectedPackage(pkg)}
                                     disabled={isProcessing}
                                     className={cn(
-                                      "relative p-3 border rounded-lg text-left transition-colors",
+                                      "relative p-3 border rounded-action text-left transition-colors",
                                       derivedSelectedPackage?.type === pkg.type
                                         ? "border-primary bg-primary/5"
                                         : "border-border hover:border-primary/50",
@@ -524,7 +526,7 @@ export default function PlansHubPage() {
                                     )}
                                   >
                                     {pkg.popular && (
-                                      <span className="absolute -top-2 right-2 text-[10px] font-medium bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
+                                      <span className="absolute -top-2 right-2 rounded-badge border border-primary/40 bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
                                         Populer
                                       </span>
                                     )}
@@ -563,7 +565,7 @@ export default function PlansHubPage() {
                                       onClick={() => setSelectedMethod(method.id)}
                                       disabled={isProcessing}
                                       className={cn(
-                                        "w-full flex items-center gap-2 p-2 border rounded-lg text-left transition-colors",
+                                        "w-full flex items-center gap-2 p-2 border rounded-action text-left transition-colors",
                                         isSelected
                                           ? "border-primary bg-primary/5"
                                           : "border-border hover:border-primary/50",
@@ -589,7 +591,7 @@ export default function PlansHubPage() {
                                       onClick={() => setSelectedVAChannel(channel.code)}
                                       disabled={isProcessing}
                                       className={cn(
-                                        "p-2 border rounded-lg text-center text-sm transition-colors",
+                                        "p-2 border rounded-action text-center text-sm transition-colors",
                                         selectedVAChannel === channel.code
                                           ? "border-primary bg-primary/5"
                                           : "border-border hover:border-primary/50"
@@ -611,7 +613,7 @@ export default function PlansHubPage() {
                                         onClick={() => setSelectedEWalletChannel(channel.code)}
                                         disabled={isProcessing}
                                         className={cn(
-                                          "p-2 border rounded-lg text-center text-sm transition-colors",
+                                          "p-2 border rounded-action text-center text-sm transition-colors",
                                           selectedEWalletChannel === channel.code
                                             ? "border-primary bg-primary/5"
                                             : "border-border hover:border-primary/50"
@@ -628,7 +630,7 @@ export default function PlansHubPage() {
                                       onChange={(e) => setMobileNumber(e.target.value)}
                                       placeholder="08123456789"
                                       disabled={isProcessing}
-                                      className="w-full p-2 border border-border rounded-lg bg-background text-sm"
+                                      className="w-full p-2 border border-border rounded-action bg-background text-sm"
                                     />
                                   )}
                                 </div>
@@ -640,7 +642,7 @@ export default function PlansHubPage() {
                               onClick={handleTopUp}
                               disabled={isProcessing || !derivedSelectedPackage}
                               className={cn(
-                                "w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
+                                "focus-ring w-full py-2.5 rounded-action font-medium transition-colors flex items-center justify-center gap-2",
                                 "bg-primary text-primary-foreground hover:bg-primary/90",
                                 "disabled:opacity-50 disabled:cursor-not-allowed"
                               )}
@@ -675,8 +677,8 @@ export default function PlansHubPage() {
                       <button
                         onClick={() => setIsProExpanded(!isProExpanded)}
                         className={cn(
-                          "w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
-                          "bg-primary text-primary-foreground hover:bg-primary/90"
+                          "focus-ring w-full py-2.5 rounded-action font-medium transition-colors flex items-center justify-center gap-2",
+                          "bg-slate-900 text-slate-100 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
                         )}
                       >
                         {plan.ctaText}
@@ -709,7 +711,7 @@ export default function PlansHubPage() {
                             <>
                               {/* Error Banner */}
                               {proError && (
-                                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
+                                <div className="bg-destructive/10 border border-destructive/30 rounded-action p-3 flex items-start gap-2">
                                   <WarningCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                                   <p className="text-sm text-destructive">{proError}</p>
                                 </div>
@@ -725,7 +727,7 @@ export default function PlansHubPage() {
                                       onClick={() => setSelectedProPlan(type)}
                                       disabled={isProProcessing}
                                       className={cn(
-                                        "relative p-3 border rounded-lg text-left transition-colors",
+                                        "relative p-3 border rounded-action text-left transition-colors",
                                         selectedProPlan === type
                                           ? "border-primary bg-primary/5"
                                           : "border-border hover:border-primary/50",
@@ -762,7 +764,7 @@ export default function PlansHubPage() {
                                         onClick={() => setProSelectedMethod(method.id)}
                                         disabled={isProProcessing}
                                         className={cn(
-                                          "w-full flex items-center gap-2 p-2 border rounded-lg text-left transition-colors",
+                                          "w-full flex items-center gap-2 p-2 border rounded-action text-left transition-colors",
                                           isSelected
                                             ? "border-primary bg-primary/5"
                                             : "border-border hover:border-primary/50",
@@ -788,7 +790,7 @@ export default function PlansHubPage() {
                                         onClick={() => setProSelectedVAChannel(channel.code)}
                                         disabled={isProProcessing}
                                         className={cn(
-                                          "p-2 border rounded-lg text-center text-sm transition-colors",
+                                          "p-2 border rounded-action text-center text-sm transition-colors",
                                           proSelectedVAChannel === channel.code
                                             ? "border-primary bg-primary/5"
                                             : "border-border hover:border-primary/50"
@@ -810,7 +812,7 @@ export default function PlansHubPage() {
                                           onClick={() => setProSelectedEWalletChannel(channel.code)}
                                           disabled={isProProcessing}
                                           className={cn(
-                                            "p-2 border rounded-lg text-center text-sm transition-colors",
+                                            "p-2 border rounded-action text-center text-sm transition-colors",
                                             proSelectedEWalletChannel === channel.code
                                               ? "border-primary bg-primary/5"
                                               : "border-border hover:border-primary/50"
@@ -827,7 +829,7 @@ export default function PlansHubPage() {
                                         onChange={(e) => setProMobileNumber(e.target.value)}
                                         placeholder="08123456789"
                                         disabled={isProProcessing}
-                                        className="w-full p-2 border border-border rounded-lg bg-background text-sm"
+                                        className="w-full p-2 border border-border rounded-action bg-background text-sm"
                                       />
                                     )}
                                   </div>
@@ -839,7 +841,7 @@ export default function PlansHubPage() {
                                 onClick={handleProSubscribe}
                                 disabled={isProProcessing}
                                 className={cn(
-                                  "w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
+                                  "focus-ring w-full py-2.5 rounded-action font-medium transition-colors flex items-center justify-center gap-2",
                                   "bg-primary text-primary-foreground hover:bg-primary/90",
                                   "disabled:opacity-50 disabled:cursor-not-allowed"
                                 )}
@@ -870,8 +872,8 @@ export default function PlansHubPage() {
       </div>
 
       {/* Info Section */}
-      <div className="bg-muted/30 border border-border rounded-lg p-4">
-        <h3 className="font-medium mb-2">Cara Kerja Pembayaran</h3>
+      <div className="rounded-shell border-main border border-border bg-card/90 p-4 dark:bg-slate-900/90">
+        <h3 className="text-interface font-medium mb-2">Cara Kerja Pembayaran</h3>
         <ul className="text-sm text-muted-foreground space-y-1.5">
           <li className="flex items-start gap-2">
             <span className="text-primary">1.</span>
@@ -995,7 +997,7 @@ function PaymentResultSection({
         </div>
         <Link
           href="/chat"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
+          className="focus-ring inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-action text-sm font-medium hover:bg-primary/90"
         >
           {variant === "pro" ? "Mulai Menggunakan Pro" : "Mulai Menyusun Paper"}
           <ArrowRight className="h-4 w-4" />
@@ -1023,7 +1025,7 @@ function PaymentResultSection({
         </div>
         <button
           onClick={onReset}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
+          className="focus-ring inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-action text-sm font-medium hover:bg-primary/90"
         >
           <Refresh className="h-4 w-4" />
           Coba Lagi
@@ -1048,7 +1050,7 @@ function PaymentResultSection({
         </div>
         <button
           onClick={onReset}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
+          className="focus-ring inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-action text-sm font-medium hover:bg-primary/90"
         >
           Buat Pembayaran Baru
         </button>
@@ -1069,7 +1071,7 @@ function PaymentResultSection({
 
       {/* QR Code */}
       {selectedMethod === "qris" && (paymentResult.qrCodeUrl || paymentResult.qrString) && (
-        <div className="bg-white p-3 rounded-lg inline-block">
+        <div className="bg-white p-3 rounded-action inline-block">
           {paymentResult.qrCodeUrl ? (
             <Image src={paymentResult.qrCodeUrl} alt="QRIS" width={180} height={180} />
           ) : paymentResult.qrString ? (
@@ -1080,11 +1082,11 @@ function PaymentResultSection({
 
       {/* VA Number */}
       {selectedMethod === "va" && paymentResult.vaNumber && (
-        <div className="bg-muted/50 p-3 rounded-lg">
+        <div className="bg-muted/50 p-3 rounded-action">
           <p className="text-xs text-muted-foreground mb-1">Bank {paymentResult.vaChannel}</p>
           <div className="flex items-center justify-center gap-2">
             <p className="text-lg font-mono font-bold">{paymentResult.vaNumber}</p>
-            <button onClick={() => onCopy(paymentResult.vaNumber!)} className="p-1 hover:bg-muted rounded">
+            <button onClick={() => onCopy(paymentResult.vaNumber!)} className="focus-ring p-1 hover:bg-muted rounded-action">
               <Copy className="h-4 w-4" />
             </button>
           </div>
@@ -1094,7 +1096,7 @@ function PaymentResultSection({
       {/* E-Wallet */}
       {selectedMethod === "ewallet" && (
         <div className={cn(
-          "p-3 rounded-lg",
+          "p-3 rounded-action",
           selectedEWalletChannel === "OVO" ? "bg-purple-50 dark:bg-purple-950/30" : "bg-green-50 dark:bg-green-950/30"
         )}>
           <div className="flex items-center justify-center gap-2">
@@ -1131,7 +1133,7 @@ function PaymentResultSection({
           <button
             onClick={handleCheckStatus}
             disabled={isCheckingStatus}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+            className="focus-ring inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-action text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
           >
             {isCheckingStatus && <RefreshDouble className="h-4 w-4 animate-spin" />}
             Cek Status Pembayaran
