@@ -71,10 +71,10 @@ export function useCreditMeter(): CreditMeterData {
     }
   }
 
-  // Admin/superadmin — unlimited access, show as "Unlimited"
+  // Admin/superadmin — unlimited access
   if (isAdmin) {
     return {
-      tier: "pro",
+      tier: "unlimited",
       used: 0,
       total: Infinity,
       remaining: Infinity,

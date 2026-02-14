@@ -40,6 +40,12 @@ const TIER_CONFIG: Record<EffectiveTier, { label: string; description: string; c
     color: "bg-segment-pro",
     textColor: "text-segment-pro",
   },
+  unlimited: {
+    label: "UNLIMITED",
+    description: "Akses tidak terbatas (admin)",
+    color: "bg-segment-unlimited",
+    textColor: "text-segment-unlimited",
+  },
 }
 
 // Icon mapping for breakdown (backward-compatible keys for database)
@@ -178,7 +184,7 @@ export default function SubscriptionOverviewPage() {
             <GraphUp className="h-5 w-5 text-muted-foreground" />
           </div>
 
-          {tier !== "pro" && (
+          {tier !== "pro" && tier !== "unlimited" && (
             <Link
               href="/subscription/upgrade"
               className="focus-ring text-interface mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"

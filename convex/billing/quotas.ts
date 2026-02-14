@@ -301,7 +301,7 @@ export const checkQuota = query({
 
     // Admin/superadmin bypass
     if (user.role === "admin" || user.role === "superadmin") {
-      return { allowed: true, tier: "pro", bypassed: true }
+      return { allowed: true, tier: "unlimited", bypassed: true }
     }
 
     const tier = (user.subscriptionStatus === "free" ? "gratis" : user.subscriptionStatus) as TierType
@@ -436,7 +436,7 @@ export const getQuotaStatus = query({
     // Admin/superadmin always have unlimited
     if (user.role === "admin" || user.role === "superadmin") {
       return {
-        tier: "pro",
+        tier: "unlimited",
         unlimited: true,
         percentageUsed: 0,
         warningLevel: "none" as const,

@@ -48,13 +48,14 @@ const SCROLL_UP_DELTA = 2    // px minimum to show header (more sensitive)
  *
  * ATURAN WARNA:
  * - Warna avatar dan badge berdasarkan SUBSCRIPTION TIER, bukan role
- * - Admin dan Superadmin diperlakukan sebagai PRO (amber)
+ * - Admin dan Superadmin diperlakukan sebagai UNLIMITED (slate)
  * - Tier determination via shared getEffectiveTier() utility
  */
 const SEGMENT_CONFIG: Record<EffectiveTier, { className: string }> = {
   gratis: { className: "bg-segment-gratis text-white" },
   bpp: { className: "bg-segment-bpp text-white" },
   pro: { className: "bg-segment-pro text-white" },
+  unlimited: { className: "bg-segment-unlimited text-white dark:text-black" },
 }
 
 export function GlobalHeader() {

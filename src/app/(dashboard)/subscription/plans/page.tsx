@@ -281,7 +281,7 @@ export default function PlansHubPage() {
 
                 {/* CTA Section */}
                 {/* Gratis Plan */}
-                {plan.slug === "gratis" && !isCurrentTier && (
+                {plan.slug === "gratis" && !isCurrentTier && currentTier !== "unlimited" && (
                   <SectionCTA
                     href="/chat"
                     className="mt-auto flex w-full justify-center py-2.5"
@@ -300,8 +300,8 @@ export default function PlansHubPage() {
                   </SectionCTA>
                 )}
 
-                {/* Pro Plan - Expandable Checkout */}
-                {isPro && !isCurrentTier && (
+                {/* Pro Plan - Expandable Checkout (hidden for unlimited/admin) */}
+                {isPro && !isCurrentTier && currentTier !== "unlimited" && (
                   <>
                     <button
                       onClick={() => setIsProExpanded(!isProExpanded)}

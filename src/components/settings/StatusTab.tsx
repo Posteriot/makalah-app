@@ -12,6 +12,7 @@ const TIER_CONFIG: Record<EffectiveTier, { showUpgrade: boolean }> = {
   gratis: { showUpgrade: true },
   bpp: { showUpgrade: true },
   pro: { showUpgrade: false },
+  unlimited: { showUpgrade: false },
 }
 
 interface StatusTabProps {

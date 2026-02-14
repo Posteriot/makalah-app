@@ -323,6 +323,7 @@
   --color-segment-gratis: var(--segment-gratis);
   --color-segment-bpp: var(--segment-bpp);
   --color-segment-pro: var(--segment-pro);
+  --color-segment-unlimited: var(--segment-unlimited);
   --color-segment-admin: var(--segment-admin);
   --color-segment-superadmin: var(--segment-superadmin);
 
@@ -523,6 +524,7 @@
   --segment-gratis: var(--emerald-600);
   --segment-bpp: var(--sky-600);
   --segment-pro: var(--amber-500);
+  --segment-unlimited: var(--slate-600);
 
   /* Neo-Brutalist Mockup Colors - Light Mode */
   --neo-card-bg: var(--neo-card-bg-light);
@@ -630,6 +632,9 @@
   /* --- IDE Hairlines (Dark) --- */
   --border-hairline: rgba(255, 255, 255, 0.2);
   --border-hairline-soft: rgba(255, 255, 255, 0.08);
+
+  /* Segment - Dark Mode override */
+  --segment-unlimited: var(--slate-400);
 
   /* Neo-Brutalist Mockup Colors - Dark Mode (preserved) */
   --neo-card-bg: var(--neo-card-bg-dark);

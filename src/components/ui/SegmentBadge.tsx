@@ -24,6 +24,10 @@ const TIER_CONFIG: Record<EffectiveTier, { label: string; className: string }> =
     label: "PRO",
     className: "bg-segment-pro text-black",
   },
+  unlimited: {
+    label: "UNLIMITED",
+    className: "bg-segment-unlimited text-white dark:text-black",
+  },
 }
 
 interface SegmentBadgeProps {
@@ -40,7 +44,7 @@ interface SegmentBadgeProps {
  *
  * Displays the user's current subscription tier as a colored badge.
  * Uses shared getEffectiveTier() for tier determination.
- * Admin/superadmin are shown as "PRO" since they have full access.
+ * Admin/superadmin are shown as "UNLIMITED" since they have full access.
  *
  * Variations:
  * - GRATIS (green) - free tier

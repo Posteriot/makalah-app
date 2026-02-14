@@ -49,6 +49,9 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
 
   const tier = getEffectiveTier(user.role, user.subscriptionStatus)
 
+  // Unlimited tier (admin) - never show quota warning
+  if (tier === "unlimited") return null
+
   // Determine banner type and content
   let bannerType: BannerType | null = null
   let message = ""
