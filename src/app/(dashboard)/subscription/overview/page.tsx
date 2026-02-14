@@ -209,7 +209,7 @@ export default function SubscriptionOverviewPage() {
                 <CreditCard className="h-5 w-5 text-muted-foreground" />
               </div>
               <Link
-                href="/subscription/topup"
+                href="/subscription/topup?from=overview"
                 className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
               >
                 <CreditCard className="h-4 w-4" />
@@ -327,7 +327,7 @@ export default function SubscriptionOverviewPage() {
                       : "Quota bulanan habis. Upgrade ke Pro atau top up credit untuk melanjutkan."}
                   </p>
                   <Link
-                    href="/subscription/topup"
+                    href="/subscription/topup?from=overview"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
                   >
                     <CreditCard className="h-3.5 w-3.5" />

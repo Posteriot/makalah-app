@@ -5,9 +5,10 @@ import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   CreditCard,
-  ArrowLeft,
+  NavArrowLeft,
   QrCode,
   Building,
   Wallet,
@@ -72,10 +73,44 @@ interface PaymentResult {
   redirectUrl?: string
 }
 
+function getSubscriptionBackRoute(fromParam: string | null): string {
+  switch (fromParam) {
+    case "plans":
+      return "/subscription/plans"
+    case "history":
+      return "/subscription/history"
+    case "upgrade":
+      return "/subscription/upgrade"
+    case "overview":
+    default:
+      return "/subscription/overview"
+  }
+}
+
+function BackToSubscriptionButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 text-sm font-normal text-slate-800 dark:text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-100 hover:underline focus-ring w-fit"
+    >
+      <NavArrowLeft className="h-4 w-4" />
+      <span>Kembali</span>
+    </button>
+  )
+}
+
 export default function CheckoutBPPPage() {
   const { user, isLoading: userLoading } = useCurrentUser()
   const { hasCompletedOnboarding, completeOnboarding } = useOnboardingStatus()
   const onboardingCompletedRef = useRef(false)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const backRoute = getSubscriptionBackRoute(searchParams.get("from"))
+  const handleBackToSubscription = useCallback(() => {
+    router.push(backRoute)
+  }, [router, backRoute])
 
   // Auto-complete onboarding when user lands on checkout page
   useEffect(() => {
@@ -154,11 +189,6 @@ export default function CheckoutBPPPage() {
     toast.success("Berhasil disalin!")
   }, [])
 
-  const resetPayment = useCallback(() => {
-    setPaymentResult(null)
-    setError(null)
-  }, [])
-
   // Loading state
   if (userLoading) {
     return (
@@ -177,14 +207,7 @@ export default function CheckoutBPPPage() {
   if (paymentResult && (selectedMethod !== "ewallet" || !paymentResult.redirectUrl)) {
     return (
       <div className="space-y-6">
-        {/* Back Link */}
-        <button
-          onClick={resetPayment}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Kembali
-        </button>
+        <BackToSubscriptionButton onClick={handleBackToSubscription} />
 
         {/* Payment Status Card */}
         <div className="bg-card border border-border rounded-xl p-6">
@@ -323,6 +346,8 @@ export default function CheckoutBPPPage() {
 
   return (
     <div className="space-y-6">
+      <BackToSubscriptionButton onClick={handleBackToSubscription} />
+
       {/* Page Header */}
       <div className="text-center">
         <div className="inline-flex items-center gap-2 mb-2">

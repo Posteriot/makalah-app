@@ -10,7 +10,6 @@ import Image from "next/image"
 import { QRCodeSVG } from "qrcode.react"
 import {
   CreditCard,
-  Check,
   NavArrowDown,
   NavArrowUp,
   Sparks,
@@ -31,23 +30,13 @@ import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
 import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
 import { toast } from "sonner"
+import { SectionCTA } from "@/components/ui/section-cta"
 
 type ProPlanType = keyof typeof SUBSCRIPTION_PRICING
 
 // ════════════════════════════════════════════════════════════════
 // Types
 // ════════════════════════════════════════════════════════════════
-
-interface CreditPackage {
-  type: "paper" | "extension_s" | "extension_m"
-  credits: number
-  tokens: number
-  priceIDR: number
-  label: string
-  description?: string
-  ratePerCredit?: number
-  popular?: boolean
-}
 
 interface PaymentResult {
   paymentId: string
@@ -110,33 +99,11 @@ export default function PlansHubPage() {
   // Fetch plans from database
   const plans = useQuery(api.pricingPlans.getActivePlans)
 
-  // Fetch credit packages for BPP
-  const creditPackagesResult = useQuery(api.pricingPlans.getCreditPackagesForPlan, { slug: "bpp" })
-
   // Get current credit balance
   const creditBalance = useQuery(
     api.billing.credits.getCreditBalance,
     user?._id ? { userId: user._id } : "skip"
   )
-
-  // Get active paper sessions to check soft-block status
-  const activeSessions = useQuery(
-    api.paperSessions.getByUserWithFilter,
-    user?._id ? { userId: user._id, status: "in_progress" } : "skip"
-  )
-
-  // BPP card expansion state
-  const [isExpanded, setIsExpanded] = useState(false)
-
-  // Payment state
-  const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("qris")
-  const [selectedVAChannel, setSelectedVAChannel] = useState(VA_CHANNELS[0].code)
-  const [selectedEWalletChannel, setSelectedEWalletChannel] = useState(EWALLET_CHANNELS[0].code)
-  const [mobileNumber, setMobileNumber] = useState("")
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   // Pro card state (isolated from BPP)
   const [isProExpanded, setIsProExpanded] = useState(false)
@@ -149,14 +116,6 @@ export default function PlansHubPage() {
   const [proSelectedEWalletChannel, setProSelectedEWalletChannel] = useState(EWALLET_CHANNELS[0].code)
   const [proMobileNumber, setProMobileNumber] = useState("")
 
-  // Real-time payment status subscription (BPP)
-  const paymentStatus = useQuery(
-    api.billing.payments.watchPaymentStatus,
-    paymentResult?.convexPaymentId
-      ? { paymentId: paymentResult.convexPaymentId as Id<"payments"> }
-      : "skip"
-  )
-
   // Real-time payment status subscription (Pro)
   const proPaymentStatus = useQuery(
     api.billing.payments.watchPaymentStatus,
@@ -164,32 +123,6 @@ export default function PlansHubPage() {
       ? { paymentId: proPaymentResult.convexPaymentId as Id<"payments"> }
       : "skip"
   )
-
-  // Set default selected package when creditPackages load
-  // Using flushSync alternative: derive initial state from props
-  const creditPackages = creditPackagesResult?.creditPackages ?? []
-  const derivedSelectedPackage = selectedPackage ?? (
-    creditPackages.length > 0
-      ? (creditPackages.find((p) => p.popular) || creditPackages[0])
-      : null
-  )
-
-  // Handle payment success via real-time subscription
-  const handlePaymentStatusChange = useCallback(() => {
-    if (paymentStatus?.status === "SUCCEEDED" && paymentResult) {
-      toast.success("Pembayaran berhasil! Saldo telah ditambahkan.")
-      // Auto-collapse after delay
-      setTimeout(() => {
-        setPaymentResult(null)
-        setIsExpanded(false)
-      }, 3000)
-    }
-  }, [paymentStatus?.status, paymentResult])
-
-  // Trigger status change handler
-  useEffect(() => {
-    handlePaymentStatusChange()
-  }, [handlePaymentStatusChange])
 
   // Handle Pro payment success via real-time subscription
   const handleProPaymentStatusChange = useCallback(() => {
@@ -205,55 +138,6 @@ export default function PlansHubPage() {
   useEffect(() => {
     handleProPaymentStatusChange()
   }, [handleProPaymentStatusChange])
-
-  const handleTopUp = useCallback(async () => {
-    if (isProcessing || !derivedSelectedPackage) return
-
-    // Validate mobile number for OVO
-    if (selectedMethod === "ewallet" && selectedEWalletChannel === "OVO") {
-      if (!mobileNumber.trim()) {
-        setError("Nomor HP wajib diisi untuk pembayaran OVO")
-        toast.error("Nomor HP wajib diisi untuk pembayaran OVO")
-        return
-      }
-    }
-
-    setIsProcessing(true)
-    setError(null)
-
-    try {
-      const response = await fetch("/api/payments/topup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          packageType: derivedSelectedPackage.type,
-          paymentMethod: selectedMethod,
-          vaChannel: selectedMethod === "va" ? selectedVAChannel : undefined,
-          ewalletChannel: selectedMethod === "ewallet" ? selectedEWalletChannel : undefined,
-          mobileNumber: selectedMethod === "ewallet" && selectedEWalletChannel === "OVO" ? mobileNumber : undefined,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Gagal membuat pembayaran")
-      }
-
-      setPaymentResult(data)
-
-      // If e-wallet with redirect, open in new tab
-      if (selectedMethod === "ewallet" && data.redirectUrl) {
-        window.open(data.redirectUrl, "_blank")
-      }
-    } catch (err) {
-      console.error("[PlansHub] Payment error:", err)
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan")
-      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan")
-    } finally {
-      setIsProcessing(false)
-    }
-  }, [isProcessing, derivedSelectedPackage, selectedMethod, selectedVAChannel, selectedEWalletChannel, mobileNumber])
 
   const handleProSubscribe = useCallback(async () => {
     if (isProProcessing) return
@@ -307,11 +191,6 @@ export default function PlansHubPage() {
     toast.success("Berhasil disalin!")
   }, [])
 
-  const resetPayment = useCallback(() => {
-    setPaymentResult(null)
-    setError(null)
-  }, [])
-
   const resetProPayment = useCallback(() => {
     setProPaymentResult(null)
     setProError(null)
@@ -348,13 +227,6 @@ export default function PlansHubPage() {
   const tierBadge = TIER_BADGES[currentTier]
   const currentCredits = creditBalance?.remainingCredits ?? 0
 
-  // Check if user has any soft-blocked paper session
-  const isSoftBlocked = activeSessions?.some((s) => s.softBlockedAt != null) ?? false
-
-  // Extension packages only shown if user has credits or is soft-blocked
-  // (so they can buy smaller package to continue their session)
-  const showExtensions = currentCredits > 0 || isSoftBlocked
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -389,281 +261,78 @@ export default function PlansHubPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {plans.map((plan) => {
           const isCurrentTier = plan.slug === currentTier
+          const planView = { ...plan, isHighlighted: isCurrentTier }
           const isBPP = plan.slug === "bpp"
           const isPro = plan.slug === "pro"
+          const teaserDescription = plan.teaserDescription || plan.tagline
+          const teaserCreditNote = plan.teaserCreditNote || plan.features[0] || ""
 
           return (
-            <div
-              key={plan._id}
-              className={cn(
-                "rounded-shell border-main border border-border bg-card/90 overflow-hidden transition-all dark:bg-slate-900/90",
-                plan.isHighlighted
-                  ? "border-primary shadow-lg shadow-primary/10"
-                  : "",
-                isCurrentTier && "ring-2 ring-primary/50"
-              )}
-            >
-              {/* Card Header */}
-              <div className="border-b border-border bg-slate-200/45 p-4 dark:bg-slate-900/50">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-interface font-semibold text-foreground">{plan.name}</h3>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-interface text-2xl font-bold text-foreground">{plan.price}</span>
-                      {plan.unit && (
-                        <span className="text-sm text-muted-foreground">{plan.unit}</span>
-                      )}
-                    </div>
-                  </div>
-                  {isCurrentTier && (
-                    <span className="rounded-badge border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary uppercase">
-                      Saat ini
-                    </span>
+            <div key={plan._id} className="group/card relative h-full">
+              {planView.isHighlighted && (
+                <div
+                  className={cn(
+                    "absolute -top-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1",
+                    "bg-[color:var(--emerald-500)] text-[color:var(--slate-50)]",
+                    "text-[11px] font-semibold uppercase tracking-wide",
+                    "transition-transform duration-300 group-hover/card:-translate-y-1"
                   )}
-                  {plan.isHighlighted && !isCurrentTier && (
-                    <span className="rounded-badge border border-primary/40 bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground uppercase">
-                      Populer
-                    </span>
-                  )}
+                >
+                  Saat ini
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">{plan.tagline}</p>
-              </div>
+              )}
 
-              {/* Features */}
-              <div className="p-4">
-                <ul className="space-y-2">
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <div
+                className={cn(
+                  "relative flex h-full min-h-[240px] flex-col overflow-hidden rounded-shell p-comfort transition-all duration-300 md:min-h-[280px] md:p-airy",
+                  "border border-[color:var(--slate-400)] bg-card/90 dark:bg-slate-900/90",
+                  "group-hover/card:-translate-y-1 group-hover/card:bg-[color:var(--slate-200)] dark:group-hover/card:bg-[color:var(--slate-700)]",
+                  planView.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
+                )}
+              >
+                <h3 className="text-narrative mt-4 text-center text-xl font-light text-foreground md:mt-0 md:text-2xl">
+                  {plan.name}
+                </h3>
+                <p className="text-interface mb-6 text-center text-3xl font-medium tracking-tight tabular-nums text-foreground">
+                  {plan.price}
+                  {plan.unit && (
+                    <span className="text-interface ml-1 text-sm font-normal text-muted-foreground">
+                      {plan.unit}
+                    </span>
+                  )}
+                </p>
+                <p className="text-interface text-sm leading-relaxed text-foreground">
+                  {teaserDescription}
+                </p>
+                <p className="text-interface mb-6 pt-6 text-xs leading-relaxed text-foreground">
+                  {teaserCreditNote}
+                </p>
 
-              {/* CTA Section */}
-              <div className="p-4 pt-0">
+                {/* CTA Section */}
                 {/* Gratis Plan */}
                 {plan.slug === "gratis" && (
                   isCurrentTier ? (
-                    <div className="text-center py-2 text-sm text-muted-foreground">
+                    <div className="text-center py-2 text-sm text-muted-foreground mt-auto">
                       Tier aktif Anda
                     </div>
                   ) : (
-                    <Link
+                    <SectionCTA
                       href="/chat"
-                      className="focus-ring block w-full py-2.5 text-center rounded-action border-main border border-border hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
+                      className="mt-auto flex w-full justify-center py-2.5"
                     >
                       {plan.ctaText}
-                    </Link>
+                    </SectionCTA>
                   )
                 )}
 
-                {/* BPP Plan - Expandable */}
+                {/* BPP Plan - Direct to topup */}
                 {isBPP && (
-                  <>
-                    <button
-                      onClick={() => setIsExpanded(!isExpanded)}
-                      className={cn(
-                        "focus-ring w-full py-2.5 rounded-action font-medium transition-colors flex items-center justify-center gap-2",
-                        plan.isHighlighted
-                          ? "bg-slate-900 text-slate-100 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-                          : "border-main border border-border bg-card text-foreground hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
-                      )}
-                    >
-                      {isCurrentTier ? "Beli Paket" : plan.ctaText}
-                      {isExpanded ? (
-                        <NavArrowUp className="h-4 w-4" />
-                      ) : (
-                        <NavArrowDown className="h-4 w-4" />
-                      )}
-                    </button>
-
-                    {/* Expanded Topup Section */}
-                    {isExpanded && (
-                      <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                        {/* Payment Result State */}
-                        {paymentResult && (
-                          <PaymentResultSection
-                            paymentResult={paymentResult}
-                            paymentStatus={paymentStatus}
-                            selectedMethod={selectedMethod}
-                            selectedEWalletChannel={selectedEWalletChannel}
-                            onReset={resetPayment}
-                            onCopy={copyToClipboard}
-                            currentCredits={currentCredits}
-                          />
-                        )}
-
-                        {/* Normal Topup Flow */}
-                        {!paymentResult && (
-                          <>
-                            {/* Error Banner */}
-                            {error && (
-                              <div className="bg-destructive/10 border border-destructive/30 rounded-action p-3 flex items-start gap-2">
-                                <WarningCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                                <p className="text-sm text-destructive">{error}</p>
-                              </div>
-                            )}
-
-                            {/* Package Selection */}
-                            <div>
-                              <p className="text-sm font-medium mb-2">Pilih Paket Kredit</p>
-                              <div className="grid grid-cols-1 gap-2">
-                                {creditPackages
-                                  .filter((pkg) => pkg.type === "paper" || showExtensions)
-                                  .map((pkg) => (
-                                  <button
-                                    key={pkg.type}
-                                    onClick={() => setSelectedPackage(pkg)}
-                                    disabled={isProcessing}
-                                    className={cn(
-                                      "relative p-3 border rounded-action text-left transition-colors",
-                                      derivedSelectedPackage?.type === pkg.type
-                                        ? "border-primary bg-primary/5"
-                                        : "border-border hover:border-primary/50",
-                                      isProcessing && "opacity-50 cursor-not-allowed"
-                                    )}
-                                  >
-                                    {pkg.popular && (
-                                      <span className="absolute -top-2 right-2 rounded-badge border border-primary/40 bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
-                                        Populer
-                                      </span>
-                                    )}
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <span className="font-semibold">{pkg.label}</span>
-                                        <span className="text-sm text-muted-foreground ml-2">
-                                          ({pkg.credits} kredit)
-                                        </span>
-                                      </div>
-                                      <span className="text-sm font-medium">
-                                        Rp {pkg.priceIDR.toLocaleString("id-ID")}
-                                      </span>
-                                    </div>
-                                    {pkg.description && (
-                                      <p className="text-xs text-muted-foreground mt-1">{pkg.description}</p>
-                                    )}
-                                    {derivedSelectedPackage?.type === pkg.type && (
-                                      <CheckCircle className="absolute top-3 right-3 h-4 w-4 text-primary" />
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Payment Method */}
-                            <div>
-                              <p className="text-sm font-medium mb-2">Metode Pembayaran</p>
-                              <div className="space-y-2">
-                                {PAYMENT_METHODS.map((method) => {
-                                  const Icon = method.icon
-                                  const isSelected = selectedMethod === method.id
-                                  return (
-                                    <button
-                                      key={method.id}
-                                      onClick={() => setSelectedMethod(method.id)}
-                                      disabled={isProcessing}
-                                      className={cn(
-                                        "w-full flex items-center gap-2 p-2 border rounded-action text-left transition-colors",
-                                        isSelected
-                                          ? "border-primary bg-primary/5"
-                                          : "border-border hover:border-primary/50",
-                                        isProcessing && "opacity-50 cursor-not-allowed"
-                                      )}
-                                    >
-                                      <Icon className={cn("h-4 w-4", isSelected ? "text-primary" : "text-muted-foreground")} />
-                                      <div className="flex-1">
-                                        <p className="text-sm font-medium">{method.label}</p>
-                                      </div>
-                                      {isSelected && <CheckCircle className="h-4 w-4 text-primary" />}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-
-                              {/* VA Channel Selection */}
-                              {selectedMethod === "va" && (
-                                <div className="mt-3 grid grid-cols-2 gap-2">
-                                  {VA_CHANNELS.map((channel) => (
-                                    <button
-                                      key={channel.code}
-                                      onClick={() => setSelectedVAChannel(channel.code)}
-                                      disabled={isProcessing}
-                                      className={cn(
-                                        "p-2 border rounded-action text-center text-sm transition-colors",
-                                        selectedVAChannel === channel.code
-                                          ? "border-primary bg-primary/5"
-                                          : "border-border hover:border-primary/50"
-                                      )}
-                                    >
-                                      {channel.label}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* E-Wallet Selection */}
-                              {selectedMethod === "ewallet" && (
-                                <div className="mt-3 space-y-3">
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {EWALLET_CHANNELS.map((channel) => (
-                                      <button
-                                        key={channel.code}
-                                        onClick={() => setSelectedEWalletChannel(channel.code)}
-                                        disabled={isProcessing}
-                                        className={cn(
-                                          "p-2 border rounded-action text-center text-sm transition-colors",
-                                          selectedEWalletChannel === channel.code
-                                            ? "border-primary bg-primary/5"
-                                            : "border-border hover:border-primary/50"
-                                        )}
-                                      >
-                                        {channel.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  {selectedEWalletChannel === "OVO" && (
-                                    <input
-                                      type="tel"
-                                      value={mobileNumber}
-                                      onChange={(e) => setMobileNumber(e.target.value)}
-                                      placeholder="08123456789"
-                                      disabled={isProcessing}
-                                      className="w-full p-2 border border-border rounded-action bg-background text-sm"
-                                    />
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Pay Button */}
-                            <button
-                              onClick={handleTopUp}
-                              disabled={isProcessing || !derivedSelectedPackage}
-                              className={cn(
-                                "focus-ring w-full py-2.5 rounded-action font-medium transition-colors flex items-center justify-center gap-2",
-                                "bg-primary text-primary-foreground hover:bg-primary/90",
-                                "disabled:opacity-50 disabled:cursor-not-allowed"
-                              )}
-                            >
-                              {isProcessing ? (
-                                <>
-                                  <RefreshDouble className="h-4 w-4 animate-spin" />
-                                  Memproses...
-                                </>
-                              ) : (
-                                <>
-                                  <CreditCard className="h-4 w-4" />
-                                  Bayar {derivedSelectedPackage?.label}
-                                </>
-                              )}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </>
+                  <SectionCTA
+                    href="/subscription/topup?from=plans"
+                    className="mt-auto flex w-full justify-center py-2.5"
+                  >
+                    {isCurrentTier ? "Beli Kredit" : plan.ctaText}
+                  </SectionCTA>
                 )}
 
                 {/* Pro Plan - Expandable Checkout */}
@@ -677,7 +346,7 @@ export default function PlansHubPage() {
                       <button
                         onClick={() => setIsProExpanded(!isProExpanded)}
                         className={cn(
-                          "focus-ring w-full py-2.5 rounded-action font-medium transition-colors flex items-center justify-center gap-2",
+                          "focus-ring mt-auto flex w-full items-center justify-center gap-2 rounded-action py-2.5 font-medium transition-colors",
                           "bg-slate-900 text-slate-100 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
                         )}
                       >

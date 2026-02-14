@@ -57,11 +57,17 @@ function SidebarNav({
           {SIDEBAR_ITEMS.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
+            const sourceMenu = pathname.startsWith("/subscription/")
+              ? pathname.replace("/subscription/", "").split("/")[0] || "overview"
+              : "overview"
+            const href = item.href === "/subscription/topup"
+              ? `/subscription/topup?from=${sourceMenu}`
+              : item.href
 
             return (
               <li key={item.href}>
                 <Link
-                  href={item.href}
+                  href={href}
                   onClick={onSelect}
                   className={cn(
                     "text-interface flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition-colors",

@@ -8,6 +8,13 @@ import { redirect } from "next/navigation"
  *
  * @see /checkout/bpp for the new checkout page
  */
-export default function DeprecatedTopupPage() {
-  redirect("/checkout/bpp")
+export default async function DeprecatedTopupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>
+}) {
+  const { from } = await searchParams
+  const query = from ? `?from=${encodeURIComponent(from)}` : ""
+
+  redirect(`/checkout/bpp${query}`)
 }
