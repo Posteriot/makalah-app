@@ -372,11 +372,6 @@ export default function SignInPage() {
             </Link>
           </p>
 
-          <p className="text-muted-foreground text-[10px] font-sans mt-3 text-center leading-relaxed">
-            Akun Anda akan terhubung otomatis dengan Google,
-            <br />
-            jika masuk menggunakan alamat email yang sama.
-          </p>
         </div>
       )}
 

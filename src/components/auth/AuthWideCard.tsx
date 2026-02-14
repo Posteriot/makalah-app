@@ -30,7 +30,7 @@ export function AuthWideCard({
         : ""
 
     return (
-        <div className="w-full max-w-4xl flex flex-col md:flex-row overflow-hidden rounded-lg border border-border bg-card shadow-none relative">
+        <div className="w-full max-w-4xl flex flex-col md:flex-row md:min-h-[520px] overflow-hidden rounded-lg border border-border bg-card shadow-none relative">
             {/* Left Column: Branding & Personality */}
             <div className="md:w-5/12 bg-slate-950 p-6 md:p-12 relative flex flex-col">
                 {/* Diagonal Stripes - Industrial Texture */}
@@ -84,7 +84,7 @@ export function AuthWideCard({
             </div>
 
             {/* Right Column: Interaction (Auth Form) */}
-            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center bg-slate-100 dark:bg-slate-800 relative">
+            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 relative">
                 <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
                     {children}
                 </div>
