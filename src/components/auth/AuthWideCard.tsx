@@ -84,7 +84,7 @@ export function AuthWideCard({
             </div>
 
             {/* Right Column: Interaction (Auth Form) */}
-            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 relative">
+            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 relative min-h-[460px]">
                 <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
                     {children}
                 </div>
