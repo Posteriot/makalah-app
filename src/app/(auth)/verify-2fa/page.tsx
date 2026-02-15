@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Lock, RefreshDouble, Key } from "iconoir-react"
@@ -14,7 +14,15 @@ import {
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
 import { getRedirectUrl } from "@/lib/utils/redirectAfterAuth"
 
-export default function Verify2FAPage() {
+export default function Verify2FAPageWrapper() {
+  return (
+    <Suspense>
+      <Verify2FAPage />
+    </Suspense>
+  )
+}
+
+function Verify2FAPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackURL = getRedirectUrl(searchParams, "/get-started")
