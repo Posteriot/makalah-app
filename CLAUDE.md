@@ -47,8 +47,6 @@ npm run dev
 
 # In separate terminal: Start Convex backend
 npm run convex:dev
-
-# ngrok no longer needed (Clerk webhooks removed)
 ```
 
 ### Build, Lint, and Test
@@ -86,7 +84,7 @@ npm run convex:dashboard           # Open dashboard
 - `src/app`: Next.js App Router
   - `(marketing)`: Public pages
   - `(auth)`: Custom sign-in/sign-up (BetterAuth)
-  - `(dashboard)`: Protected area (admin, settings, papers)
+  - `(dashboard)`: Protected area (admin, settings, subscription)
   - `chat`: AI chat interface (landing page)
   - `chat/[conversationId]`: Dynamic route for specific conversations
   - `api/chat`: Chat streaming endpoint
@@ -342,7 +340,6 @@ Use `v` from `convex/values` for argument validation. Pattern: `query/mutation({
 - Uses `useSession()` from BetterAuth to get auth state
 - Queries Convex `users` table via `getUserByBetterAuthId`
 - Auto-creates app user record via `createAppUser` mutation if authenticated but no Convex record exists
-- This replaces the old server-side `ensureConvexUser()` pattern
 
 ### Multi-provider AI Strategy
 - Primary: Vercel AI Gateway (via `createGateway` from `@ai-sdk/gateway`)
