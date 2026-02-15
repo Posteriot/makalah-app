@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { useQuery } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
@@ -98,6 +98,12 @@ export default function PlansHubPage() {
     user?._id ? { userId: user._id } : "skip"
   )
 
+  // Get subscription status for Pro users
+  const subscriptionStatus = useQuery(
+    api.billing.subscriptions.checkSubscriptionStatus,
+    user?._id ? { userId: user._id } : "skip"
+  )
+
   // Pro card state (isolated from BPP)
   const [isProExpanded, setIsProExpanded] = useState(false)
   const [selectedProPlan, setSelectedProPlan] = useState<ProPlanType>("pro_monthly")
@@ -108,6 +114,15 @@ export default function PlansHubPage() {
   const [proSelectedVAChannel, setProSelectedVAChannel] = useState(VA_CHANNELS[0].code)
   const [proSelectedEWalletChannel, setProSelectedEWalletChannel] = useState(EWALLET_CHANNELS[0].code)
   const [proMobileNumber, setProMobileNumber] = useState("")
+
+  // Cancel/Reactivate state
+  const [isCanceling, setIsCanceling] = useState(false)
+  const [isReactivating, setIsReactivating] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+
+  // Cancel/Reactivate mutations
+  const cancelSubscription = useMutation(api.billing.subscriptions.cancelSubscription)
+  const reactivateSubscription = useMutation(api.billing.subscriptions.reactivateSubscription)
 
   // Real-time payment status subscription (Pro)
   const proPaymentStatus = useQuery(
@@ -188,6 +203,38 @@ export default function PlansHubPage() {
     setProPaymentResult(null)
     setProError(null)
   }, [])
+
+  const handleCancelSubscription = useCallback(async () => {
+    if (!user?._id || isCanceling) return
+    setIsCanceling(true)
+    try {
+      await cancelSubscription({
+        userId: user._id,
+        cancelAtPeriodEnd: true,
+      })
+      toast.success("Langganan akan berakhir di akhir periode")
+      setShowCancelConfirm(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan")
+    } finally {
+      setIsCanceling(false)
+    }
+  }, [user?._id, isCanceling, cancelSubscription])
+
+  const handleReactivate = useCallback(async () => {
+    if (!subscriptionStatus?.subscriptionId || isReactivating) return
+    setIsReactivating(true)
+    try {
+      await reactivateSubscription({
+        subscriptionId: subscriptionStatus.subscriptionId,
+      })
+      toast.success("Langganan diaktifkan kembali!")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan")
+    } finally {
+      setIsReactivating(false)
+    }
+  }, [subscriptionStatus?.subscriptionId, isReactivating, reactivateSubscription])
 
   // Loading state
   if (userLoading || plans === undefined) {
@@ -298,6 +345,26 @@ export default function PlansHubPage() {
                   >
                     {isCurrentTier ? "Beli Kredit" : plan.ctaText}
                   </SectionCTA>
+                )}
+
+                {/* Pro Plan - Active Subscription View */}
+                {isPro && isCurrentTier && subscriptionStatus?.hasSubscription && (
+                  <ActiveSubscriptionView
+                    subscriptionStatus={subscriptionStatus}
+                    showCancelConfirm={showCancelConfirm}
+                    setShowCancelConfirm={setShowCancelConfirm}
+                    isCanceling={isCanceling}
+                    isReactivating={isReactivating}
+                    onCancel={handleCancelSubscription}
+                    onReactivate={handleReactivate}
+                  />
+                )}
+
+                {/* BPP credit preservation note */}
+                {isPro && !isCurrentTier && currentTier === "bpp" && currentCredits > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2 px-1 mb-2">
+                    Sisa {currentCredits} kredit BPP Anda tetap tersimpan setelah upgrade.
+                  </p>
                 )}
 
                 {/* Pro Plan - Expandable Checkout (hidden for unlimited/admin) */}
@@ -517,6 +584,105 @@ export default function PlansHubPage() {
           </li>
         </ul>
       </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════
+// Active Subscription View Component
+// ════════════════════════════════════════════════════════════════
+
+function ActiveSubscriptionView({
+  subscriptionStatus,
+  showCancelConfirm,
+  setShowCancelConfirm,
+  isCanceling,
+  isReactivating,
+  onCancel,
+  onReactivate,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  subscriptionStatus: any
+  showCancelConfirm: boolean
+  setShowCancelConfirm: (v: boolean) => void
+  isCanceling: boolean
+  isReactivating: boolean
+  onCancel: () => void
+  onReactivate: () => void
+}) {
+  const daysRemaining = subscriptionStatus.daysRemaining ?? 0
+  const isPendingCancel = subscriptionStatus.isPendingCancel
+  const periodEnd = subscriptionStatus.currentPeriodEnd
+    ? new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "-"
+
+  return (
+    <div className="mt-auto space-y-3">
+      {/* Active status badge */}
+      <div
+        className={cn(
+          "flex items-center justify-center gap-2 py-2 rounded-action text-sm font-medium",
+          isPendingCancel
+            ? "bg-amber-500/10 text-amber-600 border border-amber-500/30"
+            : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
+        )}
+      >
+        <CheckCircle className="h-4 w-4" />
+        {isPendingCancel ? "Akan berakhir" : "Aktif"}
+      </div>
+
+      {/* Period info */}
+      <div className="text-center text-xs text-muted-foreground space-y-0.5">
+        <p>
+          Berlaku sampai:{" "}
+          <span className="font-mono font-medium text-foreground">{periodEnd}</span>
+        </p>
+        <p>{daysRemaining} hari tersisa</p>
+      </div>
+
+      {/* Cancel / Reactivate */}
+      {isPendingCancel ? (
+        <button
+          onClick={onReactivate}
+          disabled={isReactivating}
+          className="focus-ring w-full py-2 rounded-action text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        >
+          {isReactivating ? "Memproses..." : "Aktifkan Kembali"}
+        </button>
+      ) : showCancelConfirm ? (
+        <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-action">
+          <p className="text-xs text-muted-foreground">
+            Pro akan tetap aktif sampai {periodEnd}. Setelah itu akun kembali ke
+            BPP/Gratis.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={onCancel}
+              disabled={isCanceling}
+              className="flex-1 py-1.5 rounded-action text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+            >
+              {isCanceling ? "Membatalkan..." : "Ya, Batalkan"}
+            </button>
+            <button
+              onClick={() => setShowCancelConfirm(false)}
+              className="flex-1 py-1.5 rounded-action text-xs font-medium border border-border hover:bg-muted"
+            >
+              Tidak
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowCancelConfirm(true)}
+          className="w-full py-2 rounded-action text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+        >
+          Batalkan Langganan
+        </button>
+      )}
     </div>
   )
 }

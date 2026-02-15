@@ -445,6 +445,7 @@ export const checkSubscriptionStatus = query({
 
     return {
       hasSubscription: true,
+      subscriptionId: subscription._id,
       status: subscription.status,
       planType: subscription.planType,
       priceIDR: subscription.priceIDR,
