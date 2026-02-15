@@ -6,6 +6,7 @@ Dokumen ini mencatat seluruh notifikasi yang tampil ke user di area auth berdasa
 - `src/app/(auth)/sign-up/[[...sign-up]]/page.tsx`
 - `src/app/(auth)/waiting-list/page.tsx`
 - `src/components/auth/WaitlistForm.tsx`
+- `src/app/api/auth/email-recovery-precheck/route.ts` (sumber code notifikasi precheck email recovery)
 
 Status scan:
 - `src/components/auth/AccountLinkingNotice.tsx` mengandung toast control, tapi saat ini belum dipakai oleh route di `src/app/(auth)`.
@@ -37,11 +38,12 @@ Ada dua varian utama di auth:
 
 | Varian | Pola Styling | Karakter Visual | Sumber |
 |---|---|---|---|
-| Inline error box (sign-in/sign-up) | `rounded-action border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono` | Box merah lembut dengan border + teks monospaced kecil | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:327`, `src/app/(auth)/sign-up/[[...sign-up]]/page.tsx:291` |
+| Inline error box (sign-in) | `rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono` | Kontras tinggi (slate over rose) agar lebih mudah dibaca | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:439`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:503`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:565`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:637` |
+| Inline error box (sign-up) | `rounded-action border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono` | Box merah lembut dengan border + teks monospaced kecil | `src/app/(auth)/sign-up/[[...sign-up]]/page.tsx:291` |
 | Inline error text sederhana (waiting-list) | `text-sm text-destructive` | Error ringan tanpa box | `src/components/auth/WaitlistForm.tsx:102` |
 
-Pola interaksi error pendukung (khusus sign-in credential error):
-- Link recovery di dalam error box: `text-destructive/80 hover:text-destructive underline underline-offset-2` (`src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:334`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:341`).
+Catatan:
+- Khusus sign-in, hint recovery sekarang disatukan ke teks error (tanpa tombol/link di dalam box error).
 
 ### C) Status Panel (Success/Info/Warning State)
 Semua state panel memakai layout terpusat dengan jarak konsisten.
@@ -84,19 +86,24 @@ Sumber: `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx`
 
 | Channel | Trigger | Teks Notifikasi | Sumber |
 |---|---|---|---|
-| Toast | Exception umum saat submit email/password, magic link, forgot password, reset password | `Terjadi kesalahan. Silakan coba lagi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:87`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:129`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:156`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:191` |
-| Toast | Gagal OAuth Google | `Gagal masuk dengan Google. Silakan coba lagi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:103` |
-| Inline Error | Email/password kosong di form sign-in | `Email dan password wajib diisi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:48` |
-| Inline Error | Kredensial salah (deteksi regex invalid/incorrect credentials) | `Email atau password tidak cocok.\nCoba gunakan cara lain untuk masuk:` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:64` |
-| Inline Error (dinamis) | Error dari SDK sign-in email | `msg || "Terjadi kesalahan."` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:67` |
-| Inline Error | Email kosong di magic link / forgot password | `Email wajib diisi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:113`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:140` |
-| Inline Error (dinamis) | Error API magic link / forgot password / reset password | `apiError.message ?? "Terjadi kesalahan."` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:124`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:151`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:186` |
-| Inline Error | Field reset password belum lengkap | `Semua field wajib diisi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:167` |
-| Inline Error | Konfirmasi password tidak sama | `Password tidak cocok.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:171` |
-| Inline Error | Password baru kurang dari 8 karakter | `Password minimal 8 karakter.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:175` |
-| Status Panel | Magic link berhasil dikirim | `Cek Email Kamu` + `Link masuk sudah dikirim ke {email}. Kalau email belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:552`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:554`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:556` |
-| Status Panel | Reset link berhasil dikirim | `Cek Email Kamu` + `Link reset password sudah dikirim ke {email}. Kalau email belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:571`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:574`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:576` |
-| Status Panel | Reset password berhasil | `Password Berhasil Direset` + `Kamu sekarang bisa masuk dengan password baru.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:590`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:592` |
+| Toast | Exception umum saat submit email/password, magic link, forgot password, reset password | `Terjadi kesalahan. Silakan coba lagi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:157`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:217`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:262`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:297` |
+| Toast | Gagal OAuth Google | `Gagal masuk dengan Google. Silakan coba lagi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:173` |
+| Inline Error | Email/password kosong di form sign-in | `Email dan password wajib diisi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:119` |
+| Inline Error | Kredensial salah (deteksi regex invalid/incorrect credentials) | `Email atau password tidak cocok.\nCoba gunakan fitur "Lupa password?" atau "Magic Link" untuk masuk.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:135` |
+| Inline Error (dinamis) | Error dari SDK sign-in email | `msg || "Terjadi kesalahan."` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:167` |
+| Inline Error | Email kosong di magic link / forgot password | `Email wajib diisi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:184`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:229` |
+| Inline Error | CAPTCHA belum diselesaikan saat mode recovery aktif | `Selesaikan verifikasi keamanan terlebih dahulu.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:189`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:234` |
+| Inline Error (precheck) | Email tidak terdaftar saat precheck recovery | `Email belum terdaftar. Cek lagi penulisan email atau daftar akun terlebih dahulu.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:103`, `src/app/api/auth/email-recovery-precheck/route.ts:163`, `src/app/api/auth/email-recovery-precheck/route.ts:205` |
+| Inline Error (precheck) | Rate limit precheck recovery | `Terlalu banyak percobaan. Coba lagi dalam beberapa menit.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:106`, `src/app/api/auth/email-recovery-precheck/route.ts:199` |
+| Inline Error (precheck) | CAPTCHA invalid/expired/unavailable | `Verifikasi keamanan gagal. Coba lagi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:109`, `src/app/api/auth/email-recovery-precheck/route.ts:167`, `src/app/api/auth/email-recovery-precheck/route.ts:174`, `src/app/api/auth/email-recovery-precheck/route.ts:179`, `src/app/api/auth/email-recovery-precheck/route.ts:210` |
+| Inline Error (precheck) | Fail-closed karena konfigurasi verifikasi/security tidak siap | `Layanan verifikasi keamanan sedang tidak tersedia. Coba lagi sebentar.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:144`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:224`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:274`, `src/app/api/auth/email-recovery-precheck/route.ts:126`, `src/app/api/auth/email-recovery-precheck/route.ts:130`, `src/app/api/auth/email-recovery-precheck/route.ts:183`, `src/app/api/auth/email-recovery-precheck/route.ts:218` |
+| Inline Error (dinamis) | Error API magic link / forgot password / reset password | `apiError.message ?? "Terjadi kesalahan."` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:242`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:287`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:322` |
+| Inline Error | Field reset password belum lengkap | `Semua field wajib diisi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:273` |
+| Inline Error | Konfirmasi password tidak sama | `Password tidak cocok.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:277` |
+| Inline Error | Password baru kurang dari 8 karakter | `Password minimal 8 karakter.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:281` |
+| Status Panel | Magic link berhasil dikirim | `Cek Email Kamu` + `Link masuk sudah dikirim ke {email}. Kalau email belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:672`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:674`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:676` |
+| Status Panel | Reset link berhasil dikirim | `Cek Email Kamu` + `Link reset password sudah dikirim ke {email}. Kalau email belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:692`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:694`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:696` |
+| Status Panel | Reset password berhasil | `Password Berhasil Direset` + `Kamu sekarang bisa masuk dengan password baru.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:710`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:712` |
 
 Catatan tambahan judul state (`AuthWideCard`):
 - `Cek Email Kamu` / `Link masuk sudah dikirim. Jika belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.` (`src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:221`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:222`)

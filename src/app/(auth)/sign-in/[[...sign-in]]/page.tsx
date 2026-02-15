@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Eye, EyeClosed, Mail, Lock, RefreshDouble } from "iconoir-react"
 import { signIn, authClient } from "@/lib/auth-client"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget"
 import { getRedirectUrl } from "@/lib/utils/redirectAfterAuth"
 
 type SignInMode =
@@ -18,10 +19,38 @@ type SignInMode =
   | "reset-sent"
   | "reset-success"
 
+type RecoveryIntent = "magic-link" | "forgot-password"
+
+type RecoveryPrecheckResponse =
+  | { ok: true; status: "registered" }
+  | {
+      ok: false
+      code:
+        | "EMAIL_NOT_REGISTERED"
+        | "RATE_LIMITED"
+        | "CAPTCHA_FAILED"
+        | "SERVICE_UNAVAILABLE"
+        | "INVALID_REQUEST"
+    }
+
+type RecoveryPrecheckErrorCode = Extract<
+  RecoveryPrecheckResponse,
+  { ok: false }
+>["code"]
+const RECOVERY_PRECHECK_ERROR_CODES: RecoveryPrecheckErrorCode[] = [
+  "EMAIL_NOT_REGISTERED",
+  "RATE_LIMITED",
+  "CAPTCHA_FAILED",
+  "SERVICE_UNAVAILABLE",
+  "INVALID_REQUEST",
+]
+
 export default function SignInPage() {
   const searchParams = useSearchParams()
   const resetToken = searchParams.get("token")
   const callbackURL = getRedirectUrl(searchParams, "/get-started")
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
+  const requiresRecoveryCaptcha = Boolean(turnstileSiteKey)
 
   const [mode, setMode] = useState<SignInMode>(() =>
     resetToken ? "reset-password" : "sign-in"
@@ -33,9 +62,88 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [magicLinkCaptchaToken, setMagicLinkCaptchaToken] = useState<string | null>(null)
+  const [forgotPasswordCaptchaToken, setForgotPasswordCaptchaToken] = useState<string | null>(null)
+  const [magicLinkCaptchaResetCounter, setMagicLinkCaptchaResetCounter] = useState(0)
+  const [forgotPasswordCaptchaResetCounter, setForgotPasswordCaptchaResetCounter] = useState(0)
 
   function clearError() {
     if (error) setError("")
+  }
+
+  const resetMagicLinkCaptcha = useCallback(() => {
+    setMagicLinkCaptchaToken(null)
+    setMagicLinkCaptchaResetCounter((counter) => counter + 1)
+  }, [])
+
+  const resetForgotPasswordCaptcha = useCallback(() => {
+    setForgotPasswordCaptchaToken(null)
+    setForgotPasswordCaptchaResetCounter((counter) => counter + 1)
+  }, [])
+
+  async function runRecoveryPrecheck(
+    inputEmail: string,
+    intent: RecoveryIntent,
+    captchaToken: string | null
+  ): Promise<RecoveryPrecheckResponse> {
+    try {
+      const response = await fetch("/api/auth/email-recovery-precheck", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: inputEmail,
+          intent,
+          captchaToken: captchaToken ?? "",
+        }),
+      })
+
+      const payload = (await response.json()) as
+        | RecoveryPrecheckResponse
+        | { ok?: boolean; status?: string; code?: string }
+
+      if (payload.ok === true && payload.status === "registered") {
+        return { ok: true, status: "registered" }
+      }
+
+      if (
+        payload.ok === false &&
+        typeof payload.code === "string" &&
+        RECOVERY_PRECHECK_ERROR_CODES.includes(
+          payload.code as RecoveryPrecheckErrorCode
+        )
+      ) {
+        return {
+          ok: false,
+          code: payload.code as RecoveryPrecheckErrorCode,
+        }
+      }
+
+      if (!response.ok) {
+        return { ok: false, code: "INVALID_REQUEST" }
+      }
+    } catch {
+      return { ok: false, code: "INVALID_REQUEST" }
+    }
+
+    return { ok: false, code: "INVALID_REQUEST" }
+  }
+
+  function mapRecoveryErrorCodeToMessage(code: RecoveryPrecheckErrorCode) {
+    if (code === "EMAIL_NOT_REGISTERED") {
+      return "Email belum terdaftar. Cek lagi penulisan email atau daftar akun terlebih dahulu."
+    }
+    if (code === "RATE_LIMITED") {
+      return "Terlalu banyak percobaan. Coba lagi dalam beberapa menit."
+    }
+    if (code === "CAPTCHA_FAILED") {
+      return "Verifikasi keamanan gagal. Coba lagi."
+    }
+    if (code === "SERVICE_UNAVAILABLE") {
+      return "Layanan verifikasi keamanan sedang tidak tersedia. Coba lagi sebentar."
+    }
+    return "Terjadi kesalahan. Silakan coba lagi."
   }
 
   async function handleEmailSignIn(e: React.FormEvent) {
@@ -106,15 +214,38 @@ export default function SignInPage() {
     e.preventDefault()
     clearError()
 
-    if (!email.trim()) {
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
       setError("Email wajib diisi.")
+      return
+    }
+
+    if (!requiresRecoveryCaptcha) {
+      setError(mapRecoveryErrorCodeToMessage("SERVICE_UNAVAILABLE"))
+      return
+    }
+
+    if (requiresRecoveryCaptcha && !magicLinkCaptchaToken) {
+      setError("Selesaikan verifikasi keamanan terlebih dahulu.")
       return
     }
 
     setIsLoading(true)
     try {
+      const precheck = await runRecoveryPrecheck(
+        trimmedEmail,
+        "magic-link",
+        magicLinkCaptchaToken
+      )
+      resetMagicLinkCaptcha()
+
+      if (!precheck.ok) {
+        setError(mapRecoveryErrorCodeToMessage(precheck.code))
+        return
+      }
+
       const { error: apiError } = await signIn.magicLink({
-        email: email.trim(),
+        email: trimmedEmail,
         callbackURL,
       })
       if (apiError) {
@@ -133,15 +264,38 @@ export default function SignInPage() {
     e.preventDefault()
     clearError()
 
-    if (!email.trim()) {
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
       setError("Email wajib diisi.")
+      return
+    }
+
+    if (!requiresRecoveryCaptcha) {
+      setError(mapRecoveryErrorCodeToMessage("SERVICE_UNAVAILABLE"))
+      return
+    }
+
+    if (requiresRecoveryCaptcha && !forgotPasswordCaptchaToken) {
+      setError("Selesaikan verifikasi keamanan terlebih dahulu.")
       return
     }
 
     setIsLoading(true)
     try {
+      const precheck = await runRecoveryPrecheck(
+        trimmedEmail,
+        "forgot-password",
+        forgotPasswordCaptchaToken
+      )
+      resetForgotPasswordCaptcha()
+
+      if (!precheck.ok) {
+        setError(mapRecoveryErrorCodeToMessage(precheck.code))
+        return
+      }
+
       const { error: apiError } = await authClient.requestPasswordReset({
-        email: email.trim(),
+        email: trimmedEmail,
         redirectTo: `${window.location.origin}/sign-in`,
       })
       if (apiError) {
@@ -193,6 +347,12 @@ export default function SignInPage() {
 
   function switchMode(newMode: SignInMode) {
     setError("")
+    if (newMode !== "magic-link") {
+      resetMagicLinkCaptcha()
+    }
+    if (newMode !== "forgot-password") {
+      resetForgotPasswordCaptcha()
+    }
     setMode(newMode)
   }
 
@@ -371,6 +531,20 @@ export default function SignInPage() {
               />
             </div>
 
+            {requiresRecoveryCaptcha ? (
+              <div className="space-y-2">
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  Verifikasi keamanan diperlukan sebelum kirim magic link.
+                </p>
+                <TurnstileWidget
+                  siteKey={turnstileSiteKey}
+                  onTokenChange={setMagicLinkCaptchaToken}
+                  resetCounter={magicLinkCaptchaResetCounter}
+                  className="mt-2 w-full"
+                />
+              </div>
+            ) : null}
+
             {error && (
               <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
                 {error}
@@ -419,6 +593,20 @@ export default function SignInPage() {
                 className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
               />
             </div>
+
+            {requiresRecoveryCaptcha ? (
+              <div className="space-y-2">
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  Verifikasi keamanan diperlukan sebelum kirim link reset.
+                </p>
+                <TurnstileWidget
+                  siteKey={turnstileSiteKey}
+                  onTokenChange={setForgotPasswordCaptchaToken}
+                  resetCounter={forgotPasswordCaptchaResetCounter}
+                  className="mt-2 w-full"
+                />
+              </div>
+            ) : null}
 
             {error && (
               <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
