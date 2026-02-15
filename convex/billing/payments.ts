@@ -48,6 +48,10 @@ export const createPayment = mutation({
     )),
     credits: v.optional(v.number()),
     description: v.optional(v.string()),
+    planType: v.optional(v.union(
+      v.literal("pro_monthly"),
+      v.literal("pro_yearly")
+    )),
     idempotencyKey: v.string(),
     expiredAt: v.optional(v.number()),
   },
@@ -69,6 +73,7 @@ export const createPayment = mutation({
       packageType: args.packageType,
       credits: args.credits,
       description: args.description,
+      planType: args.planType,
       idempotencyKey: args.idempotencyKey,
       createdAt: now,
       expiredAt: args.expiredAt,

@@ -755,6 +755,12 @@ export default defineSchema({
     ),
     credits: v.optional(v.number()), // 300 kredit (paper package)
 
+    // Plan type for subscription payments (pro_monthly, pro_yearly)
+    planType: v.optional(v.union(
+      v.literal("pro_monthly"),
+      v.literal("pro_yearly")
+    )),
+
     // For subscription payments
     subscriptionPeriodStart: v.optional(v.number()),
     subscriptionPeriodEnd: v.optional(v.number()),
