@@ -1,12 +1,15 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { CheckCircle } from "iconoir-react"
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+
+const AUTH_TIMEOUT_MS = 8_000
+const FEEDBACK_DELAY_MS = 3_000
 
 const GRATIS_FEATURES = [
   "50 kredit",
@@ -31,6 +34,33 @@ export default function GetStartedPage() {
   const router = useRouter()
   const { isLoading: isOnboardingLoading, isAuthenticated, hasCompletedOnboarding, completeOnboarding } = useOnboardingStatus()
   const { user, isLoading: isUserLoading } = useCurrentUser()
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [authTimedOut, setAuthTimedOut] = useState(false)
+
+  // Show "Mempersiapkan..." after FEEDBACK_DELAY_MS
+  // Redirect to sign-in after AUTH_TIMEOUT_MS if auth never establishes
+  useEffect(() => {
+    const feedbackTimer = setTimeout(() => setShowFeedback(true), FEEDBACK_DELAY_MS)
+    const authTimer = setTimeout(() => setAuthTimedOut(true), AUTH_TIMEOUT_MS)
+    return () => {
+      clearTimeout(feedbackTimer)
+      clearTimeout(authTimer)
+    }
+  }, [])
+
+  // Clear timeout when auth succeeds
+  useEffect(() => {
+    if (isAuthenticated) {
+      setAuthTimedOut(false)
+    }
+  }, [isAuthenticated])
+
+  // Auth timed out → redirect to sign-in
+  useEffect(() => {
+    if (authTimedOut && !isAuthenticated) {
+      router.replace("/sign-in")
+    }
+  }, [authTimedOut, isAuthenticated, router])
 
   // Existing users who already completed onboarding → redirect to homepage
   useEffect(() => {
@@ -58,7 +88,7 @@ export default function GetStartedPage() {
   // useCurrentUser auto-creates app user record if missing (email-based linking for existing users)
   if (isOnboardingLoading || !isAuthenticated || isUserLoading || !user || hasCompletedOnboarding) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center">
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-4">
         <Image
           src="/logo/makalah_logo_light.svg"
           alt=""
@@ -67,6 +97,11 @@ export default function GetStartedPage() {
           className="animate-breathe"
           priority
         />
+        {showFeedback && !authTimedOut && (
+          <p className="text-interface text-xs text-muted-foreground animate-in fade-in duration-500">
+            Mempersiapkan akun...
+          </p>
+        )}
       </div>
     )
   }
