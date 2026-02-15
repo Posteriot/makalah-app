@@ -77,6 +77,13 @@ export function ArtifactPanel({
     ? artifacts?.find((a) => a._id === activeTabId)
     : null
   const openTabCount = openTabs.length
+  const isCodeArtifact = activeArtifact
+    ? activeArtifact.type === "code" || activeArtifact.format === "latex"
+    : false
+  const contentTypeLabel = isCodeArtifact ? "Code" : "Markdown"
+  const wordCount = activeArtifact?.content?.trim()
+    ? activeArtifact.content.trim().split(/\s+/).length
+    : 0
 
   return (
     <div
@@ -105,6 +112,8 @@ export function ArtifactPanel({
                 version: activeArtifact.version,
                 createdAt: activeArtifact.createdAt ?? activeArtifact._creationTime,
                 contentLength: activeArtifact.content.length,
+                wordCount,
+                contentTypeLabel,
               }
             : null
         }

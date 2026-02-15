@@ -11,13 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
-import { Page, WarningTriangle, MagicWand } from "iconoir-react"
+import { Page, WarningTriangle } from "iconoir-react"
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from "react"
 import { toast } from "sonner"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -320,32 +314,12 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       ? getStageLabelSafe(artifact.invalidatedByRewindToStage)
       : null
     const hasMultipleVersions = (versionHistory?.length ?? 0) > 1
-    const contentTypeLabel = isCodeArtifact
-      ? `Code${language ? ` • ${language}` : ""}`
-      : shouldRenderMarkdown
-        ? "Markdown"
-        : "Teks"
-    const wordCount = artifact.content.trim().length === 0
-      ? 0
-      : artifact.content.trim().split(/\s+/).length
+    const hasHeaderMeta = hasMultipleVersions || isInvalidated
     return (
       <div className="flex h-full flex-col">
-        {/* Viewer status header */}
-        <div className="border-b border-border/60 bg-card/45 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-muted-foreground/85">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
-                {contentTypeLabel}
-              </span>
-              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
-                {wordCount} kata
-              </span>
-              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
-                {artifact.content.length} karakter
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
+        {hasHeaderMeta ? (
+          <div className="border-b border-border/60 bg-card/45 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono text-muted-foreground/85">
               {hasMultipleVersions ? (
                 <Select
                   value={viewingVersionId ?? undefined}
@@ -392,7 +366,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
               )}
             </div>
           </div>
-        </div>
+        ) : null}
 
         {isInvalidated && (
           <Alert
@@ -424,65 +398,41 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
           <>
             <div className="flex-1 overflow-hidden px-4 py-3">
               <div className="flex h-full flex-col overflow-hidden rounded-shell border border-border/60 bg-background/35">
-                <div className="flex items-center justify-between border-b border-border/50 px-3 py-2">
-                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
-                    Workspace Dokumen
-                  </p>
-                  <p className="text-[10px] font-mono text-muted-foreground/85">
-                    Klik kanan konten untuk aksi cepat
-                  </p>
-                </div>
-
-                <ContextMenu>
-                  <ContextMenuTrigger asChild>
-                    <div className="relative flex-1 overflow-auto p-4 scrollbar-thin">
-                      {isRefrasaLoading && (
-                        <div className="absolute inset-2 z-10 flex items-center justify-center rounded-action border border-border/60 bg-background/75 backdrop-blur-sm">
-                          <RefrasaLoadingIndicator />
-                        </div>
-                      )}
-
-                      {isCodeArtifact && language ? (
-                        <div className="overflow-hidden rounded-action border border-border/60">
-                          <SyntaxHighlighter
-                            language={language}
-                            style={oneDark}
-                            customStyle={{
-                              margin: 0,
-                              borderRadius: 0,
-                              fontSize: "0.7rem",
-                              lineHeight: "1.65",
-                            }}
-                            showLineNumbers
-                          >
-                            {artifact.content}
-                          </SyntaxHighlighter>
-                        </div>
-                      ) : shouldRenderMarkdown ? (
-                        <MarkdownRenderer
-                          markdown={artifact.content}
-                          className="space-y-3 rounded-action border border-border/50 bg-background/40 p-4 text-sm leading-relaxed"
-                          sources={artifact.sources}
-                        />
-                      ) : (
-                        <pre className="whitespace-pre-wrap rounded-action border border-border/50 bg-background/40 p-4 font-sans text-sm leading-relaxed">
-                          {artifact.content}
-                        </pre>
-                      )}
+                <div className="relative flex-1 overflow-auto p-4 scrollbar-thin">
+                  {isRefrasaLoading && (
+                    <div className="absolute inset-2 z-10 flex items-center justify-center rounded-action border border-border/60 bg-background/75 backdrop-blur-sm">
+                      <RefrasaLoadingIndicator />
                     </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent className="min-w-[200px] font-mono text-xs">
-                    {isRefrasaEnabled !== false && (
-                      <ContextMenuItem
-                        onClick={handleRefrasaTrigger}
-                        disabled={isRefrasaLoading || !canRefrasa}
+                  )}
+
+                  {isCodeArtifact && language ? (
+                    <div className="overflow-hidden rounded-action border border-border/60">
+                      <SyntaxHighlighter
+                        language={language}
+                        style={oneDark}
+                        customStyle={{
+                          margin: 0,
+                          borderRadius: 0,
+                          fontSize: "0.7rem",
+                          lineHeight: "1.65",
+                        }}
+                        showLineNumbers
                       >
-                        <MagicWand className="mr-2 h-4 w-4" />
-                        {canRefrasa ? "Refrasa Dokumen" : "Refrasa (min. 50 karakter)"}
-                      </ContextMenuItem>
-                    )}
-                  </ContextMenuContent>
-                </ContextMenu>
+                        {artifact.content}
+                      </SyntaxHighlighter>
+                    </div>
+                  ) : shouldRenderMarkdown ? (
+                    <MarkdownRenderer
+                      markdown={artifact.content}
+                      className="space-y-3 rounded-action border border-border/50 bg-background/40 p-4 text-sm leading-relaxed"
+                      sources={artifact.sources}
+                    />
+                  ) : (
+                    <pre className="whitespace-pre-wrap rounded-action border border-border/50 bg-background/40 p-4 font-sans text-sm leading-relaxed">
+                      {artifact.content}
+                    </pre>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -496,7 +446,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 </div>
               ) : (
                 <p className="text-[11px] font-mono text-muted-foreground/75">
-                  Tidak ada sumber eksternal yang tertaut di versi ini.
+                  Tidak ada rujukan eksternal.
                 </p>
               )}
             </div>

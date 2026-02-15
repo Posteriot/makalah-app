@@ -46,6 +46,8 @@ interface ArtifactToolbarProps {
     version: number
     createdAt: number
     contentLength: number
+    wordCount: number
+    contentTypeLabel: string
   } | null
   /** Number of open tabs for context label */
   openTabCount?: number
@@ -260,13 +262,29 @@ export function ArtifactToolbar({
         </div>
 
         {/* Compact layout */}
-        <div className="flex w-full justify-end @[520px]/toolbar:hidden">
+        <div className="flex w-full items-center justify-between gap-2 @[520px]/toolbar:hidden">
+          <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-muted-foreground/85">
+            <span className="truncate rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
+              {artifact.contentTypeLabel}
+            </span>
+            <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
+              {artifact.wordCount} kata
+            </span>
+            <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
+              {artifact.contentLength} karakter
+            </span>
+          </div>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className={iconActionClass}>
-                <MoreVert className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className={iconActionClass} aria-label="Aksi dokumen">
+                    <MoreVert className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">Aksi dokumen</TooltipContent>
+            </Tooltip>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onEdit}>
                 <EditPencil className="mr-2 h-4 w-4" />
