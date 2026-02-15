@@ -109,7 +109,7 @@ export function PanelResizer({
       aria-label={
         position === "left"
           ? "Resize sidebar panel"
-          : "Resize artifact panel"
+          : "Resize panel artifak"
       }
       aria-valuenow={undefined}
       tabIndex={0}

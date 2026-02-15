@@ -68,11 +68,12 @@ Nilai variable:
 ## State UI di Chat Area
 
 ### 1. Landing (`conversationId === null`)
-- Welcome empty state + template cards
+- Welcome empty state + starter prompt CTA
 - `ChatInput` tetap tampil di bawah
 
 ### 2. Active conversation
-- Message list via `Virtuoso`
+- Message area via `Virtuoso` (jika sudah ada pesan)
+- Empty message state via `TemplateGrid` (jika percakapan masih kosong)
 - `QuotaWarningBanner` di atas message area
 - `ChatInput` persisten
 
@@ -110,4 +111,3 @@ Ini menjaga batas antar panel tetap terlihat tanpa gap besar.
 - `src/components/chat/shell/TopBar.tsx`
 - `src/components/chat/ChatWindow.tsx`
 - `src/components/chat/layout/PanelResizer.tsx`
-

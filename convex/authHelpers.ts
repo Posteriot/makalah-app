@@ -49,6 +49,17 @@ export async function requireAuthUserId(ctx: AnyCtx, userId: Id<"users">): Promi
 }
 
 /**
+ * Verify that the authenticated user matches the given userId.
+ * Returns null instead of throwing — use in queries that should
+ * gracefully handle logout/unauthenticated state.
+ */
+export async function verifyAuthUserId(ctx: AnyCtx, userId: Id<"users">): Promise<Doc<"users"> | null> {
+  const user = await getAuthUser(ctx);
+  if (!user || user._id !== userId) return null;
+  return user;
+}
+
+/**
  * Require that the authenticated user owns the given conversation.
  * Throws if not authenticated, conversation not found, or not owner.
  */

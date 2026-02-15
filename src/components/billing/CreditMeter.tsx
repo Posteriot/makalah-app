@@ -25,6 +25,17 @@ const LEVEL_COLORS = {
   depleted: "bg-rose-500",
 } as const
 
+const TIER_HOVER_CLASSES = {
+  gratis:
+    "hover:bg-emerald-500/8 hover:text-emerald-100 focus-visible:ring-emerald-500/35",
+  bpp:
+    "hover:bg-sky-500/10 hover:text-sky-100 focus-visible:ring-sky-500/35",
+  pro:
+    "hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-amber-500/35",
+  unlimited:
+    "hover:bg-slate-400/15 hover:text-slate-100 focus-visible:ring-slate-400/35",
+} as const
+
 function formatNumber(n: number): string {
   return n.toLocaleString("id-ID")
 }
@@ -51,12 +62,19 @@ function formatDate(timestamp: number): string {
 export function CreditMeter({ variant, className, onClick }: CreditMeterProps) {
   const { user } = useCurrentUser()
   const meter = useCreditMeter()
+  const clickableWrapperClass = onClick
+    ? cn(
+        "w-full rounded-none text-left cursor-pointer transition-colors duration-150",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0",
+        TIER_HOVER_CLASSES[meter.tier]
+      )
+    : null
 
   // Admin/superadmin: show badge + "Unlimited" in single line
   if (meter.isAdmin) {
     const AdminWrapper = onClick ? "button" : "div"
     const adminProps = onClick
-      ? { onClick, type: "button" as const, className: cn("w-full text-left", className) }
+      ? { onClick, type: "button" as const, className: cn(clickableWrapperClass, className) }
       : { className }
 
     return (
@@ -84,7 +102,7 @@ export function CreditMeter({ variant, className, onClick }: CreditMeterProps) {
 
   const Wrapper = onClick ? "button" : "div"
   const wrapperProps = onClick
-    ? { onClick, type: "button" as const, className: cn("w-full text-left", className) }
+    ? { onClick, type: "button" as const, className: cn(clickableWrapperClass, className) }
     : { className }
 
   // BPP tier — credit-based (no progress bar in compact)

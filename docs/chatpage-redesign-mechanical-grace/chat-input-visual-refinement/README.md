@@ -42,9 +42,9 @@ Refinement yang aktif saat ini:
 
 3. Section attach + send:
 - berada di row terpisah dalam kontainer yang sama (`col-span-3`)
-- punya pemisah atas: `border-t border-slate-800`
+- punya pemisah atas: `border-t border-slate-300/60 dark:border-slate-700/60`
 - spacing section: `mt-0.5 pt-1`
-- tombol send: `w-10 h-10 rounded-lg`
+- tombol send/stop: `w-9 h-9 rounded-md` (hover jadi `rounded-full`)
 
 4. Wrapper luar input:
 - `py-4 bg-transparent`
@@ -81,4 +81,3 @@ Dengan pola ini, batas input selalu konsisten dengan message area yang juga mema
 - `src/components/chat/ChatInput.tsx`
 - `src/components/chat/layout/ChatLayout.tsx`
 - `src/components/chat/FileUploadButton.tsx`
-

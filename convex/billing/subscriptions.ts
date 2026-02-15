@@ -65,6 +65,100 @@ export const createSubscription = mutation({
 })
 
 /**
+ * Create subscription (internal — called from webhook, no auth context)
+ */
+export const createSubscriptionInternal = mutation({
+  args: {
+    userId: v.id("users"),
+    planType: v.union(
+      v.literal("pro_monthly"),
+      v.literal("pro_yearly")
+    ),
+    internalKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const expected = process.env.CONVEX_INTERNAL_KEY
+    if (!expected || args.internalKey !== expected) {
+      throw new Error("Unauthorized")
+    }
+
+    const now = Date.now()
+    const pricing = SUBSCRIPTION_PRICING[args.planType]
+
+    const periodEnd = new Date(now)
+    periodEnd.setMonth(periodEnd.getMonth() + pricing.intervalMonths)
+
+    const existingSub = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .first()
+
+    if (existingSub) {
+      throw new Error("User already has an active subscription")
+    }
+
+    const subscriptionId = await ctx.db.insert("subscriptions", {
+      userId: args.userId,
+      planType: args.planType,
+      priceIDR: pricing.priceIDR,
+      status: "active",
+      currentPeriodStart: now,
+      currentPeriodEnd: periodEnd.getTime(),
+      nextBillingDate: periodEnd.getTime(),
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    await ctx.db.patch(args.userId, {
+      subscriptionStatus: "pro",
+      updatedAt: now,
+    })
+
+    return subscriptionId
+  },
+})
+
+/**
+ * Renew subscription (internal — called from webhook)
+ */
+export const renewSubscriptionInternal = mutation({
+  args: {
+    subscriptionId: v.id("subscriptions"),
+    internalKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const expected = process.env.CONVEX_INTERNAL_KEY
+    if (!expected || args.internalKey !== expected) {
+      throw new Error("Unauthorized")
+    }
+
+    const subscription = await ctx.db.get(args.subscriptionId)
+    if (!subscription) throw new Error("Subscription not found")
+
+    const now = Date.now()
+    const pricing = SUBSCRIPTION_PRICING[subscription.planType]
+
+    const newPeriodStart = subscription.currentPeriodEnd
+    const newPeriodEnd = new Date(newPeriodStart)
+    newPeriodEnd.setMonth(newPeriodEnd.getMonth() + pricing.intervalMonths)
+
+    await ctx.db.patch(args.subscriptionId, {
+      status: "active",
+      cancelAtPeriodEnd: undefined,
+      canceledAt: undefined,
+      cancelReason: undefined,
+      currentPeriodStart: newPeriodStart,
+      currentPeriodEnd: newPeriodEnd.getTime(),
+      nextBillingDate: newPeriodEnd.getTime(),
+      updatedAt: now,
+    })
+
+    return { newPeriodStart, newPeriodEnd: newPeriodEnd.getTime() }
+  },
+})
+
+/**
  * Get user's active subscription
  */
 export const getActiveSubscription = query({
@@ -176,9 +270,17 @@ export const cancelSubscription = mutation({
         updatedAt: now,
       })
 
-      // Downgrade user to free tier
+      // Smart downgrade: BPP if credits remain, else free
+      const creditBalance = await ctx.db
+        .query("creditBalances")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .first()
+
+      const hasCredits = creditBalance && (creditBalance.remainingCredits ?? 0) > 0
+      const newTier = hasCredits ? "bpp" : "free"
+
       await ctx.db.patch(args.userId, {
-        subscriptionStatus: "free",
+        subscriptionStatus: newTier,
         updatedAt: now,
       })
     }
@@ -198,8 +300,17 @@ export const cancelSubscription = mutation({
 export const expireSubscription = mutation({
   args: {
     subscriptionId: v.id("subscriptions"),
+    internalKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Allow both auth'd and internal calls
+    if (args.internalKey) {
+      const expected = process.env.CONVEX_INTERNAL_KEY
+      if (!expected || args.internalKey !== expected) {
+        throw new Error("Unauthorized")
+      }
+    }
+
     const subscription = await ctx.db.get(args.subscriptionId)
     if (!subscription) {
       throw new Error("Subscription not found")
@@ -212,13 +323,28 @@ export const expireSubscription = mutation({
       updatedAt: now,
     })
 
-    // Downgrade user to free tier
+    // Check if user has BPP credit balance for smart downgrade
+    const creditBalance = await ctx.db
+      .query("creditBalances")
+      .withIndex("by_user", (q) => q.eq("userId", subscription.userId))
+      .first()
+
+    const hasCredits = creditBalance && (creditBalance.remainingCredits ?? 0) > 0
+    const newTier = hasCredits ? "bpp" : "free"
+
     await ctx.db.patch(subscription.userId, {
-      subscriptionStatus: "free",
+      subscriptionStatus: newTier,
       updatedAt: now,
     })
 
-    return { expired: true }
+    console.log(`[Subscription] Expired:`, {
+      userId: subscription.userId,
+      subscriptionId: args.subscriptionId,
+      downgradedTo: newTier,
+      remainingCredits: creditBalance?.remainingCredits ?? 0,
+    })
+
+    return { expired: true, downgradedTo: newTier }
   },
 })
 
@@ -258,6 +384,8 @@ export const reactivateSubscription = mutation({
 
     await ctx.db.patch(args.subscriptionId, {
       status: "active",
+      cancelAtPeriodEnd: false,
+      canceledAt: undefined,
       updatedAt: now,
     })
 
@@ -319,6 +447,7 @@ export const checkSubscriptionStatus = query({
 
     return {
       hasSubscription: true,
+      subscriptionId: subscription._id,
       status: subscription.status,
       planType: subscription.planType,
       priceIDR: subscription.priceIDR,

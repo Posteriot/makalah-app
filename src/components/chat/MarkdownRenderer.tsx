@@ -19,7 +19,7 @@ type Block =
   | { type: "heading"; level: 1 | 2 | 3 | 4 | 5 | 6; text: string }
   | { type: "paragraph"; lines: string[] }
   | { type: "ul"; items: string[] }
-  | { type: "ol"; items: { number: number; text: string }[] }
+  | { type: "ol"; items: { number: number; lines: string[] }[] }
   | { type: "outline"; items: { number: number; title: string; children: Block[] }[]; useOriginalNumbers: boolean }
   | { type: "code"; language?: string; code: string }
   | { type: "blockquote"; lines: string[] }
@@ -135,12 +135,33 @@ function parseBlocks(markdown: string): Block[] {
 
     const olItem = isOrderedItem(line)
     if (olItem !== null) {
-      const items: { number: number; text: string }[] = []
+      const items: { number: number; lines: string[] }[] = []
       while (i < lines.length) {
         const item = isOrderedItem(lines[i])
         if (item === null) break
-        items.push(item)
+
+        const itemLines = [item.text]
         i += 1
+
+        // Treat subsequent non-list lines as continuation of the same numbered item.
+        while (i < lines.length) {
+          const current = lines[i]
+          if (isBlank(current)) break
+          if (isOrderedItem(current) !== null) break
+          if (isUnorderedItem(current) !== null) break
+          if (isHeading(current)) break
+          if (isBlockquote(current) !== null) break
+          if (isHr(current)) break
+          if (current.trimStart().startsWith("```")) break
+
+          itemLines.push(current.trim())
+          i += 1
+        }
+
+        items.push({
+          number: item.number,
+          lines: itemLines.filter((lineValue) => lineValue.length > 0),
+        })
       }
       blocks.push({ type: "ol", items })
       continue
@@ -165,7 +186,7 @@ function parseBlocks(markdown: string): Block[] {
   return blocks
 }
 
-function isOutlineHeadingCandidate(block: Block): block is { type: "ol"; items: { number: number; text: string }[] } {
+function isOutlineHeadingCandidate(block: Block): block is { type: "ol"; items: { number: number; lines: string[] }[] } {
   return block.type === "ol" && block.items.length === 1
 }
 
@@ -200,7 +221,7 @@ function groupOutlineLists(blocks: Block[]): Block[] {
     const items: { number: number; title: string; children: Block[] }[] = []
     let j = i
     while (j < blocks.length && isOutlineHeadingCandidate(blocks[j])) {
-      const heading = (blocks[j] as { type: "ol"; items: { number: number; text: string }[] }).items[0]
+      const heading = (blocks[j] as { type: "ol"; items: { number: number; lines: string[] }[] }).items[0]
       j += 1
       const children: Block[] = []
       while (j < blocks.length && !isOutlineHeadingCandidate(blocks[j])) {
@@ -209,7 +230,7 @@ function groupOutlineLists(blocks: Block[]): Block[] {
       }
       items.push({
         number: heading.number,
-        title: heading.text,
+        title: heading.lines.join(" ").trim(),
         children,
       })
     }
@@ -470,35 +491,49 @@ function renderBlocks(
         )
       case "ol":
         return (
-          <ol key={k} className="list-decimal pl-6 mb-3 space-y-1 text-foreground">
+          <ol key={k} className="mb-3 space-y-2 text-foreground">
             {block.items.map((item, itemIdx) => (
-              <li key={`${k}-li-${itemIdx}`} className="leading-relaxed">
-                {renderInline(item.text, `${k}-oli-${itemIdx}`, sources)}
-                {itemIdx === block.items.length - 1 ? fallbackChip : null}
+              <li key={`${k}-li-${itemIdx}`} className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-2 leading-relaxed">
+                <span className="pt-[1px] text-right font-mono tabular-nums text-muted-foreground">
+                  {item.number}.
+                </span>
+                <div className="min-w-0">
+                  {item.lines.map((line, lineIdx) => (
+                    <Fragment key={`${k}-ol-line-${itemIdx}-${lineIdx}`}>
+                      {renderInline(line, `${k}-oli-${itemIdx}-${lineIdx}`, sources)}
+                      {itemIdx === block.items.length - 1 && lineIdx === item.lines.length - 1 ? fallbackChip : null}
+                      {lineIdx < item.lines.length - 1 ? <br /> : null}
+                    </Fragment>
+                  ))}
+                </div>
               </li>
             ))}
           </ol>
         )
       case "outline":
         return (
-          <ol key={k} className="list-decimal pl-6 mb-3 space-y-2 text-foreground">
+          <ol key={k} className="mb-3 space-y-2 text-foreground">
             {block.items.map((item, itemIdx) => (
               <li
                 key={`${k}-oli-${itemIdx}`}
-                className="leading-relaxed"
-                value={block.useOriginalNumbers ? item.number : undefined}
+                className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-2 leading-relaxed"
               >
-                <div className="font-semibold text-foreground">
-                  {renderInline(item.title, `${k}-ot-${itemIdx}`, sources)}
-                  {item.children.length === 0 && itemIdx === block.items.length - 1 ? fallbackChip : null}
-                </div>
-                {item.children.length > 0 ? (
-                  <div className="mt-2 pl-4 space-y-2">
-                    {renderBlocks(item.children, `${k}-oc-${itemIdx}`, sources, {
-                      appendFallbackChip: shouldAppendFallback && itemIdx === block.items.length - 1,
-                    })}
+                <span className="pt-[1px] text-right font-mono tabular-nums text-muted-foreground">
+                  {block.useOriginalNumbers ? item.number : itemIdx + 1}.
+                </span>
+                <div className="min-w-0">
+                  <div className="font-semibold text-foreground">
+                    {renderInline(item.title, `${k}-ot-${itemIdx}`, sources)}
+                    {item.children.length === 0 && itemIdx === block.items.length - 1 ? fallbackChip : null}
                   </div>
-                ) : null}
+                  {item.children.length > 0 ? (
+                    <div className="mt-2 pl-4 space-y-2">
+                      {renderBlocks(item.children, `${k}-oc-${itemIdx}`, sources, {
+                        appendFallbackChip: shouldAppendFallback && itemIdx === block.items.length - 1,
+                      })}
+                    </div>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ol>

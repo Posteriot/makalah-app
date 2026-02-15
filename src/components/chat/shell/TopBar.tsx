@@ -8,7 +8,6 @@ import {
   FastArrowRightSquare,
   FastArrowRight,
 } from "iconoir-react"
-import { FastArrowRightSquare as FastArrowRightSquareSolid } from "iconoir-react/solid"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { NotificationDropdown } from "./NotificationDropdown"
@@ -41,7 +40,7 @@ interface TopBarProps {
  * Content scrolls below it, not behind it.
  *
  * Left: Expand sidebar toggle (only when sidebar collapsed)
- * Right: Notification, Theme toggle, Panel toggle, Segment badge, User dropdown
+ * Right: Notification, Theme toggle, Panel toggle, User dropdown
  */
 export function TopBar({
   isSidebarCollapsed,
@@ -58,6 +57,7 @@ export function TopBar({
   }
 
   const hasArtifacts = artifactCount > 0
+  const compactArtifactCount = artifactCount > 99 ? "99+" : `${artifactCount}`
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -121,58 +121,60 @@ export function TopBar({
             </Tooltip>
           )}
 
-          {/* Panel Toggle — always visible, disabled when no artifacts */}
+          {/* Artifact Panel Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={hasArtifacts ? onTogglePanel : undefined}
                 disabled={!hasArtifacts}
                 className={cn(
-                  "relative flex items-center justify-center",
-                  "w-8 h-8 rounded-action mr-1",
-                  "text-muted-foreground hover:text-foreground hover:bg-accent/80",
+                  "relative mr-1 inline-flex h-8 w-8 items-center justify-center rounded-action",
                   "transition-colors duration-150",
-                  !hasArtifacts && "opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
+                  hasArtifacts &&
+                    isPanelCollapsed &&
+                    "border border-transparent bg-transparent text-slate-200 hover:text-slate-50",
+                  hasArtifacts &&
+                    !isPanelCollapsed &&
+                    "border border-slate-500/70 bg-slate-800/75 text-slate-50 hover:bg-slate-800",
+                  !hasArtifacts &&
+                    "cursor-not-allowed border border-transparent bg-transparent text-slate-400 hover:bg-transparent hover:text-slate-400"
                 )}
                 aria-label={
                   !hasArtifacts
-                    ? "No artifacts"
+                    ? "Panel artifak nonaktif karena belum ada artifak"
                     : isPanelCollapsed
-                      ? `Open artifacts panel (${artifactCount})`
-                      : "Close artifacts panel"
+                      ? `Buka panel artifak (${artifactCount})`
+                      : `Tutup panel artifak (${artifactCount})`
                 }
+                aria-pressed={hasArtifacts ? !isPanelCollapsed : undefined}
               >
-                {isPanelCollapsed ? (
-                  <FastArrowRightSquare className="h-[18px] w-[18px] rotate-180" />
-                ) : (
-                  <FastArrowRightSquareSolid className="h-[18px] w-[18px]" />
-                )}
-                {hasArtifacts && isPanelCollapsed && (
+                <FastArrowRightSquare
+                  className={cn(
+                    "h-[17px] w-[17px]",
+                    !isPanelCollapsed && "rotate-180"
+                  )}
+                />
+                {hasArtifacts ? (
                   <span
                     className={cn(
-                      "absolute -bottom-1 -right-1",
-                      "min-w-[16px] h-[16px] px-1",
-                      "flex items-center justify-center",
+                      "pointer-events-none absolute -bottom-1 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
                       "text-[9px] font-semibold font-mono leading-none",
-                      "bg-emerald-500 text-white",
-                      "rounded-full border border-[color:var(--section-bg-alt)]"
+                      "bg-emerald-500 text-slate-100 shadow-[0_0_0_1px_rgba(2,6,23,0.55)]"
                     )}
                   >
-                    {artifactCount}
+                    {compactArtifactCount}
                   </span>
-                )}
+                ) : null}
               </button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
               {!hasArtifacts
-                ? "No artifacts"
-                : isPanelCollapsed
-                  ? `Open artifacts (${artifactCount})`
-                  : "Close artifacts"}
+                ? "Belum ada artifak untuk dibuka"
+                : `${isPanelCollapsed ? "Panel tertutup" : "Panel terbuka"} • ${artifactCount} artifak`}
             </TooltipContent>
           </Tooltip>
 
-          {/* User Dropdown */}
+          {/* User Dropdown / Settings entry */}
           <UserDropdown variant="compact" />
         </div>
       </div>

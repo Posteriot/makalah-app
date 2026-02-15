@@ -48,6 +48,10 @@ export const createPayment = mutation({
     )),
     credits: v.optional(v.number()),
     description: v.optional(v.string()),
+    planType: v.optional(v.union(
+      v.literal("pro_monthly"),
+      v.literal("pro_yearly")
+    )),
     idempotencyKey: v.string(),
     expiredAt: v.optional(v.number()),
   },
@@ -69,6 +73,7 @@ export const createPayment = mutation({
       packageType: args.packageType,
       credits: args.credits,
       description: args.description,
+      planType: args.planType,
       idempotencyKey: args.idempotencyKey,
       createdAt: now,
       expiredAt: args.expiredAt,
@@ -247,6 +252,24 @@ export const getPendingPayments = query({
     return pendingPayments.filter(
       (p) => !p.expiredAt || p.expiredAt > now
     )
+  },
+})
+
+/**
+ * Get a single payment by ID
+ * Used for receipt generation
+ */
+export const getPaymentById = query({
+  args: {
+    paymentId: v.id("payments"),
+  },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.paymentId)
+    if (!payment) return null
+
+    // Auth check: verify requester owns this payment
+    await requireAuthUserId(ctx, payment.userId)
+    return payment
   },
 })
 

@@ -12,7 +12,7 @@ import {
   tokensToCredits,
   type TierType,
 } from "./constants"
-import { requireAuthUserId } from "../authHelpers"
+import { requireAuthUserId, verifyAuthUserId } from "../authHelpers"
 
 /**
  * Get or create user quota for current period
@@ -22,7 +22,7 @@ export const getUserQuota = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await requireAuthUserId(ctx, args.userId)
+    if (!await verifyAuthUserId(ctx, args.userId)) return null
     // Get user for tier info
     const user = await ctx.db.get(args.userId)
     if (!user) return null
@@ -149,6 +149,72 @@ export const initializeQuota = mutation({
     })
 
     return quotaId
+  },
+})
+
+/**
+ * Initialize/reset quota (internal — called from webhook, no auth context)
+ */
+export const initializeQuotaInternal = mutation({
+  args: {
+    userId: v.id("users"),
+    internalKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const expected = process.env.CONVEX_INTERNAL_KEY
+    if (!expected || args.internalKey !== expected) {
+      throw new Error("Unauthorized")
+    }
+
+    const user = await ctx.db.get(args.userId)
+    if (!user) throw new Error("User not found")
+
+    const now = Date.now()
+    const { periodStart, periodEnd } = getPeriodBoundaries(user.createdAt, now)
+
+    const tier = (user.subscriptionStatus === "free" ? "gratis" : user.subscriptionStatus) as TierType
+    const limits = getTierLimits(tier)
+
+    const existingQuota = await ctx.db
+      .query("userQuotas")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first()
+
+    if (existingQuota) {
+      await ctx.db.patch(existingQuota._id, {
+        periodStart,
+        periodEnd,
+        allottedTokens: limits.monthlyTokens === Infinity ? 999_999_999 : limits.monthlyTokens,
+        usedTokens: 0,
+        remainingTokens: limits.monthlyTokens === Infinity ? 999_999_999 : limits.monthlyTokens,
+        allottedPapers: limits.monthlyPapers === Infinity ? 999 : limits.monthlyPapers,
+        completedPapers: 0,
+        dailyUsedTokens: 0,
+        lastDailyReset: now,
+        tier,
+        overageTokens: 0,
+        overageCostIDR: 0,
+        updatedAt: now,
+      })
+      return existingQuota._id
+    }
+
+    return await ctx.db.insert("userQuotas", {
+      userId: args.userId,
+      periodStart,
+      periodEnd,
+      allottedTokens: limits.monthlyTokens === Infinity ? 999_999_999 : limits.monthlyTokens,
+      usedTokens: 0,
+      remainingTokens: limits.monthlyTokens === Infinity ? 999_999_999 : limits.monthlyTokens,
+      allottedPapers: limits.monthlyPapers === Infinity ? 999 : limits.monthlyPapers,
+      completedPapers: 0,
+      dailyUsedTokens: 0,
+      lastDailyReset: now,
+      tier,
+      overageTokens: 0,
+      overageCostIDR: 0,
+      updatedAt: now,
+    })
   },
 })
 
@@ -429,7 +495,7 @@ export const getQuotaStatus = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await requireAuthUserId(ctx, args.userId)
+    if (!await verifyAuthUserId(ctx, args.userId)) return null
     const user = await ctx.db.get(args.userId)
     if (!user) return null
 

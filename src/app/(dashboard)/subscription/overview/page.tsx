@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { useCreditMeter } from "@/lib/hooks/useCreditMeter"
 import {
   ArrowUpCircle,
   CreditCard,
@@ -64,100 +65,165 @@ function formatDate(timestamp: number): string {
   }).format(new Date(timestamp))
 }
 
-export default function SubscriptionOverviewPage() {
-  const { user, isLoading: userLoading } = useCurrentUser()
-
-  // Get quota status
-  const quotaStatus = useQuery(
-    api.billing.quotas.getQuotaStatus,
-    user?._id ? { userId: user._id } : "skip"
-  )
-
-  // Get monthly usage breakdown
-  const usageBreakdown = useQuery(
-    api.billing.usage.getMonthlyBreakdown,
-    user?._id ? { userId: user._id } : "skip"
-  )
-
-  // Get credit balance (for BPP users)
-  const creditBalance = useQuery(
-    api.billing.credits.getCreditBalance,
-    user?._id ? { userId: user._id } : "skip"
-  )
-
-  // Loading state
-  if (userLoading || quotaStatus === undefined) {
-    return (
-      <div className="space-y-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/3" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="h-32 bg-muted rounded" />
-            <div className="h-32 bg-muted rounded" />
-          </div>
-          <div className="h-48 bg-muted rounded" />
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="space-y-2">
-        <h1 className="text-interface text-xl font-semibold">Subskripsi</h1>
-        <p className="text-sm text-muted-foreground">
-          Sesi tidak aktif. Silakan login ulang.
-        </p>
-      </div>
-    )
-  }
-
-  const tier = getEffectiveTier(user?.role, user?.subscriptionStatus)
-  const tierConfig = TIER_CONFIG[tier]
-
-  // For BPP users, show credit balance
-  const isBPP = quotaStatus?.creditBased || tier === "bpp"
-
-  // Admin/superadmin: unlimited access (backend returns { unlimited: true } without token fields)
-  const isUnlimited = quotaStatus?.unlimited === true
-
-  // Calculate usage percentage (for non-BPP)
-  const usedTokens = quotaStatus?.usedTokens ?? 0
-  // Use TIER_LIMITS as fallback when quota not initialized (needsInit)
-  const tierMonthlyTokens = TIER_LIMITS[tier as TierType]?.monthlyTokens ?? 0
-  const allottedTokens = quotaStatus?.allottedTokens ?? (isUnlimited ? 0 : tierMonthlyTokens)
-  const rawUsagePercentage =
-    quotaStatus?.percentageUsed ??
-    (allottedTokens > 0 ? (usedTokens / allottedTokens) * 100 : 0)
-  const usagePercentage = Number.isFinite(rawUsagePercentage)
-    ? Math.max(0, Math.round(rawUsagePercentage))
-    : 0
-  const isLowQuota = quotaStatus?.warningLevel === "warning" || quotaStatus?.warningLevel === "critical"
-  const isBlocked = quotaStatus?.warningLevel === "blocked"
-
-  // Reset date (end of current period)
-  const resetDate = quotaStatus?.periodEnd ? formatDate(quotaStatus.periodEnd) : "-"
-
-  // Credit balance for BPP (now in credits, not IDR)
-  const currentCreditBalance = creditBalance?.remainingCredits ?? 0
-
-  // Kredit conversion (1 kredit = 1.000 tokens)
-  const usedKredit = Math.ceil(usedTokens / TOKENS_PER_CREDIT)
-  const totalKredit = Math.floor(allottedTokens / TOKENS_PER_CREDIT)
+// ─────────────────────────────────────────────────
+// Regular user view: simplified, credit-only
+// ─────────────────────────────────────────────────
+function RegularOverviewView({
+  tier,
+  tierConfig,
+}: {
+  tier: EffectiveTier
+  tierConfig: { label: string; description: string; color: string; textColor: string }
+}) {
+  const meter = useCreditMeter()
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-interface text-xl font-semibold flex items-center gap-2">
-          <Sparks className="h-5 w-5 text-primary" />
-          Subskripsi
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Kelola langganan dan pantau penggunaan Anda
-        </p>
+    <>
+      {/* Tier Card */}
+      <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-signal text-[10px] text-muted-foreground">Tier Saat Ini</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span
+                className={cn(
+                  "text-[10px] font-bold px-2 py-0.5 rounded-badge text-white",
+                  tierConfig.color
+                )}
+              >
+                {tierConfig.label}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">{tierConfig.description}</p>
+          </div>
+          <GraphUp className="h-5 w-5 text-muted-foreground" />
+        </div>
+
+        {tier === "gratis" && (
+          <Link
+            href="/subscription/upgrade"
+            className="focus-ring text-interface mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
+          >
+            <ArrowUpCircle className="h-4 w-4" />
+            Upgrade
+          </Link>
+        )}
+
+        {(tier === "bpp" || tier === "pro") && (
+          <Link
+            href="/subscription/topup?from=overview"
+            className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
+          >
+            <CreditCard className="h-4 w-4" />
+            Top Up Kredit
+          </Link>
+        )}
       </div>
 
+      {/* Penggunaan Kredit */}
+      <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
+        <h2 className="text-interface text-sm font-medium text-foreground mb-3">Penggunaan Kredit</h2>
+
+        {/* Progress Bar */}
+        <div className="relative h-3 bg-muted rounded-full overflow-hidden">
+          <div
+            className={cn(
+              "absolute left-0 top-0 h-full rounded-full transition-all",
+              meter.level === "depleted" ? "bg-destructive"
+                : meter.level === "critical" ? "bg-destructive"
+                : meter.level === "warning" ? "bg-amber-500"
+                : "bg-primary"
+            )}
+            style={{ width: `${Math.min(meter.percentage, 100)}%` }}
+          />
+        </div>
+
+        {/* Kredit text */}
+        <div className="mt-2 flex items-center justify-between">
+          <span className="font-mono text-xl font-bold">
+            <span className={cn("text-foreground", (meter.level === "warning" || meter.level === "critical" || meter.level === "depleted") && "text-destructive")}>
+              {meter.used.toLocaleString("id-ID")}
+            </span>
+            <span className="text-muted-foreground"> / {meter.total.toLocaleString("id-ID")}</span>
+            {" "}
+            <span className="text-signal text-[10px] text-muted-foreground">kredit</span>
+          </span>
+        </div>
+
+        {/* Pro: subtle reset note */}
+        {tier === "pro" && (
+          <p className="font-mono text-[10px] text-muted-foreground mt-1">Direset setiap bulan</p>
+        )}
+
+        {/* Blocked state */}
+        {meter.level === "depleted" && (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-destructive">
+              {tier === "gratis"
+                ? "Kredit habis. Upgrade untuk melanjutkan."
+                : "Kredit habis. Top up untuk melanjutkan."}
+            </p>
+            <Link
+              href={tier === "gratis" ? "/subscription/upgrade" : "/subscription/topup?from=overview"}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              {tier === "gratis" ? "Upgrade" : "Top Up Kredit"}
+            </Link>
+          </div>
+        )}
+
+        {/* Warning state */}
+        {(meter.level === "warning" || meter.level === "critical") && (
+          <p className="text-xs text-amber-600 mt-2">
+            Kredit hampir habis. {tier === "gratis" ? "Pertimbangkan upgrade." : "Pertimbangkan top up."}
+          </p>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────────
+// Admin view: full observability (unchanged from original)
+// ─────────────────────────────────────────────────
+function AdminOverviewView({
+  quotaStatus,
+  usageBreakdown,
+  creditBalance,
+  tier,
+  tierConfig,
+  resetDate,
+  isBPP,
+  isUnlimited,
+  usedTokens,
+  allottedTokens,
+  usedKredit,
+  totalKredit,
+  usagePercentage,
+  isLowQuota,
+  isBlocked,
+  currentCreditBalance,
+}: {
+  quotaStatus: any
+  usageBreakdown: any
+  creditBalance: any
+  tier: EffectiveTier
+  tierConfig: { label: string; description: string; color: string; textColor: string }
+  resetDate: string
+  isBPP: boolean
+  isUnlimited: boolean
+  usedTokens: number
+  allottedTokens: number
+  usedKredit: number
+  totalKredit: number
+  usagePercentage: number
+  isLowQuota: boolean
+  isBlocked: boolean
+  currentCreditBalance: number
+}) {
+  return (
+    <>
       {/* Top Cards: Tier + Credit - 2 columns 50%/50% */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Tier Card */}
@@ -347,7 +413,6 @@ export default function SubscriptionOverviewPage() {
                   Quota hampir habis. Pertimbangkan untuk top up credit.
                 </p>
               )}
-
             </>
           )}
         </div>
@@ -429,7 +494,7 @@ export default function SubscriptionOverviewPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {usageBreakdown.breakdown.map((item) => {
+                {usageBreakdown.breakdown.map((item: any) => {
                   const IconComponent = ICON_MAP[item.icon as keyof typeof ICON_MAP] || ChatBubble
                   return (
                     <tr key={item.type} className="group transition-colors hover:bg-muted/50">
@@ -501,6 +566,123 @@ export default function SubscriptionOverviewPage() {
           </li>
         </ul>
       </div>
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────────
+// Main page component
+// ─────────────────────────────────────────────────
+export default function SubscriptionOverviewPage() {
+  const { user, isLoading: userLoading } = useCurrentUser()
+
+  // Get quota status
+  const quotaStatus = useQuery(
+    api.billing.quotas.getQuotaStatus,
+    user?._id ? { userId: user._id } : "skip"
+  )
+
+  // Get monthly usage breakdown (admin only, but query is harmless for others)
+  const usageBreakdown = useQuery(
+    api.billing.usage.getMonthlyBreakdown,
+    user?._id ? { userId: user._id } : "skip"
+  )
+
+  // Get credit balance (for BPP users)
+  const creditBalance = useQuery(
+    api.billing.credits.getCreditBalance,
+    user?._id ? { userId: user._id } : "skip"
+  )
+
+  // Loading state
+  if (userLoading || quotaStatus === undefined) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-1/3" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="h-32 bg-muted rounded" />
+            <div className="h-32 bg-muted rounded" />
+          </div>
+          <div className="h-48 bg-muted rounded" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-interface text-xl font-semibold">Subskripsi</h1>
+        <p className="text-sm text-muted-foreground">
+          Sesi tidak aktif. Silakan login ulang.
+        </p>
+      </div>
+    )
+  }
+
+  const tier = getEffectiveTier(user?.role, user?.subscriptionStatus)
+  const tierConfig = TIER_CONFIG[tier]
+
+  // Admin/superadmin: unlimited access
+  const isUnlimited = quotaStatus?.unlimited === true
+
+  // Computed values for admin view
+  const isBPP = quotaStatus?.creditBased || tier === "bpp"
+  const usedTokens = quotaStatus?.usedTokens ?? 0
+  const tierMonthlyTokens = TIER_LIMITS[tier as TierType]?.monthlyTokens ?? 0
+  const allottedTokens = quotaStatus?.allottedTokens ?? (isUnlimited ? 0 : tierMonthlyTokens)
+  const rawUsagePercentage =
+    quotaStatus?.percentageUsed ??
+    (allottedTokens > 0 ? (usedTokens / allottedTokens) * 100 : 0)
+  const usagePercentage = Number.isFinite(rawUsagePercentage)
+    ? Math.max(0, Math.round(rawUsagePercentage))
+    : 0
+  const isLowQuota = quotaStatus?.warningLevel === "warning" || quotaStatus?.warningLevel === "critical"
+  const isBlocked = quotaStatus?.warningLevel === "blocked"
+  const resetDate = quotaStatus?.periodEnd ? formatDate(quotaStatus.periodEnd) : "-"
+  const currentCreditBalance = creditBalance?.remainingCredits ?? 0
+  const usedKredit = Math.ceil(usedTokens / TOKENS_PER_CREDIT)
+  const totalKredit = Math.floor(allottedTokens / TOKENS_PER_CREDIT)
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-interface text-xl font-semibold flex items-center gap-2">
+          <Sparks className="h-5 w-5 text-primary" />
+          Subskripsi
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Kelola langganan dan pantau penggunaan Anda
+        </p>
+      </div>
+
+      {isUnlimited ? (
+        <AdminOverviewView
+          quotaStatus={quotaStatus}
+          usageBreakdown={usageBreakdown}
+          creditBalance={creditBalance}
+          tier={tier}
+          tierConfig={tierConfig}
+          resetDate={resetDate}
+          isBPP={isBPP}
+          isUnlimited={isUnlimited}
+          usedTokens={usedTokens}
+          allottedTokens={allottedTokens}
+          usedKredit={usedKredit}
+          totalKredit={totalKredit}
+          usagePercentage={usagePercentage}
+          isLowQuota={isLowQuota}
+          isBlocked={isBlocked}
+          currentCreditBalance={currentCreditBalance}
+        />
+      ) : (
+        <RegularOverviewView
+          tier={tier}
+          tierConfig={tierConfig}
+        />
+      )}
     </div>
   )
 }

@@ -9,9 +9,10 @@ import { ArtifactViewer, ArtifactViewerRef } from "./ArtifactViewer"
 import { ArtifactTabs } from "./ArtifactTabs"
 import { ArtifactToolbar } from "./ArtifactToolbar"
 import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
-import { Page } from "iconoir-react"
+import { Page, Expand } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { FullsizeArtifactModal } from "./FullsizeArtifactModal"
+import { Button } from "@/components/ui/button"
 
 interface ArtifactPanelProps {
   conversationId: Id<"conversations"> | null
@@ -75,16 +76,50 @@ export function ArtifactPanel({
   const activeArtifact = activeTabId
     ? artifacts?.find((a) => a._id === activeTabId)
     : null
+  const activeTab = activeTabId ? openTabs.find((tab) => tab.id === activeTabId) : null
+  const openTabCount = openTabs.length
 
   return (
     <div
       className={cn(
         "@container/artifact",
-        "flex flex-col h-full w-full",
+        "flex h-full w-full flex-col",
         "bg-card rounded-shell border border-border/50",
         "transition-all duration-300 ease-in-out"
       )}
     >
+      {/* Workspace header */}
+      <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-card/70 px-3 py-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+            Workspace Artifak
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {activeTab
+              ? `Tab aktif: ${activeTab.title}`
+              : openTabCount > 0
+                ? "Pilih tab artifak yang ingin dibuka"
+                : "Belum ada tab artifak terbuka"}
+          </p>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+            {openTabCount} tab
+          </span>
+          {activeTabId && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-action text-muted-foreground hover:bg-accent/80 hover:text-foreground"
+              onClick={() => setIsFullsizeOpen(true)}
+              aria-label="Buka artifak fullscreen"
+            >
+              <Expand className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
       {/* Artifact Tabs */}
       <ArtifactTabs
         tabs={openTabs}
@@ -105,6 +140,7 @@ export function ArtifactPanel({
               }
             : null
         }
+        openTabCount={openTabCount}
         onDownload={(format) => {
           viewerRef.current?.setDownloadFormat(format)
           viewerRef.current?.download()
@@ -113,19 +149,40 @@ export function ArtifactPanel({
         onRefrasa={() => viewerRef.current?.triggerRefrasa()}
         onCopy={() => viewerRef.current?.copy()}
         onExpand={() => setIsFullsizeOpen(true)}
+        onClosePanel={onToggle}
       />
 
       {/* Main viewer area */}
       <div className="flex-1 overflow-hidden">
-        {activeTabId ? (
+        {activeTabId && activeArtifact ? (
           <ArtifactViewer ref={viewerRef} artifactId={activeTabId} />
+        ) : activeTabId && !activeArtifact ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+            <Page className="h-10 w-10 text-muted-foreground/60" />
+            <p className="max-w-[260px] text-sm text-muted-foreground">
+              Artifak aktif tidak ditemukan. Kemungkinan artifak sudah berubah atau tidak lagi tersedia.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-mono"
+              onClick={() => onTabClose(activeTabId)}
+            >
+              Tutup Tab Aktif
+            </Button>
+          </div>
+        ) : openTabCount > 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 py-12 text-center">
+            <Page className="h-10 w-10 text-muted-foreground/60" />
+            <p className="max-w-[260px] text-sm text-muted-foreground">
+              Pilih salah satu tab di atas untuk lanjut membaca atau mengedit artifak.
+            </p>
+          </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full py-12 px-6 text-center">
-            <Page className="h-12 w-12 mb-4 text-muted-foreground opacity-50" />
-            <p className="text-[13px] text-muted-foreground max-w-[200px]">
-              {openTabs.length > 0
-                ? "Pilih tab artifact di atas"
-                : "Buka artifact dari Paper Sessions di sidebar"}
+          <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
+            <Page className="mb-4 h-12 w-12 text-muted-foreground/50" />
+            <p className="max-w-[260px] text-[13px] text-muted-foreground">
+              Belum ada artifak yang dibuka. Pilih artifak dari Sidebar Paper Sessions untuk memulai workspace.
             </p>
           </div>
         )}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useQuery, useConvexAuth } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { getEffectiveTier } from "@/lib/utils/subscription"
@@ -35,30 +35,59 @@ export interface CreditMeterData {
  */
 export function useCreditMeter(): CreditMeterData {
   const { user, isLoading: userLoading } = useCurrentUser()
+  const { isAuthenticated, isLoading: convexAuthLoading } = useConvexAuth()
 
   const tier = user ? getEffectiveTier(user.role, user.subscriptionStatus) : "gratis"
   const isAdmin = user?.role === "admin" || user?.role === "superadmin"
+  const canRunProtectedQuery = Boolean(user?._id && isAuthenticated)
 
   // Query quota status (all tiers)
   const quotaStatus = useQuery(
     api.billing.quotas.getQuotaStatus,
-    user?._id ? { userId: user._id } : "skip"
+    canRunProtectedQuery ? { userId: user._id } : "skip"
   )
 
   // Query credit balance (BPP only, skip for other tiers)
   const creditBalance = useQuery(
     api.billing.credits.getCreditBalance,
-    user?._id && tier === "bpp" ? { userId: user._id } : "skip"
+    canRunProtectedQuery && tier === "bpp" ? { userId: user._id } : "skip"
   )
 
   // Query subscription status (Pro only)
   const subscriptionStatus = useQuery(
     api.billing.subscriptions.checkSubscriptionStatus,
-    user?._id && tier === "pro" ? { userId: user._id } : "skip"
+    canRunProtectedQuery && tier === "pro" ? { userId: user._id } : "skip"
   )
 
   // Loading state
-  if (userLoading || !user || quotaStatus === undefined) {
+  if (userLoading || convexAuthLoading) {
+    return {
+      tier,
+      used: 0,
+      total: 0,
+      remaining: 0,
+      percentage: 0,
+      level: "normal",
+      isLoading: true,
+      isAdmin,
+    }
+  }
+
+  // Auth/session belum siap untuk query protected.
+  if (!user || !isAuthenticated) {
+    return {
+      tier,
+      used: 0,
+      total: 0,
+      remaining: 0,
+      percentage: 0,
+      level: "normal",
+      isLoading: false,
+      isAdmin,
+    }
+  }
+
+  if (quotaStatus === undefined) {
     return {
       tier,
       used: 0,

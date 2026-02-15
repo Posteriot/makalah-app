@@ -1,12 +1,12 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { requireAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
+import { requireAuthUserId, verifyAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
 
 // List conversations for user
 export const listConversations = query({
     args: { userId: v.id("users") },
     handler: async (ctx, { userId }) => {
-        await requireAuthUserId(ctx, userId)
+        if (!await verifyAuthUserId(ctx, userId)) return []
         return await ctx.db
             .query("conversations")
             .withIndex("by_user", (q) => q.eq("userId", userId))

@@ -37,7 +37,7 @@ Dokumen ini mencakup komponen shell kiri yang aktif di codebase saat ini.
   - light: `bg-slate-300`
   - dark: `bg-slate-900`
 - Border kanan kolom:
-  - light: `border-slate-400/90`
+  - light: `border-slate-400/20`
   - dark: `border-slate-700/90`
 - Row logo:
   - tinggi `h-11`
@@ -54,14 +54,13 @@ Dokumen ini mencakup komponen shell kiri yang aktif di codebase saat ini.
   - light: `bg-slate-200`
   - dark: `bg-slate-800`
 - Border panel kanan:
-  - light: `border-slate-300/90`
+  - light: `border-slate-300/50`
   - dark: `border-slate-700/80`
 - Header collapse row:
   - tinggi `h-11`
   - border bawah aktif
 - Section tombol `Percakapan Baru`:
-  - `border-y border-slate-400/95` (light)
-  - `dark:border-slate-600/90`
+  - wrapper `px-3 pb-3 pt-3` (tanpa `border-y`)
 - Tombol `Percakapan Baru`:
   - light: `bg-slate-600 text-slate-100 border-slate-500/60`
   - dark: `bg-slate-900/90 text-slate-100 border-slate-700`
@@ -102,8 +101,9 @@ Dokumen ini mencakup komponen shell kiri yang aktif di codebase saat ini.
 | Area | Light Mode | Dark Mode |
 |------|------------|-----------|
 | ActivityBar base | `bg-slate-300` | `bg-slate-900` |
-| ActivityBar border right | `border-slate-400/90` | `border-slate-700/90` |
+| ActivityBar border right | `border-slate-400/20` | `border-slate-700/90` |
 | Sidebar base | `bg-slate-200` | `bg-slate-800` |
+| Sidebar border right | `border-slate-300/50` | `border-slate-700/80` |
 | New chat button | `bg-slate-600` | `bg-slate-900/90` |
 | History selected | `bg-slate-50` | `bg-slate-900/60` |
 | Resizer base | `bg-slate-50` | `bg-slate-900` |
@@ -126,4 +126,3 @@ Dokumen ini mencakup komponen shell kiri yang aktif di codebase saat ini.
 - `src/components/chat/sidebar/SidebarChatHistory.tsx`
 - `src/components/chat/layout/ChatLayout.tsx`
 - `src/components/chat/layout/PanelResizer.tsx`
-

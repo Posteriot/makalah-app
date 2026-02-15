@@ -6,7 +6,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { calculateCostIDR } from "./constants"
-import { requireAuthUserId } from "../authHelpers"
+import { requireAuthUserId, verifyAuthUserId } from "../authHelpers"
 
 /**
  * Record a token usage event
@@ -83,7 +83,7 @@ export const getMonthlyBreakdown = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await requireAuthUserId(ctx, args.userId)
+    if (!await verifyAuthUserId(ctx, args.userId)) return null
     // Get current month boundaries
     const now = new Date()
     const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()

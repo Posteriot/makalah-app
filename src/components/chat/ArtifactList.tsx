@@ -1,181 +1,170 @@
 "use client"
 
+import { type ElementType } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { Badge } from "@/components/ui/badge"
-// Filter imports - hidden, not functional
-// import {
-//     Select,
-//     SelectContent,
-//     SelectItem,
-//     SelectTrigger,
-//     SelectValue,
-// } from "@/components/ui/select"
 import {
-    Page,
-    Code,
-    List,
-    Table2Columns,
-    Book,
-    Calculator,
+  Page,
+  Code,
+  List,
+  Table2Columns,
+  Book,
+  Calculator,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
-// Artifact type from Convex (matches schema)
 type ArtifactType = "code" | "outline" | "section" | "table" | "citation" | "formula"
 
 interface Artifact {
-    _id: Id<"artifacts">
-    title: string
-    type: ArtifactType
-    version: number
-    createdAt: number
+  _id: Id<"artifacts">
+  title: string
+  type: ArtifactType
+  version: number
+  createdAt: number
+  invalidatedAt?: number
 }
 
 interface ArtifactListProps {
-    artifacts: Artifact[]
-    selectedId: Id<"artifacts"> | null
-    onSelect: (id: Id<"artifacts">) => void
+  artifacts: Artifact[]
+  selectedId: Id<"artifacts"> | null
+  onSelect: (id: Id<"artifacts">) => void
+  /**
+   * Keep latest-only as default to avoid stale version context
+   * when used as alternative artifact entry point.
+   */
+  showLatestOnly?: boolean
 }
 
-// Map artifact type to icon (Iconoir)
-const typeIcons: Record<ArtifactType, React.ElementType> = {
-    code: Code,
-    outline: List,
-    section: Page,
-    table: Table2Columns,
-    citation: Book,
-    formula: Calculator,
+const typeIcons: Record<ArtifactType, ElementType> = {
+  code: Code,
+  outline: List,
+  section: Page,
+  table: Table2Columns,
+  citation: Book,
+  formula: Calculator,
 }
 
-// Map artifact type to display label (Indonesian)
 const typeLabels: Record<ArtifactType, string> = {
-    code: "Code",
-    outline: "Outline",
-    section: "Section",
-    table: "Tabel",
-    citation: "Sitasi",
-    formula: "Formula",
+  code: "CODE",
+  outline: "OUTLINE",
+  section: "SEKSI",
+  table: "TABEL",
+  citation: "SITASI",
+  formula: "FORMULA",
 }
 
-// Filter options - hidden, not functional
-// const filterOptions: { value: string; label: string }[] = [
-//     { value: "all", label: "Semua" },
-//     { value: "code", label: "Code" },
-//     { value: "outline", label: "Outline" },
-//     { value: "section", label: "Section" },
-//     { value: "table", label: "Tabel" },
-//     { value: "citation", label: "Sitasi" },
-//     { value: "formula", label: "Formula" },
-// ]
-
-// Format timestamp to readable date
 function formatDate(timestamp: number): string {
-    return new Date(timestamp).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-    })
+  return new Date(timestamp).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+  })
+}
+
+function getLatestArtifactVersions(artifacts: Artifact[]): Artifact[] {
+  const latestMap = new Map<string, Artifact>()
+
+  for (const artifact of artifacts) {
+    const key = `${artifact.type}-${artifact.title}`
+    const existing = latestMap.get(key)
+    if (!existing || artifact.version > existing.version) {
+      latestMap.set(key, artifact)
+    }
+  }
+
+  return Array.from(latestMap.values()).sort((a, b) => a.title.localeCompare(b.title))
 }
 
 export function ArtifactList({
-    artifacts,
-    selectedId,
-    onSelect,
+  artifacts,
+  selectedId,
+  onSelect,
+  showLatestOnly = true,
 }: ArtifactListProps) {
-    // Filter handler - hidden, not functional
-    // const handleFilterChange = (value: string) => {
-    //     if (value === "all") {
-    //         onFilterChange(null)
-    //     } else {
-    //         onFilterChange(value as ArtifactType)
-    //     }
-    // }
+  const items = showLatestOnly ? getLatestArtifactVersions(artifacts) : artifacts
 
-    return (
-        <div className="flex flex-col h-full">
-            {/* Filter hidden - not functional
-            <div className="p-3 border-b space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <FilterIcon className="h-4 w-4" />
-                    <span>Filter</span>
-                </div>
-                <Select
-                    value={typeFilter ?? "all"}
-                    onValueChange={handleFilterChange}
-                >
-                    <SelectTrigger size="sm" className="w-full">
-                        <SelectValue placeholder="Filter berdasarkan tipe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {filterOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            */}
-
-            {/* Artifact list */}
-            <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
-                {artifacts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
-                        <Page className="h-8 w-8 mb-2 opacity-50" />
-                        <span className="text-xs font-mono uppercase">NO_ARTIFACTS</span>
-                    </div>
-                ) : (
-                    <div className="space-y-1">
-                        {artifacts.map((artifact) => {
-                            const TypeIcon = typeIcons[artifact.type]
-                            const isSelected = selectedId === artifact._id
-
-                            return (
-                                <button
-                                    key={artifact._id}
-                                    onClick={() => onSelect(artifact._id)}
-                                    className={cn(
-                                        "w-full p-2 rounded-action text-left transition-colors",
-                                        "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary",
-                                        isSelected && "bg-accent text-accent-foreground"
-                                    )}
-                                    aria-label={`Select artifact: ${artifact.title}`}
-                                    aria-pressed={isSelected}
-                                >
-                                    <div className="flex items-start gap-2">
-                                        <TypeIcon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-sm font-medium truncate">
-                                                    {artifact.title}
-                                                </span>
-                                                <Badge
-                                                    variant="secondary"
-                                                    className="shrink-0 text-[10px] font-mono px-1 py-0 rounded-badge"
-                                                >
-                                                    v{artifact.version}
-                                                </Badge>
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <Badge
-                                                    variant="outline"
-                                                    className="text-[10px] font-mono px-1 py-0 rounded-badge capitalize"
-                                                >
-                                                    {typeLabels[artifact.type]}
-                                                </Badge>
-                                                <span className="text-[10px] font-mono text-muted-foreground">
-                                                    {formatDate(artifact.createdAt)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-                            )
-                        })}
-                    </div>
-                )}
-            </div>
-
-            {/* Footer removed - count shown in collapsible trigger */}
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-border/50 px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground">
+            Daftar Artifak
+          </p>
+          <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+            {items.length}
+          </span>
         </div>
-    )
+        <p className="mt-1 text-[11px] font-mono text-muted-foreground/85">
+          {showLatestOnly ? "Mode latest-only aktif" : "Semua versi ditampilkan"}
+        </p>
+      </div>
+
+      <div className="scrollbar-thin flex-1 overflow-y-auto p-2">
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
+            <Page className="mb-2 h-8 w-8 opacity-50" />
+            <span className="text-xs font-mono uppercase">Belum ada artifak</span>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {items.map((artifact) => {
+              const TypeIcon = typeIcons[artifact.type]
+              const isSelected = selectedId === artifact._id
+              const isFinal = !artifact.invalidatedAt
+
+              return (
+                <button
+                  key={artifact._id}
+                  type="button"
+                  onClick={() => onSelect(artifact._id)}
+                  className={cn(
+                    "w-full rounded-action border p-2 text-left transition-colors",
+                    "border-border/55 hover:border-border hover:bg-accent/50",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1",
+                    isSelected && "border-primary/40 bg-primary/10"
+                  )}
+                  aria-label={`Pilih artifak ${artifact.title} versi ${artifact.version}`}
+                  aria-current={isSelected ? "page" : undefined}
+                >
+                  <div className="flex items-start gap-2">
+                    <TypeIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-medium text-foreground">
+                          {artifact.title}
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="rounded-badge border border-border/60 bg-muted/70 px-1 py-0 text-[10px] font-mono"
+                        >
+                          v{artifact.version}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="rounded-badge border-border/60 px-1 py-0 text-[10px] font-mono"
+                        >
+                          {typeLabels[artifact.type]}
+                        </Badge>
+                        {isFinal ? (
+                          <Badge className="rounded-badge border border-emerald-500/35 bg-emerald-500/15 px-1 py-0 text-[10px] font-mono uppercase text-emerald-700 dark:text-emerald-300">
+                            Final
+                          </Badge>
+                        ) : (
+                          <Badge className="rounded-badge border border-amber-500/35 bg-amber-500/15 px-1 py-0 text-[10px] font-mono uppercase text-amber-700 dark:text-amber-300">
+                            Revisi
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-[10px] font-mono text-muted-foreground">
+                        Dibuat {formatDate(artifact.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }

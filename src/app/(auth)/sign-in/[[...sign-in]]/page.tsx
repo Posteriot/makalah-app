@@ -6,6 +6,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { Eye, EyeClosed, Mail, Lock, RefreshDouble } from "iconoir-react"
 import { signIn, authClient } from "@/lib/auth-client"
+import { setPending2FA } from "@/lib/auth-2fa"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
 import { TurnstileWidget } from "@/components/auth/TurnstileWidget"
 import { getRedirectUrl } from "@/lib/utils/redirectAfterAuth"
@@ -203,6 +204,14 @@ export default function SignInPage() {
         // Cross-domain plugin adds `redirect`, `url`, `token` at runtime
         // but these aren't in signIn.email() type definitions.
         const data = result.data as Record<string, unknown>
+
+        // 2FA redirect: twoFactor plugin returned twoFactorRedirect
+        if (data.twoFactorRedirect) {
+          setPending2FA({ email: email.trim(), password })
+          router.push("/verify-2fa")
+          return
+        }
+
         if (data.redirect && data.token) {
           // OTT: server returns one-time token instead of setting cookies.
           // Navigate to target URL with ?ott= so ConvexBetterAuthProvider
@@ -418,8 +427,8 @@ export default function SignInPage() {
       subtitle: "Link reset password sudah dikirim. Jika belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.",
     },
     "reset-success": {
-      title: "Password Direset",
-      subtitle: "Password kamu berhasil diubah",
+      title: "Password Berhasil Diatur",
+      subtitle: "Kamu sekarang bisa masuk dengan password baru.",
     },
   }
 
@@ -811,7 +820,7 @@ export default function SignInPage() {
       {mode === "reset-success" && (
         <div className="text-center space-y-4 w-full">
           <Lock className="h-12 w-12 text-success mx-auto" />
-          <h3 className="text-narrative text-lg font-medium">Password Berhasil Direset</h3>
+          <h3 className="text-narrative text-lg font-medium">Password Berhasil Diatur</h3>
           <p className="text-sm text-muted-foreground">
             Kamu sekarang bisa masuk dengan password baru.
           </p>

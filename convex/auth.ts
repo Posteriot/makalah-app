@@ -3,7 +3,7 @@ import { components } from "./_generated/api";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
-import { magicLink } from "better-auth/plugins";
+import { magicLink, twoFactor } from "better-auth/plugins";
 import { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
 import {
@@ -11,7 +11,9 @@ import {
   sendMagicLinkEmail,
   sendPasswordResetEmail,
   sendSignupSuccessEmail,
+  sendTwoFactorOtpEmail,
 } from "./authEmails";
+import { twoFactorCrossDomainBypass } from "./twoFactorBypass";
 
 // SITE_URL = primary frontend origin (production) — for crossDomain redirects
 // CONVEX_SITE_URL = Convex HTTP actions URL (built-in) — where BetterAuth API runs
@@ -96,6 +98,17 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
         },
         expiresIn: 300, // 5 minutes
       }),
+      twoFactor({
+        skipVerificationOnEnable: true,
+        otpOptions: {
+          sendOTP: async ({ user, otp }) => {
+            // BetterAuth's built-in OTP sender — used for enable/disable flows.
+            // Cross-domain sign-in flow uses custom endpoints instead.
+            await sendTwoFactorOtpEmail(user.email, otp);
+          },
+        },
+      }),
+      twoFactorCrossDomainBypass(),
     ],
   }) satisfies BetterAuthOptions;
 

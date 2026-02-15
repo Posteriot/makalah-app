@@ -56,7 +56,7 @@ Dokumen ini adalah baseline **kondisi kode saat ini** untuk redesign chat page, 
 
 ### Entry route
 - `/chat` dan `/chat/[conversationId]` masuk ke `ChatContainer`.
-- `src/app/chat/layout.tsx` menjalankan sinkronisasi Clerk -> Convex via `ensureConvexUser()` sebelum render.
+- `src/app/chat/layout.tsx` berfungsi sebagai wrapper visual route (`min-h-screen bg-background text-foreground`).
 
 ### Orkestrasi utama
 - `ChatContainer` menggabungkan:
@@ -105,42 +105,43 @@ Dokumen ini adalah baseline **kondisi kode saat ini** untuk redesign chat page, 
 - Catatan minor: tetap perlu cek final alignment radius/border dengan standar page lain.
 
 ### `src/components/chat/ArtifactToolbar.tsx`
-- Kondisi: mayoritas semantic.
-- Issue tersisa: ikon `copied` masih hardcoded `text-emerald-500`.
+- Kondisi: sudah selaras dengan model dokumen editor:
+  - metadata konteks dipisah dari action,
+  - grouping aksi prioritas jelas,
+  - mode responsif desktop/mobile konsisten.
 
 ### `src/components/chat/ArtifactViewer.tsx`
-- Kondisi: fungsional lengkap (versioning, invalidation, refrasa, source).
-- Issue styling penting:
-  - badge FINAL/invalidation pakai hardcoded (`emerald/amber`),
-  - helper invalidation `text-amber-400/80`,
-  - inline style syntax highlighter `borderRadius: "0.5rem"`.
+- Kondisi: mode baca/edit sudah terstruktur sebagai dua mode kerja yang jelas.
+- Header viewer sudah memuat konteks versi/final/invalidation secara berlapis.
+- Source area dan refrasa flow sudah konsisten dengan lifecycle artifact terbaru.
 
 ### `src/components/chat/FullsizeArtifactModal.tsx`
-- Kondisi: fitur lengkap, tapi paling bermasalah untuk theme compliance.
-- Issue critical:
-  - banyak hardcoded `bg-slate-950`/`bg-slate-900`,
-  - `focus:ring-amber-500`,
-  - action/save/copy state hardcoded,
-  - `MarkdownRenderer` dibungkus `prose-invert` (berpotensi konflik saat light mode).
+- Kondisi: sudah berfungsi sebagai workspace artifact utama (bukan sekadar versi besar panel).
+- Close safety untuk ESC/backdrop/close/minimize sudah guarded terhadap unsaved edit.
+- Focus order/focus trap fullscreen sudah ditambahkan untuk operability keyboard.
 
 ### `src/components/chat/ArtifactEditor.tsx`
-- Issue: border/focus/unsaved state hardcoded (`sky` + `amber`).
+- Kondisi: status kerja (`dirty`, `saving`) dan hierarchy aksi `Batal/Simpan` sudah jelas.
 
 ### `src/components/chat/VersionHistoryDialog.tsx`
-- Issue: focus ring + active state badge/timeline hardcoded `amber`.
+- Kondisi: sudah berbentuk timeline evolusi versi dengan state `Terbaru` dan `Dilihat`.
+- Perilaku pilih versi konsisten dengan version selector di viewer (select + close dialog).
 
 ### `src/components/chat/ArtifactIndicator.tsx`
-- Issue: seluruh visual state masih hardcoded `sky-*`.
+- Kondisi: sudah membedakan status lifecycle `Baru` vs `Revisi` dan menampilkan konteks versi.
+- CTA keyboard/screen reader sudah eksplisit.
 
 ### 5.2 Tier 2 - Entry points yang memengaruhi artifact UX
 
 ### `src/components/chat/MessageBubble.tsx`
 - Komponen ini adalah jalur tampilan `ArtifactIndicator` dan status tool/search.
-- Masih banyak hardcoded untuk bubble/edit/auto-action states (`slate`, `emerald`, dsb).
+- Sudah membaca dua jalur lifecycle artifact: `tool-createArtifact` dan `tool-updateArtifact`.
+- Urutan blok assistant sudah dipertegas: artifact output -> sources -> quick actions.
 
 ### `src/components/chat/sidebar/SidebarPaperSessions.tsx`
 - Source pemilihan artifact dari sidebar.
-- Hardcoded cukup banyak: folder icon, selected row, status dot, FINAL badge.
+- Isu “selected palsu” sudah ditutup via sinkronisasi `activeArtifactId`.
+- Item list sekarang lebih cepat discan (title/type/version/final|revisi + status panel artifact).
 
 ### `src/components/chat/sidebar/SidebarProgress.tsx`
 - Rewind UX penting untuk invalidation artifact.
@@ -148,7 +149,7 @@ Dokumen ini adalah baseline **kondisi kode saat ini** untuk redesign chat page, 
 
 ### `src/components/chat/shell/TopBar.tsx`
 - Tombol panel artifact ada di sini.
-- Badge jumlah artifact masih `bg-emerald-500` hardcoded.
+- Status panel artifact sekarang eksplisit (`terbuka/tertutup/tanpa artifact`) + compact count di layar sempit.
 
 ### 5.3 Tier 3 - Komponen chat lain yang ikut memengaruhi persepsi visual
 - `ChatLayout`, `ChatSidebar`, `ActivityBar`, `PanelResizer`, `ChatInput`, `TemplateGrid`, `QuotaWarningBanner`, `SearchStatusIndicator`, `ToolStateIndicator`, `SourcesIndicator`, `NotificationDropdown`, `ChatProcessStatusBar`.
@@ -157,18 +158,14 @@ Dokumen ini adalah baseline **kondisi kode saat ini** untuk redesign chat page, 
 ## 6) File yang Sifatnya Non-UI/Wrapper (Bukan Target Styling Langsung)
 - `src/app/chat/page.tsx`
 - `src/app/chat/[conversationId]/page.tsx`
-- `src/app/chat/layout.tsx` (fokus auth/sync)
+- `src/app/chat/layout.tsx` (wrapper visual route)
 - `src/components/chat/ChatContainer.tsx` (orchestrator state)
 - `src/components/chat/layout/useResizer.ts`
 
 ## 7) Ringkasan Realitas Saat Ini
 - Artifact system sudah matang di sisi struktur komponen dan flow interaksi.
-- Hambatan utama redesign bukan arsitektur, tapi konsistensi styling lintas mode.
-- Titik paling kritis untuk compliance light/dark ada di:
-  - fullscreen artifact modal,
-  - sidebar paper/progress,
-  - message/status indicators,
-  - shell (activity/top/sidebar surface).
+- Batch redesign artifact A-F sudah menutup area utama lifecycle artifact end-to-end.
+- Remaining hotspot visual lintas chat page saat ini lebih banyak di komponen non-core artifact (contoh: `SidebarProgress` dan sebagian shell global yang masih campuran semantic/hardcoded).
 
 ## 8) Catatan Cleanup Dokumen Lama
 Dokumen versi ini sengaja menghapus:
@@ -176,4 +173,3 @@ Dokumen versi ini sengaja menghapus:
 - daftar screenshot historis,
 - compliance score numerik subjektif tanpa tooling/objective rubric,
 - klaim “fully compliant” yang tidak konsisten dengan kode aktual.
-
