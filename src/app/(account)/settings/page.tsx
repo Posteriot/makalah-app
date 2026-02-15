@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react"
 import { useSession } from "@/lib/auth-client"
 import { useSearchParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import Image from "next/image"
 import {
   BadgeCheck,
@@ -71,22 +72,32 @@ function SettingsContent() {
         />
 
         <div className="relative z-10 flex flex-col flex-grow">
-          {/* Logo - Top */}
-          <div className="flex flex-col">
-            <Image
-              src="/logo/makalah_logo_dark.svg"
-              alt="Makalah"
-              width={28}
-              height={28}
-              className="block h-7 w-7 dark:hidden"
-            />
-            <Image
-              src="/logo/makalah_logo_light.svg"
-              alt="Makalah"
-              width={28}
-              height={28}
-              className="hidden h-7 w-7 dark:block"
-            />
+          {/* Top Row: Home Logo + Back Button */}
+          <div className="flex items-center justify-between w-full">
+            <Link href="/" className="inline-flex items-center focus-ring rounded-action">
+              <Image
+                src="/logo/makalah_logo_dark.svg"
+                alt="Makalah"
+                width={28}
+                height={28}
+                className="block h-7 w-7 dark:hidden"
+              />
+              <Image
+                src="/logo/makalah_logo_light.svg"
+                alt="Makalah"
+                width={28}
+                height={28}
+                className="hidden h-7 w-7 dark:block"
+              />
+            </Link>
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="inline-flex items-center gap-2 text-sm font-normal text-slate-800 dark:text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-100 hover:underline focus-ring w-fit"
+            >
+              <NavArrowLeft className="h-4 w-4" />
+              <span>Kembali</span>
+            </button>
           </div>
 
           {/* Heading + Subtitle */}
@@ -134,17 +145,6 @@ function SettingsContent() {
             </button>
           </nav>
 
-          {/* Back Button - Footer */}
-          <div className="mt-auto pt-6">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-2 text-sm font-normal text-slate-800 dark:text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-100 hover:underline focus-ring w-fit"
-            >
-              <NavArrowLeft className="h-4 w-4" />
-              <span>Kembali</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -161,7 +161,7 @@ function SettingsContent() {
 
         {/* Mobile Header */}
         <div className="md:hidden relative z-10 mb-3 flex items-center justify-between px-3 py-2">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-2 focus-ring rounded-action">
             <Image
               src="/logo/makalah_logo_dark.svg"
               alt="Makalah"
@@ -176,7 +176,7 @@ function SettingsContent() {
               height={24}
               className="hidden h-6 w-6 dark:block"
             />
-          </div>
+          </Link>
           <button
             type="button"
             onClick={() => router.back()}

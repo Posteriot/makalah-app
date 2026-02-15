@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { toast } from "sonner"
-import { Eye, EyeClosed, WarningCircle, CheckCircle, Mail, RefreshDouble } from "iconoir-react"
+import { Eye, EyeClosed, WarningCircle, CheckCircle, Mail, RefreshDouble, NavArrowLeft } from "iconoir-react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { signIn, signUp } from "@/lib/auth-client"
@@ -13,10 +13,10 @@ import { AuthWideCard } from "@/components/auth/AuthWideCard"
 import { getRedirectUrl } from "@/lib/utils/redirectAfterAuth"
 
 // Custom left content for invited users
-function InvitedUserLeftContent({ email }: { email: string }) {
+function InvitedUserLeftContent({ email, onBackClick }: { email: string; onBackClick: () => void }) {
   return (
     <div className="flex flex-col justify-between h-full">
-      <div className="flex flex-col">
+      <div className="flex items-center justify-between w-full">
         <Link href="/" className="inline-flex items-center gap-2 group w-fit">
           {/* Logo Icon */}
           <Image
@@ -43,6 +43,14 @@ function InvitedUserLeftContent({ email }: { email: string }) {
             className="block dark:hidden transition-transform group-hover:scale-105"
           />
         </Link>
+        <button
+          type="button"
+          onClick={onBackClick}
+          className="inline-flex items-center gap-2 text-sm font-normal text-slate-300 transition-colors hover:text-slate-100 hover:underline focus-ring w-fit"
+        >
+          <NavArrowLeft className="h-4 w-4" />
+          <span>Kembali</span>
+        </button>
       </div>
 
       <div className="space-y-4 mt-auto">
@@ -95,6 +103,7 @@ type SignUpMode = "sign-up" | "verify-email"
 
 export default function SignUpPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const inviteToken = searchParams.get("invite")
   const callbackURL = getRedirectUrl(searchParams, "/get-started")
 
@@ -378,14 +387,19 @@ export default function SignUpPage() {
     }
 
     // Valid token - show special welcome with email hint
-    return (
-      <AuthWideCard
-        title="Selamat datang!"
-        subtitle="Kamu diundang untuk bergabung"
-        customLeftContent={<InvitedUserLeftContent email={tokenValidation.email!} />}
-      >
-        {mode === "verify-email" ? renderVerifyEmail() : renderSignUpForm()}
-      </AuthWideCard>
+      return (
+        <AuthWideCard
+          title="Selamat datang!"
+          subtitle="Kamu diundang untuk bergabung"
+          customLeftContent={
+            <InvitedUserLeftContent
+              email={tokenValidation.email!}
+              onBackClick={() => router.back()}
+            />
+          }
+        >
+          {mode === "verify-email" ? renderVerifyEmail() : renderSignUpForm()}
+        </AuthWideCard>
     )
   }
 
@@ -394,6 +408,8 @@ export default function SignUpPage() {
     <AuthWideCard
       title="Ayo bergabung!"
       subtitle="Kolaborasi dengan AI, menyusun paper bermutu & akuntable"
+      showBackButton
+      onBackClick={() => router.back()}
     >
       {mode === "verify-email" ? renderVerifyEmail() : renderSignUpForm()}
     </AuthWideCard>

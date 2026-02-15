@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Eye, EyeClosed, Mail, Lock, RefreshDouble } from "iconoir-react"
@@ -58,6 +58,7 @@ function getOAuthErrorMessage(errorCode: string | null) {
 
 export default function SignInPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const resetToken = searchParams.get("token")
   const oauthErrorCode = searchParams.get("error")
   const redirectParam =
@@ -425,7 +426,12 @@ export default function SignInPage() {
   const { title, subtitle } = titles[mode]
 
   return (
-    <AuthWideCard title={title} subtitle={subtitle}>
+    <AuthWideCard
+      title={title}
+      subtitle={subtitle}
+      showBackButton
+      onBackClick={() => router.back()}
+    >
       {/* --- Sign In Mode (default) --- */}
       {mode === "sign-in" && (
         <div className="w-full space-y-5">

@@ -3,12 +3,15 @@
 import React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { NavArrowLeft } from "iconoir-react"
 
 interface AuthWideCardProps {
     children: React.ReactNode
     title?: string
     subtitle?: string
     customLeftContent?: React.ReactNode
+    showBackButton?: boolean
+    onBackClick?: () => void
 }
 
 export function AuthWideCard({
@@ -16,6 +19,8 @@ export function AuthWideCard({
     title,
     subtitle,
     customLeftContent,
+    showBackButton = false,
+    onBackClick,
 }: AuthWideCardProps) {
     const resolvedTitle = title || "Silakan masuk!"
 
@@ -50,7 +55,7 @@ export function AuthWideCard({
                     /* Inner wrapper - height and alignment sync with auth form */
                     <div className="relative z-10 w-full flex flex-col justify-between flex-grow">
                         {/* Logo + Brand - Top, aligns with top edge of auth form */}
-                        <div className="flex flex-col">
+                        <div className="flex items-center justify-between w-full">
                             <Link href="/" className="inline-flex items-center gap-2 group w-fit">
                                 {/* Logo Icon */}
                                 <Image
@@ -61,6 +66,22 @@ export function AuthWideCard({
                                     className="transition-transform group-hover:scale-105 brightness-[.88] sepia-[.06] hue-rotate-[185deg] saturate-[3]"
                                 />
                             </Link>
+                            {showBackButton ? (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (onBackClick) {
+                                            onBackClick()
+                                            return
+                                        }
+                                        window.history.back()
+                                    }}
+                                    className="inline-flex items-center gap-2 text-sm font-normal text-slate-300 transition-colors hover:text-slate-100 hover:underline focus-ring w-fit"
+                                >
+                                    <NavArrowLeft className="h-4 w-4" />
+                                    <span>Kembali</span>
+                                </button>
+                            ) : null}
                         </div>
 
                         {/* Heading + Subheading - Bottom, aligns with bottom edge of auth form */}
