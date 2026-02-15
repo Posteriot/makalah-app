@@ -8,6 +8,7 @@ import {
   Dashboard,
   Clock,
   ArrowUpCircle,
+  CreditCard,
   NavArrowRight,
   SidebarExpand,
   SidebarCollapse,
@@ -15,30 +16,55 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
 import { cn } from "@/lib/utils"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { getEffectiveTier, type EffectiveTier } from "@/lib/utils/subscription"
 
-const SIDEBAR_ITEMS = [
-  {
-    href: "/subscription/overview",
-    label: "Overview",
-    icon: Dashboard,
-  },
-  {
-    href: "/subscription/history",
-    label: "Riwayat",
-    icon: Clock,
-  },
-  {
-    href: "/subscription/upgrade",
-    label: "Upgrade",
-    icon: ArrowUpCircle,
-  },
-]
+function getSidebarItems(tier: EffectiveTier): Array<{ href: string; label: string; icon: typeof Dashboard }> {
+  const items: Array<{ href: string; label: string; icon: typeof Dashboard }> = [
+    {
+      href: "/subscription/overview",
+      label: "Overview",
+      icon: Dashboard,
+    },
+  ]
+
+  // Riwayat: BPP, Pro, Unlimited (NOT Gratis — they have no payments)
+  if (tier === "bpp" || tier === "pro" || tier === "unlimited") {
+    items.push({
+      href: "/subscription/history",
+      label: tier === "unlimited" ? "Riwayat" : "Riwayat Pembayaran",
+      icon: Clock,
+    })
+  }
+
+  // Upgrade: Gratis only
+  if (tier === "gratis") {
+    items.push({
+      href: "/subscription/upgrade",
+      label: "Upgrade",
+      icon: ArrowUpCircle,
+    })
+  }
+
+  // Top Up: BPP and Pro
+  if (tier === "bpp" || tier === "pro") {
+    items.push({
+      href: "/subscription/topup",
+      label: "Top Up",
+      icon: CreditCard,
+    })
+  }
+
+  return items
+}
 
 function SidebarNav({
   pathname,
+  tier,
   onSelect,
 }: {
   pathname: string
+  tier: EffectiveTier
   onSelect?: () => void
 }) {
   return (
@@ -48,7 +74,7 @@ function SidebarNav({
           SUBSCRIPTION
         </h3>
         <ul className="mt-3 space-y-1">
-          {SIDEBAR_ITEMS.map((item) => {
+          {getSidebarItems(tier).map((item) => {
             const Icon = item.icon
             const isActive = (() => {
               if (item.href === "/subscription/upgrade") {
@@ -99,6 +125,8 @@ export default function SubscriptionLayout({
 }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { user } = useCurrentUser()
+  const tier = getEffectiveTier(user?.role, user?.subscriptionStatus)
 
   return (
     <div className="subscription-container relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[color:var(--section-bg-alt)]">
@@ -123,7 +151,7 @@ export default function SubscriptionLayout({
         <div className="grid grid-cols-1 gap-comfort pb-2 md:grid-cols-16">
           <aside className="hidden md:col-span-4 md:block">
             <div className="mt-4 rounded-shell border-hairline bg-card/90 p-comfort backdrop-blur-[1px] dark:bg-slate-900">
-              <SidebarNav pathname={pathname} />
+              <SidebarNav pathname={pathname} tier={tier} />
             </div>
           </aside>
 
@@ -143,7 +171,7 @@ export default function SubscriptionLayout({
             </SheetTitle>
           </SheetHeader>
           <div className="overflow-y-auto px-5 py-5">
-            <SidebarNav pathname={pathname} onSelect={() => setSidebarOpen(false)} />
+            <SidebarNav pathname={pathname} tier={tier} onSelect={() => setSidebarOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>

@@ -251,6 +251,24 @@ export const getPendingPayments = query({
 })
 
 /**
+ * Get a single payment by ID
+ * Used for receipt generation
+ */
+export const getPaymentById = query({
+  args: {
+    paymentId: v.id("payments"),
+  },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.paymentId)
+    if (!payment) return null
+
+    // Auth check: verify requester owns this payment
+    await requireAuthUserId(ctx, payment.userId)
+    return payment
+  },
+})
+
+/**
  * Check for duplicate payment (idempotency)
  */
 export const checkIdempotency = query({
