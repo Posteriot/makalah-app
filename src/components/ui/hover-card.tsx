@@ -129,15 +129,47 @@ type HoverCardContentProps = React.ComponentProps<"div">
 
 function HoverCardContent({ className, ...props }: HoverCardContentProps) {
   const { open, scheduleClose, scheduleOpen, triggerRef } = useHoverCardContext()
-  const [position, setPosition] = React.useState<{ top: number; left: number } | null>(null)
+  const contentRef = React.useRef<HTMLDivElement | null>(null)
+  const [position, setPosition] = React.useState<{
+    top: number
+    left: number
+    maxHeight: number
+  } | null>(null)
 
   const updatePosition = React.useCallback(() => {
     const trigger = triggerRef.current
-    if (!trigger) return
+    const content = contentRef.current
+    if (!trigger || !content) return
+
+    const VIEWPORT_PADDING = 12
+    const OFFSET = 8
     const rect = trigger.getBoundingClientRect()
+    const contentRect = content.getBoundingClientRect()
+    const contentWidth = contentRect.width
+    const contentHeight = contentRect.height
+
+    const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_PADDING
+    const spaceAbove = rect.top - VIEWPORT_PADDING
+    const canFitBelow = contentHeight <= spaceBelow
+    const canFitAbove = contentHeight <= spaceAbove
+    const placeAbove = !canFitBelow && (canFitAbove || spaceAbove > spaceBelow)
+
+    const unclampedTop = placeAbove
+      ? rect.top - contentHeight - OFFSET
+      : rect.bottom + OFFSET
+    const maxTop = Math.max(VIEWPORT_PADDING, window.innerHeight - contentHeight - VIEWPORT_PADDING)
+    const top = Math.min(Math.max(unclampedTop, VIEWPORT_PADDING), maxTop)
+
+    const unclampedLeft = rect.left
+    const maxLeft = Math.max(VIEWPORT_PADDING, window.innerWidth - contentWidth - VIEWPORT_PADDING)
+    const left = Math.min(Math.max(unclampedLeft, VIEWPORT_PADDING), maxLeft)
+
+    const maxHeight = Math.max(160, window.innerHeight - VIEWPORT_PADDING * 2)
+
     setPosition({
-      top: rect.bottom + window.scrollY + 8,
-      left: rect.left + window.scrollX,
+      top,
+      left,
+      maxHeight,
     })
   }, [triggerRef])
 
@@ -164,13 +196,16 @@ function HoverCardContent({ className, ...props }: HoverCardContentProps) {
 
   const content = (
     <div
+      ref={contentRef}
       className={cn(
-        "absolute z-50 w-max rounded-lg border bg-background text-foreground shadow-lg",
+        "fixed z-50 w-max rounded-lg border bg-background text-foreground shadow-lg",
         className
       )}
       style={{
         left: position?.left ?? 0,
         top: position?.top ?? 0,
+        maxHeight: position?.maxHeight ?? undefined,
+        overflowY: "auto",
         visibility: position ? "visible" : "hidden",
       }}
       onMouseEnter={scheduleOpen}
