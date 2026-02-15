@@ -3,7 +3,7 @@ import { components } from "./_generated/api";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
-import { magicLink } from "better-auth/plugins";
+import { magicLink, twoFactor } from "better-auth/plugins";
 import { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
 import {
@@ -95,6 +95,14 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
           await sendMagicLinkEmail(email, url);
         },
         expiresIn: 300, // 5 minutes
+      }),
+      twoFactor({
+        otpOptions: {
+          sendOTP: async ({ user, otp }) => {
+            console.log(`[2FA SMOKE TEST] OTP for ${user.email}: ${otp}`);
+            // Temporary: log only for smoke test. Will be replaced by real email in Task 1.
+          },
+        },
       }),
     ],
   }) satisfies BetterAuthOptions;
