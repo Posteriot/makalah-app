@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
-import { Eye, EyeClosed, Shield } from "iconoir-react"
+import { Eye, EyeClosed, Shield, SendMail } from "iconoir-react"
 
 interface SecurityTabProps {
   session: { user: { id: string; name: string | null; email: string; image?: string | null; emailVerified: boolean; createdAt: Date; updatedAt: Date }; session: { id: string; userId: string; expiresAt: Date; token: string } } | null
@@ -23,6 +23,8 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [signOutOthers, setSignOutOthers] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSendingResetLink, setIsSendingResetLink] = useState(false)
+  const [resetLinkSent, setResetLinkSent] = useState(false)
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -58,6 +60,28 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
     return () => { cancelled = true }
   }, [session])
 
+  const handleSendResetLink = async () => {
+    if (!session?.user?.email) return
+
+    setIsSendingResetLink(true)
+    try {
+      const { error: apiError } = await authClient.requestPasswordReset({
+        email: session.user.email,
+        redirectTo: `${window.location.origin}/sign-in`,
+      })
+      if (apiError) {
+        toast.error(apiError.message ?? "Gagal mengirim link.")
+        return
+      }
+      setResetLinkSent(true)
+      toast.success("Link buat password sudah dikirim ke email Anda.")
+    } catch {
+      toast.error("Gagal mengirim link. Silakan coba lagi.")
+    } finally {
+      setIsSendingResetLink(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!session) return
 
@@ -71,7 +95,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
       return
     }
 
-    if (hasPassword && !currentPassword) {
+    if (!currentPassword) {
       toast.error("Password saat ini wajib diisi.")
       return
     }
@@ -79,35 +103,22 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
     setIsSaving(true)
     try {
       await authClient.changePassword({
-        currentPassword: currentPassword || "",
+        currentPassword,
         newPassword,
         revokeOtherSessions: signOutOthers,
       })
 
       if (signOutOthers) {
-        // revokeOtherSessions deletes ALL sessions (including current) and
-        // creates a new one. The Convex JWT becomes stale during the
-        // re-authentication window, causing "Unauthorized" on active queries.
-        // Redirect to sign-in for a clean auth state.
-        toast.success(
-          hasPassword
-            ? "Password berhasil diperbarui. Silakan masuk kembali."
-            : "Password berhasil dibuat. Silakan masuk kembali."
-        )
+        toast.success("Password berhasil diatur. Silakan masuk kembali.")
         window.location.href = "/sign-in"
         return
       }
 
-      toast.success(
-        hasPassword
-          ? "Password berhasil diperbarui."
-          : "Password berhasil dibuat."
-      )
+      toast.success("Password berhasil diatur.")
       setIsEditing(false)
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
-      setHasPassword(true)
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -136,19 +147,53 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
       <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
         <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">Password</div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800">
-        {!isEditing ? (
+        {!hasPassword ? (
+          /* OAuth-only user: no credential account yet — send reset link to create password */
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3 max-sm:grid-cols-1 max-sm:items-start">
+              <span className="text-interface text-xs text-muted-foreground">Password</span>
+              <div className="min-w-0 text-interface text-sm text-foreground">
+                {isLoadingAccounts ? (
+                  <span className="text-interface text-xs text-muted-foreground">Memuat...</span>
+                ) : (
+                  <span className="text-interface text-xs text-muted-foreground">
+                    Belum diatur
+                  </span>
+                )}
+              </div>
+              <button
+                className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-2 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSendResetLink}
+                type="button"
+                disabled={isSendingResetLink || resetLinkSent}
+              >
+                <span
+                  className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                  aria-hidden="true"
+                />
+                <span className="relative z-10 flex items-center gap-1.5">
+                  <SendMail className="h-3.5 w-3.5" />
+                  {isSendingResetLink ? "Mengirim..." : resetLinkSent ? "Link Terkirim" : "Kirim Link Buat Password"}
+                </span>
+              </button>
+            </div>
+            {resetLinkSent && (
+              <p className="text-narrative text-xs text-success">
+                Link sudah dikirim ke {session?.user?.email}. Cek inbox atau folder spam.
+              </p>
+            )}
+            {!resetLinkSent && (
+              <p className="text-narrative text-xs text-muted-foreground">
+                Kami akan mengirim link ke email Anda untuk membuat password.
+              </p>
+            )}
+          </div>
+        ) : !isEditing ? (
+          /* Has password: show dots + edit button */
           <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3 max-sm:grid-cols-1 max-sm:items-start">
             <span className="text-interface text-xs text-muted-foreground">Password</span>
             <div className="min-w-0 text-interface text-sm text-foreground">
-              {isLoadingAccounts ? (
-                <span className="text-interface text-xs text-muted-foreground">Memuat...</span>
-              ) : hasPassword ? (
-                <span className="tracking-[0.2em] text-muted-foreground">••••••••</span>
-              ) : (
-                <span className="text-interface text-xs text-muted-foreground">
-                  Belum diatur
-                </span>
-              )}
+              <span className="tracking-[0.2em] text-muted-foreground">••••••••</span>
             </div>
             <button
               className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-2 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring"
@@ -159,50 +204,47 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
                 className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
                 aria-hidden="true"
               />
-              <span className="relative z-10">
-                {hasPassword ? "Ubah Password" : "Buat Password"}
-              </span>
+              <span className="relative z-10">Ubah Password</span>
             </button>
           </div>
         ) : (
+          /* Editing: change password form */
           <div className="w-full">
             <div className="mb-4 text-interface text-sm font-semibold">
-              {hasPassword ? "Ubah password" : "Buat password"}
+              Ubah password
             </div>
             <div className="flex flex-col gap-5">
-              {hasPassword && (
-                <div className="flex w-full flex-1 flex-col gap-1.5">
-                  <label className="sr-only" htmlFor="current-password">
-                    Password saat ini
-                  </label>
-                  <div className="relative flex items-center">
-                    <input
-                      id="current-password"
-                      type={showCurrentPassword ? "text" : "password"}
-                      placeholder="Password saat ini"
-                      className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
-                      value={currentPassword}
-                      onChange={(event) =>
-                        setCurrentPassword(event.target.value)
-                      }
-                    />
-                    <button
-                      className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
-                      type="button"
-                      onClick={() =>
-                        setShowCurrentPassword((prev) => !prev)
-                      }
-                      aria-label="Tampilkan password"
-                    >
-                      {showCurrentPassword ? (
-                        <EyeClosed className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
+              <div className="flex w-full flex-1 flex-col gap-1.5">
+                <label className="sr-only" htmlFor="current-password">
+                  Password saat ini
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    id="current-password"
+                    type={showCurrentPassword ? "text" : "password"}
+                    placeholder="Password saat ini"
+                    className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                    value={currentPassword}
+                    onChange={(event) =>
+                      setCurrentPassword(event.target.value)
+                    }
+                  />
+                  <button
+                    className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
+                    type="button"
+                    onClick={() =>
+                      setShowCurrentPassword((prev) => !prev)
+                    }
+                    aria-label="Tampilkan password"
+                  >
+                    {showCurrentPassword ? (
+                      <EyeClosed className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
-              )}
+              </div>
               <div className="flex w-full flex-1 flex-col gap-1.5">
                 <label className="sr-only" htmlFor="new-password">
                   Password baru

@@ -418,8 +418,8 @@ export default function SignInPage() {
       subtitle: "Link reset password sudah dikirim. Jika belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.",
     },
     "reset-success": {
-      title: "Password Direset",
-      subtitle: "Password kamu berhasil diubah",
+      title: "Password Berhasil Diatur",
+      subtitle: "Kamu sekarang bisa masuk dengan password baru.",
     },
   }
 
@@ -811,7 +811,7 @@ export default function SignInPage() {
       {mode === "reset-success" && (
         <div className="text-center space-y-4 w-full">
           <Lock className="h-12 w-12 text-success mx-auto" />
-          <h3 className="text-narrative text-lg font-medium">Password Berhasil Direset</h3>
+          <h3 className="text-narrative text-lg font-medium">Password Berhasil Diatur</h3>
           <p className="text-sm text-muted-foreground">
             Kamu sekarang bisa masuk dengan password baru.
           </p>
