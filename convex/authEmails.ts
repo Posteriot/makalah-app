@@ -51,6 +51,23 @@ export async function sendPasswordResetEmail(email: string, url: string): Promis
   );
 }
 
+export async function sendTwoFactorOtpEmail(email: string, otp: string): Promise<void> {
+  await sendViaResend(
+    email,
+    "Kode Verifikasi 2FA — Makalah AI",
+    `<div style="font-family: 'Geist Mono', 'SF Mono', 'Fira Code', monospace; max-width: 480px; margin: 0 auto; padding: 32px 24px; background: #0f172a; color: #e2e8f0; border-radius: 8px;">
+      <div style="border-bottom: 1px solid #334155; padding-bottom: 16px; margin-bottom: 24px;">
+        <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8;">Makalah AI — Verifikasi 2FA</span>
+      </div>
+      <p style="font-size: 13px; color: #cbd5e1; margin: 0 0 24px 0;">Masukkan kode berikut untuk menyelesaikan login:</p>
+      <div style="background: #1e293b; border: 1px dashed #475569; border-radius: 6px; padding: 20px; text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 32px; font-weight: 700; letter-spacing: 0.3em; color: #f8fafc;">${otp}</span>
+      </div>
+      <p style="font-size: 11px; color: #64748b; margin: 0;">Kode berlaku selama 5 menit. Jangan bagikan kode ini ke siapapun.</p>
+    </div>`
+  );
+}
+
 export async function sendSignupSuccessEmail(email: string): Promise<void> {
   const appUrl = process.env.SITE_URL ?? process.env.APP_URL ?? DEFAULT_APP_URL;
 

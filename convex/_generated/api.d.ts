@@ -37,6 +37,7 @@ import type * as migrations_assignRolesAndTiers from "../migrations/assignRolesA
 import type * as migrations_backfillCreditBalances from "../migrations/backfillCreditBalances.js";
 import type * as migrations_backfillProviderKeys from "../migrations/backfillProviderKeys.js";
 import type * as migrations_backfillWorkingTitle from "../migrations/backfillWorkingTitle.js";
+import type * as migrations_enableTwoFactorAllUsers from "../migrations/enableTwoFactorAllUsers.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
 import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/fixAgentPersonaAndCapabilities.js";
 import type * as migrations_removeClerkFields from "../migrations/removeClerkFields.js";
@@ -60,6 +61,9 @@ import type * as pricingPlans from "../pricingPlans.js";
 import type * as styleConstitutions from "../styleConstitutions.js";
 import type * as systemAlerts from "../systemAlerts.js";
 import type * as systemPrompts from "../systemPrompts.js";
+import type * as twoFactorBypass from "../twoFactorBypass.js";
+import type * as twoFactorHttp from "../twoFactorHttp.js";
+import type * as twoFactorOtp from "../twoFactorOtp.js";
 import type * as users from "../users.js";
 import type * as waitlist from "../waitlist.js";
 
@@ -99,6 +103,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillCreditBalances": typeof migrations_backfillCreditBalances;
   "migrations/backfillProviderKeys": typeof migrations_backfillProviderKeys;
   "migrations/backfillWorkingTitle": typeof migrations_backfillWorkingTitle;
+  "migrations/enableTwoFactorAllUsers": typeof migrations_enableTwoFactorAllUsers;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
   "migrations/fixAgentPersonaAndCapabilities": typeof migrations_fixAgentPersonaAndCapabilities;
   "migrations/removeClerkFields": typeof migrations_removeClerkFields;
@@ -122,6 +127,9 @@ declare const fullApi: ApiFromModules<{
   styleConstitutions: typeof styleConstitutions;
   systemAlerts: typeof systemAlerts;
   systemPrompts: typeof systemPrompts;
+  twoFactorBypass: typeof twoFactorBypass;
+  twoFactorHttp: typeof twoFactorHttp;
+  twoFactorOtp: typeof twoFactorOtp;
   users: typeof users;
   waitlist: typeof waitlist;
 }>;

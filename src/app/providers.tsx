@@ -30,6 +30,12 @@ function SessionCookieSync() {
     if (isPending) return
 
     if (session) {
+      // Don't set ba_session while 2FA verification is pending —
+      // prevents access to protected routes before OTP is verified
+      if (sessionStorage.getItem("pending_2fa")) {
+        return
+      }
+
       // Read stored cookies from crossDomainClient's localStorage
       // Key: `${storagePrefix}_cookie` → default "better-auth_cookie"
       const stored = localStorage.getItem("better-auth_cookie")

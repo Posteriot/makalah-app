@@ -6,6 +6,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { Eye, EyeClosed, Mail, Lock, RefreshDouble } from "iconoir-react"
 import { signIn, authClient } from "@/lib/auth-client"
+import { setPending2FA } from "@/lib/auth-2fa"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
 import { TurnstileWidget } from "@/components/auth/TurnstileWidget"
 import { getRedirectUrl } from "@/lib/utils/redirectAfterAuth"
@@ -203,6 +204,14 @@ export default function SignInPage() {
         // Cross-domain plugin adds `redirect`, `url`, `token` at runtime
         // but these aren't in signIn.email() type definitions.
         const data = result.data as Record<string, unknown>
+
+        // 2FA redirect: twoFactor plugin returned twoFactorRedirect
+        if (data.twoFactorRedirect) {
+          setPending2FA({ email: email.trim(), password })
+          router.push("/verify-2fa")
+          return
+        }
+
         if (data.redirect && data.token) {
           // OTT: server returns one-time token instead of setting cookies.
           // Navigate to target URL with ?ott= so ConvexBetterAuthProvider

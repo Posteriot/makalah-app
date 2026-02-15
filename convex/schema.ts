@@ -829,6 +829,20 @@ export default defineSchema({
   // ════════════════════════════════════════════════════════════════
   // Waiting List - Pre-registration for early access
   // ════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
+  // Two-Factor Authentication OTPs (custom cross-domain workaround)
+  // ════════════════════════════════════════════════════════════════
+  twoFactorOtps: defineTable({
+    email: v.string(),
+    otpHash: v.string(), // SHA-256 hash of 6-digit OTP
+    expiresAt: v.number(), // Date.now() + 5 minutes
+    attempts: v.number(), // Failed verifications (max 5)
+    used: v.boolean(), // Prevent replay
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email", "createdAt"])
+    .index("by_expiry", ["expiresAt"]),
+
   waitlistEntries: defineTable({
     email: v.string(),
     status: v.union(

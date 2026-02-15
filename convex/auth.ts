@@ -11,7 +11,9 @@ import {
   sendMagicLinkEmail,
   sendPasswordResetEmail,
   sendSignupSuccessEmail,
+  sendTwoFactorOtpEmail,
 } from "./authEmails";
+import { twoFactorCrossDomainBypass } from "./twoFactorBypass";
 
 // SITE_URL = primary frontend origin (production) — for crossDomain redirects
 // CONVEX_SITE_URL = Convex HTTP actions URL (built-in) — where BetterAuth API runs
@@ -97,13 +99,16 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
         expiresIn: 300, // 5 minutes
       }),
       twoFactor({
+        skipVerificationOnEnable: true,
         otpOptions: {
           sendOTP: async ({ user, otp }) => {
-            console.log(`[2FA SMOKE TEST] OTP for ${user.email}: ${otp}`);
-            // Temporary: log only for smoke test. Will be replaced by real email in Task 1.
+            // BetterAuth's built-in OTP sender — used for enable/disable flows.
+            // Cross-domain sign-in flow uses custom endpoints instead.
+            await sendTwoFactorOtpEmail(user.email, otp);
           },
         },
       }),
+      twoFactorCrossDomainBypass(),
     ],
   }) satisfies BetterAuthOptions;
 

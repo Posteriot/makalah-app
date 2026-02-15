@@ -5,6 +5,8 @@ const PUBLIC_ROUTES = [
   "/",
   "/sign-in",
   "/sign-up",
+  "/verify-2fa",
+  "/test-2fa",       // TEMPORARY — remove after 2FA smoke test
   "/api",
   "/about",
   "/pricing",

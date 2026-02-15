@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
-import { Eye, EyeClosed, Shield, SendMail } from "iconoir-react"
+import { Eye, EyeClosed, Shield, SendMail, Lock } from "iconoir-react"
 
 interface SecurityTabProps {
   session: { user: { id: string; name: string | null; email: string; image?: string | null; emailVerified: boolean; createdAt: Date; updatedAt: Date }; session: { id: string; userId: string; expiresAt: Date; token: string } } | null
@@ -32,6 +32,14 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true)
 
+  // 2FA state
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false)
+  const [is2FALoading, setIs2FALoading] = useState(false)
+  const [show2FAPasswordInput, setShow2FAPasswordInput] = useState(false)
+  const [twoFAPassword, setTwoFAPassword] = useState("")
+  const [show2FAPassword, setShow2FAPassword] = useState(false)
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null)
+
   // Fetch linked accounts to determine hasPassword and connected accounts
   useEffect(() => {
     if (!session) {
@@ -58,6 +66,13 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
 
     fetchAccounts()
     return () => { cancelled = true }
+  }, [session])
+
+  // Check 2FA status from session
+  useEffect(() => {
+    if (!session?.user) return
+    const user = session.user as Record<string, unknown>
+    setIs2FAEnabled(user.twoFactorEnabled === true)
   }, [session])
 
   const handleSendResetLink = async () => {
@@ -126,6 +141,61 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
       toast.error(message)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleEnable2FA = async () => {
+    if (!twoFAPassword) {
+      toast.error("Password wajib diisi untuk mengaktifkan 2FA.")
+      return
+    }
+    setIs2FALoading(true)
+    try {
+      const result = await authClient.twoFactor.enable({ password: twoFAPassword })
+      if (result.error) {
+        toast.error(result.error.message ?? "Gagal mengaktifkan 2FA.")
+        return
+      }
+      setIs2FAEnabled(true)
+      setShow2FAPasswordInput(false)
+      setTwoFAPassword("")
+
+      // Check if backup codes were returned
+      const data = result.data as Record<string, unknown> | undefined
+      if (data?.backupCodes && Array.isArray(data.backupCodes)) {
+        setBackupCodes(data.backupCodes as string[])
+        toast.success("2FA berhasil diaktifkan! Simpan backup codes di bawah.")
+      } else {
+        toast.success("Verifikasi 2 Langkah berhasil diaktifkan.")
+      }
+    } catch {
+      toast.error("Gagal mengaktifkan 2FA. Cek password dan coba lagi.")
+    } finally {
+      setIs2FALoading(false)
+    }
+  }
+
+  const handleDisable2FA = async () => {
+    if (!twoFAPassword) {
+      toast.error("Password wajib diisi untuk menonaktifkan 2FA.")
+      return
+    }
+    setIs2FALoading(true)
+    try {
+      const result = await authClient.twoFactor.disable({ password: twoFAPassword })
+      if (result.error) {
+        toast.error(result.error.message ?? "Gagal menonaktifkan 2FA.")
+        return
+      }
+      setIs2FAEnabled(false)
+      setShow2FAPasswordInput(false)
+      setTwoFAPassword("")
+      setBackupCodes(null)
+      toast.success("Verifikasi 2 Langkah berhasil dinonaktifkan.")
+    } catch {
+      toast.error("Gagal menonaktifkan 2FA. Cek password dan coba lagi.")
+    } finally {
+      setIs2FALoading(false)
     }
   }
 
@@ -355,6 +425,156 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
         )}
         </div>
       </div>
+
+      {/* 2FA Section — only show for users with password */}
+      {hasPassword && (
+        <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
+          <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">
+            Verifikasi 2 Langkah
+          </div>
+          <div className="p-4 bg-slate-50 dark:bg-slate-800">
+            {/* Status row */}
+            <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3 max-sm:grid-cols-1 max-sm:items-start">
+              <span className="text-interface text-xs text-muted-foreground">Status</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                {is2FAEnabled ? (
+                  <span className="inline-flex items-center gap-1 rounded-badge bg-success/10 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-success">
+                    Aktif
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-badge bg-slate-500/10 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+                    Nonaktif
+                  </span>
+                )}
+              </div>
+              {!show2FAPasswordInput && (
+                <button
+                  className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-2 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  onClick={() => setShow2FAPasswordInput(true)}
+                  disabled={is2FALoading}
+                >
+                  <span
+                    className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                    aria-hidden="true"
+                  />
+                  <span className="relative z-10">
+                    {is2FAEnabled ? "Nonaktifkan" : "Aktifkan"}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Description */}
+            <p className="mt-2 text-narrative text-xs text-muted-foreground">
+              {is2FAEnabled
+                ? "Setiap kali masuk dengan email dan password, kode verifikasi akan dikirim ke email kamu. Fitur ini aktif secara default untuk keamanan akunmu."
+                : "Verifikasi 2 langkah sedang nonaktif. Kami sangat menyarankan untuk mengaktifkannya kembali demi keamanan akunmu."}
+            </p>
+
+            {/* Password input for enable/disable */}
+            {show2FAPasswordInput && (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-interface text-xs font-medium mb-3">
+                  {is2FAEnabled
+                    ? "Masukkan password untuk menonaktifkan 2FA:"
+                    : "Masukkan password untuk mengaktifkan 2FA:"}
+                </p>
+                <div className="flex gap-3 items-start max-sm:flex-col">
+                  <div className="relative flex items-center flex-1 max-sm:w-full">
+                    <input
+                      type={show2FAPassword ? "text" : "password"}
+                      placeholder="Password"
+                      value={twoFAPassword}
+                      onChange={(e) => setTwoFAPassword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          is2FAEnabled ? handleDisable2FA() : handleEnable2FA()
+                        }
+                      }}
+                      className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                    />
+                    <button
+                      className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
+                      type="button"
+                      onClick={() => setShow2FAPassword((prev) => !prev)}
+                      aria-label="Tampilkan password"
+                    >
+                      {show2FAPassword ? (
+                        <EyeClosed className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-3 py-2 text-narrative text-xs font-medium border border-transparent bg-transparent text-slate-800 hover:border-slate-600 dark:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                      type="button"
+                      onClick={() => {
+                        setShow2FAPasswordInput(false)
+                        setTwoFAPassword("")
+                        setShow2FAPassword(false)
+                      }}
+                      disabled={is2FALoading}
+                    >
+                      <span className="relative z-10">Batal</span>
+                    </button>
+                    <button
+                      className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-3 py-2 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                      type="button"
+                      onClick={is2FAEnabled ? handleDisable2FA : handleEnable2FA}
+                      disabled={is2FALoading || !twoFAPassword}
+                    >
+                      <span
+                        className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                        aria-hidden="true"
+                      />
+                      <span className="relative z-10">
+                        {is2FALoading
+                          ? "Memproses..."
+                          : is2FAEnabled
+                            ? "Nonaktifkan"
+                            : "Aktifkan"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Backup codes display */}
+            {backupCodes && backupCodes.length > 0 && (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-interface text-xs font-medium text-destructive mb-2">
+                  Simpan backup codes ini di tempat yang aman. Kode ini hanya ditampilkan sekali.
+                </p>
+                <div className="grid grid-cols-2 gap-2 rounded-md border border-dashed border-slate-400 dark:border-slate-600 bg-slate-100 dark:bg-slate-900 p-3">
+                  {backupCodes.map((code, i) => (
+                    <span
+                      key={i}
+                      className="font-mono text-xs text-foreground tracking-wider"
+                    >
+                      {code}
+                    </span>
+                  ))}
+                </div>
+                <button
+                  className="mt-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(backupCodes.join("\n"))
+                    toast.success("Backup codes disalin ke clipboard.")
+                  }}
+                >
+                  Salin semua ke clipboard
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Connected Accounts Section */}
       <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
