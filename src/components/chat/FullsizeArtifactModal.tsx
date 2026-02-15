@@ -168,7 +168,7 @@ export function FullsizeArtifactModal({
   const selectedArtifactValue = latestArtifactsInSession.some(
     (sessionArtifact) => sessionArtifact._id === activeArtifactId
   )
-    ? activeArtifactId
+    ? activeArtifactId ?? undefined
     : undefined
 
   useEffect(() => {
