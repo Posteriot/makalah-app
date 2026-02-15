@@ -69,6 +69,23 @@ export default defineSchema({
     .index("by_betterAuthUserId", ["betterAuthUserId"])
     .index("by_role", ["role"])
     .index("by_email", ["email"]),
+
+  authRecoveryAttempts: defineTable({
+    keyHash: v.string(),
+    emailHash: v.string(),
+    ipHash: v.string(),
+    intent: v.union(v.literal("magic-link"), v.literal("forgot-password")),
+    attemptCount: v.number(),
+    windowStartAt: v.number(),
+    blockedUntil: v.optional(v.number()),
+    violationCount: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_key_hash_intent", ["keyHash", "intent"])
+    .index("by_email_window", ["emailHash", "windowStartAt"])
+    .index("by_ip_window", ["ipHash", "windowStartAt"]),
+
   papers: defineTable({
     userId: v.id("users"),
     title: v.string(),
@@ -519,6 +536,7 @@ export default defineSchema({
     creditPackages: v.optional(
       v.array(
         v.object({
+          // NOTE: extension_s/extension_m retained for historical pricing plan records.
           type: v.union(
             v.literal("paper"),
             v.literal("extension_s"),
@@ -672,7 +690,7 @@ export default defineSchema({
 
     // Last purchase reference
     lastPurchaseAt: v.optional(v.number()),
-    lastPurchaseType: v.optional(v.string()), // "paper" | "extension_s" | "extension_m"
+    lastPurchaseType: v.optional(v.string()), // "paper"
     lastPurchaseCredits: v.optional(v.number()),
 
     // Legacy fields (deprecated - keep for migration)
@@ -726,6 +744,8 @@ export default defineSchema({
     ),
 
     // Credit package info (for credit_topup payments)
+    // NOTE: extension_s/extension_m retained for historical payment records only.
+    // New purchases only use "paper". See CREDIT_PACKAGES in billing/constants.ts.
     packageType: v.optional(
       v.union(
         v.literal("paper"),
@@ -733,7 +753,7 @@ export default defineSchema({
         v.literal("extension_m")
       )
     ),
-    credits: v.optional(v.number()), // 300, 50, atau 100
+    credits: v.optional(v.number()), // 300 kredit (paper package)
 
     // For subscription payments
     subscriptionPeriodStart: v.optional(v.number()),

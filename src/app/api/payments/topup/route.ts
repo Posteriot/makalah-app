@@ -21,7 +21,7 @@ import { isValidPackageType, getPackageByType } from "@convex/billing/constants"
 
 // Request body type
 interface TopUpRequest {
-  packageType: "paper" | "extension_s" | "extension_m"
+  packageType: "paper"
   paymentMethod: "qris" | "va" | "ewallet"
   vaChannel?: VAChannel
   ewalletChannel?: EWalletChannel
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     // 4. Validate package type
     if (!isValidPackageType(packageType)) {
       return NextResponse.json(
-        { error: `Paket tidak valid. Pilih: paper, extension_s, atau extension_m` },
+        { error: `Paket tidak valid. Hanya tersedia: paper (300 kredit)` },
         { status: 400 }
       )
     }

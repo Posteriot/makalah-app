@@ -23,7 +23,7 @@ export const PAPER_CREDITS = 300
 export const PAPER_TOKENS = 300_000 // 300 kredit × 1.000 tokens
 export const PAPER_PRICE_IDR = 80_000
 
-// Credit packages
+// Credit packages (satu-satunya paket: 300 kredit paper @ Rp 80.000)
 export const CREDIT_PACKAGES = [
   {
     type: "paper" as const,
@@ -33,24 +33,6 @@ export const CREDIT_PACKAGES = [
     label: "Paket Paper",
     description: "1 paper lengkap (~15 halaman)",
     ratePerCredit: 267, // Rp 80.000 / 300 kredit
-  },
-  {
-    type: "extension_s" as const,
-    credits: 50,
-    tokens: 50_000,
-    priceIDR: 25_000,
-    label: "Extension S",
-    description: "Revisi ringan",
-    ratePerCredit: 500,
-  },
-  {
-    type: "extension_m" as const,
-    credits: 100,
-    tokens: 100_000,
-    priceIDR: 50_000,
-    label: "Extension M",
-    description: "Revisi berat",
-    ratePerCredit: 500,
   },
 ] as const
 

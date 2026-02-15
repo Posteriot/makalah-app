@@ -39,6 +39,8 @@ export const createPayment = mutation({
       v.literal("subscription_renewal")
     ),
     // Credit package info (for credit_topup payments)
+    // NOTE: extension_s/extension_m retained for historical records.
+    // New purchases only use "paper" — enforced by CREDIT_PACKAGES in constants.ts.
     packageType: v.optional(v.union(
       v.literal("paper"),
       v.literal("extension_s"),
