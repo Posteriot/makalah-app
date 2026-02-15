@@ -270,9 +270,17 @@ export const cancelSubscription = mutation({
         updatedAt: now,
       })
 
-      // Downgrade user to free tier
+      // Smart downgrade: BPP if credits remain, else free
+      const creditBalance = await ctx.db
+        .query("creditBalances")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .first()
+
+      const hasCredits = creditBalance && (creditBalance.remainingCredits ?? 0) > 0
+      const newTier = hasCredits ? "bpp" : "free"
+
       await ctx.db.patch(args.userId, {
-        subscriptionStatus: "free",
+        subscriptionStatus: newTier,
         updatedAt: now,
       })
     }
@@ -292,8 +300,17 @@ export const cancelSubscription = mutation({
 export const expireSubscription = mutation({
   args: {
     subscriptionId: v.id("subscriptions"),
+    internalKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Allow both auth'd and internal calls
+    if (args.internalKey) {
+      const expected = process.env.CONVEX_INTERNAL_KEY
+      if (!expected || args.internalKey !== expected) {
+        throw new Error("Unauthorized")
+      }
+    }
+
     const subscription = await ctx.db.get(args.subscriptionId)
     if (!subscription) {
       throw new Error("Subscription not found")
@@ -306,13 +323,28 @@ export const expireSubscription = mutation({
       updatedAt: now,
     })
 
-    // Downgrade user to free tier
+    // Check if user has BPP credit balance for smart downgrade
+    const creditBalance = await ctx.db
+      .query("creditBalances")
+      .withIndex("by_user", (q) => q.eq("userId", subscription.userId))
+      .first()
+
+    const hasCredits = creditBalance && (creditBalance.remainingCredits ?? 0) > 0
+    const newTier = hasCredits ? "bpp" : "free"
+
     await ctx.db.patch(subscription.userId, {
-      subscriptionStatus: "free",
+      subscriptionStatus: newTier,
       updatedAt: now,
     })
 
-    return { expired: true }
+    console.log(`[Subscription] Expired:`, {
+      userId: subscription.userId,
+      subscriptionId: args.subscriptionId,
+      downgradedTo: newTier,
+      remainingCredits: creditBalance?.remainingCredits ?? 0,
+    })
+
+    return { expired: true, downgradedTo: newTier }
   },
 })
 
