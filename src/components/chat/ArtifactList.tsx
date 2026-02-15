@@ -87,7 +87,7 @@ export function ArtifactList({
       <div className="border-b border-border/50 px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground">
-            Artifact List
+            Daftar Artifak
           </p>
           <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
             {items.length}
@@ -102,7 +102,7 @@ export function ArtifactList({
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
             <Page className="mb-2 h-8 w-8 opacity-50" />
-            <span className="text-xs font-mono uppercase">Belum ada artifact</span>
+            <span className="text-xs font-mono uppercase">Belum ada artifak</span>
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -122,7 +122,7 @@ export function ArtifactList({
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1",
                     isSelected && "border-primary/40 bg-primary/10"
                   )}
-                  aria-label={`Pilih artifact ${artifact.title} versi ${artifact.version}`}
+                  aria-label={`Pilih artifak ${artifact.title} versi ${artifact.version}`}
                   aria-current={isSelected ? "page" : undefined}
                 >
                   <div className="flex items-start gap-2">

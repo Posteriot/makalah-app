@@ -87,7 +87,7 @@ export function VersionHistoryDialog({
                         Riwayat Versi
                     </DialogTitle>
                     <DialogDescription className="text-xs font-mono text-muted-foreground">
-                        Pilih versi untuk ditampilkan di viewer artifact.
+                        Pilih versi untuk ditampilkan di viewer artifak.
                     </DialogDescription>
                 </DialogHeader>
 

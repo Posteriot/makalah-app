@@ -10,6 +10,7 @@ import {
   Expand,
   MoreVert,
   Xmark,
+  NavArrowDown,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -175,17 +176,14 @@ export function ArtifactToolbar({
         {/* Utility actions */}
         <div className="hidden @[520px]/toolbar:flex items-center gap-1">
           <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className={iconActionClass}>
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent className="font-mono text-xs">Unduh</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end">
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 rounded-action px-2.5 font-mono text-xs">
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Download
+                <NavArrowDown className="ml-1 h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="font-mono text-xs">
               <DropdownMenuItem onClick={() => onDownload?.("docx")}>DOCX</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDownload?.("pdf")}>PDF</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDownload?.("txt")}>TXT</DropdownMenuItem>
@@ -237,7 +235,7 @@ export function ArtifactToolbar({
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Download className="mr-2 h-4 w-4" />
-                  Unduh
+                  Download
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={() => onDownload?.("docx")}>DOCX</DropdownMenuItem>

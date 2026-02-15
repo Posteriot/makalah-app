@@ -51,7 +51,7 @@ export function ArtifactIndicator({
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
             <span className="rounded-badge border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
-              Hasil Artifact
+              Hasil Artifak
             </span>
             <span
               className={cn(
@@ -72,7 +72,7 @@ export function ArtifactIndicator({
 
           <p className="truncate text-sm font-semibold text-foreground">{title}</p>
           <p className="mt-0.5 text-[11px] font-mono text-muted-foreground">
-            Klik untuk buka di panel artifact
+            Klik untuk buka di panel artifak
           </p>
         </div>
 
@@ -82,7 +82,7 @@ export function ArtifactIndicator({
         </span>
       </div>
       <span id={hintId} className="sr-only">
-        Tekan Enter atau Space untuk membuka artifact di panel kanan.
+        Tekan Enter atau Space untuk membuka artifak di panel kanan.
       </span>
     </button>
   )

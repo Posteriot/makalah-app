@@ -177,8 +177,8 @@ export function MessageBubble({
                         ? maybeOutput.version
                         : undefined
                 const fallbackTitle = parsedVersion
-                    ? `Artifact direvisi (v${parsedVersion})`
-                    : "Artifact direvisi"
+                    ? `Artifak direvisi (v${parsedVersion})`
+                    : "Artifak direvisi"
 
                 signals.push({
                     artifactId: maybeOutput.newArtifactId as Id<"artifacts">,
@@ -536,14 +536,14 @@ export function MessageBubble({
                                         Tahap disetujui
                                     </span>
                                     <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                                        Lifecycle artifact: terkunci
+                                        Lifecycle artifak: terkunci
                                     </span>
                                 </div>
                                 <div className="mt-1 text-sm font-medium text-foreground">
                                     {autoUserAction.stageLabel}
                                 </div>
                                 <div className="mt-1 text-xs font-mono text-muted-foreground">
-                                    {autoUserAction.followupText || "Agen lanjut ke tahap berikutnya, artifact tahap ini jadi baseline referensi."}
+                                    {autoUserAction.followupText || "Agen lanjut ke tahap berikutnya, artifak tahap ini jadi baseline referensi."}
                                 </div>
                             </div>
                         ) : (
@@ -554,14 +554,14 @@ export function MessageBubble({
                                         Permintaan revisi
                                     </span>
                                     <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                                        Lifecycle artifact: perlu update
+                                        Lifecycle artifak: perlu update
                                     </span>
                                 </div>
                                 <div className="mt-1 text-sm font-medium text-foreground">
                                     {autoUserAction.stageLabel}
                                 </div>
                                 <div className="mt-1 whitespace-pre-wrap text-xs font-mono leading-relaxed text-muted-foreground">
-                                    {autoUserAction.feedback || "Feedback revisi telah dikirim. Agen akan memperbarui artifact pada tahap ini."}
+                                    {autoUserAction.feedback || "Feedback revisi telah dikirim. Agen akan memperbarui artifak pada tahap ini."}
                                 </div>
                             </div>
                         )
@@ -577,13 +577,13 @@ export function MessageBubble({
                     {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions) && (
                         <div className="mt-3 space-y-3">
                             {hasArtifactSignals && (
-                                <section className="space-y-2" aria-label="Hasil artifact">
+                                <section className="space-y-2" aria-label="Hasil artifak">
                                     <div className="flex items-center gap-2">
                                         <span className="rounded-badge border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
                                             Hasil Kerja
                                         </span>
                                         <p className="text-[11px] font-mono text-muted-foreground">
-                                            Buka artifact untuk lanjut edit atau revisi.
+                                            Buka artifak untuk lanjut edit atau revisi.
                                         </p>
                                     </div>
                                     {artifactSignals.map((artifact) => (

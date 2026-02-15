@@ -422,7 +422,7 @@ function PaperFolderItem({
                     : "border-border/60 bg-background/70 text-muted-foreground"
                 )}
               >
-                {isArtifactPanelOpen ? "Panel artifact terbuka" : "Panel artifact tertutup"}
+                {isArtifactPanelOpen ? "Panel artifak terbuka" : "Panel artifak tertutup"}
               </span>
               <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
                 {hasArtifacts ? `${latestArtifacts.length} dokumen siap` : "Belum ada dokumen"}
@@ -448,7 +448,7 @@ function PaperFolderItem({
             </TooltipProvider>
           ) : (
             <div className="text-[11px] font-mono text-muted-foreground/70 py-2 px-4 uppercase">
-              No artifacts yet
+              Belum ada artifak
             </div>
           )}
         </div>

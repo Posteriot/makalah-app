@@ -175,7 +175,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
           userId: currentUser._id,
           content: newContent,
         })
-        toast.success(`Artifact diperbarui ke v${artifact.version + 1}`)
+        toast.success(`Artifak diperbarui ke v${artifact.version + 1}`)
         setIsEditing(false)
       } catch (error) {
         console.error("Failed to update artifact:", error)
@@ -297,7 +297,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       return (
         <div className="flex h-full flex-col items-center justify-center p-8 text-muted-foreground">
           <Page className="mb-4 h-12 w-12 opacity-50" />
-          <p className="text-center">Pilih artifact untuk melihat konten</p>
+          <p className="text-center">Pilih artifak untuk melihat konten</p>
         </div>
       )
     }
@@ -306,7 +306,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       return (
         <div className="flex h-full flex-col items-center justify-center p-8 text-muted-foreground">
           <span className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-          <p>Memuat artifact...</p>
+          <p>Memuat artifak...</p>
         </div>
       )
     }
@@ -315,7 +315,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       return (
         <div className="flex h-full flex-col items-center justify-center p-8 text-muted-foreground">
           <Page className="mb-4 h-12 w-12 opacity-50" />
-          <p className="text-center">Artifact tidak ditemukan</p>
+          <p className="text-center">Artifak tidak ditemukan</p>
         </div>
       )
     }
@@ -408,7 +408,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-[260px]">
                   <p className="text-xs">
-                    <strong>Artifact perlu direvisi</strong>
+                    <strong>Artifak perlu direvisi</strong>
                     <br />
                     Di-invalidate pada {artifact.invalidatedAt ? formatDate(artifact.invalidatedAt) : "unknown"}
                     {invalidatedStageLabel && (
@@ -441,12 +441,12 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
           >
             <WarningTriangle className="h-4 w-4" data-testid="invalidation-warning-icon" />
             <AlertDescription>
-              <span className="font-medium">Artifact perlu di-update</span>
+              <span className="font-medium">Artifak perlu di-update</span>
               {invalidatedStageLabel && (
                 <span> karena rewind ke tahap <strong>{invalidatedStageLabel}</strong></span>
               )}
               <span className="mt-1 block text-xs text-amber-800/85 dark:text-amber-200/85">
-                Gunakan chat untuk meminta AI memperbarui artifact ini.
+                Gunakan chat untuk meminta AI memperbarui artifak ini.
               </span>
             </AlertDescription>
           </Alert>

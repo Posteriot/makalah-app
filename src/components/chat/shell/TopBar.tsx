@@ -60,7 +60,7 @@ export function TopBar({
   const hasArtifacts = artifactCount > 0
   const compactArtifactCount = artifactCount > 99 ? "99+" : `${artifactCount}`
   const panelStateLabel = !hasArtifacts
-    ? "Tanpa artifact"
+    ? "Tanpa artifak"
     : isPanelCollapsed
       ? "Panel tertutup"
       : "Panel terbuka"
@@ -143,10 +143,10 @@ export function TopBar({
                 )}
                 aria-label={
                   !hasArtifacts
-                    ? "Panel artifact nonaktif karena belum ada artifact"
+                    ? "Panel artifak nonaktif karena belum ada artifak"
                     : isPanelCollapsed
-                      ? `Buka panel artifact (${artifactCount})`
-                      : `Tutup panel artifact (${artifactCount})`
+                      ? `Buka panel artifak (${artifactCount})`
+                      : `Tutup panel artifak (${artifactCount})`
                 }
                 aria-pressed={hasArtifacts ? !isPanelCollapsed : undefined}
               >
@@ -156,7 +156,7 @@ export function TopBar({
                   <FastArrowRightSquareSolid className="h-[17px] w-[17px]" />
                 )}
                 <span className="hidden text-[10px] font-mono font-semibold uppercase tracking-wide sm:inline">
-                  Artifact
+                  Artifak
                 </span>
                 {hasArtifacts && (
                   <span
@@ -175,8 +175,8 @@ export function TopBar({
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
               {!hasArtifacts
-                ? "Belum ada artifact untuk dibuka"
-                : `${panelStateLabel} • ${artifactCount} artifact`}
+                ? "Belum ada artifak untuk dibuka"
+                : `${panelStateLabel} • ${artifactCount} artifak`}
             </TooltipContent>
           </Tooltip>
 

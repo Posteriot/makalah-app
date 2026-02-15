@@ -195,7 +195,7 @@ export function ArtifactTabs({
         "shrink-0"
       )}
       role="tablist"
-      aria-label="Navigasi tab artifact"
+      aria-label="Navigasi tab artifak"
     >
       <div className="relative min-w-0 flex-1 overflow-hidden">
         <div

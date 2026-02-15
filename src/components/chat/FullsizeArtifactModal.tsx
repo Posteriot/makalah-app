@@ -13,16 +13,22 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Xmark,
   Collapse,
   Download,
   Check,
   Copy,
-  NavArrowDown,
   MagicWand,
   WarningTriangle,
+  NavArrowDown,
 } from "iconoir-react"
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -62,6 +68,12 @@ const formatToLanguage: Record<string, string> = {
 }
 
 type DownloadFormat = "docx" | "pdf" | "txt"
+type SessionArtifact = {
+  _id: Id<"artifacts">
+  title: string
+  type: string
+  version: number
+}
 
 function formatShortDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString("id-ID", {
@@ -72,6 +84,20 @@ function formatShortDate(timestamp: number): string {
   })
 }
 
+function getLatestArtifactVersions<T extends { title: string; type: string; version: number }>(
+  artifacts: T[]
+): T[] {
+  const latestMap = new Map<string, T>()
+  for (const artifact of artifacts) {
+    const key = `${artifact.type}-${artifact.title}`
+    const existing = latestMap.get(key)
+    if (!existing || artifact.version > existing.version) {
+      latestMap.set(key, artifact)
+    }
+  }
+  return Array.from(latestMap.values()).sort((a, b) => a.title.localeCompare(b.title))
+}
+
 export function FullsizeArtifactModal({
   artifactId,
   isOpen,
@@ -79,12 +105,12 @@ export function FullsizeArtifactModal({
 }: FullsizeArtifactModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const primaryCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const [activeArtifactId, setActiveArtifactId] = useState<Id<"artifacts"> | null>(artifactId)
   const [viewingVersionId, setViewingVersionId] = useState<Id<"artifacts"> | null>(artifactId)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [downloadFormat, setDownloadFormat] = useState<DownloadFormat>("docx")
   const [closeGuardOpen, setCloseGuardOpen] = useState(false)
   const { user: currentUser } = useCurrentUser()
 
@@ -103,7 +129,9 @@ export function FullsizeArtifactModal({
   const updateArtifact = useMutation(api.artifacts.update)
 
   useEffect(() => {
+    setActiveArtifactId(artifactId)
     setViewingVersionId(artifactId)
+    setIsEditing(false)
   }, [artifactId])
 
   const artifact = useQuery(
@@ -115,10 +143,16 @@ export function FullsizeArtifactModal({
 
   const versionHistory = useQuery(
     api.artifacts.getVersionHistory,
-    artifactId && currentUser?._id
-      ? { artifactId, userId: currentUser._id }
+    activeArtifactId && currentUser?._id
+      ? { artifactId: activeArtifactId, userId: currentUser._id }
       : "skip"
   )
+  const artifactsInSession = useQuery(
+    api.artifacts.listByConversation,
+    artifact?.conversationId && currentUser?._id
+      ? { conversationId: artifact.conversationId, userId: currentUser._id }
+      : "skip"
+  ) as SessionArtifact[] | undefined
 
   const finalStatus = useQuery(
     api.artifacts.checkFinalStatus,
@@ -127,6 +161,16 @@ export function FullsizeArtifactModal({
       : "skip"
   )
   const isFinal = finalStatus?.isFinal ?? false
+  const latestArtifactsInSession = useMemo(
+    () => (artifactsInSession ? getLatestArtifactVersions(artifactsInSession) : []),
+    [artifactsInSession]
+  )
+  const sessionArtifactCount = latestArtifactsInSession.length
+  const selectedArtifactValue = latestArtifactsInSession.some(
+    (sessionArtifact) => sessionArtifact._id === activeArtifactId
+  )
+    ? activeArtifactId
+    : undefined
 
   useEffect(() => {
     if (artifact?.content && !isEditing) {
@@ -157,6 +201,8 @@ export function FullsizeArtifactModal({
 
   const hasUnsavedChanges = isEditing && artifact ? editContent !== artifact.content : false
   const canRefrasa = isRefrasaEnabled !== false && (artifact?.content?.length ?? 0) >= 50
+  const editWordCount = editContent.trim().length === 0 ? 0 : editContent.trim().split(/\s+/).length
+  const editCharCount = editContent.length
 
   const requestClose = useCallback(() => {
     if (hasUnsavedChanges && !isSaving) {
@@ -239,7 +285,7 @@ export function FullsizeArtifactModal({
         userId: currentUser._id,
         content: editContent,
       })
-      toast.success(`Artifact diperbarui ke v${artifact.version + 1}`)
+      toast.success(`Artifak diperbarui ke v${artifact.version + 1}`)
       setIsEditing(false)
     } catch (error) {
       console.error("Failed to update artifact:", error)
@@ -249,7 +295,7 @@ export function FullsizeArtifactModal({
     }
   }, [artifact, currentUser?._id, editContent, updateArtifact])
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback((format: DownloadFormat) => {
     if (!artifact) return
 
     const formatConfig: Record<DownloadFormat, { ext: string; mime: string }> = {
@@ -258,7 +304,7 @@ export function FullsizeArtifactModal({
       txt: { ext: ".txt", mime: "text/plain" },
     }
 
-    const config = formatConfig[downloadFormat]
+    const config = formatConfig[format]
     const sanitizedTitle = artifact.title
       .replace(/[^a-zA-Z0-9\s-]/g, "")
       .replace(/\s+/g, "-")
@@ -276,7 +322,7 @@ export function FullsizeArtifactModal({
     URL.revokeObjectURL(url)
 
     toast.success(`File "${filename}" berhasil diunduh`)
-  }, [artifact, downloadFormat])
+  }, [artifact])
 
   const handleRefrasaTrigger = useCallback(async () => {
     if (!artifact || !canRefrasa || isRefrasaLoading) return
@@ -345,11 +391,6 @@ export function FullsizeArtifactModal({
   const wordCount = artifact.content.trim().length === 0
     ? 0
     : artifact.content.trim().split(/\s+/).length
-  const refrasaLabel = isRefrasaLoading
-    ? "Refrasa berjalan"
-    : canRefrasa
-      ? "Refrasa siap"
-      : "Refrasa min. 50 karakter"
 
   return (
     <>
@@ -366,17 +407,19 @@ export function FullsizeArtifactModal({
           aria-modal="true"
           aria-labelledby="artifact-fullscreen-title"
           className={cn(
-            "relative z-10 flex flex-col overflow-hidden rounded-shell border border-border/60 bg-card shadow-2xl",
-            "mt-[52px] h-[calc(100vh-52px-20px)] w-[calc(100vw-20px)] md:w-[calc(100vw-72px)]"
+            "relative z-10 flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none border-0 bg-card shadow-none"
           )}
+          style={{
+            paddingTop: "env(safe-area-inset-top)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+            paddingLeft: "env(safe-area-inset-left)",
+            paddingRight: "env(safe-area-inset-right)",
+          }}
         >
           {/* Header */}
-          <div className="shrink-0 border-b border-border/60 bg-card/95 px-5 py-4">
+          <div className="shrink-0 border-b border-border/60 bg-card/95 px-4 py-2.5 md:px-5 md:py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
-                  Workspace Fullscreen
-                </p>
                 <h2 id="artifact-fullscreen-title" className="truncate text-lg font-semibold text-foreground">
                   {artifact.title}
                 </h2>
@@ -410,82 +453,163 @@ export function FullsizeArtifactModal({
               </div>
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-badge border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
-                {isEditing ? "Mode Edit" : "Mode Baca"}
-              </span>
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-badge border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
+                  {isEditing ? "Mode Edit" : "Mode Baca"}
+                </span>
 
-              {hasMultipleVersions ? (
-                <Select
-                  value={viewingVersionId ?? undefined}
-                  onValueChange={(v) => {
-                    if (isEditing) return
-                    setViewingVersionId(v as Id<"artifacts">)
-                  }}
-                >
-                  <SelectTrigger
-                    size="sm"
-                    disabled={isEditing}
-                    className="h-6 w-auto min-w-[140px] rounded-action border-border/60 bg-background/80 px-2 py-0 text-[11px] font-mono"
+                {hasMultipleVersions ? (
+                  <Select
+                    value={viewingVersionId ?? undefined}
+                    onValueChange={(v) => {
+                      if (isEditing) return
+                      setViewingVersionId(v as Id<"artifacts">)
+                    }}
                   >
-                    <SelectValue placeholder={`v${artifact.version}`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {versionHistory?.map((v) => (
-                      <SelectItem key={v._id} value={v._id}>
-                        v{v.version} - {formatShortDate(v.createdAt)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                  v{artifact.version}
-                </span>
-              )}
+                    <SelectTrigger
+                      size="sm"
+                      disabled={isEditing}
+                      className="h-6 w-auto min-w-[140px] rounded-action border-border/60 bg-background/80 px-2 py-0 text-[11px] font-mono"
+                    >
+                      <SelectValue placeholder={`v${artifact.version}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {versionHistory?.map((v) => (
+                        <SelectItem key={v._id} value={v._id}>
+                          v{v.version} - {formatShortDate(v.createdAt)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
 
-              {isFinal && (
-                <span className="rounded-badge border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                  FINAL
-                </span>
-              )}
-
-              <span
-                className={cn(
-                  "rounded-badge px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
-                  isRefrasaLoading
-                    ? "border border-primary/35 bg-primary/10 text-primary"
-                    : canRefrasa
-                      ? "border border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-300"
-                      : "border border-border/70 bg-muted/60 text-muted-foreground"
+                {isFinal && (
+                  <span className="rounded-badge border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    FINAL
+                  </span>
                 )}
-              >
-                {refrasaLabel}
-              </span>
 
-              {hasUnsavedChanges && (
-                <span className="rounded-badge border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                  Draft belum disimpan
+                {hasUnsavedChanges && (
+                  <span className="rounded-badge border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                    Draft belum disimpan
+                  </span>
+                )}
+
+                <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  {contentTypeLabel}
                 </span>
-              )}
-            </div>
+                <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  {wordCount} kata
+                </span>
+                <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  {artifact.content.length} karakter
+                </span>
+              </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-muted-foreground/85">
-              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
-                {contentTypeLabel}
-              </span>
-              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
-                {wordCount} kata
-              </span>
-              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
-                {artifact.content.length} karakter
-              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {isEditing ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                    onClick={() => {
+                      setIsEditing(false)
+                      setEditContent(artifact.content)
+                      }}
+                      disabled={isSaving}
+                      className="h-7 px-2.5 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      Batal
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={isSaving || !editContent.trim()}
+                      className="h-7 px-2.5 font-mono text-[11px]"
+                    >
+                      {isSaving ? (
+                        <span className="mr-1.5 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <Check className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      Simpan
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                      className="h-7 px-2.5 font-mono text-[11px]"
+                    >
+                      Edit
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopy}
+                      disabled={copied}
+                      className={cn(
+                        "h-7 px-2.5 font-mono text-[11px]",
+                        copied && "border-primary/40 bg-primary/10 text-primary"
+                      )}
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="mr-1.5 h-3.5 w-3.5" />
+                          Disalin
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-1.5 h-3.5 w-3.5" />
+                          Salin
+                        </>
+                      )}
+                    </Button>
+
+                    {isRefrasaEnabled !== false && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRefrasaTrigger}
+                        disabled={isRefrasaLoading || !canRefrasa}
+                        className="h-7 px-2.5 font-mono text-[11px]"
+                      >
+                        <MagicWand className="mr-1.5 h-3.5 w-3.5" />
+                        Refrasa
+                      </Button>
+                    )}
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2.5 font-mono text-[11px]"
+                        >
+                          <Download className="mr-1.5 h-3.5 w-3.5" />
+                          Download
+                          <NavArrowDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="font-mono text-xs">
+                        <DropdownMenuItem onClick={() => handleDownload("docx")}>DOCX</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload("pdf")}>PDF</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload("txt")}>TXT</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Content */}
           <div className="flex min-h-0 flex-1 overflow-hidden">
-            <div className="relative min-w-0 flex-1 overflow-hidden px-5 py-4 md:px-7 md:py-5">
+            <div className="relative min-w-0 flex-1 overflow-hidden px-4 py-3 md:px-5 md:py-4">
               {isRefrasaLoading && (
                 <div className="absolute inset-3 z-10 flex items-center justify-center rounded-action border border-border/60 bg-background/75 backdrop-blur-sm">
                   <RefrasaLoadingIndicator />
@@ -494,26 +618,34 @@ export function FullsizeArtifactModal({
 
               {isEditing ? (
                 <div className="h-full overflow-hidden rounded-shell border border-border/60 bg-background/70 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-border/50 px-3 py-1.5">
+                    <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+                      Workspace Editor
+                    </p>
+                    <p className="text-[10px] font-mono text-muted-foreground/85">
+                      {editWordCount} kata • {editCharCount} karakter • Ctrl/Cmd+S untuk simpan
+                    </p>
+                  </div>
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    className="h-full w-full resize-none bg-transparent p-4 text-sm font-mono leading-relaxed text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
-                    placeholder="Edit konten artifact..."
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+                        e.preventDefault()
+                        if (!isSaving && editContent.trim()) {
+                          void handleSave()
+                        }
+                      }
+                    }}
+                    className="h-[calc(100%-31px)] w-full resize-none bg-transparent p-4 text-base leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+                    placeholder="Edit konten artifak..."
                     autoFocus
+                    spellCheck
                   />
                 </div>
               ) : (
                 <div className="h-full overflow-hidden rounded-shell border border-border/60 bg-background/35">
-                  <div className="flex items-center justify-between border-b border-border/50 px-3 py-2">
-                    <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
-                      Workspace Dokumen
-                    </p>
-                    <p className="text-[10px] font-mono text-muted-foreground/85">
-                      Fokus baca penuh
-                    </p>
-                  </div>
-
-                  <div className="h-[calc(100%-35px)] overflow-auto p-4 scrollbar-thin">
+                  <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
                     {isCodeArtifact && language ? (
                       <div className="overflow-hidden rounded-action border border-border/60">
                         <SyntaxHighlighter
@@ -533,11 +665,11 @@ export function FullsizeArtifactModal({
                     ) : shouldRenderMarkdown ? (
                       <MarkdownRenderer
                         markdown={artifact.content}
-                        className="max-w-none rounded-action border border-border/50 bg-background/40 p-5 text-sm leading-relaxed"
+                        className="max-w-none rounded-action border border-border/50 bg-background/40 p-4 text-sm leading-relaxed"
                         sources={artifact.sources}
                       />
                     ) : (
-                      <pre className="whitespace-pre-wrap rounded-action border border-border/50 bg-background/40 p-6 font-sans text-sm leading-relaxed">
+                      <pre className="whitespace-pre-wrap rounded-action border border-border/50 bg-background/40 p-4 font-sans text-sm leading-relaxed">
                         {artifact.content}
                       </pre>
                     )}
@@ -554,6 +686,40 @@ export function FullsizeArtifactModal({
                   </p>
                 </div>
                 <div className="flex-1 overflow-auto p-3 scrollbar-thin">
+                  <div className="mb-3 rounded-action border border-border/60 bg-background/45 p-2.5">
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+                        Artifak lainnya
+                      </p>
+                      <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                        {sessionArtifactCount}
+                      </span>
+                    </div>
+                    <Select
+                      value={selectedArtifactValue}
+                      onValueChange={(value) => {
+                        const selectedId = value as Id<"artifacts">
+                        setActiveArtifactId(selectedId)
+                        setViewingVersionId(selectedId)
+                        setIsEditing(false)
+                      }}
+                    >
+                      <SelectTrigger
+                        className="h-8 w-full border-border/65 bg-background/80 px-2 text-[11px] font-mono focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                        disabled={sessionArtifactCount <= 1}
+                      >
+                        <SelectValue placeholder="Tidak ada artifak lain" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {latestArtifactsInSession.map((sessionArtifact) => (
+                          <SelectItem key={sessionArtifact._id} value={sessionArtifact._id}>
+                            {sessionArtifact.title} • v{sessionArtifact.version}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {artifact.sources && artifact.sources.length > 0 ? (
                     <SourcesIndicator sources={artifact.sources} />
                   ) : (
@@ -567,7 +733,41 @@ export function FullsizeArtifactModal({
           </div>
 
           {!isEditing && (
-            <div className="border-t border-border/60 bg-card/40 px-5 py-2 xl:hidden">
+            <div className="border-t border-border/60 bg-card/40 px-4 py-1.5 md:px-5 xl:hidden">
+              <div className="mb-2 rounded-action border border-border/60 bg-background/45 p-2.5">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+                    Artifak lainnya
+                  </p>
+                  <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                    {sessionArtifactCount}
+                  </span>
+                </div>
+                <Select
+                  value={selectedArtifactValue}
+                  onValueChange={(value) => {
+                    const selectedId = value as Id<"artifacts">
+                    setActiveArtifactId(selectedId)
+                    setViewingVersionId(selectedId)
+                    setIsEditing(false)
+                  }}
+                >
+                  <SelectTrigger
+                    className="h-8 w-full border-border/65 bg-background/80 px-2 text-[11px] font-mono focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                    disabled={sessionArtifactCount <= 1}
+                  >
+                    <SelectValue placeholder="Tidak ada artifak lain" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {latestArtifactsInSession.map((sessionArtifact) => (
+                      <SelectItem key={sessionArtifact._id} value={sessionArtifact._id}>
+                        {sessionArtifact.title} • v{sessionArtifact.version}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {artifact.sources && artifact.sources.length > 0 ? (
                 <SourcesIndicator sources={artifact.sources} />
               ) : (
@@ -578,114 +778,6 @@ export function FullsizeArtifactModal({
             </div>
           )}
 
-          {/* Action bar */}
-          <div className="shrink-0 border-t border-border/60 bg-card/90 px-5 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDownload}
-                    className="h-9 rounded-r-none border-r-0 font-mono"
-                  >
-                    <Download className="mr-1.5 h-4 w-4" />
-                    <span className="uppercase">{downloadFormat}</span>
-                  </Button>
-                  <Select
-                    value={downloadFormat}
-                    onValueChange={(v) => setDownloadFormat(v as DownloadFormat)}
-                  >
-                    <SelectTrigger className="h-9 w-8 rounded-l-none border-l-0 px-2 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1">
-                      <NavArrowDown className="h-3 w-3" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="docx">DOCX</SelectItem>
-                      <SelectItem value="pdf">PDF</SelectItem>
-                      <SelectItem value="txt">TXT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {isRefrasaEnabled !== false && !isEditing && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRefrasaTrigger}
-                    disabled={isRefrasaLoading || !canRefrasa}
-                    className="h-9 font-mono"
-                  >
-                    <MagicWand className="mr-1.5 h-4 w-4" />
-                    Refrasa
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {isEditing ? (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setIsEditing(false)
-                        setEditContent(artifact.content)
-                      }}
-                      disabled={isSaving}
-                      className="h-9 font-mono text-muted-foreground hover:text-foreground"
-                    >
-                      Batal
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={isSaving || !editContent.trim()}
-                      className="h-9 font-mono"
-                    >
-                      {isSaving ? (
-                        <span className="mr-1.5 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      ) : (
-                        <Check className="mr-1.5 h-4 w-4" />
-                      )}
-                      Simpan
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditing(true)}
-                    className="h-9 font-mono"
-                  >
-                    Edit
-                  </Button>
-                )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopy}
-                  disabled={copied}
-                  className={cn(
-                    "h-9 font-mono",
-                    copied && "border-primary/40 bg-primary/10 text-primary"
-                  )}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="mr-1.5 h-4 w-4" />
-                      Disalin
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="mr-1.5 h-4 w-4" />
-                      Salin
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

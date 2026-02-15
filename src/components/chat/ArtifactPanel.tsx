@@ -92,14 +92,14 @@ export function ArtifactPanel({
       <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-card/70 px-3 py-2">
         <div className="min-w-0">
           <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
-            Workspace Artifact
+            Workspace Artifak
           </p>
           <p className="truncate text-xs text-muted-foreground">
             {activeTab
               ? `Tab aktif: ${activeTab.title}`
               : openTabCount > 0
-                ? "Pilih tab artifact yang ingin dibuka"
-                : "Belum ada tab artifact terbuka"}
+                ? "Pilih tab artifak yang ingin dibuka"
+                : "Belum ada tab artifak terbuka"}
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -112,7 +112,7 @@ export function ArtifactPanel({
               size="icon"
               className="h-8 w-8 rounded-action text-muted-foreground hover:bg-accent/80 hover:text-foreground"
               onClick={() => setIsFullsizeOpen(true)}
-              aria-label="Buka artifact fullscreen"
+              aria-label="Buka artifak fullscreen"
             >
               <Expand className="h-4 w-4" />
             </Button>
@@ -160,7 +160,7 @@ export function ArtifactPanel({
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
             <Page className="h-10 w-10 text-muted-foreground/60" />
             <p className="max-w-[260px] text-sm text-muted-foreground">
-              Artifact aktif tidak ditemukan. Kemungkinan artifact sudah berubah atau tidak lagi tersedia.
+              Artifak aktif tidak ditemukan. Kemungkinan artifak sudah berubah atau tidak lagi tersedia.
             </p>
             <Button
               variant="outline"
@@ -175,14 +175,14 @@ export function ArtifactPanel({
           <div className="flex h-full flex-col items-center justify-center gap-2 px-6 py-12 text-center">
             <Page className="h-10 w-10 text-muted-foreground/60" />
             <p className="max-w-[260px] text-sm text-muted-foreground">
-              Pilih salah satu tab di atas untuk lanjut membaca atau mengedit artifact.
+              Pilih salah satu tab di atas untuk lanjut membaca atau mengedit artifak.
             </p>
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
             <Page className="mb-4 h-12 w-12 text-muted-foreground/50" />
             <p className="max-w-[260px] text-[13px] text-muted-foreground">
-              Belum ada artifact yang dibuka. Pilih artifact dari Sidebar Paper Sessions untuk memulai workspace.
+              Belum ada artifak yang dibuka. Pilih artifak dari Sidebar Paper Sessions untuk memulai workspace.
             </p>
           </div>
         )}
