@@ -8,7 +8,6 @@ import {
   FastArrowRightSquare,
   FastArrowRight,
 } from "iconoir-react"
-import { FastArrowRightSquare as FastArrowRightSquareSolid } from "iconoir-react/solid"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { NotificationDropdown } from "./NotificationDropdown"
@@ -41,7 +40,7 @@ interface TopBarProps {
  * Content scrolls below it, not behind it.
  *
  * Left: Expand sidebar toggle (only when sidebar collapsed)
- * Right: Notification, Theme toggle, Panel toggle, Segment badge, User dropdown
+ * Right: Notification, Theme toggle, Panel toggle, User dropdown
  */
 export function TopBar({
   isSidebarCollapsed,
@@ -59,11 +58,6 @@ export function TopBar({
 
   const hasArtifacts = artifactCount > 0
   const compactArtifactCount = artifactCount > 99 ? "99+" : `${artifactCount}`
-  const panelStateLabel = !hasArtifacts
-    ? "Tanpa artifak"
-    : isPanelCollapsed
-      ? "Panel tertutup"
-      : "Panel terbuka"
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -134,12 +128,16 @@ export function TopBar({
                 onClick={hasArtifacts ? onTogglePanel : undefined}
                 disabled={!hasArtifacts}
                 className={cn(
-                  "relative mr-1 inline-flex h-8 items-center gap-1.5 rounded-action border px-2",
-                  "border-border/60 text-muted-foreground hover:text-foreground hover:bg-accent/80",
+                  "relative mr-1 inline-flex h-8 w-8 items-center justify-center rounded-action",
                   "transition-colors duration-150",
-                  hasArtifacts && isPanelCollapsed && "bg-background/75",
-                  hasArtifacts && !isPanelCollapsed && "border-primary/35 bg-primary/10 text-primary",
-                  !hasArtifacts && "cursor-not-allowed border-border/45 bg-muted/60 text-muted-foreground/70 hover:bg-muted/60 hover:text-muted-foreground/70"
+                  hasArtifacts &&
+                    isPanelCollapsed &&
+                    "border border-transparent bg-transparent text-slate-200 hover:text-slate-50",
+                  hasArtifacts &&
+                    !isPanelCollapsed &&
+                    "border border-slate-500/70 bg-slate-800/75 text-slate-50 hover:bg-slate-800",
+                  !hasArtifacts &&
+                    "cursor-not-allowed border border-transparent bg-transparent text-slate-400 hover:bg-transparent hover:text-slate-400"
                 )}
                 aria-label={
                   !hasArtifacts
@@ -150,50 +148,33 @@ export function TopBar({
                 }
                 aria-pressed={hasArtifacts ? !isPanelCollapsed : undefined}
               >
-                {isPanelCollapsed ? (
-                  <FastArrowRightSquare className="h-[17px] w-[17px] rotate-180" />
-                ) : (
-                  <FastArrowRightSquareSolid className="h-[17px] w-[17px]" />
-                )}
-                <span className="hidden text-[10px] font-mono font-semibold uppercase tracking-wide sm:inline">
-                  Artifak
-                </span>
-                {hasArtifacts && (
+                <FastArrowRightSquare
+                  className={cn(
+                    "h-[17px] w-[17px]",
+                    !isPanelCollapsed && "rotate-180"
+                  )}
+                />
+                {hasArtifacts ? (
                   <span
                     className={cn(
-                      "inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-badge border px-1",
+                      "pointer-events-none absolute -bottom-1 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
                       "text-[9px] font-semibold font-mono leading-none",
-                      isPanelCollapsed
-                        ? "border-border/60 bg-muted/70 text-foreground"
-                        : "border-primary/35 bg-primary text-primary-foreground"
+                      "bg-emerald-500 text-slate-100 shadow-[0_0_0_1px_rgba(2,6,23,0.55)]"
                     )}
                   >
                     {compactArtifactCount}
                   </span>
-                )}
+                ) : null}
               </button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
               {!hasArtifacts
                 ? "Belum ada artifak untuk dibuka"
-                : `${panelStateLabel} • ${artifactCount} artifak`}
+                : `${isPanelCollapsed ? "Panel tertutup" : "Panel terbuka"} • ${artifactCount} artifak`}
             </TooltipContent>
           </Tooltip>
 
-          <span
-            className={cn(
-              "hidden rounded-badge border px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide lg:inline-flex",
-              hasArtifacts
-                ? isPanelCollapsed
-                  ? "border-border/60 bg-background/70 text-muted-foreground"
-                  : "border-primary/30 bg-primary/10 text-primary"
-                : "border-border/50 bg-muted/60 text-muted-foreground/75"
-            )}
-          >
-            {panelStateLabel}
-          </span>
-
-          {/* User Dropdown */}
+          {/* User Dropdown / Settings entry */}
           <UserDropdown variant="compact" />
         </div>
       </div>
