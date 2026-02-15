@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef, Suspense } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
@@ -101,6 +101,23 @@ function BackToSubscriptionButton({ onClick }: { onClick: () => void }) {
 }
 
 export default function CheckoutBPPPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-muted rounded w-1/3" />
+            <div className="h-48 bg-muted rounded" />
+          </div>
+        </div>
+      }
+    >
+      <CheckoutBPPContent />
+    </Suspense>
+  )
+}
+
+function CheckoutBPPContent() {
   const { user, isLoading: userLoading } = useCurrentUser()
   const { hasCompletedOnboarding, completeOnboarding } = useOnboardingStatus()
   const onboardingCompletedRef = useRef(false)
