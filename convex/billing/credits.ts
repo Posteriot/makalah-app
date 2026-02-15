@@ -8,7 +8,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { tokensToCredits } from "./constants"
-import { requireAuthUserId } from "../authHelpers"
+import { requireAuthUserId, verifyAuthUserId } from "../authHelpers"
 
 function isInternalKeyValid(internalKey?: string) {
   const expected = process.env.CONVEX_INTERNAL_KEY
@@ -23,7 +23,7 @@ export const getCreditBalance = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await requireAuthUserId(ctx, args.userId)
+    if (!await verifyAuthUserId(ctx, args.userId)) return null
     const balance = await ctx.db
       .query("creditBalances")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))

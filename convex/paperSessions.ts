@@ -4,6 +4,7 @@ import { getNextStage, PaperStageId, STAGE_ORDER } from "./paperSessions/constan
 import {
     requireAuthUser,
     requireAuthUserId,
+    verifyAuthUserId,
     requireConversationOwner,
     requirePaperSessionOwner,
     getConversationIfOwner,
@@ -268,7 +269,7 @@ export const getByConversation = query({
 export const getByUser = query({
     args: { userId: v.id("users") },
     handler: async (ctx, args) => {
-        await requireAuthUserId(ctx, args.userId);
+        if (!await verifyAuthUserId(ctx, args.userId)) return [];
         return await ctx.db
             .query("paperSessions")
             .withIndex("by_user_updated", (q) => q.eq("userId", args.userId))

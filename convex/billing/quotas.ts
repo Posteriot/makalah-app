@@ -12,7 +12,7 @@ import {
   tokensToCredits,
   type TierType,
 } from "./constants"
-import { requireAuthUserId } from "../authHelpers"
+import { requireAuthUserId, verifyAuthUserId } from "../authHelpers"
 
 /**
  * Get or create user quota for current period
@@ -22,7 +22,7 @@ export const getUserQuota = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await requireAuthUserId(ctx, args.userId)
+    if (!await verifyAuthUserId(ctx, args.userId)) return null
     // Get user for tier info
     const user = await ctx.db.get(args.userId)
     if (!user) return null
@@ -495,7 +495,7 @@ export const getQuotaStatus = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await requireAuthUserId(ctx, args.userId)
+    if (!await verifyAuthUserId(ctx, args.userId)) return null
     const user = await ctx.db.get(args.userId)
     if (!user) return null
 
