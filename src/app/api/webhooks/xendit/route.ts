@@ -16,38 +16,43 @@ import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
 
 const internalKey = process.env.CONVEX_INTERNAL_KEY
 
-// Xendit webhook event types
+// Xendit v3 webhook event types
 type XenditEventType =
-  | "payment_request.succeeded"
-  | "payment_request.failed"
+  | "payment.capture"
+  | "payment.failed"
   | "payment_request.expired"
   | "recurring.cycle.succeeded"
   | "recurring.cycle.failed"
 
-// Payment data from webhook
+// Xendit v3 payment data from webhook
 interface XenditPaymentData {
-  id: string
+  payment_id: string
+  payment_request_id: string
   reference_id: string
   status: "PENDING" | "SUCCEEDED" | "FAILED" | "EXPIRED"
-  amount: number
+  request_amount: number
   currency: string
-  paid_at?: string
-  failure_reason?: string
-  payment_method: {
-    type: string
-  }
+  channel_code: string
+  capture_method?: string
+  captures?: Array<{
+    capture_id: string
+    capture_timestamp: string
+    capture_amount: number
+  }>
+  failure_code?: string
   metadata?: {
     user_id?: string
+    betterauth_user_id?: string
     payment_type?: string
-    session_id?: string
   }
 }
 
-// Webhook payload structure
+// Xendit v3 webhook payload structure
 interface XenditWebhookPayload {
-  id: string
-  type: XenditEventType
-  created: number
+  event: XenditEventType
+  business_id: string
+  created: string
+  api_version: string
   data: XenditPaymentData
 }
 
@@ -74,23 +79,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
   }
 
-  const { type, data } = payload
+  const { event, data } = payload
 
-  console.log(`[Xendit Webhook] Received: ${type}`, {
-    paymentId: data.id,
+  console.log(`[Xendit Webhook] Received: ${event}`, {
+    paymentRequestId: data.payment_request_id,
     referenceId: data.reference_id,
-    amount: data.amount,
+    amount: data.request_amount,
     status: data.status,
   })
 
   // 3. Handle event types
   try {
-    switch (type) {
-      case "payment_request.succeeded":
+    switch (event) {
+      case "payment.capture":
         await handlePaymentSuccess(data, internalKey)
         break
 
-      case "payment_request.failed":
+      case "payment.failed":
         await handlePaymentFailed(data, internalKey)
         break
 
@@ -103,12 +108,12 @@ export async function POST(req: NextRequest) {
         break
 
       case "recurring.cycle.failed":
-        console.log(`[Xendit Webhook] Subscription renewal failed: ${data.id}`)
+        console.log(`[Xendit Webhook] Subscription renewal failed: ${data.payment_request_id}`)
         // TODO: Handle subscription renewal failure (send email, etc.)
         break
 
       default:
-        console.log(`[Xendit Webhook] Unhandled event type: ${type}`)
+        console.log(`[Xendit Webhook] Unhandled event type: ${event}`)
     }
 
     return NextResponse.json({ status: "processed" })
@@ -127,31 +132,34 @@ export async function POST(req: NextRequest) {
  * Handle successful payment
  */
 async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string) {
+  const xenditPrId = data.payment_request_id
+
   // 1. Get payment from database
   const payment = await fetchQuery(api.billing.payments.getPaymentByXenditId, {
-    xenditPaymentRequestId: data.id,
+    xenditPaymentRequestId: xenditPrId,
     internalKey,
   })
 
   if (!payment) {
-    console.error(`[Xendit] Payment not found in DB: ${data.id}`)
+    console.error(`[Xendit] Payment not found in DB: ${xenditPrId}`)
     return
   }
 
   // 2. Prevent duplicate processing
   if (payment.status === "SUCCEEDED") {
-    console.log(`[Xendit] Payment already processed: ${data.id}`)
+    console.log(`[Xendit] Payment already processed: ${xenditPrId}`)
     return
   }
 
   // 3. Update payment status
+  const captureTimestamp = data.captures?.[0]?.capture_timestamp
   const updateResult = await fetchMutation(api.billing.payments.updatePaymentStatus, {
-    xenditPaymentRequestId: data.id,
+    xenditPaymentRequestId: xenditPrId,
     status: "SUCCEEDED",
-    paidAt: data.paid_at ? new Date(data.paid_at).getTime() : Date.now(),
+    paidAt: captureTimestamp ? new Date(captureTimestamp).getTime() : Date.now(),
     metadata: {
       xenditStatus: data.status,
-      paymentMethod: data.payment_method.type,
+      paymentMethod: data.channel_code,
     },
     internalKey,
   })
@@ -174,7 +182,7 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
       const packageType = payment.packageType ?? "paper"
 
       if (creditsToAdd === 0) {
-        console.warn(`[Xendit] Payment has no credits: ${data.id}`)
+        console.warn(`[Xendit] Payment has no credits: ${xenditPrId}`)
         break
       }
 
@@ -274,14 +282,15 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
     })
 
     if (user?.email) {
+      const captureTs = data.captures?.[0]?.capture_timestamp
       const emailResult = await sendPaymentSuccessEmail({
         to: user.email,
         userName: user.firstName || undefined,
-        amount: data.amount,
+        amount: data.request_amount,
         credits: newCredits,
         newTotalCredits: newTotalCredits,
-        transactionId: data.id,
-        paidAt: data.paid_at ? new Date(data.paid_at).getTime() : Date.now(),
+        transactionId: xenditPrId,
+        paidAt: captureTs ? new Date(captureTs).getTime() : Date.now(),
         subscriptionPlanLabel,
       })
 
@@ -299,25 +308,27 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
  * Handle failed payment
  */
 async function handlePaymentFailed(data: XenditPaymentData, internalKey: string) {
+  const xenditPrId = data.payment_request_id
+
   // 1. Get payment to retrieve userId
   const payment = await fetchQuery(api.billing.payments.getPaymentByXenditId, {
-    xenditPaymentRequestId: data.id,
+    xenditPaymentRequestId: xenditPrId,
     internalKey,
   })
 
   // 2. Update payment status
   await fetchMutation(api.billing.payments.updatePaymentStatus, {
-    xenditPaymentRequestId: data.id,
+    xenditPaymentRequestId: xenditPrId,
     status: "FAILED",
     metadata: {
-      failureReason: data.failure_reason,
+      failureCode: data.failure_code,
       xenditStatus: data.status,
     },
     internalKey,
   })
 
-  console.log(`[Xendit] Payment marked as failed: ${data.id}`, {
-    reason: data.failure_reason,
+  console.log(`[Xendit] Payment marked as failed: ${xenditPrId}`, {
+    failureCode: data.failure_code,
   })
 
   // 3. Send failure email
@@ -332,9 +343,9 @@ async function handlePaymentFailed(data: XenditPaymentData, internalKey: string)
         const emailResult = await sendPaymentFailedEmail({
           to: user.email,
           userName: user.firstName || undefined,
-          amount: data.amount,
-          failureReason: data.failure_reason,
-          transactionId: data.id,
+          amount: data.request_amount,
+          failureReason: data.failure_code,
+          transactionId: xenditPrId,
         })
 
         console.log(`[Xendit] Failed email notification result:`, emailResult)
@@ -352,9 +363,11 @@ async function handlePaymentFailed(data: XenditPaymentData, internalKey: string)
  * Handle expired payment
  */
 async function handlePaymentExpired(data: XenditPaymentData, internalKey: string) {
+  const xenditPrId = data.payment_request_id
+
   // Update payment status
   await fetchMutation(api.billing.payments.updatePaymentStatus, {
-    xenditPaymentRequestId: data.id,
+    xenditPaymentRequestId: xenditPrId,
     status: "EXPIRED",
     metadata: {
       xenditStatus: data.status,
@@ -362,7 +375,7 @@ async function handlePaymentExpired(data: XenditPaymentData, internalKey: string
     internalKey,
   })
 
-  console.log(`[Xendit] Payment marked as expired: ${data.id}`)
+  console.log(`[Xendit] Payment marked as expired: ${xenditPrId}`)
 }
 
 /**
