@@ -39,6 +39,9 @@ Dependensi data (Convex)
 Aset public yang dipakai di home
 - public/logo/makalah_logo_500x500.png — dipanggil di `src/components/layout/GlobalHeader.tsx`
 - public/logo/makalah_logo_white_500x500.png — dipanggil di `src/components/layout/Footer.tsx`
+- public/logo/makalah_logo_fullcolor.png — asset branding full-color baru (belum di-wire)
+- public/branding-makalah-ai-black.svg — asset branding SVG varian hitam (belum di-wire)
+- public/branding-makalah-ai-white.svg — asset branding SVG varian putih (belum di-wire)
 - public/makalah_brand_text.svg — dipanggil di `src/components/layout/GlobalHeader.tsx`
 - public/makalah_brand_text_dark.svg — dipanggil di `src/components/layout/GlobalHeader.tsx`
 - public/hero-heading-light.svg — dipanggil di `src/components/marketing/HeroHeadingSvg.tsx`

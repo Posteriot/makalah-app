@@ -109,16 +109,21 @@ Dokumen ini adalah baseline **kondisi kode saat ini** untuk redesign chat page, 
   - metadata konteks dipisah dari action,
   - grouping aksi prioritas jelas,
   - mode responsif desktop/mobile konsisten.
+- Aksi unduh sudah diseragamkan ke pola dropdown `Download` dengan pilihan ekstensi (`DOCX/PDF/TXT`).
 
 ### `src/components/chat/ArtifactViewer.tsx`
 - Kondisi: mode baca/edit sudah terstruktur sebagai dua mode kerja yang jelas.
 - Header viewer sudah memuat konteks versi/final/invalidation secara berlapis.
 - Source area dan refrasa flow sudah konsisten dengan lifecycle artifact terbaru.
+- Rendering ordered-list markdown sudah ditata ulang agar marker nomor dan isi list lurus vertikal, termasuk baris lanjutan dalam item yang sama.
 
 ### `src/components/chat/FullsizeArtifactModal.tsx`
 - Kondisi: sudah berfungsi sebagai workspace artifact utama (bukan sekadar versi besar panel).
-- Close safety untuk ESC/backdrop/close/minimize sudah guarded terhadap unsaved edit.
+- Mode fullscreen sekarang benar-benar fit viewport (`100dvh` x full-width, tanpa border radius).
+- Close safety untuk ESC/backdrop/close/minimize tetap guarded terhadap unsaved edit.
+- Kontrol close header disederhanakan: tombol `X` redundant dihapus, menyisakan satu aksi `Tutup fullscreen`.
 - Focus order/focus trap fullscreen sudah ditambahkan untuk operability keyboard.
+- Area sumber di fullscreen menampilkan dropdown `Artifak lainnya` agar perpindahan antar artifak satu sesi lebih cepat.
 
 ### `src/components/chat/ArtifactEditor.tsx`
 - Kondisi: status kerja (`dirty`, `saving`) dan hierarchy aksi `Batal/Simpan` sudah jelas.
@@ -149,11 +154,17 @@ Dokumen ini adalah baseline **kondisi kode saat ini** untuk redesign chat page, 
 
 ### `src/components/chat/shell/TopBar.tsx`
 - Tombol panel artifact ada di sini.
-- Status panel artifact sekarang eksplisit (`terbuka/tertutup/tanpa artifact`) + compact count di layar sempit.
+- Toggle panel artifact sekarang icon-only (tanpa label teks), dengan 3 state visual:
+  - tertutup (`slate-200`),
+  - terbuka (`slate-50`),
+  - off/tanpa artifak (`slate-400`).
+- Badge jumlah artifak diposisikan di pojok kanan-bawah icon toggle.
+- Badge status teks terpisah (`PANEL TERBUKA/TERTUTUP`) sudah dihapus untuk menghindari redundansi.
 
 ### 5.3 Tier 3 - Komponen chat lain yang ikut memengaruhi persepsi visual
 - `ChatLayout`, `ChatSidebar`, `ActivityBar`, `PanelResizer`, `ChatInput`, `TemplateGrid`, `QuotaWarningBanner`, `SearchStatusIndicator`, `ToolStateIndicator`, `SourcesIndicator`, `NotificationDropdown`, `ChatProcessStatusBar`.
 - Pola umum: style sudah rapi secara struktur, tapi color token belum konsisten karena masih bercampur semantic + hardcoded palette.
+- `InlineCitationChip`/preview sitasi sekarang memakai positioning yang mencegah popup kepotong viewport bawah (auto-flip, clamp kiri-kanan, dan scroll internal).
 
 ## 6) File yang Sifatnya Non-UI/Wrapper (Bukan Target Styling Langsung)
 - `src/app/chat/page.tsx`

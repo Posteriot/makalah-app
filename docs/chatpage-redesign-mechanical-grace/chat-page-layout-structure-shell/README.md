@@ -157,8 +157,16 @@ Normal flow element (`shrink-0`), bukan absolute overlay. Solid background sama 
 **Kanan (gap-2, pr-6 sejajar batas kanan chat bubble):**
 1. NotificationDropdown
 2. Theme toggle (sun/moon)
-3. Artifact panel toggle (badge count saat collapsed)
+3. Artifact panel toggle (icon-only + badge count)
 4. UserDropdown (`variant="compact"` — icon user + green status dot)
+
+Detail toggle artifact saat ini:
+- Tombol berbasis icon `FastArrowRightSquare` (tanpa label teks "Artifak").
+- State `panel tertutup`: icon-only, tanpa container visual, warna `slate-200`.
+- State `panel terbuka`: icon berputar kiri + container aktif, warna `slate-50`.
+- State `off` (tanpa artifak): disabled, warna `slate-400`.
+- Badge jumlah artifak selalu di pojok kanan-bawah icon (`bg-emerald-500`, teks `slate-100`).
+- Label status terpisah seperti `PANEL TERBUKA` sudah dihapus.
 
 ### Column 4b: ChatWindow (`src/components/chat/ChatWindow.tsx`)
 
@@ -238,6 +246,7 @@ updateTabTitle(id)  → Update title tab
 - **Open**: Artifact dibuat/dipilih → `openTab()` → `artifactTabs.length > 0` → panel open
 - **Close**: Klik panel toggle di TopBar → `closeAllTabs()` → panel close
 - **Toggle**: Klik toggle saat closed → buka artifact terbaru (`artifacts[0]`)
+- **Disabled**: Saat `artifactCount === 0`, toggle nonaktif dan tidak menjalankan `onTogglePanel`
 
 ### Grid Transition
 `transition-[grid-template-columns] duration-300 ease-in-out` — smooth animation saat sidebar/panel collapse/expand.

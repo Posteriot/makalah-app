@@ -75,10 +75,14 @@ Muncul saat pengiriman pesan gagal.
 1. `MarkdownRenderer`
 Path: `src/components/chat/MarkdownRenderer.tsx`
 Render markdown response assistant (heading, list, code, link, blockquote, dll).
+Catatan aktual:
+- Ordered list ditata dengan grid marker+konten agar nomor dan isi lurus vertikal.
+- Baris lanjutan pada numbering diparse sebagai kelanjutan item yang sama (bukan item baru terpisah).
 
 2. Inline sitasi melalui `InlineCitationChip`
 Path: `src/components/chat/InlineCitationChip.tsx`
 Muncul saat teks markdown berisi citation marker yang valid.
+Preview sitasi sekarang memakai positioning adaptif supaya tidak kepotong viewport bawah dan tetap bisa diklik.
 
 3. `ToolStateIndicator`
 Path: `src/components/chat/ToolStateIndicator.tsx`

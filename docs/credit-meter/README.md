@@ -77,11 +77,11 @@ Sistem tampilan kredit terpadu yang menormalisasi data billing dari 3 Convex que
 export type CreditMeterLevel = "normal" | "warning" | "critical" | "depleted"
 
 export interface CreditMeterData {
-  tier: EffectiveTier            // "gratis" | "bpp" | "pro"
+  tier: EffectiveTier            // "gratis" | "bpp" | "pro" | "unlimited"
   used: number                   // Kredit terpakai
-  total: number                  // Total alokasi kredit (Infinity untuk BPP)
+  total: number                  // Total alokasi kredit
   remaining: number              // Kredit tersisa
-  percentage: number             // Persentase terpakai (NaN untuk BPP)
+  percentage: number             // Persentase terpakai (0 jika total = 0)
   level: CreditMeterLevel        // Level warning
   overage?: number               // Pro overage dalam kredit
   overageCost?: number            // Pro overage cost dalam IDR
@@ -94,7 +94,7 @@ export interface CreditMeterData {
 
 ### Conditional Query Subscription
 
-Hook subscribe ke query secara selektif menggunakan pattern `"skip"`:
+Hook subscribe ke query secara selektif menggunakan pattern `"skip"` dan guard auth Convex:
 
 | Query | Gratis | BPP | Pro |
 |-------|--------|-----|-----|
@@ -103,20 +103,22 @@ Hook subscribe ke query secara selektif menggunakan pattern `"skip"`:
 | `api.billing.subscriptions.checkSubscriptionStatus` | Skip | Skip | Subscribe |
 
 ```typescript
-// Skip condition per tier:
+const canRunProtectedQuery = Boolean(user?._id && isAuthenticated)
+
+// Skip condition per tier + auth guard:
 const quotaStatus = useQuery(
   api.billing.quotas.getQuotaStatus,
-  user?._id ? { userId: user._id } : "skip"      // Semua tier
+  canRunProtectedQuery ? { userId: user._id } : "skip"
 )
 
 const creditBalance = useQuery(
   api.billing.credits.getCreditBalance,
-  user?._id && tier === "bpp" ? { userId: user._id } : "skip"  // BPP only
+  canRunProtectedQuery && tier === "bpp" ? { userId: user._id } : "skip"
 )
 
 const subscriptionStatus = useQuery(
   api.billing.subscriptions.checkSubscriptionStatus,
-  user?._id && tier === "pro" ? { userId: user._id } : "skip"  // Pro only
+  canRunProtectedQuery && tier === "pro" ? { userId: user._id } : "skip"
 )
 ```
 
@@ -145,9 +147,9 @@ const level: CreditMeterLevel =
 return {
   tier: "bpp",
   used: creditBalance?.usedCredits ?? 0,
-  total: Infinity,          // BPP tidak ada ceiling
+  total: creditBalance?.totalCredits ?? 0,
   remaining,
-  percentage: NaN,          // Tidak ada progress bar
+  percentage: total > 0 ? Math.round((used / total) * 100) : 0,
   level,
   isLoading: creditBalance === undefined,
   isAdmin: false,
@@ -198,13 +200,14 @@ const cancelAtPeriodEnd = subscriptionStatus?.isPendingCancel
 const isAdmin = user?.role === "admin" || user?.role === "superadmin"
 ```
 
-Jika `isAdmin === true`, hook return data kosong dengan `isAdmin: true`. Component akan render `null`.
+Jika `isAdmin === true`, hook return data unlimited (`tier: "unlimited"`, `total: Infinity`) dengan `isAdmin: true`.
+Component menampilkan satu baris badge + label `Unlimited`.
 
 ### Loading State
 
 Hook return `isLoading: true` ketika:
 - `userLoading` dari `useCurrentUser()` masih true
-- `user` belum tersedia (null)
+- `convexAuthLoading` dari `useConvexAuth()` masih true
 - `quotaStatus === undefined` (query masih loading)
 - Untuk BPP: `creditBalance === undefined`
 
@@ -236,7 +239,7 @@ interface CreditMeterProps {
 
 #### Admin/Superadmin
 
-Return `null` -- meter tersembunyi sepenuhnya.
+Render satu baris compact: `SegmentBadge + Unlimited`.
 
 #### Loading State
 
@@ -248,11 +251,10 @@ Return `null` -- meter tersembunyi sepenuhnya.
 ```
 
 #### BPP Tier (Tanpa Progress Bar)
-
-- Menampilkan: `{remaining} kredit tersisa`
-- Badge: `SegmentBadge` (BPP / Sky)
+- Menampilkan: `{used}/{total}` untuk compact/standard.
+- Badge: `SegmentBadge` (BPP / Sky).
 - Non-compact variant: Link "Top Up" ke `/subscription/plans`
-- Compact variant + level bukan normal: Text "Top Up" berwarna amber
+- Compact variant mengikuti pola satu baris yang sama dengan tier lain.
 
 #### Gratis / Pro Tier (Dengan Progress Bar)
 
@@ -294,6 +296,7 @@ Ketika ada overage (`hasOverage === true`), bar selalu menggunakan `bg-amber-500
 ### onClick Wrapper
 
 Jika `onClick` diberikan, wrapper element menjadi `<button type="button">`. Jika tidak, wrapper element adalah `<div>`.
+Wrapper button memiliki `cursor-pointer` dan hover state berbasis tier (`gratis/bpp/pro/unlimited`).
 
 ```typescript
 const Wrapper = onClick ? "button" : "div"
@@ -326,7 +329,7 @@ function formatDate(timestamp: number): string {
 **Lokasi:** Footer section dari sidebar, di antara content area dan mini-footer.
 
 ```tsx
-{/* Credit Meter — visible for all tiers, hidden for admin (handled by CreditMeter) */}
+{/* Credit Meter — visible untuk semua tier */}
 <div className="shrink-0 border-t border-hairline">
   <CreditMeter
     variant="compact"
@@ -346,7 +349,7 @@ function formatDate(timestamp: number): string {
 - Ditampilkan di semua panel sidebar (chat-history, paper, progress)
 - Click navigasi ke `/subscription/overview` via `router.push()`
 - Render sebagai `<button>` karena ada `onClick`
-- Admin: return null, sehingga hanya mini-footer yang tampil
+- Hover/focus wrapper mengikuti warna tier (gratis: emerald, bpp: sky, pro: amber, unlimited: slate)
 - Mini-footer copyright ditempatkan di bawah CreditMeter
 
 ### 4.2 StatusTab (Variant: `standard`)
@@ -465,14 +468,15 @@ Hook return `isLoading: true` dengan semua nilai numerik di 0 dan level `"normal
 
 ### Admin / Superadmin
 
-Hook mendeteksi via `user?.role === "admin" || user?.role === "superadmin"` dan return `isAdmin: true`. Component langsung return `null` -- tidak render apapun.
+Hook mendeteksi via `user?.role === "admin" || user?.role === "superadmin"` dan return `isAdmin: true`.
+Component menampilkan satu baris `SegmentBadge + Unlimited` (tetap clickable jika `onClick` tersedia).
 
 ### BPP dengan 0 Credits
 
 - `remaining = 0`
 - Level: `"critical"` (karena `0 < 30`)
-- Text tetap ditampilkan: `0 kredit tersisa`
-- Compact variant: text "Top Up" muncul karena `level !== "normal"`
+- Text compact tetap mengikuti format satu baris: `used/total`
+- Link top-up tetap tersedia di variant non-compact.
 
 ### Pro Overage
 
@@ -485,11 +489,6 @@ Hook mendeteksi via `user?.role === "admin" || user?.role === "superadmin"` dan 
 
 - Warning text berwarna Rose: `Berakhir: {tanggal}`
 - Reset date (`Reset: ...`) tidak ditampilkan ketika `cancelAtPeriodEnd === true`
-
-### BPP Percentage
-
-- `percentage = NaN` karena `total = Infinity`
-- Ini aman karena BPP path di component tidak render progress bar
 
 ### BPP isLoading
 
@@ -507,13 +506,13 @@ Hook mendeteksi via `user?.role === "admin" || user?.role === "superadmin"` dan 
 | # | Test | Deskripsi |
 |---|------|-----------|
 | 1 | Gratis tier progress bar | Verifikasi progress bar ada (`role="progressbar"`), nilai kredit `50/100` ditampilkan, label "kredit" ada |
-| 2 | BPP tanpa progress bar | Verifikasi progress bar tidak ada, text `150 kredit tersisa` ditampilkan |
+| 2 | BPP compact | Verifikasi text `used/total` ditampilkan dengan badge BPP |
 | 3 | Pro overage badge | Verifikasi badge `+200 overage` dan cost `Rp 10` ditampilkan saat tier Pro over quota |
-| 4 | Admin hidden | Verifikasi container kosong (`innerHTML === ""`) untuk admin user |
+| 4 | Admin unlimited row | Verifikasi badge + text `Unlimited` ditampilkan untuk admin user |
 | 5 | Warning level amber bar | Verifikasi bar punya class `bg-amber-500` saat level `"warning"` |
 | 6 | Critical level rose bar | Verifikasi bar punya class `bg-rose-500` saat level `"critical"` |
 | 7 | Loading skeleton | Verifikasi element `data-testid="credit-meter-skeleton"` dan text "-- kredit" |
-| 8 | onClick handler | Verifikasi wrapper menjadi `<button>` dan `onClick` dipanggil saat click |
+| 8 | onClick + tier hover | Verifikasi wrapper menjadi `<button>`, `onClick` dipanggil, dan class hover sesuai tier |
 
 ### Mock Strategy
 

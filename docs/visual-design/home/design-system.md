@@ -81,6 +81,9 @@ Dokumentasi visual design system untuk halaman home Makalah AI. File ini menjadi
 |------|-----------|
 | `public/logo/makalah_logo_500x500.png` | Logo header; dipanggil di `src/components/layout/GlobalHeader.tsx` |
 | `public/logo/makalah_logo_white_500x500.png` | Logo footer; dipanggil di `src/components/layout/Footer.tsx` |
+| `public/logo/makalah_logo_fullcolor.png` | Asset logo full-color baru (branding), belum di-wire ke komponen home |
+| `public/branding-makalah-ai-black.svg` | Asset branding varian hitam, siap pakai untuk kebutuhan dark-on-light |
+| `public/branding-makalah-ai-white.svg` | Asset branding varian putih, siap pakai untuk kebutuhan light-on-dark |
 | `public/makalah_brand_text.svg` | Brand text (light); dipanggil di `src/components/layout/GlobalHeader.tsx` |
 | `public/makalah_brand_text_dark.svg` | Brand text (dark); dipanggil di `src/components/layout/GlobalHeader.tsx` |
 | `public/hero-heading-light.svg` | Hero heading light; dipanggil di `src/components/marketing/HeroHeadingSvg.tsx` |

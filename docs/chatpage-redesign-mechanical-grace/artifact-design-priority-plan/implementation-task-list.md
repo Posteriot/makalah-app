@@ -100,6 +100,13 @@ Catatan:
 - [x] ARD-DOC-02 Update dokumen redesign chatpage yang terdampak agar istilah artifact lifecycle konsisten.
 - [x] ARD-DOC-03 Sinkronkan checklist QA akhir dengan kondisi codebase terbaru.
 
+### Hotfix pasca-batch (2026-02-16)
+- [x] ARD-HFX-01 Perbaiki preview sitasi agar tidak kepotong viewport bawah (`src/components/ui/hover-card.tsx`).
+- [x] ARD-HFX-02 Finalisasi state toggle artifak TopBar menjadi icon-only + 3 state visual (`src/components/chat/shell/TopBar.tsx`).
+- [x] ARD-HFX-03 Sederhanakan close control fullscreen dengan menghapus tombol `X` redundant (`src/components/chat/FullsizeArtifactModal.tsx`).
+- [x] ARD-HFX-04 Tambahkan hover tier-aware dan cursor pointer pada CreditMeter footer sidebar (`src/components/billing/CreditMeter.tsx`).
+- [x] ARD-HFX-05 Tambahkan auth guard pada `useCreditMeter` agar query quota tidak memicu `Unauthorized` saat auth belum settle (`src/lib/hooks/useCreditMeter.ts`).
+
 ## Urutan Eksekusi Redesign yang Direkomendasikan
 - [x] Batch A: `ArtifactPanel` + `ArtifactTabs` + `ArtifactToolbar`
 - [x] Batch B: `ArtifactViewer` + `ArtifactEditor`

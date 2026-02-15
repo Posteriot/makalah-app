@@ -1,9 +1,14 @@
 # Artifact Design Priority Plan
 
 ## Status Eksekusi
-- Last update: 2026-02-15
+- Last update: 2026-02-16
 - Mode rencana aktif: redesign murni (struktur + UX flow)
 - Progress redesign: Batch A-F selesai (`ArtifactPanel`, `ArtifactTabs`, `ArtifactToolbar`, `ArtifactViewer`, `ArtifactEditor`, `FullsizeArtifactModal`, `ArtifactIndicator`, `MessageBubble`, `SidebarPaperSessions`, `TopBar`, `VersionHistoryDialog`, `ArtifactList` fallback-audit, dan konsolidasi QA/docs)
+- Post-batch correction selesai:
+  - positioning preview citation anti-clipping viewport,
+  - finalisasi state visual toggle artifak di TopBar (icon-only, 3 state),
+  - simplifikasi close control fullscreen (hapus tombol `X` redundan),
+  - penguatan `CreditMeter` (hover tier-aware + auth guard query quota).
 - Referensi task aktif: `docs/chatpage-redesign-mechanical-grace/artifact-design-priority-plan/implementation-task-list.md`
 - Baseline refinement sebelumnya: `docs/chatpage-redesign-mechanical-grace/artifact-design-priority-plan/visual-qa-checklist.md`
 

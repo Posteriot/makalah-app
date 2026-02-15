@@ -10,6 +10,11 @@ Menambahkan "meteran kredit" universal ke 3 lokasi di Makalah App. Semua tier (G
 - **Placement sidebar**: Footer, di bawah conversation list
 - **Scope**: Sidebar + Settings + Overview enhancement
 
+### Status implementasi aktual (main, 2026-02-16)
+- Hook `useCreditMeter` sudah memakai guard auth (`useConvexAuth`) agar query protected tidak memicu `Unauthorized` saat sesi belum settle.
+- `CreditMeter` clickable sudah memiliki `cursor-pointer` dan hover/focus berbasis tier (`gratis/bpp/pro/unlimited`).
+- Admin/superadmin tidak disembunyikan; ditampilkan sebagai satu baris `SegmentBadge + Unlimited`.
+
 ---
 
 ## 1. Shared Component: `CreditMeter`
@@ -29,7 +34,7 @@ Komponen reusable dengan 3 variant:
 | Tier | Display | Konversi |
 |------|---------|----------|
 | **Gratis** | `50/100 kredit` + progress bar | `usedTokens/1000` / `allottedTokens/1000` |
-| **BPP** | `150 kredit tersisa` + NO progress bar | Langsung dari `remainingCredits` |
+| **BPP** | `used/total` + NO progress bar | Langsung dari `creditBalances` (used/total/remaining) |
 | **Pro** | `2.500/5.000 kredit` + progress bar + overage badge | `usedTokens/1000` / `allottedTokens/1000` |
 
 ### Color logic (Mechanical Grace signal theory)
@@ -69,7 +74,7 @@ Komponen reusable dengan 3 variant:
 
 **BPP variant (no bar):**
 ```
-│ 150 kredit tersisa  │
+│ 150/500 kredit      │
 │ BPP · Top Up →      │  ← link ke /subscription/plans
 ```
 
@@ -78,7 +83,7 @@ Komponen reusable dengan 3 variant:
 - Separator: `border-hairline` (0.5px) atas dan bawah
 - Clickable → navigate ke `/subscription/overview`
 - Collapsed sidebar: meter hidden
-- Admin/superadmin: meter hidden (unlimited)
+- Admin/superadmin: meter tampil sebagai `UNLIMITED`
 
 ---
 
@@ -170,9 +175,9 @@ Tambah kolom kredit:
 function useCreditMeter() → {
   tier: EffectiveTier
   used: number          // kredit terpakai
-  total: number         // kredit allotted (Infinity untuk BPP)
+  total: number         // kredit allotted
   remaining: number     // kredit tersisa
-  percentage: number    // 0-100 (NaN untuk BPP)
+  percentage: number    // 0-100 (0 jika total=0)
   level: "normal" | "warning" | "critical" | "depleted"
   overage?: number      // Pro only, kredit overage
   overageCost?: number  // Pro only, Rp
@@ -184,7 +189,7 @@ function useCreditMeter() → {
 ### Konversi logic
 
 - **Gratis/Pro**: `used = ceil(quotaStatus.usedTokens / 1000)`, `total = allottedTokens / 1000`
-- **BPP**: `remaining = creditBalance.remainingCredits`, `total = Infinity`
+- **BPP**: `remaining = creditBalance.remainingCredits`, `total = creditBalance.totalCredits`
 - **Level**: derive dari `quotaStatus.warningLevel` atau credit threshold
 
 ### Query reuse (ZERO new backend queries)
@@ -203,10 +208,10 @@ function useCreditMeter() → {
 | Case | Behavior |
 |------|----------|
 | New user, no quota | Skeleton shimmer sampai `initializeQuota` |
-| BPP, 0 kredit | "0 kredit tersisa" Rose + "Top Up →" prominent |
+| BPP, 0 kredit | Tetap tampil format compact `used/total`, variant non-compact tetap ada link Top Up |
 | Pro overage | Bar full (100%) Amber + "+X overage" badge |
 | Pro cancelAtPeriodEnd | Label "Berakhir: {date}" Rose |
-| Admin/superadmin | Meter hidden (unlimited) |
+| Admin/superadmin | Meter tampil baris compact: badge tier + `Unlimited` |
 | Query loading | Skeleton: `bg-muted animate-pulse` + "— kredit" |
 | Query error | "Gagal memuat" + retry icon |
 | Sidebar collapsed | Meter hidden via CSS |
@@ -218,9 +223,9 @@ function useCreditMeter() → {
 File: `__tests__/credit-meter.test.tsx`
 
 1. Gratis: renders progress bar with correct kredit values
-2. BPP: renders remaining credits without progress bar
+2. BPP: renders compact `used/total` tanpa progress bar
 3. Pro: renders progress bar with overage badge when over quota
-4. Admin: meter not rendered (hidden)
+4. Admin: renders `UNLIMITED` row
 5. Warning level: bar color Amber at 70%
 6. Critical level: bar color Rose at 90%
 7. Loading: renders skeleton
