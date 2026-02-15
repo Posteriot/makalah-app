@@ -1,18 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import {
-  Download,
-  EditPencil,
-  MagicWand,
-  Copy,
-  Check,
-  Expand,
-  MoreVert,
-  Xmark,
-  NavArrowDown,
-  Page,
-} from "iconoir-react"
+import { Download, EditPencil, MagicWand, Copy, Check, Expand, MoreVert, Xmark } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -109,7 +98,13 @@ export function ArtifactToolbar({
     >
       {/* Layer 1: Active document context */}
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 hidden @[520px]/toolbar:block">
+          <p className="truncate text-lg font-semibold text-foreground">
+            {artifact.title}
+          </p>
+        </div>
+
+        <div className="min-w-0 @[520px]/toolbar:hidden">
           <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
             Dokumen Aktif
           </p>
@@ -138,7 +133,29 @@ export function ArtifactToolbar({
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="hidden items-center gap-1 @[520px]/toolbar:flex">
+          {onExpand && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    iconActionClass,
+                    "border border-sky-500/40 bg-slate-900/70 text-slate-100 hover:bg-slate-900"
+                  )}
+                  onClick={onExpand}
+                  aria-label="Buka fullscreen"
+                >
+                  <Expand className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">Fullscreen</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 @[520px]/toolbar:hidden">
           {onExpand && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -175,90 +192,94 @@ export function ArtifactToolbar({
       {/* Layer 2: Prioritized actions */}
       <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/50 pt-2">
         {/* Wide layout */}
-        <div className="hidden @[520px]/toolbar:flex items-center gap-1.5">
-          <Button
-            size="sm"
-            onClick={onEdit}
-            className="h-8 rounded-action px-2.5 font-mono text-xs"
-          >
-            <EditPencil className="mr-1.5 h-3.5 w-3.5" />
-            Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefrasa}
-            className="h-8 rounded-action px-2.5 font-mono text-xs"
-          >
-            <MagicWand className="mr-1.5 h-3.5 w-3.5" />
-            Refrasa
-          </Button>
+        <div className="hidden @[520px]/toolbar:flex min-w-0 items-center gap-1.5">
+          <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+            {artifact.contentTypeLabel}
+          </span>
+          <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+            {artifact.wordCount} kata
+          </span>
+          <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+            {artifact.contentLength} karakter
+          </span>
         </div>
 
-        {/* Utility actions */}
-        <div className="hidden @[520px]/toolbar:flex items-center gap-1">
+        <div className="hidden @[520px]/toolbar:flex items-center gap-1.5">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={iconActionClass} aria-label="Mode baca">
-                <Page className="h-3.5 w-3.5" />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onEdit}
+                className="h-8 w-8 rounded-action border-border/70 bg-background/60 text-slate-200 transition-all duration-150 hover:border-slate-400 hover:bg-slate-800/70 hover:text-slate-50"
+                aria-label="Edit"
+              >
+                <EditPencil className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Mode baca</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={iconActionClass} aria-label={`Versi ${artifact.version}`}>
-                <span className="text-[11px] font-mono font-semibold text-muted-foreground">v{artifact.version}</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Versi dokumen</TooltipContent>
+            <TooltipContent className="font-mono text-xs">Edit</TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                className={cn(iconActionClass, isRefrasaReady ? "text-sky-400 hover:text-sky-300" : "")}
-                aria-label={isRefrasaReady ? "Refrasa siap" : "Refrasa belum siap"}
+                onClick={handleCopy}
+                className={cn(
+                  "h-8 w-8 rounded-action border-border/70 bg-background/60 text-slate-200 transition-all duration-150 hover:border-slate-400 hover:bg-slate-800/70 hover:text-slate-50",
+                  copied && "border-slate-300 bg-slate-700/70 text-slate-50"
+                )}
+                aria-label={copied ? "Disalin" : "Salin"}
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">{copied ? "Disalin" : "Salin"}</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onRefrasa}
+                className={cn(
+                  "h-8 w-8 rounded-action border-border/70 bg-background/60 text-slate-200 transition-all duration-150 hover:border-slate-400 hover:bg-slate-800/70 hover:text-slate-50",
+                  !isRefrasaReady && "text-slate-400 hover:text-slate-300"
+                )}
+                aria-label="Refrasa"
               >
                 <MagicWand className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
-              {isRefrasaReady ? "Refrasa siap" : "Refrasa min. 50 karakter"}
+              {isRefrasaReady ? "Refrasa" : "Refrasa (min. 50 karakter)"}
             </TooltipContent>
           </Tooltip>
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 rounded-action px-2.5 font-mono text-xs">
-                <Download className="mr-1.5 h-3.5 w-3.5" />
-                Download
-                <NavArrowDown className="ml-1 h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-action border-border/70 bg-background/60 text-slate-200 transition-all duration-150 hover:border-slate-400 hover:bg-slate-800/70 hover:text-slate-50"
+                    aria-label="Download"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">Download</TooltipContent>
+            </Tooltip>
             <DropdownMenuContent align="end" className="font-mono text-xs">
               <DropdownMenuItem onClick={() => onDownload?.("docx")}>DOCX</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDownload?.("pdf")}>PDF</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDownload?.("txt")}>TXT</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCopy}
-                className={cn(iconActionClass, copied && "bg-accent text-foreground")}
-              >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Salin</TooltipContent>
-          </Tooltip>
         </div>
 
         {/* Compact layout */}
@@ -309,10 +330,6 @@ export function ArtifactToolbar({
               <DropdownMenuItem onClick={handleCopy}>
                 {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
                 Salin
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled>
-                <Page className="mr-2 h-4 w-4" />
-                Mode Baca
               </DropdownMenuItem>
               <DropdownMenuItem disabled>
                 <span className="mr-2 inline-flex h-4 w-4 items-center justify-center font-mono text-[10px]">
