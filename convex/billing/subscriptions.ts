@@ -384,6 +384,8 @@ export const reactivateSubscription = mutation({
 
     await ctx.db.patch(args.subscriptionId, {
       status: "active",
+      cancelAtPeriodEnd: false,
+      canceledAt: undefined,
       updatedAt: now,
     })
 
