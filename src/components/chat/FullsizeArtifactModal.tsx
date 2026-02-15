@@ -19,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Xmark,
   Collapse,
   Download,
   Check,
@@ -431,24 +430,12 @@ export function FullsizeArtifactModal({
                       ref={primaryCloseButtonRef}
                       onClick={requestClose}
                       className="flex h-8 w-8 items-center justify-center rounded-action text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                      aria-label="Minimize"
+                      aria-label="Tutup fullscreen"
                     >
                       <Collapse className="h-4 w-4" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="font-mono text-xs">Minimize</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={requestClose}
-                      className="flex h-8 w-8 items-center justify-center rounded-action text-muted-foreground transition-colors hover:bg-rose-500/90 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                      aria-label="Close (ESC)"
-                    >
-                      <Xmark className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="font-mono text-xs">Close (ESC)</TooltipContent>
+                  <TooltipContent className="font-mono text-xs">Tutup fullscreen</TooltipContent>
                 </Tooltip>
               </div>
             </div>
