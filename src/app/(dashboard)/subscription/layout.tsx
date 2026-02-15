@@ -9,6 +9,7 @@ import {
   Clock,
   ArrowUpCircle,
   CreditCard,
+  Sparks,
   NavArrowRight,
   SidebarExpand,
   SidebarCollapse,
@@ -55,6 +56,15 @@ function getSidebarItems(tier: EffectiveTier): Array<{ href: string; label: stri
     })
   }
 
+  // Upgrade ke Pro: BPP only (Gratis has generic "Upgrade")
+  if (tier === "bpp") {
+    items.push({
+      href: "/subscription/plans",
+      label: "Upgrade ke Pro",
+      icon: Sparks,
+    })
+  }
+
   return items
 }
 
@@ -84,6 +94,10 @@ function SidebarNav({
                   pathname === "/subscription/plans" ||
                   pathname.startsWith("/subscription/plans/")
                 )
+              }
+
+              if (item.href === "/subscription/plans") {
+                return pathname === "/subscription/plans" || pathname.startsWith("/subscription/plans/")
               }
 
               if (item.href === "/subscription/overview") {
