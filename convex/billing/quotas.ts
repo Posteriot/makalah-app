@@ -153,6 +153,72 @@ export const initializeQuota = mutation({
 })
 
 /**
+ * Initialize/reset quota (internal — called from webhook, no auth context)
+ */
+export const initializeQuotaInternal = mutation({
+  args: {
+    userId: v.id("users"),
+    internalKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const expected = process.env.CONVEX_INTERNAL_KEY
+    if (!expected || args.internalKey !== expected) {
+      throw new Error("Unauthorized")
+    }
+
+    const user = await ctx.db.get(args.userId)
+    if (!user) throw new Error("User not found")
+
+    const now = Date.now()
+    const { periodStart, periodEnd } = getPeriodBoundaries(user.createdAt, now)
+
+    const tier = (user.subscriptionStatus === "free" ? "gratis" : user.subscriptionStatus) as TierType
+    const limits = getTierLimits(tier)
+
+    const existingQuota = await ctx.db
+      .query("userQuotas")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first()
+
+    if (existingQuota) {
+      await ctx.db.patch(existingQuota._id, {
+        periodStart,
+        periodEnd,
+        allottedTokens: limits.monthlyTokens === Infinity ? 999_999_999 : limits.monthlyTokens,
+        usedTokens: 0,
+        remainingTokens: limits.monthlyTokens === Infinity ? 999_999_999 : limits.monthlyTokens,
+        allottedPapers: limits.monthlyPapers === Infinity ? 999 : limits.monthlyPapers,
+        completedPapers: 0,
+        dailyUsedTokens: 0,
+        lastDailyReset: now,
+        tier,
+        overageTokens: 0,
+        overageCostIDR: 0,
+        updatedAt: now,
+      })
+      return existingQuota._id
+    }
+
+    return await ctx.db.insert("userQuotas", {
+      userId: args.userId,
+      periodStart,
+      periodEnd,
+      allottedTokens: limits.monthlyTokens === Infinity ? 999_999_999 : limits.monthlyTokens,
+      usedTokens: 0,
+      remainingTokens: limits.monthlyTokens === Infinity ? 999_999_999 : limits.monthlyTokens,
+      allottedPapers: limits.monthlyPapers === Infinity ? 999 : limits.monthlyPapers,
+      completedPapers: 0,
+      dailyUsedTokens: 0,
+      lastDailyReset: now,
+      tier,
+      overageTokens: 0,
+      overageCostIDR: 0,
+      updatedAt: now,
+    })
+  },
+})
+
+/**
  * Deduct tokens from user quota
  * Called after successful AI response
  */

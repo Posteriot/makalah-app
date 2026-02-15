@@ -65,6 +65,100 @@ export const createSubscription = mutation({
 })
 
 /**
+ * Create subscription (internal — called from webhook, no auth context)
+ */
+export const createSubscriptionInternal = mutation({
+  args: {
+    userId: v.id("users"),
+    planType: v.union(
+      v.literal("pro_monthly"),
+      v.literal("pro_yearly")
+    ),
+    internalKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const expected = process.env.CONVEX_INTERNAL_KEY
+    if (!expected || args.internalKey !== expected) {
+      throw new Error("Unauthorized")
+    }
+
+    const now = Date.now()
+    const pricing = SUBSCRIPTION_PRICING[args.planType]
+
+    const periodEnd = new Date(now)
+    periodEnd.setMonth(periodEnd.getMonth() + pricing.intervalMonths)
+
+    const existingSub = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .first()
+
+    if (existingSub) {
+      throw new Error("User already has an active subscription")
+    }
+
+    const subscriptionId = await ctx.db.insert("subscriptions", {
+      userId: args.userId,
+      planType: args.planType,
+      priceIDR: pricing.priceIDR,
+      status: "active",
+      currentPeriodStart: now,
+      currentPeriodEnd: periodEnd.getTime(),
+      nextBillingDate: periodEnd.getTime(),
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    await ctx.db.patch(args.userId, {
+      subscriptionStatus: "pro",
+      updatedAt: now,
+    })
+
+    return subscriptionId
+  },
+})
+
+/**
+ * Renew subscription (internal — called from webhook)
+ */
+export const renewSubscriptionInternal = mutation({
+  args: {
+    subscriptionId: v.id("subscriptions"),
+    internalKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const expected = process.env.CONVEX_INTERNAL_KEY
+    if (!expected || args.internalKey !== expected) {
+      throw new Error("Unauthorized")
+    }
+
+    const subscription = await ctx.db.get(args.subscriptionId)
+    if (!subscription) throw new Error("Subscription not found")
+
+    const now = Date.now()
+    const pricing = SUBSCRIPTION_PRICING[subscription.planType]
+
+    const newPeriodStart = subscription.currentPeriodEnd
+    const newPeriodEnd = new Date(newPeriodStart)
+    newPeriodEnd.setMonth(newPeriodEnd.getMonth() + pricing.intervalMonths)
+
+    await ctx.db.patch(args.subscriptionId, {
+      status: "active",
+      cancelAtPeriodEnd: undefined,
+      canceledAt: undefined,
+      cancelReason: undefined,
+      currentPeriodStart: newPeriodStart,
+      currentPeriodEnd: newPeriodEnd.getTime(),
+      nextBillingDate: newPeriodEnd.getTime(),
+      updatedAt: now,
+    })
+
+    return { newPeriodStart, newPeriodEnd: newPeriodEnd.getTime() }
+  },
+})
+
+/**
  * Get user's active subscription
  */
 export const getActiveSubscription = query({

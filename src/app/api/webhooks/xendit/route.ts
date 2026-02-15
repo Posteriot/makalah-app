@@ -12,6 +12,7 @@ import {
   sendPaymentSuccessEmail,
   sendPaymentFailedEmail,
 } from "@/lib/email/sendPaymentEmail"
+import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
 
 const internalKey = process.env.CONVEX_INTERNAL_KEY
 
@@ -203,14 +204,66 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
       console.log(`[Xendit] Paper completion payment - unlock export`)
       break
 
-    case "subscription_initial":
-    case "subscription_renewal":
-      // TODO: Activate/renew subscription
-      console.log(`[Xendit] Subscription payment - activate/renew`)
+    case "subscription_initial": {
+      const planType = (payment as any).planType ?? "pro_monthly"
+
+      const subscriptionId = await fetchMutation(
+        api.billing.subscriptions.createSubscriptionInternal,
+        {
+          userId: payment.userId as Id<"users">,
+          planType: planType as "pro_monthly" | "pro_yearly",
+          internalKey,
+        }
+      )
+
+      // Initialize/reset monthly quota for the new Pro period
+      await fetchMutation(api.billing.quotas.initializeQuotaInternal, {
+        userId: payment.userId as Id<"users">,
+        internalKey,
+      })
+
+      console.log(`[Xendit] Subscription created:`, {
+        userId: payment.userId,
+        subscriptionId,
+        planType,
+      })
       break
+    }
+
+    case "subscription_renewal": {
+      const subscription = await fetchQuery(
+        api.billing.subscriptions.getActiveSubscription,
+        { userId: payment.userId as Id<"users"> }
+      )
+
+      if (subscription) {
+        await fetchMutation(
+          api.billing.subscriptions.renewSubscriptionInternal,
+          { subscriptionId: subscription._id, internalKey }
+        )
+
+        // Reset monthly quota for new period
+        await fetchMutation(api.billing.quotas.initializeQuotaInternal, {
+          userId: payment.userId as Id<"users">,
+          internalKey,
+        })
+
+        console.log(`[Xendit] Subscription renewed:`, { userId: payment.userId })
+      } else {
+        console.warn(`[Xendit] No active subscription for renewal: ${payment.userId}`)
+      }
+      break
+    }
 
     default:
       console.warn(`[Xendit] Unknown payment type: ${paymentType}`)
+  }
+
+  // Set subscription plan label for email
+  let subscriptionPlanLabel: string | undefined
+  if (paymentType === "subscription_initial" || paymentType === "subscription_renewal") {
+    const planType = (payment as any).planType ?? "pro_monthly"
+    subscriptionPlanLabel = SUBSCRIPTION_PRICING[planType as keyof typeof SUBSCRIPTION_PRICING]?.label
   }
 
   // 5. Send confirmation email
@@ -229,6 +282,7 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
         newTotalCredits: newTotalCredits,
         transactionId: data.id,
         paidAt: data.paid_at ? new Date(data.paid_at).getTime() : Date.now(),
+        subscriptionPlanLabel,
       })
 
       console.log(`[Xendit] Email notification result:`, emailResult)
