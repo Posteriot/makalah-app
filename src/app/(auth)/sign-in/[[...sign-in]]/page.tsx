@@ -45,12 +45,35 @@ const RECOVERY_PRECHECK_ERROR_CODES: RecoveryPrecheckErrorCode[] = [
   "INVALID_REQUEST",
 ]
 
+const SIGNUP_DISABLED_ERROR_CODE = "signup_disabled"
+const SIGNUP_DISABLED_ERROR_MESSAGE =
+  "Akun Google ini belum terdaftar di Makalah."
+
+function getOAuthErrorMessage(errorCode: string | null) {
+  if (errorCode === SIGNUP_DISABLED_ERROR_CODE) {
+    return SIGNUP_DISABLED_ERROR_MESSAGE
+  }
+  return ""
+}
+
 export default function SignInPage() {
   const searchParams = useSearchParams()
   const resetToken = searchParams.get("token")
+  const oauthErrorCode = searchParams.get("error")
+  const redirectParam =
+    searchParams.get("redirect_url") ?? searchParams.get("redirect")
+  const signUpHref = redirectParam
+    ? `/sign-up?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
+    : "/sign-up"
   const callbackURL = getRedirectUrl(searchParams, "/get-started")
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
   const requiresRecoveryCaptcha = Boolean(turnstileSiteKey)
+  const initialOAuthErrorMessage =
+    !resetToken ? getOAuthErrorMessage(oauthErrorCode) : ""
+  const initialOAuthErrorCode =
+    initialOAuthErrorMessage && oauthErrorCode
+      ? oauthErrorCode
+      : null
 
   const [mode, setMode] = useState<SignInMode>(() =>
     resetToken ? "reset-password" : "sign-in"
@@ -61,14 +84,18 @@ export default function SignInPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [error, setError] = useState(initialOAuthErrorMessage)
+  const [errorCode, setErrorCode] = useState<string | null>(initialOAuthErrorCode)
   const [magicLinkCaptchaToken, setMagicLinkCaptchaToken] = useState<string | null>(null)
   const [forgotPasswordCaptchaToken, setForgotPasswordCaptchaToken] = useState<string | null>(null)
   const [magicLinkCaptchaResetCounter, setMagicLinkCaptchaResetCounter] = useState(0)
   const [forgotPasswordCaptchaResetCounter, setForgotPasswordCaptchaResetCounter] = useState(0)
 
   function clearError() {
-    if (error) setError("")
+    if (error || errorCode) {
+      setError("")
+      setErrorCode(null)
+    }
   }
 
   const resetMagicLinkCaptcha = useCallback(() => {
@@ -199,9 +226,16 @@ export default function SignInPage() {
     clearError()
     setIsLoading(true)
     try {
+      const errorParams = new URLSearchParams()
+      if (redirectParam) {
+        errorParams.set("redirect_url", redirectParam)
+      }
+      const errorCallbackURL = `${window.location.origin}/sign-in${errorParams.size > 0 ? `?${errorParams.toString()}` : ""}`
+
       await signIn.social({
         provider: "google",
         callbackURL,
+        errorCallbackURL,
       })
       // Navigates away — no need to setIsLoading(false)
     } catch {
@@ -482,7 +516,22 @@ export default function SignInPage() {
 
             {error && (
               <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
-                <p className="whitespace-pre-line">{error}</p>
+                {errorCode === SIGNUP_DISABLED_ERROR_CODE ? (
+                  <p className="whitespace-pre-line">
+                    Akun Google ini belum terdaftar di Makalah.
+                    {"\n"}
+                    Silakan{" "}
+                    <Link
+                      href={signUpHref}
+                      className="underline underline-offset-2 hover:text-slate-300 transition-colors"
+                    >
+                      daftar
+                    </Link>{" "}
+                    dulu, lalu masuk kembali.
+                  </p>
+                ) : (
+                  <p className="whitespace-pre-line">{error}</p>
+                )}
               </div>
             )}
 
@@ -506,7 +555,7 @@ export default function SignInPage() {
           {/* Footer */}
           <p className="text-muted-foreground text-xs font-sans text-center mt-4">
             Belum punya akun?{" "}
-            <Link href="/sign-up" className="text-slate-50 hover:text-slate-300 font-bold">
+            <Link href={signUpHref} className="text-slate-50 hover:text-slate-300 font-bold">
               Daftar
             </Link>
           </p>

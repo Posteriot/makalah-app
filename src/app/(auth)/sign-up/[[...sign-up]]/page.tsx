@@ -124,6 +124,7 @@ export default function SignUpPage() {
       await signIn.social({
         provider: "google",
         callbackURL,
+        requestSignUp: true,
       })
       // Navigates away
     } catch {

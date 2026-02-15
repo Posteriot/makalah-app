@@ -6,7 +6,12 @@ import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { magicLink } from "better-auth/plugins";
 import { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
-import { sendVerificationEmail, sendMagicLinkEmail, sendPasswordResetEmail } from "./authEmails";
+import {
+  sendVerificationEmail,
+  sendMagicLinkEmail,
+  sendPasswordResetEmail,
+  sendSignupSuccessEmail,
+} from "./authEmails";
 
 // SITE_URL = primary frontend origin (production) — for crossDomain redirects
 // CONVEX_SITE_URL = Convex HTTP actions URL (built-in) — where BetterAuth API runs
@@ -25,6 +30,14 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
   verbose: false,
 });
 
+async function sendSignupSuccessEmailSafely(email: string): Promise<void> {
+  try {
+    await sendSignupSuccessEmail(email);
+  } catch (error) {
+    console.error("[Auth Email] Failed to send signup success email:", error);
+  }
+}
+
 // BetterAuth configuration
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   ({
@@ -42,11 +55,30 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       sendVerificationEmail: async ({ user, url }) => {
         await sendVerificationEmail(user.email, url);
       },
+      afterEmailVerification: async (user) => {
+        if (typeof user.email === "string" && user.email.length > 0) {
+          await sendSignupSuccessEmailSafely(user.email);
+        }
+      },
     },
     socialProviders: {
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        disableImplicitSignUp: true,
+      },
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            const email = typeof user.email === "string" ? user.email : "";
+            if (!email || user.emailVerified !== true) {
+              return;
+            }
+            await sendSignupSuccessEmailSafely(email);
+          },
+        },
       },
     },
     account: {

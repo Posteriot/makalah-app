@@ -4,6 +4,7 @@
 // BetterAuth callbacks run in Convex HTTP action context where fetch is available.
 
 const FROM_EMAIL = "Makalah AI <noreply@makalah.ai>";
+const DEFAULT_APP_URL = "https://makalah.ai";
 
 async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -47,5 +48,15 @@ export async function sendPasswordResetEmail(email: string, url: string): Promis
     email,
     "Reset Password — Makalah AI",
     `<p>Klik link berikut untuk reset password:</p><p><a href="${url}">${url}</a></p>`
+  );
+}
+
+export async function sendSignupSuccessEmail(email: string): Promise<void> {
+  const appUrl = process.env.SITE_URL ?? process.env.APP_URL ?? DEFAULT_APP_URL;
+
+  await sendViaResend(
+    email,
+    "Pendaftaran Berhasil — Makalah AI",
+    `<p>Pendaftaran akun kamu berhasil.</p><p>Sekarang kamu bisa mulai menyusun paper dengan Makalah AI.</p><p><a href="${appUrl}/get-started">Mulai sekarang</a></p>`
   );
 }

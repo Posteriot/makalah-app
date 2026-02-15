@@ -90,6 +90,7 @@ Sumber: `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx`
 | Toast | Gagal OAuth Google | `Gagal masuk dengan Google. Silakan coba lagi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:173` |
 | Inline Error | Email/password kosong di form sign-in | `Email dan password wajib diisi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:119` |
 | Inline Error | Kredensial salah (deteksi regex invalid/incorrect credentials) | `Email atau password tidak cocok.\nCoba gunakan fitur "Lupa password?" atau "Magic Link" untuk masuk.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:135` |
+| Inline Error + Link | OAuth Google ditolak karena implicit signup dimatikan (`error=signup_disabled`) | `Akun Google ini belum terdaftar di Makalah.\nSilakan daftar dulu, lalu masuk kembali.` dengan kata `daftar` sebagai link inline (underline + hover) ke `/sign-up?redirect_url=...` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx` |
 | Inline Error (dinamis) | Error dari SDK sign-in email | `msg || "Terjadi kesalahan."` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:167` |
 | Inline Error | Email kosong di magic link / forgot password | `Email wajib diisi.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:184`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:229` |
 | Inline Error | CAPTCHA belum diselesaikan saat mode recovery aktif | `Selesaikan verifikasi keamanan terlebih dahulu.` | `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:189`, `src/app/(auth)/sign-in/[[...sign-in]]/page.tsx:234` |
@@ -142,8 +143,24 @@ Sumber notifikasi utama: `src/components/auth/WaitlistForm.tsx`
 
 ## Ringkasan Cepat
 Total notifikasi user-facing yang tercatat di area auth:
-- `/sign-in`: 16 entri (termasuk pesan dinamis dan status panel)
+- `/sign-in`: 17 entri (termasuk pesan dinamis, status panel, dan link inline khusus signup Google yang ditolak)
 - `/sign-up`: 13 entri (termasuk flow invite token)
 - `/waiting-list`: 5 entri
 
 Catatan: pesan dinamis (`err.message`, `apiError.message`, `result.error.message`, `msg`) bisa berubah tergantung respons backend/provider.
+
+## Notifikasi Email Auth ke User
+
+### Signup Berhasil
+- Channel: Email transaksional (Resend, via Better Auth callback di Convex).
+- Subject: `Pendaftaran Berhasil — Makalah AI`.
+- Trigger:
+  - Signup Google berhasil (user baru dibuat via OAuth, email sudah verified).
+  - Signup email/password setelah user verifikasi email berhasil.
+- Konten ringkas:
+  - Konfirmasi pendaftaran berhasil.
+  - Ajakan mulai menggunakan aplikasi.
+  - Link `.../get-started`.
+- Sumber:
+  - `convex/auth.ts`
+  - `convex/authEmails.ts`
