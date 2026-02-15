@@ -11,6 +11,7 @@ import {
   MoreVert,
   Xmark,
   NavArrowDown,
+  Page,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -44,6 +45,7 @@ interface ArtifactToolbarProps {
     type: string
     version: number
     createdAt: number
+    contentLength: number
   } | null
   /** Number of open tabs for context label */
   openTabCount?: number
@@ -91,6 +93,7 @@ export function ArtifactToolbar({
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+  const isRefrasaReady = artifact.contentLength >= 50
 
   const iconActionClass =
     "h-8 w-8 rounded-action text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -133,21 +136,38 @@ export function ArtifactToolbar({
           </div>
         </div>
 
-        {onClosePanel && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={iconActionClass}
-                onClick={onClosePanel}
-              >
-                <Xmark className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Tutup panel</TooltipContent>
-          </Tooltip>
-        )}
+        <div className="flex items-center gap-1">
+          {onExpand && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={iconActionClass}
+                  onClick={onExpand}
+                >
+                  <Expand className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">Fullscreen</TooltipContent>
+            </Tooltip>
+          )}
+          {onClosePanel && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={iconActionClass}
+                  onClick={onClosePanel}
+                >
+                  <Xmark className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">Tutup panel</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       {/* Layer 2: Prioritized actions */}
@@ -175,6 +195,40 @@ export function ArtifactToolbar({
 
         {/* Utility actions */}
         <div className="hidden @[520px]/toolbar:flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className={iconActionClass} aria-label="Mode baca">
+                <Page className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">Mode baca</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className={iconActionClass} aria-label={`Versi ${artifact.version}`}>
+                <span className="text-[11px] font-mono font-semibold text-muted-foreground">v{artifact.version}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">Versi dokumen</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(iconActionClass, isRefrasaReady ? "text-sky-400 hover:text-sky-300" : "")}
+                aria-label={isRefrasaReady ? "Refrasa siap" : "Refrasa belum siap"}
+              >
+                <MagicWand className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">
+              {isRefrasaReady ? "Refrasa siap" : "Refrasa min. 50 karakter"}
+            </TooltipContent>
+          </Tooltip>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 rounded-action px-2.5 font-mono text-xs">
@@ -202,15 +256,6 @@ export function ArtifactToolbar({
               </Button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">Salin</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onExpand} className={iconActionClass}>
-                <Expand className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Fullscreen</TooltipContent>
           </Tooltip>
         </div>
 
@@ -247,10 +292,26 @@ export function ArtifactToolbar({
                 {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
                 Salin
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onExpand}>
-                <Expand className="mr-2 h-4 w-4" />
-                Fullscreen
+              <DropdownMenuItem disabled>
+                <Page className="mr-2 h-4 w-4" />
+                Mode Baca
               </DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                <span className="mr-2 inline-flex h-4 w-4 items-center justify-center font-mono text-[10px]">
+                  v
+                </span>
+                v{artifact.version}
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                <MagicWand className="mr-2 h-4 w-4" />
+                {isRefrasaReady ? "Refrasa siap" : "Refrasa min. 50 karakter"}
+              </DropdownMenuItem>
+              {onExpand && (
+                <DropdownMenuItem onClick={onExpand}>
+                  <Expand className="mr-2 h-4 w-4" />
+                  Fullscreen
+                </DropdownMenuItem>
+              )}
               {onClosePanel && (
                 <>
                   <DropdownMenuSeparator />

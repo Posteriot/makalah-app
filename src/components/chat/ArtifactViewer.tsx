@@ -28,7 +28,6 @@ import { SourcesIndicator } from "./SourcesIndicator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
-import { cn } from "@/lib/utils"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
 import {
   RefrasaConfirmDialog,
@@ -143,13 +142,6 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         : "skip"
     )
 
-    const finalStatus = useQuery(
-      api.artifacts.checkFinalStatus,
-      viewingVersionId && currentUser?._id
-        ? { artifactId: viewingVersionId, userId: currentUser._id }
-        : "skip"
-    )
-    const isFinal = finalStatus?.isFinal ?? false
     const canRefrasa = isRefrasaEnabled !== false && (artifact?.content?.length ?? 0) >= 50
 
     const handleCopy = useCallback(async () => {
@@ -336,100 +328,69 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     const wordCount = artifact.content.trim().length === 0
       ? 0
       : artifact.content.trim().split(/\s+/).length
-    const refrasaLabel = isRefrasaLoading
-      ? "Refrasa berjalan"
-      : canRefrasa
-        ? "Refrasa siap"
-        : "Refrasa min. 50 karakter"
-
     return (
       <div className="flex h-full flex-col">
         {/* Viewer status header */}
         <div className="border-b border-border/60 bg-card/45 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-badge border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
-              {isEditing ? "Mode Edit" : "Mode Baca"}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-muted-foreground/85">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
+                {contentTypeLabel}
+              </span>
+              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
+                {wordCount} kata
+              </span>
+              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
+                {artifact.content.length} karakter
+              </span>
+            </div>
 
-            {hasMultipleVersions ? (
-              <Select
-                value={viewingVersionId ?? undefined}
-                onValueChange={handleVersionChange}
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="h-6 w-auto min-w-[130px] rounded-action border-border/60 bg-background/80 px-2 py-0 text-[11px] font-mono font-medium focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+            <div className="flex items-center gap-2">
+              {hasMultipleVersions ? (
+                <Select
+                  value={viewingVersionId ?? undefined}
+                  onValueChange={handleVersionChange}
                 >
-                  <SelectValue placeholder={`v${artifact.version}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {versionHistory?.map((v) => (
-                    <SelectItem key={v._id} value={v._id}>
-                      v{v.version} - {formatShortDate(v.createdAt)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <span className="rounded-badge border border-border/60 bg-background/80 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                v{artifact.version}
-              </span>
-            )}
-
-            {isFinal && (
-              <span className="rounded-badge border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                FINAL
-              </span>
-            )}
-
-            <span
-              className={cn(
-                "rounded-badge px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
-                isRefrasaLoading
-                  ? "border border-primary/35 bg-primary/10 text-primary"
-                  : canRefrasa
-                    ? "border border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-300"
-                    : "border border-border/70 bg-muted/60 text-muted-foreground"
-              )}
-            >
-              {refrasaLabel}
-            </span>
-
-            {isInvalidated && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className="cursor-help rounded-badge border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[11px] font-mono text-amber-700 dark:text-amber-300"
-                    data-testid="artifact-type-badge"
+                  <SelectTrigger
+                    size="sm"
+                    className="h-6 w-auto min-w-[130px] rounded-action border-border/60 bg-background/80 px-2 py-0 text-[11px] font-mono font-medium focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
                   >
-                    <WarningTriangle className="mr-1 inline-block h-3 w-3" data-testid="invalidation-indicator" />
-                    Perlu revisi
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[260px]">
-                  <p className="text-xs">
-                    <strong>Artifak perlu direvisi</strong>
-                    <br />
-                    Di-invalidate pada {artifact.invalidatedAt ? formatDate(artifact.invalidatedAt) : "unknown"}
-                    {invalidatedStageLabel && (
-                      <> karena rewind ke tahap <strong>{invalidatedStageLabel}</strong></>
-                    )}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+                    <SelectValue placeholder={`v${artifact.version}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {versionHistory?.map((v) => (
+                      <SelectItem key={v._id} value={v._id}>
+                        v{v.version} - {formatShortDate(v.createdAt)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
 
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-muted-foreground/85">
-            <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
-              {contentTypeLabel}
-            </span>
-            <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
-              {wordCount} kata
-            </span>
-            <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5">
-              {artifact.content.length} karakter
-            </span>
+              {isInvalidated && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className="cursor-help rounded-badge border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[11px] font-mono text-amber-700 dark:text-amber-300"
+                      data-testid="artifact-type-badge"
+                    >
+                      <WarningTriangle className="mr-1 inline-block h-3 w-3" data-testid="invalidation-indicator" />
+                      Perlu revisi
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[260px]">
+                    <p className="text-xs">
+                      <strong>Artifak perlu direvisi</strong>
+                      <br />
+                      Di-invalidate pada {artifact.invalidatedAt ? formatDate(artifact.invalidatedAt) : "unknown"}
+                      {invalidatedStageLabel && (
+                        <> karena rewind ke tahap <strong>{invalidatedStageLabel}</strong></>
+                      )}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
         </div>
 

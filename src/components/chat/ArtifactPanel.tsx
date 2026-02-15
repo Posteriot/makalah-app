@@ -9,7 +9,7 @@ import { ArtifactViewer, ArtifactViewerRef } from "./ArtifactViewer"
 import { ArtifactTabs } from "./ArtifactTabs"
 import { ArtifactToolbar } from "./ArtifactToolbar"
 import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
-import { Page, Expand } from "iconoir-react"
+import { Page } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { FullsizeArtifactModal } from "./FullsizeArtifactModal"
 import { Button } from "@/components/ui/button"
@@ -76,7 +76,6 @@ export function ArtifactPanel({
   const activeArtifact = activeTabId
     ? artifacts?.find((a) => a._id === activeTabId)
     : null
-  const activeTab = activeTabId ? openTabs.find((tab) => tab.id === activeTabId) : null
   const openTabCount = openTabs.length
 
   return (
@@ -88,38 +87,6 @@ export function ArtifactPanel({
         "transition-all duration-300 ease-in-out"
       )}
     >
-      {/* Workspace header */}
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-card/70 px-3 py-2">
-        <div className="min-w-0">
-          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
-            Workspace Artifak
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {activeTab
-              ? `Tab aktif: ${activeTab.title}`
-              : openTabCount > 0
-                ? "Pilih tab artifak yang ingin dibuka"
-                : "Belum ada tab artifak terbuka"}
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-            {openTabCount} tab
-          </span>
-          {activeTabId && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-action text-muted-foreground hover:bg-accent/80 hover:text-foreground"
-              onClick={() => setIsFullsizeOpen(true)}
-              aria-label="Buka artifak fullscreen"
-            >
-              <Expand className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
-
       {/* Artifact Tabs */}
       <ArtifactTabs
         tabs={openTabs}
@@ -137,6 +104,7 @@ export function ArtifactPanel({
                 type: activeArtifact.type,
                 version: activeArtifact.version,
                 createdAt: activeArtifact.createdAt ?? activeArtifact._creationTime,
+                contentLength: activeArtifact.content.length,
               }
             : null
         }
