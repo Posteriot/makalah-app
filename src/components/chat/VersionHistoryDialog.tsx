@@ -4,9 +4,11 @@ import { useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { useMemo, useState } from "react"
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -45,6 +47,7 @@ export function VersionHistoryDialog({
     onSelectVersion,
 }: VersionHistoryDialogProps) {
     const { user: currentUser } = useCurrentUser()
+    const [open, setOpen] = useState(false)
 
     const versionHistory = useQuery(
         api.artifacts.getVersionHistory,
@@ -54,6 +57,15 @@ export function VersionHistoryDialog({
     )
 
     const hasMultipleVersions = versionHistory && versionHistory.length > 1
+    const orderedVersions = useMemo(
+        () => (versionHistory ? [...versionHistory].reverse() : []),
+        [versionHistory]
+    )
+    const latestVersionId = orderedVersions[0]?._id ?? null
+    const selectedVersionNumber = useMemo(
+        () => orderedVersions.find((version) => version._id === currentVersionId)?.version,
+        [orderedVersions, currentVersionId]
+    )
 
     // Don't show dialog trigger if there's only one version
     if (!hasMultipleVersions) {
@@ -61,19 +73,22 @@ export function VersionHistoryDialog({
     }
 
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="font-mono">
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 font-mono">
                     <Clock className="h-4 w-4 mr-1" />
                     Riwayat ({versionHistory?.length ?? 0})
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+            <DialogContent className="max-h-[80vh] max-w-lg border-border/60 bg-card">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Clock className="h-5 w-5" />
                         Riwayat Versi
                     </DialogTitle>
+                    <DialogDescription className="text-xs font-mono text-muted-foreground">
+                        Pilih versi untuk ditampilkan di viewer artifact.
+                    </DialogDescription>
                 </DialogHeader>
 
                 {/* Version Timeline */}
@@ -83,59 +98,67 @@ export function VersionHistoryDialog({
                             <span className="h-6 w-6 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
                         </div>
                     ) : (
-                        <div className="space-y-2">
-                            {/* Sort by version descending (newest first) */}
-                            {[...versionHistory].reverse().map((version, index) => {
+                        <div className="space-y-3 pr-1">
+                            {orderedVersions.map((version, index) => {
                                 const isCurrentVersion = currentVersionId === version._id
-                                const isLatest = index === 0
+                                const isLatest = latestVersionId === version._id
+                                const isLastItem = index === orderedVersions.length - 1
 
                                 return (
-                                    <button
-                                        key={version._id}
-                                        onClick={() => onSelectVersion(version._id)}
-                                        className={cn(
-                                            "w-full text-left p-3 rounded-action transition-colors",
-                                            // Mechanical Grace: .border-hairline
-                                            "border border-border/50 hover:border-border",
-                                            "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-amber-500",
-                                            isCurrentVersion && "bg-accent border-amber-500/50"
+                                    <div key={version._id} className="relative pl-7">
+                                        {!isLastItem && (
+                                            <span
+                                                className="absolute left-2.5 top-4 h-[calc(100%+8px)] w-px bg-border/70"
+                                                aria-hidden="true"
+                                            />
                                         )}
-                                    >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex items-center gap-2">
-                                                {/* Timeline dot */}
-                                                <div className={cn(
-                                                    "w-2 h-2 rounded-full shrink-0",
-                                                    isCurrentVersion ? "bg-amber-500" : "bg-muted-foreground/50"
-                                                )} />
+                                        <span
+                                            className={cn(
+                                                "absolute left-[5px] top-3 h-3 w-3 rounded-full border-2 border-card",
+                                                isCurrentVersion ? "bg-primary" : "bg-muted-foreground/60"
+                                            )}
+                                            aria-hidden="true"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                onSelectVersion(version._id)
+                                                setOpen(false)
+                                            }}
+                                            className={cn(
+                                                "w-full rounded-action border p-3 text-left transition-colors",
+                                                "border-border/55 hover:border-border hover:bg-accent/50",
+                                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2",
+                                                isCurrentVersion && "border-primary/50 bg-primary/10"
+                                            )}
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
                                                 <div>
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex flex-wrap items-center gap-1.5">
                                                         <span className="font-mono font-medium">v{version.version}</span>
                                                         {isLatest && (
-                                                            <Badge variant="secondary" className="text-[10px] font-mono px-1 py-0">
+                                                            <Badge variant="secondary" className="rounded-badge border border-border/60 bg-muted/70 px-1 py-0 text-[10px] font-mono">
                                                                 Terbaru
                                                             </Badge>
                                                         )}
                                                         {isCurrentVersion && (
-                                                            <Badge variant="default" className="text-[10px] font-mono px-1 py-0 bg-amber-500/20 text-amber-400">
+                                                            <Badge variant="default" className="rounded-badge border border-primary/40 bg-primary/15 px-1 py-0 text-[10px] font-mono text-primary dark:text-primary">
                                                                 Dilihat
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    {/* Mechanical Grace: .text-interface timestamps */}
-                                                    <p className="text-xs font-mono text-muted-foreground mt-0.5">
+                                                    <p className="mt-0.5 text-xs font-mono text-muted-foreground">
                                                         {formatDate(version.createdAt)}
                                                     </p>
                                                 </div>
+                                                <NavArrowRight className={cn("h-4 w-4 shrink-0 text-muted-foreground", isCurrentVersion && "text-primary")} />
                                             </div>
-                                            <NavArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                        </div>
 
-                                        {/* Content preview */}
-                                        <p className="text-xs text-muted-foreground mt-2 ml-4 line-clamp-2">
-                                            {truncateContent(version.content)}
-                                        </p>
-                                    </button>
+                                            <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                                                {truncateContent(version.content)}
+                                            </p>
+                                        </button>
+                                    </div>
                                 )
                             })}
                         </div>
@@ -143,8 +166,15 @@ export function VersionHistoryDialog({
                 </div>
 
                 {/* Footer info - Mechanical Grace: .border-hairline + Mono */}
-                <div className="pt-4 border-t border-border/50 text-xs font-mono text-muted-foreground text-center">
-                    Total {versionHistory?.length ?? 0} versi
+                <div className="border-t border-border/50 pt-4 text-xs font-mono text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                        <span>Total {versionHistory?.length ?? 0} versi</span>
+                        <span>
+                            {currentVersionId
+                                ? `Sedang dilihat: ${selectedVersionNumber ? `v${selectedVersionNumber}` : "versi lama"}`
+                                : "Belum ada versi dipilih"}
+                        </span>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>

@@ -94,7 +94,7 @@ Muncul saat response assistant punya daftar sumber/citation sources.
 
 6. `ArtifactIndicator`
 Path: `src/components/chat/ArtifactIndicator.tsx`
-Muncul saat tool `createArtifact` sukses dan bisa di-click untuk buka artifact.
+Muncul saat tool `createArtifact` atau `updateArtifact` sukses, lalu bisa di-click untuk buka artifact terbaru.
 
 7. `QuickActions`
 Path: `src/components/chat/QuickActions.tsx`

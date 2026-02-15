@@ -9,6 +9,7 @@ import {
   Check,
   Expand,
   MoreVert,
+  Xmark,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -43,12 +44,15 @@ interface ArtifactToolbarProps {
     version: number
     createdAt: number
   } | null
+  /** Number of open tabs for context label */
+  openTabCount?: number
   /** Callbacks for actions — connected to ArtifactViewer ref */
   onDownload?: (format: "docx" | "pdf" | "txt") => void
   onEdit?: () => void
   onRefrasa?: () => void
   onCopy?: () => void
   onExpand?: () => void
+  onClosePanel?: () => void
 }
 
 function formatDate(timestamp: number): string {
@@ -60,18 +64,22 @@ function formatDate(timestamp: number): string {
 }
 
 /**
- * ArtifactToolbar - Metadata + action buttons between tabs and content
+ * ArtifactToolbar - Contextual document header + prioritized actions.
  *
- * Left: artifact type badge, version, date
- * Right: Download, Edit, Refrasa, Copy, Expand (responsive — collapses to 3-dot menu)
+ * Layer 1: active document context (title/type/version/date).
+ * Layer 2: workflow actions grouped by priority:
+ * - Primary: Edit, Refrasa
+ * - Utility: Download, Copy, Fullscreen
  */
 export function ArtifactToolbar({
   artifact,
+  openTabCount = 0,
   onDownload,
   onEdit,
   onRefrasa,
   onCopy,
   onExpand,
+  onClosePanel,
 }: ArtifactToolbarProps) {
   const [copied, setCopied] = useState(false)
 
@@ -83,45 +91,94 @@ export function ArtifactToolbar({
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const iconActionClass =
+    "h-8 w-8 rounded-action text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+
   return (
     <div
       className={cn(
         "@container/toolbar",
-        "flex items-center justify-between gap-2",
-        "h-9 px-3",
-        "border-b border-border/50",
-        "shrink-0"
+        "shrink-0 border-b border-border/60 bg-card/60 px-3 py-2"
       )}
     >
-      {/* Left: Metadata */}
-      <div className="flex items-center gap-2 min-w-0">
-        <Badge
-          variant="outline"
-          className="text-[10px] font-mono px-1.5 py-0 rounded-badge capitalize shrink-0"
-        >
-          {typeLabels[artifact.type] || artifact.type}
-        </Badge>
-        <Badge
-          variant="secondary"
-          className="text-[10px] font-mono px-1.5 py-0 rounded-badge shrink-0"
-        >
-          v{artifact.version}
-        </Badge>
-        <span className="text-[11px] font-mono text-muted-foreground truncate">
-          {formatDate(artifact.createdAt)}
-        </span>
+      {/* Layer 1: Active document context */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+            Dokumen Aktif
+          </p>
+          <p className="truncate text-sm font-medium text-foreground">
+            {artifact.title}
+          </p>
+          <div className="mt-1 flex items-center gap-1.5">
+            <Badge
+              variant="outline"
+              className="h-5 rounded-badge border-border/70 bg-background/80 px-1.5 py-0 text-[10px] font-mono capitalize"
+            >
+              {typeLabels[artifact.type] || artifact.type}
+            </Badge>
+            <Badge
+              variant="secondary"
+              className="h-5 rounded-badge bg-muted/70 px-1.5 py-0 text-[10px] font-mono"
+            >
+              v{artifact.version}
+            </Badge>
+            <span className="text-[10px] font-mono text-muted-foreground/80">
+              {formatDate(artifact.createdAt)}
+            </span>
+            <span className="hidden @[460px]/toolbar:inline text-[10px] font-mono text-muted-foreground/70">
+              • {openTabCount} tab
+            </span>
+          </div>
+        </div>
+
+        {onClosePanel && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={iconActionClass}
+                onClick={onClosePanel}
+              >
+                <Xmark className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">Tutup panel</TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-1 shrink-0">
-        {/* Wide view: Individual buttons */}
-        <div className="hidden @[320px]/toolbar:flex items-center gap-1">
-          {/* Download */}
+      {/* Layer 2: Prioritized actions */}
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/50 pt-2">
+        {/* Wide layout */}
+        <div className="hidden @[520px]/toolbar:flex items-center gap-1.5">
+          <Button
+            size="sm"
+            onClick={onEdit}
+            className="h-8 rounded-action px-2.5 font-mono text-xs"
+          >
+            <EditPencil className="mr-1.5 h-3.5 w-3.5" />
+            Edit
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefrasa}
+            className="h-8 rounded-action px-2.5 font-mono text-xs"
+          >
+            <MagicWand className="mr-1.5 h-3.5 w-3.5" />
+            Refrasa
+          </Button>
+        </div>
+
+        {/* Utility actions */}
+        <div className="hidden @[520px]/toolbar:flex items-center gap-1">
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-action text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <Button variant="ghost" size="icon" className={iconActionClass}>
                     <Download className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -135,42 +192,23 @@ export function ArtifactToolbar({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Edit */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onEdit} className="h-7 w-7 rounded-action text-muted-foreground hover:bg-accent hover:text-foreground">
-                <EditPencil className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Edit</TooltipContent>
-          </Tooltip>
-
-          {/* Refrasa */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onRefrasa} className="h-7 w-7 rounded-action text-muted-foreground hover:bg-accent hover:text-foreground">
-                <MagicWand className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Refrasa</TooltipContent>
-          </Tooltip>
-
-          {/* Copy */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={handleCopy} className="h-7 w-7 rounded-action text-muted-foreground hover:bg-accent hover:text-foreground">
-                {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCopy}
+                className={cn(iconActionClass, copied && "bg-accent text-foreground")}
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               </Button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">Salin</TooltipContent>
           </Tooltip>
 
-          <div className="w-px h-4 bg-border mx-0.5" />
-
-          {/* Expand */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onExpand} className="h-7 w-7 rounded-action text-muted-foreground hover:bg-accent hover:text-foreground">
+              <Button variant="ghost" size="icon" onClick={onExpand} className={iconActionClass}>
                 <Expand className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
@@ -178,31 +216,52 @@ export function ArtifactToolbar({
           </Tooltip>
         </div>
 
-        {/* Narrow view: 3-dot menu */}
-        <div className="flex @[320px]/toolbar:hidden">
+        {/* Compact layout */}
+        <div className="flex w-full justify-end @[520px]/toolbar:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-action text-muted-foreground hover:bg-accent hover:text-foreground">
+              <Button variant="ghost" size="icon" className={iconActionClass}>
                 <MoreVert className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onEdit}>
+                <EditPencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onRefrasa}>
+                <MagicWand className="mr-2 h-4 w-4" />
+                Refrasa
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger><Download className="h-4 w-4 mr-2" />Unduh</DropdownMenuSubTrigger>
+                <DropdownMenuSubTrigger>
+                  <Download className="mr-2 h-4 w-4" />
+                  Unduh
+                </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={() => onDownload?.("docx")}>DOCX</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onDownload?.("pdf")}>PDF</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onDownload?.("txt")}>TXT</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
-              <DropdownMenuItem onClick={onEdit}><EditPencil className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
-              <DropdownMenuItem onClick={onRefrasa}><MagicWand className="h-4 w-4 mr-2" />Refrasa</DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopy}>
-                {copied ? <Check className="h-4 w-4 mr-2 text-emerald-500" /> : <Copy className="h-4 w-4 mr-2" />}
+                {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
                 Salin
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onExpand}><Expand className="h-4 w-4 mr-2" />Fullscreen</DropdownMenuItem>
+              <DropdownMenuItem onClick={onExpand}>
+                <Expand className="mr-2 h-4 w-4" />
+                Fullscreen
+              </DropdownMenuItem>
+              {onClosePanel && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onClosePanel}>
+                    <Xmark className="mr-2 h-4 w-4" />
+                    Tutup panel
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

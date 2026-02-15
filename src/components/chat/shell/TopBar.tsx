@@ -58,6 +58,12 @@ export function TopBar({
   }
 
   const hasArtifacts = artifactCount > 0
+  const compactArtifactCount = artifactCount > 99 ? "99+" : `${artifactCount}`
+  const panelStateLabel = !hasArtifacts
+    ? "Tanpa artifact"
+    : isPanelCollapsed
+      ? "Panel tertutup"
+      : "Panel terbuka"
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -121,56 +127,71 @@ export function TopBar({
             </Tooltip>
           )}
 
-          {/* Panel Toggle — always visible, disabled when no artifacts */}
+          {/* Artifact Panel Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={hasArtifacts ? onTogglePanel : undefined}
                 disabled={!hasArtifacts}
                 className={cn(
-                  "relative flex items-center justify-center",
-                  "w-8 h-8 rounded-action mr-1",
-                  "text-muted-foreground hover:text-foreground hover:bg-accent/80",
+                  "relative mr-1 inline-flex h-8 items-center gap-1.5 rounded-action border px-2",
+                  "border-border/60 text-muted-foreground hover:text-foreground hover:bg-accent/80",
                   "transition-colors duration-150",
-                  !hasArtifacts && "opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
+                  hasArtifacts && isPanelCollapsed && "bg-background/75",
+                  hasArtifacts && !isPanelCollapsed && "border-primary/35 bg-primary/10 text-primary",
+                  !hasArtifacts && "cursor-not-allowed border-border/45 bg-muted/60 text-muted-foreground/70 hover:bg-muted/60 hover:text-muted-foreground/70"
                 )}
                 aria-label={
                   !hasArtifacts
-                    ? "No artifacts"
+                    ? "Panel artifact nonaktif karena belum ada artifact"
                     : isPanelCollapsed
-                      ? `Open artifacts panel (${artifactCount})`
-                      : "Close artifacts panel"
+                      ? `Buka panel artifact (${artifactCount})`
+                      : `Tutup panel artifact (${artifactCount})`
                 }
+                aria-pressed={hasArtifacts ? !isPanelCollapsed : undefined}
               >
                 {isPanelCollapsed ? (
-                  <FastArrowRightSquare className="h-[18px] w-[18px] rotate-180" />
+                  <FastArrowRightSquare className="h-[17px] w-[17px] rotate-180" />
                 ) : (
-                  <FastArrowRightSquareSolid className="h-[18px] w-[18px]" />
+                  <FastArrowRightSquareSolid className="h-[17px] w-[17px]" />
                 )}
-                {hasArtifacts && isPanelCollapsed && (
+                <span className="hidden text-[10px] font-mono font-semibold uppercase tracking-wide sm:inline">
+                  Artifact
+                </span>
+                {hasArtifacts && (
                   <span
                     className={cn(
-                      "absolute -bottom-1 -right-1",
-                      "min-w-[16px] h-[16px] px-1",
-                      "flex items-center justify-center",
+                      "inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-badge border px-1",
                       "text-[9px] font-semibold font-mono leading-none",
-                      "bg-emerald-500 text-white",
-                      "rounded-full border border-[color:var(--section-bg-alt)]"
+                      isPanelCollapsed
+                        ? "border-border/60 bg-muted/70 text-foreground"
+                        : "border-primary/35 bg-primary text-primary-foreground"
                     )}
                   >
-                    {artifactCount}
+                    {compactArtifactCount}
                   </span>
                 )}
               </button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
               {!hasArtifacts
-                ? "No artifacts"
-                : isPanelCollapsed
-                  ? `Open artifacts (${artifactCount})`
-                  : "Close artifacts"}
+                ? "Belum ada artifact untuk dibuka"
+                : `${panelStateLabel} • ${artifactCount} artifact`}
             </TooltipContent>
           </Tooltip>
+
+          <span
+            className={cn(
+              "hidden rounded-badge border px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide lg:inline-flex",
+              hasArtifacts
+                ? isPanelCollapsed
+                  ? "border-border/60 bg-background/70 text-muted-foreground"
+                  : "border-primary/30 bg-primary/10 text-primary"
+                : "border-border/50 bg-muted/60 text-muted-foreground/75"
+            )}
+          >
+            {panelStateLabel}
+          </span>
 
           {/* User Dropdown */}
           <UserDropdown variant="compact" />

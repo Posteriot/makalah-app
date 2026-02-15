@@ -16,19 +16,18 @@ import { cn } from "@/lib/utils"
 import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
 import { Id } from "../../../convex/_generated/dataModel"
 
-/** Map artifact type to Iconoir icon */
-const typeIcons: Record<string, React.ElementType> = {
-  code: Code,
-  outline: List,
-  section: Page,
-  table: Table2Columns,
-  citation: Book,
-  formula: Calculator,
+/** Map artifact type to icon and human label */
+const typeMeta: Record<string, { icon: React.ElementType; label: string }> = {
+  code: { icon: Code, label: "Code" },
+  outline: { icon: List, label: "Outline" },
+  section: { icon: Page, label: "Section" },
+  table: { icon: Table2Columns, label: "Tabel" },
+  citation: { icon: Book, label: "Sitasi" },
+  formula: { icon: Calculator, label: "Formula" },
 }
 
-function getTabIcon(type: string) {
-  const IconComponent = typeIcons[type] || Page
-  return <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
+function getTabMeta(type: string) {
+  return typeMeta[type] ?? { icon: Page, label: "Dokumen" }
 }
 
 interface ArtifactTabsProps {
@@ -43,16 +42,12 @@ interface ArtifactTabsProps {
 }
 
 /**
- * ArtifactTabs - Tab bar for switching between open artifact documents
+ * ArtifactTabs - Document navigator for artifact workspace.
  *
- * Features:
- * - Tab bar height: 36px (matches --tab-bar-height)
- * - Tab with type icon, filename, close button (x)
- * - Scrollable tabs with fade effects on edges
- * - Prev/next navigation for overflow
- * - Keyboard navigation (arrow keys, Home/End, Delete)
- *
- * Styled per Mechanical Grace: font-mono, rounded-action, border-hairline
+ * Redesign goals:
+ * - Active tab has stronger hierarchy than non-active tabs.
+ * - Overflow remains readable with count + explicit left/right controls.
+ * - Closing active tab uses predictable neighbor fallback.
  */
 export function ArtifactTabs({
   tabs,
@@ -69,40 +64,70 @@ export function ArtifactTabs({
     const container = scrollContainerRef.current
     if (!container) return
     const { scrollLeft, scrollWidth, clientWidth } = container
-    setHasOverflowLeft(scrollLeft > 0)
+    setHasOverflowLeft(scrollLeft > 1)
     setHasOverflowRight(scrollLeft + clientWidth < scrollWidth - 1)
   }, [])
 
   useEffect(() => {
     checkOverflow()
-    window.addEventListener("resize", checkOverflow)
-    return () => window.removeEventListener("resize", checkOverflow)
-  }, [checkOverflow, tabs])
+  }, [checkOverflow, tabs.length])
 
-  const scrollLeft = useCallback(() => {
-    scrollContainerRef.current?.scrollBy({ left: -200, behavior: "smooth" })
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const handleResize = () => checkOverflow()
+    window.addEventListener("resize", handleResize)
+
+    let observer: ResizeObserver | null = null
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(checkOverflow)
+      observer.observe(container)
+    }
+
+    return () => {
+      window.removeEventListener("resize", handleResize)
+      observer?.disconnect()
+    }
+  }, [checkOverflow])
+
+  useEffect(() => {
+    if (!activeTabId) return
+    const activeTabEl = tabRefs.current.get(activeTabId)
+    activeTabEl?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" })
+  }, [activeTabId])
+
+  const scrollByStep = useCallback((direction: "left" | "right") => {
+    const distance = direction === "left" ? -220 : 220
+    scrollContainerRef.current?.scrollBy({ left: distance, behavior: "smooth" })
   }, [])
-
-  const scrollRight = useCallback(() => {
-    scrollContainerRef.current?.scrollBy({ left: 200, behavior: "smooth" })
-  }, [])
-
-  const handleTabClick = useCallback(
-    (tabId: Id<"artifacts">) => { onTabChange(tabId) },
-    [onTabChange]
-  )
-
-  const handleCloseClick = useCallback(
-    (e: React.MouseEvent, tabId: Id<"artifacts">) => {
-      e.stopPropagation()
-      onTabClose(tabId)
-    },
-    [onTabClose]
-  )
 
   const focusTab = useCallback((tabId: string) => {
     tabRefs.current.get(tabId)?.focus()
   }, [])
+
+  const closeTabWithFallback = useCallback((tabId: Id<"artifacts">) => {
+    const index = tabs.findIndex((tab) => tab.id === tabId)
+    if (index < 0) return
+
+    const closingActive = activeTabId === tabId
+    const fallbackId =
+      tabs[index + 1]?.id ??
+      tabs[index - 1]?.id ??
+      null
+
+    if (closingActive && fallbackId) {
+      onTabChange(fallbackId)
+    }
+
+    onTabClose(tabId)
+
+    if (closingActive && fallbackId) {
+      requestAnimationFrame(() => {
+        focusTab(fallbackId)
+      })
+    }
+  }, [tabs, activeTabId, onTabChange, onTabClose, focusTab])
 
   const handleTabKeyDown = useCallback(
     (e: React.KeyboardEvent, tabId: Id<"artifacts">, index: number) => {
@@ -110,13 +135,13 @@ export function ArtifactTabs({
         case "Enter":
         case " ":
           e.preventDefault()
-          handleTabClick(tabId)
+          onTabChange(tabId)
           break
         case "ArrowLeft":
           e.preventDefault()
           if (index > 0) {
             const prev = tabs[index - 1]
-            handleTabClick(prev.id)
+            onTabChange(prev.id)
             focusTab(prev.id)
           }
           break
@@ -124,14 +149,14 @@ export function ArtifactTabs({
           e.preventDefault()
           if (index < tabs.length - 1) {
             const next = tabs[index + 1]
-            handleTabClick(next.id)
+            onTabChange(next.id)
             focusTab(next.id)
           }
           break
         case "Home":
           e.preventDefault()
           if (tabs.length > 0) {
-            handleTabClick(tabs[0].id)
+            onTabChange(tabs[0].id)
             focusTab(tabs[0].id)
           }
           break
@@ -139,7 +164,7 @@ export function ArtifactTabs({
           e.preventDefault()
           if (tabs.length > 0) {
             const last = tabs[tabs.length - 1]
-            handleTabClick(last.id)
+            onTabChange(last.id)
             focusTab(last.id)
           }
           break
@@ -147,12 +172,18 @@ export function ArtifactTabs({
         case "Backspace":
           if (!e.ctrlKey && !e.metaKey) {
             e.preventDefault()
-            onTabClose(tabId)
+            closeTabWithFallback(tabId)
+          }
+          break
+        case "w":
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault()
+            closeTabWithFallback(tabId)
           }
           break
       }
     },
-    [tabs, handleTabClick, focusTab, onTabClose]
+    [tabs, onTabChange, focusTab, closeTabWithFallback]
   )
 
   if (tabs.length === 0) return null
@@ -160,150 +191,138 @@ export function ArtifactTabs({
   return (
     <div
       className={cn(
-        "flex items-stretch",
-        "h-9 min-h-[36px]",
-        "bg-background border-b border-border/50",
-        "flex-shrink-0"
+        "flex min-h-[44px] items-stretch border-b border-border/60 bg-background/95",
+        "shrink-0"
       )}
       role="tablist"
-      aria-label="Open artifacts"
+      aria-label="Navigasi tab artifact"
     >
-      {/* Tabs container with fade */}
-      <div className="flex-1 relative overflow-hidden">
-        {/* Left fade */}
+      <div className="relative min-w-0 flex-1 overflow-hidden">
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-8",
-            "bg-gradient-to-r from-background to-transparent",
-            "pointer-events-none z-10 transition-opacity duration-150",
+            "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent transition-opacity",
             hasOverflowLeft ? "opacity-100" : "opacity-0"
           )}
           aria-hidden="true"
         />
-        {/* Right fade */}
         <div
           className={cn(
-            "absolute right-0 top-0 bottom-0 w-8",
-            "bg-gradient-to-l from-background to-transparent",
-            "pointer-events-none z-10 transition-opacity duration-150",
+            "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent transition-opacity",
             hasOverflowRight ? "opacity-100" : "opacity-0"
           )}
           aria-hidden="true"
         />
 
-        {/* Scrollable tabs */}
         <div
           ref={scrollContainerRef}
           onScroll={checkOverflow}
-          className="flex items-stretch gap-0 overflow-x-auto scrollbar-none scroll-smooth"
+          className="flex h-full items-stretch gap-1 overflow-x-auto px-1.5 py-1 scrollbar-none scroll-smooth"
         >
-          {tabs.map((tab, index) => (
-            <div
-              key={tab.id}
-              ref={(el) => {
-                if (el) tabRefs.current.set(tab.id, el)
-                else tabRefs.current.delete(tab.id)
-              }}
-              onClick={() => handleTabClick(tab.id)}
-              onKeyDown={(e) => handleTabKeyDown(e, tab.id, index)}
-              role="tab"
-              tabIndex={activeTabId === tab.id ? 0 : -1}
-              aria-selected={activeTabId === tab.id}
-              className={cn(
-                "group flex items-center gap-1.5",
-                "px-3 h-[35px]",
-                "bg-transparent border-b-2 border-transparent",
-                "font-mono text-xs cursor-pointer",
-                "transition-all duration-150",
-                "hover:bg-accent",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
-                "min-w-[100px] max-w-[200px]",
-                // Active state
-                activeTabId === tab.id && "bg-card border-b-primary",
-                // Separator
-                index < tabs.length - 1 &&
-                  activeTabId !== tab.id &&
-                  "relative after:absolute after:right-0 after:top-2 after:bottom-2 after:w-px after:bg-border"
-              )}
-            >
-              {/* Tab icon */}
-              <span
-                className={cn(
-                  "flex-shrink-0 text-muted-foreground",
-                  activeTabId === tab.id && "text-primary"
-                )}
-              >
-                {getTabIcon(tab.type)}
-              </span>
+          {tabs.map((tab, index) => {
+            const isActive = activeTabId === tab.id
+            const { icon: IconComponent, label } = getTabMeta(tab.type)
 
-              {/* Tab title */}
-              <span
+            return (
+              <div
+                key={tab.id}
+                ref={(el) => {
+                  if (el) tabRefs.current.set(tab.id, el)
+                  else tabRefs.current.delete(tab.id)
+                }}
+                onClick={() => onTabChange(tab.id)}
+                onKeyDown={(e) => handleTabKeyDown(e, tab.id, index)}
+                role="tab"
+                tabIndex={isActive ? 0 : -1}
+                aria-selected={isActive}
+                aria-label={`${tab.title} (${label})`}
                 className={cn(
-                  "flex-1 truncate text-left",
-                  "text-muted-foreground",
-                  activeTabId === tab.id && "text-foreground"
+                  "group relative flex min-w-[160px] max-w-[260px] cursor-pointer items-center gap-2 rounded-action border px-2.5",
+                  "transition-colors duration-150",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1",
+                  isActive
+                    ? "border-primary/45 bg-primary/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    : "border-transparent bg-transparent hover:border-border/70 hover:bg-accent/50"
                 )}
               >
-                {tab.title}
-              </span>
+                <span
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-badge border",
+                    isActive
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-border/60 bg-background/70 text-muted-foreground"
+                  )}
+                >
+                  <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
 
-              {/* Close button */}
-              <button
-                type="button"
-                onClick={(e) => handleCloseClick(e, tab.id)}
-                className={cn(
-                  "flex items-center justify-center",
-                  "w-[16px] h-[16px] rounded-action",
-                  "text-muted-foreground flex-shrink-0",
-                  "opacity-0 group-hover:opacity-100",
-                  "hover:bg-destructive hover:text-destructive-foreground",
-                  "focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary",
-                  "transition-all duration-150",
-                  activeTabId === tab.id && "opacity-100"
-                )}
-                aria-label={`Close ${tab.title}`}
-                tabIndex={-1}
-              >
-                <Xmark className="h-3 w-3" aria-hidden="true" />
-              </button>
-            </div>
-          ))}
+                <span className="min-w-0 flex-1 leading-tight">
+                  <span
+                    className={cn(
+                      "block truncate text-[11px] font-medium",
+                      isActive ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {tab.title}
+                  </span>
+                  <span className="block text-[9px] font-mono uppercase tracking-wide text-muted-foreground/75">
+                    {label}
+                  </span>
+                </span>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    closeTabWithFallback(tab.id)
+                  }}
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-badge text-muted-foreground transition-colors",
+                    "hover:bg-destructive hover:text-destructive-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  )}
+                  aria-label={`Tutup tab ${tab.title}`}
+                  tabIndex={-1}
+                >
+                  <Xmark className="h-3 w-3" aria-hidden="true" />
+                </button>
+              </div>
+            )
+          })}
         </div>
       </div>
 
-      {/* Scroll navigation */}
-      {(hasOverflowLeft || hasOverflowRight) && (
-        <div className="flex items-center gap-0.5 px-1.5 border-l border-border">
-          <button
-            type="button"
-            onClick={scrollLeft}
-            disabled={!hasOverflowLeft}
-            className={cn(
-              "flex items-center justify-center w-6 h-6 rounded-action",
-              "text-muted-foreground hover:bg-accent hover:text-foreground",
-              "disabled:opacity-30 disabled:cursor-not-allowed",
-              "transition-colors duration-150"
-            )}
-            aria-label="Scroll tabs left"
-          >
-            <NavArrowLeft className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={scrollRight}
-            disabled={!hasOverflowRight}
-            className={cn(
-              "flex items-center justify-center w-6 h-6 rounded-action",
-              "text-muted-foreground hover:bg-accent hover:text-foreground",
-              "disabled:opacity-30 disabled:cursor-not-allowed",
-              "transition-colors duration-150"
-            )}
-            aria-label="Scroll tabs right"
-          >
-            <NavArrowRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
+      <div className="flex items-center gap-0.5 border-l border-border/60 px-2">
+        <span className="mr-1 hidden text-[10px] font-mono text-muted-foreground @[420px]/artifact:inline">
+          {tabs.length} tab
+        </span>
+        <button
+          type="button"
+          onClick={() => scrollByStep("left")}
+          disabled={!hasOverflowLeft}
+          className={cn(
+            "flex h-7 w-7 items-center justify-center rounded-action text-muted-foreground transition-colors",
+            "hover:bg-accent hover:text-foreground",
+            "disabled:cursor-not-allowed disabled:opacity-35"
+          )}
+          aria-label="Geser tab ke kiri"
+        >
+          <NavArrowLeft className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollByStep("right")}
+          disabled={!hasOverflowRight}
+          className={cn(
+            "flex h-7 w-7 items-center justify-center rounded-action text-muted-foreground transition-colors",
+            "hover:bg-accent hover:text-foreground",
+            "disabled:cursor-not-allowed disabled:opacity-35"
+          )}
+          aria-label="Geser tab ke kanan"
+        >
+          <NavArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   )
 }

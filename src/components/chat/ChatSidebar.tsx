@@ -36,6 +36,8 @@ interface ChatSidebarProps {
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
   /** Callback when artifact is selected */
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  /** Currently selected artifact ID in panel */
+  activeArtifactId?: Id<"artifacts"> | null
   /** Whether artifact panel is open */
   isArtifactPanelOpen?: boolean
   /** Callback to toggle artifact panel */
@@ -72,6 +74,7 @@ export function ChatSidebar({
   onDeleteConversation,
   onUpdateConversationTitle,
   onArtifactSelect,
+  activeArtifactId,
   isArtifactPanelOpen,
   onArtifactPanelToggle,
   className,
@@ -90,6 +93,7 @@ export function ChatSidebar({
           <SidebarPaperSessions
             currentConversationId={currentConversationId}
             onArtifactSelect={onArtifactSelect}
+            activeArtifactId={activeArtifactId}
             isArtifactPanelOpen={isArtifactPanelOpen}
             onArtifactPanelToggle={onArtifactPanelToggle}
             onCloseMobile={onCloseMobile}

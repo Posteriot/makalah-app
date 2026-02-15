@@ -1,74 +1,89 @@
 "use client"
 
-import { CheckCircle, NavArrowRight } from "iconoir-react"
+import { CheckCircle, EditPencil, NavArrowRight } from "iconoir-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
+import { useId } from "react"
 
 interface ArtifactIndicatorProps {
-    artifactId: Id<"artifacts">
-    title: string
-    onSelect: (id: Id<"artifacts">) => void
+  artifactId: Id<"artifacts">
+  title: string
+  status?: "created" | "updated"
+  version?: number
+  onSelect: (id: Id<"artifacts">) => void
 }
 
-/**
- * ArtifactIndicator - Shows when artifact is created
- *
- * Mockup compliance:
- * - GREEN background with border
- * - "ARTIFACT CREATED" badge (uppercase, green)
- * - Artifact title
- * - "View >" button on right
- */
-export function ArtifactIndicator({ artifactId, title, onSelect }: ArtifactIndicatorProps) {
-    const handleClick = () => {
-        onSelect(artifactId)
-    }
+export function ArtifactIndicator({
+  artifactId,
+  title,
+  status = "created",
+  version,
+  onSelect,
+}: ArtifactIndicatorProps) {
+  const hintId = useId()
+  const isUpdated = status === "updated"
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
-            onSelect(artifactId)
-        }
-    }
-
-    return (
-        <button
-            onClick={handleClick}
-            onKeyDown={handleKeyDown}
-            className={cn(
-                "flex items-center gap-3 w-full text-left",
-                "px-3 py-2.5 rounded-action",
-                // Mechanical Grace: solid sky border
-                "bg-sky-500/10 border border-sky-500/50",
-                "hover:bg-sky-500/20 hover:border-sky-500/70",
-                "transition-all duration-150 cursor-pointer",
-                "group"
-            )}
-            aria-label={`View artifact: ${title}`}
-            role="button"
-            tabIndex={0}
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(artifactId)}
+      className={cn(
+        "group w-full cursor-pointer rounded-action border px-3 py-2.5 text-left transition-colors duration-150",
+        "border-border/65 bg-card/70 hover:bg-accent/35 hover:border-border",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      )}
+      aria-label={`${isUpdated ? "Buka artifak revisi" : "Buka artifak baru"}: ${title}`}
+      aria-describedby={hintId}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={cn(
+            "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-action border",
+            isUpdated
+              ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              : "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+          )}
+          aria-hidden="true"
         >
-            {/* Success Icon */}
-            <CheckCircle className="h-5 w-5 text-sky-500 flex-shrink-0" />
+          {isUpdated ? <EditPencil className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+        </span>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0 flex items-center gap-2">
-                {/* SYSTEM_OUTPUT Badge - Mechanical Grace */}
-                <span className="inline-flex px-2 py-0.5 rounded-badge text-[10px] font-mono font-semibold uppercase tracking-wide bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                    ARTIFAK
-                </span>
-
-                {/* Title */}
-                <span className="text-sm font-medium text-foreground truncate">
-                    {title}
-                </span>
-            </div>
-
-            {/* View Button */}
-            <span className="flex items-center gap-0.5 text-xs font-mono text-sky-400 font-medium flex-shrink-0 group-hover:underline uppercase">
-                LIHAT
-                <NavArrowRight className="h-4 w-4" />
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="rounded-badge border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
+              Hasil Artifact
             </span>
-        </button>
-    )
+            <span
+              className={cn(
+                "rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
+                isUpdated
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              )}
+            >
+              {isUpdated ? "Revisi" : "Baru"}
+            </span>
+            {typeof version === "number" && Number.isFinite(version) && (
+              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                v{version}
+              </span>
+            )}
+          </div>
+
+          <p className="truncate text-sm font-semibold text-foreground">{title}</p>
+          <p className="mt-0.5 text-[11px] font-mono text-muted-foreground">
+            Klik untuk buka di panel artifact
+          </p>
+        </div>
+
+        <span className="mt-1 inline-flex shrink-0 items-center gap-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground transition-colors group-hover:text-foreground">
+          Buka
+          <NavArrowRight className="h-3.5 w-3.5" />
+        </span>
+      </div>
+      <span id={hintId} className="sr-only">
+        Tekan Enter atau Space untuk membuka artifact di panel kanan.
+      </span>
+    </button>
+  )
 }

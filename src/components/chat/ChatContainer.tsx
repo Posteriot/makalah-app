@@ -100,6 +100,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
       isArtifactPanelOpen={artifactPanelOpen}
       onArtifactPanelToggle={toggleArtifactPanel}
       onArtifactSelect={handleArtifactSelect}
+      activeArtifactId={activeArtifactTabId}
       artifactCount={artifactCount}
       mobileSidebarOpen={isMobileOpen}
       onMobileSidebarOpenChange={setIsMobileOpen}

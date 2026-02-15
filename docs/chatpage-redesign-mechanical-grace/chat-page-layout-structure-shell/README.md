@@ -40,7 +40,7 @@ ChatLayout menggunakan **6-column CSS Grid** dalam satu row full-height:
 │   Bar    │           │e │                      │e │   Panel      │
 │  (48px)  │ (280px*)  │s │      (1fr)           │s │  (360px*)    │
 │          │           │  │                      │  │              │
-│  fixed   │ resizable │4 │ TopBar + ChatWindow  │4 │ Tabs+Viewer  │
+│  fixed   │ resizable │2 │ TopBar + ChatWindow  │2 │ Tabs+Viewer  │
 │          │           │px│                      │px│              │
 └──────────┴───────────┴──┴─────────────────────┴──┴──────────────┘
                                                      * = default, resizable
@@ -52,9 +52,9 @@ ChatLayout menggunakan **6-column CSS Grid** dalam satu row full-height:
 |--------|---------|-----|-----|----------|
 | Activity Bar | 48px | 48px | 48px | Tidak bisa |
 | Sidebar | 280px | 180px | 50% viewport | < 100px threshold |
-| Left Resizer | 4px | — | — | 0px saat sidebar collapsed |
+| Left Resizer | 2px | — | — | 0px saat sidebar collapsed |
 | Main Content | 1fr | — | — | Tidak bisa |
-| Right Resizer | 4px | — | — | 0px saat panel closed |
+| Right Resizer | 2px | — | — | 0px saat panel closed |
 | Artifact Panel | 360px | 280px | 50% viewport | 0px saat tidak ada tab |
 
 ### CSS Variables
@@ -67,7 +67,7 @@ ChatLayout menggunakan **6-column CSS Grid** dalam satu row full-height:
 --panel-width: 360px;
 --panel-min-width: 280px;
 --panel-max-width: 50%;
---shell-footer-h: 32px;
+--shell-footer-h: 0px;
 ```
 
 ## Struktur Vertikal
@@ -81,8 +81,6 @@ ChatLayout menggunakan **6-column CSS Grid** dalam satu row full-height:
 │  │    │         │  │ ChatWindow       │  │   Panel    │ │
 │  │    │         │  │ (flex-1)         │  │            │ │
 │  └────┴─────────┴──┴──────────────────┴──┴────────────┘ │
-├─────────────────────────────────────────────────────────┤
-│  ChatMiniFooter (32px, full-width)                      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -91,14 +89,14 @@ ChatLayout menggunakan **6-column CSS Grid** dalam satu row full-height:
 ### Column 1: ActivityBar (`src/components/chat/shell/ActivityBar.tsx`)
 
 Navigasi vertikal 48px, berisi:
-1. **Logo** — Link ke `/`, Makalah logo (light/dark mode), `w-10 h-10`
+1. **Logo** — Link ke `/`, row `h-11 w-full`, logo image `20x20` (light/dark mode)
 2. **Separator** — hairline horizontal
 3. **Panel items** (tablist, vertical):
    - Chat History (`ChatBubble` icon)
    - Paper Sessions (`Page` icon)
    - Progress Timeline (`GitBranch` icon)
 
-Active state: `border-l-2 border-amber-500 bg-amber-500/10`.
+Active state: `border-slate-400/50 bg-slate-200 text-slate-800` (dark: `border-slate-600 bg-slate-800 text-slate-100`).
 Klik panel saat sidebar collapsed → auto-expand sidebar.
 
 ### Column 2: ChatSidebar (`src/components/chat/ChatSidebar.tsx`)
@@ -111,22 +109,22 @@ Multi-state container, render konten sesuai `activePanel`:
 ├──────────────────────────┤
 │ [+ Percakapan Baru]      │  ← hanya panel "chat-history"
 ├──────────────────────────┤
-│ RIWAYAT CHAT  12         │  ← label, hanya "chat-history"
+│ RIWAYAT  12              │  ← label, hanya "chat-history"
 ├──────────────────────────┤
 │                          │
 │ (content area, flex-1)   │  ← SidebarChatHistory / SidebarPaperSessions / SidebarProgress
 │                          │
 ├──────────────────────────┤
-│ [Upgrade]                │  ← hanya non-PRO users
+│ CreditMeter              │  ← compact footer meter
 └──────────────────────────┘
 ```
 
 - Collapse toggle: `FastArrowLeft` icon, hanya muncul saat `onCollapseSidebar` di-pass (desktop only)
-- Saat collapsed: `w-0 border-r-0`, grid column = `0px`
+- Saat collapsed: kolom sidebar jadi `0px`, dan wrapper sidebar di-grid memakai `w-0`
 
 ### Column 3: Left PanelResizer
 
-Drag handle 4px untuk resize sidebar. Double-click → reset ke 280px default.
+Drag handle 2px untuk resize sidebar. Double-click → reset ke 280px default.
 Hidden saat sidebar collapsed (diganti `<div>` kosong untuk grid slot).
 
 ### Column 4: Main Content
@@ -136,17 +134,18 @@ Flex column berisi **TopBar** + **ChatWindow**:
 ```
 ┌────────────────────────────────────────┐
 │ TopBar (shrink-0, solid bg)            │
-│ [>>]          [🔔][☀][⬚][PRO][👤]    │
+│ [>>]          [🔔][☀][⬚][👤]         │
 ├────────────────────────────────────────┤
 │                                        │
 │ ChatWindow (flex-1, overflow-hidden)   │
-│ - Messages (Virtuoso, px-6)            │
+│ - Messages (Virtuoso, sync ke var      │
+│   `--chat-input-pad-x`)                │
 │ - ChatInput (bottom, persistent)       │
 │                                        │
 └────────────────────────────────────────┘
 ```
 
-Background: `bg-[color:var(--section-bg-alt)]` (seragam TopBar + chat area).
+Background: `bg-slate-50` (dark: `bg-slate-900`) seragam antara TopBar dan chat area.
 
 ### Column 4a: TopBar (`src/components/chat/shell/TopBar.tsx`)
 
@@ -159,21 +158,20 @@ Normal flow element (`shrink-0`), bukan absolute overlay. Solid background sama 
 1. NotificationDropdown
 2. Theme toggle (sun/moon)
 3. Artifact panel toggle (badge count saat collapsed)
-4. SegmentBadge (GRATIS/BPP/PRO)
-5. UserDropdown (`variant="compact"` — icon user + green status dot)
+4. UserDropdown (`variant="compact"` — icon user + green status dot)
 
 ### Column 4b: ChatWindow (`src/components/chat/ChatWindow.tsx`)
 
-Tiga state:
-1. **Landing** (`conversationId === null`): Empty state + template cards + persistent ChatInput
-2. **Active conversation**: Virtuoso message list (`px-6`) + ChatInput
+Tiga state utama:
+1. **Landing** (`conversationId === null`): welcome empty state + starter prompt CTA + persistent ChatInput
+2. **Active conversation**: QuotaWarningBanner + area message (skeleton/TemplateGrid/Virtuoso) + ChatInput
 3. **Not found**: Error state
 
 ChatInput selalu visible di bottom, termasuk di landing state.
 
 ### Column 5: Right PanelResizer
 
-Drag handle 4px untuk resize artifact panel. Hidden saat panel closed.
+Drag handle 2px untuk resize artifact panel. Hidden saat panel closed.
 
 ### Column 6: ArtifactPanel (`src/components/chat/ArtifactPanel.tsx`)
 
@@ -276,10 +274,12 @@ Sidebar diganti **Sheet** (slide-in dari kiri, 300px). Trigger via hamburger men
 | `src/components/chat/ArtifactPanel.tsx` | Artifact viewer panel |
 | `src/components/chat/ArtifactTabs.tsx` | Tab bar untuk artifact switching |
 | `src/components/chat/ArtifactToolbar.tsx` | Metadata + action buttons |
-| `src/components/chat/ChatMiniFooter.tsx` | Footer copyright |
 | `src/components/layout/header/UserDropdown.tsx` | User menu (default + compact variant) |
-| `src/components/ui/SegmentBadge.tsx` | Tier badge (GRATIS/BPP/PRO) |
 | `src/lib/hooks/useArtifactTabs.ts` | Multi-tab state hook |
+
+### Catatan Implementasi Saat Ini
+
+- `ChatMiniFooter` tersedia di codebase, tapi belum di-mount dalam tree `ChatLayout` saat ini.
 
 ### File yang Dihapus (deprecated)
 

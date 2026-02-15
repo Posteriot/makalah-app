@@ -40,6 +40,8 @@ interface ChatLayoutProps {
   onArtifactPanelToggle?: () => void
   /** Callback when artifact is selected */
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  /** Currently active artifact in panel */
+  activeArtifactId?: Id<"artifacts"> | null
   /** Artifact panel content (passed from parent) */
   artifactPanel?: ReactNode
   /** Number of artifacts (for header badge) */
@@ -75,6 +77,7 @@ export function ChatLayout({
   isArtifactPanelOpen = false,
   onArtifactPanelToggle,
   onArtifactSelect,
+  activeArtifactId,
   artifactPanel,
   artifactCount = 0,
   mobileSidebarOpen,
@@ -284,6 +287,7 @@ export function ChatLayout({
             onDeleteConversation={handleDeleteConversation}
             onUpdateConversationTitle={handleUpdateConversationTitle}
             onArtifactSelect={onArtifactSelect}
+            activeArtifactId={activeArtifactId}
             isArtifactPanelOpen={isArtifactPanelOpen}
             onArtifactPanelToggle={onArtifactPanelToggle}
             isLoading={isLoading}
@@ -353,6 +357,7 @@ export function ChatLayout({
             onDeleteConversation={handleDeleteConversation}
             onUpdateConversationTitle={handleUpdateConversationTitle}
             onArtifactSelect={onArtifactSelect}
+            activeArtifactId={activeArtifactId}
             isArtifactPanelOpen={isArtifactPanelOpen}
             onArtifactPanelToggle={onArtifactPanelToggle}
             onCloseMobile={() => setIsMobileOpen(false)}

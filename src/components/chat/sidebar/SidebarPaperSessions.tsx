@@ -27,6 +27,7 @@ import {
 interface SidebarPaperSessionsProps {
   currentConversationId: string | null
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  activeArtifactId?: Id<"artifacts"> | null
   isArtifactPanelOpen?: boolean
   onArtifactPanelToggle?: () => void
   onCloseMobile?: () => void
@@ -64,6 +65,7 @@ interface ArtifactItem {
 export function SidebarPaperSessions({
   currentConversationId,
   onArtifactSelect,
+  activeArtifactId,
   isArtifactPanelOpen,
   onArtifactPanelToggle,
   onCloseMobile,
@@ -187,9 +189,9 @@ export function SidebarPaperSessions({
         <PaperFolderItem
           session={sessionItem}
           isExpanded={isExpanded}
-          isSelected={true} // Always selected since it's the active conversation
           onToggle={() => setIsExpanded(!isExpanded)}
           onArtifactSelect={onArtifactSelect}
+          activeArtifactId={activeArtifactId}
           isArtifactPanelOpen={isArtifactPanelOpen}
           onArtifactPanelToggle={onArtifactPanelToggle}
           onCloseMobile={onCloseMobile}
@@ -208,9 +210,9 @@ export function SidebarPaperSessions({
 function PaperFolderItem({
   session,
   isExpanded,
-  isSelected,
   onToggle,
   onArtifactSelect,
+  activeArtifactId,
   isArtifactPanelOpen,
   onArtifactPanelToggle,
   onCloseMobile,
@@ -220,9 +222,9 @@ function PaperFolderItem({
 }: {
   session: PaperSessionItem
   isExpanded: boolean
-  isSelected: boolean
   onToggle: () => void
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  activeArtifactId?: Id<"artifacts"> | null
   isArtifactPanelOpen?: boolean
   onArtifactPanelToggle?: () => void
   onCloseMobile?: () => void
@@ -313,14 +315,15 @@ function PaperFolderItem({
   const latestArtifacts = artifacts
     ? getLatestArtifactVersions(artifacts)
     : []
+  const hasArtifacts = latestArtifacts.length > 0
 
   return (
     <div className="mb-0.5">
       {/* Folder Header */}
       <div
         className={cn(
-          "flex items-center gap-2 rounded-sm py-2 px-4 cursor-pointer transition-colors",
-          "hover:bg-accent"
+          "flex cursor-pointer items-center gap-2 rounded-action border border-transparent px-4 py-2 transition-colors",
+          "hover:border-border/40 hover:bg-accent/60"
         )}
         onClick={onToggle}
       >
@@ -335,13 +338,13 @@ function PaperFolderItem({
         {/* Status Dot - 8px, Mechanical Grace: Sky for in-progress */}
         <div
           className={cn(
-            "w-2 h-2 rounded-full shrink-0",
+            "h-2 w-2 shrink-0 rounded-full",
             statusColorClass
           )}
         />
 
         {/* Folder Icon - Solid sky style */}
-        <Folder className="h-[18px] w-[18px] shrink-0 text-sky-600 dark:text-sky-500 [&_path]:fill-current [&_path]:stroke-current" />
+        <Folder className="h-[18px] w-[18px] shrink-0 text-sky-600 dark:text-sky-400 [&_path]:fill-current [&_path]:stroke-current" />
 
         <div
           className="flex flex-1 min-w-0 items-center gap-1.5"
@@ -366,7 +369,7 @@ function PaperFolderItem({
               }}
               disabled={isSavingTitle}
               autoFocus
-              className="h-7 w-full rounded-sm border border-border/70 bg-background px-2 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-7 w-full rounded-action border border-border/70 bg-background px-2 text-[12px] font-mono shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
               aria-label="Edit working title"
             />
           ) : (
@@ -378,7 +381,7 @@ function PaperFolderItem({
           {!isFinalTitleLocked && (
             <button
               type="button"
-              className="h-6 w-6 shrink-0 rounded-sm border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="h-6 w-6 shrink-0 rounded-action border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
               onMouseDown={(event) => event.preventDefault()}
               onClick={(event) => {
                 if (isEditingTitle) {
@@ -406,19 +409,36 @@ function PaperFolderItem({
       {isExpanded && (
         <div className="pl-6 pr-1.5">
           {/* Stage Info - Mechanical Grace: Mono metadata */}
-          <div className="text-[11px] font-mono text-muted-foreground py-1 px-4">
-            Stage {stageNumber}/13 - {stageLabel}
+          <div className="px-4 pt-1 pb-2">
+            <div className="text-[11px] font-mono text-muted-foreground/90">
+              Stage {stageNumber}/13 - {stageLabel}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span
+                className={cn(
+                  "rounded-badge border px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide",
+                  isArtifactPanelOpen
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border/60 bg-background/70 text-muted-foreground"
+                )}
+              >
+                {isArtifactPanelOpen ? "Panel artifact terbuka" : "Panel artifact tertutup"}
+              </span>
+              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                {hasArtifacts ? `${latestArtifacts.length} dokumen siap` : "Belum ada dokumen"}
+              </span>
+            </div>
           </div>
 
           {/* Artifact Items */}
-          {latestArtifacts.length > 0 ? (
+          {hasArtifacts ? (
             <TooltipProvider delayDuration={300}>
               {latestArtifacts.map((artifact) => (
                 <ArtifactTreeItem
                   key={artifact._id}
                   artifact={artifact}
                   conversationId={session.conversationId}
-                  isSelected={isSelected}
+                  activeArtifactId={activeArtifactId}
                   onArtifactSelect={onArtifactSelect}
                   isArtifactPanelOpen={isArtifactPanelOpen}
                   onArtifactPanelToggle={onArtifactPanelToggle}
@@ -443,7 +463,7 @@ function PaperFolderItem({
 function ArtifactTreeItem({
   artifact,
   conversationId,
-  isSelected,
+  activeArtifactId,
   onArtifactSelect,
   isArtifactPanelOpen,
   onArtifactPanelToggle,
@@ -451,7 +471,7 @@ function ArtifactTreeItem({
 }: {
   artifact: ArtifactItem
   conversationId: Id<"conversations">
-  isSelected: boolean
+  activeArtifactId?: Id<"artifacts"> | null
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
   isArtifactPanelOpen?: boolean
   onArtifactPanelToggle?: () => void
@@ -459,6 +479,7 @@ function ArtifactTreeItem({
 }) {
   // Determine if artifact is "final" (validated/not invalidated)
   const isFinal = !artifact.invalidatedAt
+  const isSelected = activeArtifactId === artifact._id
 
   const handleClick = () => {
     // Open artifact panel if not open
@@ -480,31 +501,41 @@ function ArtifactTreeItem({
           href={`/chat/${conversationId}`}
           onClick={handleClick}
           className={cn(
-            "my-1 mr-3 flex items-center gap-2 rounded-action px-3.5 py-2 cursor-pointer transition-colors",
-            "hover:bg-sky-500/10 dark:hover:bg-sky-500/15",
-            isSelected && "bg-sky-500/12 dark:bg-sky-500/20"
+            "my-1 mr-3 flex cursor-pointer items-center gap-2 rounded-action border px-3.5 py-2 transition-colors",
+            "border-transparent hover:border-border/50 hover:bg-accent/60",
+            isSelected && "border-primary/35 bg-primary/10 dark:bg-primary/20"
           )}
+          aria-current={isSelected ? "page" : undefined}
         >
-          {/* Document Icon - Mechanical Grace: Emerald for final, muted otherwise */}
+          {/* Document Icon */}
           <Page
             className={cn(
               "h-4 w-4 shrink-0",
-              isFinal ? "text-emerald-500" : "text-muted-foreground"
+              isFinal ? "text-emerald-500" : "text-amber-600 dark:text-amber-300"
             )}
           />
 
           {/* File Name */}
-          <span className="text-[13px] truncate flex-1">{artifact.title}</span>
+          <span className="flex-1 truncate text-[13px]">{artifact.title}</span>
 
-          {/* Version Badge - Mechanical Grace: Mono */}
-          <span className="text-[9px] font-mono font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+          <span className="hidden shrink-0 rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wide text-muted-foreground sm:inline-flex">
+            {getArtifactTypeLabel(artifact.type)}
+          </span>
+
+          {/* Version Badge */}
+          <span className="shrink-0 rounded-badge border border-border/60 bg-muted/70 px-1.5 py-0.5 text-[9px] font-mono font-medium text-muted-foreground">
             v{artifact.version}
           </span>
 
-          {/* FINAL Badge - only for validated artifacts */}
+          {/* Status Badge */}
           {isFinal && (
-            <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-500 text-white shrink-0 ml-1 uppercase">
+            <span className="ml-1 shrink-0 rounded-badge border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-emerald-700 dark:text-emerald-300">
               FINAL
+            </span>
+          )}
+          {!isFinal && (
+            <span className="ml-1 shrink-0 rounded-badge border border-amber-500/35 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-amber-700 dark:text-amber-300">
+              REVISI
             </span>
           )}
         </Link>
@@ -514,6 +545,18 @@ function ArtifactTreeItem({
       </TooltipContent>
     </Tooltip>
   )
+}
+
+function getArtifactTypeLabel(type: string): string {
+  const map: Record<string, string> = {
+    section: "SEKSI",
+    outline: "OUTLINE",
+    code: "CODE",
+    table: "TABEL",
+    citation: "SITASI",
+    formula: "FORMULA",
+  }
+  return map[type] ?? "DOKUMEN"
 }
 
 /**

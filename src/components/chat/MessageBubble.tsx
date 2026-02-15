@@ -43,6 +43,13 @@ type AutoUserAction =
     }
     | null;
 
+type ArtifactSignal = {
+    artifactId: Id<"artifacts">
+    title: string
+    status: "created" | "updated"
+    version?: number
+}
+
 interface MessageBubbleProps {
     message: UIMessage
     onEdit?: (messageId: string, newContent: string) => void
@@ -118,10 +125,8 @@ export function MessageBubble({
         })
     }, [message.role, allMessages, messageIndex, isPaperMode, currentStageStartIndex, stageData])
 
-    type CreatedArtifact = { artifactId: Id<"artifacts">; title: string }
-
-    const extractCreatedArtifacts = (uiMessage: UIMessage): CreatedArtifact[] => {
-        const created: CreatedArtifact[] = []
+    const extractArtifactSignals = (uiMessage: UIMessage): ArtifactSignal[] => {
+        const signals: ArtifactSignal[] = []
 
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
@@ -133,29 +138,58 @@ export function MessageBubble({
                 result?: unknown
             }
 
-            if (maybeToolPart.type !== "tool-createArtifact") continue
-
             const okState =
                 maybeToolPart.state === "output-available" || maybeToolPart.state === "result"
             if (!okState) continue
 
-            const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
-                success?: unknown
-                artifactId?: unknown
-                title?: unknown
-            } | null
+            if (maybeToolPart.type === "tool-createArtifact") {
+                const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
+                    success?: unknown
+                    artifactId?: unknown
+                    title?: unknown
+                } | null
 
-            if (!maybeOutput || maybeOutput.success !== true) continue
-            if (typeof maybeOutput.artifactId !== "string") continue
-            if (typeof maybeOutput.title !== "string") continue
+                if (!maybeOutput || maybeOutput.success !== true) continue
+                if (typeof maybeOutput.artifactId !== "string") continue
+                if (typeof maybeOutput.title !== "string") continue
 
-            created.push({
-                artifactId: maybeOutput.artifactId as Id<"artifacts">,
-                title: maybeOutput.title,
-            })
+                signals.push({
+                    artifactId: maybeOutput.artifactId as Id<"artifacts">,
+                    title: maybeOutput.title,
+                    status: "created",
+                })
+                continue
+            }
+
+            if (maybeToolPart.type === "tool-updateArtifact") {
+                const maybeOutput = (maybeToolPart.output ?? maybeToolPart.result) as unknown as {
+                    success?: unknown
+                    newArtifactId?: unknown
+                    title?: unknown
+                    version?: unknown
+                } | null
+
+                if (!maybeOutput || maybeOutput.success !== true) continue
+                if (typeof maybeOutput.newArtifactId !== "string") continue
+
+                const parsedVersion =
+                    typeof maybeOutput.version === "number" && Number.isFinite(maybeOutput.version)
+                        ? maybeOutput.version
+                        : undefined
+                const fallbackTitle = parsedVersion
+                    ? `Artifact direvisi (v${parsedVersion})`
+                    : "Artifact direvisi"
+
+                signals.push({
+                    artifactId: maybeOutput.newArtifactId as Id<"artifacts">,
+                    title: typeof maybeOutput.title === "string" ? maybeOutput.title : fallbackTitle,
+                    status: "updated",
+                    ...(parsedVersion ? { version: parsedVersion } : {}),
+                })
+            }
         }
 
-        return created
+        return signals
     }
 
     const extractInProgressTools = (uiMessage: UIMessage) => {
@@ -326,7 +360,7 @@ export function MessageBubble({
     const fileIds = fileAnnotations?.fileIds ?? []
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
-    const createdArtifacts = extractCreatedArtifacts(message)
+    const artifactSignals = extractArtifactSignals(message)
     const inProgressTools = extractInProgressTools(message)
     const searchTools = inProgressTools.filter((t) => t.toolName === "google_search")
     const nonSearchTools = inProgressTools.filter((t) => t.toolName !== "google_search")
@@ -345,6 +379,9 @@ export function MessageBubble({
     const citedSources = extractCitedSources(message)
     const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
     const sources = citedSources || sourcesFromAnnotation || messageSources || []
+    const hasArtifactSignals = isAssistant && artifactSignals.length > 0 && Boolean(onArtifactSelect)
+    const hasSources = isAssistant && sources.length > 0
+    const hasQuickActions = !isEditing && isAssistant
 
     // Get timestamp from allMessages if available
 
@@ -469,21 +506,21 @@ export function MessageBubble({
                                     e.target.style.height = e.target.scrollHeight + 'px'
                                 }}
                                 onKeyDown={handleKeyDown}
-                                className="w-full rounded-action p-3 text-sm bg-background border border-emerald-500/70 text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/40 resize-none overflow-hidden"
+                                className="w-full resize-none overflow-hidden rounded-action border border-border/70 bg-background p-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
                                 rows={1}
                                 aria-label="Edit message content"
                             />
                             <div className="flex gap-2 justify-end">
                                 <button
                                     onClick={handleCancel}
-                                    className="px-3 py-1.5 rounded-action text-xs font-mono flex items-center gap-1.5 hover:bg-accent transition-colors"
+                                    className="flex items-center gap-1.5 rounded-action px-3 py-1.5 text-xs font-mono text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
                                     aria-label="Batalkan edit"
                                 >
                                     <Xmark className="h-3.5 w-3.5" /> Batal
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="px-3 py-1.5 rounded-action text-xs font-mono flex items-center gap-1.5 font-medium bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
+                                    className="flex items-center gap-1.5 rounded-action border border-primary/40 bg-primary px-3 py-1.5 text-xs font-mono font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
                                     aria-label="Kirim pesan yang diedit"
                                 >
                                     <Send className="h-3.5 w-3.5" /> Kirim
@@ -492,33 +529,39 @@ export function MessageBubble({
                         </div>
                     ) : autoUserAction ? (
                         autoUserAction.kind === "approved" ? (
-                            <div className="rounded-action border border-emerald-600/35 bg-emerald-500/10 px-3 py-2">
-                                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                            <div className="rounded-action border border-emerald-500/35 bg-emerald-500/10 px-3 py-2.5">
+                                <div className="flex flex-wrap items-center gap-2 text-emerald-700 dark:text-emerald-300">
                                     <CheckCircle className="h-4 w-4" />
-                                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wide">
+                                    <span className="rounded-badge border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
                                         Tahap disetujui
+                                    </span>
+                                    <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                                        Lifecycle artifact: terkunci
                                     </span>
                                 </div>
                                 <div className="mt-1 text-sm font-medium text-foreground">
                                     {autoUserAction.stageLabel}
                                 </div>
                                 <div className="mt-1 text-xs font-mono text-muted-foreground">
-                                    {autoUserAction.followupText || "Agen melanjutkan ke tahap berikutnya."}
+                                    {autoUserAction.followupText || "Agen lanjut ke tahap berikutnya, artifact tahap ini jadi baseline referensi."}
                                 </div>
                             </div>
                         ) : (
-                            <div className="rounded-action border border-slate-500/40 bg-slate-500/10 px-3 py-2">
-                                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                            <div className="rounded-action border border-amber-500/35 bg-amber-500/10 px-3 py-2.5">
+                                <div className="flex flex-wrap items-center gap-2 text-amber-700 dark:text-amber-300">
                                     <EditPencil className="h-4 w-4" />
-                                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wide">
+                                    <span className="rounded-badge border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
                                         Permintaan revisi
+                                    </span>
+                                    <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                                        Lifecycle artifact: perlu update
                                     </span>
                                 </div>
                                 <div className="mt-1 text-sm font-medium text-foreground">
                                     {autoUserAction.stageLabel}
                                 </div>
                                 <div className="mt-1 whitespace-pre-wrap text-xs font-mono leading-relaxed text-muted-foreground">
-                                    {autoUserAction.feedback || "Feedback revisi telah dikirim ke agen."}
+                                    {autoUserAction.feedback || "Feedback revisi telah dikirim. Agen akan memperbarui artifact pada tahap ini."}
                                 </div>
                             </div>
                         )
@@ -530,30 +573,42 @@ export function MessageBubble({
                         />
                     )}
 
-                    {/* Sources Indicator (after search status) */}
-                    {sources && sources.length > 0 && isAssistant && (
-                        <div className="mt-3">
-                            <SourcesIndicator sources={sources} />
-                        </div>
-                    )}
+                    {/* Assistant follow-up blocks: artifact output -> sources -> quick actions */}
+                    {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions) && (
+                        <div className="mt-3 space-y-3">
+                            {hasArtifactSignals && (
+                                <section className="space-y-2" aria-label="Hasil artifact">
+                                    <div className="flex items-center gap-2">
+                                        <span className="rounded-badge border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
+                                            Hasil Kerja
+                                        </span>
+                                        <p className="text-[11px] font-mono text-muted-foreground">
+                                            Buka artifact untuk lanjut edit atau revisi.
+                                        </p>
+                                    </div>
+                                    {artifactSignals.map((artifact) => (
+                                        onArtifactSelect ? (
+                                            <ArtifactIndicator
+                                                key={artifact.artifactId}
+                                                artifactId={artifact.artifactId}
+                                                title={artifact.title}
+                                                status={artifact.status}
+                                                version={artifact.version}
+                                                onSelect={onArtifactSelect}
+                                            />
+                                        ) : null
+                                    ))}
+                                </section>
+                            )}
 
-                    {/* Artifact Indicators */}
-                    {createdArtifacts.length > 0 && onArtifactSelect && (
-                        <div className="mt-3 space-y-2">
-                            {createdArtifacts.map((created) => (
-                                <ArtifactIndicator
-                                    key={created.artifactId}
-                                    artifactId={created.artifactId}
-                                    title={created.title}
-                                    onSelect={onArtifactSelect}
-                                />
-                            ))}
-                        </div>
-                    )}
+                            {hasSources && (
+                                <section aria-label="Sumber referensi">
+                                    <SourcesIndicator sources={sources} />
+                                </section>
+                            )}
 
-                    {/* Quick Actions for Assistant */}
-                    {!isEditing && isAssistant && (
-                        <QuickActions content={content} />
+                            {hasQuickActions && <QuickActions content={content} />}
+                        </div>
                     )}
                 </div>
             </div>
