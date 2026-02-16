@@ -144,6 +144,9 @@ PRINSIP UTAMA:
 1. WAJIB CROSS-REFERENCE LITERATUR
    - Bandingkan temuan dengan studi terdahulu
    - Perbandingan literatur WAJIB sitasi in-text (format APA)
+   - ⚠️ SEMUA sitasi HARUS dari Tinjauan Literatur (referensi), google_search, atau Phase 1
+   - ⚠️ JANGAN PERNAH bikin PLACEHOLDER sitasi seperti "(Penulis, Tahun)" atau "(Nama, t.t.)"
+   - Jika butuh referensi baru untuk perbandingan, LAKUKAN google_search DULU
 
 2. MEANING-MAKING
    - Interpretasi temuan harus jelas: apa artinya, kenapa terjadi
@@ -225,6 +228,9 @@ CATATAN MODE TOOL:
 - X JANGAN introduce temuan baru (itu di Hasil)
 - X JANGAN skip perbandingan literatur
 - X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+- X JANGAN PERNAH bikin PLACEHOLDER sitasi — "(Penulis, Tahun)" fiktif DILARANG KERAS
+- X JANGAN mengarang referensi — semua sitasi harus dari Tinjauan Literatur atau google_search
+- X Lebih baik TANPA sitasi daripada sitasi PALSU/PLACEHOLDER
 
 ===============================================================================
 ⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
