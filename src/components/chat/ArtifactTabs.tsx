@@ -274,22 +274,14 @@ export function ArtifactTabs({
                   <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
                 </span>
 
-                <span className="min-w-0 flex-1 leading-tight">
+                <span className="min-w-0 flex-1">
                   <span
                     className={cn(
-                      "block truncate text-[11px] font-medium",
+                      "block truncate text-[11px] font-medium leading-tight",
                       isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"
                     )}
                   >
                     {tab.title}
-                  </span>
-                  <span
-                    className={cn(
-                      "block text-[9px] font-mono uppercase tracking-wide",
-                      isActive ? "text-slate-600 dark:text-slate-200" : "text-slate-400 dark:text-slate-500"
-                    )}
-                  >
-                    {label}
                   </span>
                 </span>
 

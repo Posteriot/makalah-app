@@ -308,7 +308,7 @@ export function ChatLayout({
         {isSidebarCollapsed && <div className="hidden md:block" />}
 
         {/* Column 4: Main Content — NO ShellHeader, NO ChatTabs */}
-        <main className="flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
+        <main className="flex flex-col overflow-hidden bg-white dark:bg-slate-900">
           <TopBar
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={handleToggleSidebar}

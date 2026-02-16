@@ -17,16 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
-// Artifact type labels (same as ArtifactPanel)
-const typeLabels: Record<string, string> = {
-  code: "Code",
-  outline: "Outline",
-  section: "Section",
-  table: "Tabel",
-  citation: "Sitasi",
-  formula: "Formula",
-}
-
 interface ArtifactToolbarProps {
   /** Selected artifact data */
   artifact: {
@@ -114,12 +104,7 @@ export function ArtifactToolbar({
             {artifact.title}
           </p>
           <div className="mt-1 flex items-center gap-1.5">
-            <Badge
-              variant="outline"
-              className="h-5 rounded-badge border-slate-300/85 bg-slate-200/80 px-1.5 py-0 text-[10px] font-mono capitalize text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100"
-            >
-              {typeLabels[artifact.type] || artifact.type}
-            </Badge>
+            
             <Badge
               variant="secondary"
               className="h-5 rounded-badge bg-slate-200/85 px-1.5 py-0 text-[10px] font-mono text-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
@@ -341,30 +326,11 @@ export function ArtifactToolbar({
                 {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
                 Salin
               </DropdownMenuItem>
-              <DropdownMenuItem disabled>
-                <span className="mr-2 inline-flex h-4 w-4 items-center justify-center font-mono text-[10px]">
-                  v
-                </span>
-                v{artifact.version}
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled>
-                <MagicWand className="mr-2 h-4 w-4" />
-                {isRefrasaReady ? "Refrasa siap" : "Refrasa min. 50 karakter"}
-              </DropdownMenuItem>
               {onExpand && (
                 <DropdownMenuItem onClick={onExpand}>
                   <Expand className="mr-2 h-4 w-4" />
                   Fullscreen
                 </DropdownMenuItem>
-              )}
-              {onClosePanel && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={onClosePanel}>
-                    <Xmark className="mr-2 h-4 w-4" />
-                    Tutup panel
-                  </DropdownMenuItem>
-                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
