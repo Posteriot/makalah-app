@@ -318,8 +318,8 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     return (
       <div className="flex h-full flex-col">
         {hasHeaderMeta ? (
-          <div className="border-b border-slate-300/80 bg-inherit px-4 py-3 dark:border-border/60">
-            <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono text-slate-700 dark:text-muted-foreground/85">
+          <div className="border-b border-slate-300/80 bg-inherit px-4 py-3 dark:border-slate-700/80">
+            <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono text-slate-700 dark:text-slate-400">
               {hasMultipleVersions ? (
                 <Select
                   value={viewingVersionId ?? undefined}
@@ -327,7 +327,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 >
                   <SelectTrigger
                     size="sm"
-                    className="h-6 w-auto min-w-[130px] rounded-action border-slate-300/85 bg-slate-200/80 px-2 py-0 text-[11px] font-mono font-medium text-slate-800 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 dark:border-border/60 dark:bg-background/80 dark:text-foreground"
+                    className="h-6 w-auto min-w-[130px] rounded-action border-slate-300/85 bg-slate-200/80 px-2 py-0 text-[11px] font-mono font-medium text-slate-800 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100"
                   >
                     <SelectValue placeholder={`v${artifact.version}`} />
                   </SelectTrigger>
@@ -397,10 +397,10 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         ) : (
           <>
             <div className="flex-1 overflow-hidden px-4 py-3">
-              <div className="flex h-full flex-col overflow-hidden rounded-sm border border-slate-300/85 bg-slate-50 dark:border-border/60 dark:bg-background/90">
+              <div className="flex h-full flex-col overflow-hidden rounded-sm border border-slate-300/85 bg-slate-50 dark:border-slate-700/70 dark:bg-slate-900">
                 <div className="relative flex-1 overflow-auto p-4 scrollbar-thin">
                   {isRefrasaLoading && (
-                    <div className="absolute inset-2 z-10 flex items-center justify-center rounded-action border border-slate-300/85 bg-slate-100/80 backdrop-blur-sm dark:border-border/60 dark:bg-background/75">
+                    <div className="absolute inset-2 z-10 flex items-center justify-center rounded-action border border-slate-300/85 bg-slate-100/80 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75">
                       <RefrasaLoadingIndicator />
                     </div>
                   )}
@@ -424,11 +424,11 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                   ) : shouldRenderMarkdown ? (
                     <MarkdownRenderer
                       markdown={artifact.content}
-                      className="space-y-3 text-sm leading-relaxed text-slate-900 dark:text-foreground"
+                      className="space-y-3 text-sm leading-relaxed text-slate-900 dark:text-slate-100"
                       sources={artifact.sources}
                     />
                   ) : (
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-900 dark:text-foreground">
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-900 dark:text-slate-100">
                       {artifact.content}
                     </pre>
                   )}
@@ -436,16 +436,16 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
               </div>
             </div>
 
-            <div className="border-t border-slate-300/80 bg-inherit px-4 py-2 dark:border-border/50">
+            <div className="border-t border-slate-300/80 bg-inherit px-4 py-2 dark:border-slate-700/70">
               {artifact.sources && artifact.sources.length > 0 ? (
                 <div>
-                  <p className="mb-1 text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-muted-foreground/85">
+                  <p className="mb-1 text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     Sumber Terkait
                   </p>
                   <SourcesIndicator sources={artifact.sources} />
                 </div>
               ) : (
-                <p className="text-[11px] font-mono text-slate-600 dark:text-muted-foreground/75">
+                <p className="text-[11px] font-mono text-slate-600 dark:text-slate-100">
                   Tidak ada rujukan eksternal.
                 </p>
               )}

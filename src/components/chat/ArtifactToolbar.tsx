@@ -87,7 +87,7 @@ export function ArtifactToolbar({
   const isRefrasaReady = artifact.contentLength >= 50
 
   const iconActionClass =
-    "h-8 w-8 rounded-action text-slate-600 dark:text-muted-foreground transition-colors hover:bg-slate-200/80 hover:text-slate-900 dark:hover:bg-accent/80 dark:hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-100 dark:focus-visible:ring-offset-background"
+    "h-8 w-8 rounded-action text-slate-600 dark:text-slate-400 transition-colors hover:bg-slate-200/80 hover:text-slate-900 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-100 dark:focus-visible:ring-offset-slate-800"
   const sidebarButtonSurfaceClass =
     "border-slate-500/60 bg-slate-600 text-slate-100 hover:border-slate-500/70 hover:bg-slate-700 hover:text-slate-100 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-600 dark:hover:text-slate-100"
 
@@ -95,41 +95,41 @@ export function ArtifactToolbar({
     <div
       className={cn(
         "@container/toolbar",
-        "shrink-0 border-b border-slate-300/75 bg-inherit dark:border-border/60 px-3 py-2"
+        "shrink-0 border-b border-slate-300/75 bg-inherit dark:border-slate-700/80 px-3 py-2"
       )}
     >
       {/* Layer 1: Active document context */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 hidden @[520px]/toolbar:block">
-          <p className="truncate text-lg font-semibold text-slate-900 dark:text-foreground">
+          <p className="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
             {artifact.title}
           </p>
         </div>
 
         <div className="min-w-0 @[520px]/toolbar:hidden">
-          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-muted-foreground/85">
+          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
             Artifak Aktif
           </p>
-          <p className="truncate text-sm font-medium text-slate-900 dark:text-foreground">
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
             {artifact.title}
           </p>
           <div className="mt-1 flex items-center gap-1.5">
             <Badge
               variant="outline"
-              className="h-5 rounded-badge border-slate-300/85 bg-slate-200/80 px-1.5 py-0 text-[10px] font-mono capitalize text-slate-700 dark:border-border/70 dark:bg-background/80 dark:text-foreground"
+              className="h-5 rounded-badge border-slate-300/85 bg-slate-200/80 px-1.5 py-0 text-[10px] font-mono capitalize text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100"
             >
               {typeLabels[artifact.type] || artifact.type}
             </Badge>
             <Badge
               variant="secondary"
-              className="h-5 rounded-badge bg-slate-200/85 px-1.5 py-0 text-[10px] font-mono text-slate-700 dark:bg-muted/70 dark:text-foreground"
+              className="h-5 rounded-badge bg-slate-200/85 px-1.5 py-0 text-[10px] font-mono text-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
             >
               v{artifact.version}
             </Badge>
-            <span className="text-[10px] font-mono text-slate-600 dark:text-muted-foreground/80">
+            <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">
               {formatDate(artifact.createdAt)}
             </span>
-            <span className="hidden @[460px]/toolbar:inline text-[10px] font-mono text-slate-500 dark:text-muted-foreground/70">
+            <span className="hidden @[460px]/toolbar:inline text-[10px] font-mono text-slate-500 dark:text-slate-500">
               • {openTabCount} tab
             </span>
           </div>
@@ -192,16 +192,16 @@ export function ArtifactToolbar({
       </div>
 
       {/* Layer 2: Prioritized actions */}
-      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-300/80 pt-2 dark:border-border/50">
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-300/80 pt-2 dark:border-slate-700/70">
         {/* Wide layout */}
         <div className="hidden @[520px]/toolbar:flex min-w-0 items-center gap-1.5">
-          <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-border/60 dark:bg-background/70 dark:text-muted-foreground">
+          <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
             {artifact.contentTypeLabel}
           </span>
-          <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-border/60 dark:bg-background/70 dark:text-muted-foreground">
+          <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
             {artifact.wordCount} kata
           </span>
-          <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-border/60 dark:bg-background/70 dark:text-muted-foreground">
+          <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
             {artifact.contentLength} karakter
           </span>
         </div>
@@ -294,14 +294,14 @@ export function ArtifactToolbar({
 
         {/* Compact layout */}
         <div className="flex w-full items-center justify-between gap-2 @[520px]/toolbar:hidden">
-          <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-slate-700 dark:text-muted-foreground/85">
-            <span className="truncate rounded-badge border border-slate-300/85 bg-slate-200/80 px-1.5 py-0.5 dark:border-border/60 dark:bg-background/70">
+          <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-slate-700 dark:text-slate-100">
+            <span className="truncate rounded-badge border border-slate-300/85 bg-slate-200/80 px-1.5 py-0.5 dark:border-slate-700/70 dark:bg-slate-900/70">
               {artifact.contentTypeLabel}
             </span>
-            <span className="rounded-badge border border-slate-300/85 bg-slate-200/80 px-1.5 py-0.5 dark:border-border/60 dark:bg-background/70">
+            <span className="rounded-badge border border-slate-300/85 bg-slate-200/80 px-1.5 py-0.5 dark:border-slate-700/70 dark:bg-slate-900/70">
               {artifact.wordCount} kata
             </span>
-            <span className="rounded-badge border border-slate-300/85 bg-slate-200/80 px-1.5 py-0.5 dark:border-border/60 dark:bg-background/70">
+            <span className="rounded-badge border border-slate-300/85 bg-slate-200/80 px-1.5 py-0.5 dark:border-slate-700/70 dark:bg-slate-900/70">
               {artifact.contentLength} karakter
             </span>
           </div>
