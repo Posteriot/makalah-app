@@ -111,7 +111,8 @@ Contoh data untuk tahap 'gagasan':
                     "Contoh: 'Disepakati angle: dampak AI terhadap pendidikan tinggi Indonesia, gap: belum ada studi di kampus swasta'"
                 ),
                 data: z.record(z.string(), z.any()).optional().describe(
-                    "Objek data draf lainnya (selain ringkasan). PENTING: referensiAwal/referensiPendukung harus ARRAY OF OBJECTS!"
+                    "Objek data draf lainnya (selain ringkasan). PENTING: referensiAwal/referensiPendukung harus ARRAY OF OBJECTS! " +
+                    "Field 'ringkasanDetail' (opsional, max 1000 char): elaborasi MENGAPA keputusan ini diambil, nuansa penting, dan konteks yang tidak muat di ringkasan 280 char."
                 ),
             }),
             execute: async ({ ringkasan, data }) => {

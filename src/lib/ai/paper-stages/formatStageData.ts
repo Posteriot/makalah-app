@@ -24,6 +24,8 @@ import type {
 
 const SUMMARY_CHAR_LIMIT = 1000;
 const RINGKASAN_CHAR_LIMIT = 280;
+const DETAIL_WINDOW_SIZE = 3;
+const RINGKASAN_DETAIL_CHAR_LIMIT = 1000;
 
 interface StageData {
     gagasan?: GagasanData;
@@ -94,24 +96,51 @@ function hasContent(data: AllStageData): boolean {
     );
 }
 
+function truncateRingkasanDetail(text: string): string {
+    if (text.length <= RINGKASAN_DETAIL_CHAR_LIMIT) {
+        return text;
+    }
+    return `${text.slice(0, RINGKASAN_DETAIL_CHAR_LIMIT).trim()}...`;
+}
+
 function formatRingkasanTahapSelesai(
     stageData: StageData,
     currentStage: PaperStageId | "completed"
 ): string {
     const summaries: string[] = [];
 
+    // Determine which stages are completed (validated + not superseded)
+    const completedStageIds: PaperStageId[] = [];
     STAGE_ORDER.forEach((stageId) => {
-        if (currentStage !== "completed" && stageId === currentStage) {
-            return;
-        }
+        if (currentStage !== "completed" && stageId === currentStage) return;
         const data = stageData[stageId] as AllStageData | undefined;
-        if (!data || !data.validatedAt || (data as any).superseded) {
-            return;
+        if (data?.validatedAt && !(data as any).superseded) {
+            completedStageIds.push(stageId);
         }
+    });
+
+    // Determine which stages get detail injection (last 3 completed)
+    const detailStages = new Set(completedStageIds.slice(-DETAIL_WINDOW_SIZE));
+
+    completedStageIds.forEach((stageId) => {
+        const data = stageData[stageId] as AllStageData | undefined;
+        if (!data) return;
+
         const ringkasanValue = typeof data.ringkasan === "string" && data.ringkasan.trim()
             ? data.ringkasan.trim()
             : "Ringkasan belum tersedia.";
+
         summaries.push(`- ${getStageLabel(stageId)}: ${truncateRingkasan(ringkasanValue)}`);
+
+        // Inject detail for last N completed stages (saves context budget)
+        const isDetailStage = detailStages.has(stageId);
+        const detail = isDetailStage && typeof (data as any).ringkasanDetail === "string"
+            ? ((data as any).ringkasanDetail as string).trim()
+            : null;
+
+        if (detail) {
+            summaries.push(`  (DETAIL): ${truncateRingkasanDetail(detail)}`);
+        }
     });
 
     if (summaries.length === 0) {

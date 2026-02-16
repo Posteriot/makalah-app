@@ -24,60 +24,60 @@ const PLACEHOLDER_CONVERSATION_TITLES = new Set(["Percakapan baru", "New Chat"])
  */
 const STAGE_KEY_WHITELIST: Record<string, string[]> = {
     gagasan: [
-        "ringkasan", "ideKasar", "analisis", "angle", "novelty",
+        "ringkasan", "ringkasanDetail", "ideKasar", "analisis", "angle", "novelty",
         "referensiAwal", "artifactId", "validatedAt", "revisionCount"
     ],
     topik: [
-        "ringkasan", "definitif", "angleSpesifik", "argumentasiKebaruan",
+        "ringkasan", "ringkasanDetail", "definitif", "angleSpesifik", "argumentasiKebaruan",
         "researchGap", "referensiPendukung", "artifactId", "validatedAt", "revisionCount"
     ],
     outline: [
-        "ringkasan", "sections", "totalWordCount", "completenessScore",
+        "ringkasan", "ringkasanDetail", "sections", "totalWordCount", "completenessScore",
         "artifactId", "validatedAt", "revisionCount"
     ],
     abstrak: [
-        "ringkasan", "ringkasanPenelitian", "keywords", "wordCount",
+        "ringkasan", "ringkasanDetail", "ringkasanPenelitian", "keywords", "wordCount",
         "artifactId", "validatedAt", "revisionCount"
     ],
     pendahuluan: [
-        "ringkasan", "latarBelakang", "rumusanMasalah", "researchGapAnalysis",
+        "ringkasan", "ringkasanDetail", "latarBelakang", "rumusanMasalah", "researchGapAnalysis",
         "tujuanPenelitian", "signifikansiPenelitian", "hipotesis", "sitasiAPA",
         "artifactId", "validatedAt", "revisionCount"
     ],
     tinjauan_literatur: [
-        "ringkasan", "kerangkaTeoretis", "reviewLiteratur", "gapAnalysis",
+        "ringkasan", "ringkasanDetail", "kerangkaTeoretis", "reviewLiteratur", "gapAnalysis",
         "justifikasiPenelitian", "referensi", "artifactId", "validatedAt", "revisionCount"
     ],
     metodologi: [
-        "ringkasan", "desainPenelitian", "metodePerolehanData", "teknikAnalisis",
+        "ringkasan", "ringkasanDetail", "desainPenelitian", "metodePerolehanData", "teknikAnalisis",
         "etikaPenelitian", "alatInstrumen", "pendekatanPenelitian",
         "artifactId", "validatedAt", "revisionCount"
     ],
     hasil: [
-        "ringkasan", "temuanUtama", "metodePenyajian", "dataPoints",
+        "ringkasan", "ringkasanDetail", "temuanUtama", "metodePenyajian", "dataPoints",
         "artifactId", "validatedAt", "revisionCount"
     ],
     diskusi: [
-        "ringkasan", "interpretasiTemuan", "perbandinganLiteratur",
+        "ringkasan", "ringkasanDetail", "interpretasiTemuan", "perbandinganLiteratur",
         "implikasiTeoretis", "implikasiPraktis", "keterbatasanPenelitian",
         "saranPenelitianMendatang", "sitasiTambahan",
         "artifactId", "validatedAt", "revisionCount"
     ],
     kesimpulan: [
-        "ringkasan", "ringkasanHasil", "jawabanRumusanMasalah",
+        "ringkasan", "ringkasanDetail", "ringkasanHasil", "jawabanRumusanMasalah",
         "implikasiPraktis", "saranPraktisi", "saranPeneliti", "saranKebijakan",
         "artifactId", "validatedAt", "revisionCount"
     ],
     daftar_pustaka: [
-        "ringkasan", "entries", "totalCount", "incompleteCount", "duplicatesMerged",
+        "ringkasan", "ringkasanDetail", "entries", "totalCount", "incompleteCount", "duplicatesMerged",
         "artifactId", "validatedAt", "revisionCount"
     ],
     lampiran: [
-        "ringkasan", "items", "tidakAdaLampiran", "alasanTidakAda",
+        "ringkasan", "ringkasanDetail", "items", "tidakAdaLampiran", "alasanTidakAda",
         "artifactId", "validatedAt", "revisionCount"
     ],
     judul: [
-        "ringkasan", "opsiJudul", "judulTerpilih", "alasanPemilihan",
+        "ringkasan", "ringkasanDetail", "opsiJudul", "judulTerpilih", "alasanPemilihan",
         "artifactId", "validatedAt", "revisionCount"
     ],
 };
@@ -285,6 +285,13 @@ function truncateStageDataFields(data: Record<string, unknown>): {
         `Field '${key}' di-truncate dari ${value.length} ke ${FIELD_CHAR_LIMIT} karakter.`
       );
     }
+  }
+
+  // Custom limit for ringkasanDetail: 1000 chars
+  if (typeof truncated.ringkasanDetail === "string" &&
+      (truncated.ringkasanDetail as string).length > 1000) {
+    truncated.ringkasanDetail = (truncated.ringkasanDetail as string).slice(0, 1000);
+    warnings.push("Field 'ringkasanDetail' di-truncate ke 1000 karakter.");
   }
 
   return { truncated, warnings };
