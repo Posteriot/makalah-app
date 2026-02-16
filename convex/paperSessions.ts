@@ -223,6 +223,36 @@ function normalizeReferensiData(data: Record<string, unknown>): Record<string, u
     return normalizedData;
 }
 
+/**
+ * Validate that referensi entries have URL field (anti-hallucination guard).
+ * Returns warning info if entries without URL found, null otherwise.
+ */
+function validateReferensiUrls(data: Record<string, unknown>): {
+    missingUrlCount: number;
+    totalCount: number;
+    field: string;
+} | null {
+    const referensiFields = [
+        "referensiAwal", "referensiPendukung", "referensi",
+        "sitasiAPA", "sitasiTambahan"
+    ];
+
+    for (const field of referensiFields) {
+        if (Array.isArray(data[field])) {
+            const items = data[field] as Array<Record<string, unknown>>;
+            const total = items.length;
+            const missingUrl = items.filter(
+                (item) => !item.url || (typeof item.url === "string" && item.url.trim() === "")
+            ).length;
+
+            if (missingUrl > 0) {
+                return { missingUrlCount: missingUrl, totalCount: total, field };
+            }
+        }
+    }
+    return null;
+}
+
 // ═══════════════════════════════════════════════════════════
 // QUERIES
 // ═══════════════════════════════════════════════════════════
@@ -466,8 +496,8 @@ export const updateStageData = mutation({
         });
 
         // ════════════════════════════════════════════════════════════════
-        // Return warning if ringkasan is missing
-        // This gives AI feedback to add ringkasan before submitting
+        // Return warnings for missing ringkasan and referensi without URLs
+        // This gives AI feedback before submitting
         // ════════════════════════════════════════════════════════════════
         const finalStageData = {
             ...existingStageData,
@@ -476,12 +506,28 @@ export const updateStageData = mutation({
         const hasRingkasan = typeof finalStageData.ringkasan === "string"
             && finalStageData.ringkasan.trim() !== "";
 
+        // Anti-hallucination: Check referensi URLs
+        const urlValidation = validateReferensiUrls(finalStageData);
+
+        const warnings: string[] = [];
+        if (!hasRingkasan) {
+            warnings.push(
+                "Ringkasan belum diisi. Tahap ini TIDAK BISA di-approve tanpa ringkasan. " +
+                "Panggil updateStageData lagi dengan field 'ringkasan' yang berisi keputusan utama yang disepakati (max 280 karakter)."
+            );
+        }
+        if (urlValidation) {
+            warnings.push(
+                `ANTI-HALUSINASI: ${urlValidation.missingUrlCount} dari ${urlValidation.totalCount} ` +
+                `referensi di field '${urlValidation.field}' TIDAK memiliki URL. ` +
+                `Semua referensi WAJIB berasal dari google_search dan memiliki URL sumber.`
+            );
+        }
+
         return {
             success: true,
             stage: args.stage,
-            warning: hasRingkasan ? undefined :
-                "PERINGATAN: Ringkasan belum diisi. Tahap ini TIDAK BISA di-approve tanpa ringkasan. " +
-                "Panggil updateStageData lagi dengan field 'ringkasan' yang berisi keputusan utama yang disepakati (max 280 karakter).",
+            warning: warnings.length > 0 ? warnings.join(" | ") : undefined,
         };
     },
 });
