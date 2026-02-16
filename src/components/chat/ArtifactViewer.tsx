@@ -4,7 +4,6 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import dynamic from "next/dynamic"
 import {
   Select,
   SelectContent,
@@ -21,24 +20,8 @@ import { ArtifactEditor } from "./ArtifactEditor"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { ChartRenderer } from "./ChartRenderer"
-
-const MermaidRenderer = dynamic(
-  () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
-  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
-)
-
-const MERMAID_KEYWORDS = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|mindmap|timeline|journey|quadrantChart|xychart|block-beta|sankey-beta|packet-beta)\b/
-const MERMAID_FENCE = /^```mermaid\s*\n([\s\S]*?)```\s*$/
-
-function isMermaidContent(content: string): boolean {
-  const trimmed = content.trimStart()
-  return MERMAID_KEYWORDS.test(trimmed) || MERMAID_FENCE.test(trimmed)
-}
-
-function extractMermaidCode(content: string): string {
-  const match = content.trimStart().match(MERMAID_FENCE)
-  return match ? match[1].trim() : content
-}
+import { MermaidRenderer } from "./MermaidRenderer"
+import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"

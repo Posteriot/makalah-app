@@ -34,26 +34,9 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { ChartRenderer } from "./ChartRenderer"
-import dynamic from "next/dynamic"
+import { MermaidRenderer } from "./MermaidRenderer"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
-
-const MermaidRenderer = dynamic(
-  () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
-  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
-)
-
-const MERMAID_KEYWORDS = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|mindmap|timeline|journey|quadrantChart|xychart|block-beta|sankey-beta|packet-beta)\b/
-const MERMAID_FENCE = /^```mermaid\s*\n([\s\S]*?)```\s*$/
-
-function isMermaidContent(content: string): boolean {
-  const trimmed = content.trimStart()
-  return MERMAID_KEYWORDS.test(trimmed) || MERMAID_FENCE.test(trimmed)
-}
-
-function extractMermaidCode(content: string): string {
-  const match = content.trimStart().match(MERMAID_FENCE)
-  return match ? match[1].trim() : content
-}
+import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
 import {
