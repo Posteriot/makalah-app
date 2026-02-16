@@ -628,3 +628,31 @@ function formatOutlineChecklist(
 
     return output.trim();
 }
+
+// ════════════════════════════════════════════════════════════════
+// Artifact Summary Injection (W1: Paper Workflow Resilience)
+// ════════════════════════════════════════════════════════════════
+
+const ARTIFACT_SUMMARY_CHAR_LIMIT = 500;
+
+function formatArtifactSummary(content: string, stageLabel: string): string {
+    const truncated = content.length > ARTIFACT_SUMMARY_CHAR_LIMIT
+        ? content.slice(0, ARTIFACT_SUMMARY_CHAR_LIMIT).trim() + "..."
+        : content;
+    return `- [${stageLabel}] "${truncated}"`;
+}
+
+/**
+ * Format artifact summaries from completed stages into a context section.
+ * Truncates content to 500 chars per artifact to keep prompt size manageable.
+ */
+export function formatArtifactSummaries(
+    artifacts: Array<{ stageLabel: string; content: string }>
+): string {
+    if (artifacts.length === 0) return "";
+
+    const summaries = artifacts
+        .map((a) => formatArtifactSummary(a.content, a.stageLabel));
+
+    return `RINGKASAN ARTIFACT TAHAP SELESAI:\n${summaries.join("\n")}`;
+}

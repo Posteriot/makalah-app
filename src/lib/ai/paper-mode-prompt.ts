@@ -1,8 +1,8 @@
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
-import { getStageInstructions, formatStageData } from "./paper-stages";
+import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
+import { getStageInstructions, formatStageData, formatArtifactSummaries } from "./paper-stages";
 
 type StageStatus = "drafting" | "pending_validation" | "approved" | "revision";
 
@@ -66,6 +66,51 @@ export const getPaperModeSystemPrompt = async (
         // Format stageData into readable context
         const formattedData = formatStageData(session.stageData, stage);
 
+        // Build artifact summaries from completed stages
+        let artifactSummariesSection = "";
+        try {
+            const allArtifacts = await fetchQuery(
+                api.artifacts.listByConversation,
+                { conversationId, userId: session.userId },
+                convexOptions
+            );
+
+            // Map artifactId -> artifact content for quick lookup
+            const artifactMap = new Map<string, { content: string }>();
+            for (const a of allArtifacts) {
+                // Only include non-invalidated, latest-version artifacts
+                if (!a.invalidatedAt) {
+                    artifactMap.set(String(a._id), { content: a.content });
+                }
+            }
+
+            // Collect artifacts from completed (validated) stages
+            const stageData = session.stageData as Record<string, { artifactId?: string; validatedAt?: number; superseded?: boolean }>;
+            const completedArtifacts: Array<{ stageLabel: string; content: string }> = [];
+
+            for (const stageId of STAGE_ORDER) {
+                // Skip current stage (not yet completed)
+                if (stage !== "completed" && stageId === stage) continue;
+
+                const sd = stageData[stageId];
+                if (!sd?.validatedAt || sd.superseded) continue;
+                if (!sd.artifactId) continue;
+
+                const artifact = artifactMap.get(sd.artifactId);
+                if (artifact) {
+                    completedArtifacts.push({
+                        stageLabel: getStageLabel(stageId as PaperStageId),
+                        content: artifact.content,
+                    });
+                }
+            }
+
+            artifactSummariesSection = formatArtifactSummaries(completedArtifacts);
+        } catch (err) {
+            console.error("Error building artifact summaries:", err);
+            // Continue without artifact summaries - non-critical
+        }
+
         // Inline revision context (simple, not over-prescriptive)
         const revisionNote = status === "revision"
             ? "\n⚠️ MODE REVISI: User meminta perbaikan. Perhatikan feedback mereka di pesan terakhir.\n"
@@ -112,6 +157,7 @@ ${stageInstructions}
 
 KONTEKS TAHAP SELESAI & CHECKLIST:
 ${formattedData}
+${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
 ---
 `;
     } catch (error) {
