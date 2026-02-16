@@ -203,7 +203,7 @@ export function ArtifactTabs({
   return (
     <div
       className={cn(
-        "flex min-h-[44px] items-stretch border-b border-slate-300/75 bg-slate-100 dark:border-border/60 dark:bg-background/95",
+        "flex min-h-[44px] items-end border-b border-slate-300/75 bg-slate-100 dark:border-border/60 dark:bg-background/95",
         "shrink-0"
       )}
       role="tablist"
@@ -229,7 +229,7 @@ export function ArtifactTabs({
           ref={scrollContainerRef}
           onScroll={checkOverflow}
           className={cn(
-            "flex h-full items-stretch gap-1 px-1.5 py-1 scroll-smooth",
+            "flex h-full items-end gap-1 px-1.5 pb-0 pt-1 scroll-smooth",
             // Compact panel: disable direct horizontal scroll and hide native scrollbar.
             "overflow-x-hidden",
             // Wider panel can still be scrolled (navigation buttons remain available).
@@ -255,11 +255,11 @@ export function ArtifactTabs({
                 aria-selected={isActive}
                 aria-label={`${tab.title} (${label})`}
                 className={cn(
-                  "group relative flex min-w-[160px] max-w-[260px] cursor-pointer items-center gap-2 rounded-action border px-2.5",
+                  "group relative -mb-px flex min-w-[160px] max-w-[260px] cursor-pointer items-center gap-2 rounded-t-action rounded-b-none border border-b-transparent px-2.5",
                   "transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1",
                   isActive
-                    ? "border-slate-400/80 bg-slate-200/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-primary/45 dark:bg-primary/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    ? "border-slate-400/80 bg-slate-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-primary/45 dark:bg-primary/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                     : "border-transparent bg-transparent hover:border-slate-300/80 hover:bg-slate-200/70 dark:hover:border-border/70 dark:hover:bg-accent/50"
                 )}
               >
