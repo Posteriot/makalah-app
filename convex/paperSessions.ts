@@ -115,7 +115,10 @@ const ARRAY_FIELDS: Set<string> = new Set([
 
 /**
  * Coerce AI-sent values to match schema types.
- * Primary fix: if AI sends array of strings for a string field, join with newline.
+ * Fixes:
+ * - null/undefined → strip (Convex v.optional() means "absent", not null)
+ * - Array of strings for string field → join with newline
+ * - Plain object for string field → join values with section headers
  * This prevents Convex validation errors from AI type mismatches.
  */
 function coerceStageDataTypes(data: Record<string, unknown>): Record<string, unknown> {
@@ -125,16 +128,39 @@ function coerceStageDataTypes(data: Record<string, unknown>): Record<string, unk
         if (value === null || value === undefined) {
             continue;
         }
-        if (ARRAY_FIELDS.has(key) || !Array.isArray(value)) {
-            // Keep arrays for known array fields, keep non-arrays as-is
+
+        // Known array fields → keep as-is
+        if (ARRAY_FIELDS.has(key)) {
             coerced[key] = value;
-        } else if (value.every((item: unknown) => typeof item === "string")) {
-            // AI sent array of strings for a string field → join
-            coerced[key] = (value as string[]).join("\n");
-        } else {
-            // Array of non-strings for a non-array field — pass through, let Convex validate
-            coerced[key] = value;
+            continue;
         }
+
+        // AI sent array for a string field → join
+        if (Array.isArray(value)) {
+            if (value.every((item: unknown) => typeof item === "string")) {
+                coerced[key] = (value as string[]).join("\n");
+            } else {
+                coerced[key] = value; // pass through, let Convex validate
+            }
+            continue;
+        }
+
+        // AI sent plain object for a string field → flatten to string
+        // e.g. reviewLiteratur: { personalisasiPembelajaran: "...", aiDalamPendidikan: "..." }
+        if (typeof value === "object" && !Array.isArray(value)) {
+            const obj = value as Record<string, unknown>;
+            const allStringValues = Object.values(obj).every(v => typeof v === "string");
+            if (allStringValues) {
+                const parts = Object.entries(obj).map(([subKey, subVal]) =>
+                    `## ${subKey}\n\n${subVal}`
+                );
+                coerced[key] = parts.join("\n\n");
+                continue;
+            }
+        }
+
+        // Default: keep as-is
+        coerced[key] = value;
     }
     return coerced;
 }
