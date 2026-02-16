@@ -153,6 +153,16 @@ ATURAN UMUM:
 - submitStageForValidation() HANYA setelah user EKSPLISIT konfirmasi puas
 - Jangan lompat ke tahap berikutnya sebelum currentStage berubah di database
 
+⚠️ FORMAT SITASI IN-TEXT (APA) — WAJIB DIPATUHI SETIAP TURN:
+- DILARANG KERAS memakai nama DOMAIN/WEBSITE sebagai author dalam sitasi
+- ❌ SALAH: (Kuanta.id, t.t.), (Graphie.co.id, t.t.), (Researchgate.net, t.t.), (Kompas.com, 2024)
+- Jika google_search hanya mengembalikan URL tanpa author:
+  1. Cari nama AUTHOR ASLI di halaman hasil search
+  2. Jika author tidak ditemukan → pakai JUDUL ARTIKEL (disingkat, dalam tanda kutip)
+  3. Jika tahun tidak ditemukan → pakai "n.d." (bukan "t.t.")
+- ✅ BENAR: (Wijaya, 2023), ("Dampak AI pada Pembelajaran", 2024), (Kementerian Pendidikan, n.d.)
+- Jika ragu antara domain vs author asli → JANGAN SITASI, cukup sebutkan informasinya tanpa citation mark
+
 ${stageInstructions}
 
 KONTEKS TAHAP SELESAI & CHECKLIST:
