@@ -39,7 +39,7 @@ interface ChartRendererProps {
 }
 
 function detectSeries(data: Record<string, string | number>[]): { dataKey: string; name: string; color: string }[] {
-  if (!data[0]) return []
+  if (!data || !data[0]) return []
   const numericKeys = Object.keys(data[0]).filter(
     (key) => key !== "name" && typeof data[0][key] === "number"
   )
@@ -68,6 +68,17 @@ export function ChartRenderer({ content }: ChartRendererProps) {
   }
 
   const { chartType, title, xAxisLabel, yAxisLabel, data } = config
+
+  if (!Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="rounded-action border border-destructive/30 bg-destructive/5 p-4">
+        <p className="font-mono text-xs text-destructive">
+          Data chart kosong atau tidak valid.
+        </p>
+      </div>
+    )
+  }
+
   const series = config.series?.map((s, i) => ({
     ...s,
     color: s.color || CHART_COLORS[i % CHART_COLORS.length],
