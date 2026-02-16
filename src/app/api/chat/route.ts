@@ -800,6 +800,7 @@ USE THIS TOOL WHEN generating:
 ✓ LaTeX mathematical formulas (type: "formula")
 ✓ Research summaries and abstracts (type: "section")
 ✓ Paraphrased paragraphs (type: "section")
+✓ Charts and graphs: bar, line, pie (type: "chart", format: "json")
 
 DO NOT use this tool for:
 ✗ Explanations and teaching
@@ -812,16 +813,28 @@ DO NOT use this tool for:
 
 When using this tool, always provide a clear, descriptive title (max 50 chars).
 
+📊 CHARTS: For charts/graphs, use type "chart" with format "json". Content must be a valid JSON string:
+{
+  "chartType": "bar" | "line" | "pie",
+  "title": "Chart title",
+  "xAxisLabel": "optional X axis label",
+  "yAxisLabel": "optional Y axis label",
+  "data": [{ "name": "Label", "value": 100 }, ...],
+  "series": [{ "dataKey": "value", "name": "Series name", "color": "#hex" }]
+}
+For pie charts: data items need "name" and "value" fields only.
+For bar/line: data items have "name" (x-axis label) and numeric field(s). Use series array to define which fields to plot.
+
 📚 SOURCES: Jika konten artifact BERASAL dari hasil web search sebelumnya, WAJIB pass parameter 'sources' dengan URL dan judul dari referensi yang digunakan. Ini memastikan inline citations [1], [2] di artifact terhubung ke sumber yang benar.`,
                 inputSchema: z.object({
-                    type: z.enum(["code", "outline", "section", "table", "citation", "formula"])
+                    type: z.enum(["code", "outline", "section", "table", "citation", "formula", "chart"])
                         .describe("The type of artifact to create"),
                     title: z.string().max(200)
                         .describe("Short, descriptive title for the artifact (max 200 chars). Examples: 'Introduction Draft', 'Data Analysis Code', 'Research Outline'"),
                     content: z.string().min(10)
                         .describe("The actual content of the artifact"),
-                    format: z.enum(["markdown", "latex", "python", "r", "javascript", "typescript"]).optional()
-                        .describe("Format of the content. Use 'markdown' for text, language name for code"),
+                    format: z.enum(["markdown", "latex", "python", "r", "javascript", "typescript", "json"]).optional()
+                        .describe("Format of the content. Use 'markdown' for text, language name for code, 'json' for charts"),
                     description: z.string().optional()
                         .describe("Optional brief description of what the artifact contains"),
                     sources: z.array(z.object({
