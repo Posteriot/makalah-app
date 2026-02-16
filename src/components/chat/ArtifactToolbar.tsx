@@ -88,6 +88,8 @@ export function ArtifactToolbar({
 
   const iconActionClass =
     "h-8 w-8 rounded-action text-slate-600 dark:text-muted-foreground transition-colors hover:bg-slate-200/80 hover:text-slate-900 dark:hover:bg-accent/80 dark:hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-100 dark:focus-visible:ring-offset-background"
+  const sidebarButtonSurfaceClass =
+    "border-slate-500/60 bg-slate-600 text-slate-100 hover:border-slate-500/70 hover:bg-slate-700 hover:text-slate-100 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-600 dark:hover:text-slate-100"
 
   return (
     <div
@@ -142,7 +144,7 @@ export function ArtifactToolbar({
                   size="icon"
                   className={cn(
                     iconActionClass,
-                    "border border-slate-400/70 bg-slate-200/90 text-slate-700 hover:border-slate-500 hover:bg-slate-300/80 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-900"
+                    "border border-slate-400/70 bg-slate-200/90 text-slate-700 hover:border-slate-500 hover:bg-slate-300/80 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                   )}
                   onClick={onExpand}
                   aria-label="Buka fullscreen"
@@ -211,7 +213,10 @@ export function ArtifactToolbar({
                 variant="outline"
                 size="icon"
                 onClick={onEdit}
-                className="h-8 w-8 rounded-action border-slate-300/85 bg-slate-200/80 text-slate-700 transition-all duration-150 hover:border-slate-500 hover:bg-slate-300/80 hover:text-slate-900 dark:border-border/70 dark:bg-background/60 dark:text-slate-200 dark:hover:border-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-slate-50"
+                className={cn(
+                  "h-8 w-8 rounded-action border transition-all duration-150",
+                  sidebarButtonSurfaceClass
+                )}
                 aria-label="Edit"
               >
                 <EditPencil className="h-3.5 w-3.5" />
@@ -227,8 +232,9 @@ export function ArtifactToolbar({
                 size="icon"
                 onClick={handleCopy}
                 className={cn(
-                  "h-8 w-8 rounded-action border-slate-300/85 bg-slate-200/80 text-slate-700 transition-all duration-150 hover:border-slate-500 hover:bg-slate-300/80 hover:text-slate-900 dark:border-border/70 dark:bg-background/60 dark:text-slate-200 dark:hover:border-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-slate-50",
-                  copied && "border-slate-500 bg-slate-300 text-slate-900 dark:border-slate-300 dark:bg-slate-700/70 dark:text-slate-50"
+                  "h-8 w-8 rounded-action border transition-all duration-150",
+                  sidebarButtonSurfaceClass,
+                  copied && "border-slate-500/80 bg-slate-700 text-slate-100 dark:border-slate-500 dark:bg-slate-600"
                 )}
                 aria-label={copied ? "Disalin" : "Salin"}
               >
@@ -245,8 +251,9 @@ export function ArtifactToolbar({
                 size="icon"
                 onClick={onRefrasa}
                 className={cn(
-                  "h-8 w-8 rounded-action border-slate-300/85 bg-slate-200/80 text-slate-700 transition-all duration-150 hover:border-slate-500 hover:bg-slate-300/80 hover:text-slate-900 dark:border-border/70 dark:bg-background/60 dark:text-slate-200 dark:hover:border-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-slate-50",
-                  !isRefrasaReady && "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                  "h-8 w-8 rounded-action border transition-all duration-150",
+                  sidebarButtonSurfaceClass,
+                  !isRefrasaReady && "text-slate-300 hover:text-slate-200 dark:text-slate-400 dark:hover:text-slate-300"
                 )}
                 aria-label="Refrasa"
               >
@@ -265,7 +272,10 @@ export function ArtifactToolbar({
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8 rounded-action border-slate-300/85 bg-slate-200/80 text-slate-700 transition-all duration-150 hover:border-slate-500 hover:bg-slate-300/80 hover:text-slate-900 dark:border-border/70 dark:bg-background/60 dark:text-slate-200 dark:hover:border-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-slate-50"
+                    className={cn(
+                      "h-8 w-8 rounded-action border transition-all duration-150",
+                      sidebarButtonSurfaceClass
+                    )}
                     aria-label="Download"
                   >
                     <Download className="h-3.5 w-3.5" />

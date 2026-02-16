@@ -259,7 +259,7 @@ export function ArtifactTabs({
                   "transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1",
                   isActive
-                    ? "border-slate-400/80 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-primary/45 dark:bg-background/95 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    ? "border-slate-300/75 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-border/60 dark:bg-background/95 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                     : "border-transparent bg-transparent hover:border-slate-300/80 hover:bg-slate-200/70 dark:hover:border-border/70 dark:hover:bg-accent/50"
                 )}
               >
