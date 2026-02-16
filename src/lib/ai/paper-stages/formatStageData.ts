@@ -105,7 +105,7 @@ function formatRingkasanTahapSelesai(
             return;
         }
         const data = stageData[stageId] as AllStageData | undefined;
-        if (!data || !data.validatedAt) {
+        if (!data || !data.validatedAt || (data as any).superseded) {
             return;
         }
         const ringkasanValue = typeof data.ringkasan === "string" && data.ringkasan.trim()
