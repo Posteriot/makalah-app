@@ -62,7 +62,10 @@ export const InlineCitationCardTrigger = ({
   return (
     <HoverCardTrigger>
       <Badge
-        className={cn("ml-1 rounded-full text-xs font-medium", className)}
+        className={cn(
+          "ml-1 rounded-sm border border-slate-300 bg-slate-200 px-2.5 py-0.5 font-mono text-xs font-normal text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:shadow-none",
+          className
+        )}
         variant="secondary"
         {...(props as ComponentProps<typeof Badge>)}
       >

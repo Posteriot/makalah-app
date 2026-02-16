@@ -102,7 +102,7 @@ export function InlineCitationChip({ sources }: { sources: CitationSource[] }) {
         <Sheet>
           <SheetTrigger asChild>
             <Badge
-              className="ml-1 rounded-badge text-xs font-mono font-medium cursor-pointer"
+              className="ml-1 cursor-pointer rounded-badge border border-slate-300 bg-slate-200 px-2.5 py-0.5 font-mono text-xs font-semibold text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:shadow-none"
               variant="secondary"
             >
               {chipLabel}

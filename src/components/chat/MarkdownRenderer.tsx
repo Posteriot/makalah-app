@@ -1,6 +1,8 @@
 "use client"
 
 import { Fragment, type ReactNode } from "react"
+import { toast } from "sonner"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { InlineCitationChip } from "./InlineCitationChip"
 
 interface MarkdownRendererProps {
@@ -250,6 +252,36 @@ function sanitizeHref(href: string | undefined): string | undefined {
   return undefined
 }
 
+const BARE_URL_REGEX = /\bhttps?:\/\/[^\s<>()\[\]{}"']+/g
+
+function BareUrlCopyBadge({ url }: { url: string }) {
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success("URL referensi disalin")
+    } catch {
+      toast.error("Gagal menyalin URL referensi")
+    }
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="mx-0.5 inline-flex items-center rounded-badge border border-slate-300 bg-slate-200 px-2 py-0.5 font-mono text-xs font-normal text-slate-900 transition-colors hover:bg-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+        >
+          URL Referensi
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <p>Klik untuk salin URL</p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 function renderInline(text: string, keyPrefix: string, sources?: CitationSource[]): ReactNode[] {
   const nodes: ReactNode[] = []
   let cursor = 0
@@ -257,7 +289,62 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
 
   const pushText = (value: string) => {
     if (!value) return
-    nodes.push(<Fragment key={`${keyPrefix}-t-${partIndex++}`}>{value}</Fragment>)
+    BARE_URL_REGEX.lastIndex = 0
+    const matches = Array.from(value.matchAll(BARE_URL_REGEX))
+
+    if (matches.length === 0) {
+      nodes.push(<Fragment key={`${keyPrefix}-t-${partIndex++}`}>{value}</Fragment>)
+      return
+    }
+
+    let localCursor = 0
+
+    for (const match of matches) {
+      const rawUrl = match[0]
+      const startIndex = match.index ?? 0
+      const endIndex = startIndex + rawUrl.length
+      let leftBoundary = startIndex
+      while (leftBoundary > localCursor && /\s/.test(value[leftBoundary - 1] ?? "")) {
+        leftBoundary -= 1
+      }
+
+      let rightBoundary = endIndex
+      while (rightBoundary < value.length && /\s/.test(value[rightBoundary] ?? "")) {
+        rightBoundary += 1
+      }
+
+      const hasBracketWrapper =
+        leftBoundary > localCursor &&
+        value[leftBoundary - 1] === "[" &&
+        rightBoundary < value.length &&
+        value[rightBoundary] === "]"
+      const textEnd = hasBracketWrapper ? leftBoundary - 1 : startIndex
+
+      if (textEnd > localCursor) {
+        nodes.push(
+          <Fragment key={`${keyPrefix}-t-${partIndex++}`}>
+            {value.slice(localCursor, textEnd)}
+          </Fragment>,
+        )
+      }
+
+      nodes.push(
+        <BareUrlCopyBadge
+          key={`${keyPrefix}-url-${partIndex++}`}
+          url={rawUrl}
+        />,
+      )
+
+      localCursor = hasBracketWrapper ? rightBoundary + 1 : endIndex
+    }
+
+    if (localCursor < value.length) {
+      nodes.push(
+        <Fragment key={`${keyPrefix}-t-${partIndex++}`}>
+          {value.slice(localCursor)}
+        </Fragment>,
+      )
+    }
   }
 
   while (cursor < text.length) {
@@ -293,7 +380,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       nodes.push(
         <code
           key={`${keyPrefix}-code-${partIndex++}`}
-          className="rounded-badge bg-background/50 px-1 py-0.5 font-mono text-[0.85em]"
+          className="inline-flex items-center rounded-badge border border-slate-500 bg-slate-300 px-2 py-0.5 font-mono text-[0.85em] font-medium text-slate-950 shadow-sm dark:border-slate-500 dark:bg-slate-700 dark:text-slate-100 dark:shadow-none"
         >
           {inner}
         </code>,
@@ -339,6 +426,22 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       }
 
       const closeBracket = text.indexOf("]", cursor + 1)
+      if (closeBracket !== -1) {
+        const bracketBody = text.slice(cursor + 1, closeBracket).trim()
+        const bracketedBareUrl = sanitizeHref(bracketBody)
+        const nextChar = text[closeBracket + 1]
+        if (bracketedBareUrl && nextChar !== "(") {
+          nodes.push(
+            <BareUrlCopyBadge
+              key={`${keyPrefix}-url-${partIndex++}`}
+              url={bracketedBareUrl}
+            />,
+          )
+          cursor = closeBracket + 1
+          continue
+        }
+      }
+
       const openParen = closeBracket >= 0 ? text.indexOf("(", closeBracket + 1) : -1
       const closeParen = openParen >= 0 ? text.indexOf(")", openParen + 1) : -1
       if (closeBracket === -1 || openParen === -1 || closeParen === -1 || text.slice(closeBracket, openParen + 1) !== "](") {
@@ -358,7 +461,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:opacity-80 break-words"
+            className="underline underline-offset-2 hover:opacity-80 [overflow-wrap:anywhere] break-all"
           >
             {children}
           </a>,
@@ -467,7 +570,7 @@ function renderBlocks(
       case "paragraph": {
         const lines = block.lines
         return (
-          <p key={k} className="mb-3 leading-relaxed text-foreground">
+          <p key={k} className="mb-3 leading-relaxed text-foreground [overflow-wrap:anywhere] break-words">
             {lines.map((line, lineIdx) => (
               <Fragment key={`${k}-p-${lineIdx}`}>
                 {renderInline(line, `${k}-pi-${lineIdx}`, sources)}
@@ -480,9 +583,9 @@ function renderBlocks(
       }
       case "ul":
         return (
-          <ul key={k} className="list-disc pl-6 mb-3 space-y-1 text-foreground">
+          <ul key={k} className="list-disc pl-6 mb-3 space-y-1 text-foreground [overflow-wrap:anywhere] break-words">
             {block.items.map((item, itemIdx) => (
-              <li key={`${k}-li-${itemIdx}`} className="leading-relaxed">
+              <li key={`${k}-li-${itemIdx}`} className="leading-relaxed [overflow-wrap:anywhere] break-words">
                 {renderInline(item, `${k}-uli-${itemIdx}`, sources)}
                 {itemIdx === block.items.length - 1 ? fallbackChip : null}
               </li>
@@ -491,13 +594,13 @@ function renderBlocks(
         )
       case "ol":
         return (
-          <ol key={k} className="mb-3 space-y-2 text-foreground">
+          <ol key={k} className="mb-3 space-y-2 text-foreground [overflow-wrap:anywhere] break-words">
             {block.items.map((item, itemIdx) => (
-              <li key={`${k}-li-${itemIdx}`} className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-2 leading-relaxed">
+              <li key={`${k}-li-${itemIdx}`} className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-2 leading-relaxed [overflow-wrap:anywhere] break-words">
                 <span className="pt-[1px] text-right font-mono tabular-nums text-muted-foreground">
                   {item.number}.
                 </span>
-                <div className="min-w-0">
+                <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   {item.lines.map((line, lineIdx) => (
                     <Fragment key={`${k}-ol-line-${itemIdx}-${lineIdx}`}>
                       {renderInline(line, `${k}-oli-${itemIdx}-${lineIdx}`, sources)}
@@ -512,7 +615,7 @@ function renderBlocks(
         )
       case "outline":
         return (
-          <ol key={k} className="mb-3 space-y-2 text-foreground">
+          <ol key={k} className="mb-3 space-y-2 text-foreground [overflow-wrap:anywhere] break-words">
             {block.items.map((item, itemIdx) => (
               <li
                 key={`${k}-oli-${itemIdx}`}
@@ -521,7 +624,7 @@ function renderBlocks(
                 <span className="pt-[1px] text-right font-mono tabular-nums text-muted-foreground">
                   {block.useOriginalNumbers ? item.number : itemIdx + 1}.
                 </span>
-                <div className="min-w-0">
+                <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   <div className="font-semibold text-foreground">
                     {renderInline(item.title, `${k}-ot-${itemIdx}`, sources)}
                     {item.children.length === 0 && itemIdx === block.items.length - 1 ? fallbackChip : null}
@@ -573,7 +676,7 @@ export function MarkdownRenderer({ markdown, className, sources }: MarkdownRende
   const hasCitationMarkers = /\[\d+(?:\s*,\s*\d+)*\]/.test(markdown)
   const shouldAppendFallbackChip = !!sources && sources.length > 0 && !hasCitationMarkers
   return (
-    <div className={className}>
+    <div className={`[overflow-wrap:anywhere] break-words ${className ?? ""}`}>
       {renderBlocks(blocks, "md", sources, { appendFallbackChip: shouldAppendFallbackChip })}
     </div>
   )
