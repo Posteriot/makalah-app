@@ -163,7 +163,7 @@ export const getSessionDrillDown = query({
         digestCount: (session.paperMemoryDigest || []).length,
         digest: (session.paperMemoryDigest || []).map((d) => ({
           stage: d.stage,
-          ringkasan: d.ringkasan,
+          ringkasan: d.decision,
           superseded: d.superseded || false,
         })),
       },
