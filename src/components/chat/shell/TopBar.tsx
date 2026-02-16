@@ -132,12 +132,12 @@ export function TopBar({
                   "transition-colors duration-150",
                   hasArtifacts &&
                     isPanelCollapsed &&
-                    "border border-transparent bg-transparent text-slate-200 hover:text-slate-50",
+                    "border-transparent bg-transparent text-slate-600 hover:bg-transparent hover:text-slate-800 dark:border-transparent dark:bg-transparent dark:text-slate-200 dark:hover:bg-transparent dark:hover:text-slate-50",
                   hasArtifacts &&
                     !isPanelCollapsed &&
-                    "border border-slate-500/70 bg-slate-800/75 text-slate-50 hover:bg-slate-800",
+                    "border-transparent bg-transparent text-slate-800 hover:bg-transparent hover:text-slate-950 dark:border-transparent dark:bg-transparent dark:text-slate-100 dark:hover:bg-transparent dark:hover:text-slate-50",
                   !hasArtifacts &&
-                    "cursor-not-allowed border border-transparent bg-transparent text-slate-400 hover:bg-transparent hover:text-slate-400"
+                    "cursor-not-allowed border border-transparent bg-transparent text-slate-400 hover:bg-transparent hover:text-slate-400 dark:text-slate-500 dark:hover:text-slate-500"
                 )}
                 aria-label={
                   !hasArtifacts
@@ -150,16 +150,16 @@ export function TopBar({
               >
                 <FastArrowRightSquare
                   className={cn(
-                    "h-[17px] w-[17px]",
+                    "h-[20px] w-[20px]",
                     !isPanelCollapsed && "rotate-180"
                   )}
                 />
                 {hasArtifacts ? (
                   <span
                     className={cn(
-                      "pointer-events-none absolute -bottom-1 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
+                      "pointer-events-none absolute -bottom-0 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
                       "text-[9px] font-semibold font-mono leading-none",
-                      "bg-emerald-500 text-slate-100 shadow-[0_0_0_1px_rgba(2,6,23,0.55)]"
+                      "bg-emerald-600 text-slate-100"
                     )}
                   >
                     {compactArtifactCount}
