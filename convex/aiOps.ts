@@ -108,6 +108,79 @@ export const getArtifactSyncStats = query({
 });
 
 /**
+ * Get full drill-down for a specific session.
+ */
+export const getSessionDrillDown = query({
+  args: { sessionId: v.id("paperSessions") },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    assertAdmin(user.role);
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) throw new Error("Session not found");
+
+    // Get rewind history
+    const rewindHistory = await ctx.db
+      .query("rewindHistory")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+
+    // Get artifacts for this session's conversation
+    const artifacts = session.conversationId
+      ? await ctx.db
+          .query("artifacts")
+          .withIndex("by_conversation", (q) =>
+            q.eq("conversationId", session.conversationId)
+          )
+          .collect()
+      : [];
+
+    // Build per-stage summary from stageData
+    const stageDetails = Object.entries(session.stageData || {}).map(
+      ([stageId, data]: [string, any]) => ({
+        stageId,
+        hasRingkasan: !!data?.ringkasan,
+        hasRingkasanDetail: !!data?.ringkasanDetail,
+        ringkasan: data?.ringkasan || null,
+        validatedAt: data?.validatedAt || null,
+        superseded: data?.superseded || false,
+        revisionCount: data?.revisionCount || 0,
+      })
+    );
+
+    return {
+      session: {
+        _id: session._id,
+        userId: session.userId,
+        conversationId: session.conversationId,
+        currentStage: session.currentStage,
+        stageStatus: session.stageStatus,
+        isDirty: session.isDirty,
+        paperTitle: session.paperTitle,
+        workingTitle: session.workingTitle,
+        completedAt: session.completedAt,
+        _creationTime: session._creationTime,
+        digestCount: (session.paperMemoryDigest || []).length,
+        digest: (session.paperMemoryDigest || []).map((d) => ({
+          stage: d.stage,
+          ringkasan: d.ringkasan,
+          superseded: d.superseded || false,
+        })),
+      },
+      stageDetails,
+      rewindHistory: rewindHistory.map((r) => ({
+        fromStage: r.fromStage,
+        toStage: r.toStage,
+        invalidatedStages: r.invalidatedStages,
+        _creationTime: r._creationTime,
+      })),
+      artifactCount: artifacts.length,
+      invalidatedArtifacts: artifacts.filter((a) => a.invalidatedAt).length,
+    };
+  },
+});
+
+/**
  * Get recent paper session list for the dashboard table.
  */
 export const getSessionList = query({
