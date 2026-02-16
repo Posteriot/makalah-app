@@ -15,6 +15,8 @@ interface MarkdownRendererProps {
   markdown: string
   className?: string
   sources?: CitationSource[]
+  /** "chat" = bare URLs render as clickable links; "artifact" = BareUrlCopyBadge (default) */
+  context?: "chat" | "artifact"
 }
 
 type CitationSource = {
@@ -425,7 +427,7 @@ function BareUrlCopyBadge({ url }: { url: string }) {
   )
 }
 
-function renderInline(text: string, keyPrefix: string, sources?: CitationSource[]): ReactNode[] {
+function renderInline(text: string, keyPrefix: string, sources?: CitationSource[], context?: "chat" | "artifact"): ReactNode[] {
   const nodes: ReactNode[] = []
   let cursor = 0
   let partIndex = 0
@@ -471,12 +473,28 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
         )
       }
 
-      nodes.push(
-        <BareUrlCopyBadge
-          key={`${keyPrefix}-url-${partIndex++}`}
-          url={rawUrl}
-        />,
-      )
+      if (context === "chat") {
+        // Chat: render as clickable link
+        nodes.push(
+          <a
+            key={`${keyPrefix}-url-${partIndex++}`}
+            href={rawUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 text-info hover:opacity-80 [overflow-wrap:anywhere] break-all"
+          >
+            {rawUrl}
+          </a>,
+        )
+      } else {
+        // Artifact (default): render as copy badge
+        nodes.push(
+          <BareUrlCopyBadge
+            key={`${keyPrefix}-url-${partIndex++}`}
+            url={rawUrl}
+          />,
+        )
+      }
 
       localCursor = hasBracketWrapper ? rightBoundary + 1 : endIndex
     }
@@ -574,12 +592,26 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
         const bracketedBareUrl = sanitizeHref(bracketBody)
         const nextChar = text[closeBracket + 1]
         if (bracketedBareUrl && nextChar !== "(") {
-          nodes.push(
-            <BareUrlCopyBadge
-              key={`${keyPrefix}-url-${partIndex++}`}
-              url={bracketedBareUrl}
-            />,
-          )
+          if (context === "chat") {
+            nodes.push(
+              <a
+                key={`${keyPrefix}-url-${partIndex++}`}
+                href={bracketedBareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 text-info hover:opacity-80 [overflow-wrap:anywhere] break-all"
+              >
+                {bracketedBareUrl}
+              </a>,
+            )
+          } else {
+            nodes.push(
+              <BareUrlCopyBadge
+                key={`${keyPrefix}-url-${partIndex++}`}
+                url={bracketedBareUrl}
+              />,
+            )
+          }
           cursor = closeBracket + 1
           continue
         }
@@ -595,7 +627,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       const label = text.slice(cursor + 1, closeBracket)
       const hrefRaw = text.slice(openParen + 1, closeParen)
       const href = sanitizeHref(hrefRaw)
-      const children = renderInline(label, `${keyPrefix}-link-${partIndex}`, sources)
+      const children = renderInline(label, `${keyPrefix}-link-${partIndex}`, sources, context)
 
       if (href) {
         nodes.push(
@@ -629,7 +661,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       const inner = text.slice(cursor + delimiter.length, end)
       nodes.push(
         <strong key={`${keyPrefix}-strong-${partIndex++}`} className="text-foreground">
-          {renderInline(inner, `${keyPrefix}-strongi-${partIndex}`, sources)}
+          {renderInline(inner, `${keyPrefix}-strongi-${partIndex}`, sources, context)}
         </strong>,
       )
       cursor = end + delimiter.length
@@ -647,7 +679,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       const inner = text.slice(cursor + 1, end)
       nodes.push(
         <em key={`${keyPrefix}-em-${partIndex++}`}>
-          {renderInline(inner, `${keyPrefix}-emi-${partIndex}`, sources)}
+          {renderInline(inner, `${keyPrefix}-emi-${partIndex}`, sources, context)}
         </em>,
       )
       cursor = end + 1
@@ -666,6 +698,7 @@ function renderBlocks(
   keyPrefix: string,
   sources?: CitationSource[],
   options?: { appendFallbackChip?: boolean },
+  context?: "chat" | "artifact",
 ): ReactNode {
   return blocks.map((block, idx) => {
     const k = `${keyPrefix}-b-${idx}`
@@ -677,7 +710,7 @@ function renderBlocks(
 
     switch (block.type) {
       case "heading": {
-        const content = renderInline(block.text, `${k}-h`, sources)
+        const content = renderInline(block.text, `${k}-h`, sources, context)
         // h1: Display title - largest
         if (block.level === 1)
           return (
@@ -716,7 +749,7 @@ function renderBlocks(
           <p key={k} className="mb-3 leading-relaxed text-foreground [overflow-wrap:anywhere] break-words">
             {lines.map((line, lineIdx) => (
               <Fragment key={`${k}-p-${lineIdx}`}>
-                {renderInline(line, `${k}-pi-${lineIdx}`, sources)}
+                {renderInline(line, `${k}-pi-${lineIdx}`, sources, context)}
                 {lineIdx === lines.length - 1 ? fallbackChip : null}
                 {lineIdx < lines.length - 1 ? <br /> : null}
               </Fragment>
@@ -729,9 +762,9 @@ function renderBlocks(
           <ul key={k} className="list-disc pl-6 mb-3 space-y-1 text-foreground [overflow-wrap:anywhere] break-words">
             {block.items.map((item, itemIdx) => (
               <li key={`${k}-li-${itemIdx}`} className="leading-relaxed [overflow-wrap:anywhere] break-words">
-                {renderInline(item.text, `${k}-uli-${itemIdx}`, sources)}
+                {renderInline(item.text, `${k}-uli-${itemIdx}`, sources, context)}
                 {item.children.length > 0
-                  ? renderBlocks(item.children, `${k}-ulc-${itemIdx}`, sources)
+                  ? renderBlocks(item.children, `${k}-ulc-${itemIdx}`, sources, undefined, context)
                   : null}
                 {itemIdx === block.items.length - 1 && item.children.length === 0 ? fallbackChip : null}
               </li>
@@ -749,13 +782,13 @@ function renderBlocks(
                 <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   {item.lines.map((line, lineIdx) => (
                     <Fragment key={`${k}-ol-line-${itemIdx}-${lineIdx}`}>
-                      {renderInline(line, `${k}-oli-${itemIdx}-${lineIdx}`, sources)}
+                      {renderInline(line, `${k}-oli-${itemIdx}-${lineIdx}`, sources, context)}
                       {itemIdx === block.items.length - 1 && lineIdx === item.lines.length - 1 && item.children.length === 0 ? fallbackChip : null}
                       {lineIdx < item.lines.length - 1 ? <br /> : null}
                     </Fragment>
                   ))}
                   {item.children.length > 0
-                    ? renderBlocks(item.children, `${k}-olc-${itemIdx}`, sources)
+                    ? renderBlocks(item.children, `${k}-olc-${itemIdx}`, sources, undefined, context)
                     : null}
                 </div>
               </li>
@@ -775,14 +808,14 @@ function renderBlocks(
                 </span>
                 <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   <div className="font-semibold text-foreground">
-                    {renderInline(item.title, `${k}-ot-${itemIdx}`, sources)}
+                    {renderInline(item.title, `${k}-ot-${itemIdx}`, sources, context)}
                     {item.children.length === 0 && itemIdx === block.items.length - 1 ? fallbackChip : null}
                   </div>
                   {item.children.length > 0 ? (
                     <div className="mt-2 pl-4 space-y-2">
                       {renderBlocks(item.children, `${k}-oc-${itemIdx}`, sources, {
                         appendFallbackChip: shouldAppendFallback && itemIdx === block.items.length - 1,
-                      })}
+                      }, context)}
                     </div>
                   ) : null}
                 </div>
@@ -813,7 +846,7 @@ function renderBlocks(
           <blockquote key={k} className="border-l-2 border-border pl-3 my-2 opacity-90 space-y-2">
             {renderBlocks(groupOutlineLists(inner), `${k}-q`, sources, {
               appendFallbackChip: shouldAppendFallback,
-            })}
+            }, context)}
           </blockquote>
         )
       }
@@ -829,7 +862,7 @@ function renderBlocks(
                       className="border-b border-border px-3 py-2 text-left font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
                       style={{ textAlign: block.alignments[hIdx] ?? "left" }}
                     >
-                      {renderInline(header, `${k}-th-${hIdx}`, sources)}
+                      {renderInline(header, `${k}-th-${hIdx}`, sources, context)}
                     </th>
                   ))}
                 </tr>
@@ -843,7 +876,7 @@ function renderBlocks(
                         className="px-3 py-2 font-mono text-sm text-foreground"
                         style={{ textAlign: block.alignments[cIdx] ?? "left" }}
                       >
-                        {renderInline(cell, `${k}-td-${rIdx}-${cIdx}`, sources)}
+                        {renderInline(cell, `${k}-td-${rIdx}-${cIdx}`, sources, context)}
                       </td>
                     ))}
                   </tr>
@@ -864,13 +897,13 @@ function renderBlocks(
   })
 }
 
-export function MarkdownRenderer({ markdown, className, sources }: MarkdownRendererProps) {
+export function MarkdownRenderer({ markdown, className, sources, context }: MarkdownRendererProps) {
   const blocks = groupOutlineLists(parseBlocks(markdown))
   const hasCitationMarkers = /\[\d+(?:\s*,\s*\d+)*\]/.test(markdown)
   const shouldAppendFallbackChip = !!sources && sources.length > 0 && !hasCitationMarkers
   return (
     <div className={`[overflow-wrap:anywhere] break-words ${className ?? ""}`}>
-      {renderBlocks(blocks, "md", sources, { appendFallbackChip: shouldAppendFallbackChip })}
+      {renderBlocks(blocks, "md", sources, { appendFallbackChip: shouldAppendFallbackChip }, context)}
     </div>
   )
 }

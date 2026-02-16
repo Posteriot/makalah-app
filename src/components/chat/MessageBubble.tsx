@@ -570,6 +570,7 @@ export function MessageBubble({
                             markdown={citedText ?? content}
                             className="space-y-2 text-sm leading-relaxed text-foreground"
                             sources={sources}
+                            context="chat"
                         />
                     )}
 

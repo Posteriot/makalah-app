@@ -672,6 +672,7 @@ export function FullsizeArtifactModal({
                         markdown={artifact.content}
                         className="max-w-none rounded-action border border-slate-300/80 bg-slate-50 p-4 text-sm leading-relaxed text-slate-900 dark:border-slate-700/60 dark:bg-slate-900 dark:text-slate-100"
                         sources={artifact.sources}
+                        context="artifact"
                       />
                     ) : (
                       <pre className="whitespace-pre-wrap rounded-action border border-slate-300/80 bg-slate-50 p-4 font-sans text-sm leading-relaxed text-slate-900 dark:border-slate-700/60 dark:bg-slate-900 dark:text-slate-100">

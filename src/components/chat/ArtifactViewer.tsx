@@ -440,6 +440,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                       markdown={artifact.content}
                       className="space-y-3 text-sm leading-relaxed text-slate-900 dark:text-slate-100"
                       sources={artifact.sources}
+                      context="artifact"
                     />
                   ) : (
                     <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-900 dark:text-slate-100">
