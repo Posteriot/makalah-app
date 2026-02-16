@@ -801,6 +801,7 @@ USE THIS TOOL WHEN generating:
 ✓ Research summaries and abstracts (type: "section")
 ✓ Paraphrased paragraphs (type: "section")
 ✓ Charts and graphs: bar, line, pie (type: "chart", format: "json")
+✓ Diagrams: flowchart, sequence, class, state, ER, gantt, mindmap, timeline, pie (type: "code", format: "markdown", content: raw mermaid syntax WITHOUT fences)
 
 DO NOT use this tool for:
 ✗ Explanations and teaching
@@ -825,6 +826,25 @@ Pie chart example:
 {"chartType":"pie","title":"Distribusi Metode","data":[{"name":"Kualitatif","value":35},{"name":"Kuantitatif","value":45},{"name":"Mixed","value":20}]}
 
 Rules: "data" is array of objects with "name" (label) + numeric field(s). "series" defines which numeric fields to plot (optional for pie, auto-detected if omitted). Content MUST be valid JSON — no comments, no trailing commas.
+
+📐 DIAGRAMS (Mermaid): For visual diagrams (flowcharts, sequence diagrams, class diagrams, etc.), use type "code" with format "markdown". Content is RAW mermaid syntax — NO \`\`\`mermaid fences, just the diagram code directly.
+
+Flowchart example:
+flowchart TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End]
+    D --> E
+
+Sequence diagram example:
+sequenceDiagram
+    participant U as User
+    participant S as Server
+    U->>S: Request
+    S-->>U: Response
+
+Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagram, gantt, mindmap, timeline, journey, gitgraph, quadrantChart, xychart, block-beta, sankey-beta.
 
 📚 SOURCES: Jika konten artifact BERASAL dari hasil web search sebelumnya, WAJIB pass parameter 'sources' dengan URL dan judul dari referensi yang digunakan. Ini memastikan inline citations [1], [2] di artifact terhubung ke sumber yang benar.`,
                 inputSchema: z.object({
