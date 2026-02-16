@@ -813,17 +813,18 @@ DO NOT use this tool for:
 
 When using this tool, always provide a clear, descriptive title (max 50 chars).
 
-📊 CHARTS: For charts/graphs, use type "chart" with format "json". Content must be a valid JSON string:
-{
-  "chartType": "bar" | "line" | "pie",
-  "title": "Chart title",
-  "xAxisLabel": "optional X axis label",
-  "yAxisLabel": "optional Y axis label",
-  "data": [{ "name": "Label", "value": 100 }, ...],
-  "series": [{ "dataKey": "value", "name": "Series name", "color": "#hex" }]
-}
-For pie charts: data items need "name" and "value" fields only.
-For bar/line: data items have "name" (x-axis label) and numeric field(s). Use series array to define which fields to plot.
+📊 CHARTS: For charts/graphs, use type "chart" with format "json". Content must be a valid JSON string.
+
+Bar chart example:
+{"chartType":"bar","title":"Publikasi per Tahun","xAxisLabel":"Tahun","yAxisLabel":"Jumlah","data":[{"name":"2020","value":150},{"name":"2021","value":200},{"name":"2022","value":280}],"series":[{"dataKey":"value","name":"Publikasi","color":"#f59e0b"}]}
+
+Line chart example:
+{"chartType":"line","title":"Tren Penelitian","xAxisLabel":"Tahun","yAxisLabel":"Jumlah","data":[{"name":"2020","value":50},{"name":"2021","value":80},{"name":"2022","value":120}],"series":[{"dataKey":"value","name":"Penelitian","color":"#0ea5e9"}]}
+
+Pie chart example:
+{"chartType":"pie","title":"Distribusi Metode","data":[{"name":"Kualitatif","value":35},{"name":"Kuantitatif","value":45},{"name":"Mixed","value":20}]}
+
+Rules: "data" is array of objects with "name" (label) + numeric field(s). "series" defines which numeric fields to plot (optional for pie, auto-detected if omitted). Content MUST be valid JSON — no comments, no trailing commas.
 
 📚 SOURCES: Jika konten artifact BERASAL dari hasil web search sebelumnya, WAJIB pass parameter 'sources' dengan URL dan judul dari referensi yang digunakan. Ini memastikan inline citations [1], [2] di artifact terhubung ke sumber yang benar.`,
                 inputSchema: z.object({

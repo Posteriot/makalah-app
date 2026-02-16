@@ -4,8 +4,20 @@ import { useEffect, useRef, useState } from "react"
 import mermaid from "mermaid"
 import DOMPurify from "dompurify"
 
-let mermaidInitialized = false
 let renderCounter = 0
+let lastTheme: "dark" | "default" | null = null
+
+function initMermaid(isDark: boolean) {
+  const theme = isDark ? "dark" : "default"
+  if (lastTheme === theme) return
+  mermaid.initialize({
+    startOnLoad: false,
+    theme,
+    fontFamily: "var(--font-geist-mono)",
+    suppressErrorRendering: true,
+  })
+  lastTheme = theme
+}
 
 interface MermaidRendererProps {
   code: string
@@ -14,42 +26,39 @@ interface MermaidRendererProps {
 export function MermaidRenderer({ code }: MermaidRendererProps) {
   const [svg, setSvg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isDark, setIsDark] = useState(false)
   const mountedRef = useRef(true)
-  const renderIdRef = useRef("")
 
   useEffect(() => {
     mountedRef.current = true
-    return () => { mountedRef.current = false }
+    setIsDark(document.documentElement.classList.contains("dark"))
+
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"))
+    })
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    })
+
+    return () => {
+      mountedRef.current = false
+      observer.disconnect()
+    }
   }, [])
 
   useEffect(() => {
     setSvg(null)
     setError(null)
 
-    const isDark = document.documentElement.classList.contains("dark")
-
-    if (!mermaidInitialized) {
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: isDark ? "dark" : "default",
-        fontFamily: "var(--font-geist-mono)",
-        suppressErrorRendering: true,
-      })
-      mermaidInitialized = true
-    }
+    initMermaid(isDark)
 
     renderCounter += 1
     const renderId = `mermaid-render-${renderCounter}-${Date.now()}`
-    renderIdRef.current = renderId
-
-    // Clean up any leftover temp element from previous render
-    const oldEl = document.getElementById(renderIdRef.current)
-    if (oldEl) oldEl.remove()
 
     mermaid
       .render(renderId, code)
       .then(({ svg: rawSvg }) => {
-        // Clean up mermaid's temp element
         const tempEl = document.getElementById(renderId)
         if (tempEl) tempEl.remove()
 
@@ -64,7 +73,6 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
         setError(null)
       })
       .catch((err) => {
-        // Clean up mermaid's temp element on error
         const tempEl = document.getElementById(renderId)
         if (tempEl) tempEl.remove()
 
@@ -72,7 +80,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
         setError(String(err))
         setSvg(null)
       })
-  }, [code])
+  }, [code, isDark])
 
   if (error) {
     return (
