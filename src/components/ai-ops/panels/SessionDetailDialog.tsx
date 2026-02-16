@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { Xmark, WarningTriangle, InfoCircle } from "iconoir-react"
+import { Xmark, WarningTriangle, InfoCircle, Check, AlignLeft } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 
 const STAGE_LABELS: Record<string, string> = {
@@ -224,11 +224,31 @@ export function SessionDetailDialog({
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
-                        <span>{s.hasRingkasan ? "ringkasan" : ""}</span>
-                        <span>{s.hasRingkasanDetail ? "detail" : ""}</span>
+                      <div className="flex items-center gap-2">
+                        {s.hasRingkasan ? (
+                          <span className="inline-flex items-center gap-1 rounded-badge border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-sky-600">
+                            <Check className="size-2.5" strokeWidth={2.5} />
+                            ringkasan
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-badge border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                            ringkasan
+                          </span>
+                        )}
+                        {s.hasRingkasanDetail ? (
+                          <span className="inline-flex items-center gap-1 rounded-badge border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-emerald-600">
+                            <AlignLeft className="size-2.5" strokeWidth={2.5} />
+                            detail
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-badge border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                            detail
+                          </span>
+                        )}
                         {s.revisionCount > 0 && (
-                          <span>{s.revisionCount} revision</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            {s.revisionCount} rev
+                          </span>
                         )}
                       </div>
                     </div>
