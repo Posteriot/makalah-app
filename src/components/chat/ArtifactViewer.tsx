@@ -314,11 +314,11 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       )
     }
 
-    const isChartArtifact = artifact.type === "chart"
-    const isMermaid = artifact.type === "code" && isMermaidContent(artifact.content)
+    const isMermaid = isMermaidContent(artifact.content)
+    const isChartArtifact = !isMermaid && artifact.type === "chart"
     const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
     const language = artifact.format ? formatToLanguage[artifact.format] : undefined
-    const shouldRenderMarkdown = !isChartArtifact && !isMermaid && !isCodeArtifact
+    const shouldRenderMarkdown = !isMermaid && !isChartArtifact && !isCodeArtifact
     const isInvalidated = isArtifactInvalidated(artifact)
     const invalidatedStageLabel = artifact.invalidatedByRewindToStage
       ? getStageLabelSafe(artifact.invalidatedByRewindToStage)
@@ -415,10 +415,10 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                     </div>
                   )}
 
-                  {isChartArtifact ? (
-                    <ChartRenderer content={artifact.content} />
-                  ) : isMermaid ? (
+                  {isMermaid ? (
                     <MermaidRenderer code={extractMermaidCode(artifact.content)} />
+                  ) : isChartArtifact ? (
+                    <ChartRenderer content={artifact.content} />
                   ) : isCodeArtifact && language ? (
                     <div className="overflow-hidden rounded-action">
                       <SyntaxHighlighter

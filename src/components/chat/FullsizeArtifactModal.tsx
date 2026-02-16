@@ -386,16 +386,16 @@ export function FullsizeArtifactModal({
     )
   }
 
-  const isChartArtifact = artifact.type === "chart"
-  const isMermaid = artifact.type === "code" && isMermaidContent(artifact.content)
+  const isMermaid = isMermaidContent(artifact.content)
+  const isChartArtifact = !isMermaid && artifact.type === "chart"
   const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
   const language = artifact.format ? formatToLanguage[artifact.format] : undefined
-  const shouldRenderMarkdown = !isChartArtifact && !isMermaid && !isCodeArtifact
+  const shouldRenderMarkdown = !isMermaid && !isChartArtifact && !isCodeArtifact
   const hasMultipleVersions = (versionHistory?.length ?? 0) > 1
-  const contentTypeLabel = isChartArtifact
-    ? "Chart"
-    : isMermaid
-      ? "Mermaid Diagram"
+  const contentTypeLabel = isMermaid
+    ? "Mermaid Diagram"
+    : isChartArtifact
+      ? "Chart"
       : isCodeArtifact
         ? `Code${language ? ` • ${language}` : ""}`
         : shouldRenderMarkdown
@@ -647,10 +647,10 @@ export function FullsizeArtifactModal({
               ) : (
                 <div className="h-full overflow-hidden rounded-shell border border-slate-300/85 bg-slate-50 dark:border-slate-700/70 dark:bg-slate-900">
                   <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
-                    {isChartArtifact ? (
-                      <ChartRenderer content={artifact.content} />
-                    ) : isMermaid ? (
+                    {isMermaid ? (
                       <MermaidRenderer code={extractMermaidCode(artifact.content)} />
+                    ) : isChartArtifact ? (
+                      <ChartRenderer content={artifact.content} />
                     ) : isCodeArtifact && language ? (
                       <div className="overflow-hidden rounded-action border border-slate-300/85 dark:border-slate-700/70">
                         <SyntaxHighlighter
