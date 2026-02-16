@@ -110,12 +110,17 @@ Contoh data untuk tahap 'gagasan':
                     "WAJIB! Keputusan utama yang DISEPAKATI dengan user untuk tahap ini. Max 280 karakter. " +
                     "Contoh: 'Disepakati angle: dampak AI terhadap pendidikan tinggi Indonesia, gap: belum ada studi di kampus swasta'"
                 ),
+                ringkasanDetail: z.string().max(1000).optional().describe(
+                    "Elaborasi ringkasan: MENGAPA keputusan ini diambil, nuansa penting, konteks diskusi dengan user, " +
+                    "dan hal-hal yang tidak muat di ringkasan 280 char. Max 1000 karakter. " +
+                    "Contoh: 'Angle dipilih karena gap literatur besar di konteks Indonesia, user punya akses data dari 3 kampus swasta di Jakarta, " +
+                    "fokus pada mata kuliah pemrograman dasar semester 1-2.'"
+                ),
                 data: z.record(z.string(), z.any()).optional().describe(
-                    "Objek data draf lainnya (selain ringkasan). PENTING: referensiAwal/referensiPendukung harus ARRAY OF OBJECTS! " +
-                    "Field 'ringkasanDetail' (opsional, max 1000 char): elaborasi MENGAPA keputusan ini diambil, nuansa penting, dan konteks yang tidak muat di ringkasan 280 char."
+                    "Objek data draf lainnya (selain ringkasan/ringkasanDetail). PENTING: referensiAwal/referensiPendukung harus ARRAY OF OBJECTS!"
                 ),
             }),
-            execute: async ({ ringkasan, data }) => {
+            execute: async ({ ringkasan, ringkasanDetail, data }) => {
                 try {
                     const session = await retryQuery(
                         () => fetchQuery(api.paperSessions.getByConversation, {
@@ -129,8 +134,12 @@ Contoh data untuk tahap 'gagasan':
                     // This eliminates the possibility of AI specifying wrong stage
                     const stage = session.currentStage;
 
-                    // Merge ringkasan (required by schema) into data object
-                    const mergedData = { ...(data || {}), ringkasan };
+                    // Merge ringkasan + ringkasanDetail into data object
+                    const mergedData = {
+                        ...(data || {}),
+                        ringkasan,
+                        ...(ringkasanDetail ? { ringkasanDetail } : {}),
+                    };
 
                     const result = await retryMutation(
                         () => fetchMutation(api.paperSessions.updateStageData, {
