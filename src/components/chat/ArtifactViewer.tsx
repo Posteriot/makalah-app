@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import dynamic from "next/dynamic"
 import {
   Select,
   SelectContent,
@@ -20,6 +21,17 @@ import { ArtifactEditor } from "./ArtifactEditor"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { ChartRenderer } from "./ChartRenderer"
+
+const MermaidRenderer = dynamic(
+  () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+)
+
+const MERMAID_KEYWORDS = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|mindmap|timeline|journey|quadrantChart|xychart|block-beta|sankey-beta|packet-beta)\b/
+
+function isMermaidContent(content: string): boolean {
+  return MERMAID_KEYWORDS.test(content.trimStart())
+}
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
@@ -308,9 +320,10 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     }
 
     const isChartArtifact = artifact.type === "chart"
+    const isMermaid = artifact.type === "code" && isMermaidContent(artifact.content)
     const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
     const language = artifact.format ? formatToLanguage[artifact.format] : undefined
-    const shouldRenderMarkdown = !isChartArtifact && !isCodeArtifact
+    const shouldRenderMarkdown = !isChartArtifact && !isMermaid && !isCodeArtifact
     const isInvalidated = isArtifactInvalidated(artifact)
     const invalidatedStageLabel = artifact.invalidatedByRewindToStage
       ? getStageLabelSafe(artifact.invalidatedByRewindToStage)
@@ -409,6 +422,8 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
 
                   {isChartArtifact ? (
                     <ChartRenderer content={artifact.content} />
+                  ) : isMermaid ? (
+                    <MermaidRenderer code={artifact.content} />
                   ) : isCodeArtifact && language ? (
                     <div className="overflow-hidden rounded-action">
                       <SyntaxHighlighter

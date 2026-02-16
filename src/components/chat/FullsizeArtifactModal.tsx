@@ -34,7 +34,19 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { ChartRenderer } from "./ChartRenderer"
+import dynamic from "next/dynamic"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+
+const MermaidRenderer = dynamic(
+  () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+)
+
+const MERMAID_KEYWORDS = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|mindmap|timeline|journey|quadrantChart|xychart|block-beta|sankey-beta|packet-beta)\b/
+
+function isMermaidContent(content: string): boolean {
+  return MERMAID_KEYWORDS.test(content.trimStart())
+}
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
 import {
@@ -380,16 +392,19 @@ export function FullsizeArtifactModal({
   }
 
   const isChartArtifact = artifact.type === "chart"
+  const isMermaid = artifact.type === "code" && isMermaidContent(artifact.content)
   const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
   const language = artifact.format ? formatToLanguage[artifact.format] : undefined
-  const shouldRenderMarkdown = !isChartArtifact && !isCodeArtifact
+  const shouldRenderMarkdown = !isChartArtifact && !isMermaid && !isCodeArtifact
   const hasMultipleVersions = (versionHistory?.length ?? 0) > 1
   const contentTypeLabel = isChartArtifact
     ? "Chart"
-    : isCodeArtifact
-      ? `Code${language ? ` • ${language}` : ""}`
-      : shouldRenderMarkdown
-        ? "Markdown"
+    : isMermaid
+      ? "Mermaid Diagram"
+      : isCodeArtifact
+        ? `Code${language ? ` • ${language}` : ""}`
+        : shouldRenderMarkdown
+          ? "Markdown"
         : "Teks"
   const wordCount = artifact.content.trim().length === 0
     ? 0
@@ -639,6 +654,8 @@ export function FullsizeArtifactModal({
                   <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
                     {isChartArtifact ? (
                       <ChartRenderer content={artifact.content} />
+                    ) : isMermaid ? (
+                      <MermaidRenderer code={artifact.content} />
                     ) : isCodeArtifact && language ? (
                       <div className="overflow-hidden rounded-action border border-slate-300/85 dark:border-slate-700/70">
                         <SyntaxHighlighter
