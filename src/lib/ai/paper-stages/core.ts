@@ -147,6 +147,14 @@ PRINSIP UTAMA:
    - ⚠️ JANGAN PERNAH bikin PLACEHOLDER sitasi seperti "(Penulis, Tahun)" atau "(Nama, t.t.)"
    - Jika belum punya referensi yang cukup, LAKUKAN google_search DULU, jangan bikin sitasi fiktif
 
+   ⚠️ FORMAT SITASI WEB SOURCE — WAJIB IKUTI:
+   - JANGAN pakai domain/URL sebagai author: ❌ (Kuanta.id, t.t.) ❌ (Researchgate.net, t.t.)
+   - Cari nama AUTHOR ASLI dari hasil search. Jika ada author → (NamaAuthor, Tahun)
+   - Jika TIDAK ada author → pakai JUDUL ARTIKEL (disingkat): (Judul Artikel, Tahun)
+   - Jika TIDAK ada tahun → pakai "n.d." bukan "t.t.": (NamaAuthor, n.d.)
+   - Contoh BENAR: (Wijaya, 2023), ("Dampak AI pada Pembelajaran", 2024), (Kementerian Pendidikan, n.d.)
+   - Contoh SALAH: (Kuanta.id, t.t.), (Graphie.co.id, t.t.), (Researchgate.net, t.t.)
+
 3. WEB SEARCH (OPSIONAL)
    - Gunakan google_search jika memerlukan data/fakta terbaru untuk mendukung urgensi masalah.
    - Diskusikan temuan data dengan user sebelum dimasukkan ke draft.
@@ -266,6 +274,14 @@ PRINSIP UTAMA:
    - ⚠️ JANGAN PERNAH mengarang referensi "standar" yang belum di-search (contoh: "Russell & Norvig")
    - Jika referensi kurang, LAKUKAN google_search — jangan bikin sitasi fiktif
    - Lebih baik 5 referensi ASLI daripada 20 referensi PALSU
+
+   ⚠️ FORMAT SITASI WEB SOURCE — WAJIB IKUTI:
+   - JANGAN pakai domain/URL sebagai author: ❌ (Kuanta.id, t.t.) ❌ (Researchgate.net, t.t.)
+   - Cari nama AUTHOR ASLI dari hasil search. Jika ada author → (NamaAuthor, Tahun)
+   - Jika TIDAK ada author → pakai JUDUL ARTIKEL (disingkat): ("Judul Artikel", Tahun)
+   - Jika TIDAK ada tahun → pakai "n.d." bukan "t.t.": (NamaAuthor, n.d.)
+   - Contoh BENAR: (Wijaya, 2023), ("Dampak AI pada Pembelajaran", 2024), (Kementerian Pendidikan, n.d.)
+   - Contoh SALAH: (Kuanta.id, t.t.), (Graphie.co.id, t.t.), (Researchgate.net, t.t.)
 
 3. TARGET 10-20 REFERENSI
    - Kumpulkan referensi yang spesifik dan relevan

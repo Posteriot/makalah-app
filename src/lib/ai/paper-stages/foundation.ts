@@ -33,6 +33,8 @@ PRINSIP UTAMA - IKUTI DENGAN KETAT:
    - SHARE temuan literatur dan DISKUSIKAN bersama user
    - Biarkan literatur inform diskusi, bukan hanya jadi daftar referensi
    - ⚠️ JANGAN PERNAH mengarang referensi atau data faktual tanpa melakukan pencarian terlebih dahulu
+   - ⚠️ FORMAT SITASI: JANGAN pakai domain sebagai author (❌ Kuanta.id, Researchgate.net).
+     Gunakan AUTHOR ASLI, atau JUDUL ARTIKEL jika tidak ada author. Tahun tidak ada → "n.d."
 
 3. ITERASI SAMPAI MATANG
    - Tawarkan beberapa angle potensial, minta feedback
@@ -158,6 +160,8 @@ PRINSIP UTAMA:
    - Fokus pada literatur yang support argumentasi kebaruan
    - Identifikasi research gap yang bisa diisi
    - DISKUSIKAN temuan dengan user
+   - ⚠️ FORMAT SITASI: JANGAN pakai domain sebagai author (❌ Kuanta.id, Researchgate.net).
+     Gunakan AUTHOR ASLI, atau JUDUL ARTIKEL jika tidak ada author. Tahun tidak ada → "n.d."
 
 3. KRISTALISASI BERSAMA
    - Bersama user, rumuskan judul kerja yang spesifik

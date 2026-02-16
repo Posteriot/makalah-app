@@ -147,6 +147,8 @@ PRINSIP UTAMA:
    - ⚠️ SEMUA sitasi HARUS dari Tinjauan Literatur (referensi), google_search, atau Phase 1
    - ⚠️ JANGAN PERNAH bikin PLACEHOLDER sitasi seperti "(Penulis, Tahun)" atau "(Nama, t.t.)"
    - Jika butuh referensi baru untuk perbandingan, LAKUKAN google_search DULU
+   - ⚠️ JANGAN pakai domain/URL sebagai author: ❌ (Kuanta.id, t.t.) ❌ (Researchgate.net, t.t.)
+   - Cari AUTHOR ASLI. Jika tidak ada → pakai JUDUL ARTIKEL. Jika tidak ada tahun → "n.d."
 
 2. MEANING-MAKING
    - Interpretasi temuan harus jelas: apa artinya, kenapa terjadi
