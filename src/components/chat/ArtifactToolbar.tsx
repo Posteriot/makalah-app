@@ -95,7 +95,7 @@ export function ArtifactToolbar({
     <div
       className={cn(
         "@container/toolbar",
-        "shrink-0 border-b border-slate-300/75 bg-inherit dark:border-slate-700/80 px-3 py-2"
+        "shrink-0 border-y border-slate-300/75 bg-inherit dark:border-slate-700/80 px-3 py-2"
       )}
     >
       {/* Layer 1: Active document context */}

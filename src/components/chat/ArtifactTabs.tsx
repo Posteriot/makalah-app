@@ -203,7 +203,7 @@ export function ArtifactTabs({
   return (
     <div
       className={cn(
-        "flex min-h-[50px] items-end border-b border-slate-300/75 bg-inherit dark:border-slate-700/80",
+        "flex min-h-[50px] items-end bg-inherit",
         "shrink-0"
       )}
       role="tablist"
@@ -255,11 +255,11 @@ export function ArtifactTabs({
                 aria-selected={isActive}
                 aria-label={`${tab.title} (${label})`}
                 className={cn(
-                  "group relative -mb-px flex min-w-[160px] max-w-[260px] cursor-pointer items-center gap-2 rounded-t-action rounded-b-none border border-b-transparent px-2.5 py-1",
+                  "group relative -mb-px flex min-w-[160px] max-w-[260px] cursor-pointer items-center gap-2 rounded-t-action rounded-b-none border-x border-t border-b-0 px-2.5 py-1",
                   "transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1",
                   isActive
-                    ? "border-slate-400/70 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-slate-700/80 dark:bg-slate-800 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    ? "border-slate-300/80 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-slate-700/70 dark:bg-slate-800 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                     : "border-transparent bg-slate-100/35 hover:border-slate-300/80 hover:bg-slate-200/60 dark:bg-transparent dark:hover:border-slate-700/70 dark:hover:bg-slate-700/60"
                 )}
               >
@@ -316,7 +316,7 @@ export function ArtifactTabs({
         </div>
       </div>
 
-      <div className="flex h-[40px] self-end items-center gap-2 border-l border-slate-300/80 px-3 dark:border-slate-700/80 @[520px]/artifact:gap-0.5 @[520px]/artifact:px-2">
+      <div className="flex h-[34px] self-end items-center gap-2 border-l border-slate-300/80 px-3 dark:border-slate-700/80 @[520px]/artifact:gap-0.5 @[520px]/artifact:px-2">
         <span className="mr-1 text-[10px] font-mono text-slate-600 dark:text-slate-400">
           {tabs.length} tab
         </span>
