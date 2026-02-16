@@ -10,7 +10,6 @@ import {
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { NotificationDropdown } from "./NotificationDropdown"
 import { UserDropdown } from "@/components/layout/header"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import {
@@ -40,7 +39,7 @@ interface TopBarProps {
  * Content scrolls below it, not behind it.
  *
  * Left: Expand sidebar toggle (only when sidebar collapsed)
- * Right: Notification, Theme toggle, Panel toggle, User dropdown
+ * Right: Theme toggle, Panel toggle, User dropdown
  */
 export function TopBar({
   isSidebarCollapsed,
@@ -96,9 +95,6 @@ export function TopBar({
 
         {/* Right: Controls */}
         <div className="flex items-center gap-2">
-          {/* Notifications */}
-          <NotificationDropdown />
-
           {/* Theme Toggle */}
           {!isLoading && user && (
             <Tooltip>
