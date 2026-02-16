@@ -5,6 +5,7 @@ import Link from "next/link"
 import { signOut, useSession } from "@/lib/auth-client"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import {
+  Activity,
   Settings,
   LogOut,
   NavArrowDown,
@@ -183,14 +184,24 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
 
           {/* Admin Panel Link (conditional) */}
           {isAdmin && (
-            <Link
-              href="/dashboard"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
-            >
-              <Settings className="icon-interface" />
-              <span>Admin Panel</span>
-            </Link>
+            <>
+              <Link
+                href="/dashboard"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
+              >
+                <Settings className="icon-interface" />
+                <span>Admin Panel</span>
+              </Link>
+              <Link
+                href="/ai-ops"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
+              >
+                <Activity className="icon-interface" />
+                <span>AI Ops</span>
+              </Link>
+            </>
           )}
 
           {/* Sign Out */}

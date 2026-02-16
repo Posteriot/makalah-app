@@ -1,4 +1,5 @@
 import {
+  Activity,
   CheckCircle,
   Cpu,
   Group,
@@ -6,6 +7,7 @@ import {
   Settings,
   StatsReport,
 } from "iconoir-react"
+import Link from "next/link"
 import type { AdminTabId } from "./adminPanelConfig"
 import type { User } from "./UserList"
 
@@ -87,6 +89,27 @@ export function AdminOverviewContent({
             Kelola Users
           </button>
         </div>
+      </div>
+
+      <div className="rounded-shell border-main border border-border bg-card/90 p-4 dark:bg-slate-900/90">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-signal text-[10px] font-bold tracking-wider text-muted-foreground">
+              AI OPS DASHBOARD
+            </p>
+            <p className="text-narrative mt-1 text-xs text-muted-foreground">
+              Observability paper workflow, memory health, artifact sync
+            </p>
+          </div>
+          <Activity className="h-5 w-5 text-sky-500" />
+        </div>
+        <Link
+          href="/ai-ops"
+          className="focus-ring text-interface mt-3 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
+        >
+          <Activity className="h-3.5 w-3.5" />
+          Buka AI Ops
+        </Link>
       </div>
 
       <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
