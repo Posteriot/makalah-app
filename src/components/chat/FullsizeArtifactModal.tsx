@@ -33,7 +33,15 @@ import { cn } from "@/lib/utils"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
+import { ChartRenderer } from "./ChartRenderer"
+import dynamic from "next/dynamic"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
+
+const MermaidRenderer = dynamic(
+  () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+)
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
 import {
@@ -199,7 +207,7 @@ export function FullsizeArtifactModal({
   }, [isOpen])
 
   const hasUnsavedChanges = isEditing && artifact ? editContent !== artifact.content : false
-  const canRefrasa = isRefrasaEnabled !== false && (artifact?.content?.length ?? 0) >= 50
+  const canRefrasa = isRefrasaEnabled !== false && artifact?.type !== "chart" && (artifact?.content?.length ?? 0) >= 50
   const editWordCount = editContent.trim().length === 0 ? 0 : editContent.trim().split(/\s+/).length
   const editCharCount = editContent.length
 
@@ -378,15 +386,21 @@ export function FullsizeArtifactModal({
     )
   }
 
+  const isMermaid = isMermaidContent(artifact.content)
+  const isChartArtifact = !isMermaid && artifact.type === "chart"
   const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
   const language = artifact.format ? formatToLanguage[artifact.format] : undefined
-  const shouldRenderMarkdown = !isCodeArtifact
+  const shouldRenderMarkdown = !isMermaid && !isChartArtifact && !isCodeArtifact
   const hasMultipleVersions = (versionHistory?.length ?? 0) > 1
-  const contentTypeLabel = isCodeArtifact
-    ? `Code${language ? ` • ${language}` : ""}`
-    : shouldRenderMarkdown
-      ? "Markdown"
-      : "Teks"
+  const contentTypeLabel = isMermaid
+    ? "Mermaid Diagram"
+    : isChartArtifact
+      ? "Chart"
+      : isCodeArtifact
+        ? `Code${language ? ` • ${language}` : ""}`
+        : shouldRenderMarkdown
+          ? "Markdown"
+        : "Teks"
   const wordCount = artifact.content.trim().length === 0
     ? 0
     : artifact.content.trim().split(/\s+/).length
@@ -633,7 +647,11 @@ export function FullsizeArtifactModal({
               ) : (
                 <div className="h-full overflow-hidden rounded-shell border border-slate-300/85 bg-slate-50 dark:border-slate-700/70 dark:bg-slate-900">
                   <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
-                    {isCodeArtifact && language ? (
+                    {isMermaid ? (
+                      <MermaidRenderer code={extractMermaidCode(artifact.content)} />
+                    ) : isChartArtifact ? (
+                      <ChartRenderer content={artifact.content} />
+                    ) : isCodeArtifact && language ? (
                       <div className="overflow-hidden rounded-action border border-slate-300/85 dark:border-slate-700/70">
                         <SyntaxHighlighter
                           language={language}

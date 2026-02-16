@@ -800,6 +800,8 @@ USE THIS TOOL WHEN generating:
 ✓ LaTeX mathematical formulas (type: "formula")
 ✓ Research summaries and abstracts (type: "section")
 ✓ Paraphrased paragraphs (type: "section")
+✓ Charts and graphs: bar, line, pie (type: "chart", format: "json")
+✓ Diagrams: flowchart, sequence, class, state, ER, gantt, mindmap, timeline, pie (type: "code", format: "markdown", content: raw mermaid syntax WITHOUT fences)
 
 DO NOT use this tool for:
 ✗ Explanations and teaching
@@ -812,16 +814,48 @@ DO NOT use this tool for:
 
 When using this tool, always provide a clear, descriptive title (max 50 chars).
 
+📊 CHARTS: For charts/graphs, use type "chart" with format "json". Content must be a valid JSON string.
+
+Bar chart example:
+{"chartType":"bar","title":"Publikasi per Tahun","xAxisLabel":"Tahun","yAxisLabel":"Jumlah","data":[{"name":"2020","value":150},{"name":"2021","value":200},{"name":"2022","value":280}],"series":[{"dataKey":"value","name":"Publikasi","color":"#f59e0b"}]}
+
+Line chart example:
+{"chartType":"line","title":"Tren Penelitian","xAxisLabel":"Tahun","yAxisLabel":"Jumlah","data":[{"name":"2020","value":50},{"name":"2021","value":80},{"name":"2022","value":120}],"series":[{"dataKey":"value","name":"Penelitian","color":"#0ea5e9"}]}
+
+Pie chart example:
+{"chartType":"pie","title":"Distribusi Metode","data":[{"name":"Kualitatif","value":35},{"name":"Kuantitatif","value":45},{"name":"Mixed","value":20}]}
+
+Rules: "data" is array of objects with "name" (label) + numeric field(s). "series" defines which numeric fields to plot (optional for pie, auto-detected if omitted). Content MUST be valid JSON — no comments, no trailing commas.
+
+📐 DIAGRAMS (Mermaid): For visual diagrams (flowcharts, sequence diagrams, class diagrams, etc.), use type "code" with format "markdown". Content is RAW mermaid syntax — NO \`\`\`mermaid fences, just the diagram code directly.
+
+Flowchart example:
+flowchart TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End]
+    D --> E
+
+Sequence diagram example:
+sequenceDiagram
+    participant U as User
+    participant S as Server
+    U->>S: Request
+    S-->>U: Response
+
+Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagram, gantt, mindmap, timeline, journey, gitgraph, quadrantChart, xychart, block-beta, sankey-beta.
+
 📚 SOURCES: Jika konten artifact BERASAL dari hasil web search sebelumnya, WAJIB pass parameter 'sources' dengan URL dan judul dari referensi yang digunakan. Ini memastikan inline citations [1], [2] di artifact terhubung ke sumber yang benar.`,
                 inputSchema: z.object({
-                    type: z.enum(["code", "outline", "section", "table", "citation", "formula"])
+                    type: z.enum(["code", "outline", "section", "table", "citation", "formula", "chart"])
                         .describe("The type of artifact to create"),
                     title: z.string().max(200)
                         .describe("Short, descriptive title for the artifact (max 200 chars). Examples: 'Introduction Draft', 'Data Analysis Code', 'Research Outline'"),
                     content: z.string().min(10)
                         .describe("The actual content of the artifact"),
-                    format: z.enum(["markdown", "latex", "python", "r", "javascript", "typescript"]).optional()
-                        .describe("Format of the content. Use 'markdown' for text, language name for code"),
+                    format: z.enum(["markdown", "latex", "python", "r", "javascript", "typescript", "json"]).optional()
+                        .describe("Format of the content. Use 'markdown' for text, language name for code, 'json' for charts"),
                     description: z.string().optional()
                         .describe("Optional brief description of what the artifact contains"),
                     sources: z.array(z.object({

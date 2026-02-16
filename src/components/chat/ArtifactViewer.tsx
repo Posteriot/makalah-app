@@ -19,6 +19,14 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { ArtifactEditor } from "./ArtifactEditor"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
+import { ChartRenderer } from "./ChartRenderer"
+import dynamic from "next/dynamic"
+import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
+
+const MermaidRenderer = dynamic(
+  () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+)
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
@@ -136,7 +144,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         : "skip"
     )
 
-    const canRefrasa = isRefrasaEnabled !== false && (artifact?.content?.length ?? 0) >= 50
+    const canRefrasa = isRefrasaEnabled !== false && artifact?.type !== "chart" && (artifact?.content?.length ?? 0) >= 50
 
     const handleCopy = useCallback(async () => {
       if (!artifact) return
@@ -306,9 +314,11 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       )
     }
 
+    const isMermaid = isMermaidContent(artifact.content)
+    const isChartArtifact = !isMermaid && artifact.type === "chart"
     const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
     const language = artifact.format ? formatToLanguage[artifact.format] : undefined
-    const shouldRenderMarkdown = !isCodeArtifact
+    const shouldRenderMarkdown = !isMermaid && !isChartArtifact && !isCodeArtifact
     const isInvalidated = isArtifactInvalidated(artifact)
     const invalidatedStageLabel = artifact.invalidatedByRewindToStage
       ? getStageLabelSafe(artifact.invalidatedByRewindToStage)
@@ -405,7 +415,11 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                     </div>
                   )}
 
-                  {isCodeArtifact && language ? (
+                  {isMermaid ? (
+                    <MermaidRenderer code={extractMermaidCode(artifact.content)} />
+                  ) : isChartArtifact ? (
+                    <ChartRenderer content={artifact.content} />
+                  ) : isCodeArtifact && language ? (
                     <div className="overflow-hidden rounded-action">
                       <SyntaxHighlighter
                         language={language}
