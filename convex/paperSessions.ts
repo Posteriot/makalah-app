@@ -94,6 +94,51 @@ function validateStageDataKeys(stage: string, data: Record<string, unknown>): st
     return dataKeys.filter(key => !allowedKeys.includes(key));
 }
 
+/**
+ * Fields that are expected to be arrays in schema.
+ * All other fields are expected to be strings (or number/id).
+ * Used by coerceStageDataTypes to auto-fix AI sending array for string fields.
+ */
+const ARRAY_FIELDS: Set<string> = new Set([
+    "referensiAwal",     // gagasan: array of objects
+    "referensiPendukung", // topik: array of objects
+    "keywords",           // abstrak: array of strings
+    "sitasiAPA",          // pendahuluan: array of objects
+    "referensi",          // tinjauan_literatur: array of objects
+    "dataPoints",         // hasil: array of objects
+    "sitasiTambahan",     // diskusi: array of objects
+    "entries",            // daftar_pustaka: array of objects
+    "items",              // lampiran: array of objects
+    "opsiJudul",          // judul: array of objects
+    "sections",           // outline: array of objects
+]);
+
+/**
+ * Coerce AI-sent values to match schema types.
+ * Primary fix: if AI sends array of strings for a string field, join with newline.
+ * This prevents Convex validation errors from AI type mismatches.
+ */
+function coerceStageDataTypes(data: Record<string, unknown>): Record<string, unknown> {
+    const coerced: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+        // Strip null/undefined — Convex v.optional() means "field absent", not "field = null"
+        if (value === null || value === undefined) {
+            continue;
+        }
+        if (ARRAY_FIELDS.has(key) || !Array.isArray(value)) {
+            // Keep arrays for known array fields, keep non-arrays as-is
+            coerced[key] = value;
+        } else if (value.every((item: unknown) => typeof item === "string")) {
+            // AI sent array of strings for a string field → join
+            coerced[key] = (value as string[]).join("\n");
+        } else {
+            // Array of non-strings for a non-array field — pass through, let Convex validate
+            coerced[key] = value;
+        }
+    }
+    return coerced;
+}
+
 function normalizePaperTitle(title: string): string {
     return title.trim().replace(/\s+/g, " ");
 }
@@ -508,18 +553,39 @@ export const updateStageData = mutation({
             );
         }
 
-        // Guard: Validate stage data keys against whitelist (Task 1.3.1)
-        const unknownKeys = validateStageDataKeys(args.stage, args.data as Record<string, unknown>);
+        // Guard: Strip unknown keys (soft-reject) + log for observability
+        const rawData = args.data as Record<string, unknown>;
+        const unknownKeys = validateStageDataKeys(args.stage, rawData);
+        let strippedData = rawData;
         if (unknownKeys.length > 0) {
-            throw new Error(
-                `updateStageData gagal: Key tidak dikenal untuk tahap ${args.stage}: ${unknownKeys.join(", ")}. ` +
-                "Gunakan key yang sesuai dengan skema tahap ini."
+            // Strip unknown keys instead of throwing — mutation continues with valid keys
+            strippedData = Object.fromEntries(
+                Object.entries(rawData).filter(([key]) => !unknownKeys.includes(key))
             );
+            // Log dropped keys to systemAlerts for dashboard observability
+            for (const droppedKey of unknownKeys) {
+                await ctx.db.insert("systemAlerts", {
+                    alertType: "stage_key_dropped",
+                    severity: "info",
+                    message: `Key "${droppedKey}" dropped dari tahap ${args.stage}`,
+                    source: "updateStageData",
+                    resolved: false,
+                    metadata: {
+                        stage: args.stage,
+                        keyName: droppedKey,
+                        sessionId: args.sessionId,
+                    },
+                    createdAt: Date.now(),
+                });
+            }
         }
+
+        // Coerce AI type mismatches (e.g. array sent for string field)
+        const coercedData = coerceStageDataTypes(strippedData);
 
         // Normalize referensi data: convert string citations to objects
         // This handles the case where AI sends string citations instead of objects
-        const normalizedData = normalizeReferensiData(args.data as Record<string, unknown>);
+        const normalizedData = normalizeReferensiData(coercedData);
 
         // Truncate oversized string fields (W7)
         const { truncated: truncatedData, warnings: truncationWarnings } =
@@ -558,6 +624,12 @@ export const updateStageData = mutation({
         const urlValidation = validateReferensiUrls(finalStageData);
 
         const warnings: string[] = [];
+        if (unknownKeys.length > 0) {
+            warnings.push(
+                `Key tidak dikenal di-strip: ${unknownKeys.join(", ")}. ` +
+                `Gunakan key yang sesuai skema tahap ${args.stage}.`
+            );
+        }
         if (!hasRingkasan) {
             warnings.push(
                 "Ringkasan belum diisi. Tahap ini TIDAK BISA di-approve tanpa ringkasan. " +

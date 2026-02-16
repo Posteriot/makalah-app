@@ -209,3 +209,56 @@ export const getSessionList = query({
     }));
   },
 });
+
+/**
+ * Get aggregated dropped keys from systemAlerts.
+ * Groups by stage + keyName, returns count and last seen time.
+ * Used by AI Ops dashboard to show potential schema promotion candidates.
+ */
+export const getDroppedKeysAggregation = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireAuthUser(ctx);
+    assertAdmin(user.role);
+
+    const alerts = await ctx.db
+      .query("systemAlerts")
+      .withIndex("by_type", (q) => q.eq("alertType", "stage_key_dropped"))
+      .order("desc")
+      .take(200); // Cap at 200 to avoid scanning too many
+
+    // Aggregate by stage + keyName
+    const aggregation = new Map<string, {
+      stage: string;
+      keyName: string;
+      count: number;
+      lastSeen: number;
+      resolved: number;
+    }>();
+
+    for (const alert of alerts) {
+      const meta = alert.metadata as { stage?: string; keyName?: string } | undefined;
+      if (!meta?.stage || !meta?.keyName) continue;
+
+      const key = `${meta.stage}::${meta.keyName}`;
+      const existing = aggregation.get(key);
+      if (existing) {
+        existing.count++;
+        if (alert.createdAt > existing.lastSeen) existing.lastSeen = alert.createdAt;
+        if (alert.resolved) existing.resolved++;
+      } else {
+        aggregation.set(key, {
+          stage: meta.stage,
+          keyName: meta.keyName,
+          count: 1,
+          lastSeen: alert.createdAt,
+          resolved: alert.resolved ? 1 : 0,
+        });
+      }
+    }
+
+    // Sort by count desc
+    return Array.from(aggregation.values())
+      .sort((a, b) => b.count - a.count);
+  },
+});

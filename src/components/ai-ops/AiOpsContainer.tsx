@@ -9,12 +9,14 @@ import { WorkflowProgressPanel } from "./panels/WorkflowProgressPanel"
 import { ArtifactSyncPanel } from "./panels/ArtifactSyncPanel"
 import { SessionListPanel } from "./panels/SessionListPanel"
 import { InsightBanner } from "./panels/InsightBanner"
+import { DroppedKeysPanel } from "./panels/DroppedKeysPanel"
 
 export function AiOpsContainer() {
   const memoryHealth = useQuery(api.aiOps.getMemoryHealthStats)
   const workflowProgress = useQuery(api.aiOps.getWorkflowProgressStats)
   const artifactSync = useQuery(api.aiOps.getArtifactSyncStats)
   const sessions = useQuery(api.aiOps.getSessionList, { limit: 20 })
+  const droppedKeys = useQuery(api.aiOps.getDroppedKeysAggregation)
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
@@ -49,6 +51,9 @@ export function AiOpsContainer() {
         workflowProgress={workflowProgress}
         artifactSync={artifactSync}
       />
+
+      {/* Dropped Keys */}
+      <DroppedKeysPanel data={droppedKeys} />
 
       {/* Session List */}
       <SessionListPanel sessions={sessions} />

@@ -86,13 +86,14 @@ OUTPUT 'GAGASAN PAPER' (draft SETELAH diskusi matang):
 - angle: Sudut pandang unik yang DISEPAKATI bersama user
 - novelty: Kebaruan yang ditawarkan (apa yang beda dari yang sudah ada)
 - referensiAwal: 3-5 literatur relevan (dari hasil web search + diskusi)
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi MENGAPA angle ini dipilih, konteks penting yang tidak muat di ringkasan 280 char
 
 ═══════════════════════════════════════════════════════════════════════════════
 TOOLS YANG TERSEDIA:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → WAJIB pakai untuk mencari referensi akademik yang valid. Jangan pernah mengarang referensi!
-- updateStageData({ ringkasan, ideKasar, analisis, angle, novelty, referensiAwal }) → Simpan draft (WAJIB sertakan ringkasan!)
+- updateStageData({ ringkasan, ringkasanDetail, ideKasar, analisis, angle, novelty, referensiAwal }) → Simpan draft (WAJIB sertakan ringkasan!)
 - createArtifact({ type: "section", title: "Gagasan Paper - [Judul Kerja]", content: "[gabungan ide, analisis, angle, novelty, referensi dalam markdown]" })
 - submitStageForValidation() → HANYA panggil setelah user EKSPLISIT konfirmasi puas
 
@@ -209,13 +210,14 @@ OUTPUT 'TOPIK DEFINITIF' (SETELAH diskusi matang):
 - argumentasiKebaruan: Mengapa topik ini penting diteliti SEKARANG
 - researchGap: Gap spesifik yang akan diisi oleh penelitian ini
 - referensiPendukung: Literatur tambahan yang support argumentasi (dari web search)
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi MENGAPA topik ini dipilih, nuansa research gap, dan konteks yang tidak muat di ringkasan 280 char
 
 ═══════════════════════════════════════════════════════════════════════════════
 TOOLS YANG TERSEDIA:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → WAJIB pakai untuk mencari literatur dan research gap. Jangan mengarang referensi!
-- updateStageData({ ringkasan, definitif, angleSpesifik, argumentasiKebaruan, researchGap, referensiPendukung }) → (WAJIB sertakan ringkasan!)
+- updateStageData({ ringkasan, ringkasanDetail, definitif, angleSpesifik, argumentasiKebaruan, researchGap, referensiPendukung }) → (WAJIB sertakan ringkasan!)
 - createArtifact({ type: "section", title: "Topik Definitif - [Judul Definitif]", content: "[gabungan topik, angle, argumentasi, gap, referensi dalam markdown]" })
 - submitStageForValidation() → HANYA setelah user konfirmasi puas
 

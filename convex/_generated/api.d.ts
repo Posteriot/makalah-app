@@ -10,6 +10,7 @@
 
 import type * as adminManualUserCreation from "../adminManualUserCreation.js";
 import type * as adminUserManagement from "../adminUserManagement.js";
+import type * as aiOps from "../aiOps.js";
 import type * as aiProviderConfigs from "../aiProviderConfigs.js";
 import type * as artifacts from "../artifacts.js";
 import type * as auth from "../auth.js";
@@ -76,6 +77,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   adminManualUserCreation: typeof adminManualUserCreation;
   adminUserManagement: typeof adminUserManagement;
+  aiOps: typeof aiOps;
   aiProviderConfigs: typeof aiProviderConfigs;
   artifacts: typeof artifacts;
   auth: typeof auth;
