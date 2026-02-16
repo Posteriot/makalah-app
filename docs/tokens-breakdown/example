@@ -1,0 +1,50 @@
+Breakdown 4,751 tokens                                             
+                                                                     
+  Komponen: System prompt (DB)                                       
+  Estimasi Chars: ~9,000                                             
+  Estimasi Tokens: ~3,000                                            
+  ────────────────────────────────────────                           
+  Komponen: Paper mode prompt injection
+  Estimasi Chars: ~4,800
+  Estimasi Tokens: ~1,600
+  ────────────────────────────────────────
+  Komponen: Tool definitions (JSON schema)
+  Estimasi Chars: ~variabel
+  Estimasi Tokens: ~beberapa ratus
+  ────────────────────────────────────────
+  Komponen: User message
+  Estimasi Chars: ~50
+  Estimasi Tokens: ~17
+  ────────────────────────────────────────
+  Komponen: Total input
+  Estimasi Chars:
+  Estimasi Tokens: ~4,688 (actual)
+  ────────────────────────────────────────
+  Komponen: AI response
+  Estimasi Chars: ~280
+  Estimasi Tokens: 63 (actual)
+  ────────────────────────────────────────
+  Komponen: Grand total
+  Estimasi Chars:
+  Estimasi Tokens: 4,751
+
+  ★ Insight ─────────────────────────────────────
+  Kenapa input tokens besar: Setiap request ke LLM kirim SELURUH
+  system prompt + paper mode instructions + tool schemas. Ini bukan
+  bug — ini cara kerja LLM API. Pesan user cuma ~17 tokens, tapi
+  "konteks" yang dikirim ~4,600+ tokens.
+
+  Implikasi untuk Pro (5M tokens/bulan): Kalau setiap chat turn
+  rata-rata ~5K tokens, Pro user bisa kirim ~1,000 turns/bulan. Untuk
+   5-6 paper yang masing-masing butuh ~100-150 turns, itu ~750 turns.
+   Masih ada sisa ~250 turns untuk eksplorasi. Angka 5M cukup masuk
+  akal.
+
+  Catatan: Paper mode lebih "mahal" per turn dibanding chat biasa
+  karena ada tambahan paper prompt injection. Chat biasa tanpa paper
+  mode mungkin cuma ~3K tokens per turn.
+  ─────────────────────────────────────────────────
+
+  Jadi 4,751 tokens untuk 1 chat turn paper mode itu masuk akal —
+  bukan bug. Mayoritas (98.7%) adalah system prompt + context, bukan
+  pesan user.
