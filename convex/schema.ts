@@ -190,27 +190,13 @@ export default defineSchema({
     messageId: v.optional(v.id("messages")), // Which message generated this artifact
 
     // Artifact metadata
-    type: v.union(
-      v.literal("code"),
-      v.literal("outline"),
-      v.literal("section"),
-      v.literal("table"),
-      v.literal("citation"),
-      v.literal("formula")
-    ),
+    type: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
 
     // Content
     content: v.string(),
-    format: v.optional(v.union(
-      v.literal("markdown"),
-      v.literal("latex"),
-      v.literal("python"),
-      v.literal("r"),
-      v.literal("javascript"),
-      v.literal("typescript")
-    )),
+    format: v.optional(v.string()),
 
     // Web sources (from web search) - same structure as messages.sources
     sources: v.optional(v.array(v.object({
