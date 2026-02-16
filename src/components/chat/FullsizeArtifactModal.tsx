@@ -43,9 +43,16 @@ const MermaidRenderer = dynamic(
 )
 
 const MERMAID_KEYWORDS = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|mindmap|timeline|journey|quadrantChart|xychart|block-beta|sankey-beta|packet-beta)\b/
+const MERMAID_FENCE = /^```mermaid\s*\n([\s\S]*?)```\s*$/
 
 function isMermaidContent(content: string): boolean {
-  return MERMAID_KEYWORDS.test(content.trimStart())
+  const trimmed = content.trimStart()
+  return MERMAID_KEYWORDS.test(trimmed) || MERMAID_FENCE.test(trimmed)
+}
+
+function extractMermaidCode(content: string): string {
+  const match = content.trimStart().match(MERMAID_FENCE)
+  return match ? match[1].trim() : content
 }
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
@@ -655,7 +662,7 @@ export function FullsizeArtifactModal({
                     {isChartArtifact ? (
                       <ChartRenderer content={artifact.content} />
                     ) : isMermaid ? (
-                      <MermaidRenderer code={artifact.content} />
+                      <MermaidRenderer code={extractMermaidCode(artifact.content)} />
                     ) : isCodeArtifact && language ? (
                       <div className="overflow-hidden rounded-action border border-slate-300/85 dark:border-slate-700/70">
                         <SyntaxHighlighter
