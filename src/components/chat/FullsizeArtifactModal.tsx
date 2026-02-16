@@ -34,9 +34,14 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { ChartRenderer } from "./ChartRenderer"
-import { MermaidRenderer } from "./MermaidRenderer"
+import dynamic from "next/dynamic"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
+
+const MermaidRenderer = dynamic(
+  () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+)
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
 import {

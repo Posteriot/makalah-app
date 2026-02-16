@@ -20,8 +20,13 @@ import { ArtifactEditor } from "./ArtifactEditor"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { ChartRenderer } from "./ChartRenderer"
-import { MermaidRenderer } from "./MermaidRenderer"
+import dynamic from "next/dynamic"
 import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
+
+const MermaidRenderer = dynamic(
+  () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+)
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
