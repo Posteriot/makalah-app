@@ -176,7 +176,7 @@ export function SidebarPaperSessions({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header - matches mockup: padding 20px 16px 12px 16px, no border */}
+      {/* Header - padding 20px 16px 12px 16px, no border */}
       <div className="pt-5 px-4 pb-3">
         <div className="text-base font-semibold">Sesi Paper</div>
         <div className="text-[13px] font-mono text-muted-foreground">
@@ -414,18 +414,8 @@ function PaperFolderItem({
               Stage {stageNumber}/13 - {stageLabel}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span
-                className={cn(
-                  "rounded-badge border px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide",
-                  isArtifactPanelOpen
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-border/60 bg-background/70 text-muted-foreground"
-                )}
-              >
-                {isArtifactPanelOpen ? "Panel artifak terbuka" : "Panel artifak tertutup"}
-              </span>
               <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                {hasArtifacts ? `${latestArtifacts.length} dokumen siap` : "Belum ada dokumen"}
+                {hasArtifacts ? `${latestArtifacts.length} artifak` : "Belum ada artifak"}
               </span>
             </div>
           </div>
@@ -502,8 +492,8 @@ function ArtifactTreeItem({
           onClick={handleClick}
           className={cn(
             "my-1 mr-3 flex cursor-pointer items-center gap-2 rounded-action border px-3.5 py-2 transition-colors",
-            "border-transparent hover:border-border/50 hover:bg-accent/60",
-            isSelected && "border-primary/35 bg-primary/10 dark:bg-primary/20"
+            "border-transparent hover:bg-slate-300 dark:hover:bg-slate-600/60",
+            isSelected && "border-slate-300/90 bg-slate-50 shadow-[inset_0_1px_0_var(--border-hairline-soft)] dark:border-slate-700 dark:bg-slate-900/60"
           )}
           aria-current={isSelected ? "page" : undefined}
         >
@@ -511,25 +501,21 @@ function ArtifactTreeItem({
           <Page
             className={cn(
               "h-4 w-4 shrink-0",
-              isFinal ? "text-emerald-500" : "text-amber-600 dark:text-amber-300"
+              isFinal ? "text-slate-500 dark:text-slate-200" : "text-amber-600 dark:text-amber-300"
             )}
           />
 
           {/* File Name */}
           <span className="flex-1 truncate text-[13px]">{artifact.title}</span>
 
-          <span className="hidden shrink-0 rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wide text-muted-foreground sm:inline-flex">
-            {getArtifactTypeLabel(artifact.type)}
-          </span>
-
           {/* Version Badge */}
-          <span className="shrink-0 rounded-badge border border-border/60 bg-muted/70 px-1.5 py-0.5 text-[9px] font-mono font-medium text-muted-foreground">
+          <span className="shrink-0 rounded-badge border border-border/60 bg-sky-500/90 px-1.5 py-0.5 text-[9px] font-mono font-medium text-slate-50">
             v{artifact.version}
           </span>
 
           {/* Status Badge */}
           {isFinal && (
-            <span className="ml-1 shrink-0 rounded-badge border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+            <span className="ml-1 shrink-0 rounded-badge border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-slate-600 dark:text-slate-50 dark:bg-emerald-500/80">
               FINAL
             </span>
           )}
@@ -545,18 +531,6 @@ function ArtifactTreeItem({
       </TooltipContent>
     </Tooltip>
   )
-}
-
-function getArtifactTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    section: "SEKSI",
-    outline: "OUTLINE",
-    code: "CODE",
-    table: "TABEL",
-    citation: "SITASI",
-    formula: "FORMULA",
-  }
-  return map[type] ?? "DOKUMEN"
 }
 
 /**
