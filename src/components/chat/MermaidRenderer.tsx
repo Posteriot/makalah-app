@@ -25,7 +25,9 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
       .render(`mermaid-${id}`, code)
       .then(({ svg: rawSvg }) => {
         const sanitized = DOMPurify.sanitize(rawSvg, {
-          USE_PROFILES: { svg: true },
+          USE_PROFILES: { svg: true, svgFilters: true },
+          ADD_TAGS: ["foreignObject", "div", "span", "p", "br", "b", "i", "em", "strong", "ul", "li"],
+          ADD_ATTR: ["xmlns", "class", "style", "transform", "x", "y", "width", "height", "requiredExtensions"],
         })
         setSvg(sanitized)
         setError(null)
