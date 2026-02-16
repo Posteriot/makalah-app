@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { ChatLayout } from "./layout/ChatLayout"
@@ -55,6 +55,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     closeTab: closeArtifactTab,
     setActiveTab: setActiveArtifactTab,
     closeAllTabs: closeAllArtifactTabs,
+    updateTabTitle: updateArtifactTabTitle,
   } = useArtifactTabs()
 
   // Panel is open when there are open tabs
@@ -68,6 +69,17 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
       : "skip"
   )
   const artifactCount = artifacts?.length ?? 0
+
+  // Sync tab titles when Convex artifact data updates (fixes stale "Loading..." titles)
+  useEffect(() => {
+    if (!artifacts) return
+    for (const tab of artifactTabs) {
+      const artifact = artifacts.find((a) => a._id === tab.id)
+      if (artifact && artifact.title !== tab.title) {
+        updateArtifactTabTitle(tab.id, artifact.title)
+      }
+    }
+  }, [artifacts, artifactTabs, updateArtifactTabTitle])
 
   // Handler when artifact is created or selected — opens a tab
   const handleArtifactSelect = (artifactId: Id<"artifacts">) => {
