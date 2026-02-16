@@ -259,16 +259,16 @@ export function ArtifactTabs({
                   "transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1",
                   isActive
-                    ? "border-slate-300/75 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-slate-700/80 dark:bg-slate-800 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                    : "border-transparent bg-transparent hover:border-slate-300/80 hover:bg-slate-200/70 dark:hover:border-slate-700/70 dark:hover:bg-slate-700/60"
+                    ? "border-slate-400/70 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-slate-700/80 dark:bg-slate-800 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    : "border-transparent bg-slate-100/35 hover:border-slate-300/80 hover:bg-slate-200/60 dark:bg-transparent dark:hover:border-slate-700/70 dark:hover:bg-slate-700/60"
                 )}
               >
                 <span
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center",
                     isActive
-                      ? "text-slate-700 dark:text-slate-100"
-                      : "rounded-badge border border-slate-300/80 bg-slate-200/75 text-slate-600 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-400"
+                      ? "text-slate-900 dark:text-slate-100"
+                      : "rounded-badge border border-slate-300/70 bg-slate-100 text-slate-500 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-400"
                   )}
                 >
                   <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
@@ -278,12 +278,17 @@ export function ArtifactTabs({
                   <span
                     className={cn(
                       "block truncate text-[11px] font-medium",
-                      isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-700 dark:text-slate-100"
+                      isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"
                     )}
                   >
                     {tab.title}
                   </span>
-                  <span className="block text-[9px] font-mono uppercase tracking-wide text-slate-500 dark:text-slate-100">
+                  <span
+                    className={cn(
+                      "block text-[9px] font-mono uppercase tracking-wide",
+                      isActive ? "text-slate-600 dark:text-slate-200" : "text-slate-400 dark:text-slate-500"
+                    )}
+                  >
                     {label}
                   </span>
                 </span>
@@ -311,7 +316,7 @@ export function ArtifactTabs({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 border-l border-slate-300/80 px-3 dark:border-slate-700/80 @[520px]/artifact:gap-0.5 @[520px]/artifact:px-2">
+      <div className="flex h-[40px] self-end items-center gap-2 border-l border-slate-300/80 px-3 dark:border-slate-700/80 @[520px]/artifact:gap-0.5 @[520px]/artifact:px-2">
         <span className="mr-1 text-[10px] font-mono text-slate-600 dark:text-slate-400">
           {tabs.length} tab
         </span>
