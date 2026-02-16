@@ -19,6 +19,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { ArtifactEditor } from "./ArtifactEditor"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
+import { ChartRenderer } from "./ChartRenderer"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
@@ -136,7 +137,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         : "skip"
     )
 
-    const canRefrasa = isRefrasaEnabled !== false && (artifact?.content?.length ?? 0) >= 50
+    const canRefrasa = isRefrasaEnabled !== false && artifact?.type !== "chart" && (artifact?.content?.length ?? 0) >= 50
 
     const handleCopy = useCallback(async () => {
       if (!artifact) return
@@ -306,9 +307,10 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       )
     }
 
+    const isChartArtifact = artifact.type === "chart"
     const isCodeArtifact = artifact.type === "code" || artifact.format === "latex"
     const language = artifact.format ? formatToLanguage[artifact.format] : undefined
-    const shouldRenderMarkdown = !isCodeArtifact
+    const shouldRenderMarkdown = !isChartArtifact && !isCodeArtifact
     const isInvalidated = isArtifactInvalidated(artifact)
     const invalidatedStageLabel = artifact.invalidatedByRewindToStage
       ? getStageLabelSafe(artifact.invalidatedByRewindToStage)
@@ -405,7 +407,9 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                     </div>
                   )}
 
-                  {isCodeArtifact && language ? (
+                  {isChartArtifact ? (
+                    <ChartRenderer content={artifact.content} />
+                  ) : isCodeArtifact && language ? (
                     <div className="overflow-hidden rounded-action">
                       <SyntaxHighlighter
                         language={language}
