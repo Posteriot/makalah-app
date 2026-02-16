@@ -254,6 +254,43 @@ function validateReferensiUrls(data: Record<string, unknown>): {
 }
 
 // ═══════════════════════════════════════════════════════════
+// FIELD SIZE TRUNCATION (Task W7)
+// ═══════════════════════════════════════════════════════════
+
+const FIELD_CHAR_LIMIT = 2000;
+const EXCLUDED_TRUNCATION_FIELDS = new Set([
+    "ringkasan", "ringkasanDetail", "artifactId",
+    "validatedAt", "revisionCount",
+]);
+
+/**
+ * Truncate oversized string fields in stage data.
+ * Prevents bloated DB records and AI context.
+ * Excluded fields: ringkasan, ringkasanDetail, artifactId, validatedAt, revisionCount.
+ */
+function truncateStageDataFields(data: Record<string, unknown>): {
+  truncated: Record<string, unknown>;
+  warnings: string[];
+} {
+  const truncated = { ...data };
+  const warnings: string[] = [];
+
+  for (const [key, value] of Object.entries(truncated)) {
+    if (typeof value !== "string") continue;
+    if (EXCLUDED_TRUNCATION_FIELDS.has(key)) continue;
+
+    if (value.length > FIELD_CHAR_LIMIT) {
+      truncated[key] = value.slice(0, FIELD_CHAR_LIMIT);
+      warnings.push(
+        `Field '${key}' di-truncate dari ${value.length} ke ${FIELD_CHAR_LIMIT} karakter.`
+      );
+    }
+  }
+
+  return { truncated, warnings };
+}
+
+// ═══════════════════════════════════════════════════════════
 // QUERIES
 // ═══════════════════════════════════════════════════════════
 
@@ -477,6 +514,10 @@ export const updateStageData = mutation({
         // This handles the case where AI sends string citations instead of objects
         const normalizedData = normalizeReferensiData(args.data as Record<string, unknown>);
 
+        // Truncate oversized string fields (W7)
+        const { truncated: truncatedData, warnings: truncationWarnings } =
+            truncateStageDataFields(normalizedData);
+
         const now = Date.now();
         const stageKey = args.stage;
         const stageDataObj = session.stageData as Record<string, Record<string, unknown>>;
@@ -486,7 +527,7 @@ export const updateStageData = mutation({
             ...session.stageData,
             [stageKey]: {
                 ...existingStageData,
-                ...normalizedData,
+                ...truncatedData,
             },
         };
 
@@ -501,7 +542,7 @@ export const updateStageData = mutation({
         // ════════════════════════════════════════════════════════════════
         const finalStageData = {
             ...existingStageData,
-            ...normalizedData,
+            ...truncatedData,
         };
         const hasRingkasan = typeof finalStageData.ringkasan === "string"
             && finalStageData.ringkasan.trim() !== "";
@@ -522,6 +563,9 @@ export const updateStageData = mutation({
                 `referensi di field '${urlValidation.field}' TIDAK memiliki URL. ` +
                 `Semua referensi WAJIB berasal dari google_search dan memiliki URL sumber.`
             );
+        }
+        if (truncationWarnings.length > 0) {
+            warnings.push(...truncationWarnings);
         }
 
         return {
