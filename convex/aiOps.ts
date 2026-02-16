@@ -142,6 +142,7 @@ export const getSessionDrillDown = query({
         hasRingkasan: !!data?.ringkasan,
         hasRingkasanDetail: !!data?.ringkasanDetail,
         ringkasan: data?.ringkasan || null,
+        ringkasanDetail: data?.ringkasanDetail || null,
         validatedAt: data?.validatedAt || null,
         superseded: data?.superseded || false,
         revisionCount: data?.revisionCount || 0,

@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { Xmark, WarningTriangle, InfoCircle, Check, AlignLeft } from "iconoir-react"
+import { Xmark, WarningTriangle, InfoCircle, Check, AlignLeft, NavArrowDown, NavArrowRight } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 
 const STAGE_LABELS: Record<string, string> = {
@@ -206,54 +207,7 @@ export function SessionDetailDialog({
             {/* Stage Details */}
             {data.stageDetails.length > 0 && (
               <Section title="Stage Data">
-                <div className="space-y-1">
-                  {data.stageDetails.map((s) => (
-                    <div key={s.stageId} className="flex items-center justify-between text-xs py-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-muted-foreground w-24 shrink-0">
-                          {STAGE_LABELS[s.stageId] || s.stageId}
-                        </span>
-                        {s.validatedAt && (
-                          <span className="rounded-badge border border-emerald-500/30 bg-emerald-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-emerald-600">
-                            validated
-                          </span>
-                        )}
-                        {s.superseded && (
-                          <span className="rounded-badge border border-rose-500/30 bg-rose-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-rose-500">
-                            superseded
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {s.hasRingkasan ? (
-                          <span className="inline-flex items-center gap-1 rounded-badge border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-sky-600">
-                            <Check className="size-2.5" strokeWidth={2.5} />
-                            ringkasan
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-badge border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
-                            ringkasan
-                          </span>
-                        )}
-                        {s.hasRingkasanDetail ? (
-                          <span className="inline-flex items-center gap-1 rounded-badge border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-emerald-600">
-                            <AlignLeft className="size-2.5" strokeWidth={2.5} />
-                            detail
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-badge border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
-                            detail
-                          </span>
-                        )}
-                        {s.revisionCount > 0 && (
-                          <span className="font-mono text-[10px] text-muted-foreground">
-                            {s.revisionCount} rev
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <StageDataList stages={data.stageDetails} />
               </Section>
             )}
 
@@ -284,6 +238,107 @@ export function SessionDetailDialog({
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+type StageDetail = {
+  stageId: string
+  hasRingkasan: boolean
+  hasRingkasanDetail: boolean
+  ringkasan: string | null
+  ringkasanDetail: string | null
+  validatedAt: number | null
+  superseded: boolean
+  revisionCount: number
+}
+
+function StageDataList({ stages }: { stages: StageDetail[] }) {
+  const [expanded, setExpanded] = useState<string | null>(null)
+
+  return (
+    <div className="space-y-0.5">
+      {stages.map((s) => {
+        const isOpen = expanded === s.stageId
+        const hasContent = s.hasRingkasan || s.hasRingkasanDetail
+        return (
+          <div key={s.stageId}>
+            <button
+              type="button"
+              onClick={() => hasContent && setExpanded(isOpen ? null : s.stageId)}
+              className={`flex w-full items-center justify-between text-xs py-1.5 px-1 rounded-action transition-colors ${
+                hasContent ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {hasContent ? (
+                  isOpen
+                    ? <NavArrowDown className="size-3 text-muted-foreground" strokeWidth={2} />
+                    : <NavArrowRight className="size-3 text-muted-foreground" strokeWidth={2} />
+                ) : (
+                  <span className="size-3" />
+                )}
+                <span className="font-mono text-muted-foreground w-24 shrink-0 text-left">
+                  {STAGE_LABELS[s.stageId] || s.stageId}
+                </span>
+                {s.validatedAt && (
+                  <span className="rounded-badge border border-emerald-500/30 bg-emerald-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-emerald-600">
+                    validated
+                  </span>
+                )}
+                {s.superseded && (
+                  <span className="rounded-badge border border-rose-500/30 bg-rose-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-rose-500">
+                    superseded
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {s.hasRingkasan ? (
+                  <span className="inline-flex items-center gap-1 rounded-badge border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-sky-600">
+                    <Check className="size-2.5" strokeWidth={2.5} />
+                    ringkasan
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-badge border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                    ringkasan
+                  </span>
+                )}
+                {s.hasRingkasanDetail ? (
+                  <span className="inline-flex items-center gap-1 rounded-badge border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-emerald-600">
+                    <AlignLeft className="size-2.5" strokeWidth={2.5} />
+                    detail
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-badge border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                    detail
+                  </span>
+                )}
+                {s.revisionCount > 0 && (
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {s.revisionCount} rev
+                  </span>
+                )}
+              </div>
+            </button>
+            {isOpen && (
+              <div className="ml-5 mb-2 space-y-2 border-l-2 border-border pl-3 py-2">
+                {s.ringkasan && (
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-sky-600">Ringkasan</span>
+                    <p className="text-xs text-foreground mt-0.5 font-mono leading-relaxed">{s.ringkasan}</p>
+                  </div>
+                )}
+                {s.ringkasanDetail && (
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Detail</span>
+                    <p className="text-xs text-foreground mt-0.5 font-mono leading-relaxed">{s.ringkasanDetail}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
