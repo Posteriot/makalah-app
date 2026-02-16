@@ -196,7 +196,8 @@ export default defineSchema({
       v.literal("section"),
       v.literal("table"),
       v.literal("citation"),
-      v.literal("formula")
+      v.literal("formula"),
+      v.literal("chart")
     ),
     title: v.string(),
     description: v.optional(v.string()),
@@ -209,7 +210,8 @@ export default defineSchema({
       v.literal("python"),
       v.literal("r"),
       v.literal("javascript"),
-      v.literal("typescript")
+      v.literal("typescript"),
+      v.literal("json")
     )),
 
     // Web sources (from web search) - same structure as messages.sources

@@ -11,7 +11,8 @@ export const artifactTypeValidator = v.union(
   v.literal("section"),
   v.literal("table"),
   v.literal("citation"),
-  v.literal("formula")
+  v.literal("formula"),
+  v.literal("chart")
 )
 
 export const artifactFormatValidator = v.optional(v.union(
@@ -20,7 +21,8 @@ export const artifactFormatValidator = v.optional(v.union(
   v.literal("python"),
   v.literal("r"),
   v.literal("javascript"),
-  v.literal("typescript")
+  v.literal("typescript"),
+  v.literal("json")
 ))
 
 // ============================================================================
