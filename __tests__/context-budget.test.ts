@@ -4,7 +4,7 @@ import {
   checkContextBudget,
   pruneMessages,
   estimateMessagesChars,
-  getModelContextWindow,
+  getContextWindow,
   type UIMessage,
 } from "@/lib/ai/context-budget";
 
@@ -25,42 +25,47 @@ describe("Context Budget", () => {
     });
   });
 
-  describe("getModelContextWindow", () => {
-    it("should return known model window", () => {
-      expect(getModelContextWindow("google/gemini-2.5-flash")).toBe(1_048_576);
+  describe("getContextWindow", () => {
+    it("should return configured value when provided", () => {
+      expect(getContextWindow(1_048_576)).toBe(1_048_576);
     });
 
-    it("should return default for unknown model", () => {
-      expect(getModelContextWindow("unknown/model")).toBe(128_000);
+    it("should return default 128K when undefined", () => {
+      expect(getContextWindow(undefined)).toBe(128_000);
+    });
+
+    it("should return default 128K when 0", () => {
+      expect(getContextWindow(0)).toBe(128_000);
     });
   });
 
   describe("checkContextBudget", () => {
     it("should flag shouldPrune when over threshold", () => {
-      // default model = 128k, threshold at 0.8 = 102400 tokens = 409600 chars
-      const result = checkContextBudget(500_000, "default");
+      // 128k window, threshold at 0.8 = 102400 tokens = 409600 chars
+      const result = checkContextBudget(500_000, 128_000);
       expect(result.shouldPrune).toBe(true);
     });
 
     it("should flag shouldWarn at 60% threshold", () => {
       // 128k * 0.6 = 76800 tokens = 307200 chars
       // 128k * 0.8 = 102400 tokens = 409600 chars
-      const result = checkContextBudget(350_000, "default");
+      const result = checkContextBudget(350_000, 128_000);
       expect(result.shouldWarn).toBe(true);
       expect(result.shouldPrune).toBe(false);
     });
 
     it("should not flag when under 60%", () => {
       // Under 307200 chars = under 76800 tokens
-      const result = checkContextBudget(200_000, "default");
+      const result = checkContextBudget(200_000, 128_000);
       expect(result.shouldWarn).toBe(false);
       expect(result.shouldPrune).toBe(false);
     });
 
-    it("should use correct window for known model", () => {
-      // gemini-2.5-flash = 1M tokens, threshold 0.8 = 838860 tokens
-      const result = checkContextBudget(100, "google/gemini-2.5-flash");
+    it("should use provided context window", () => {
+      // 1M tokens, threshold 0.8 = 838860 tokens
+      const result = checkContextBudget(100, 1_048_576);
       expect(result.threshold).toBe(Math.floor(1_048_576 * 0.8));
+      expect(result.contextWindow).toBe(1_048_576);
     });
   });
 

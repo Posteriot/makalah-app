@@ -283,6 +283,10 @@ export default defineSchema({
     // ════════════════════════════════════════════════════════════════
     isRefrasaEnabled: v.optional(v.boolean()), // Show/hide Refrasa button in artifact (default: true)
 
+    // Context Window Settings (for W2 context budget monitor)
+    primaryContextWindow: v.optional(v.number()), // Primary model context window in tokens (e.g., 1048576 for Gemini 2.5 Flash)
+    fallbackContextWindow: v.optional(v.number()), // Fallback model context window in tokens
+
     // Versioning & Activation (pattern from systemPrompts)
     version: v.number(), // 1, 2, 3, ...
     isActive: v.boolean(), // Only one active at a time

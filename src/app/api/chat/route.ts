@@ -31,6 +31,7 @@ import {
 } from "@/lib/ai/paper-search-helpers"
 import {
     checkContextBudget,
+    getContextWindow,
 } from "@/lib/ai/context-budget"
 import {
     checkQuotaBeforeOperation,
@@ -493,9 +494,14 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             }, 0)
         }
 
-        const primaryModelId = modelNames.primary.model
+        const contextWindow = getContextWindow(modelNames.primaryContextWindow)
         const totalChars = estimateModelMessageChars(fullMessagesBase)
-        const budget = checkContextBudget(totalChars, primaryModelId)
+        const budget = checkContextBudget(totalChars, contextWindow)
+
+        const usagePercent = Math.round((budget.totalTokens / budget.threshold) * 100)
+        console.info(
+            `[Context Budget] ${budget.totalTokens.toLocaleString()} tokens estimated (${usagePercent}% of ${budget.threshold.toLocaleString()} threshold) | ${fullMessagesBase.length} messages | model: ${modelNames.primary.model}, window: ${contextWindow.toLocaleString()}`
+        )
 
         if (budget.shouldPrune) {
             console.warn(

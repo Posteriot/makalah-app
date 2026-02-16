@@ -149,6 +149,9 @@ interface AIProviderConfig {
   temperature: number
   topP?: number
   maxTokens?: number
+  // Context window settings
+  primaryContextWindow?: number
+  fallbackContextWindow?: number
   // Web search settings (with defaults from getActiveConfig)
   primaryWebSearchEnabled?: boolean
   fallbackWebSearchEnabled?: boolean
@@ -224,6 +227,10 @@ export function AIProviderFormDialog({
   const [topP, setTopP] = useState<number | undefined>(undefined)
   const [maxTokens, setMaxTokens] = useState<number | undefined>(undefined)
 
+  // Context window settings
+  const [primaryContextWindow, setPrimaryContextWindow] = useState<number | undefined>(undefined)
+  const [fallbackContextWindow, setFallbackContextWindow] = useState<number | undefined>(undefined)
+
   // Web search settings
   const [primaryWebSearchEnabled, setPrimaryWebSearchEnabled] = useState(true)
   const [fallbackWebSearchEnabled, setFallbackWebSearchEnabled] = useState(true)
@@ -267,6 +274,9 @@ export function AIProviderFormDialog({
         setTemperature(config.temperature)
         setTopP(config.topP)
         setMaxTokens(config.maxTokens)
+        // Context window settings
+        setPrimaryContextWindow(config.primaryContextWindow)
+        setFallbackContextWindow(config.fallbackContextWindow)
         // Web search settings (use defaults if not set)
         setPrimaryWebSearchEnabled(config.primaryWebSearchEnabled ?? true)
         setFallbackWebSearchEnabled(config.fallbackWebSearchEnabled ?? true)
@@ -294,6 +304,9 @@ export function AIProviderFormDialog({
         setTemperature(0.7)
         setTopP(undefined)
         setMaxTokens(undefined)
+        // Context window defaults
+        setPrimaryContextWindow(undefined)
+        setFallbackContextWindow(undefined)
         // Web search settings defaults
         setPrimaryWebSearchEnabled(true)
         setFallbackWebSearchEnabled(true)
@@ -547,6 +560,14 @@ export function AIProviderFormDialog({
         if (gatewayUseEnvKey) updateArgs.gatewayApiKeyClear = true
         if (openrouterUseEnvKey) updateArgs.openrouterApiKeyClear = true
 
+        // Context window settings
+        if (primaryContextWindow !== config.primaryContextWindow) {
+          updateArgs.primaryContextWindow = primaryContextWindow
+        }
+        if (fallbackContextWindow !== config.fallbackContextWindow) {
+          updateArgs.fallbackContextWindow = fallbackContextWindow
+        }
+
         // Web search settings
         if (primaryWebSearchEnabled !== (config.primaryWebSearchEnabled ?? true)) {
           updateArgs.primaryWebSearchEnabled = primaryWebSearchEnabled
@@ -578,6 +599,9 @@ export function AIProviderFormDialog({
           temperature,
           topP,
           maxTokens,
+          // Context window settings
+          primaryContextWindow,
+          fallbackContextWindow,
           // Web search settings
           primaryWebSearchEnabled,
           fallbackWebSearchEnabled,
@@ -606,6 +630,8 @@ export function AIProviderFormDialog({
     temperature !== config.temperature ||
     topP !== config.topP ||
     maxTokens !== config.maxTokens ||
+    primaryContextWindow !== config.primaryContextWindow ||
+    fallbackContextWindow !== config.fallbackContextWindow ||
     primaryWebSearchEnabled !== (config.primaryWebSearchEnabled ?? true) ||
     fallbackWebSearchEnabled !== (config.fallbackWebSearchEnabled ?? true) ||
     fallbackWebSearchEngine !== (config.fallbackWebSearchEngine ?? "auto") ||
@@ -1028,6 +1054,48 @@ export function AIProviderFormDialog({
                   placeholder="Opsional"
                   disabled={isLoading}
                 />
+              </div>
+            </div>
+
+            {/* Context Window Settings */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="primaryContextWindow">Primary Context Window (tokens)</Label>
+                <Input
+                  id="primaryContextWindow"
+                  type="number"
+                  step="1"
+                  min="1000"
+                  value={primaryContextWindow ?? ""}
+                  onChange={(e) =>
+                    setPrimaryContextWindow(e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  }
+                  placeholder="e.g., 1048576 (Gemini 2.5 Flash)"
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ukuran context window model primary. Digunakan oleh Context Budget Monitor.
+                  Kosong = default 128K tokens.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fallbackContextWindow">Fallback Context Window (tokens)</Label>
+                <Input
+                  id="fallbackContextWindow"
+                  type="number"
+                  step="1"
+                  min="1000"
+                  value={fallbackContextWindow ?? ""}
+                  onChange={(e) =>
+                    setFallbackContextWindow(e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  }
+                  placeholder="e.g., 1047576 (GPT-5.1)"
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ukuran context window model fallback. Kosong = default 128K tokens.
+                </p>
               </div>
             </div>
           </div>

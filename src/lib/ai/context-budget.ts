@@ -3,40 +3,38 @@
  *
  * Estimates token usage and prunes old messages when approaching
  * context window limits. Uses chars/4 heuristic for token estimation.
+ *
+ * Context window size is read from database config (aiProviderConfigs.primaryContextWindow).
+ * Falls back to 128K if not configured.
  */
 
 const DEFAULT_THRESHOLD_RATIO = 0.8
 const DEFAULT_WARN_RATIO = 0.6
 const DEFAULT_KEEP_LAST_N = 50
 const CHARS_PER_TOKEN = 4
-
-const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
-  "google/gemini-2.5-flash": 1_048_576,
-  "openai/gpt-5.1": 1_047_576,
-  default: 128_000,
-}
+const DEFAULT_CONTEXT_WINDOW = 128_000
 
 export function estimateTokenCount(text: string): number {
   return Math.ceil(text.length / CHARS_PER_TOKEN)
 }
 
-export function getModelContextWindow(modelId: string): number {
-  return MODEL_CONTEXT_WINDOWS[modelId] ?? MODEL_CONTEXT_WINDOWS.default
+export function getContextWindow(configuredWindow: number | undefined): number {
+  return configuredWindow && configuredWindow > 0 ? configuredWindow : DEFAULT_CONTEXT_WINDOW
 }
 
 export interface ContextBudgetResult {
   totalTokens: number
   threshold: number
+  contextWindow: number
   shouldPrune: boolean
   shouldWarn: boolean
 }
 
 export function checkContextBudget(
   totalChars: number,
-  modelId: string,
+  contextWindow: number,
   thresholdRatio = DEFAULT_THRESHOLD_RATIO
 ): ContextBudgetResult {
-  const contextWindow = getModelContextWindow(modelId)
   const threshold = Math.floor(contextWindow * thresholdRatio)
   const warnThreshold = Math.floor(contextWindow * DEFAULT_WARN_RATIO)
   const totalTokens = Math.ceil(totalChars / CHARS_PER_TOKEN)
@@ -44,6 +42,7 @@ export function checkContextBudget(
   return {
     totalTokens,
     threshold,
+    contextWindow,
     shouldPrune: totalTokens > threshold,
     shouldWarn: totalTokens > warnThreshold,
   }

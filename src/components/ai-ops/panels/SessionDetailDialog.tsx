@@ -251,7 +251,7 @@ export function SessionDetailDialog({
                         {" → "}
                         {STAGE_LABELS[r.toStage] || r.toStage}
                       </span>
-                      {r.invalidatedStages.length > 0 && (
+                      {r.invalidatedStages && r.invalidatedStages.length > 0 && (
                         <span className="text-[10px] text-rose-500 font-mono">
                           ({r.invalidatedStages.length} stage invalidated)
                         </span>
