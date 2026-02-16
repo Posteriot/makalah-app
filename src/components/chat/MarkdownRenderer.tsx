@@ -1,9 +1,15 @@
 "use client"
 
 import { Fragment, type ReactNode } from "react"
+import dynamic from "next/dynamic"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { InlineCitationChip } from "./InlineCitationChip"
+
+const MermaidRenderer = dynamic(
+  () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+)
 
 interface MarkdownRendererProps {
   markdown: string
@@ -785,6 +791,14 @@ function renderBlocks(
           </ol>
         )
       case "code":
+        if (block.language === "mermaid") {
+          return (
+            <Fragment key={k}>
+              <MermaidRenderer code={block.code} />
+              {fallbackChip ? <div className="mt-2">{fallbackChip}</div> : null}
+            </Fragment>
+          )
+        }
         return (
           <Fragment key={k}>
             <pre className="my-2 overflow-x-auto rounded-action bg-background/50 p-3 text-xs leading-relaxed">
