@@ -1,6 +1,10 @@
 "use client"
 
+import { useState } from "react"
+import { NavArrowLeft, NavArrowRight } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
+
+const PAGE_SIZE = 10
 
 const STAGE_LABELS: Record<string, string> = {
   gagasan: "Gagasan",
@@ -57,6 +61,13 @@ export function SessionListPanel({
 }: {
   sessions: SessionItem[] | undefined
 }) {
+  const [page, setPage] = useState(0)
+
+  const totalPages = sessions ? Math.ceil(sessions.length / PAGE_SIZE) : 0
+  const paginatedSessions = sessions
+    ? sessions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+    : undefined
+
   return (
     <div className="rounded-shell border border-border bg-card/90 dark:bg-slate-900/90 overflow-hidden">
       <div className="border-b border-border bg-slate-200/45 px-5 py-3 dark:bg-slate-900/50">
@@ -84,7 +95,7 @@ export function SessionListPanel({
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {sessions.map((s) => {
+          {paginatedSessions!.map((s) => {
             const title =
               s.paperTitle || s.workingTitle || "(Untitled)"
             const stageLabel =
@@ -133,6 +144,31 @@ export function SessionListPanel({
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {sessions && totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-border px-5 py-3">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="inline-flex items-center gap-1 rounded-action px-2.5 py-1.5 text-[10px] font-mono font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <NavArrowLeft className="h-3 w-3" />
+            Prev
+          </button>
+          <span className="text-[10px] font-mono text-muted-foreground">
+            {page + 1} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            className="inline-flex items-center gap-1 rounded-action px-2.5 py-1.5 text-[10px] font-mono font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+            <NavArrowRight className="h-3 w-3" />
+          </button>
         </div>
       )}
     </div>

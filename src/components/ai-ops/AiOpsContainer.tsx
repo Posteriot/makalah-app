@@ -8,6 +8,7 @@ import { MemoryHealthPanel } from "./panels/MemoryHealthPanel"
 import { WorkflowProgressPanel } from "./panels/WorkflowProgressPanel"
 import { ArtifactSyncPanel } from "./panels/ArtifactSyncPanel"
 import { SessionListPanel } from "./panels/SessionListPanel"
+import { InsightBanner } from "./panels/InsightBanner"
 
 export function AiOpsContainer() {
   const memoryHealth = useQuery(api.aiOps.getMemoryHealthStats)
@@ -41,6 +42,13 @@ export function AiOpsContainer() {
         <WorkflowProgressPanel data={workflowProgress} />
         <ArtifactSyncPanel data={artifactSync} />
       </div>
+
+      {/* Insights */}
+      <InsightBanner
+        memoryHealth={memoryHealth}
+        workflowProgress={workflowProgress}
+        artifactSync={artifactSync}
+      />
 
       {/* Session List */}
       <SessionListPanel sessions={sessions} />
