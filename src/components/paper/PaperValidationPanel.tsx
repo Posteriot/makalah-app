@@ -59,7 +59,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
             className={cn(
                 // Container - centered card style like mockup
                 "max-w-[80%] mx-auto my-4",
-                "bg-slate-200 dark:bg-card border border-border rounded-lg",
+                "bg-slate-50 dark:bg-card border border-slate-200 dark:border-border rounded-lg",
                 "shadow-none",
                 "animate-in fade-in slide-in-from-bottom-4 duration-500"
             )}
