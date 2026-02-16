@@ -1,29 +1,60 @@
 "use client"
 
-import { useEffect, useId, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import mermaid from "mermaid"
 import DOMPurify from "dompurify"
+
+let mermaidInitialized = false
+let renderCounter = 0
 
 interface MermaidRendererProps {
   code: string
 }
 
 export function MermaidRenderer({ code }: MermaidRendererProps) {
-  const id = useId().replace(/:/g, "-")
   const [svg, setSvg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const mountedRef = useRef(true)
+  const renderIdRef = useRef("")
 
   useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+
+  useEffect(() => {
+    setSvg(null)
+    setError(null)
+
     const isDark = document.documentElement.classList.contains("dark")
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: isDark ? "dark" : "default",
-      fontFamily: "var(--font-geist-mono)",
-    })
+
+    if (!mermaidInitialized) {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: isDark ? "dark" : "default",
+        fontFamily: "var(--font-geist-mono)",
+        suppressErrorRendering: true,
+      })
+      mermaidInitialized = true
+    }
+
+    renderCounter += 1
+    const renderId = `mermaid-render-${renderCounter}-${Date.now()}`
+    renderIdRef.current = renderId
+
+    // Clean up any leftover temp element from previous render
+    const oldEl = document.getElementById(renderIdRef.current)
+    if (oldEl) oldEl.remove()
 
     mermaid
-      .render(`mermaid-${id}`, code)
+      .render(renderId, code)
       .then(({ svg: rawSvg }) => {
+        // Clean up mermaid's temp element
+        const tempEl = document.getElementById(renderId)
+        if (tempEl) tempEl.remove()
+
+        if (!mountedRef.current) return
+
         const sanitized = DOMPurify.sanitize(rawSvg, {
           USE_PROFILES: { svg: true, svgFilters: true },
           ADD_TAGS: ["foreignObject", "div", "span", "p", "br", "b", "i", "em", "strong", "ul", "li"],
@@ -33,10 +64,15 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
         setError(null)
       })
       .catch((err) => {
+        // Clean up mermaid's temp element on error
+        const tempEl = document.getElementById(renderId)
+        if (tempEl) tempEl.remove()
+
+        if (!mountedRef.current) return
         setError(String(err))
         setSvg(null)
       })
-  }, [code, id])
+  }, [code])
 
   if (error) {
     return (
