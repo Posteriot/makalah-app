@@ -368,7 +368,7 @@ export function FullsizeArtifactModal({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div
-          className="absolute inset-0 bg-background/70 backdrop-blur-sm"
+          className="absolute inset-0 bg-slate-900/55 backdrop-blur-sm dark:bg-slate-950/70"
           onClick={requestClose}
         />
         <div className="relative z-10 flex h-full w-full items-center justify-center">
@@ -395,7 +395,7 @@ export function FullsizeArtifactModal({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div
-          className="absolute inset-0 bg-background/70 backdrop-blur-sm"
+          className="absolute inset-0 bg-slate-900/55 backdrop-blur-sm dark:bg-slate-950/70"
           onClick={requestClose}
           aria-label="Close modal"
         />
@@ -406,7 +406,7 @@ export function FullsizeArtifactModal({
           aria-modal="true"
           aria-labelledby="artifact-fullscreen-title"
           className={cn(
-            "relative z-10 flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none border-0 bg-card shadow-none"
+            "relative z-10 flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none border-0 bg-slate-100 shadow-none dark:bg-slate-800"
           )}
           style={{
             paddingTop: "env(safe-area-inset-top)",
@@ -416,10 +416,10 @@ export function FullsizeArtifactModal({
           }}
         >
           {/* Header */}
-          <div className="shrink-0 border-b border-border/60 bg-card/95 px-4 py-2.5 md:px-5 md:py-3">
+          <div className="shrink-0 border-b border-slate-300/75 bg-slate-100 px-4 py-2.5 dark:border-slate-700/80 dark:bg-slate-800 md:px-5 md:py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h2 id="artifact-fullscreen-title" className="truncate text-lg font-semibold text-foreground">
+                <h2 id="artifact-fullscreen-title" className="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
                   {artifact.title}
                 </h2>
               </div>
@@ -429,7 +429,7 @@ export function FullsizeArtifactModal({
                     <button
                       ref={primaryCloseButtonRef}
                       onClick={requestClose}
-                      className="flex h-8 w-8 items-center justify-center rounded-action text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="flex h-8 w-8 items-center justify-center rounded-action text-slate-600 transition-colors hover:bg-slate-200/80 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
                       aria-label="Tutup fullscreen"
                     >
                       <Collapse className="h-4 w-4" />
@@ -457,7 +457,7 @@ export function FullsizeArtifactModal({
                     <SelectTrigger
                       size="sm"
                       disabled={isEditing}
-                      className="h-6 w-auto min-w-[140px] rounded-action border-border/60 bg-background/80 px-2 py-0 text-[11px] font-mono"
+                      className="h-6 w-auto min-w-[140px] rounded-action border-slate-300/85 bg-slate-200/80 px-2 py-0 text-[11px] font-mono text-slate-800 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100"
                     >
                       <SelectValue placeholder={`v${artifact.version}`} />
                     </SelectTrigger>
@@ -483,13 +483,13 @@ export function FullsizeArtifactModal({
                   </span>
                 )}
 
-                <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
                   {contentTypeLabel}
                 </span>
-                <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
                   {wordCount} kata
                 </span>
-                <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
                   {artifact.content.length} karakter
                 </span>
               </div>
@@ -505,7 +505,7 @@ export function FullsizeArtifactModal({
                       setEditContent(artifact.content)
                       }}
                       disabled={isSaving}
-                      className="h-7 px-2.5 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+                      className="h-7 px-2.5 font-mono text-[11px] text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                     >
                       Batal
                     </Button>
@@ -598,18 +598,18 @@ export function FullsizeArtifactModal({
           <div className="flex min-h-0 flex-1 overflow-hidden">
             <div className="relative min-w-0 flex-1 overflow-hidden px-4 py-3 md:px-5 md:py-4">
               {isRefrasaLoading && (
-                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-action border border-border/60 bg-background/75 backdrop-blur-sm">
+                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-action border border-slate-300/85 bg-slate-100/75 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75">
                   <RefrasaLoadingIndicator />
                 </div>
               )}
 
               {isEditing ? (
-                <div className="h-full overflow-hidden rounded-shell border border-border/60 bg-background/70 shadow-sm">
-                  <div className="flex items-center justify-between border-b border-border/50 px-3 py-1.5">
-                    <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+                <div className="h-full overflow-hidden rounded-shell border border-slate-300/85 bg-slate-50 shadow-sm dark:border-slate-700/70 dark:bg-slate-900">
+                  <div className="flex items-center justify-between border-b border-slate-300/80 px-3 py-1.5 dark:border-slate-700/70">
+                    <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                       Workspace Editor
                     </p>
-                    <p className="text-[10px] font-mono text-muted-foreground/85">
+                    <p className="text-[10px] font-mono text-slate-600 dark:text-slate-400">
                       {editWordCount} kata • {editCharCount} karakter • Ctrl/Cmd+S untuk simpan
                     </p>
                   </div>
@@ -624,17 +624,17 @@ export function FullsizeArtifactModal({
                         }
                       }
                     }}
-                    className="h-[calc(100%-31px)] w-full resize-none bg-transparent p-4 text-base leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+                    className="h-[calc(100%-31px)] w-full resize-none bg-transparent p-4 text-base leading-7 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset dark:text-slate-100"
                     placeholder="Edit konten artifak..."
                     autoFocus
                     spellCheck
                   />
                 </div>
               ) : (
-                <div className="h-full overflow-hidden rounded-shell border border-border/60 bg-background/35">
+                <div className="h-full overflow-hidden rounded-shell border border-slate-300/85 bg-slate-50 dark:border-slate-700/70 dark:bg-slate-900">
                   <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
                     {isCodeArtifact && language ? (
-                      <div className="overflow-hidden rounded-action border border-border/60">
+                      <div className="overflow-hidden rounded-action border border-slate-300/85 dark:border-slate-700/70">
                         <SyntaxHighlighter
                           language={language}
                           style={oneDark}
@@ -652,11 +652,11 @@ export function FullsizeArtifactModal({
                     ) : shouldRenderMarkdown ? (
                       <MarkdownRenderer
                         markdown={artifact.content}
-                        className="max-w-none rounded-action border border-border/50 bg-background/40 p-4 text-sm leading-relaxed"
+                        className="max-w-none rounded-action border border-slate-300/80 bg-slate-50 p-4 text-sm leading-relaxed text-slate-900 dark:border-slate-700/60 dark:bg-slate-900 dark:text-slate-100"
                         sources={artifact.sources}
                       />
                     ) : (
-                      <pre className="whitespace-pre-wrap rounded-action border border-border/50 bg-background/40 p-4 font-sans text-sm leading-relaxed">
+                      <pre className="whitespace-pre-wrap rounded-action border border-slate-300/80 bg-slate-50 p-4 font-sans text-sm leading-relaxed text-slate-900 dark:border-slate-700/60 dark:bg-slate-900 dark:text-slate-100">
                         {artifact.content}
                       </pre>
                     )}
@@ -666,19 +666,19 @@ export function FullsizeArtifactModal({
             </div>
 
             {!isEditing && (
-              <aside className="hidden w-[300px] shrink-0 border-l border-border/60 bg-card/50 xl:flex xl:flex-col">
-                <div className="border-b border-border/50 px-3 py-2">
-                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+              <aside className="hidden w-[300px] shrink-0 border-l border-slate-300/80 bg-slate-100 dark:border-slate-700/80 dark:bg-slate-800 xl:flex xl:flex-col">
+                <div className="border-b border-slate-300/80 px-3 py-2 dark:border-slate-700/70">
+                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     Sumber Terkait
                   </p>
                 </div>
                 <div className="flex-1 overflow-auto p-3 scrollbar-thin">
-                  <div className="mb-3 rounded-action border border-border/60 bg-background/45 p-2.5">
+                  <div className="mb-3 rounded-action border border-slate-300/80 bg-slate-200/60 p-2.5 dark:border-slate-700/70 dark:bg-slate-900/70">
                     <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+                      <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                         Artifak lainnya
                       </p>
-                      <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                      <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
                         {sessionArtifactCount}
                       </span>
                     </div>
@@ -692,7 +692,7 @@ export function FullsizeArtifactModal({
                       }}
                     >
                       <SelectTrigger
-                        className="h-8 w-full border-border/65 bg-background/80 px-2 text-[11px] font-mono focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                        className="h-8 w-full border-slate-300/80 bg-slate-100 px-2 text-[11px] font-mono text-slate-800 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 dark:border-slate-700/70 dark:bg-slate-900 dark:text-slate-100"
                         disabled={sessionArtifactCount <= 1}
                       >
                         <SelectValue placeholder="Tidak ada artifak lain" />
@@ -710,7 +710,7 @@ export function FullsizeArtifactModal({
                   {artifact.sources && artifact.sources.length > 0 ? (
                     <SourcesIndicator sources={artifact.sources} />
                   ) : (
-                    <p className="text-[11px] font-mono text-muted-foreground/75">
+                    <p className="text-[11px] font-mono text-slate-600 dark:text-slate-100">
                       Tidak ada sumber eksternal untuk versi ini.
                     </p>
                   )}
@@ -720,13 +720,13 @@ export function FullsizeArtifactModal({
           </div>
 
           {!isEditing && (
-            <div className="border-t border-border/60 bg-card/40 px-4 py-1.5 md:px-5 xl:hidden">
-              <div className="mb-2 rounded-action border border-border/60 bg-background/45 p-2.5">
+            <div className="border-t border-slate-300/80 bg-slate-100 px-4 py-1.5 dark:border-slate-700/70 dark:bg-slate-800 md:px-5 xl:hidden">
+              <div className="mb-2 rounded-action border border-slate-300/80 bg-slate-200/60 p-2.5 dark:border-slate-700/70 dark:bg-slate-900/70">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                     Artifak lainnya
                   </p>
-                  <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
                     {sessionArtifactCount}
                   </span>
                 </div>
@@ -740,7 +740,7 @@ export function FullsizeArtifactModal({
                   }}
                 >
                   <SelectTrigger
-                    className="h-8 w-full border-border/65 bg-background/80 px-2 text-[11px] font-mono focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                    className="h-8 w-full border-slate-300/80 bg-slate-100 px-2 text-[11px] font-mono text-slate-800 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 dark:border-slate-700/70 dark:bg-slate-900 dark:text-slate-100"
                     disabled={sessionArtifactCount <= 1}
                   >
                     <SelectValue placeholder="Tidak ada artifak lain" />
@@ -758,7 +758,7 @@ export function FullsizeArtifactModal({
               {artifact.sources && artifact.sources.length > 0 ? (
                 <SourcesIndicator sources={artifact.sources} />
               ) : (
-                <p className="text-[11px] font-mono text-muted-foreground/75">
+                <p className="text-[11px] font-mono text-slate-600 dark:text-slate-100">
                   Tidak ada sumber eksternal untuk versi ini.
                 </p>
               )}
