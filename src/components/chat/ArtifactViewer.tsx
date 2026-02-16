@@ -318,7 +318,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     return (
       <div className="flex h-full flex-col">
         {hasHeaderMeta ? (
-          <div className="border-b border-slate-300/80 bg-slate-100/95 px-4 py-3 dark:border-border/60 dark:bg-card/45">
+          <div className="border-b border-slate-300/80 bg-inherit px-4 py-3 dark:border-border/60">
             <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono text-slate-700 dark:text-muted-foreground/85">
               {hasMultipleVersions ? (
                 <Select
@@ -397,7 +397,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         ) : (
           <>
             <div className="flex-1 overflow-hidden px-4 py-3">
-              <div className="flex h-full flex-col overflow-hidden rounded-sm border border-slate-300/85 bg-slate-50/95 dark:border-border/60 dark:bg-background/35">
+              <div className="flex h-full flex-col overflow-hidden rounded-sm border border-slate-300/85 bg-slate-50 dark:border-border/60 dark:bg-background/90">
                 <div className="relative flex-1 overflow-auto p-4 scrollbar-thin">
                   {isRefrasaLoading && (
                     <div className="absolute inset-2 z-10 flex items-center justify-center rounded-action border border-slate-300/85 bg-slate-100/80 backdrop-blur-sm dark:border-border/60 dark:bg-background/75">
@@ -424,11 +424,11 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                   ) : shouldRenderMarkdown ? (
                     <MarkdownRenderer
                       markdown={artifact.content}
-                      className="space-y-3 rounded-action bg-slate-50 p-4 text-sm leading-relaxed text-slate-900 dark:bg-background/40 dark:text-foreground"
+                      className="space-y-3 text-sm leading-relaxed text-slate-900 dark:text-foreground"
                       sources={artifact.sources}
                     />
                   ) : (
-                    <pre className="whitespace-pre-wrap rounded-action bg-slate-50 p-4 font-sans text-sm leading-relaxed text-slate-900 dark:bg-background/40 dark:text-foreground">
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-900 dark:text-foreground">
                       {artifact.content}
                     </pre>
                   )}
@@ -436,7 +436,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
               </div>
             </div>
 
-            <div className="border-t border-slate-300/80 bg-slate-100/90 px-4 py-2 dark:border-border/50 dark:bg-card/35">
+            <div className="border-t border-slate-300/80 bg-inherit px-4 py-2 dark:border-border/50">
               {artifact.sources && artifact.sources.length > 0 ? (
                 <div>
                   <p className="mb-1 text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-muted-foreground/85">

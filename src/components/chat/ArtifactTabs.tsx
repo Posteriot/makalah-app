@@ -203,7 +203,7 @@ export function ArtifactTabs({
   return (
     <div
       className={cn(
-        "flex min-h-[44px] items-end border-b border-slate-300/75 bg-slate-100 dark:border-border/60 dark:bg-background/95",
+        "flex min-h-[44px] items-end border-b border-slate-300/75 bg-inherit dark:border-border/60",
         "shrink-0"
       )}
       role="tablist"
@@ -212,14 +212,14 @@ export function ArtifactTabs({
       <div className="relative min-w-0 flex-1 overflow-hidden">
         <div
           className={cn(
-            "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-slate-100 dark:from-background to-transparent transition-opacity",
+            "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-slate-100/95 dark:from-background/95 to-transparent transition-opacity",
             hasOverflowLeft ? "opacity-100" : "opacity-0"
           )}
           aria-hidden="true"
         />
         <div
           className={cn(
-            "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-slate-100 dark:from-background to-transparent transition-opacity",
+            "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-slate-100/95 dark:from-background/95 to-transparent transition-opacity",
             hasOverflowRight ? "opacity-100" : "opacity-0"
           )}
           aria-hidden="true"
@@ -259,7 +259,7 @@ export function ArtifactTabs({
                   "transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1",
                   isActive
-                    ? "border-slate-400/80 bg-slate-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-primary/45 dark:bg-primary/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    ? "border-slate-400/80 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-primary/45 dark:bg-background/95 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                     : "border-transparent bg-transparent hover:border-slate-300/80 hover:bg-slate-200/70 dark:hover:border-border/70 dark:hover:bg-accent/50"
                 )}
               >

@@ -90,7 +90,7 @@ export function ArtifactPanel({
       className={cn(
         "@container/artifact",
         "flex h-full w-full flex-col",
-        "rounded-shell border border-slate-300/70 bg-slate-100/95 dark:border-border/50 dark:bg-card",
+        "rounded-shell border border-slate-300/70 bg-slate-100 dark:border-border/50 dark:bg-background/95",
         "transition-all duration-300 ease-in-out"
       )}
     >
