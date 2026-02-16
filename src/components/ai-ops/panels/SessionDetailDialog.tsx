@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { Xmark } from "iconoir-react"
+import { Xmark, WarningTriangle, InfoCircle } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 
 const STAGE_LABELS: Record<string, string> = {
@@ -20,6 +20,73 @@ const STAGE_LABELS: Record<string, string> = {
   lampiran: "Lampiran",
   judul: "Judul",
   completed: "Selesai",
+}
+
+interface SessionSuggestion {
+  severity: "warning" | "info"
+  message: string
+}
+
+function generateSessionSuggestions(data: {
+  session: { isDirty?: boolean; digestCount: number; currentStage: string; stageStatus: string }
+  stageDetails: Array<{ hasRingkasan: boolean; validatedAt: unknown; superseded: boolean; revisionCount: number }>
+  rewindHistory: Array<unknown>
+  invalidatedArtifacts: number
+}): SessionSuggestion[] {
+  const suggestions: SessionSuggestion[] = []
+
+  if (data.session.isDirty) {
+    suggestions.push({
+      severity: "warning",
+      message: "Session ini dirty — data stage belum sinkron dengan percakapan terakhir. User perlu minta AI menyimpan ulang sebelum approve.",
+    })
+  }
+
+  if (data.session.digestCount === 0 && data.session.currentStage !== "gagasan") {
+    suggestions.push({
+      severity: "warning",
+      message: "Belum ada memory digest. Kemungkinan user belum pernah approve stage apapun — progress mungkin stuck.",
+    })
+  }
+
+  if (data.session.stageStatus === "revision") {
+    suggestions.push({
+      severity: "info",
+      message: "Session dalam mode revision. User sedang memperbaiki tahap ini berdasarkan feedback.",
+    })
+  }
+
+  const supersededStages = data.stageDetails.filter((s) => s.superseded)
+  if (supersededStages.length > 0) {
+    suggestions.push({
+      severity: "info",
+      message: `${supersededStages.length} stage sudah di-supersede oleh rewind. Data lama sudah difilter dari prompt AI.`,
+    })
+  }
+
+  if (data.invalidatedArtifacts > 0) {
+    suggestions.push({
+      severity: "warning",
+      message: `${data.invalidatedArtifacts} artifact invalidated menunggu update. Artifact lama masih ada tapi ditandai tidak valid.`,
+    })
+  }
+
+  const highRevision = data.stageDetails.filter((s) => s.revisionCount >= 3)
+  if (highRevision.length > 0) {
+    suggestions.push({
+      severity: "info",
+      message: `${highRevision.length} stage sudah direvisi 3+ kali. User mungkin kesulitan di tahap tersebut.`,
+    })
+  }
+
+  if (data.rewindHistory.length >= 2) {
+    suggestions.push({
+      severity: "info",
+      message: `Session ini sudah di-rewind ${data.rewindHistory.length} kali. Kemungkinan user berubah arah atau menemui hambatan.`,
+    })
+  }
+
+  return suggestions
 }
 
 function formatTimeFull(ts: number): string {
@@ -80,6 +147,35 @@ export function SessionDetailDialog({
               <Row label="Digest Entries" value={String(data.session.digestCount)} />
               <Row label="Artifacts" value={`${data.artifactCount} total, ${data.invalidatedArtifacts} invalidated`} />
             </Section>
+
+            {/* Suggestions */}
+            {(() => {
+              const suggestions = generateSessionSuggestions(data)
+              if (suggestions.length === 0) return null
+              return (
+                <Section title="Suggestions">
+                  <div className="space-y-2">
+                    {suggestions.map((s, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2 border-l-2 pl-3 py-1 ${
+                          s.severity === "warning" ? "border-l-amber-500" : "border-l-sky-500"
+                        }`}
+                      >
+                        {s.severity === "warning" ? (
+                          <WarningTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                        ) : (
+                          <InfoCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-sky-500" />
+                        )}
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {s.message}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              )
+            })()}
 
             {/* Memory Digest */}
             {data.session.digest.length > 0 && (
