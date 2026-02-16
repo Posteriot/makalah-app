@@ -334,7 +334,7 @@ export function ChatLayout({
         <aside
           className={cn(
             "hidden md:flex flex-col overflow-hidden",
-            "border-l border-border/50 bg-card",
+            "border-l border-slate-300/60 bg-slate-100 dark:border-border/50 dark:bg-card",
             !isArtifactPanelOpen && "w-0 border-l-0"
           )}
         >

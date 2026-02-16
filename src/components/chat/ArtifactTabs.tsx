@@ -97,14 +97,26 @@ export function ArtifactTabs({
     activeTabEl?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" })
   }, [activeTabId])
 
-  const scrollByStep = useCallback((direction: "left" | "right") => {
-    const distance = direction === "left" ? -220 : 220
-    scrollContainerRef.current?.scrollBy({ left: distance, behavior: "smooth" })
-  }, [])
-
   const focusTab = useCallback((tabId: string) => {
     tabRefs.current.get(tabId)?.focus()
   }, [])
+
+  const activeTabIndex = activeTabId ? tabs.findIndex((tab) => tab.id === activeTabId) : -1
+  const hasPrevTab = activeTabIndex > 0
+  const hasNextTab = activeTabIndex >= 0 && activeTabIndex < tabs.length - 1
+
+  const activateAdjacentTab = useCallback((direction: "left" | "right") => {
+    if (activeTabIndex < 0) return
+
+    const targetIndex = direction === "left" ? activeTabIndex - 1 : activeTabIndex + 1
+    const targetTab = tabs[targetIndex]
+    if (!targetTab) return
+
+    onTabChange(targetTab.id)
+    requestAnimationFrame(() => {
+      focusTab(targetTab.id)
+    })
+  }, [activeTabIndex, tabs, onTabChange, focusTab])
 
   const closeTabWithFallback = useCallback((tabId: Id<"artifacts">) => {
     const index = tabs.findIndex((tab) => tab.id === tabId)
@@ -191,7 +203,7 @@ export function ArtifactTabs({
   return (
     <div
       className={cn(
-        "flex min-h-[44px] items-stretch border-b border-border/60 bg-background/95",
+        "flex min-h-[44px] items-stretch border-b border-slate-300/75 bg-slate-100 dark:border-border/60 dark:bg-background/95",
         "shrink-0"
       )}
       role="tablist"
@@ -200,14 +212,14 @@ export function ArtifactTabs({
       <div className="relative min-w-0 flex-1 overflow-hidden">
         <div
           className={cn(
-            "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent transition-opacity",
+            "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-slate-100 dark:from-background to-transparent transition-opacity",
             hasOverflowLeft ? "opacity-100" : "opacity-0"
           )}
           aria-hidden="true"
         />
         <div
           className={cn(
-            "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent transition-opacity",
+            "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-slate-100 dark:from-background to-transparent transition-opacity",
             hasOverflowRight ? "opacity-100" : "opacity-0"
           )}
           aria-hidden="true"
@@ -216,7 +228,14 @@ export function ArtifactTabs({
         <div
           ref={scrollContainerRef}
           onScroll={checkOverflow}
-          className="flex h-full items-stretch gap-1 overflow-x-auto px-1.5 py-1 scrollbar-none scroll-smooth"
+          className={cn(
+            "flex h-full items-stretch gap-1 px-1.5 py-1 scroll-smooth",
+            // Compact panel: disable direct horizontal scroll and hide native scrollbar.
+            "overflow-x-hidden",
+            // Wider panel can still be scrolled (navigation buttons remain available).
+            "@[520px]/artifact:overflow-x-auto",
+            "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          )}
         >
           {tabs.map((tab, index) => {
             const isActive = activeTabId === tab.id
@@ -240,16 +259,16 @@ export function ArtifactTabs({
                   "transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1",
                   isActive
-                    ? "border-primary/45 bg-primary/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                    : "border-transparent bg-transparent hover:border-border/70 hover:bg-accent/50"
+                    ? "border-slate-400/80 bg-slate-200/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-primary/45 dark:bg-primary/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    : "border-transparent bg-transparent hover:border-slate-300/80 hover:bg-slate-200/70 dark:hover:border-border/70 dark:hover:bg-accent/50"
                 )}
               >
                 <span
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-badge border",
+                    "flex h-7 w-7 shrink-0 items-center justify-center",
                     isActive
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border/60 bg-background/70 text-muted-foreground"
+                      ? "text-slate-700 dark:text-primary"
+                      : "rounded-badge border border-slate-300/80 bg-slate-200/75 text-slate-600 dark:border-border/60 dark:bg-background/70 dark:text-muted-foreground"
                   )}
                 >
                   <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
@@ -259,12 +278,12 @@ export function ArtifactTabs({
                   <span
                     className={cn(
                       "block truncate text-[11px] font-medium",
-                      isActive ? "text-foreground" : "text-muted-foreground"
+                      isActive ? "text-slate-900 dark:text-foreground" : "text-slate-700 dark:text-muted-foreground"
                     )}
                   >
                     {tab.title}
                   </span>
-                  <span className="block text-[9px] font-mono uppercase tracking-wide text-muted-foreground/75">
+                  <span className="block text-[9px] font-mono uppercase tracking-wide text-slate-500 dark:text-muted-foreground/75">
                     {label}
                   </span>
                 </span>
@@ -276,7 +295,7 @@ export function ArtifactTabs({
                     closeTabWithFallback(tab.id)
                   }}
                   className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-badge text-muted-foreground transition-colors",
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-badge text-slate-600 transition-colors dark:text-muted-foreground",
                     "hover:bg-destructive hover:text-destructive-foreground",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
                     isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -292,33 +311,35 @@ export function ArtifactTabs({
         </div>
       </div>
 
-      <div className="flex items-center gap-0.5 border-l border-border/60 px-2">
-        <span className="mr-1 hidden text-[10px] font-mono text-muted-foreground @[420px]/artifact:inline">
+      <div className="flex items-center gap-2 border-l border-slate-300/80 px-3 dark:border-border/60 @[520px]/artifact:gap-0.5 @[520px]/artifact:px-2">
+        <span className="mr-1 text-[10px] font-mono text-slate-600 dark:text-muted-foreground">
           {tabs.length} tab
         </span>
         <button
           type="button"
-          onClick={() => scrollByStep("left")}
-          disabled={!hasOverflowLeft}
+          onClick={() => activateAdjacentTab("left")}
+          disabled={!hasPrevTab}
           className={cn(
-            "flex h-7 w-7 items-center justify-center rounded-action text-muted-foreground transition-colors",
-            "hover:bg-accent hover:text-foreground",
+            "flex h-7 w-7 items-center justify-center text-slate-600 transition-colors dark:text-muted-foreground",
+            "rounded-none hover:bg-transparent hover:text-slate-900 dark:hover:text-foreground",
+            "@[520px]/artifact:rounded-action @[520px]/artifact:hover:bg-accent",
             "disabled:cursor-not-allowed disabled:opacity-35"
           )}
-          aria-label="Geser tab ke kiri"
+          aria-label="Tab sebelumnya"
         >
           <NavArrowLeft className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
-          onClick={() => scrollByStep("right")}
-          disabled={!hasOverflowRight}
+          onClick={() => activateAdjacentTab("right")}
+          disabled={!hasNextTab}
           className={cn(
-            "flex h-7 w-7 items-center justify-center rounded-action text-muted-foreground transition-colors",
-            "hover:bg-accent hover:text-foreground",
+            "flex h-7 w-7 items-center justify-center text-slate-600 transition-colors dark:text-muted-foreground",
+            "rounded-none hover:bg-transparent hover:text-slate-900 dark:hover:text-foreground",
+            "@[520px]/artifact:rounded-action @[520px]/artifact:hover:bg-accent",
             "disabled:cursor-not-allowed disabled:opacity-35"
           )}
-          aria-label="Geser tab ke kanan"
+          aria-label="Tab berikutnya"
         >
           <NavArrowRight className="h-3.5 w-3.5" />
         </button>
