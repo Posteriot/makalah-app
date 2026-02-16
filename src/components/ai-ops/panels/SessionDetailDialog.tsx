@@ -116,7 +116,7 @@ export function SessionDetailDialog({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-shell border border-border bg-background shadow-xl mx-4">
+      <div className="relative w-full max-w-4xl max-h-[80vh] overflow-y-auto rounded-shell border border-border bg-background shadow-xl mx-4">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-5 py-3">
           <h3 className="text-sm font-bold tracking-tight">Session Detail</h3>
