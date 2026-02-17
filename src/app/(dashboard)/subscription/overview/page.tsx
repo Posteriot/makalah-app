@@ -202,20 +202,20 @@ function RegularOverviewView({
                 <Sparks className="h-4 w-4 text-primary" />
                 Leluasa dengan Paket Pro
               </h2>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-interface text-sm text-muted-foreground mt-1">
                 Mendapat 5.000 kredit, untuk menyusun 5–6 paper dan diskusi mendalam
                 <br />
                 dengan masing-masing paper setara 15 halaman
               </p>
               {(creditBalance?.remainingCredits ?? 0) > 0 && (
-                <p className="text-xs text-muted-foreground/70 mt-3">
+                <p className="text-interface text-xs text-muted-foreground/70 mt-3">
                   Sisa {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit BPP Anda tetap tersimpan setelah upgrade.
                 </p>
               )}
             </div>
 
             {/* Right: Price + Action (compact, grouped) */}
-            <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="flex flex-col items-start gap-2 shrink-0">
               <p className="text-interface text-lg font-semibold tabular-nums text-foreground whitespace-nowrap">
                 {proPlan.price}
                 {proPlan.unit && (
