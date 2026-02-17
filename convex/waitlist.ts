@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query, internalMutation, action } from "./\_generated/server"
+import { mutation, query, internalMutation, action } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
 import { requireRole } from "./permissions"
@@ -126,42 +126,6 @@ export const checkEmailExists = query({
   },
 })
 
-/**
- * Validate invite token and return entry if valid
- * Used by sign-up page for magic link flow
- */
-export const getByToken = query({
-  args: {
-    token: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const entry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_invite_token", (q) => q.eq("inviteToken", args.token))
-      .unique()
-
-    if (!entry) {
-      return { valid: false, error: "Token tidak valid" }
-    }
-
-    if (entry.status !== "invited") {
-      return { valid: false, error: "Token sudah digunakan" }
-    }
-
-    if (entry.inviteTokenExpiresAt && entry.inviteTokenExpiresAt < Date.now()) {
-      return { valid: false, error: "Token sudah kedaluwarsa" }
-    }
-
-    return {
-      valid: true,
-      email: entry.email,
-      firstName: entry.firstName,
-      lastName: entry.lastName,
-      entryId: entry._id,
-    }
-  },
-})
-
 // ════════════════════════════════════════════════════════════════
 // Admin Queries
 // ════════════════════════════════════════════════════════════════
@@ -222,49 +186,6 @@ export const getStats = query({
 // ════════════════════════════════════════════════════════════════
 
 /**
- * Bulk invite selected entries (admin only)
- * Generates invite tokens and returns entries for email sending
- */
-export const bulkInvite = mutation({
-  args: {
-    adminUserId: v.id("users"),
-    entryIds: v.array(v.id("waitlistEntries")),
-  },
-  handler: async (ctx, args) => {
-    await requireRole(ctx.db, args.adminUserId, "admin")
-
-    const invitedEntries: Array<{ email: string; inviteToken: string; firstName?: string }> = []
-    const now = Date.now()
-    const expiresAt = now + 7 * 24 * 60 * 60 * 1000 // 7 days
-
-    for (const entryId of args.entryIds) {
-      const entry = await ctx.db.get(entryId)
-
-      if (!entry) continue
-      if (entry.status !== "pending") continue
-
-      // Generate secure token
-      const inviteToken = crypto.randomUUID()
-
-      await ctx.db.patch(entryId, {
-        status: "invited",
-        invitedAt: now,
-        inviteToken,
-        inviteTokenExpiresAt: expiresAt,
-      })
-
-      invitedEntries.push({
-        email: entry.email,
-        inviteToken,
-        firstName: entry.firstName,
-      })
-    }
-
-    return invitedEntries
-  },
-})
-
-/**
  * Delete waitlist entry (admin only)
  */
 export const deleteEntry = mutation({
@@ -286,89 +207,8 @@ export const deleteEntry = mutation({
   },
 })
 
-/**
- * Resend invite to a single entry (admin only)
- * Generates new token and returns for email sending
- */
-export const resendInvite = mutation({
-  args: {
-    adminUserId: v.id("users"),
-    entryId: v.id("waitlistEntries"),
-  },
-  handler: async (ctx, args) => {
-    await requireRole(ctx.db, args.adminUserId, "admin")
-
-    const entry = await ctx.db.get(args.entryId)
-    if (!entry) {
-      throw new Error("Entry tidak ditemukan")
-    }
-
-    if (entry.status === "registered") {
-      throw new Error("User sudah terdaftar")
-    }
-
-    const now = Date.now()
-    const expiresAt = now + 7 * 24 * 60 * 60 * 1000 // 7 days
-    const inviteToken = crypto.randomUUID()
-
-    await ctx.db.patch(args.entryId, {
-      status: "invited",
-      invitedAt: now,
-      inviteToken,
-      inviteTokenExpiresAt: expiresAt,
-    })
-
-    return {
-      email: entry.email,
-      inviteToken,
-      firstName: entry.firstName,
-    }
-  },
-})
-
-/**
- * Invite a single waitlist entry (admin only).
- * Generates token and returns data for email sending.
- */
-export const inviteSingle = mutation({
-  args: {
-    adminUserId: v.id("users"),
-    entryId: v.id("waitlistEntries"),
-  },
-  handler: async (ctx, args) => {
-    await requireRole(ctx.db, args.adminUserId, "admin")
-
-    const entry = await ctx.db.get(args.entryId)
-    if (!entry) {
-      throw new Error("Entry tidak ditemukan")
-    }
-
-    if (entry.status !== "pending") {
-      throw new Error("Entry sudah diundang atau terdaftar")
-    }
-
-    const now = Date.now()
-    const expiresAt = now + 7 * 24 * 60 * 60 * 1000 // 7 days
-    const inviteToken = crypto.randomUUID()
-
-    await ctx.db.patch(args.entryId, {
-      status: "invited",
-      invitedAt: now,
-      inviteToken,
-      inviteTokenExpiresAt: expiresAt,
-    })
-
-    return {
-      email: entry.email,
-      firstName: entry.firstName,
-      lastName: entry.lastName,
-      inviteToken,
-    }
-  },
-})
-
 // ════════════════════════════════════════════════════════════════
-// Internal Mutations (used by HTTP actions)
+// Internal Mutations (used by sendInviteEmail action)
 // ════════════════════════════════════════════════════════════════
 
 /**
@@ -409,29 +249,9 @@ export const inviteSingleInternal = internalMutation({
   },
 })
 
-/**
- * Enforce gratis tier for a waitlist user (by email).
- * Called after magic link is sent to ensure existing users are downgraded.
- */
-export const enforceGratisTier = internalMutation({
-  args: {
-    email: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const email = args.email.toLowerCase().trim()
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique()
-
-    if (user && user.subscriptionStatus !== "free") {
-      await ctx.db.patch(user._id, {
-        subscriptionStatus: "free",
-      })
-    }
-  },
-})
+// ════════════════════════════════════════════════════════════════
+// Actions (orchestrate mutations + side effects)
+// ════════════════════════════════════════════════════════════════
 
 /**
  * Send invite email to a waitlist entry (admin only).
