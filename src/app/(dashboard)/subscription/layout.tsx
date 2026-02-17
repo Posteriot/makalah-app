@@ -9,7 +9,6 @@ import {
   Clock,
   ArrowUpCircle,
   CreditCard,
-  Sparks,
   NavArrowRight,
   SidebarExpand,
   SidebarCollapse,
@@ -47,21 +46,12 @@ function getSidebarItems(tier: EffectiveTier): Array<{ href: string; label: stri
     })
   }
 
-  // Top Up: BPP and Pro
-  if (tier === "bpp" || tier === "pro") {
+  // Top Up: Pro only (BPP already has CTA in overview)
+  if (tier === "pro") {
     items.push({
       href: "/subscription/topup",
       label: "Top Up",
       icon: CreditCard,
-    })
-  }
-
-  // Upgrade ke Pro: BPP only (Gratis has generic "Upgrade")
-  if (tier === "bpp") {
-    items.push({
-      href: "/subscription/plans",
-      label: "Upgrade ke Pro",
-      icon: Sparks,
     })
   }
 
