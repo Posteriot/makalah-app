@@ -255,7 +255,7 @@ function RegularOverviewView({
               </p>
               {(creditBalance?.remainingCredits ?? 0) > 0 && (
                 <p className="font-sans text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Sisa {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit BPP tetap tersimpan setelah upgrade.
+                  Sisa {(creditBalance?.remainingCredits ?? 0).toLocaleString("id-ID")} kredit BPP tetap tersimpan setelah upgrade.
                 </p>
               )}
             </div>
@@ -278,7 +278,7 @@ function RegularOverviewView({
           </p>
           {(creditBalance?.remainingCredits ?? 0) > 0 && (
             <p className="font-sans text-xs text-slate-500 dark:text-slate-400 mt-2">
-              Saldo kredit tambahan: {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit
+              Saldo kredit tambahan: {(creditBalance?.remainingCredits ?? 0).toLocaleString("id-ID")} kredit
             </p>
           )}
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
