@@ -12,7 +12,17 @@ import {
   sendPasswordResetEmail,
   sendSignupSuccessEmail,
   sendTwoFactorOtpEmail,
+  sendWaitlistInviteMagicLinkEmail,
 } from "./authEmails";
+
+// Module-level state for waitlist invite magic link flow.
+// Set before calling auth.api.signInMagicLink so the sendMagicLink
+// callback uses the invite email template instead of the standard one.
+let _pendingInvite: { firstName: string } | null = null;
+
+export function setPendingInvite(data: { firstName: string } | null) {
+  _pendingInvite = data;
+}
 import { twoFactorCrossDomainBypass } from "./twoFactorBypass";
 
 // SITE_URL = primary frontend origin (production) — for crossDomain redirects
@@ -94,6 +104,12 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       convex({ authConfig }),
       magicLink({
         sendMagicLink: async ({ email, url }) => {
+          if (_pendingInvite) {
+            const { firstName } = _pendingInvite;
+            _pendingInvite = null;
+            await sendWaitlistInviteMagicLinkEmail(email, firstName, url);
+            return;
+          }
           await sendMagicLinkEmail(email, url);
         },
         expiresIn: 300, // 5 minutes

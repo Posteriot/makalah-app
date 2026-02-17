@@ -151,6 +151,14 @@ export default function GetStartedPage() {
   const [isNavigating, setIsNavigating] = useState(false)
   const isFreeTier = isFreeTierForLoginGate(user?.role, user?.subscriptionStatus)
   const { isWaitlistMode } = useWaitlistMode()
+  const getStartedEnabled = useQuery(api.appConfig.getGetStartedEnabled)
+
+  // Redirect away when get-started page is disabled by admin
+  useEffect(() => {
+    if (getStartedEnabled === false) {
+      router.replace("/settings")
+    }
+  }, [getStartedEnabled, router])
 
   // Show "Mempersiapkan..." after FEEDBACK_DELAY_MS while auth/user sync stabilizes.
   useEffect(() => {
@@ -186,6 +194,11 @@ export default function GetStartedPage() {
       router.replace("/chat")
     }
   }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, router])
+
+  // Block rendering while get-started is disabled or still checking
+  if (getStartedEnabled !== true) {
+    return null
+  }
 
   const completeThenNavigate = async (targetPath: string) => {
     if (isNavigating) return

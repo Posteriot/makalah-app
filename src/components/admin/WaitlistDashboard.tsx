@@ -5,7 +5,6 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
-import { sendSingleInviteEmail } from "@/app/(auth)/waiting-list/actions"
 import { WaitlistStatusBadge } from "./WaitlistStatusBadge"
 import {
   AlertDialog,
@@ -48,6 +47,9 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
   const { isWaitlistMode, isLoading: isWaitlistLoading } = useWaitlistMode()
   const setWaitlistModeMutation = useMutation(api.appConfig.setWaitlistMode)
 
+  const getStartedEnabled = useQuery(api.appConfig.getGetStartedEnabled)
+  const setGetStartedEnabledMutation = useMutation(api.appConfig.setGetStartedEnabled)
+
   const entries = useQuery(api.waitlist.getAll, {
     adminUserId: userId,
     statusFilter,
@@ -57,7 +59,6 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
     adminUserId: userId,
   })
 
-  const inviteSingleMutation = useMutation(api.waitlist.inviteSingle)
   const deleteEntryMutation = useMutation(api.waitlist.deleteEntry)
 
   const handleToggleWaitlist = async () => {
@@ -77,21 +78,47 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
     }
   }
 
+  const handleToggleGetStarted = async () => {
+    try {
+      await setGetStartedEnabledMutation({
+        adminUserId: userId,
+        enabled: !(getStartedEnabled ?? true),
+      })
+      toast.success(
+        getStartedEnabled
+          ? "Halaman Get Started dinonaktifkan"
+          : "Halaman Get Started diaktifkan"
+      )
+    } catch (error) {
+      console.error("Toggle get-started error:", error)
+      toast.error("Gagal mengubah status halaman Get Started")
+    }
+  }
+
   const handleInvite = async (entryId: Id<"waitlistEntries">) => {
     setInvitingId(entryId)
     try {
-      const result = await inviteSingleMutation({
-        adminUserId: userId,
-        entryId,
+      const convexSiteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL
+      if (!convexSiteUrl) {
+        throw new Error("NEXT_PUBLIC_CONVEX_SITE_URL is not configured")
+      }
+
+      const res = await fetch(`${convexSiteUrl}/api/waitlist/send-invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entryId,
+          adminUserId: userId,
+        }),
       })
 
-      await sendSingleInviteEmail(
-        result.email,
-        result.inviteToken,
-        result.firstName
-      )
+      const data = await res.json()
 
-      toast.success("Undangan berhasil dikirim!")
+      if (!res.ok || !data.status) {
+        throw new Error(data.error ?? "Gagal mengirim undangan")
+      }
+
+      toast.success(`Undangan magic link dikirim ke ${data.email}`)
     } catch (error) {
       console.error("Invite error:", error)
       toast.error("Gagal mengirim undangan", {
@@ -171,42 +198,81 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
               </p>
             </div>
 
-            {/* Toggle */}
-            <div className="flex items-center gap-3">
-              <span className="text-interface text-xs font-mono text-muted-foreground">
-                Waitlist Mode
-              </span>
-              <button
-                type="button"
-                onClick={handleToggleWaitlist}
-                disabled={isWaitlistLoading}
-                className={cn(
-                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50",
-                  isWaitlistMode ? "bg-primary" : "bg-slate-600"
-                )}
-                aria-label={
-                  isWaitlistMode
-                    ? "Nonaktifkan waitlist mode"
-                    : "Aktifkan waitlist mode"
-                }
-              >
+            {/* Toggles */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <span className="text-interface text-xs font-mono text-muted-foreground">
+                  Waitlist Mode
+                </span>
+                <button
+                  type="button"
+                  onClick={handleToggleWaitlist}
+                  disabled={isWaitlistLoading}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50",
+                    isWaitlistMode ? "bg-primary" : "bg-slate-600"
+                  )}
+                  aria-label={
+                    isWaitlistMode
+                      ? "Nonaktifkan waitlist mode"
+                      : "Aktifkan waitlist mode"
+                  }
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                      isWaitlistMode ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
                 <span
                   className={cn(
-                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                    isWaitlistMode ? "translate-x-6" : "translate-x-1"
+                    "text-signal text-[10px] font-bold",
+                    isWaitlistMode
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-muted-foreground"
                   )}
-                />
-              </button>
-              <span
-                className={cn(
-                  "text-signal text-[10px] font-bold",
-                  isWaitlistMode
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-muted-foreground"
-                )}
-              >
-                {isWaitlistMode ? "AKTIF" : "NONAKTIF"}
-              </span>
+                >
+                  {isWaitlistMode ? "AKTIF" : "NONAKTIF"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-interface text-xs font-mono text-muted-foreground">
+                  Get Started
+                </span>
+                <button
+                  type="button"
+                  onClick={handleToggleGetStarted}
+                  disabled={getStartedEnabled === undefined}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50",
+                    (getStartedEnabled ?? true) ? "bg-primary" : "bg-slate-600"
+                  )}
+                  aria-label={
+                    getStartedEnabled
+                      ? "Nonaktifkan halaman Get Started"
+                      : "Aktifkan halaman Get Started"
+                  }
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                      (getStartedEnabled ?? true) ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+                <span
+                  className={cn(
+                    "text-signal text-[10px] font-bold",
+                    (getStartedEnabled ?? true)
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {(getStartedEnabled ?? true) ? "AKTIF" : "NONAKTIF"}
+                </span>
+              </div>
             </div>
           </div>
         </div>

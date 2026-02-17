@@ -13,7 +13,6 @@ const PUBLIC_ROUTES = [
   "/documentation",
   "/waiting-list",
   "/admin-login",
-  "/accept-invite",
   "/privacy",
 ]
 

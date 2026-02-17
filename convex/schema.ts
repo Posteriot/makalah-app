@@ -886,8 +886,8 @@ export default defineSchema({
     .index("by_expiry", ["expiresAt"]),
 
   waitlistEntries: defineTable({
-    firstName: v.string(),
-    lastName: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
     email: v.string(),
     status: v.union(
       v.literal("pending"),

@@ -1,5 +1,6 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, internalMutation } from "./_generated/server"
+import type { Id } from "./_generated/dataModel"
 import { requireRole } from "./permissions"
 
 // ════════════════════════════════════════════════════════════════
@@ -55,7 +56,9 @@ export const register = mutation({
 })
 
 /**
- * Mark entry as registered after user completes signup (webhook)
+ * Mark entry as registered after user completes signup.
+ * Also enforces gratis tier for any existing user with this email.
+ * Tier enforcement runs ALWAYS regardless of entry status — security critical.
  */
 export const markAsRegistered = mutation({
   args: {
@@ -70,19 +73,29 @@ export const markAsRegistered = mutation({
       .unique()
 
     if (!entry) {
-      // Not from waitlist, ignore silently
       return null
     }
 
-    if (entry.status !== "invited") {
-      // Only update if currently invited
-      return null
+    // Update entry status if still "invited"
+    if (entry.status === "invited") {
+      await ctx.db.patch(entry._id, {
+        status: "registered",
+        registeredAt: Date.now(),
+      })
     }
 
-    await ctx.db.patch(entry._id, {
-      status: "registered",
-      registeredAt: Date.now(),
-    })
+    // SECURITY: Always enforce gratis tier for waitlist users, regardless of entry status.
+    // Prevents existing Pro/BPP users from keeping paid tier via waitlist invite.
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique()
+
+    if (existingUser && existingUser.subscriptionStatus !== "free") {
+      await ctx.db.patch(existingUser._id, {
+        subscriptionStatus: "free",
+      })
+    }
 
     return entry._id
   },
@@ -219,7 +232,7 @@ export const bulkInvite = mutation({
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.adminUserId, "admin")
 
-    const invitedEntries: Array<{ email: string; inviteToken: string; firstName: string }> = []
+    const invitedEntries: Array<{ email: string; inviteToken: string; firstName?: string }> = []
     const now = Date.now()
     const expiresAt = now + 7 * 24 * 60 * 60 * 1000 // 7 days
 
@@ -349,6 +362,72 @@ export const inviteSingle = mutation({
       firstName: entry.firstName,
       lastName: entry.lastName,
       inviteToken,
+    }
+  },
+})
+
+// ════════════════════════════════════════════════════════════════
+// Internal Mutations (used by HTTP actions)
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Mark entry as invited and return entry data (for HTTP action).
+ * Admin role check included.
+ */
+export const inviteSingleInternal = internalMutation({
+  args: {
+    adminUserId: v.string(),
+    entryId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Validate admin role
+    const admin = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("_id"), args.adminUserId))
+      .unique()
+
+    if (!admin || (admin.role !== "admin" && admin.role !== "superadmin")) {
+      throw new Error("Unauthorized")
+    }
+
+    const entryId = args.entryId as Id<"waitlistEntries">
+    const entry = await ctx.db.get(entryId)
+    if (!entry) return null
+    if (entry.status !== "pending") return null
+
+    await ctx.db.patch(entry._id, {
+      status: "invited",
+      invitedAt: Date.now(),
+    })
+
+    return {
+      email: entry.email,
+      firstName: entry.firstName,
+      lastName: entry.lastName,
+    }
+  },
+})
+
+/**
+ * Enforce gratis tier for a waitlist user (by email).
+ * Called after magic link is sent to ensure existing users are downgraded.
+ */
+export const enforceGratisTier = internalMutation({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const email = args.email.toLowerCase().trim()
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique()
+
+    if (user && user.subscriptionStatus !== "free") {
+      await ctx.db.patch(user._id, {
+        subscriptionStatus: "free",
+      })
     }
   },
 })

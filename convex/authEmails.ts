@@ -68,6 +68,31 @@ export async function sendTwoFactorOtpEmail(email: string, otp: string): Promise
   );
 }
 
+export async function sendWaitlistInviteMagicLinkEmail(
+  email: string,
+  firstName: string,
+  magicLinkUrl: string
+): Promise<void> {
+  const appUrl = process.env.SITE_URL ?? process.env.APP_URL ?? DEFAULT_APP_URL;
+
+  await sendViaResend(
+    email,
+    "Undangan Bergabung — Makalah AI",
+    `<div style="font-family: 'Geist Sans', -apple-system, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #0f172a; color: #e2e8f0; border-radius: 8px;">
+      <div style="border-bottom: 1px solid #334155; padding-bottom: 16px; margin-bottom: 24px;">
+        <span style="font-size: 11px; font-family: 'Geist Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8;">Makalah AI — Undangan Waiting List</span>
+      </div>
+      <p style="font-size: 15px; color: #f8fafc; margin: 0 0 8px 0;">Halo, ${firstName}!</p>
+      <p style="font-size: 13px; color: #cbd5e1; margin: 0 0 24px 0;">Kamu telah diundang untuk bergabung dengan Makalah AI. Klik tombol di bawah untuk langsung masuk — akunmu akan otomatis dibuat.</p>
+      <div style="text-align: center; margin-bottom: 24px;">
+        <a href="${magicLinkUrl}" style="display: inline-block; background: #f59e0b; color: #0f172a; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; text-decoration: none; padding: 12px 32px; border-radius: 6px;">BERGABUNG SEKARANG</a>
+      </div>
+      <p style="font-size: 11px; color: #64748b; margin: 0 0 8px 0;">Link berlaku selama 5 menit. Setelah masuk, segera buat password di halaman Pengaturan.</p>
+      <p style="font-size: 11px; color: #64748b; margin: 0;">Kalau kamu tidak merasa mendaftar di Makalah AI, abaikan email ini.</p>
+    </div>`
+  );
+}
+
 export async function sendSignupSuccessEmail(email: string): Promise<void> {
   const appUrl = process.env.SITE_URL ?? process.env.APP_URL ?? DEFAULT_APP_URL;
 

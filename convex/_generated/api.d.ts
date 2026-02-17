@@ -12,6 +12,7 @@ import type * as adminManualUserCreation from "../adminManualUserCreation.js";
 import type * as adminUserManagement from "../adminUserManagement.js";
 import type * as aiOps from "../aiOps.js";
 import type * as aiProviderConfigs from "../aiProviderConfigs.js";
+import type * as appConfig from "../appConfig.js";
 import type * as artifacts from "../artifacts.js";
 import type * as auth from "../auth.js";
 import type * as authEmails from "../authEmails.js";
@@ -48,6 +49,7 @@ import type * as migrations_seedDefaultStyleConstitution from "../migrations/see
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
 import type * as migrations_seedDocumentationSections from "../migrations/seedDocumentationSections.js";
 import type * as migrations_seedPricingPlans from "../migrations/seedPricingPlans.js";
+import type * as migrations_seedWaitlistConfig from "../migrations/seedWaitlistConfig.js";
 import type * as migrations_updateAIConfigForToolCalling from "../migrations/updateAIConfigForToolCalling.js";
 import type * as migrations_updatePromptWithArtifactGuidelines from "../migrations/updatePromptWithArtifactGuidelines.js";
 import type * as migrations_updatePromptWithArtifactSources from "../migrations/updatePromptWithArtifactSources.js";
@@ -67,6 +69,7 @@ import type * as twoFactorHttp from "../twoFactorHttp.js";
 import type * as twoFactorOtp from "../twoFactorOtp.js";
 import type * as users from "../users.js";
 import type * as waitlist from "../waitlist.js";
+import type * as waitlistInviteHttp from "../waitlistInviteHttp.js";
 
 import type {
   ApiFromModules,
@@ -79,6 +82,7 @@ declare const fullApi: ApiFromModules<{
   adminUserManagement: typeof adminUserManagement;
   aiOps: typeof aiOps;
   aiProviderConfigs: typeof aiProviderConfigs;
+  appConfig: typeof appConfig;
   artifacts: typeof artifacts;
   auth: typeof auth;
   authEmails: typeof authEmails;
@@ -115,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
   "migrations/seedDocumentationSections": typeof migrations_seedDocumentationSections;
   "migrations/seedPricingPlans": typeof migrations_seedPricingPlans;
+  "migrations/seedWaitlistConfig": typeof migrations_seedWaitlistConfig;
   "migrations/updateAIConfigForToolCalling": typeof migrations_updateAIConfigForToolCalling;
   "migrations/updatePromptWithArtifactGuidelines": typeof migrations_updatePromptWithArtifactGuidelines;
   "migrations/updatePromptWithArtifactSources": typeof migrations_updatePromptWithArtifactSources;
@@ -134,6 +139,7 @@ declare const fullApi: ApiFromModules<{
   twoFactorOtp: typeof twoFactorOtp;
   users: typeof users;
   waitlist: typeof waitlist;
+  waitlistInviteHttp: typeof waitlistInviteHttp;
 }>;
 
 /**
