@@ -15,6 +15,7 @@ const TOPUP_ROUTE = "/subscription/topup?from=plans"
 
 export default function PlansHubPage() {
   const { user, isLoading: userLoading } = useCurrentUser()
+  const router = useRouter()
 
   const plans = useQuery(api.pricingPlans.getActivePlans)
   const creditBalance = useQuery(
@@ -59,6 +60,14 @@ export default function PlansHubPage() {
     }
   }, [subscriptionStatus?.subscriptionId, isReactivating, reactivateSubscription])
 
+  // BPP redirect — hooks must be called before any early returns
+  const currentTier = user ? getEffectiveTier(user.role, user.subscriptionStatus) : null
+  useEffect(() => {
+    if (currentTier === "bpp") {
+      router.replace("/subscription/overview")
+    }
+  }, [currentTier, router])
+
   if (userLoading || plans === undefined) {
     return (
       <div className="space-y-6">
@@ -82,21 +91,12 @@ export default function PlansHubPage() {
     )
   }
 
-  const currentTier = getEffectiveTier(user.role, user.subscriptionStatus)
-
-  const router = useRouter()
-  useEffect(() => {
-    if (currentTier === "bpp") {
-      router.replace("/subscription/overview")
-    }
-  }, [currentTier, router])
-
   if (currentTier === "bpp") {
     return null
   }
 
   const currentCredits = creditBalance?.remainingCredits ?? 0
-  const pageTitle = currentTier === "bpp" ? "Leluasa dengan Paket Pro" : "Pilih Paket"
+  const pageTitle = "Pilih Paket"
 
   const visiblePlanSlugs = currentTier === "gratis" ? new Set(["bpp", "pro"]) : new Set(["pro"])
   const visiblePlans = plans.filter((plan) => visiblePlanSlugs.has(plan.slug))
