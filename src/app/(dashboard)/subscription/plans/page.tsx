@@ -178,11 +178,6 @@ export default function PlansHubPage() {
                   </Link>
                 )}
 
-                {isPro && !isCurrentTier && currentTier === "bpp" && currentCredits > 0 && (
-                  <p className="mb-2 mt-2 px-1 text-xs text-muted-foreground">
-                    Sisa {currentCredits} kredit BPP Anda tetap tersimpan setelah upgrade.
-                  </p>
-                )}
 
                 {showProCheckout && (
                   <Link
