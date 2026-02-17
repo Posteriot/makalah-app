@@ -1,160 +1,100 @@
 "use client"
 
-import { Page, ChatBubble } from "iconoir-react"
-import { cn } from "@/lib/utils"
-
-export type TemplateType = "paper" | "dialog"
+import Image from "next/image"
 
 export interface Template {
   id: string
-  type: TemplateType
-  badge: string
-  title: string
-  description: string
+  label: string
   message: string
 }
 
-/**
- * Template data sesuai mockup
- * - 2 Paper templates (teal/primary color)
- * - 2 Dialog templates (blue/info color)
- */
 const templates: Template[] = [
   {
-    id: "dampak-ai-pendidikan",
-    type: "paper",
-    badge: "PAPER",
-    title: "Dampak AI dalam Pendidikan",
-    description: "Bantu saya menulis paper tentang dampak AI dalam pendidikan tinggi",
-    message: "Bantu saya menulis paper tentang dampak AI dalam pendidikan tinggi",
+    id: "starter-discussion",
+    label: "Kita diskusi dulu!",
+    message: "Kita diskusi dulu!",
   },
   {
-    id: "ml-prediksi",
-    type: "paper",
-    badge: "PAPER",
-    title: "Machine Learning untuk Prediksi",
-    description: "Paper akademik tentang implementasi ML untuk prediksi cuaca",
-    message: "Saya ingin membuat paper akademik tentang implementasi machine learning untuk prediksi cuaca",
-  },
-  {
-    id: "metodologi-penelitian",
-    type: "dialog",
-    badge: "DIALOG",
-    title: "Metodologi Penelitian",
-    description: "Jelaskan perbedaan metodologi kualitatif dan kuantitatif",
-    message: "Jelaskan perbedaan antara metodologi penelitian kualitatif dan kuantitatif",
-  },
-  {
-    id: "thesis-disertasi-skripsi",
-    type: "dialog",
-    badge: "DIALOG",
-    title: "Thesis vs Disertasi vs Skripsi",
-    description: "Perbedaan thesis, disertasi, dan skripsi dalam konteks akademik",
-    message: "Apa perbedaan antara thesis, disertasi, dan skripsi dalam konteks akademik Indonesia?",
+    id: "starter-paper",
+    label: "Ayo kolaborasi menyusun paper akademik!",
+    message: "Ayo kolaborasi menyusun paper akademik!",
   },
 ]
 
 interface TemplateGridProps {
   onTemplateSelect: (template: Template) => void
+  onSidebarLinkClick?: (e: React.MouseEvent<HTMLButtonElement>) => void
+  disabled?: boolean
 }
 
-/**
- * TemplateGrid - Empty state dengan template cards
- *
- * Mockup compliance:
- * - Header: 24px title, 32px margin-bottom
- * - Grid: 2 columns, 16px gap, max-width 640px
- * - Cards: 16px padding, 14px gap, 10px radius
- * - Badges: PAPER (teal), DIALOG (blue)
- * - Icons: Paper=teal, Dialog=blue
- */
-export function TemplateGrid({ onTemplateSelect }: TemplateGridProps) {
+export function TemplateGrid({
+  onTemplateSelect,
+  onSidebarLinkClick,
+  disabled = false,
+}: TemplateGridProps) {
   return (
-    <div className="w-full max-w-[640px] mx-auto px-4">
-      {/* Header - mockup: 24px title, 32px margin-bottom */}
-      <div className="text-center mb-8">
-        <h2 className="text-narrative text-2xl font-medium tracking-tight text-foreground mb-2">
-          Mulai Interaksi Baru
+    <div className="max-w-2xl text-center space-y-6">
+      <div className="mx-auto w-20 h-20 rounded-shell bg-card border border-border/60 flex items-center justify-center">
+        <Image
+          src="/logo/makalah_logo_dark.svg"
+          alt="Makalah Logo"
+          width={40}
+          height={40}
+          className="block dark:hidden"
+          priority
+        />
+        <Image
+          src="/logo/makalah_logo_light.svg"
+          alt="Makalah Logo"
+          width={40}
+          height={40}
+          className="hidden dark:block"
+          priority
+        />
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-narrative text-4xl font-medium tracking-tight text-foreground">
+          Ayo bercakap!
         </h2>
-        <p className="text-narrative text-sm text-muted-foreground">
-          Pilih template di bawah atau ketik pesan langsung
+        <p className="text-narrative text-muted-foreground text-sm leading-[1.4]">
+          <span className="block">
+            Mau diskusi mengenai riset atau langsung menulis paper?
+          </span>
+          <span className="block">
+            Silakan ketik maksud di kolom percakapan,
+          </span>
+          <span className="block">
+            atau buka riwayat percakapan terdahulu di{" "}
+            <button
+              type="button"
+              onClick={onSidebarLinkClick}
+              className="underline underline-offset-4 decoration-primary/60 hover:decoration-primary text-foreground transition-colors"
+            >
+              sidebar
+            </button>
+          </span>
         </p>
       </div>
 
-      {/* Template Grid: 2 columns, 16px gap */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {templates.map((template) => (
-          <TemplateCard
-            key={template.id}
-            template={template}
-            onSelect={onTemplateSelect}
-          />
-        ))}
+      <div className="pt-2">
+        <p className="text-narrative text-sm font-medium text-muted-foreground mb-3">
+          Atau gunakan template berikut:
+        </p>
+        <div className="flex flex-col items-center gap-3">
+          {templates.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => onTemplateSelect(template)}
+              disabled={disabled}
+              className="w-fit max-w-full rounded-shell border-hairline bg-slate-200 dark:bg-card/90 px-5 py-2.5 text-center text-interface text-sm text-foreground hover:bg-slate-300 dark:hover:bg-card transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {template.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
-  )
-}
-
-/**
- * TemplateCard - Individual template card component
- */
-function TemplateCard({
-  template,
-  onSelect,
-}: {
-  template: Template
-  onSelect: (template: Template) => void
-}) {
-  const isPaper = template.type === "paper"
-
-  return (
-    <button
-      onClick={() => onSelect(template)}
-      className={cn(
-        "flex items-start gap-3.5 p-4 text-left",
-        "rounded-shell border-hairline bg-card/90 backdrop-blur-[1px]",
-        "hover:bg-card transition-all duration-150"
-      )}
-    >
-      {/* Icon - 40x40px, Mechanical Grace colors */}
-      <div
-        className={cn(
-          "flex-shrink-0 w-10 h-10 rounded-action",
-          "flex items-center justify-center",
-          "bg-slate-200 text-slate-500"
-        )}
-      >
-        {isPaper ? (
-          <Page className="h-5 w-5" />
-        ) : (
-          <ChatBubble className="h-5 w-5" />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {/* Badge - Mechanical Grace: Amber PAPER, Sky DIALOG */}
-        <span
-          className={cn(
-            "text-signal inline-block px-2 py-0.5 rounded-badge",
-            "text-[10px] font-bold",
-            "mb-1.5",
-            "bg-slate-200 text-slate-600 border border-slate-300"
-          )}
-        >
-          {template.badge}
-        </span>
-
-        {/* Title */}
-        <h3 className="text-narrative font-medium text-sm text-foreground mb-1">
-          {template.title}
-        </h3>
-
-        {/* Description */}
-        <p className="text-interface text-xs text-muted-foreground leading-relaxed line-clamp-2">
-          {template.description}
-        </p>
-      </div>
-    </button>
   )
 }
