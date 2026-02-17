@@ -137,29 +137,39 @@ export default function SubscriptionLayout({
       <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-6 lg:px-8">
-        <div className="md:hidden flex justify-end py-3">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((open) => !open)}
-            aria-label={sidebarOpen ? "Tutup menu subskripsi" : "Buka menu subskripsi"}
-            className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-action p-1 text-foreground transition-colors hover:text-foreground/70"
-          >
-            {sidebarOpen ? (
-              <SidebarCollapse className="h-7 w-7" strokeWidth={1.5} />
-            ) : (
-              <SidebarExpand className="h-7 w-7" strokeWidth={1.5} />
-            )}
-          </button>
-        </div>
+        {tier !== "gratis" && (
+          <div className="md:hidden flex justify-end py-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((open) => !open)}
+              aria-label={sidebarOpen ? "Tutup menu subskripsi" : "Buka menu subskripsi"}
+              className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-action p-1 text-foreground transition-colors hover:text-foreground/70"
+            >
+              {sidebarOpen ? (
+                <SidebarCollapse className="h-7 w-7" strokeWidth={1.5} />
+              ) : (
+                <SidebarExpand className="h-7 w-7" strokeWidth={1.5} />
+              )}
+            </button>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 gap-comfort pb-2 md:grid-cols-16">
-          <aside className="hidden md:col-span-4 md:block">
-            <div className="mt-4 rounded-shell border-hairline bg-card/90 p-comfort backdrop-blur-[1px] dark:bg-slate-900">
-              <SidebarNav pathname={pathname} tier={tier} />
-            </div>
-          </aside>
+        <div className={cn(
+          "grid grid-cols-1 gap-comfort pb-2",
+          tier !== "gratis" && "md:grid-cols-16"
+        )}>
+          {tier !== "gratis" && (
+            <aside className="hidden md:col-span-4 md:block">
+              <div className="mt-4 rounded-shell border-hairline bg-card/90 p-comfort backdrop-blur-[1px] dark:bg-slate-900">
+                <SidebarNav pathname={pathname} tier={tier} />
+              </div>
+            </aside>
+          )}
 
-          <main className="col-span-1 pt-4 md:col-span-12">
+          <main className={cn(
+            "col-span-1 pt-4",
+            tier !== "gratis" ? "md:col-span-12" : "md:col-span-1"
+          )}>
             <div className="mx-auto w-full max-w-4xl rounded-shell border-hairline bg-card/90 px-5 py-6 backdrop-blur-[1px] dark:bg-slate-900 md:px-8">
               {children}
             </div>

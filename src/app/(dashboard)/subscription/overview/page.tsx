@@ -83,6 +83,12 @@ function RegularOverviewView({
     api.pricingPlans.getPlanBySlug,
     tier === "bpp" ? { slug: "pro" } : "skip"
   )
+
+  // All plans for gratis upgrade section
+  const allPlans = useQuery(
+    api.pricingPlans.getActivePlans,
+    tier === "gratis" ? {} : "skip"
+  )
   const { user } = useCurrentUser()
   const creditBalance = useQuery(
     api.billing.credits.getCreditBalance,
@@ -108,16 +114,6 @@ function RegularOverviewView({
               </span>
               <span className="font-sans text-sm text-slate-600 dark:text-slate-300">{tierConfig.description}</span>
             </div>
-
-            {tier === "gratis" && (
-              <Link
-                href="/subscription/upgrade"
-                className="focus-ring font-mono mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
-              >
-                <ArrowUpCircle className="h-4 w-4" />
-                Upgrade
-              </Link>
-            )}
 
             {(tier === "bpp" || tier === "pro") && (
               <Link
@@ -191,6 +187,51 @@ function RegularOverviewView({
             )}
           </div>
         </div>
+
+        {/* Pilih Paket — Gratis only, embedded */}
+        {tier === "gratis" && allPlans && allPlans.length > 0 && (
+          <div className="mt-5 pt-5 border-t border-slate-200 dark:border-slate-700">
+            <h2 className="font-sans text-base font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+              <ArrowUpCircle className="h-4 w-4 text-amber-500" />
+              Upgrade Paket
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              {allPlans
+                .filter((plan) => plan.slug === "bpp" || plan.slug === "pro")
+                .map((plan) => {
+                  const isBPP = plan.slug === "bpp"
+                  const teaserCreditNote = plan.teaserCreditNote || plan.features[0] || ""
+                  return (
+                    <div
+                      key={plan._id}
+                      className="flex flex-col rounded-shell border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 p-5"
+                    >
+                      <h3 className="font-sans text-lg font-medium text-slate-900 dark:text-slate-100 text-center">
+                        {plan.name}
+                      </h3>
+                      <p className="font-mono text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100 text-center mt-1">
+                        {plan.price}
+                        {plan.unit && (
+                          <span className="font-mono text-sm font-normal text-slate-500 dark:text-slate-400"> {plan.unit}</span>
+                        )}
+                      </p>
+                      <p className="font-sans text-sm text-slate-600 dark:text-slate-300 mt-4 leading-relaxed">
+                        {teaserCreditNote}
+                      </p>
+                      <div className="mt-auto pt-4">
+                        <SectionCTA
+                          href={isBPP ? "/checkout/bpp?from=overview" : "/checkout/pro?from=overview"}
+                          className="w-full justify-center"
+                        >
+                          {isBPP ? "Top Up Kredit" : "Upgrade ke Pro"}
+                        </SectionCTA>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Pro Upgrade Pitch — BPP only */}

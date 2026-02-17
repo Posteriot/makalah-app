@@ -63,7 +63,7 @@ export default function PlansHubPage() {
   // BPP redirect — hooks must be called before any early returns
   const currentTier = user ? getEffectiveTier(user.role, user.subscriptionStatus) : null
   useEffect(() => {
-    if (currentTier === "bpp") {
+    if (currentTier === "bpp" || currentTier === "gratis") {
       router.replace("/subscription/overview")
     }
   }, [currentTier, router])
@@ -91,8 +91,15 @@ export default function PlansHubPage() {
     )
   }
 
-  if (currentTier === "bpp") {
-    return null
+  if (currentTier === "bpp" || currentTier === "gratis") {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-1/3 rounded bg-muted" />
+          <div className="h-32 rounded bg-muted" />
+        </div>
+      </div>
+    )
   }
 
   const currentCredits = creditBalance?.remainingCredits ?? 0
