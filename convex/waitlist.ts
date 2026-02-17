@@ -219,7 +219,7 @@ export const bulkInvite = mutation({
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.adminUserId, "admin")
 
-    const invitedEntries: Array<{ email: string; inviteToken: string }> = []
+    const invitedEntries: Array<{ email: string; inviteToken: string; firstName: string }> = []
     const now = Date.now()
     const expiresAt = now + 7 * 24 * 60 * 60 * 1000 // 7 days
 
@@ -242,6 +242,7 @@ export const bulkInvite = mutation({
       invitedEntries.push({
         email: entry.email,
         inviteToken,
+        firstName: entry.firstName,
       })
     }
 
@@ -306,6 +307,7 @@ export const resendInvite = mutation({
     return {
       email: entry.email,
       inviteToken,
+      firstName: entry.firstName,
     }
   },
 })

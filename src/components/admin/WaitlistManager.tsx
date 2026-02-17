@@ -143,7 +143,7 @@ export function WaitlistManager({ userId }: WaitlistManagerProps) {
         entryId,
       })
 
-      await sendSingleInviteEmail(result.email, result.inviteToken)
+      await sendSingleInviteEmail(result.email, result.inviteToken, result.firstName)
 
       toast.success("Undangan berhasil dikirim ulang!")
     } catch (error) {

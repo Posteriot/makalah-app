@@ -52,16 +52,19 @@ export async function sendBillingNotificationEmail({
  */
 export async function sendWaitlistConfirmationEmail({
   to,
-}: BaseEmailParams): Promise<void> {
+  firstName,
+}: BaseEmailParams & { firstName?: string }): Promise<void> {
   if (!client || !fromEmail) {
     return
   }
+
+  const greeting = firstName ? `Halo ${firstName}!` : "Halo!"
 
   await client.emails.send({
     from: fromEmail,
     to,
     subject: "Pendaftaran Waiting List Berhasil - Makalah",
-    text: `Halo!
+    text: `${greeting}
 
 Terima kasih sudah mendaftar di waiting list Makalah App.
 
@@ -84,19 +87,21 @@ Tim Makalah`,
 export async function sendWaitlistInviteEmail({
   to,
   inviteToken,
-}: BaseEmailParams & { inviteToken: string }): Promise<void> {
+  firstName,
+}: BaseEmailParams & { inviteToken: string; firstName?: string }): Promise<void> {
   if (!client || !fromEmail) {
     return
   }
 
   const appUrl = process.env.APP_URL || "http://localhost:3000"
-  const inviteLink = `${appUrl}/sign-up?invite=${inviteToken}`
+  const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`
+  const greeting = firstName ? `Halo ${firstName}!` : "Halo!"
 
   await client.emails.send({
     from: fromEmail,
     to,
     subject: "Undangan Bergabung - Makalah App",
-    text: `Halo!
+    text: `${greeting}
 
 Kabar baik! Giliran kamu sudah tiba untuk bergabung dengan Makalah App.
 
@@ -114,4 +119,3 @@ Salam,
 Tim Makalah`,
   })
 }
-

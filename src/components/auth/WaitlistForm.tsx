@@ -46,7 +46,7 @@ export function WaitlistForm() {
       await registerMutation({ firstName, lastName, email })
 
       // Send confirmation email (fire-and-forget)
-      sendConfirmationEmail(email).catch((err) => {
+      sendConfirmationEmail(email, firstName).catch((err) => {
         console.error("Failed to send confirmation email:", err)
       })
 

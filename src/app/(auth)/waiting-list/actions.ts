@@ -8,8 +8,8 @@ import {
 /**
  * Send confirmation email after waitlist registration
  */
-export async function sendConfirmationEmail(email: string): Promise<void> {
-  await sendWaitlistConfirmationEmail({ to: email })
+export async function sendConfirmationEmail(email: string, firstName?: string): Promise<void> {
+  await sendWaitlistConfirmationEmail({ to: email, firstName })
 }
 
 /**
@@ -17,7 +17,7 @@ export async function sendConfirmationEmail(email: string): Promise<void> {
  * Used by admin panel after bulk invite
  */
 export async function sendBulkInviteEmails(
-  entries: Array<{ email: string; inviteToken: string }>
+  entries: Array<{ email: string; inviteToken: string; firstName?: string }>
 ): Promise<{ success: number; failed: number }> {
   let success = 0
   let failed = 0
@@ -28,6 +28,7 @@ export async function sendBulkInviteEmails(
       sendWaitlistInviteEmail({
         to: entry.email,
         inviteToken: entry.inviteToken,
+        firstName: entry.firstName,
       })
     )
   )
@@ -49,7 +50,8 @@ export async function sendBulkInviteEmails(
  */
 export async function sendSingleInviteEmail(
   email: string,
-  inviteToken: string
+  inviteToken: string,
+  firstName?: string
 ): Promise<void> {
-  await sendWaitlistInviteEmail({ to: email, inviteToken })
+  await sendWaitlistInviteEmail({ to: email, inviteToken, firstName })
 }
