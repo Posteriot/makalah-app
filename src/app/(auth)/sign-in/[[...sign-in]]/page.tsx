@@ -67,6 +67,9 @@ export default function SignInPage() {
   const signUpHref = redirectParam
     ? `/sign-up?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
     : "/sign-up"
+  const verify2FAHref = redirectParam
+    ? `/verify-2fa?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
+    : "/verify-2fa"
   const callbackURL = getRedirectUrl(searchParams, "/chat")
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
   const requiresRecoveryCaptcha = Boolean(turnstileSiteKey)
@@ -207,8 +210,12 @@ export default function SignInPage() {
 
         // 2FA redirect: twoFactor plugin returned twoFactorRedirect
         if (data.twoFactorRedirect) {
-          setPending2FA({ email: email.trim(), password })
-          router.push("/verify-2fa")
+          setPending2FA({
+            email: email.trim(),
+            password,
+            redirectUrl: redirectParam ?? undefined,
+          })
+          router.push(verify2FAHref)
           return
         }
 

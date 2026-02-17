@@ -8,6 +8,13 @@
 // Whitelist of allowed redirect path prefixes.
 // Use exact match or subpath boundary match (e.g. /chat or /chat/*, not /chatty).
 const ALLOWED_REDIRECT_PATH_PREFIXES = [
+  "/",
+  "/about",
+  "/pricing",
+  "/blog",
+  "/documentation",
+  "/waiting-list",
+  "/privacy",
   "/get-started",
   "/checkout/bpp",
   "/checkout/pro",

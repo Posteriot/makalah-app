@@ -6,14 +6,24 @@ const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL!
 interface Pending2FA {
   email: string
   password: string
+  redirectUrl?: string
+}
+
+function getSessionStorage(): Storage | null {
+  if (typeof window === "undefined") return null
+  return window.sessionStorage
 }
 
 export function setPending2FA(data: Pending2FA): void {
-  sessionStorage.setItem(PENDING_2FA_KEY, JSON.stringify(data))
+  const storage = getSessionStorage()
+  if (!storage) return
+  storage.setItem(PENDING_2FA_KEY, JSON.stringify(data))
 }
 
 export function getPending2FA(): Pending2FA | null {
-  const stored = sessionStorage.getItem(PENDING_2FA_KEY)
+  const storage = getSessionStorage()
+  if (!storage) return null
+  const stored = storage.getItem(PENDING_2FA_KEY)
   if (!stored) return null
   try {
     return JSON.parse(stored) as Pending2FA
@@ -23,11 +33,15 @@ export function getPending2FA(): Pending2FA | null {
 }
 
 export function clearPending2FA(): void {
-  sessionStorage.removeItem(PENDING_2FA_KEY)
+  const storage = getSessionStorage()
+  if (!storage) return
+  storage.removeItem(PENDING_2FA_KEY)
 }
 
 export function hasPending2FA(): boolean {
-  return sessionStorage.getItem(PENDING_2FA_KEY) !== null
+  const storage = getSessionStorage()
+  if (!storage) return false
+  return storage.getItem(PENDING_2FA_KEY) !== null
 }
 
 export async function sendOtp(

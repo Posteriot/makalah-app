@@ -105,6 +105,11 @@ export default function SignUpPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const inviteToken = searchParams.get("invite")
+  const redirectParam =
+    searchParams.get("redirect_url") ?? searchParams.get("redirect")
+  const signInHref = redirectParam
+    ? `/sign-in?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
+    : "/sign-in"
   const callbackURL = getRedirectUrl(searchParams, "/chat")
 
   const [mode, setMode] = useState<SignUpMode>("sign-up")
@@ -323,7 +328,7 @@ export default function SignUpPage() {
         {/* Footer */}
         <p className="text-muted-foreground text-xs font-sans text-center mt-4">
           Sudah punya akun?{" "}
-          <Link href="/sign-in" className="text-slate-50 hover:text-slate-300 font-bold">
+          <Link href={signInHref} className="text-slate-50 hover:text-slate-300 font-bold">
             Masuk
           </Link>
         </p>
@@ -347,7 +352,7 @@ export default function SignUpPage() {
           Klik link di email untuk mengaktifkan akun kamu.
         </p>
         <Link
-          href="/sign-in"
+          href={signInHref}
           className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
         >
           Kembali ke masuk
