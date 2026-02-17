@@ -1706,6 +1706,27 @@ TIPS PENCARIAN:
 
                                     await saveAssistantMessage(textWithInlineCitations, persistedSources, modelNames.primary.model)
 
+                                    // ──── Auto-persist search references to paper stageData ────
+                                    if (paperSession && persistedSources && persistedSources.length > 0) {
+                                        try {
+                                            await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
+                                                sessionId: paperSession._id,
+                                                references: persistedSources.map(s => ({
+                                                    url: s.url,
+                                                    title: s.title,
+                                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                                        ? { publishedAt: s.publishedAt }
+                                                        : {}),
+                                                })),
+                                            })
+                                            console.log(`[Paper] Auto-persisted ${persistedSources.length} search refs to stageData`)
+                                        } catch (err) {
+                                            console.error("[Paper] Failed to auto-persist search references:", err)
+                                            // Non-blocking: don't fail the response stream
+                                        }
+                                    }
+                                    // ───────────────────────────────────────────────────────────
+
                                     const minPairsForFinalTitle = Number.parseInt(
                                         process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                                         10
@@ -1987,6 +2008,26 @@ TIPS PENCARIAN:
                                         persistedSources,
                                         `${modelNames.fallback.model}:online`
                                     )
+
+                                    // ──── Auto-persist search references to paper stageData ────
+                                    if (paperSession && persistedSources.length > 0) {
+                                        try {
+                                            await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
+                                                sessionId: paperSession._id,
+                                                references: persistedSources.map(s => ({
+                                                    url: s.url,
+                                                    title: s.title,
+                                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                                        ? { publishedAt: s.publishedAt }
+                                                        : {}),
+                                                })),
+                                            })
+                                            console.log(`[Paper][Fallback] Auto-persisted ${persistedSources.length} search refs to stageData`)
+                                        } catch (err) {
+                                            console.error("[Paper][Fallback] Failed to auto-persist search references:", err)
+                                        }
+                                    }
+                                    // ───────────────────────────────────────────────────────────
                                 } else {
                                     // No citations - save without sources
                                     await saveAssistantMessage(
