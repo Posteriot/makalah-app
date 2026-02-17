@@ -32,7 +32,7 @@ export async function sendWaitlistConfirmationEmail({
 
 Terima kasih sudah mendaftar di waiting list Makalah App.
 
-Email kamu (${to}) sudah terdaftar. Saat giliran kamu tiba, tim Makalah AI akan mengirimkan magic link ke email ini. Klik link tersebut untuk langsung masuk — akunmu akan otomatis dibuat.
+Email kamu (${to}) sudah terdaftar. Saat giliran kamu tiba, kami akan mengirimkan email undangan berisi link pendaftaran. Klik link tersebut untuk membuat akun — bisa pakai Google atau email dan password.
 
 Penting: Jika email undangan tidak ditemukan di inbox, periksa folder spam.
 
