@@ -1,6 +1,7 @@
 import { v } from "convex/values"
-import { mutation, query, internalMutation } from "./_generated/server"
+import { mutation, query, internalMutation, action } from "./\_generated/server"
 import type { Id } from "./_generated/dataModel"
+import { internal } from "./_generated/api"
 import { requireRole } from "./permissions"
 
 // ════════════════════════════════════════════════════════════════
@@ -429,5 +430,37 @@ export const enforceGratisTier = internalMutation({
         subscriptionStatus: "free",
       })
     }
+  },
+})
+
+/**
+ * Send invite email to a waitlist entry (admin only).
+ * Marks entry as invited, then sends signup link email via Resend.
+ */
+export const sendInviteEmail = action({
+  args: {
+    adminUserId: v.id("users"),
+    entryId: v.id("waitlistEntries"),
+  },
+  handler: async (ctx, args): Promise<{ email: string }> => {
+    // Mark entry as invited (admin role check inside mutation)
+    const result: { email: string; firstName: string | undefined; lastName: string | undefined } | null = await ctx.runMutation(internal.waitlist.inviteSingleInternal, {
+      adminUserId: args.adminUserId as string,
+      entryId: args.entryId as string,
+    })
+
+    if (!result) {
+      throw new Error("Entry tidak ditemukan atau sudah diundang")
+    }
+
+    const firstName = result.firstName ?? "Pengguna"
+    const appUrl = process.env.APP_URL ?? "https://makalah.ai"
+    const signupUrl = `${appUrl}/sign-up`
+
+    // Send invite email via Resend
+    const { sendWaitlistInviteEmail } = await import("./authEmails")
+    await sendWaitlistInviteEmail(result.email, firstName, signupUrl)
+
+    return { email: result.email }
   },
 })
