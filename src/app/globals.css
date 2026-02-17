@@ -475,7 +475,7 @@
   --footer-background: var(--slate-50);
   --foreground: var(--neutral-950);
   --card: var(--slate-50);
-  --card-foreground: var(--neutral-950);
+  --card-foreground: var(--neutral-900);
   --popover: var(--slate-50);
   --popover-foreground: var(--neutral-950);
 
@@ -600,7 +600,7 @@
   --header-background: var(--slate-900);
   --footer-background: var(--slate-900);
   --foreground: var(--neutral-50);
-  --card: var(--slate-950);
+  --card: var(--slate-900);
   --card-foreground: var(--neutral-50);
   --popover: var(--slate-800);
   --popover-foreground: var(--neutral-50);

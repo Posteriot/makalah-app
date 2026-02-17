@@ -19,18 +19,15 @@ import {
 import { randomUUID } from "crypto"
 import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
 
-type PlanType = keyof typeof SUBSCRIPTION_PRICING
+type PlanType = "pro_monthly"
+const PRO_PLAN_TYPE: PlanType = "pro_monthly"
 
 interface SubscribeRequest {
-  planType: PlanType
+  planType?: string
   paymentMethod: "qris" | "va" | "ewallet"
   vaChannel?: VAChannel
   ewalletChannel?: EWalletChannel
   mobileNumber?: string
-}
-
-function isValidPlanType(type: string): type is PlanType {
-  return type in SUBSCRIPTION_PRICING
 }
 
 export async function POST(req: NextRequest) {
@@ -81,15 +78,8 @@ export async function POST(req: NextRequest) {
 
     // 5. Parse request body
     const body = (await req.json()) as SubscribeRequest
-    const { planType, paymentMethod, vaChannel, ewalletChannel, mobileNumber } = body
-
-    // 6. Validate plan type
-    if (!isValidPlanType(planType)) {
-      return NextResponse.json(
-        { error: "Paket langganan tidak valid. Pilih: pro_monthly atau pro_yearly" },
-        { status: 400 }
-      )
-    }
+    const { paymentMethod, vaChannel, ewalletChannel, mobileNumber } = body
+    const planType: PlanType = PRO_PLAN_TYPE
 
     const pricing = SUBSCRIPTION_PRICING[planType]
     const { priceIDR: amount, label: planLabel } = pricing
@@ -191,9 +181,9 @@ export async function POST(req: NextRequest) {
           xenditResponse = await createGopayPayment({
             referenceId,
             amount,
-            successReturnUrl: `${appUrl}/subscription/plans?status=success`,
-            failureReturnUrl: `${appUrl}/subscription/plans?status=failed`,
-            cancelReturnUrl: `${appUrl}/subscription/plans`,
+            successReturnUrl: `${appUrl}/checkout/pro?status=success`,
+            failureReturnUrl: `${appUrl}/checkout/pro?status=failed`,
+            cancelReturnUrl: `${appUrl}/checkout/pro`,
             description,
             metadata,
           })
