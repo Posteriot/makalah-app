@@ -93,7 +93,7 @@ export default function AcceptInvitePage() {
           <>
             <CheckCircle className="h-12 w-12 text-success mx-auto" />
             <p className="text-xs font-mono text-muted-foreground">
-              Halo, {tokenResult?.firstName}! Akunmu sedang disiapkan...
+              Halo, {tokenResult?.firstName}! Mengalihkan ke halaman pendaftaran...
             </p>
           </>
         )}

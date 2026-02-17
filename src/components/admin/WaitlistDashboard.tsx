@@ -134,7 +134,7 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
       <div className="min-h-screen bg-[color:var(--section-bg-alt)]">
         <div className="mx-auto max-w-5xl px-4 py-8 lg:px-8">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 w-1/3 rounded bg-muted" />
+            <div className="h-8 w-1/3 rounded-action bg-muted" />
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <div className="h-20 rounded-shell bg-muted" />
               <div className="h-20 rounded-shell bg-muted" />
