@@ -328,6 +328,11 @@ export default defineSchema({
           url: v.optional(v.string()),
           publishedAt: v.optional(v.number()), // Timestamp from google_search
         }))),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
@@ -346,6 +351,11 @@ export default defineSchema({
           url: v.optional(v.string()),
           publishedAt: v.optional(v.number()), // Timestamp from google_search
         }))),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
@@ -361,6 +371,11 @@ export default defineSchema({
         ringkasanPenelitian: v.optional(v.string()),
         keywords: v.optional(v.array(v.string())),
         wordCount: v.optional(v.number()),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
@@ -378,6 +393,11 @@ export default defineSchema({
           inTextCitation: v.string(),
           fullReference: v.string(),
           url: v.optional(v.string()),
+        }))),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
         }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
@@ -399,6 +419,11 @@ export default defineSchema({
           inTextCitation: v.string(),
           isFromPhase1: v.boolean(),
         }))),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
@@ -416,6 +441,11 @@ export default defineSchema({
           v.literal("kuantitatif"),
           v.literal("mixed")
         )),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
