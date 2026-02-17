@@ -6,13 +6,15 @@ import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Mail, CheckCircle } from "iconoir-react"
+import { Mail, User, CheckCircle } from "iconoir-react"
 import { toast } from "sonner"
 import { sendConfirmationEmail } from "@/app/(auth)/waiting-list/actions"
 
 type FormState = "idle" | "loading" | "success"
 
 export function WaitlistForm() {
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [formState, setFormState] = useState<FormState>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -23,6 +25,12 @@ export function WaitlistForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Basic name validation
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Nama depan dan nama belakang wajib diisi")
+      return
+    }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -35,7 +43,7 @@ export function WaitlistForm() {
 
     try {
       // Register to waitlist
-      await registerMutation({ email })
+      await registerMutation({ firstName, lastName, email })
 
       // Send confirmation email (fire-and-forget)
       sendConfirmationEmail(email).catch((err) => {
@@ -83,6 +91,36 @@ export function WaitlistForm() {
     <form onSubmit={handleSubmit} className="w-full space-y-4">
       <div className="space-y-2">
         <div className="relative">
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Nama depan"
+            value={firstName}
+            onChange={(e) => {
+              setFirstName(e.target.value)
+              setError(null)
+            }}
+            disabled={formState === "loading"}
+            className="pl-10 h-10 rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary"
+            required
+          />
+        </div>
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Nama belakang"
+            value={lastName}
+            onChange={(e) => {
+              setLastName(e.target.value)
+              setError(null)
+            }}
+            disabled={formState === "loading"}
+            className="pl-10 h-10 rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary"
+            required
+          />
+        </div>
+        <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="email"
@@ -105,7 +143,7 @@ export function WaitlistForm() {
 
       <Button
         type="submit"
-        disabled={formState === "loading" || !email}
+        disabled={formState === "loading" || !firstName.trim() || !lastName.trim() || !email}
         className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-mono font-bold text-xs uppercase tracking-widest rounded-action hover-slash"
       >
         {formState === "loading" ? (
