@@ -102,9 +102,9 @@ DRAFTING → PENDING VALIDATION → APPROVED → (lanjut ke tahap berikutnya)
 
 1. **Tahap dimulai** — Status `drafting`. AI menerima instruksi spesifik untuk tahap ini.
 2. **Dialog & iterasi** — AI berdiskusi dengan user, melakukan web search jika perlu, menyimpan progress secara berkala.
-3. **Submit untuk validasi** — Setelah user konfirmasi draft sudah matang, AI submit tahap. Status berubah ke `pending_validation`.
+3. **Submit untuk validasi** — Setelah user konfirmasi draft sudah matang, AI submit tahap. **Guard**: `ringkasan` wajib terisi (non-empty), jika belum maka submit gagal dengan error. Status berubah ke `pending_validation`.
 4. **User memutuskan:**
-   - **Approve** — Tahap ditandai `approved`, progres dicatat, lanjut ke tahap berikutnya.
+   - **Approve** — Guard: `ringkasan` wajib terisi + budget outline dicek (konten tidak boleh melebihi 150% estimasi kata dari outline). Tahap ditandai `approved`, progres dicatat, lanjut ke tahap berikutnya.
    - **Revise** — Status kembali ke `revision`. User memberikan feedback, AI melanjutkan editing.
 5. **Tahap terakhir (Judul) di-approve** — Paper Session ditandai `completed`.
 
@@ -196,7 +196,7 @@ Saat AI melakukan web search (baik via Google Search maupun fallback OpenRouter 
 - Setelah web search selesai, sources di-extract dan disimpan via `appendSearchReferences` mutation
 - URL di-deduplikasi menggunakan `normalizeUrlForDedup()` (strip UTM, hash, trailing slash)
 - Untuk tahap Gagasan dan Topik, referensi juga di-dual-write ke field native (`referensiAwal` / `referensiPendukung`)
-- Referensi yang tersimpan diformat secara prominent di prompt injection agar AI bisa merujuknya di turn berikutnya
+- Referensi yang tersimpan diformat secara prominent di prompt injection via `formatWebSearchReferences()` (`formatStageData.ts`) — ditampilkan sebagai blok "REFERENSI WEB SEARCH TERSIMPAN (WAJIB gunakan, JANGAN fabricate)" agar AI wajib merujuk referensi yang sudah ada dan tidak mengarang baru
 
 **Partial message save:** Jika web search streaming terputus (abort/error), pesan parsial tetap disimpan ke database agar referensi yang sudah ditemukan tidak hilang.
 
@@ -211,6 +211,7 @@ Berlapis proteksi untuk mencegah AI mengarang referensi:
 | **Anti-domain-as-author** | Rule di ATURAN UMUM per-turn: dilarang menggunakan domain sebagai author (e.g., "Kuanta.id, t.t.") | `paper-mode-prompt.ts` |
 | **APA format enforcement** | Format sitasi APA web source yang benar diinjeksi di semua tahap sitasi | Stage instructions |
 | **URL quality filtering** | Proxy URLs (Vertex AI Search) dan low-value URLs (/tag/, /berita/, root domain) difilter | `route.ts` |
+| **Prominent reference injection** | Referensi tersimpan diinjeksi sebagai blok wajib-rujuk di prompt: "WAJIB gunakan, JANGAN fabricate" | `formatStageData.ts` |
 
 ### Aturan Tegas
 
@@ -232,8 +233,10 @@ Ketika AI submit tahap untuk validasi, UI menampilkan **panel validasi** dengan:
 
 ### Approve
 
+- **Guard**: `ringkasan` wajib terisi; budget outline dicek (reject jika konten > 150% estimasi kata)
 - Tahap ditandai selesai dengan timestamp validasi
 - Ringkasan dicatat ke **Paper Memory Digest** (catatan keputusan kumulatif)
+- `estimatedContentChars` dan `estimatedTokenUsage` di-update untuk tracking progress
 - Session berpindah ke tahap berikutnya dengan status `drafting`
 - Khusus tahap Judul: judul terpilih disinkronkan sebagai judul resmi paper
 
@@ -349,6 +352,28 @@ Paper writing mengkonsumsi kredit dengan multiplier khusus:
 | Refrasa | 0.8x |
 
 Setiap Paper Session memiliki soft cap kredit (default: 300 kredit). Saat mendekati limit, user mendapat notifikasi. Sistem billing detail ada di dokumentasi terpisah (`docs/billing-tier-enforcement/`).
+
+### Session Credit Tracking
+
+Setiap paper session menyimpan field tracking kredit:
+
+| Field | Tipe | Deskripsi |
+|-------|------|-----------|
+| `creditAllotted` | number | Kredit yang dialokasikan (default: 300) |
+| `creditUsed` | number | Kredit yang sudah terpakai di session ini |
+| `creditRemaining` | number | Sisa kredit session (computed) |
+| `isSoftBlocked` | boolean | True jika kredit habis |
+| `softBlockedAt` | number | Timestamp saat soft-blocked |
+
+### Content Size Tracking
+
+Approval setiap tahap juga melacak estimasi ukuran konten:
+
+| Field | Tipe | Deskripsi |
+|-------|------|-----------|
+| `estimatedContentChars` | number | Total karakter dari konten yang sudah divalidasi |
+| `estimatedTokenUsage` | number | Estimasi token (chars / 4) |
+| `isDirty` | boolean | True saat chat di-edit/regenerate setelah stageData update |
 
 ---
 
