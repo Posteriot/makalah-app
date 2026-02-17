@@ -105,4 +105,4 @@ export {
 } from "./finalization";
 
 // Re-export formatStageData helper
-export { formatStageData } from "./formatStageData";
+export { formatStageData, formatArtifactSummaries } from "./formatStageData";

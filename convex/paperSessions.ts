@@ -24,61 +24,61 @@ const PLACEHOLDER_CONVERSATION_TITLES = new Set(["Percakapan baru", "New Chat"])
  */
 const STAGE_KEY_WHITELIST: Record<string, string[]> = {
     gagasan: [
-        "ringkasan", "ideKasar", "analisis", "angle", "novelty",
-        "referensiAwal", "artifactId", "validatedAt", "revisionCount"
+        "ringkasan", "ringkasanDetail", "ideKasar", "analisis", "angle", "novelty",
+        "referensiAwal", "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     topik: [
-        "ringkasan", "definitif", "angleSpesifik", "argumentasiKebaruan",
-        "researchGap", "referensiPendukung", "artifactId", "validatedAt", "revisionCount"
+        "ringkasan", "ringkasanDetail", "definitif", "angleSpesifik", "argumentasiKebaruan",
+        "researchGap", "referensiPendukung", "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     outline: [
-        "ringkasan", "sections", "totalWordCount", "completenessScore",
-        "artifactId", "validatedAt", "revisionCount"
+        "ringkasan", "ringkasanDetail", "sections", "totalWordCount", "completenessScore",
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     abstrak: [
-        "ringkasan", "ringkasanPenelitian", "keywords", "wordCount",
-        "artifactId", "validatedAt", "revisionCount"
+        "ringkasan", "ringkasanDetail", "ringkasanPenelitian", "keywords", "wordCount",
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     pendahuluan: [
-        "ringkasan", "latarBelakang", "rumusanMasalah", "researchGapAnalysis",
+        "ringkasan", "ringkasanDetail", "latarBelakang", "rumusanMasalah", "researchGapAnalysis",
         "tujuanPenelitian", "signifikansiPenelitian", "hipotesis", "sitasiAPA",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     tinjauan_literatur: [
-        "ringkasan", "kerangkaTeoretis", "reviewLiteratur", "gapAnalysis",
-        "justifikasiPenelitian", "referensi", "artifactId", "validatedAt", "revisionCount"
+        "ringkasan", "ringkasanDetail", "kerangkaTeoretis", "reviewLiteratur", "gapAnalysis",
+        "justifikasiPenelitian", "referensi", "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     metodologi: [
-        "ringkasan", "desainPenelitian", "metodePerolehanData", "teknikAnalisis",
+        "ringkasan", "ringkasanDetail", "desainPenelitian", "metodePerolehanData", "teknikAnalisis",
         "etikaPenelitian", "alatInstrumen", "pendekatanPenelitian",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     hasil: [
-        "ringkasan", "temuanUtama", "metodePenyajian", "dataPoints",
-        "artifactId", "validatedAt", "revisionCount"
+        "ringkasan", "ringkasanDetail", "temuanUtama", "metodePenyajian", "dataPoints",
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     diskusi: [
-        "ringkasan", "interpretasiTemuan", "perbandinganLiteratur",
+        "ringkasan", "ringkasanDetail", "interpretasiTemuan", "perbandinganLiteratur",
         "implikasiTeoretis", "implikasiPraktis", "keterbatasanPenelitian",
         "saranPenelitianMendatang", "sitasiTambahan",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     kesimpulan: [
-        "ringkasan", "ringkasanHasil", "jawabanRumusanMasalah",
+        "ringkasan", "ringkasanDetail", "ringkasanHasil", "jawabanRumusanMasalah",
         "implikasiPraktis", "saranPraktisi", "saranPeneliti", "saranKebijakan",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     daftar_pustaka: [
-        "ringkasan", "entries", "totalCount", "incompleteCount", "duplicatesMerged",
-        "artifactId", "validatedAt", "revisionCount"
+        "ringkasan", "ringkasanDetail", "entries", "totalCount", "incompleteCount", "duplicatesMerged",
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     lampiran: [
-        "ringkasan", "items", "tidakAdaLampiran", "alasanTidakAda",
-        "artifactId", "validatedAt", "revisionCount"
+        "ringkasan", "ringkasanDetail", "items", "tidakAdaLampiran", "alasanTidakAda",
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     judul: [
-        "ringkasan", "opsiJudul", "judulTerpilih", "alasanPemilihan",
-        "artifactId", "validatedAt", "revisionCount"
+        "ringkasan", "ringkasanDetail", "opsiJudul", "judulTerpilih", "alasanPemilihan",
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
 };
 
@@ -92,6 +92,103 @@ function validateStageDataKeys(stage: string, data: Record<string, unknown>): st
 
     const dataKeys = Object.keys(data);
     return dataKeys.filter(key => !allowedKeys.includes(key));
+}
+
+/**
+ * Normalize URL for dedup: strip UTM params, trailing slash, hash.
+ */
+function normalizeUrlForDedup(raw: string): string {
+    try {
+        const u = new URL(raw);
+        for (const key of Array.from(u.searchParams.keys())) {
+            if (/^utm_/i.test(key)) u.searchParams.delete(key);
+        }
+        u.hash = "";
+        const out = u.toString();
+        return out.endsWith("/") ? out.slice(0, -1) : out;
+    } catch {
+        return raw;
+    }
+}
+
+/**
+ * Map stages to their native reference fields (for dual-write).
+ * Only stages with compatible schemas (all-optional fields) are included.
+ */
+const STAGE_NATIVE_REF_FIELD: Record<string, string | null> = {
+    gagasan: "referensiAwal",
+    topik: "referensiPendukung",
+};
+
+/**
+ * Fields that are expected to be arrays in schema.
+ * All other fields are expected to be strings (or number/id).
+ * Used by coerceStageDataTypes to auto-fix AI sending array for string fields.
+ */
+const ARRAY_FIELDS: Set<string> = new Set([
+    "referensiAwal",     // gagasan: array of objects
+    "referensiPendukung", // topik: array of objects
+    "keywords",           // abstrak: array of strings
+    "sitasiAPA",          // pendahuluan: array of objects
+    "referensi",          // tinjauan_literatur: array of objects
+    "dataPoints",         // hasil: array of objects
+    "sitasiTambahan",     // diskusi: array of objects
+    "entries",            // daftar_pustaka: array of objects
+    "items",              // lampiran: array of objects
+    "opsiJudul",          // judul: array of objects
+    "sections",           // outline: array of objects
+]);
+
+/**
+ * Coerce AI-sent values to match schema types.
+ * Fixes:
+ * - null/undefined → strip (Convex v.optional() means "absent", not null)
+ * - Array of strings for string field → join with newline
+ * - Plain object for string field → join values with section headers
+ * This prevents Convex validation errors from AI type mismatches.
+ */
+function coerceStageDataTypes(data: Record<string, unknown>): Record<string, unknown> {
+    const coerced: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+        // Strip null/undefined — Convex v.optional() means "field absent", not "field = null"
+        if (value === null || value === undefined) {
+            continue;
+        }
+
+        // Known array fields → keep as-is
+        if (ARRAY_FIELDS.has(key)) {
+            coerced[key] = value;
+            continue;
+        }
+
+        // AI sent array for a string field → join
+        if (Array.isArray(value)) {
+            if (value.every((item: unknown) => typeof item === "string")) {
+                coerced[key] = (value as string[]).join("\n");
+            } else {
+                coerced[key] = value; // pass through, let Convex validate
+            }
+            continue;
+        }
+
+        // AI sent plain object for a string field → flatten to string
+        // e.g. reviewLiteratur: { personalisasiPembelajaran: "...", aiDalamPendidikan: "..." }
+        if (typeof value === "object" && !Array.isArray(value)) {
+            const obj = value as Record<string, unknown>;
+            const allStringValues = Object.values(obj).every(v => typeof v === "string");
+            if (allStringValues) {
+                const parts = Object.entries(obj).map(([subKey, subVal]) =>
+                    `## ${subKey}\n\n${subVal}`
+                );
+                coerced[key] = parts.join("\n\n");
+                continue;
+            }
+        }
+
+        // Default: keep as-is
+        coerced[key] = value;
+    }
+    return coerced;
 }
 
 function normalizePaperTitle(title: string): string {
@@ -221,6 +318,80 @@ function normalizeReferensiData(data: Record<string, unknown>): Record<string, u
     }
 
     return normalizedData;
+}
+
+/**
+ * Validate that referensi entries have URL field (anti-hallucination guard).
+ * Returns warning info if entries without URL found, null otherwise.
+ */
+function validateReferensiUrls(data: Record<string, unknown>): {
+    missingUrlCount: number;
+    totalCount: number;
+    field: string;
+} | null {
+    const referensiFields = [
+        "referensiAwal", "referensiPendukung", "referensi",
+        "sitasiAPA", "sitasiTambahan"
+    ];
+
+    for (const field of referensiFields) {
+        if (Array.isArray(data[field])) {
+            const items = data[field] as Array<Record<string, unknown>>;
+            const total = items.length;
+            const missingUrl = items.filter(
+                (item) => !item.url || (typeof item.url === "string" && item.url.trim() === "")
+            ).length;
+
+            if (missingUrl > 0) {
+                return { missingUrlCount: missingUrl, totalCount: total, field };
+            }
+        }
+    }
+    return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIELD SIZE TRUNCATION (Task W7)
+// ═══════════════════════════════════════════════════════════
+
+const FIELD_CHAR_LIMIT = 2000;
+const EXCLUDED_TRUNCATION_FIELDS = new Set([
+    "ringkasan", "ringkasanDetail", "artifactId",
+    "validatedAt", "revisionCount",
+]);
+
+/**
+ * Truncate oversized string fields in stage data.
+ * Prevents bloated DB records and AI context.
+ * Excluded fields: ringkasan, ringkasanDetail, artifactId, validatedAt, revisionCount.
+ */
+function truncateStageDataFields(data: Record<string, unknown>): {
+  truncated: Record<string, unknown>;
+  warnings: string[];
+} {
+  const truncated = { ...data };
+  const warnings: string[] = [];
+
+  for (const [key, value] of Object.entries(truncated)) {
+    if (typeof value !== "string") continue;
+    if (EXCLUDED_TRUNCATION_FIELDS.has(key)) continue;
+
+    if (value.length > FIELD_CHAR_LIMIT) {
+      truncated[key] = value.slice(0, FIELD_CHAR_LIMIT);
+      warnings.push(
+        `Field '${key}' di-truncate dari ${value.length} ke ${FIELD_CHAR_LIMIT} karakter.`
+      );
+    }
+  }
+
+  // Custom limit for ringkasanDetail: 1000 chars
+  if (typeof truncated.ringkasanDetail === "string" &&
+      (truncated.ringkasanDetail as string).length > 1000) {
+    truncated.ringkasanDetail = (truncated.ringkasanDetail as string).slice(0, 1000);
+    warnings.push("Field 'ringkasanDetail' di-truncate ke 1000 karakter.");
+  }
+
+  return { truncated, warnings };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -434,18 +605,43 @@ export const updateStageData = mutation({
             );
         }
 
-        // Guard: Validate stage data keys against whitelist (Task 1.3.1)
-        const unknownKeys = validateStageDataKeys(args.stage, args.data as Record<string, unknown>);
+        // Guard: Strip unknown keys (soft-reject) + log for observability
+        const rawData = args.data as Record<string, unknown>;
+        const unknownKeys = validateStageDataKeys(args.stage, rawData);
+        let strippedData = rawData;
         if (unknownKeys.length > 0) {
-            throw new Error(
-                `updateStageData gagal: Key tidak dikenal untuk tahap ${args.stage}: ${unknownKeys.join(", ")}. ` +
-                "Gunakan key yang sesuai dengan skema tahap ini."
+            // Strip unknown keys instead of throwing — mutation continues with valid keys
+            strippedData = Object.fromEntries(
+                Object.entries(rawData).filter(([key]) => !unknownKeys.includes(key))
             );
+            // Log dropped keys to systemAlerts for dashboard observability
+            for (const droppedKey of unknownKeys) {
+                await ctx.db.insert("systemAlerts", {
+                    alertType: "stage_key_dropped",
+                    severity: "info",
+                    message: `Key "${droppedKey}" dropped dari tahap ${args.stage}`,
+                    source: "updateStageData",
+                    resolved: false,
+                    metadata: {
+                        stage: args.stage,
+                        keyName: droppedKey,
+                        sessionId: args.sessionId,
+                    },
+                    createdAt: Date.now(),
+                });
+            }
         }
+
+        // Coerce AI type mismatches (e.g. array sent for string field)
+        const coercedData = coerceStageDataTypes(strippedData);
 
         // Normalize referensi data: convert string citations to objects
         // This handles the case where AI sends string citations instead of objects
-        const normalizedData = normalizeReferensiData(args.data as Record<string, unknown>);
+        const normalizedData = normalizeReferensiData(coercedData);
+
+        // Truncate oversized string fields (W7)
+        const { truncated: truncatedData, warnings: truncationWarnings } =
+            truncateStageDataFields(normalizedData);
 
         const now = Date.now();
         const stageKey = args.stage;
@@ -456,7 +652,7 @@ export const updateStageData = mutation({
             ...session.stageData,
             [stageKey]: {
                 ...existingStageData,
-                ...normalizedData,
+                ...truncatedData,
             },
         };
 
@@ -466,23 +662,143 @@ export const updateStageData = mutation({
         });
 
         // ════════════════════════════════════════════════════════════════
-        // Return warning if ringkasan is missing
-        // This gives AI feedback to add ringkasan before submitting
+        // Return warnings for missing ringkasan and referensi without URLs
+        // This gives AI feedback before submitting
         // ════════════════════════════════════════════════════════════════
         const finalStageData = {
             ...existingStageData,
-            ...normalizedData,
+            ...truncatedData,
         };
         const hasRingkasan = typeof finalStageData.ringkasan === "string"
             && finalStageData.ringkasan.trim() !== "";
 
+        // Anti-hallucination: Check referensi URLs
+        const urlValidation = validateReferensiUrls(finalStageData);
+
+        const warnings: string[] = [];
+        if (unknownKeys.length > 0) {
+            warnings.push(
+                `Key tidak dikenal di-strip: ${unknownKeys.join(", ")}. ` +
+                `Gunakan key yang sesuai skema tahap ${args.stage}.`
+            );
+        }
+        if (!hasRingkasan) {
+            warnings.push(
+                "Ringkasan belum diisi. Tahap ini TIDAK BISA di-approve tanpa ringkasan. " +
+                "Panggil updateStageData lagi dengan field 'ringkasan' yang berisi keputusan utama yang disepakati (max 280 karakter)."
+            );
+        }
+        if (urlValidation) {
+            warnings.push(
+                `ANTI-HALUSINASI: ${urlValidation.missingUrlCount} dari ${urlValidation.totalCount} ` +
+                `referensi di field '${urlValidation.field}' TIDAK memiliki URL. ` +
+                `Semua referensi WAJIB berasal dari google_search dan memiliki URL sumber.`
+            );
+        }
+        if (truncationWarnings.length > 0) {
+            warnings.push(...truncationWarnings);
+        }
+
         return {
             success: true,
             stage: args.stage,
-            warning: hasRingkasan ? undefined :
-                "PERINGATAN: Ringkasan belum diisi. Tahap ini TIDAK BISA di-approve tanpa ringkasan. " +
-                "Panggil updateStageData lagi dengan field 'ringkasan' yang berisi keputusan utama yang disepakati (max 280 karakter).",
+            warning: warnings.length > 0 ? warnings.join(" | ") : undefined,
         };
+    },
+});
+
+/**
+ * Append web search references to current stage's stageData.
+ * Server-side auto-persist: deterministic, not dependent on AI behavior.
+ * - Appends to webSearchReferences with URL dedup
+ * - For gagasan/topik: also appends to native reference fields (dual-write)
+ */
+export const appendSearchReferences = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        references: v.array(v.object({
+            url: v.string(),
+            title: v.string(),
+            publishedAt: v.optional(v.number()),
+        })),
+    },
+    handler: async (ctx, args) => {
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) {
+            console.error("[appendSearchReferences] Session not found:", args.sessionId);
+            return;
+        }
+
+        const stage = session.currentStage;
+        if (!STAGE_ORDER.includes(stage as PaperStageId)) {
+            console.error("[appendSearchReferences] Unknown stage:", stage);
+            return;
+        }
+
+        const stageDataObj = (session.stageData ?? {}) as Record<string, Record<string, unknown>>;
+        const currentData = { ...(stageDataObj[stage] ?? {}) };
+
+        // 1. Append to webSearchReferences (all stages) with URL dedup
+        const existingWebRefs = (currentData.webSearchReferences ?? []) as Array<{
+            url: string; title: string; publishedAt?: number;
+        }>;
+        const existingUrls = new Set(existingWebRefs.map(r => normalizeUrlForDedup(r.url)));
+
+        const newRefs = args.references.filter(
+            r => !existingUrls.has(normalizeUrlForDedup(r.url))
+        );
+
+        if (newRefs.length === 0) {
+            return; // All refs already exist, no-op
+        }
+
+        currentData.webSearchReferences = [
+            ...existingWebRefs,
+            ...newRefs.map(r => ({
+                url: r.url,
+                title: r.title,
+                ...(r.publishedAt !== undefined ? { publishedAt: r.publishedAt } : {}),
+            })),
+        ];
+
+        // 2. Dual-write to native reference field for gagasan/topik
+        const nativeField = STAGE_NATIVE_REF_FIELD[stage];
+        if (nativeField) {
+            const existingNativeRefs = (currentData[nativeField] ?? []) as Array<{
+                title: string; url?: string; [key: string]: unknown;
+            }>;
+            const existingNativeUrls = new Set(
+                existingNativeRefs
+                    .filter(r => r.url)
+                    .map(r => normalizeUrlForDedup(r.url!))
+            );
+
+            const newNativeRefs = newRefs
+                .filter(r => !existingNativeUrls.has(normalizeUrlForDedup(r.url)))
+                .map(r => ({
+                    title: r.title,
+                    url: r.url,
+                    ...(r.publishedAt !== undefined ? { publishedAt: r.publishedAt } : {}),
+                }));
+
+            if (newNativeRefs.length > 0) {
+                currentData[nativeField] = [...existingNativeRefs, ...newNativeRefs];
+            }
+        }
+
+        // 3. Patch stageData
+        await ctx.db.patch(args.sessionId, {
+            stageData: {
+                ...session.stageData,
+                [stage]: currentData,
+            },
+            updatedAt: Date.now(),
+        });
+
+        console.log(
+            `[appendSearchReferences] Appended ${newRefs.length} refs to stage ${stage}` +
+            (nativeField ? ` (also to ${nativeField})` : "")
+        );
     },
 });
 

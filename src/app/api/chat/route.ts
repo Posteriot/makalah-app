@@ -30,6 +30,10 @@ import {
     getFunctionToolsModeNote,
 } from "@/lib/ai/paper-search-helpers"
 import {
+    checkContextBudget,
+    getContextWindow,
+} from "@/lib/ai/context-budget"
+import {
     checkQuotaBeforeOperation,
     recordUsageAfterOperation,
     createQuotaExceededResponse,
@@ -476,6 +480,48 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             temperature: providerSettings.temperature,
             ...(providerSettings.topP !== undefined ? { topP: providerSettings.topP } : {}),
             ...(providerSettings.maxTokens !== undefined ? { maxTokens: providerSettings.maxTokens } : {}),
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // W2: Context Budget Monitor — estimate token usage and prune if needed
+        // ════════════════════════════════════════════════════════════════
+        const estimateModelMessageChars = (msgs: Array<{ role: string; content: string | unknown }>): number => {
+            return msgs.reduce((total, msg) => {
+                if (typeof msg.content === "string") {
+                    return total + msg.content.length
+                }
+                return total
+            }, 0)
+        }
+
+        const contextWindow = getContextWindow(modelNames.primaryContextWindow)
+        const totalChars = estimateModelMessageChars(fullMessagesBase)
+        const budget = checkContextBudget(totalChars, contextWindow)
+
+        const usagePercent = Math.round((budget.totalTokens / budget.threshold) * 100)
+        console.info(
+            `[Context Budget] ${budget.totalTokens.toLocaleString()} tokens estimated (${usagePercent}% of ${budget.threshold.toLocaleString()} threshold) | ${fullMessagesBase.length} messages | model: ${modelNames.primary.model}, window: ${contextWindow.toLocaleString()}`
+        )
+
+        if (budget.shouldPrune) {
+            console.warn(
+                `[Context Budget] Pruning: ${budget.totalTokens} tokens > ${budget.threshold} threshold. Messages: ${fullMessagesBase.length}`
+            )
+            // Keep system messages at the front, prune only conversation messages
+            const systemMessages = fullMessagesBase.filter(m => m.role === "system")
+            const conversationMessages = fullMessagesBase.filter(m => m.role !== "system")
+            const keepLastN = 50
+            const prunedConversation = conversationMessages.length > keepLastN
+                ? conversationMessages.slice(-keepLastN)
+                : conversationMessages
+            fullMessagesBase.length = 0
+            fullMessagesBase.push(...systemMessages, ...prunedConversation)
+        }
+
+        if (budget.shouldWarn && !budget.shouldPrune) {
+            console.info(
+                `[Context Budget] Warning: ${budget.totalTokens} tokens approaching threshold ${budget.threshold}.`
+            )
         }
 
         const getSearchEvidenceFromStageData = (session: {
@@ -1694,6 +1740,27 @@ TIPS PENCARIAN:
 
                                     await saveAssistantMessage(textWithInlineCitations, persistedSources, modelNames.primary.model)
 
+                                    // ──── Auto-persist search references to paper stageData ────
+                                    if (paperSession && persistedSources && persistedSources.length > 0) {
+                                        try {
+                                            await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
+                                                sessionId: paperSession._id,
+                                                references: persistedSources.map(s => ({
+                                                    url: s.url,
+                                                    title: s.title,
+                                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                                        ? { publishedAt: s.publishedAt }
+                                                        : {}),
+                                                })),
+                                            })
+                                            console.log(`[Paper] Auto-persisted ${persistedSources.length} search refs to stageData`)
+                                        } catch (err) {
+                                            console.error("[Paper] Failed to auto-persist search references:", err)
+                                            // Non-blocking: don't fail the response stream
+                                        }
+                                    }
+                                    // ───────────────────────────────────────────────────────────
+
                                     const minPairsForFinalTitle = Number.parseInt(
                                         process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                                         10
@@ -1739,6 +1806,15 @@ TIPS PENCARIAN:
 
                             if (chunk.type === "abort") {
                                 closeSearchStatus(hasAnySource ? "done" : "off")
+                                // Save partial message on abort to prevent data loss
+                                if (streamedText.trim()) {
+                                    try {
+                                        await saveAssistantMessage(streamedText, undefined, modelNames.primary.model)
+                                        console.log("[Chat API] Saved partial message on stream abort")
+                                    } catch (err) {
+                                        console.error("[Chat API] Failed to save partial message on abort:", err)
+                                    }
+                                }
                                 writer.write(chunk)
                                 break
                             }
@@ -1975,6 +2051,26 @@ TIPS PENCARIAN:
                                         persistedSources,
                                         `${modelNames.fallback.model}:online`
                                     )
+
+                                    // ──── Auto-persist search references to paper stageData ────
+                                    if (paperSession && persistedSources.length > 0) {
+                                        try {
+                                            await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
+                                                sessionId: paperSession._id,
+                                                references: persistedSources.map(s => ({
+                                                    url: s.url,
+                                                    title: s.title,
+                                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                                        ? { publishedAt: s.publishedAt }
+                                                        : {}),
+                                                })),
+                                            })
+                                            console.log(`[Paper][Fallback] Auto-persisted ${persistedSources.length} search refs to stageData`)
+                                        } catch (err) {
+                                            console.error("[Paper][Fallback] Failed to auto-persist search references:", err)
+                                        }
+                                    }
+                                    // ───────────────────────────────────────────────────────────
                                 } else {
                                     // No citations - save without sources
                                     await saveAssistantMessage(

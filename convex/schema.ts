@@ -299,6 +299,10 @@ export default defineSchema({
     // ════════════════════════════════════════════════════════════════
     isRefrasaEnabled: v.optional(v.boolean()), // Show/hide Refrasa button in artifact (default: true)
 
+    // Context Window Settings (for W2 context budget monitor)
+    primaryContextWindow: v.optional(v.number()), // Primary model context window in tokens (e.g., 1048576 for Gemini 2.5 Flash)
+    fallbackContextWindow: v.optional(v.number()), // Fallback model context window in tokens
+
     // Versioning & Activation (pattern from systemPrompts)
     version: v.number(), // 1, 2, 3, ...
     isActive: v.boolean(), // Only one active at a time
@@ -328,6 +332,7 @@ export default defineSchema({
       // Phase 1: Foundation Stages
       gagasan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
         analisis: v.optional(v.string()),
         angle: v.optional(v.string()),
@@ -339,12 +344,18 @@ export default defineSchema({
           url: v.optional(v.string()),
           publishedAt: v.optional(v.number()), // Timestamp from google_search
         }))),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
       })),
       topik: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         definitif: v.optional(v.string()), // Optional: may not exist during initial revision
         angleSpesifik: v.optional(v.string()),
         argumentasiKebaruan: v.optional(v.string()),
@@ -355,6 +366,11 @@ export default defineSchema({
           year: v.optional(v.number()),
           url: v.optional(v.string()),
           publishedAt: v.optional(v.number()), // Timestamp from google_search
+        }))),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
         }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
@@ -367,15 +383,22 @@ export default defineSchema({
       // Phase 3: Core Stages
       abstrak: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         ringkasanPenelitian: v.optional(v.string()),
         keywords: v.optional(v.array(v.string())),
         wordCount: v.optional(v.number()),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
       })),
       pendahuluan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         latarBelakang: v.optional(v.string()),
         rumusanMasalah: v.optional(v.string()),
         researchGapAnalysis: v.optional(v.string()),
@@ -387,12 +410,18 @@ export default defineSchema({
           fullReference: v.string(),
           url: v.optional(v.string()),
         }))),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
       })),
       tinjauan_literatur: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         kerangkaTeoretis: v.optional(v.string()),
         reviewLiteratur: v.optional(v.string()),
         gapAnalysis: v.optional(v.string()),
@@ -406,12 +435,18 @@ export default defineSchema({
           inTextCitation: v.string(),
           isFromPhase1: v.boolean(),
         }))),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),
       })),
       metodologi: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         desainPenelitian: v.optional(v.string()),
         metodePerolehanData: v.optional(v.string()),
         teknikAnalisis: v.optional(v.string()),
@@ -422,6 +457,11 @@ export default defineSchema({
           v.literal("kuantitatif"),
           v.literal("mixed")
         )),
+        webSearchReferences: v.optional(v.array(v.object({
+          url: v.string(),
+          title: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))),
         artifactId: v.optional(v.id("artifacts")),
         validatedAt: v.optional(v.number()),
         revisionCount: v.optional(v.number()),

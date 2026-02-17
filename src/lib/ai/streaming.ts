@@ -85,6 +85,11 @@ async function getProviderConfig() {
       fallbackEngine: config.fallbackWebSearchEngine,
       fallbackMaxResults: config.fallbackWebSearchMaxResults,
     },
+    // Context window settings (for W2 context budget monitor)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    primaryContextWindow: (config as any).primaryContextWindow as number | undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fallbackContextWindow: (config as any).fallbackContextWindow as number | undefined,
   }
 
   return result
@@ -288,6 +293,8 @@ export async function getModelNames() {
       provider: config.fallback.provider,
       model: config.fallback.model,
     },
+    primaryContextWindow: config.primaryContextWindow,
+    fallbackContextWindow: config.fallbackContextWindow,
   }
 }
 

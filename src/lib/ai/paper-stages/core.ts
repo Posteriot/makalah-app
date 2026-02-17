@@ -82,13 +82,14 @@ OUTPUT 'ABSTRAK' (draft SETELAH diskusi):
 - ringkasanPenelitian: Teks abstrak utuh (150-250 kata)
 - keywords: Daftar 3-5 kata kunci
 - wordCount: Jumlah kata dalam ringkasanPenelitian
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi MENGAPA keywords ini dipilih dan bagaimana abstrak merepresentasikan paper secara utuh
 
 ═══════════════════════════════════════════════════════════════════════════════
 TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari contoh abstrak paper serupa. AI TIDAK BOLEH inisiatif search di stage ini karena abstrak adalah compile dari data Phase 1.
-- updateStageData({ ringkasan, ringkasanPenelitian, keywords, wordCount })
+- updateStageData({ ringkasan, ringkasanDetail, ringkasanPenelitian, keywords, wordCount })
 - createArtifact({ type: "section", title: "Abstrak - [Judul Paper]", content: "[konten abstrak lengkap]" })
 - submitStageForValidation()
 
@@ -142,10 +143,22 @@ PRINSIP UTAMA:
    - Setiap klaim kuat HARUS didukung referensi
    - Gunakan format in-text: (Nama, Tahun) → misal: (Supit, 2024)
    - WAJIB catat daftar lengkap referensi dalam array sitasiAPA[]
+   - ⚠️ SEMUA sitasi HARUS dari google_search atau dari referensi Phase 1
+   - ⚠️ JANGAN PERNAH bikin PLACEHOLDER sitasi seperti "(Penulis, Tahun)" atau "(Nama, t.t.)"
+   - Jika belum punya referensi yang cukup, LAKUKAN google_search DULU, jangan bikin sitasi fiktif
+
+   ⚠️ FORMAT SITASI WEB SOURCE — WAJIB IKUTI:
+   - JANGAN pakai domain/URL sebagai author: ❌ (Kuanta.id, t.t.) ❌ (Researchgate.net, t.t.)
+   - Cari nama AUTHOR ASLI dari hasil search. Jika ada author → (NamaAuthor, Tahun)
+   - Jika TIDAK ada author → pakai JUDUL ARTIKEL (disingkat): (Judul Artikel, Tahun)
+   - Jika TIDAK ada tahun → pakai "n.d." bukan "t.t.": (NamaAuthor, n.d.)
+   - Contoh BENAR: (Wijaya, 2023), ("Dampak AI pada Pembelajaran", 2024), (Kementerian Pendidikan, n.d.)
+   - Contoh SALAH: (Kuanta.id, t.t.), (Graphie.co.id, t.t.), (Researchgate.net, t.t.)
 
 3. WEB SEARCH (OPSIONAL)
    - Gunakan google_search jika memerlukan data/fakta terbaru untuk mendukung urgensi masalah.
    - Diskusikan temuan data dengan user sebelum dimasukkan ke draft.
+   - WAJIB search SEBELUM menulis draft yang mengandung sitasi — jangan menulis sitasi dulu baru search nanti
 
 4. ELABORASI SESUAI OUTLINE
    - Jadikan outline sebagai checklist utama
@@ -197,13 +210,14 @@ OUTPUT 'PENDAHULUAN' (SETELAH diskusi):
 - signifikansiPenelitian: Mengapa penelitian ini penting (kontribusi teoretis/praktis)
 - hipotesis: Hipotesis atau pertanyaan penelitian spesifik (jika ada)
 - sitasiAPA: Array referensi [{ inTextCitation, fullReference, url }]
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi MENGAPA rumusan masalah dan tujuan penelitian ini dipilih, konteks penting dari diskusi dengan user
 
 ═══════════════════════════════════════════════════════════════════════════════
 TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → Cari data/fakta pendukung urgensi
-- updateStageData({ ringkasan, latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, hipotesis, sitasiAPA })
+- updateStageData({ ringkasan, ringkasanDetail, latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, hipotesis, sitasiAPA })
 - createArtifact({ type: "section", title: "Pendahuluan - [Judul Paper]", content: "[konten pendahuluan lengkap]" })
 
 CATATAN MODE TOOL:
@@ -213,6 +227,9 @@ CATATAN MODE TOOL:
 - ❌ JANGAN skip tracking sitasi - ini wajib untuk daftar pustaka
 - ❌ JANGAN lupakan "anchor" argumentasi kebaruan dari Stage Topik
 - ❌ JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+- ❌ JANGAN PERNAH bikin PLACEHOLDER sitasi — "(Penulis, Tahun)" fiktif DILARANG KERAS
+- ❌ JANGAN menulis sitasi tanpa google_search atau referensi Phase 1 sebagai sumber
+- ❌ Lebih baik TANPA sitasi daripada sitasi PALSU/PLACEHOLDER
 
 ═══════════════════════════════════════════════════════════════════════════════
 ⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
@@ -251,7 +268,22 @@ PRINSIP UTAMA:
    - Ambil referensi dari Phase 1 (refAwal & refPendukung)
    - Gunakan google_search (opsional) untuk "mendalami" literatur tertentu jika relevan.
 
-2. TARGET 10-20 REFERENSI
+2. ANTI-HALLUCINATION — ZERO TOLERANCE
+   - ⚠️ SETIAP referensi HARUS dari google_search ATAU dari Phase 1 (refAwal/refPendukung)
+   - ⚠️ JANGAN PERNAH bikin PLACEHOLDER sitasi seperti "(Penulis, Tahun)" atau "(Nama, t.t.)"
+   - ⚠️ JANGAN PERNAH mengarang referensi "standar" yang belum di-search (contoh: "Russell & Norvig")
+   - Jika referensi kurang, LAKUKAN google_search — jangan bikin sitasi fiktif
+   - Lebih baik 5 referensi ASLI daripada 20 referensi PALSU
+
+   ⚠️ FORMAT SITASI WEB SOURCE — WAJIB IKUTI:
+   - JANGAN pakai domain/URL sebagai author: ❌ (Kuanta.id, t.t.) ❌ (Researchgate.net, t.t.)
+   - Cari nama AUTHOR ASLI dari hasil search. Jika ada author → (NamaAuthor, Tahun)
+   - Jika TIDAK ada author → pakai JUDUL ARTIKEL (disingkat): ("Judul Artikel", Tahun)
+   - Jika TIDAK ada tahun → pakai "n.d." bukan "t.t.": (NamaAuthor, n.d.)
+   - Contoh BENAR: (Wijaya, 2023), ("Dampak AI pada Pembelajaran", 2024), (Kementerian Pendidikan, n.d.)
+   - Contoh SALAH: (Kuanta.id, t.t.), (Graphie.co.id, t.t.), (Researchgate.net, t.t.)
+
+3. TARGET 10-20 REFERENSI
    - Kumpulkan referensi yang spesifik dan relevan
    - WAJIB beri flag isFromPhase1: true untuk referensi yang berasal dari tahap awal
 
@@ -307,13 +339,14 @@ OUTPUT 'TINJAUAN LITERATUR':
 - gapAnalysis: Penajaman celah penelitian berdasarkan literatur
 - justifikasiPenelitian: Mengapa penelitian ini diperlukan berdasarkan literatur yang ada
 - referensi: Array [{ title, authors, year, url, inTextCitation, isFromPhase1 }]
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi kerangka teoretis yang dipilih, alasan pemilihan teori, dan bagaimana literatur saling terhubung
 
 ═══════════════════════════════════════════════════════════════════════════════
 TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → Target pendalaman (3-5 queries)
-- updateStageData({ ringkasan, kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi })
+- updateStageData({ ringkasan, ringkasanDetail, kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi })
 - createArtifact({ type: "section", title: "Tinjauan Literatur - [Judul Paper]", content: "[konten tinjauan literatur lengkap]" })
 
 CATATAN MODE TOOL:
@@ -323,6 +356,9 @@ CATATAN MODE TOOL:
 - ❌ JANGAN ignore referensi Phase 1 - itu adalah fondasi awal
 - ❌ JANGAN cuma copas abstrak literatur lain - harus ada SINTESIS
 - ❌ JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+- ❌ JANGAN PERNAH bikin PLACEHOLDER sitasi — "(Penulis, Tahun)" fiktif DILARANG KERAS
+- ❌ JANGAN mengarang referensi "buku teks standar" tanpa search — semua harus verifiable
+- ❌ Lebih baik TANPA sitasi daripada sitasi PALSU/PLACEHOLDER
 
 ═══════════════════════════════════════════════════════════════════════════════
 ⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
@@ -421,13 +457,14 @@ OUTPUT 'METODOLOGI':
 - teknikAnalisis: Teknis gimana data diolah
 - etikaPenelitian: Pernyataan etika penelitian
 - alatInstrumen: Alat atau instrumen penelitian yang digunakan (kuesioner, wawancara, software, dll)
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi MENGAPA pendekatan ini dipilih, trade-off yang dipertimbangkan, dan justifikasi metode
 
 ═══════════════════════════════════════════════════════════════════════════════
 TOOLS & LARANGAN:
 ═══════════════════════════════════════════════════════════════════════════════
 
 - google_search → Cari referensi/contoh metodologi sejenis
-- updateStageData({ ringkasan, pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian, alatInstrumen })
+- updateStageData({ ringkasan, ringkasanDetail, pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian, alatInstrumen })
 - createArtifact({ type: "section", title: "Metodologi - [Judul Paper]", content: "[konten metodologi lengkap]" })
 
 CATATAN MODE TOOL:
@@ -437,6 +474,7 @@ CATATAN MODE TOOL:
 - ❌ JANGAN langsung generate tanpa diskusi pendekatan dulu
 - ❌ JANGAN buat desain yang nggak bisa menjawab rumusan masalah
 - ❌ JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+- ❌ JANGAN bikin PLACEHOLDER sitasi — jika butuh referensi metodologi, search dulu lewat google_search
 
 ═══════════════════════════════════════════════════════════════════════════════
 ⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!

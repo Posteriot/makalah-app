@@ -111,13 +111,14 @@ OUTPUT 'DAFTAR PUSTAKA':
 - totalCount: Jumlah total referensi
 - incompleteCount: Jumlah referensi yang incomplete
 - duplicatesMerged: Jumlah duplikat yang di-merge
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi proses kompilasi, masalah yang ditemukan (duplikat, incomplete), dan keputusan yang diambil
 
 ===============================================================================
 TOOLS & LARANGAN:
 ===============================================================================
 
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk verifikasi/enrichment referensi yang incomplete. AI TIDAK BOLEH inisiatif search di stage ini.
-- updateStageData({ ringkasan, entries, totalCount, incompleteCount, duplicatesMerged })
+- updateStageData({ ringkasan, ringkasanDetail, entries, totalCount, incompleteCount, duplicatesMerged })
 - createArtifact({ type: "citation", title: "Daftar Pustaka - [Judul Paper]", content: "[daftar referensi lengkap format APA]" })
 - submitStageForValidation()
 
@@ -232,13 +233,14 @@ OUTPUT 'LAMPIRAN':
 
   Catatan: referencedInSections pakai format section ID seperti di Outline
   Contoh: ["metodologi.alatInstrumen", "hasil.temuan1"]
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi keputusan lampiran apa yang dimasukkan/tidak dan alasannya
 
 ===============================================================================
 TOOLS & LARANGAN:
 ===============================================================================
 
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari template/contoh lampiran. AI TIDAK BOLEH inisiatif search di stage ini.
-- updateStageData({ ringkasan, items, tidakAdaLampiran, alasanTidakAda })
+- updateStageData({ ringkasan, ringkasanDetail, items, tidakAdaLampiran, alasanTidakAda })
 - createArtifact({ type: "section", title: "Lampiran [label] - [judul]", content: "[konten lampiran]" })
 - submitStageForValidation()
 
@@ -362,6 +364,7 @@ OUTPUT 'JUDUL':
   { judul, keywordsCovered, coverageScore (0-100) }
 - judulTerpilih: Judul final yang dipilih user
 - alasanPemilihan: Kenapa judul ini dipilih (untuk dokumentasi)
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi proses pemilihan judul, alternatif yang dipertimbangkan, dan alasan final
 
 NOTE: Sync judulTerpilih ke paperSession.paperTitle adalah scope Phase 5.
 
@@ -370,7 +373,7 @@ TOOLS & LARANGAN:
 ===============================================================================
 
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari inspirasi judul dari paper serupa. AI TIDAK BOLEH inisiatif search di stage ini.
-- updateStageData({ ringkasan, opsiJudul, judulTerpilih, alasanPemilihan })
+- updateStageData({ ringkasan, ringkasanDetail, opsiJudul, judulTerpilih, alasanPemilihan })
 - createArtifact({ type: "section", title: "Opsi Judul Paper", content: "[5 opsi + analysis]" })
 - submitStageForValidation()
 
@@ -493,13 +496,14 @@ OUTPUT 'OUTLINE':
 
 - totalWordCount: Estimasi total kata seluruh paper
 - completenessScore: Persentase section yang sudah complete (0-100)
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi struktur yang dipilih, alasan pembagian bab, dan pertimbangan word count
 
 ===============================================================================
 TOOLS & LARANGAN:
 ===============================================================================
 
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari contoh struktur paper serupa. AI TIDAK BOLEH inisiatif search di stage ini.
-- updateStageData({ sections, totalWordCount, completenessScore, ringkasan })
+- updateStageData({ ringkasan, ringkasanDetail, sections, totalWordCount, completenessScore })
 - createArtifact({ type: "outline", title: "Outline Paper - [Judul Paper]", content: "[struktur hierarchical lengkap]" })
 - submitStageForValidation()
 

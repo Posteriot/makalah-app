@@ -88,13 +88,14 @@ OUTPUT 'HASIL':
 - temuanUtama: Array string (temuan + penjelasan per item)
 - metodePenyajian: narrative | tabular | mixed
 - dataPoints: Array data kuantitatif (opsional)
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi temuan kunci, pola menarik, dan konteks data yang tidak muat di ringkasan 280 char
 
 ===============================================================================
 TOOLS & LARANGAN:
 ===============================================================================
 
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari benchmark/pembanding data. AI TIDAK BOLEH inisiatif search di stage ini karena Hasil harus dari data AKTUAL user.
-- updateStageData({ ringkasan, temuanUtama, metodePenyajian, dataPoints })
+- updateStageData({ ringkasan, ringkasanDetail, temuanUtama, metodePenyajian, dataPoints })
 - createArtifact({ type: "section" | "table", title: "Hasil - [Judul Paper]", content: "[konten hasil lengkap]" })
 - submitStageForValidation()
 
@@ -143,6 +144,11 @@ PRINSIP UTAMA:
 1. WAJIB CROSS-REFERENCE LITERATUR
    - Bandingkan temuan dengan studi terdahulu
    - Perbandingan literatur WAJIB sitasi in-text (format APA)
+   - ⚠️ SEMUA sitasi HARUS dari Tinjauan Literatur (referensi), google_search, atau Phase 1
+   - ⚠️ JANGAN PERNAH bikin PLACEHOLDER sitasi seperti "(Penulis, Tahun)" atau "(Nama, t.t.)"
+   - Jika butuh referensi baru untuk perbandingan, LAKUKAN google_search DULU
+   - ⚠️ JANGAN pakai domain/URL sebagai author: ❌ (Kuanta.id, t.t.) ❌ (Researchgate.net, t.t.)
+   - Cari AUTHOR ASLI. Jika tidak ada → pakai JUDUL ARTIKEL. Jika tidak ada tahun → "n.d."
 
 2. MEANING-MAKING
    - Interpretasi temuan harus jelas: apa artinya, kenapa terjadi
@@ -206,13 +212,14 @@ OUTPUT 'DISKUSI':
 - keterbatasanPenelitian
 - saranPenelitianMendatang
 - sitasiTambahan: Array sitasi tambahan (opsional)
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi interpretasi kunci, hubungan temuan dengan teori, dan konteks penting diskusi dengan user
 
 ===============================================================================
 TOOLS & LARANGAN:
 ===============================================================================
 
 - google_search -> opsional untuk referensi pembanding
-- updateStageData({ ringkasan, interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang, sitasiTambahan })
+- updateStageData({ ringkasan, ringkasanDetail, interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang, sitasiTambahan })
 - createArtifact({ type: "section", title: "Diskusi - [Judul Paper]", content: "[konten diskusi lengkap]" })
 - submitStageForValidation()
 
@@ -223,6 +230,9 @@ CATATAN MODE TOOL:
 - X JANGAN introduce temuan baru (itu di Hasil)
 - X JANGAN skip perbandingan literatur
 - X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+- X JANGAN PERNAH bikin PLACEHOLDER sitasi — "(Penulis, Tahun)" fiktif DILARANG KERAS
+- X JANGAN mengarang referensi — semua sitasi harus dari Tinjauan Literatur atau google_search
+- X Lebih baik TANPA sitasi daripada sitasi PALSU/PLACEHOLDER
 
 ===============================================================================
 ⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
@@ -316,13 +326,14 @@ OUTPUT 'KESIMPULAN':
 - saranPraktisi
 - saranPeneliti
 - saranKebijakan (opsional)
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi jawaban rumusan masalah, nuansa saran, dan konteks yang tidak muat di ringkasan 280 char
 
 ===============================================================================
 TOOLS & LARANGAN:
 ===============================================================================
 
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit. AI TIDAK BOLEH inisiatif search di stage ini karena Kesimpulan adalah SINTESIS dari Hasil + Diskusi, bukan info baru.
-- updateStageData({ ringkasan, ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan })
+- updateStageData({ ringkasan, ringkasanDetail, ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan })
 - createArtifact({ type: "section", title: "Kesimpulan - [Judul Paper]", content: "[konten kesimpulan lengkap]" })
 - submitStageForValidation()
 

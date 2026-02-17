@@ -22,8 +22,9 @@ import {
   DataTransferBoth,
   Settings,
   Refresh,
-  NavArrowLeft,
-  NavArrowRight,
+  CheckCircle,
+  Globe,
+  ServerConnection,
 } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 import { AIProviderFormDialog } from "./AIProviderFormDialog"
@@ -38,6 +39,13 @@ interface AIProviderConfig {
   fallbackModel: string
   temperature: number
   topP?: number
+  maxTokens?: number
+  primaryContextWindow?: number
+  fallbackContextWindow?: number
+  primaryWebSearchEnabled?: boolean
+  fallbackWebSearchEnabled?: boolean
+  fallbackWebSearchEngine?: string
+  fallbackWebSearchMaxResults?: number
   version: number
   isActive: boolean
   createdAt: number
@@ -49,27 +57,26 @@ interface AIProviderManagerProps {
   userId: Id<"users">
 }
 
-type ProviderDynamicColumnKey =
-  | "primaryProvider"
-  | "fallbackProvider"
-  | "temperature"
-  | "version"
-  | "status"
-  | "updatedAt"
-  | "actions"
+const PROVIDER_LABELS: Record<string, string> = {
+  "vercel-gateway": "Vercel AI Gateway",
+  openrouter: "OpenRouter",
+}
 
-const PROVIDER_DYNAMIC_COLUMNS: Array<{
-  key: ProviderDynamicColumnKey
-  label: string
-}> = [
-  { key: "primaryProvider", label: "Primary Provider" },
-  { key: "fallbackProvider", label: "Fallback Provider" },
-  { key: "temperature", label: "Temp" },
-  { key: "version", label: "Versi" },
-  { key: "status", label: "Status" },
-  { key: "updatedAt", label: "Update Terakhir" },
-  { key: "actions", label: "Aksi" },
-]
+function formatDate(timestamp: number) {
+  return new Date(timestamp).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function formatTokenCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
+  return String(n)
+}
 
 export function AIProviderManager({ userId }: AIProviderManagerProps) {
   const configs = useQuery(api.aiProviderConfigs.listConfigs, {
@@ -77,36 +84,18 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
   })
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingConfig, setEditingConfig] = useState<AIProviderConfig | null>(
-    null
-  )
-  const [deleteConfig, setDeleteConfig] = useState<AIProviderConfig | null>(
-    null
-  )
-  const [activateConfig, setActivateConfig] = useState<AIProviderConfig | null>(
-    null
-  )
+  const [editingConfig, setEditingConfig] = useState<AIProviderConfig | null>(null)
+  const [deleteConfig, setDeleteConfig] = useState<AIProviderConfig | null>(null)
+  const [activateConfig, setActivateConfig] = useState<AIProviderConfig | null>(null)
   const [swapConfig, setSwapConfig] = useState<AIProviderConfig | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [dynamicColumnStart, setDynamicColumnStart] = useState(0)
 
   const activateMutation = useMutation(api.aiProviderConfigs.activateConfig)
   const swapMutation = useMutation(api.aiProviderConfigs.swapProviders)
   const deleteMutation = useMutation(api.aiProviderConfigs.deleteConfigChain)
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("id-ID", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
   const handleActivate = async () => {
     if (!activateConfig) return
-
     setIsLoading(true)
     try {
       const result = await activateMutation({
@@ -115,9 +104,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
       })
       toast.success(result.message)
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Terjadi kesalahan"
-      toast.error(errorMessage)
+      toast.error(error instanceof Error ? error.message : "Terjadi kesalahan")
     } finally {
       setIsLoading(false)
       setActivateConfig(null)
@@ -126,7 +113,6 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
 
   const handleSwap = async () => {
     if (!swapConfig) return
-
     setIsLoading(true)
     try {
       const result = await swapMutation({
@@ -135,9 +121,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
       })
       toast.success(result.message)
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Terjadi kesalahan"
-      toast.error(errorMessage)
+      toast.error(error instanceof Error ? error.message : "Terjadi kesalahan")
     } finally {
       setIsLoading(false)
       setSwapConfig(null)
@@ -146,7 +130,6 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
 
   const handleDelete = async () => {
     if (!deleteConfig) return
-
     setIsLoading(true)
     try {
       const result = await deleteMutation({
@@ -155,168 +138,27 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
       })
       toast.success(result.message)
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Terjadi kesalahan"
-      toast.error(errorMessage)
+      toast.error(error instanceof Error ? error.message : "Terjadi kesalahan")
     } finally {
       setIsLoading(false)
       setDeleteConfig(null)
     }
   }
 
-  const handleReloadConfig = async () => {
+  const handleReloadConfig = () => {
     toast.success(
       "Config cache akan di-refresh otomatis dalam 5 menit, atau segera di request chat berikutnya"
     )
   }
 
-  const DESKTOP_DYNAMIC_COLUMN_COUNT = 3
-  const MOBILE_DYNAMIC_COLUMN_COUNT = 1
-
-  const visibleDynamicColumnsDesktop = Array.from(
-    { length: DESKTOP_DYNAMIC_COLUMN_COUNT },
-    (_, offset) =>
-      PROVIDER_DYNAMIC_COLUMNS[
-        (dynamicColumnStart + offset) % PROVIDER_DYNAMIC_COLUMNS.length
-      ]
-  )
-
-  const visibleDynamicColumnsMobile = Array.from(
-    { length: MOBILE_DYNAMIC_COLUMN_COUNT },
-    (_, offset) =>
-      PROVIDER_DYNAMIC_COLUMNS[
-        (dynamicColumnStart + offset) % PROVIDER_DYNAMIC_COLUMNS.length
-      ]
-  )
-
-  const goToPrevColumns = () => {
-    setDynamicColumnStart(
-      (prev) =>
-        (prev - 1 + PROVIDER_DYNAMIC_COLUMNS.length) %
-        PROVIDER_DYNAMIC_COLUMNS.length
-    )
-  }
-
-  const goToNextColumns = () => {
-    setDynamicColumnStart(
-      (prev) => (prev + 1) % PROVIDER_DYNAMIC_COLUMNS.length
-    )
-  }
-
-  const renderProviderCell = (provider: string, model: string) => (
-    <div className="flex flex-col items-start gap-1">
-      <span className="text-narrative text-xs font-medium capitalize text-foreground">
-        {provider.replace("-", " ")}
-      </span>
-      <span className="inline-flex items-center rounded-badge border border-border bg-slate-200 px-2 py-0.5 text-[10px] font-mono text-slate-700 dark:bg-slate-700 dark:text-slate-100">
-        {model}
-      </span>
-    </div>
-  )
-
-  const renderActionsCell = (config: AIProviderConfig) => (
-    <div className="flex items-center justify-center gap-1">
-      <button
-        className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-muted-foreground transition-colors hover:bg-slate-200 hover:text-foreground dark:hover:bg-slate-800"
-        onClick={() => setEditingConfig(config)}
-        title="Edit"
-      >
-        <EditPencil className="h-4 w-4" />
-      </button>
-      <button
-        className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-sky-600 transition-colors hover:bg-slate-200 dark:text-sky-400 dark:hover:bg-slate-800"
-        onClick={() => setSwapConfig(config)}
-        title="Tukar Primary ↔ Fallback"
-      >
-        <DataTransferBoth className="h-4 w-4" />
-      </button>
-      {config.isActive ? (
-        <button
-          className="inline-flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-action border-main border border-border text-emerald-500/45 dark:text-emerald-400/45"
-          title="Config sedang aktif"
-          disabled
-        >
-          <SwitchOn className="h-4 w-4" />
-        </button>
-      ) : (
-        <>
-          <button
-            className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-emerald-600 transition-colors hover:bg-slate-200 dark:text-emerald-400 dark:hover:bg-slate-800"
-            onClick={() => setActivateConfig(config)}
-            title="Aktifkan"
-          >
-            <SwitchOn className="h-4 w-4" />
-          </button>
-          <button
-            className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-rose-600 transition-colors hover:bg-rose-500/10 dark:text-rose-400"
-            onClick={() => setDeleteConfig(config)}
-            title="Hapus"
-          >
-            <Trash className="h-4 w-4" />
-          </button>
-        </>
-      )}
-    </div>
-  )
-
-  const renderDynamicCell = (
-    columnKey: ProviderDynamicColumnKey,
-    config: AIProviderConfig
-  ) => {
-    if (columnKey === "primaryProvider") {
-      return renderProviderCell(config.primaryProvider, config.primaryModel)
-    }
-
-    if (columnKey === "fallbackProvider") {
-      return renderProviderCell(config.fallbackProvider, config.fallbackModel)
-    }
-
-    if (columnKey === "temperature") {
-      return (
-        <span className="text-interface font-mono text-xs text-foreground">
-          {config.temperature.toFixed(1)}
-        </span>
-      )
-    }
-
-    if (columnKey === "version") {
-      return (
-        <span className="inline-flex items-center rounded-badge border border-border bg-slate-200 px-2.5 py-1 text-[10px] font-bold tracking-wide text-slate-700 uppercase dark:bg-slate-700 dark:text-slate-100">
-          v{config.version}
-        </span>
-      )
-    }
-
-    if (columnKey === "status") {
-      return config.isActive ? (
-        <span className="inline-flex items-center rounded-badge border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold tracking-wide text-emerald-600 uppercase dark:text-emerald-400">
-          Aktif
-        </span>
-      ) : (
-        <span className="inline-flex items-center rounded-badge border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold tracking-wide text-amber-600 uppercase dark:text-amber-400">
-          Nonaktif
-        </span>
-      )
-    }
-
-    if (columnKey === "updatedAt") {
-      return (
-        <span className="text-narrative text-xs text-muted-foreground">
-          {formatDate(config.updatedAt)}
-        </span>
-      )
-    }
-
-    return renderActionsCell(config)
-  }
-
+  // Loading skeleton
   if (configs === undefined) {
     return (
-      <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
+      <div className="rounded-[16px] border border-slate-200 bg-white/90 dark:border-slate-700 dark:bg-slate-900/90">
         <div className="p-6">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 w-1/3 rounded bg-muted" />
-            <div className="h-64 rounded bg-muted" />
+            <div className="h-8 w-1/3 rounded-[8px] bg-slate-200 dark:bg-slate-700" />
+            <div className="h-64 rounded-[8px] bg-slate-200 dark:bg-slate-700" />
           </div>
         </div>
       </div>
@@ -325,204 +167,72 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
 
   return (
     <>
-      <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
-        <div className="border-b border-border px-4 py-4 md:px-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <div className="rounded-[16px] border border-slate-200 bg-white/90 dark:border-slate-700 dark:bg-slate-900/90 overflow-hidden">
+        {/* Header */}
+        <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Settings className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-interface text-sm font-semibold text-foreground">
+                <Settings className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                <h3 className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
                   AI Provider Configuration
                 </h3>
               </div>
-              <p className="text-narrative text-xs text-muted-foreground">
-                Kelola provider AI, model, dan API key. Hanya satu konfigurasi
-                aktif untuk produksi.
+              <p className="font-sans text-xs text-slate-500 dark:text-slate-400">
+                Kelola provider AI, model, dan API key. Hanya satu konfigurasi aktif untuk produksi.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
-                className="focus-ring inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border px-3 py-1.5 text-xs font-mono text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-slate-200 px-3 py-1.5 font-mono text-xs text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                 onClick={handleReloadConfig}
               >
-                <Refresh className="h-4 w-4" />
+                <Refresh className="h-3.5 w-3.5" />
                 <span>Reload Cache</span>
               </button>
               <button
-                className="focus-ring inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-slate-900 px-3 py-1.5 font-mono text-xs font-medium text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
                 onClick={() => setIsCreateDialogOpen(true)}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-3.5 w-3.5" />
                 <span>Buat Config Baru</span>
               </button>
             </div>
           </div>
         </div>
 
-        <div className="hidden md:block">
-          <table className="text-interface w-full table-fixed border-collapse text-left text-sm">
-            <thead className="border-b border-border bg-slate-300/70 dark:bg-slate-800/95">
-              <tr>
-                <th className="text-signal h-12 w-[26%] bg-slate-200/75 px-4 py-3 text-[10px] font-bold tracking-wider text-muted-foreground uppercase dark:bg-slate-900/85">
-                  Konfigurasi
-                </th>
-                <th className="h-12 w-[8%] border-l border-border bg-slate-200/75 px-2 py-2 dark:bg-slate-900/85">
-                  <div className="flex items-center justify-center gap-1">
-                    <button
-                      type="button"
-                      onClick={goToPrevColumns}
-                      aria-label="Kolom sebelumnya"
-                      className="focus-ring inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
-                    >
-                      <NavArrowLeft className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={goToNextColumns}
-                      aria-label="Kolom berikutnya"
-                      className="focus-ring inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
-                    >
-                      <NavArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </th>
-                {visibleDynamicColumnsDesktop.map((column) => (
-                  <th
-                    key={column.key}
-                    className="text-signal h-12 w-[22%] px-4 py-3 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
-                  >
-                    {column.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {configs.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-10 text-center text-muted-foreground">
-                    <div className="flex flex-col items-center gap-2">
-                      <Settings className="h-8 w-8 opacity-20" />
-                      <span className="text-narrative">
-                        Belum ada config. Klik &quot;Buat Config Baru&quot; untuk
-                        memulai.
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                configs.map((config) => (
-                  <tr key={config._id} className="group transition-colors hover:bg-muted/50">
-                    <td className="bg-slate-200/35 px-4 py-3 align-top group-hover:bg-slate-200/55 dark:bg-slate-900/55 dark:group-hover:bg-slate-800/70">
-                      <div className="text-narrative font-medium text-foreground">
-                        {config.name}
-                      </div>
-                      {config.description ? (
-                        <div className="text-narrative mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                          {config.description}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="border-l border-border bg-gradient-to-r from-slate-300/45 to-card/40 px-2 py-3 group-hover:from-slate-300/65 group-hover:to-muted/40 dark:from-slate-900/80 dark:to-slate-900/40 dark:group-hover:from-slate-800/95 dark:group-hover:to-slate-800/50" />
-                    {visibleDynamicColumnsDesktop.map((column) => (
-                      <td key={`${config._id}-${column.key}`} className="px-4 py-3 text-center align-top">
-                        <div className="inline-flex items-center justify-center">
-                          {renderDynamicCell(column.key, config)}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {/* Config Cards */}
+        {configs.length === 0 ? (
+          <div className="p-10 text-center">
+            <Settings className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+            <p className="mt-2 font-sans text-sm text-slate-500 dark:text-slate-400">
+              Belum ada config. Klik &quot;Buat Config Baru&quot; untuk memulai.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-200 dark:divide-slate-700">
+            {configs.map((config) => (
+              <ConfigCard
+                key={config._id}
+                config={config as AIProviderConfig}
+                onEdit={() => setEditingConfig(config as AIProviderConfig)}
+                onSwap={() => setSwapConfig(config as AIProviderConfig)}
+                onActivate={() => setActivateConfig(config as AIProviderConfig)}
+                onDelete={() => setDeleteConfig(config as AIProviderConfig)}
+              />
+            ))}
+          </div>
+        )}
 
-        <div className="md:hidden">
-          <table className="text-interface w-full table-fixed border-collapse text-left text-xs">
-            <thead className="border-b border-border bg-slate-300/70 dark:bg-slate-800/95">
-              <tr>
-                <th className="text-signal h-11 w-[44%] bg-slate-200/75 px-2 py-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase dark:bg-slate-900/85">
-                  Konfigurasi
-                </th>
-                <th className="h-11 w-[18%] border-l border-border bg-slate-200/75 px-1 py-1 dark:bg-slate-900/85">
-                  <div className="flex items-center justify-center gap-1">
-                    <button
-                      type="button"
-                      onClick={goToPrevColumns}
-                      aria-label="Kolom sebelumnya"
-                      className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
-                    >
-                      <NavArrowLeft className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={goToNextColumns}
-                      aria-label="Kolom berikutnya"
-                      className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
-                    >
-                      <NavArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </th>
-                {visibleDynamicColumnsMobile.map((column) => (
-                  <th
-                    key={`mobile-${column.key}`}
-                    className="text-signal h-11 w-[38%] px-2 py-2 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
-                  >
-                    {column.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {configs.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="py-10 text-center text-muted-foreground">
-                    <div className="flex flex-col items-center gap-2">
-                      <Settings className="h-8 w-8 opacity-20" />
-                      <span className="text-narrative">
-                        Belum ada config. Klik &quot;Buat Config Baru&quot; untuk
-                        memulai.
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                configs.map((config) => (
-                  <tr key={config._id} className="group transition-colors hover:bg-muted/50">
-                    <td className="bg-slate-200/35 px-2 py-3 align-top group-hover:bg-slate-200/55 dark:bg-slate-900/55 dark:group-hover:bg-slate-800/70">
-                      <div className="text-narrative text-xs font-medium text-foreground">
-                        {config.name}
-                      </div>
-                      {config.description ? (
-                        <div className="text-narrative mt-1 line-clamp-2 text-[11px] text-muted-foreground">
-                          {config.description}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="border-l border-border bg-gradient-to-r from-slate-300/45 to-card/40 px-1 py-3 dark:from-slate-900/80 dark:to-slate-900/40" />
-                    {visibleDynamicColumnsMobile.map((column) => (
-                      <td key={`${config._id}-mobile-${column.key}`} className="px-2 py-3 text-center align-top">
-                        <div className="inline-flex items-center justify-center">
-                          {renderDynamicCell(column.key, config)}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="border-t border-border bg-slate-200/25 p-4 dark:bg-slate-900/25 md:p-6">
+        {/* Footer */}
+        <div className="border-t border-slate-200 bg-slate-50/50 px-5 py-4 dark:border-slate-700 dark:bg-slate-900/50">
           <div className="flex items-start gap-3">
-            <Settings className="mt-0.5 h-4 w-4 text-muted-foreground" />
-            <div className="space-y-1">
-              <span className="text-interface block text-sm font-medium text-foreground">
+            <ServerConnection className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+            <div className="space-y-0.5">
+              <span className="block font-mono text-xs font-medium text-slate-700 dark:text-slate-300">
                 Sistem Fallback & Cache
               </span>
-              <p className="text-narrative text-xs leading-relaxed text-muted-foreground">
+              <p className="font-sans text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                 Jika tidak ada config aktif, sistem AI memakai fallback bawaan.
                 Cache config akan refresh otomatis tiap 5 menit.
               </p>
@@ -576,8 +286,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
             <AlertDialogDescription>
               Apakah Anda yakin ingin menukar primary ↔ fallback provider di
               config &quot;{swapConfig?.name}&quot;? Ini akan membuat versi baru
-              (v
-              {swapConfig && swapConfig.version + 1}).
+              (v{swapConfig && swapConfig.version + 1}).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -608,7 +317,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isLoading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-rose-600 text-white hover:bg-rose-700"
             >
               {isLoading ? "Menghapus..." : "Hapus"}
             </AlertDialogAction>
@@ -616,5 +325,217 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  )
+}
+
+/* ────────────────────────────────────────────────────────────────────── */
+/*  ConfigCard — all info visible at once, no column scrolling           */
+/* ────────────────────────────────────────────────────────────────────── */
+
+function ConfigCard({
+  config,
+  onEdit,
+  onSwap,
+  onActivate,
+  onDelete,
+}: {
+  config: AIProviderConfig
+  onEdit: () => void
+  onSwap: () => void
+  onActivate: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div className="px-5 py-5">
+      {/* Row 1: Title + Status + Version */}
+      <div className="flex flex-wrap items-center gap-2">
+        <h4 className="font-sans text-sm font-semibold text-slate-900 dark:text-slate-100">
+          {config.name}
+        </h4>
+        {config.isActive ? (
+          <span className="inline-flex items-center gap-1 rounded-[6px] border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+            <CheckCircle className="h-3 w-3" />
+            Aktif
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+            Nonaktif
+          </span>
+        )}
+        <span className="inline-flex items-center rounded-[6px] border border-slate-300 bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          v{config.version}
+        </span>
+      </div>
+
+      {config.description && (
+        <p className="mt-1 font-sans text-xs text-slate-500 dark:text-slate-400">
+          {config.description}
+        </p>
+      )}
+
+      {/* Row 2: Primary + Fallback — side by side on desktop, stacked on mobile */}
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ProviderSlot
+          label="Primary"
+          provider={config.primaryProvider}
+          model={config.primaryModel}
+          contextWindow={config.primaryContextWindow}
+        />
+        <ProviderSlot
+          label="Fallback"
+          provider={config.fallbackProvider}
+          model={config.fallbackModel}
+          contextWindow={config.fallbackContextWindow}
+        />
+      </div>
+
+      {/* Row 3: Settings + Web Search */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+        <SettingChip label="Temp" value={config.temperature.toFixed(1)} />
+        {config.topP !== undefined && (
+          <SettingChip label="Top P" value={config.topP.toFixed(1)} />
+        )}
+        {config.maxTokens !== undefined && (
+          <SettingChip label="Max Tokens" value={config.maxTokens.toLocaleString()} />
+        )}
+        <WebSearchChip
+          primaryEnabled={config.primaryWebSearchEnabled ?? true}
+          fallbackEnabled={config.fallbackWebSearchEnabled ?? true}
+          engine={config.fallbackWebSearchEngine ?? "auto"}
+        />
+      </div>
+
+      {/* Row 4: Actions + Metadata */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/60 pt-3 dark:border-slate-700/60">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ActionButton icon={EditPencil} label="Edit" onClick={onEdit} />
+          <ActionButton
+            icon={DataTransferBoth}
+            label="Swap"
+            onClick={onSwap}
+            className="text-sky-600 dark:text-sky-400"
+          />
+          {config.isActive ? (
+            <span className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-slate-200 px-2 font-mono text-[10px] text-emerald-500/40 dark:border-slate-700">
+              <SwitchOn className="h-3.5 w-3.5" />
+              Aktif
+            </span>
+          ) : (
+            <>
+              <ActionButton
+                icon={SwitchOn}
+                label="Aktifkan"
+                onClick={onActivate}
+                className="text-emerald-600 dark:text-emerald-400"
+              />
+              <ActionButton
+                icon={Trash}
+                label="Hapus"
+                onClick={onDelete}
+                className="text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+              />
+            </>
+          )}
+        </div>
+        <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">
+          {formatDate(config.updatedAt)} · {config.creatorEmail}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/* ────────────────────────────────────────────────────────────────────── */
+/*  Sub-components                                                       */
+/* ────────────────────────────────────────────────────────────────────── */
+
+function ProviderSlot({
+  label,
+  provider,
+  model,
+  contextWindow,
+}: {
+  label: string
+  provider: string
+  model: string
+  contextWindow?: number
+}) {
+  return (
+    <div className="rounded-[8px] border border-slate-200 bg-slate-50/70 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/50">
+      <span className="block font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+        {label}
+      </span>
+      <span className="mt-1 block font-sans text-xs font-medium text-slate-700 dark:text-slate-200">
+        {PROVIDER_LABELS[provider] ?? provider}
+      </span>
+      <span className="mt-1 inline-flex items-center rounded-[6px] border border-slate-300 bg-white px-2 py-0.5 font-mono text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
+        {model}
+      </span>
+      {contextWindow != null && contextWindow > 0 && (
+        <span className="ml-2 font-mono text-[10px] text-slate-400 dark:text-slate-500">
+          {formatTokenCount(contextWindow)} ctx
+        </span>
+      )}
+    </div>
+  )
+}
+
+function SettingChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+        {label}
+      </span>
+      <span className="font-mono text-xs text-slate-700 dark:text-slate-200">
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function WebSearchChip({
+  primaryEnabled,
+  fallbackEnabled,
+  engine,
+}: {
+  primaryEnabled: boolean
+  fallbackEnabled: boolean
+  engine: string
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Globe className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+        Search
+      </span>
+      <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300">
+        {primaryEnabled ? "P:on" : "P:off"}{" "}
+        {fallbackEnabled ? `F:on (${engine})` : "F:off"}
+      </span>
+    </div>
+  )
+}
+
+function ActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  className = "",
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  onClick: () => void
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex h-7 items-center gap-1 rounded-[8px] border border-slate-200 px-2 font-mono text-[10px] font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 ${className}`}
+      title={label}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      <span className="hidden sm:inline">{label}</span>
+    </button>
   )
 }

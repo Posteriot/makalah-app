@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, EditPencil, Send, Xmark } from "iconoir-react";
+import { Check, EditPencil, Send, WarningCircle, Xmark } from "iconoir-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ interface PaperValidationPanelProps {
     onApprove: () => Promise<void>;
     onRevise: (feedback: string) => Promise<void>;
     isLoading?: boolean;
+    isDirty?: boolean;
 }
 
 export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
@@ -19,6 +20,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
     onApprove,
     onRevise,
     isLoading = false,
+    isDirty = false,
 }) => {
     const [showRevisionForm, setShowRevisionForm] = useState(false);
     const [feedback, setFeedback] = useState("");
@@ -64,6 +66,17 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                 "animate-in fade-in slide-in-from-bottom-4 duration-500"
             )}
         >
+            {isDirty && (
+                <div className="flex items-start gap-2 p-3 mx-4 mt-4 mb-0 bg-amber-500/10 border border-amber-500/30 rounded-action text-xs text-amber-600 dark:text-amber-400">
+                    <WarningCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <span className="font-semibold">Percakapan berubah sejak data terakhir disimpan.</span>
+                        <span className="block mt-0.5 text-muted-foreground">
+                            Sebaiknya minta AI sinkronkan data sebelum approve.
+                        </span>
+                    </div>
+                </div>
+            )}
             <div
                 className={cn(
                     "p-4",

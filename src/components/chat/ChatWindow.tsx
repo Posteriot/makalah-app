@@ -113,6 +113,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const { isAuthenticated } = useConvexAuth()
 
   const {
+    session: paperSession,
     isPaperMode,
     stageStatus,
     stageLabel,
@@ -803,6 +804,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                         onApprove={handleApprove}
                         onRevise={handleRevise}
                         isLoading={isLoading}
+                        isDirty={paperSession?.isDirty === true}
                       />
                     )}
                     <div className="h-4" />

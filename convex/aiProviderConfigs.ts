@@ -131,6 +131,9 @@ export const createConfig = mutation({
     temperature: v.number(),
     topP: v.optional(v.number()),
     maxTokens: v.optional(v.number()),
+    // Context window settings
+    primaryContextWindow: v.optional(v.number()),
+    fallbackContextWindow: v.optional(v.number()),
     // Web search settings
     primaryWebSearchEnabled: v.optional(v.boolean()),
     fallbackWebSearchEnabled: v.optional(v.boolean()),
@@ -172,6 +175,9 @@ export const createConfig = mutation({
       temperature: args.temperature,
       topP: args.topP,
       maxTokens: args.maxTokens,
+      // Context window settings
+      primaryContextWindow: args.primaryContextWindow,
+      fallbackContextWindow: args.fallbackContextWindow,
       // Web search settings (store provided values, defaults applied in getActiveConfig)
       primaryWebSearchEnabled: args.primaryWebSearchEnabled,
       fallbackWebSearchEnabled: args.fallbackWebSearchEnabled,
@@ -217,6 +223,9 @@ export const updateConfig = mutation({
     temperature: v.optional(v.number()),
     topP: v.optional(v.number()),
     maxTokens: v.optional(v.number()),
+    // Context window settings
+    primaryContextWindow: v.optional(v.number()),
+    fallbackContextWindow: v.optional(v.number()),
     // Web search settings
     primaryWebSearchEnabled: v.optional(v.boolean()),
     fallbackWebSearchEnabled: v.optional(v.boolean()),
@@ -259,6 +268,11 @@ export const updateConfig = mutation({
     const temperature = args.temperature ?? oldConfig.temperature
     const topP = args.topP ?? oldConfig.topP
     const maxTokens = args.maxTokens ?? oldConfig.maxTokens
+    // Context window settings - use provided value or preserve old config value
+    const primaryContextWindow =
+      args.primaryContextWindow !== undefined ? args.primaryContextWindow : oldConfig.primaryContextWindow
+    const fallbackContextWindow =
+      args.fallbackContextWindow !== undefined ? args.fallbackContextWindow : oldConfig.fallbackContextWindow
     // Web search settings - use provided value or preserve old config value
     const primaryWebSearchEnabled =
       args.primaryWebSearchEnabled ?? oldConfig.primaryWebSearchEnabled
@@ -303,6 +317,9 @@ export const updateConfig = mutation({
       temperature,
       topP,
       maxTokens,
+      // Context window settings
+      primaryContextWindow,
+      fallbackContextWindow,
       // Web search settings
       primaryWebSearchEnabled,
       fallbackWebSearchEnabled,

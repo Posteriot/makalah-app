@@ -1,8 +1,8 @@
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
-import { getStageInstructions, formatStageData } from "./paper-stages";
+import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
+import { getStageInstructions, formatStageData, formatArtifactSummaries } from "./paper-stages";
 
 type StageStatus = "drafting" | "pending_validation" | "approved" | "revision";
 
@@ -66,6 +66,51 @@ export const getPaperModeSystemPrompt = async (
         // Format stageData into readable context
         const formattedData = formatStageData(session.stageData, stage);
 
+        // Build artifact summaries from completed stages
+        let artifactSummariesSection = "";
+        try {
+            const allArtifacts = await fetchQuery(
+                api.artifacts.listByConversation,
+                { conversationId, userId: session.userId },
+                convexOptions
+            );
+
+            // Map artifactId -> artifact content for quick lookup
+            const artifactMap = new Map<string, { content: string }>();
+            for (const a of allArtifacts) {
+                // Only include non-invalidated, latest-version artifacts
+                if (!a.invalidatedAt) {
+                    artifactMap.set(String(a._id), { content: a.content });
+                }
+            }
+
+            // Collect artifacts from completed (validated) stages
+            const stageData = session.stageData as Record<string, { artifactId?: string; validatedAt?: number; superseded?: boolean }>;
+            const completedArtifacts: Array<{ stageLabel: string; content: string }> = [];
+
+            for (const stageId of STAGE_ORDER) {
+                // Skip current stage (not yet completed)
+                if (stage !== "completed" && stageId === stage) continue;
+
+                const sd = stageData[stageId];
+                if (!sd?.validatedAt || sd.superseded) continue;
+                if (!sd.artifactId) continue;
+
+                const artifact = artifactMap.get(sd.artifactId);
+                if (artifact) {
+                    completedArtifacts.push({
+                        stageLabel: getStageLabel(stageId as PaperStageId),
+                        content: artifact.content,
+                    });
+                }
+            }
+
+            artifactSummariesSection = formatArtifactSummaries(completedArtifacts);
+        } catch (err) {
+            console.error("Error building artifact summaries:", err);
+            // Continue without artifact summaries - non-critical
+        }
+
         // Inline revision context (simple, not over-prescriptive)
         const revisionNote = status === "revision"
             ? "\n⚠️ MODE REVISI: User meminta perbaikan. Perhatikan feedback mereka di pesan terakhir.\n"
@@ -108,10 +153,21 @@ ATURAN UMUM:
 - submitStageForValidation() HANYA setelah user EKSPLISIT konfirmasi puas
 - Jangan lompat ke tahap berikutnya sebelum currentStage berubah di database
 
+⚠️ FORMAT SITASI IN-TEXT (APA) — WAJIB DIPATUHI SETIAP TURN:
+- DILARANG KERAS memakai nama DOMAIN/WEBSITE sebagai author dalam sitasi
+- ❌ SALAH: (Kuanta.id, t.t.), (Graphie.co.id, t.t.), (Researchgate.net, t.t.), (Kompas.com, 2024)
+- Jika google_search hanya mengembalikan URL tanpa author:
+  1. Cari nama AUTHOR ASLI di halaman hasil search
+  2. Jika author tidak ditemukan → pakai JUDUL ARTIKEL (disingkat, dalam tanda kutip)
+  3. Jika tahun tidak ditemukan → pakai "n.d." (bukan "t.t.")
+- ✅ BENAR: (Wijaya, 2023), ("Dampak AI pada Pembelajaran", 2024), (Kementerian Pendidikan, n.d.)
+- Jika ragu antara domain vs author asli → JANGAN SITASI, cukup sebutkan informasinya tanpa citation mark
+
 ${stageInstructions}
 
 KONTEKS TAHAP SELESAI & CHECKLIST:
 ${formattedData}
+${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
 ---
 `;
     } catch (error) {

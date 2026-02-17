@@ -24,6 +24,8 @@ import type {
 
 const SUMMARY_CHAR_LIMIT = 1000;
 const RINGKASAN_CHAR_LIMIT = 280;
+const DETAIL_WINDOW_SIZE = 3;
+const RINGKASAN_DETAIL_CHAR_LIMIT = 1000;
 
 interface StageData {
     gagasan?: GagasanData;
@@ -59,6 +61,37 @@ type AllStageData =
     | OutlineData
 
 /**
+ * Format webSearchReferences from the ACTIVE stage into a prominent block.
+ * This ensures AI has structured reference data available every turn.
+ */
+function formatWebSearchReferences(stageData: StageData, currentStage: PaperStageId | "completed"): string {
+    if (currentStage === "completed") return "";
+
+    const data = stageData[currentStage] as AllStageData | undefined;
+    if (!data) return "";
+
+    const refs = (data as Record<string, unknown>).webSearchReferences as
+        Array<{ url: string; title: string; publishedAt?: number }> | undefined;
+
+    if (!refs || refs.length === 0) return "";
+
+    const lines = refs.map((ref, i) => {
+        const date = ref.publishedAt
+            ? ` (${new Date(ref.publishedAt).getFullYear()})`
+            : "";
+        return `  ${i + 1}. "${ref.title}"${date} — ${ref.url}`;
+    });
+
+    return [
+        `REFERENSI WEB SEARCH TERSIMPAN (WAJIB gunakan, JANGAN fabricate):`,
+        ...lines,
+        ``,
+        `SEMUA sitasi in-text HARUS merujuk ke referensi di atas.`,
+        `Jika butuh referensi tambahan, MINTA user untuk search dulu.`,
+    ].join("\n");
+}
+
+/**
  * Format stageData object into a human-readable string.
  * Only includes stages that have actual content.
  */
@@ -73,6 +106,12 @@ export function formatStageData(
     const activeStageBlock = formatActiveStageData(stageData, currentStage);
     if (activeStageBlock) {
         sections.push(activeStageBlock);
+    }
+
+    // Web search references block (prominent, for anti-hallucination)
+    const webRefsBlock = formatWebSearchReferences(stageData, currentStage);
+    if (webRefsBlock) {
+        sections.push(webRefsBlock);
     }
 
     sections.push(formatOutlineChecklist(stageData.outline, currentStage));
@@ -94,24 +133,51 @@ function hasContent(data: AllStageData): boolean {
     );
 }
 
+function truncateRingkasanDetail(text: string): string {
+    if (text.length <= RINGKASAN_DETAIL_CHAR_LIMIT) {
+        return text;
+    }
+    return `${text.slice(0, RINGKASAN_DETAIL_CHAR_LIMIT).trim()}...`;
+}
+
 function formatRingkasanTahapSelesai(
     stageData: StageData,
     currentStage: PaperStageId | "completed"
 ): string {
     const summaries: string[] = [];
 
+    // Determine which stages are completed (validated + not superseded)
+    const completedStageIds: PaperStageId[] = [];
     STAGE_ORDER.forEach((stageId) => {
-        if (currentStage !== "completed" && stageId === currentStage) {
-            return;
-        }
+        if (currentStage !== "completed" && stageId === currentStage) return;
         const data = stageData[stageId] as AllStageData | undefined;
-        if (!data || !data.validatedAt) {
-            return;
+        if (data?.validatedAt && !(data as any).superseded) {
+            completedStageIds.push(stageId);
         }
+    });
+
+    // Determine which stages get detail injection (last 3 completed)
+    const detailStages = new Set(completedStageIds.slice(-DETAIL_WINDOW_SIZE));
+
+    completedStageIds.forEach((stageId) => {
+        const data = stageData[stageId] as AllStageData | undefined;
+        if (!data) return;
+
         const ringkasanValue = typeof data.ringkasan === "string" && data.ringkasan.trim()
             ? data.ringkasan.trim()
             : "Ringkasan belum tersedia.";
+
         summaries.push(`- ${getStageLabel(stageId)}: ${truncateRingkasan(ringkasanValue)}`);
+
+        // Inject detail for last N completed stages (saves context budget)
+        const isDetailStage = detailStages.has(stageId);
+        const detail = isDetailStage && typeof (data as any).ringkasanDetail === "string"
+            ? ((data as any).ringkasanDetail as string).trim()
+            : null;
+
+        if (detail) {
+            summaries.push(`  (DETAIL): ${truncateRingkasanDetail(detail)}`);
+        }
     });
 
     if (summaries.length === 0) {
@@ -627,4 +693,32 @@ function formatOutlineChecklist(
     }
 
     return output.trim();
+}
+
+// ════════════════════════════════════════════════════════════════
+// Artifact Summary Injection (W1: Paper Workflow Resilience)
+// ════════════════════════════════════════════════════════════════
+
+const ARTIFACT_SUMMARY_CHAR_LIMIT = 500;
+
+function formatArtifactSummary(content: string, stageLabel: string): string {
+    const truncated = content.length > ARTIFACT_SUMMARY_CHAR_LIMIT
+        ? content.slice(0, ARTIFACT_SUMMARY_CHAR_LIMIT).trim() + "..."
+        : content;
+    return `- [${stageLabel}] "${truncated}"`;
+}
+
+/**
+ * Format artifact summaries from completed stages into a context section.
+ * Truncates content to 500 chars per artifact to keep prompt size manageable.
+ */
+export function formatArtifactSummaries(
+    artifacts: Array<{ stageLabel: string; content: string }>
+): string {
+    if (artifacts.length === 0) return "";
+
+    const summaries = artifacts
+        .map((a) => formatArtifactSummary(a.content, a.stageLabel));
+
+    return `RINGKASAN ARTIFACT TAHAP SELESAI:\n${summaries.join("\n")}`;
 }
