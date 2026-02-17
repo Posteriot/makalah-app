@@ -77,12 +77,24 @@ function RegularOverviewView({
 }) {
   const meter = useCreditMeter()
 
+  // Pro plan data for BPP upgrade pitch
+  const proPlan = useQuery(
+    api.pricingPlans.getPlanBySlug,
+    tier === "bpp" ? { slug: "pro" } : "skip"
+  )
+  const { user } = useCurrentUser()
+  const creditBalance = useQuery(
+    api.billing.credits.getCreditBalance,
+    tier === "bpp" && user?._id ? { userId: user._id } : "skip"
+  )
+
   return (
     <>
-      {/* Tier Card */}
+      {/* Merged Tier + Saldo Card */}
       <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-border">
+          {/* Left: Tier Info */}
+          <div className="pb-4 md:pb-0 md:pr-4">
             <p className="text-signal text-[10px] text-muted-foreground">Tier Saat Ini</p>
             <div className="flex items-center gap-2 mt-1">
               <span
@@ -95,91 +107,126 @@ function RegularOverviewView({
               </span>
             </div>
             <p className="text-sm text-muted-foreground mt-2">{tierConfig.description}</p>
+
+            {tier === "gratis" && (
+              <Link
+                href="/subscription/upgrade"
+                className="focus-ring text-interface mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
+              >
+                <ArrowUpCircle className="h-4 w-4" />
+                Upgrade
+              </Link>
+            )}
+
+            {(tier === "bpp" || tier === "pro") && (
+              <Link
+                href="/checkout/bpp?from=overview"
+                className="focus-ring text-interface mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
+              >
+                <CreditCard className="h-4 w-4" />
+                Top Up Kredit
+              </Link>
+            )}
           </div>
-          <GraphUp className="h-5 w-5 text-muted-foreground" />
+
+          {/* Right: Saldo Kredit */}
+          <div className="border-t border-border pt-4 md:border-t-0 md:pt-0 md:pl-4">
+            <h2 className="text-signal text-[10px] text-muted-foreground mb-3">Saldo Kredit</h2>
+
+            {/* Progress Bar */}
+            <div className="relative h-3 bg-muted rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  "absolute left-0 top-0 h-full rounded-full transition-all",
+                  meter.level === "depleted" ? "bg-destructive"
+                    : meter.level === "critical" ? "bg-destructive"
+                    : meter.level === "warning" ? "bg-amber-500"
+                    : "bg-primary"
+                )}
+                style={{ width: `${Math.min(meter.percentage, 100)}%` }}
+              />
+            </div>
+
+            {/* Kredit text */}
+            <div className="mt-2">
+              <span className="font-mono text-xl font-bold">
+                <span className={cn("text-foreground", (meter.level === "warning" || meter.level === "critical" || meter.level === "depleted") && "text-destructive")}>
+                  {meter.used.toLocaleString("id-ID")}
+                </span>
+                <span className="text-muted-foreground"> / {meter.total.toLocaleString("id-ID")}</span>
+                {" "}
+                <span className="text-signal text-[10px] text-muted-foreground">kredit</span>
+              </span>
+            </div>
+
+            {/* Pro: subtle reset note */}
+            {tier === "pro" && (
+              <p className="font-mono text-[10px] text-muted-foreground mt-1">Direset setiap bulan</p>
+            )}
+
+            {/* Blocked state */}
+            {meter.level === "depleted" && (
+              <div className="mt-2 space-y-2">
+                <p className="text-xs text-destructive">
+                  {tier === "gratis"
+                    ? "Kredit habis. Upgrade untuk melanjutkan."
+                    : "Kredit habis. Top up untuk melanjutkan."}
+                </p>
+                <Link
+                  href={tier === "gratis" ? "/subscription/upgrade" : "/checkout/bpp?from=overview"}
+                  className="focus-ring text-interface inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  {tier === "gratis" ? "Upgrade" : "Top Up Kredit"}
+                </Link>
+              </div>
+            )}
+
+            {/* Warning state */}
+            {(meter.level === "warning" || meter.level === "critical") && (
+              <p className="text-xs text-amber-600 mt-2">
+                Kredit hampir habis. {tier === "gratis" ? "Pertimbangkan upgrade." : "Pertimbangkan top up."}
+              </p>
+            )}
+          </div>
         </div>
-
-        {tier === "gratis" && (
-          <Link
-            href="/subscription/upgrade"
-            className="focus-ring text-interface mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
-          >
-            <ArrowUpCircle className="h-4 w-4" />
-            Upgrade
-          </Link>
-        )}
-
-        {(tier === "bpp" || tier === "pro") && (
-          <Link
-            href="/subscription/topup?from=overview"
-            className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
-          >
-            <CreditCard className="h-4 w-4" />
-            Top Up Kredit
-          </Link>
-        )}
       </div>
 
-      {/* Penggunaan Kredit */}
-      <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
-        <h2 className="text-interface text-sm font-medium text-foreground mb-3">Penggunaan Kredit</h2>
-
-        {/* Progress Bar */}
-        <div className="relative h-3 bg-muted rounded-full overflow-hidden">
-          <div
-            className={cn(
-              "absolute left-0 top-0 h-full rounded-full transition-all",
-              meter.level === "depleted" ? "bg-destructive"
-                : meter.level === "critical" ? "bg-destructive"
-                : meter.level === "warning" ? "bg-amber-500"
-                : "bg-primary"
-            )}
-            style={{ width: `${Math.min(meter.percentage, 100)}%` }}
-          />
-        </div>
-
-        {/* Kredit text */}
-        <div className="mt-2 flex items-center justify-between">
-          <span className="font-mono text-xl font-bold">
-            <span className={cn("text-foreground", (meter.level === "warning" || meter.level === "critical" || meter.level === "depleted") && "text-destructive")}>
-              {meter.used.toLocaleString("id-ID")}
-            </span>
-            <span className="text-muted-foreground"> / {meter.total.toLocaleString("id-ID")}</span>
-            {" "}
-            <span className="text-signal text-[10px] text-muted-foreground">kredit</span>
-          </span>
-        </div>
-
-        {/* Pro: subtle reset note */}
-        {tier === "pro" && (
-          <p className="font-mono text-[10px] text-muted-foreground mt-1">Direset setiap bulan</p>
-        )}
-
-        {/* Blocked state */}
-        {meter.level === "depleted" && (
-          <div className="mt-2 space-y-2">
-            <p className="text-xs text-destructive">
-              {tier === "gratis"
-                ? "Kredit habis. Upgrade untuk melanjutkan."
-                : "Kredit habis. Top up untuk melanjutkan."}
+      {/* Pro Upgrade Pitch — BPP only */}
+      {tier === "bpp" && proPlan && (
+        <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-interface text-sm font-medium text-foreground flex items-center gap-1.5">
+                <Sparks className="h-4 w-4 text-primary" />
+                Leluasa dengan Paket Pro
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {proPlan.teaserCreditNote || proPlan.features[0] || ""}
+              </p>
+              {(creditBalance?.remainingCredits ?? 0) > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sisa {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit BPP Anda tetap tersimpan setelah upgrade.
+                </p>
+              )}
+            </div>
+            <p className="text-interface text-lg font-semibold tabular-nums text-foreground whitespace-nowrap ml-4">
+              {proPlan.price}
+              {proPlan.unit && (
+                <span className="text-xs font-normal text-muted-foreground">/{proPlan.unit}</span>
+              )}
             </p>
+          </div>
+          <div className="flex justify-end mt-3">
             <Link
-              href={tier === "gratis" ? "/subscription/upgrade" : "/subscription/topup?from=overview"}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
+              href="/checkout/pro?from=overview"
+              className="focus-ring text-interface inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-4 py-1.5 text-xs font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <CreditCard className="h-3.5 w-3.5" />
-              {tier === "gratis" ? "Upgrade" : "Top Up Kredit"}
+              Lanjut ke Checkout Pro
             </Link>
           </div>
-        )}
-
-        {/* Warning state */}
-        {(meter.level === "warning" || meter.level === "critical") && (
-          <p className="text-xs text-amber-600 mt-2">
-            Kredit hampir habis. {tier === "gratis" ? "Pertimbangkan upgrade." : "Pertimbangkan top up."}
-          </p>
-        )}
-      </div>
+        </div>
+      )}
     </>
   )
 }
@@ -282,7 +329,7 @@ function AdminOverviewView({
               </div>
               <Link
                 href="/subscription/topup?from=overview"
-                className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
+                className="focus-ring text-interface mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
               >
                 <CreditCard className="h-4 w-4" />
                 Top Up
@@ -400,7 +447,7 @@ function AdminOverviewView({
                   </p>
                   <Link
                     href="/subscription/topup?from=overview"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-mono font-medium rounded-action hover:bg-amber-400 transition-colors"
+                    className="focus-ring text-interface inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
                   >
                     <CreditCard className="h-3.5 w-3.5" />
                     Top Up Credit
