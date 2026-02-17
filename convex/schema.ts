@@ -896,13 +896,10 @@ export default defineSchema({
     ),
     invitedAt: v.optional(v.number()),
     registeredAt: v.optional(v.number()),
-    inviteToken: v.optional(v.string()),
-    inviteTokenExpiresAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_email", ["email"])
-    .index("by_status", ["status", "createdAt"])
-    .index("by_invite_token", ["inviteToken"]),
+    .index("by_status", ["status", "createdAt"]),
 
   appConfig: defineTable({
     key: v.string(),
