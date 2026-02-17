@@ -1772,6 +1772,15 @@ TIPS PENCARIAN:
 
                             if (chunk.type === "abort") {
                                 closeSearchStatus(hasAnySource ? "done" : "off")
+                                // Save partial message on abort to prevent data loss
+                                if (streamedText.trim()) {
+                                    try {
+                                        await saveAssistantMessage(streamedText, undefined, modelNames.primary.model)
+                                        console.log("[Chat API] Saved partial message on stream abort")
+                                    } catch (err) {
+                                        console.error("[Chat API] Failed to save partial message on abort:", err)
+                                    }
+                                }
                                 writer.write(chunk)
                                 break
                             }
