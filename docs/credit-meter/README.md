@@ -174,7 +174,7 @@ Threshold `warningLevel` di backend (`convex/billing/quotas.ts`):
 - `"warning"` -- remaining <= 20%
 - `"none"` -- remaining > 20%
 
-Untuk BPP, level diderivasi langsung dari sisa kredit:
+Untuk BPP, level diderivasi langsung dari sisa kredit (paket paper BPP = 300 kredit):
 - `"critical"` -- remaining < 30 kredit
 - `"warning"` -- remaining < 100 kredit
 - `"normal"` -- remaining >= 100 kredit
@@ -429,7 +429,7 @@ const totalKredit = Math.floor(allottedTokens / TOKENS_PER_CREDIT)
 | Level | Warna Bar | Penggunaan |
 |-------|-----------|------------|
 | `normal` | `bg-emerald-500` | Penggunaan di bawah 80% |
-| `warning` | `bg-amber-500` | Remaining 10-20% (Gratis/Pro) atau < 100 kredit (BPP) |
+| `warning` | `bg-amber-500` | Remaining 10-20% (Gratis/Pro) atau < 100 kredit tersisa (BPP, saldo paket awal 300) |
 | `critical` / `depleted` | `bg-rose-500` | Remaining < 10% atau habis |
 | Pro overage | `bg-amber-500` | Selalu amber saat ada overage |
 

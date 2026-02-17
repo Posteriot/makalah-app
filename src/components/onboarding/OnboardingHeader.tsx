@@ -15,7 +15,7 @@ import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 export function OnboardingHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const { completeOnboarding, isAuthenticated, isLoading } = useOnboardingStatus()
+  const { completeOnboarding, isAuthenticated } = useOnboardingStatus()
 
   // Determine close destination based on current path
   const getCloseDestination = () => {
@@ -41,52 +41,59 @@ export function OnboardingHeader() {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-border bg-background/80 backdrop-blur-sm">
-      <div className="h-full max-w-[1200px] mx-auto px-6 flex items-center justify-between">
-        {/* Logo - same as GlobalHeader for consistency */}
-        <Link href="/" className="flex items-center gap-2">
-          {/* Light logo icon (for dark mode) */}
-          <Image
-            src="/logo/makalah_logo_light.svg"
-            alt="Makalah"
-            width={24}
-            height={24}
-            className="logo-img logo-img-light"
-          />
-          {/* Dark logo icon (for light mode) */}
-          <Image
-            src="/logo/makalah_logo_dark.svg"
-            alt="Makalah"
-            width={24}
-            height={24}
-            className="logo-img logo-img-dark"
-          />
-          {/* White brand text (for dark mode) */}
-          <Image
-            src="/logo-makalah-ai-white.svg"
-            alt="Makalah"
-            width={80}
-            height={18}
-            className="logo-brand-text logo-brand-light"
-          />
-          {/* Black brand text (for light mode) */}
-          <Image
-            src="/logo-makalah-ai-black.svg"
-            alt="Makalah"
-            width={80}
-            height={18}
-            className="logo-brand-text logo-brand-dark"
-          />
-        </Link>
+    <header className="fixed top-0 left-0 right-0 z-drawer h-[54px] border-b border-border/60 bg-[var(--header-background)]">
+      <div className="mx-auto grid h-full w-full max-w-7xl grid-cols-16 items-center gap-4 px-4 py-3 lg:px-8">
+        <div className="col-span-10 md:col-span-8 flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 shrink-0">
+            <Image
+              src="/logo/makalah_logo_light.svg"
+              alt="Makalah"
+              width={24}
+              height={24}
+              className="h-6 w-6 rounded-[4px] hidden dark:block"
+            />
+            <Image
+              src="/logo/makalah_logo_dark.svg"
+              alt="Makalah"
+              width={24}
+              height={24}
+              className="h-6 w-6 rounded-[4px] block dark:hidden"
+            />
+            <Image
+              src="/logo-makalah-ai-white.svg"
+              alt="Makalah"
+              width={80}
+              height={18}
+              className="h-[18px] w-auto hidden dark:block"
+            />
+            <Image
+              src="/logo-makalah-ai-black.svg"
+              alt="Makalah"
+              width={80}
+              height={18}
+              className="h-[18px] w-auto block dark:hidden"
+            />
+          </Link>
 
-        {/* Close Button */}
-        <button
-          onClick={handleClose}
-          className="p-2 rounded-md hover:bg-muted transition-colors"
-          aria-label="Tutup"
-        >
-          <Xmark className="h-5 w-5" />
-        </button>
+        </div>
+
+        <div className="col-span-6 md:col-span-8 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-action border border-transparent bg-[color:var(--slate-800)] px-2 py-1 text-signal text-xs font-medium uppercase tracking-widest text-[color:var(--slate-100)] transition-colors hover:border-[color:var(--slate-600)] hover:text-[color:var(--slate-800)] dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)] dark:hover:border-[color:var(--slate-400)] dark:hover:text-[color:var(--slate-100)] focus-ring"
+            aria-label="Tutup halaman get started"
+          >
+            <span
+              className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+              aria-hidden="true"
+            />
+            <span className="relative z-10 inline-flex items-center gap-1.5 whitespace-nowrap">
+              Tutup
+              <Xmark className="h-3.5 w-3.5" />
+            </span>
+          </button>
+        </div>
       </div>
     </header>
   )

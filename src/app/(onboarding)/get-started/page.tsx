@@ -1,194 +1,341 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useQuery } from "convex/react"
 import Image from "next/image"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CheckCircle } from "iconoir-react"
-import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader"
+import { Xmark } from "iconoir-react"
+import { api } from "@convex/_generated/api"
+import { cn } from "@/lib/utils"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
+import { isFreeTierForLoginGate } from "@/lib/utils/freeLoginGate"
+import { DottedPattern } from "@/components/marketing/SectionBackground"
+import { SectionCTA } from "@/components/ui/section-cta"
 
-const AUTH_TIMEOUT_MS = 8_000
 const FEEDBACK_DELAY_MS = 3_000
 
-const GRATIS_FEATURES = [
-  "50 kredit",
-  "Menggunakan 13 tahap workflow",
-  "Diskusi dan menyusun draft",
-  "Pemakaian harian terbatas",
-]
+const TARGET_PLAN_ORDER = ["bpp", "pro"] as const
 
-const BPP_FEATURES = [
-  "300 kredit (~15 halaman)",
-  "Full 13 tahap workflow",
-  "Export Word & PDF",
-]
+type GetStartedPlan = {
+  id: string
+  name: string
+  price: string
+  unit?: string
+  isHighlighted?: boolean
+  isDisabled?: boolean
+  description: string
+  creditNote: string
+  ctaLabel: string
+  ctaHref?: string
+}
 
-const PRO_FEATURES = [
-  "2000 kredit (~5 paper)",
-  "Diskusi tak terbatas",
-  "Export Word & PDF",
-]
+function toSafeInternalPath(path?: string): string | null {
+  if (!path) return null
+  if (!path.startsWith("/") || path.startsWith("//")) return null
+  return path
+}
+
+function resolvePlanDisabledState(plan: {
+  slug: string
+  isDisabled: boolean
+  ctaHref?: string
+}): boolean {
+  if (!plan.isDisabled) return false
+
+  // Legacy pricing data can keep Pro as disabled while checkout path is already live.
+  if (plan.slug === "pro" && toSafeInternalPath(plan.ctaHref)) {
+    return false
+  }
+
+  return true
+}
+
+function GetStartedPlanCard({
+  plan,
+  isNavigating,
+  onSelect,
+}: {
+  plan: GetStartedPlan
+  isNavigating: boolean
+  onSelect: (plan: GetStartedPlan) => void
+}) {
+  return (
+    <article className="group/card relative h-full">
+      {plan.isHighlighted && (
+        <div
+          className={cn(
+            "absolute -top-3 left-1/2 -translate-x-1/2 z-10",
+            "transition-transform duration-300 group-hover/card:-translate-y-1",
+            "bg-[color:var(--emerald-500)] text-[color:var(--slate-50)]",
+            "text-[11px] font-semibold uppercase tracking-wide",
+            "px-3 py-1 rounded-full whitespace-nowrap"
+          )}
+        >
+          Solusi Terbaik
+        </div>
+      )}
+
+      <div
+        className={cn(
+          "relative overflow-hidden h-full min-h-[220px] md:min-h-[240px] flex flex-col rounded-shell p-comfort",
+          "border border-[color:var(--slate-400)]",
+          "group-hover/card:bg-[color:var(--slate-200)] dark:group-hover/card:bg-[color:var(--slate-700)]",
+          "group-hover/card:-translate-y-1 transition-all duration-300",
+          plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
+        )}
+      >
+        <h3 className="text-narrative text-xl md:text-2xl font-light text-foreground text-center mb-3 mt-4 md:mt-0">
+          {plan.name}
+        </h3>
+
+        <p className="text-interface text-3xl font-medium tracking-tight tabular-nums text-foreground text-center mb-6">
+          {plan.price}
+          {plan.unit && (
+            <span className="text-interface text-sm font-normal text-muted-foreground ml-1">
+              {plan.unit}
+            </span>
+          )}
+        </p>
+
+        <div className="flex items-start gap-3">
+          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-[color:var(--rose-500)] animate-pulse shadow-[0_0_8px_var(--rose-500)]" />
+          <p className="text-interface text-sm leading-relaxed text-foreground">
+            {plan.description}
+          </p>
+        </div>
+
+        <p className="text-interface text-xs leading-relaxed text-foreground mt-5 pt-4 border-t border-border/60">
+          {plan.creditNote}
+        </p>
+
+        <div className="mt-auto pt-6 flex justify-center">
+          {plan.isDisabled ? (
+            <button
+              type="button"
+              disabled
+              className={cn(
+                "group relative overflow-hidden",
+                "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2 w-full",
+                "text-signal text-[11px] font-bold uppercase tracking-widest",
+                "border border-transparent bg-slate-800 text-slate-100",
+                "dark:bg-slate-100 dark:text-slate-800",
+                "cursor-not-allowed opacity-60"
+              )}
+            >
+              {plan.ctaLabel}
+            </button>
+          ) : (
+            <SectionCTA
+              onClick={() => onSelect(plan)}
+              isLoading={isNavigating}
+              className="w-full justify-center"
+            >
+              {plan.ctaLabel}
+            </SectionCTA>
+          )}
+        </div>
+      </div>
+    </article>
+  )
+}
 
 export default function GetStartedPage() {
   const router = useRouter()
-  const { isLoading: isOnboardingLoading, isAuthenticated, hasCompletedOnboarding, completeOnboarding } = useOnboardingStatus()
+  const { isLoading: isOnboardingLoading, isAuthenticated, completeOnboarding } = useOnboardingStatus()
   const { user, isLoading: isUserLoading } = useCurrentUser()
+  const plansData = useQuery(api.pricingPlans.getActivePlans)
   const [showFeedback, setShowFeedback] = useState(false)
-  const [authTimedOut, setAuthTimedOut] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
+  const isFreeTier = isFreeTierForLoginGate(user?.role, user?.subscriptionStatus)
 
-  // Show "Mempersiapkan..." after FEEDBACK_DELAY_MS
-  // Redirect to sign-in after AUTH_TIMEOUT_MS if auth never establishes
+  // Show "Mempersiapkan..." after FEEDBACK_DELAY_MS while auth/user sync stabilizes.
   useEffect(() => {
     const feedbackTimer = setTimeout(() => setShowFeedback(true), FEEDBACK_DELAY_MS)
-    const authTimer = setTimeout(() => setAuthTimedOut(true), AUTH_TIMEOUT_MS)
     return () => {
       clearTimeout(feedbackTimer)
-      clearTimeout(authTimer)
     }
   }, [])
 
-  // Clear timeout when auth succeeds
+  // Lock page scroll on get-started so layout always fits current viewport.
   useEffect(() => {
-    if (isAuthenticated) {
-      setAuthTimedOut(false)
-    }
-  }, [isAuthenticated])
+    const prevHtmlOverflow = document.documentElement.style.overflow
+    const prevBodyOverflow = document.body.style.overflow
+    const prevHtmlOverscroll = document.documentElement.style.overscrollBehavior
+    const prevBodyOverscroll = document.body.style.overscrollBehavior
 
-  // Auth timed out → redirect to sign-in
+    document.documentElement.style.overflow = "hidden"
+    document.body.style.overflow = "hidden"
+    document.documentElement.style.overscrollBehavior = "none"
+    document.body.style.overscrollBehavior = "none"
+
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow
+      document.body.style.overflow = prevBodyOverflow
+      document.documentElement.style.overscrollBehavior = prevHtmlOverscroll
+      document.body.style.overscrollBehavior = prevBodyOverscroll
+    }
+  }, [])
+
+  // Route guard: this page is only for free-tier users.
   useEffect(() => {
-    if (authTimedOut && !isAuthenticated) {
-      router.replace("/sign-in")
+    if (!isOnboardingLoading && !isUserLoading && isAuthenticated && user && !isFreeTier) {
+      router.replace("/chat")
     }
-  }, [authTimedOut, isAuthenticated, router])
+  }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, router])
 
-  // Existing users who already completed onboarding → redirect to homepage
-  useEffect(() => {
-    if (!isOnboardingLoading && isAuthenticated && hasCompletedOnboarding) {
-      router.replace("/")
+  const completeThenNavigate = async (targetPath: string) => {
+    if (isNavigating) return
+    setIsNavigating(true)
+    try {
+      await completeOnboarding()
+    } catch (error) {
+      // Fail-safe: upgrade prompt flow must not block navigation.
+      console.error("[GetStarted] completeOnboarding failed:", error)
+    } finally {
+      router.push(targetPath)
     }
-  }, [isOnboardingLoading, isAuthenticated, hasCompletedOnboarding, router])
-
-  const handleSkip = async () => {
-    await completeOnboarding()
-    router.push("/chat")
   }
 
-  const handleUpgradeBPP = async () => {
-    await completeOnboarding()
-    router.push("/checkout/bpp")
+  const handlePlanSelection = async (plan: GetStartedPlan) => {
+    if (plan.isDisabled) return
+
+    const safeHref = toSafeInternalPath(plan.ctaHref)
+    if (safeHref) {
+      await completeThenNavigate(safeHref)
+      return
+    }
+
+    // Fallbacks: prevent dead-end when ctaHref is missing/malformed.
+    if (plan.id === "gratis") {
+      await completeThenNavigate("/chat")
+      return
+    }
+
+    if (plan.id === "bpp") {
+      await completeThenNavigate("/checkout/bpp")
+      return
+    }
+
+    await completeThenNavigate("/subscription/plans")
   }
 
-  const handleUpgradePRO = async () => {
-    await completeOnboarding()
-    router.push("/checkout/pro")
+  const handleClose = async () => {
+    await completeThenNavigate("/")
   }
+
+  const getStartedPlans: GetStartedPlan[] = TARGET_PLAN_ORDER
+    .map((slug) => plansData?.find((plan) => plan.slug === slug))
+    .filter((plan): plan is NonNullable<typeof plan> => !!plan)
+    .map((plan) => ({
+      id: plan.slug,
+      name: plan.name,
+      price: plan.price,
+      unit: plan.unit,
+      isHighlighted: plan.isHighlighted,
+      isDisabled: resolvePlanDisabledState(plan),
+      description: plan.teaserDescription || plan.tagline,
+      creditNote: plan.teaserCreditNote || plan.features[0] || "",
+      ctaLabel:
+        plan.slug === "pro" &&
+        resolvePlanDisabledState(plan) === false &&
+        plan.ctaText.toLowerCase().includes("segera hadir")
+          ? "Langganan Pro"
+          : plan.ctaText,
+      ctaHref: plan.ctaHref,
+    }))
 
   // Wait for auth + app user record to be fully established
   // useCurrentUser auto-creates app user record if missing (email-based linking for existing users)
-  if (isOnboardingLoading || !isAuthenticated || isUserLoading || !user || hasCompletedOnboarding) {
+  if (isOnboardingLoading || !isAuthenticated || isUserLoading || !user || !isFreeTier || plansData === undefined) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center gap-4">
-        <Image
-          src="/logo/makalah_logo_light.svg"
-          alt=""
-          width={48}
-          height={48}
-          className="animate-breathe"
-          priority
-        />
-        {showFeedback && !authTimedOut && (
-          <p className="text-interface text-xs text-muted-foreground animate-in fade-in duration-500">
-            Mempersiapkan akun...
-          </p>
-        )}
-      </div>
+      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+        <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+        <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4">
+          <Image
+            src="/logo/makalah_logo_light.svg"
+            alt=""
+            width={48}
+            height={48}
+            className="animate-breathe"
+            priority
+          />
+          {showFeedback && (
+            <p className="text-interface text-xs text-muted-foreground animate-in fade-in duration-500">
+              Mempersiapkan akun...
+            </p>
+          )}
+        </div>
+      </section>
     )
   }
 
   return (
-    <>
-    <OnboardingHeader />
-    <div className="text-center space-y-8 pt-16">
-      {/* Welcome Header */}
-      <div className="space-y-2">
-        <div className="text-4xl">🎉</div>
-        <h1 className="text-2xl font-semibold">
-          Selamat datang di
-          <br />
-          Makalah AI!
-        </h1>
-      </div>
+    <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+      <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
-      {/* Current Tier Card */}
-      <div className="bg-card border border-border rounded-xl p-6 text-left">
-        <div className="flex items-center gap-2 mb-4">
-          <CheckCircle className="h-5 w-5 text-green-500" />
-          <span className="font-medium">Kamu sekarang di paket GRATIS</span>
-        </div>
-        <ul className="space-y-2 text-sm text-muted-foreground">
-          {GRATIS_FEATURES.map((feature, i) => (
-            <li key={i}>• {feature}</li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Upgrade Section */}
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          ──── Mau lebih? Upgrade sekarang ────
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* BPP Card */}
-          <div className="bg-card border border-border rounded-xl p-5 text-left">
-            <h3 className="font-semibold">BAYAR PER PAPER</h3>
-            <p className="text-lg font-bold mt-1">Rp 80.000</p>
-            <div className="border-t border-border my-3" />
-            <ul className="space-y-1 text-sm text-muted-foreground mb-4">
-              {BPP_FEATURES.map((feature, i) => (
-                <li key={i}>• {feature}</li>
-              ))}
-            </ul>
+      <div className="relative z-10 flex h-full items-center justify-center p-4 md:p-6">
+        <div className="relative w-full max-w-5xl">
+          <div className="relative overflow-hidden rounded-shell border border-border/70 bg-card">
             <button
-              onClick={handleUpgradeBPP}
-              className="w-full onboarding-btn-primary py-2.5 rounded-lg text-sm font-medium"
+              type="button"
+              onClick={handleClose}
+              disabled={isNavigating}
+              className="group absolute right-5 top-6 z-20 inline-flex h-8 w-8 items-center justify-center rounded-action border border-border/60 bg-[color:var(--slate-900)]/70 text-[color:var(--slate-100)] transition-colors hover:bg-[color:var(--slate-100)] hover:text-[color:var(--slate-900)] dark:bg-[color:var(--slate-100)]/90 dark:text-[color:var(--slate-900)] dark:hover:bg-[color:var(--slate-900)] dark:hover:text-[color:var(--slate-100)] focus-ring disabled:opacity-60 disabled:cursor-not-allowed md:top-8 md:right-7"
+              aria-label="Tutup halaman get started"
             >
-              Beli Kredit
+              <Xmark className="h-4 w-4" />
             </button>
+          <div className="grid md:grid-cols-[0.3fr_0.7fr]">
+            <aside className="relative flex flex-col justify-between gap-8 bg-[color:var(--slate-950)] p-6 md:p-8">
+              <div
+                className="pointer-events-none absolute inset-0 opacity-[0.04] dark:opacity-[0.06]"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 8px)",
+                }}
+                aria-hidden="true"
+              />
+
+              <div className="relative z-10">
+                <Link href="/" className="inline-flex items-center gap-2">
+                  <Image
+                    src="/logo/makalah_logo_light.svg"
+                    alt="Makalah"
+                    width={28}
+                    height={28}
+                    className="h-7 w-7"
+                  />
+                </Link>
+              </div>
+
+              <div className="relative z-10 space-y-4">
+                <h1 className="text-narrative text-2xl font-medium leading-[1.12] text-[color:var(--slate-50)] md:text-3xl">
+                  Kamu berada di paket gratis
+                </h1>
+                <p className="text-interface text-sm leading-relaxed text-[color:var(--slate-300)]">
+                  Lakukan upgrade untuk pengalaman penyusunan paper yang lebih lengkap
+                </p>
+              </div>
+            </aside>
+
+            <section className="flex flex-col bg-[color:var(--slate-100)] p-5 pt-20 dark:bg-[color:var(--slate-800)] md:p-7 md:pt-24">
+              <div className="grid gap-4 md:grid-cols-2">
+                {getStartedPlans.map((plan) => (
+                  <GetStartedPlanCard
+                    key={plan.id}
+                    plan={plan}
+                    isNavigating={isNavigating}
+                    onSelect={handlePlanSelection}
+                  />
+                ))}
+              </div>
+            </section>
           </div>
-
-          {/* PRO Card */}
-          <div className="bg-card border border-border rounded-xl p-5 text-left">
-            <h3 className="font-semibold">PRO</h3>
-            <p className="text-lg font-bold mt-1">
-              Rp 200.000 <span className="text-sm font-normal text-muted-foreground">/bulan</span>
-            </p>
-            <div className="border-t border-border my-3" />
-            <ul className="space-y-1 text-sm text-muted-foreground mb-4">
-              {PRO_FEATURES.map((feature, i) => (
-                <li key={i}>• {feature}</li>
-              ))}
-            </ul>
-            <button
-              disabled
-              onClick={handleUpgradePRO}
-              className="w-full onboarding-btn-disabled py-2.5 rounded-lg text-sm font-medium"
-            >
-              Segera Hadir
-            </button>
           </div>
         </div>
       </div>
-
-      {/* Skip Link */}
-      <button
-        onClick={handleSkip}
-        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        Nanti saja - Langsung Mulai →
-      </button>
-    </div>
-    </>
+    </section>
   )
 }

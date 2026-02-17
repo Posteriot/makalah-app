@@ -42,7 +42,7 @@ Komponen reusable dengan 3 variant:
 - `< 70%` terpakai: Emerald (success/trust)
 - `70-90%` terpakai: Amber (warning/primary)
 - `> 90%` terpakai: Rose (destructive)
-- BPP credit low (< 100 kredit): Amber
+- BPP credit low (< 100 kredit tersisa dari saldo paket 300 kredit): Amber
 
 ### Typography
 
