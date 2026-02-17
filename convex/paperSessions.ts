@@ -25,60 +25,60 @@ const PLACEHOLDER_CONVERSATION_TITLES = new Set(["Percakapan baru", "New Chat"])
 const STAGE_KEY_WHITELIST: Record<string, string[]> = {
     gagasan: [
         "ringkasan", "ringkasanDetail", "ideKasar", "analisis", "angle", "novelty",
-        "referensiAwal", "artifactId", "validatedAt", "revisionCount"
+        "referensiAwal", "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     topik: [
         "ringkasan", "ringkasanDetail", "definitif", "angleSpesifik", "argumentasiKebaruan",
-        "researchGap", "referensiPendukung", "artifactId", "validatedAt", "revisionCount"
+        "researchGap", "referensiPendukung", "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     outline: [
         "ringkasan", "ringkasanDetail", "sections", "totalWordCount", "completenessScore",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     abstrak: [
         "ringkasan", "ringkasanDetail", "ringkasanPenelitian", "keywords", "wordCount",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     pendahuluan: [
         "ringkasan", "ringkasanDetail", "latarBelakang", "rumusanMasalah", "researchGapAnalysis",
         "tujuanPenelitian", "signifikansiPenelitian", "hipotesis", "sitasiAPA",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     tinjauan_literatur: [
         "ringkasan", "ringkasanDetail", "kerangkaTeoretis", "reviewLiteratur", "gapAnalysis",
-        "justifikasiPenelitian", "referensi", "artifactId", "validatedAt", "revisionCount"
+        "justifikasiPenelitian", "referensi", "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     metodologi: [
         "ringkasan", "ringkasanDetail", "desainPenelitian", "metodePerolehanData", "teknikAnalisis",
         "etikaPenelitian", "alatInstrumen", "pendekatanPenelitian",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     hasil: [
         "ringkasan", "ringkasanDetail", "temuanUtama", "metodePenyajian", "dataPoints",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     diskusi: [
         "ringkasan", "ringkasanDetail", "interpretasiTemuan", "perbandinganLiteratur",
         "implikasiTeoretis", "implikasiPraktis", "keterbatasanPenelitian",
         "saranPenelitianMendatang", "sitasiTambahan",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     kesimpulan: [
         "ringkasan", "ringkasanDetail", "ringkasanHasil", "jawabanRumusanMasalah",
         "implikasiPraktis", "saranPraktisi", "saranPeneliti", "saranKebijakan",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     daftar_pustaka: [
         "ringkasan", "ringkasanDetail", "entries", "totalCount", "incompleteCount", "duplicatesMerged",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     lampiran: [
         "ringkasan", "ringkasanDetail", "items", "tidakAdaLampiran", "alasanTidakAda",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
     judul: [
         "ringkasan", "ringkasanDetail", "opsiJudul", "judulTerpilih", "alasanPemilihan",
-        "artifactId", "validatedAt", "revisionCount"
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
 };
 
