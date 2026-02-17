@@ -196,7 +196,8 @@ export default defineSchema({
       v.literal("section"),
       v.literal("table"),
       v.literal("citation"),
-      v.literal("formula")
+      v.literal("formula"),
+      v.literal("chart")
     ),
     title: v.string(),
     description: v.optional(v.string()),
@@ -209,7 +210,8 @@ export default defineSchema({
       v.literal("python"),
       v.literal("r"),
       v.literal("javascript"),
-      v.literal("typescript")
+      v.literal("typescript"),
+      v.literal("json")
     )),
 
     // Web sources (from web search) - same structure as messages.sources
@@ -283,6 +285,7 @@ export default defineSchema({
     temperature: v.number(), // 0.0 - 2.0, default 0.7
     topP: v.optional(v.number()), // Optional: 0.0 - 1.0
     maxTokens: v.optional(v.number()), // Optional: max output tokens
+    primaryContextWindow: v.optional(v.number()), // Legacy field for backward compatibility
 
     // ════════════════════════════════════════════════════════════════
     // Web Search Settings (Phase 4 - OpenRouter :online fallback)
@@ -326,10 +329,16 @@ export default defineSchema({
       // Phase 1: Foundation Stages
       gagasan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()), // Legacy detail summary (kept for compatibility)
         ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
         analisis: v.optional(v.string()),
         angle: v.optional(v.string()),
         novelty: v.optional(v.string()),
+        webSearchReferences: v.optional(v.array(v.object({
+          title: v.string(),
+          url: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))), // Legacy web references snapshot from early phase
         referensiAwal: v.optional(v.array(v.object({
           title: v.string(),
           authors: v.optional(v.string()),
@@ -343,6 +352,7 @@ export default defineSchema({
       })),
       topik: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         definitif: v.optional(v.string()), // Optional: may not exist during initial revision
         angleSpesifik: v.optional(v.string()),
         argumentasiKebaruan: v.optional(v.string()),
@@ -365,6 +375,7 @@ export default defineSchema({
       // Phase 3: Core Stages
       abstrak: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         ringkasanPenelitian: v.optional(v.string()),
         keywords: v.optional(v.array(v.string())),
         wordCount: v.optional(v.number()),
@@ -374,6 +385,7 @@ export default defineSchema({
       })),
       pendahuluan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         latarBelakang: v.optional(v.string()),
         rumusanMasalah: v.optional(v.string()),
         researchGapAnalysis: v.optional(v.string()),
@@ -391,6 +403,7 @@ export default defineSchema({
       })),
       tinjauan_literatur: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         kerangkaTeoretis: v.optional(v.string()),
         reviewLiteratur: v.optional(v.string()),
         gapAnalysis: v.optional(v.string()),
@@ -410,6 +423,7 @@ export default defineSchema({
       })),
       metodologi: v.optional(v.object({
         ringkasan: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()),
         desainPenelitian: v.optional(v.string()),
         metodePerolehanData: v.optional(v.string()),
         teknikAnalisis: v.optional(v.string()),

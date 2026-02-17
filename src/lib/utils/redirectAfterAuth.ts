@@ -5,17 +5,50 @@
  * Ensures users are redirected to allowed paths only.
  */
 
-// Whitelist of allowed redirect paths
-const ALLOWED_REDIRECT_PATHS = [
+// Whitelist of allowed redirect path prefixes.
+// Use exact match or subpath boundary match (e.g. /chat or /chat/*, not /chatty).
+const ALLOWED_REDIRECT_PATH_PREFIXES = [
   "/get-started",
   "/checkout/bpp",
   "/checkout/pro",
   "/chat",
   "/dashboard",
   "/settings",
+  "/subscription",
 ]
 
 const DEFAULT_REDIRECT = "/"
+
+function normalizeRedirectPath(rawRedirect: string): string | null {
+  let decodedRedirect = ""
+  try {
+    decodedRedirect = decodeURIComponent(rawRedirect)
+  } catch {
+    return null
+  }
+
+  if (!decodedRedirect.startsWith("/") || decodedRedirect.startsWith("//")) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(decodedRedirect, "http://localhost")
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    return null
+  }
+}
+
+function isAllowedRedirectPath(redirectPath: string): boolean {
+  try {
+    const pathname = new URL(redirectPath, "http://localhost").pathname
+    return ALLOWED_REDIRECT_PATH_PREFIXES.some((prefix) =>
+      pathname === prefix || pathname.startsWith(`${prefix}/`)
+    )
+  } catch {
+    return false
+  }
+}
 
 /**
  * Validates and returns a safe absolute redirect URL.
@@ -43,16 +76,9 @@ export function getRedirectUrl(
     return `${origin}${defaultUrl}`
   }
 
-  // Decode if URL-encoded
-  const decodedRedirect = decodeURIComponent(redirect)
-
-  // Check if redirect starts with any allowed path
-  const isAllowed = ALLOWED_REDIRECT_PATHS.some((path) =>
-    decodedRedirect.startsWith(path)
-  )
-
-  if (isAllowed) {
-    return `${origin}${decodedRedirect}`
+  const normalizedRedirect = normalizeRedirectPath(redirect)
+  if (normalizedRedirect && isAllowedRedirectPath(normalizedRedirect)) {
+    return `${origin}${normalizedRedirect}`
   }
 
   return `${origin}${defaultUrl}`

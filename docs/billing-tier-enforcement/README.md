@@ -365,9 +365,9 @@ critical: 10%   // Sisa 10% → critical
 blocked:   0%   // Habis → blocked
 ```
 
-BPP (kredit) menggunakan threshold absolut:
-- `< 100 kredit` → `"warning"`
-- `< 30 kredit` → `"critical"`
+BPP (kredit) menggunakan threshold absolut (saldo paket awal tetap 300 kredit):
+- `< 100 kredit tersisa` → `"warning"`
+- `< 30 kredit tersisa` → `"critical"`
 
 ### Token Cost Tracking
 

@@ -133,7 +133,9 @@ function CheckoutBPPContent() {
   useEffect(() => {
     if (!hasCompletedOnboarding && !onboardingCompletedRef.current) {
       onboardingCompletedRef.current = true
-      completeOnboarding()
+      void completeOnboarding().catch((error) => {
+        console.error("[CheckoutBPP] completeOnboarding failed:", error)
+      })
     }
   }, [hasCompletedOnboarding, completeOnboarding])
 

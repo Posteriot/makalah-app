@@ -446,7 +446,7 @@ export const updatePricingPageContent = internalMutation({
         unit: "/bulan",
         tagline: "Ideal untuk penyusunan banyak paper",
         features: [
-          "Mendapat 2000 kredit",
+          "Mendapat 5000 kredit",
           "Menyusun 5-6 paper, dengan @paper setara 15 halaman A4",
           "Diskusi sepuasnya",
           "Pencarian literatur dengan frekuensi banyak",
@@ -519,7 +519,7 @@ export const addTeaserContent = internalMutation({
     if (proPlan) {
       await db.patch(proPlan._id, {
         teaserDescription: "Ideal untuk penyusunan banyak paper dengan diskusi sepuasnya.",
-        teaserCreditNote: "Mendapat 2000 kredit, untuk menyusun 5-6 paper setara @15 halaman dan diskusi mendalam",
+        teaserCreditNote: "Mendapat 5000 kredit, untuk menyusun 5-6 paper setara @15 halaman dan diskusi mendalam",
         updatedAt: now,
       })
       updates.push("Pro teaser content added")
@@ -529,6 +529,151 @@ export const addTeaserContent = internalMutation({
       success: true,
       updates,
       message: `Added teaser content to ${updates.length} plans.`,
+    }
+  },
+})
+
+/**
+ * Migration to enable Pro plan for all pricing surfaces.
+ * Run via: npx convex run "migrations/seedPricingPlans:enableProPlan"
+ */
+export const enableProPlan = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+
+    const proPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "pro"))
+      .first()
+
+    if (!proPlan) {
+      return {
+        success: false,
+        message: "Plan 'pro' tidak ditemukan",
+      }
+    }
+
+    await db.patch(proPlan._id, {
+      isDisabled: false,
+      ctaText: proPlan.ctaText || "Langganan",
+      ctaHref: proPlan.ctaHref || "/subscription/upgrade",
+      updatedAt: now,
+    })
+
+    return {
+      success: true,
+      message: "Plan Pro berhasil diaktifkan",
+      planId: proPlan._id,
+      previousState: {
+        isDisabled: proPlan.isDisabled,
+        ctaText: proPlan.ctaText,
+        ctaHref: proPlan.ctaHref,
+      },
+      nextState: {
+        isDisabled: false,
+        ctaText: proPlan.ctaText || "Langganan",
+        ctaHref: proPlan.ctaHref || "/subscription/upgrade",
+      },
+    }
+  },
+})
+
+/**
+ * Migration to normalize Pro plan credit copy to 5000 kredit across pricing surfaces.
+ * Run via: npx convex run "migrations/seedPricingPlans:updateProCreditsTo5000"
+ */
+export const updateProCreditsTo5000 = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+
+    const proPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "pro"))
+      .first()
+
+    if (!proPlan) {
+      return {
+        success: false,
+        message: "Plan 'pro' tidak ditemukan",
+      }
+    }
+
+    const nextFeatures = (proPlan.features ?? []).map((feature) =>
+      feature.replace(/2000\s*kredit/gi, "5000 kredit")
+    )
+
+    const nextTeaserCreditNote = proPlan.teaserCreditNote
+      ? proPlan.teaserCreditNote.replace(/2000\s*kredit/gi, "5000 kredit")
+      : proPlan.teaserCreditNote
+
+    await db.patch(proPlan._id, {
+      features: nextFeatures,
+      teaserCreditNote: nextTeaserCreditNote,
+      updatedAt: now,
+    })
+
+    return {
+      success: true,
+      message: "Plan Pro berhasil diupdate ke 5000 kredit",
+      planId: proPlan._id,
+      previous: {
+        features: proPlan.features,
+        teaserCreditNote: proPlan.teaserCreditNote,
+      },
+      next: {
+        features: nextFeatures,
+        teaserCreditNote: nextTeaserCreditNote,
+      },
+    }
+  },
+})
+
+/**
+ * Migration to normalize BPP plan credit copy to 300 kredit.
+ * Run via: npx convex run "migrations/seedPricingPlans:updateBppCreditsTo300"
+ */
+export const updateBppCreditsTo300 = internalMutation({
+  handler: async ({ db }) => {
+    const now = Date.now()
+
+    const bppPlan = await db
+      .query("pricingPlans")
+      .filter((q) => q.eq(q.field("slug"), "bpp"))
+      .first()
+
+    if (!bppPlan) {
+      return {
+        success: false,
+        message: "Plan 'bpp' tidak ditemukan",
+      }
+    }
+
+    const nextFeatures = (bppPlan.features ?? []).map((feature) =>
+      feature.replace(/100\s*kredit/gi, "300 kredit")
+    )
+
+    const nextTeaserCreditNote = bppPlan.teaserCreditNote
+      ? bppPlan.teaserCreditNote.replace(/100\s*kredit/gi, "300 kredit")
+      : bppPlan.teaserCreditNote
+
+    await db.patch(bppPlan._id, {
+      features: nextFeatures,
+      teaserCreditNote: nextTeaserCreditNote,
+      updatedAt: now,
+    })
+
+    return {
+      success: true,
+      message: "Plan BPP berhasil dinormalisasi ke 300 kredit",
+      planId: bppPlan._id,
+      previous: {
+        features: bppPlan.features,
+        teaserCreditNote: bppPlan.teaserCreditNote,
+      },
+      next: {
+        features: nextFeatures,
+        teaserCreditNote: nextTeaserCreditNote,
+      },
     }
   },
 })

@@ -6,7 +6,7 @@ import { Crown, Tools } from "iconoir-react"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 
 const PRO_FEATURES = [
-  "2000 kredit per bulan",
+  "5000 kredit per bulan",
   "Menyusun sampai 5 paper (~75 halaman)",
   "Full 13 tahap workflow",
   "Draft hingga paper utuh",
@@ -23,7 +23,9 @@ export default function CheckoutPROPage() {
   useEffect(() => {
     if (!hasCompletedOnboarding && !onboardingCompletedRef.current) {
       onboardingCompletedRef.current = true
-      completeOnboarding()
+      void completeOnboarding().catch((error) => {
+        console.error("[CheckoutPRO] completeOnboarding failed:", error)
+      })
     }
   }, [hasCompletedOnboarding, completeOnboarding])
 
