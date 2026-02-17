@@ -195,9 +195,9 @@ function RegularOverviewView({
       {/* Pro Upgrade Pitch — BPP only */}
       {tier === "bpp" && proPlan && (
         <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] md:divide-x md:divide-border gap-4 md:gap-0">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             {/* Left: Description */}
-            <div className="md:pr-6">
+            <div className="flex-1">
               <h2 className="text-interface text-sm font-medium text-foreground flex items-center gap-1.5">
                 <Sparks className="h-4 w-4 text-primary" />
                 Leluasa dengan Paket Pro
@@ -208,14 +208,14 @@ function RegularOverviewView({
                 dengan masing-masing paper setara 15 halaman
               </p>
               {(creditBalance?.remainingCredits ?? 0) > 0 && (
-                <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground/70 mt-3">
                   Sisa {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit BPP Anda tetap tersimpan setelah upgrade.
                 </p>
               )}
             </div>
 
-            {/* Right: Price + Action */}
-            <div className="flex flex-col items-end justify-between md:pl-6 border-t border-border pt-4 md:border-t-0 md:pt-0">
+            {/* Right: Price + Action (compact, grouped) */}
+            <div className="flex flex-col items-end gap-2 shrink-0">
               <p className="text-interface text-lg font-semibold tabular-nums text-foreground whitespace-nowrap">
                 {proPlan.price}
                 {proPlan.unit && (
@@ -224,7 +224,7 @@ function RegularOverviewView({
               </p>
               <Link
                 href="/checkout/pro?from=overview"
-                className="focus-ring text-interface mt-3 inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-4 py-1.5 text-xs font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                className="focus-ring text-interface inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-4 py-1.5 text-xs font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
               >
                 Lanjut ke Checkout Pro
               </Link>
