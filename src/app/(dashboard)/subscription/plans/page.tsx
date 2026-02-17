@@ -105,8 +105,7 @@ export default function PlansHubPage() {
   const currentCredits = creditBalance?.remainingCredits ?? 0
   const pageTitle = "Pilih Paket"
 
-  const visiblePlanSlugs = currentTier === "gratis" ? new Set(["bpp", "pro"]) : new Set(["pro"])
-  const visiblePlans = plans.filter((plan) => visiblePlanSlugs.has(plan.slug))
+  const visiblePlans = plans.filter((plan) => plan.slug === "pro")
 
   return (
     <div className="space-y-6">
