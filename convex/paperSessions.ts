@@ -95,6 +95,32 @@ function validateStageDataKeys(stage: string, data: Record<string, unknown>): st
 }
 
 /**
+ * Normalize URL for dedup: strip UTM params, trailing slash, hash.
+ */
+function normalizeUrlForDedup(raw: string): string {
+    try {
+        const u = new URL(raw);
+        for (const key of Array.from(u.searchParams.keys())) {
+            if (/^utm_/i.test(key)) u.searchParams.delete(key);
+        }
+        u.hash = "";
+        const out = u.toString();
+        return out.endsWith("/") ? out.slice(0, -1) : out;
+    } catch {
+        return raw;
+    }
+}
+
+/**
+ * Map stages to their native reference fields (for dual-write).
+ * Only stages with compatible schemas (all-optional fields) are included.
+ */
+const STAGE_NATIVE_REF_FIELD: Record<string, string | null> = {
+    gagasan: "referensiAwal",
+    topik: "referensiPendukung",
+};
+
+/**
  * Fields that are expected to be arrays in schema.
  * All other fields are expected to be strings (or number/id).
  * Used by coerceStageDataTypes to auto-fix AI sending array for string fields.
@@ -678,6 +704,101 @@ export const updateStageData = mutation({
             stage: args.stage,
             warning: warnings.length > 0 ? warnings.join(" | ") : undefined,
         };
+    },
+});
+
+/**
+ * Append web search references to current stage's stageData.
+ * Server-side auto-persist: deterministic, not dependent on AI behavior.
+ * - Appends to webSearchReferences with URL dedup
+ * - For gagasan/topik: also appends to native reference fields (dual-write)
+ */
+export const appendSearchReferences = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        references: v.array(v.object({
+            url: v.string(),
+            title: v.string(),
+            publishedAt: v.optional(v.number()),
+        })),
+    },
+    handler: async (ctx, args) => {
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) {
+            console.error("[appendSearchReferences] Session not found:", args.sessionId);
+            return;
+        }
+
+        const stage = session.currentStage;
+        if (!STAGE_ORDER.includes(stage as PaperStageId)) {
+            console.error("[appendSearchReferences] Unknown stage:", stage);
+            return;
+        }
+
+        const stageDataObj = (session.stageData ?? {}) as Record<string, Record<string, unknown>>;
+        const currentData = { ...(stageDataObj[stage] ?? {}) };
+
+        // 1. Append to webSearchReferences (all stages) with URL dedup
+        const existingWebRefs = (currentData.webSearchReferences ?? []) as Array<{
+            url: string; title: string; publishedAt?: number;
+        }>;
+        const existingUrls = new Set(existingWebRefs.map(r => normalizeUrlForDedup(r.url)));
+
+        const newRefs = args.references.filter(
+            r => !existingUrls.has(normalizeUrlForDedup(r.url))
+        );
+
+        if (newRefs.length === 0) {
+            return; // All refs already exist, no-op
+        }
+
+        currentData.webSearchReferences = [
+            ...existingWebRefs,
+            ...newRefs.map(r => ({
+                url: r.url,
+                title: r.title,
+                ...(r.publishedAt !== undefined ? { publishedAt: r.publishedAt } : {}),
+            })),
+        ];
+
+        // 2. Dual-write to native reference field for gagasan/topik
+        const nativeField = STAGE_NATIVE_REF_FIELD[stage];
+        if (nativeField) {
+            const existingNativeRefs = (currentData[nativeField] ?? []) as Array<{
+                title: string; url?: string; [key: string]: unknown;
+            }>;
+            const existingNativeUrls = new Set(
+                existingNativeRefs
+                    .filter(r => r.url)
+                    .map(r => normalizeUrlForDedup(r.url!))
+            );
+
+            const newNativeRefs = newRefs
+                .filter(r => !existingNativeUrls.has(normalizeUrlForDedup(r.url)))
+                .map(r => ({
+                    title: r.title,
+                    url: r.url,
+                    ...(r.publishedAt !== undefined ? { publishedAt: r.publishedAt } : {}),
+                }));
+
+            if (newNativeRefs.length > 0) {
+                currentData[nativeField] = [...existingNativeRefs, ...newNativeRefs];
+            }
+        }
+
+        // 3. Patch stageData
+        await ctx.db.patch(args.sessionId, {
+            stageData: {
+                ...session.stageData,
+                [stage]: currentData,
+            },
+            updatedAt: Date.now(),
+        });
+
+        console.log(
+            `[appendSearchReferences] Appended ${newRefs.length} refs to stage ${stage}` +
+            (nativeField ? ` (also to ${nativeField})` : "")
+        );
     },
 });
 
