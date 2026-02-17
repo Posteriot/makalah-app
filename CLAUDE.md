@@ -438,8 +438,9 @@ Database-driven system prompt dengan fallback monitoring.
 - `submitStageForValidation({})` - Submit for user approval
 
 **IMPORTANT - updateStageData AUTO-STAGE:**
-- `stage` parameter was REMOVED from this tool
-- Tool auto-fetches stage from `session.currentStage`
+- `stage` parameter was REMOVED from the **AI tool layer** (`paper-tools.ts`) — AI cannot specify stage
+- Tool auto-fetches stage from `session.currentStage` then passes it to the Convex mutation
+- The **Convex mutation** (`paperSessions.ts`) still requires `stage` param and validates it matches `currentStage`
 - Prevents AI stage confusion errors ("Cannot update X while in Y")
 
 **Dialog-First Principles:**
@@ -466,7 +467,7 @@ User can rewind to previous stages (max 2 stages back) via clickable stage badge
 
 **Mutations:**
 - `rewindToStage({ sessionId, userId, targetStage })` - Execute rewind
-- `clearArtifactInvalidation({ sessionId, artifactId })` - Clear invalidation after update
+- `clearInvalidation({ artifactId, userId })` - Clear invalidation after update
 - `getRewindHistory({ sessionId })` - Get rewind audit trail
 
 ### Edit Permission System
