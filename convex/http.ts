@@ -2,7 +2,6 @@ import { httpRouter } from "convex/server";
 import { authComponent, createAuth } from "./auth";
 import { sendOtp, verifyOtp } from "./twoFactorHttp";
 import { enableTwoFactorAllUsers } from "./migrations/enableTwoFactorAllUsers";
-import { sendInviteMagicLink } from "./waitlistInviteHttp";
 
 const http = httpRouter();
 
@@ -37,18 +36,6 @@ http.route({
   path: "/api/migrations/enable-2fa-all",
   method: "POST",
   handler: enableTwoFactorAllUsers,
-});
-
-// Waitlist invite: send magic link email
-http.route({
-  path: "/api/waitlist/send-invite",
-  method: "POST",
-  handler: sendInviteMagicLink,
-});
-http.route({
-  path: "/api/waitlist/send-invite",
-  method: "OPTIONS",
-  handler: sendInviteMagicLink,
 });
 
 export default http;
