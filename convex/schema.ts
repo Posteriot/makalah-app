@@ -285,6 +285,7 @@ export default defineSchema({
     temperature: v.number(), // 0.0 - 2.0, default 0.7
     topP: v.optional(v.number()), // Optional: 0.0 - 1.0
     maxTokens: v.optional(v.number()), // Optional: max output tokens
+    primaryContextWindow: v.optional(v.number()), // Legacy field for backward compatibility
 
     // ════════════════════════════════════════════════════════════════
     // Web Search Settings (Phase 4 - OpenRouter :online fallback)
@@ -332,11 +333,16 @@ export default defineSchema({
       // Phase 1: Foundation Stages
       gagasan: v.optional(v.object({
         ringkasan: v.optional(v.string()),
-        ringkasanDetail: v.optional(v.string()),
+        ringkasanDetail: v.optional(v.string()), // Legacy detail summary (kept for compatibility)
         ideKasar: v.optional(v.string()), // Optional: may not exist during initial revision
         analisis: v.optional(v.string()),
         angle: v.optional(v.string()),
         novelty: v.optional(v.string()),
+        webSearchReferences: v.optional(v.array(v.object({
+          title: v.string(),
+          url: v.string(),
+          publishedAt: v.optional(v.number()),
+        }))), // Legacy web references snapshot from early phase
         referensiAwal: v.optional(v.array(v.object({
           title: v.string(),
           authors: v.optional(v.string()),

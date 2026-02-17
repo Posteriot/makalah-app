@@ -105,7 +105,7 @@ export default function SignUpPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const inviteToken = searchParams.get("invite")
-  const callbackURL = getRedirectUrl(searchParams, "/get-started")
+  const callbackURL = getRedirectUrl(searchParams, "/chat")
 
   const [mode, setMode] = useState<SignUpMode>("sign-up")
   const [firstName, setFirstName] = useState("")

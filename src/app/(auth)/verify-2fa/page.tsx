@@ -25,7 +25,7 @@ export default function Verify2FAPageWrapper() {
 function Verify2FAPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackURL = getRedirectUrl(searchParams, "/get-started")
+  const callbackURL = getRedirectUrl(searchParams, "/chat")
 
   const OTP_LENGTH = 6
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""))

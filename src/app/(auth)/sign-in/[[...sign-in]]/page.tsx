@@ -67,7 +67,7 @@ export default function SignInPage() {
   const signUpHref = redirectParam
     ? `/sign-up?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
     : "/sign-up"
-  const callbackURL = getRedirectUrl(searchParams, "/get-started")
+  const callbackURL = getRedirectUrl(searchParams, "/chat")
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
   const requiresRecoveryCaptcha = Boolean(turnstileSiteKey)
   const initialOAuthErrorMessage =

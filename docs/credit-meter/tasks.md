@@ -46,7 +46,7 @@ interface CreditMeterData {
 
 **Level derivation:**
 - Derive dari `quotaStatus.warningLevel`: "none" → "normal", "warning" → "warning", "critical" → "critical", "blocked" → "depleted"
-- BPP: `remainingCredits < 30` → "critical", `< 100` → "warning", else "normal"
+- BPP: `remainingCredits < 30` → "critical", `< 100` → "warning", else "normal" (paket paper BPP tetap 300 kredit)
 
 **Dependencies:**
 - `useCurrentUser()` dari `@/lib/hooks/useCurrentUser`
