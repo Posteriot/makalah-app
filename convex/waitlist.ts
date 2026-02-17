@@ -12,10 +12,18 @@ import { requireRole } from "./permissions"
  */
 export const register = mutation({
   args: {
+    firstName: v.string(),
+    lastName: v.string(),
     email: v.string(),
   },
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim()
+    const firstName = args.firstName.trim()
+    const lastName = args.lastName.trim()
+
+    if (!firstName || !lastName) {
+      throw new Error("Nama depan dan nama belakang wajib diisi")
+    }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -35,6 +43,8 @@ export const register = mutation({
 
     // Insert new entry
     const entryId = await ctx.db.insert("waitlistEntries", {
+      firstName,
+      lastName,
       email,
       status: "pending",
       createdAt: Date.now(),
@@ -131,6 +141,8 @@ export const getByToken = query({
     return {
       valid: true,
       email: entry.email,
+      firstName: entry.firstName,
+      lastName: entry.lastName,
       entryId: entry._id,
     }
   },
@@ -293,6 +305,47 @@ export const resendInvite = mutation({
 
     return {
       email: entry.email,
+      inviteToken,
+    }
+  },
+})
+
+/**
+ * Invite a single waitlist entry (admin only).
+ * Generates token and returns data for email sending.
+ */
+export const inviteSingle = mutation({
+  args: {
+    adminUserId: v.id("users"),
+    entryId: v.id("waitlistEntries"),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx.db, args.adminUserId, "admin")
+
+    const entry = await ctx.db.get(args.entryId)
+    if (!entry) {
+      throw new Error("Entry tidak ditemukan")
+    }
+
+    if (entry.status !== "pending") {
+      throw new Error("Entry sudah diundang atau terdaftar")
+    }
+
+    const now = Date.now()
+    const expiresAt = now + 7 * 24 * 60 * 60 * 1000 // 7 days
+    const inviteToken = crypto.randomUUID()
+
+    await ctx.db.patch(args.entryId, {
+      status: "invited",
+      invitedAt: now,
+      inviteToken,
+      inviteTokenExpiresAt: expiresAt,
+    })
+
+    return {
+      email: entry.email,
+      firstName: entry.firstName,
+      lastName: entry.lastName,
       inviteToken,
     }
   },
