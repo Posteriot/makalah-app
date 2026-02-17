@@ -578,7 +578,7 @@ function CheckoutPROContent() {
                           Memproses
                         </>
                       ) : (
-                        <>Bayar {pricing.label}</>
+                        <>Bayar</>
                       )}
                     </span>
                   </button>

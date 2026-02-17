@@ -592,7 +592,7 @@ function CheckoutBPPContent() {
                       Lanjut ke {selectedEWalletChannel}
                     </>
                   ) : (
-                    <>Bayar Rp {BPP_PACKAGE.priceIDR.toLocaleString("id-ID")}</>
+                    <>Bayar</>
                   )}
                 </span>
               </button>
