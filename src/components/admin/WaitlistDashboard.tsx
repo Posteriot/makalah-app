@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
@@ -60,6 +60,7 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
   })
 
   const deleteEntryMutation = useMutation(api.waitlist.deleteEntry)
+  const sendInviteEmailAction = useAction(api.waitlist.sendInviteEmail)
 
   const handleToggleWaitlist = async () => {
     try {
@@ -98,27 +99,11 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
   const handleInvite = async (entryId: Id<"waitlistEntries">) => {
     setInvitingId(entryId)
     try {
-      const convexSiteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL
-      if (!convexSiteUrl) {
-        throw new Error("NEXT_PUBLIC_CONVEX_SITE_URL is not configured")
-      }
-
-      const res = await fetch(`${convexSiteUrl}/api/waitlist/send-invite`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entryId,
-          adminUserId: userId,
-        }),
+      const result = await sendInviteEmailAction({
+        adminUserId: userId,
+        entryId,
       })
-
-      const data = await res.json()
-
-      if (!res.ok || !data.status) {
-        throw new Error(data.error ?? "Gagal mengirim undangan")
-      }
-
-      toast.success(`Undangan magic link dikirim ke ${data.email}`)
+      toast.success(`Undangan dikirim ke ${result.email}`)
     } catch (error) {
       console.error("Invite error:", error)
       toast.error("Gagal mengirim undangan", {
