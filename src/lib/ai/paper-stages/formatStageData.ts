@@ -61,6 +61,37 @@ type AllStageData =
     | OutlineData
 
 /**
+ * Format webSearchReferences from the ACTIVE stage into a prominent block.
+ * This ensures AI has structured reference data available every turn.
+ */
+function formatWebSearchReferences(stageData: StageData, currentStage: PaperStageId | "completed"): string {
+    if (currentStage === "completed") return "";
+
+    const data = stageData[currentStage] as AllStageData | undefined;
+    if (!data) return "";
+
+    const refs = (data as Record<string, unknown>).webSearchReferences as
+        Array<{ url: string; title: string; publishedAt?: number }> | undefined;
+
+    if (!refs || refs.length === 0) return "";
+
+    const lines = refs.map((ref, i) => {
+        const date = ref.publishedAt
+            ? ` (${new Date(ref.publishedAt).getFullYear()})`
+            : "";
+        return `  ${i + 1}. "${ref.title}"${date} — ${ref.url}`;
+    });
+
+    return [
+        `REFERENSI WEB SEARCH TERSIMPAN (WAJIB gunakan, JANGAN fabricate):`,
+        ...lines,
+        ``,
+        `SEMUA sitasi in-text HARUS merujuk ke referensi di atas.`,
+        `Jika butuh referensi tambahan, MINTA user untuk search dulu.`,
+    ].join("\n");
+}
+
+/**
  * Format stageData object into a human-readable string.
  * Only includes stages that have actual content.
  */
@@ -75,6 +106,12 @@ export function formatStageData(
     const activeStageBlock = formatActiveStageData(stageData, currentStage);
     if (activeStageBlock) {
         sections.push(activeStageBlock);
+    }
+
+    // Web search references block (prominent, for anti-hallucination)
+    const webRefsBlock = formatWebSearchReferences(stageData, currentStage);
+    if (webRefsBlock) {
+        sections.push(webRefsBlock);
     }
 
     sections.push(formatOutlineChecklist(stageData.outline, currentStage));
