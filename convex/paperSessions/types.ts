@@ -5,6 +5,12 @@ export type PaperStage = typeof STAGE_ORDER[number] | "completed";
 
 export type StageStatus = "drafting" | "pending_validation" | "approved" | "revision";
 
+const WebSearchReferenceShape = {
+    url: v.string(),
+    title: v.string(),
+    publishedAt: v.optional(v.number()),
+};
+
 const SitasiAPAShape = {
     inTextCitation: v.string(),
     fullReference: v.string(),
@@ -26,6 +32,7 @@ export const GagasanData = v.object({
         url: v.optional(v.string()),
         publishedAt: v.optional(v.number()), // Timestamp from google_search
     }))),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -45,6 +52,7 @@ export const TopikData = v.object({
         url: v.optional(v.string()),
         publishedAt: v.optional(v.number()), // Timestamp from google_search
     }))),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -57,6 +65,7 @@ export const AbstrakData = v.object({
     ringkasanPenelitian: v.optional(v.string()),
     keywords: v.optional(v.array(v.string())),
     wordCount: v.optional(v.number()),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -72,6 +81,7 @@ export const PendahuluanData = v.object({
     signifikansiPenelitian: v.optional(v.string()), // Mengapa penelitian ini penting
     hipotesis: v.optional(v.string()), // Hipotesis atau pertanyaan penelitian
     sitasiAPA: v.optional(v.array(v.object(SitasiAPAShape))),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -93,6 +103,7 @@ export const TinjauanLiteraturData = v.object({
         inTextCitation: v.string(),
         isFromPhase1: v.boolean(),
     }))),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -111,6 +122,7 @@ export const MetodologiData = v.object({
         v.literal("kuantitatif"),
         v.literal("mixed")
     )),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -132,6 +144,7 @@ export const HasilData = v.object({
         unit: v.optional(v.string()),
         note: v.optional(v.string()),
     }))),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -150,6 +163,7 @@ export const DiskusiData = v.object({
         ...SitasiAPAShape,
         isAdditional: v.optional(v.boolean()),
     }))),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -164,6 +178,7 @@ export const KesimpulanData = v.object({
     saranPraktisi: v.optional(v.string()),
     saranPeneliti: v.optional(v.string()),
     saranKebijakan: v.optional(v.string()),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -192,6 +207,7 @@ export const DaftarPustakaData = v.object({
     totalCount: v.optional(v.number()), // Total referensi
     incompleteCount: v.optional(v.number()), // Jumlah referensi incomplete
     duplicatesMerged: v.optional(v.number()), // Jumlah duplikat yang di-merge
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -219,6 +235,7 @@ export const LampiranData = v.object({
     }))),
     tidakAdaLampiran: v.optional(v.boolean()),
     alasanTidakAda: v.optional(v.string()),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -237,6 +254,7 @@ export const JudulData = v.object({
     }))),
     judulTerpilih: v.optional(v.string()), // Selected final title
     alasanPemilihan: v.optional(v.string()), // Reason for selection
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
@@ -262,6 +280,7 @@ export const OutlineData = v.object({
     }))),
     totalWordCount: v.optional(v.number()), // Estimated total word count
     completenessScore: v.optional(v.number()), // Percentage of sections completed (0-100)
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
     validatedAt: v.optional(v.number()),
     revisionCount: v.optional(v.number()),
