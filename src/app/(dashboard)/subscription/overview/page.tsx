@@ -195,35 +195,40 @@ function RegularOverviewView({
       {/* Pro Upgrade Pitch — BPP only */}
       {tier === "bpp" && proPlan && (
         <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] md:divide-x md:divide-border gap-4 md:gap-0">
+            {/* Left: Description */}
+            <div className="md:pr-6">
               <h2 className="text-interface text-sm font-medium text-foreground flex items-center gap-1.5">
                 <Sparks className="h-4 w-4 text-primary" />
                 Leluasa dengan Paket Pro
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                {proPlan.teaserCreditNote || proPlan.features[0] || ""}
+                Mendapat 5.000 kredit, untuk menyusun 5–6 paper dan diskusi mendalam
+                <br />
+                dengan masing-masing paper setara 15 halaman
               </p>
               {(creditBalance?.remainingCredits ?? 0) > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
                   Sisa {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit BPP Anda tetap tersimpan setelah upgrade.
                 </p>
               )}
             </div>
-            <p className="text-interface text-lg font-semibold tabular-nums text-foreground whitespace-nowrap ml-4">
-              {proPlan.price}
-              {proPlan.unit && (
-                <span className="text-xs font-normal text-muted-foreground">/{proPlan.unit}</span>
-              )}
-            </p>
-          </div>
-          <div className="flex justify-end mt-3">
-            <Link
-              href="/checkout/pro?from=overview"
-              className="focus-ring text-interface inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-4 py-1.5 text-xs font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-            >
-              Lanjut ke Checkout Pro
-            </Link>
+
+            {/* Right: Price + Action */}
+            <div className="flex flex-col items-end justify-between md:pl-6 border-t border-border pt-4 md:border-t-0 md:pt-0">
+              <p className="text-interface text-lg font-semibold tabular-nums text-foreground whitespace-nowrap">
+                {proPlan.price}
+                {proPlan.unit && (
+                  <span className="text-xs font-normal text-muted-foreground">/{proPlan.unit}</span>
+                )}
+              </p>
+              <Link
+                href="/checkout/pro?from=overview"
+                className="focus-ring text-interface mt-3 inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-4 py-1.5 text-xs font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                Lanjut ke Checkout Pro
+              </Link>
+            </div>
           </div>
         </div>
       )}
