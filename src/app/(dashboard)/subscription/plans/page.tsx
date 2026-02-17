@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
@@ -75,14 +76,27 @@ export default function PlansHubPage() {
   if (!user) {
     return (
       <div className="space-y-2">
-        <h1 className="text-interface text-xl font-semibold">Leluasa dengan Paket Pro</h1>
+        <h1 className="text-interface text-xl font-semibold">Pilih Paket</h1>
         <p className="text-sm text-muted-foreground">Sesi tidak aktif. Silakan login ulang.</p>
       </div>
     )
   }
 
   const currentTier = getEffectiveTier(user.role, user.subscriptionStatus)
+
+  const router = useRouter()
+  useEffect(() => {
+    if (currentTier === "bpp") {
+      router.replace("/subscription/overview")
+    }
+  }, [currentTier, router])
+
+  if (currentTier === "bpp") {
+    return null
+  }
+
   const currentCredits = creditBalance?.remainingCredits ?? 0
+  const pageTitle = currentTier === "bpp" ? "Leluasa dengan Paket Pro" : "Pilih Paket"
 
   const visiblePlanSlugs = currentTier === "gratis" ? new Set(["bpp", "pro"]) : new Set(["pro"])
   const visiblePlans = plans.filter((plan) => visiblePlanSlugs.has(plan.slug))
@@ -92,7 +106,7 @@ export default function PlansHubPage() {
       <div>
         <h1 className="text-interface flex items-center gap-2 text-xl font-semibold">
           <ShoppingBagArrowUp className="h-5 w-5 text-primary" />
-          Leluasa dengan Paket Pro
+          {pageTitle}
         </h1>
       </div>
 
