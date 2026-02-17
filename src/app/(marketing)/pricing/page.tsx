@@ -5,9 +5,11 @@ import { api } from "@convex/_generated/api"
 import { SectionBadge } from "@/components/ui/section-badge"
 import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
 import { PricingCard, PricingCarousel, PricingSkeleton } from "@/components/marketing/pricing"
+import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 
 export default function PricingPage() {
   const plans = useQuery(api.pricingPlans.getActivePlans)
+  const { isWaitlistMode } = useWaitlistMode()
 
   return (
     <section
@@ -57,14 +59,14 @@ export default function PricingPage() {
               <div className="col-span-16">
                 <div className="hidden md:grid grid-cols-3 gap-6 items-stretch">
                   {plans.map((plan) => (
-                    <PricingCard key={plan._id} plan={plan} />
+                    <PricingCard key={plan._id} plan={plan} isWaitlistMode={isWaitlistMode} />
                   ))}
                 </div>
               </div>
 
               {/* Mobile: Carousel */}
               <div className="col-span-16">
-                <PricingCarousel plans={plans} />
+                <PricingCarousel plans={plans} isWaitlistMode={isWaitlistMode} />
               </div>
             </>
           )}

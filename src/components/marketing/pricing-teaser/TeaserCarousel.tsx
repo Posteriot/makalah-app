@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import type { TeaserPlan } from "./types"
 import { TeaserCard } from "./TeaserCard"
 
-export function TeaserCarousel({ plans }: { plans: TeaserPlan[] }) {
+export function TeaserCarousel({ plans, isWaitlistMode }: { plans: TeaserPlan[]; isWaitlistMode?: boolean }) {
   // Start at highlighted plan (BPP) for better UX
   const highlightedIndex = plans.findIndex((p) => p.isHighlighted)
   const [activeSlide, setActiveSlide] = useState(
@@ -79,7 +79,7 @@ export function TeaserCarousel({ plans }: { plans: TeaserPlan[] }) {
         {plans.map((plan) => (
           <div key={plan._id} className="flex-shrink-0 w-full px-2 box-border">
             <div className="w-full max-w-[300px] mx-auto">
-              <TeaserCard plan={plan} />
+              <TeaserCard plan={plan} isWaitlistMode={isWaitlistMode} />
             </div>
           </div>
         ))}

@@ -14,6 +14,7 @@ import {
   Settings,
   LogOut,
   RefreshDouble,
+  UserPlus,
 } from "iconoir-react"
 import {
   Accordion,
@@ -30,6 +31,7 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
 import { cn } from "@/lib/utils"
+import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 
 const NAV_LINKS = [
   { href: "/pricing", label: "Harga" },
@@ -70,6 +72,11 @@ export function GlobalHeader() {
   const lastScrollYRef = useRef(0)
   const isThemeReady = resolvedTheme !== undefined
   const shouldHideHeader = pathname?.startsWith("/chat")
+  const { isWaitlistMode } = useWaitlistMode()
+
+  const visibleNavLinks = isWaitlistMode
+    ? NAV_LINKS.filter((link) => link.href !== "/blog")
+    : NAV_LINKS
 
   const isMobileMenuOpen = useMemo(() => {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
@@ -235,7 +242,7 @@ export function GlobalHeader() {
         <div className="col-span-8 md:col-span-12 flex items-center justify-end gap-comfort">
           {/* Navigation - Desktop only */}
           <nav className="hidden md:flex items-center gap-4">
-            {NAV_LINKS.map((link) => {
+            {visibleNavLinks.map((link) => {
               const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
               return (
                 <Link
@@ -362,7 +369,7 @@ export function GlobalHeader() {
       {isMobileMenuOpen && (
         <nav className="absolute top-full left-0 right-0 md:hidden flex flex-col bg-background border-b border-hairline p-4">
           {/* Main Navigation Links */}
-          {NAV_LINKS.map((link) => {
+          {visibleNavLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
             return (
               <Link
@@ -426,14 +433,24 @@ export function GlobalHeader() {
                     </Link>
 
                     {isAdmin && (
-                      <Link
-                        href="/dashboard"
-                        className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                        onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                      >
-                        <Settings className="icon-interface" />
-                        <span>Admin Panel</span>
-                      </Link>
+                      <>
+                        <Link
+                          href="/dashboard"
+                          className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                          onClick={() => setMobileMenuState({ isOpen: false, pathname })}
+                        >
+                          <Settings className="icon-interface" />
+                          <span>Admin Panel</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/waitlist"
+                          className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                          onClick={() => setMobileMenuState({ isOpen: false, pathname })}
+                        >
+                          <UserPlus className="icon-interface" />
+                          <span>Waiting List</span>
+                        </Link>
+                      </>
                     )}
 
                     <button
