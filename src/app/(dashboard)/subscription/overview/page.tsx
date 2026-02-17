@@ -38,7 +38,7 @@ const TIER_CONFIG: Record<EffectiveTier, { label: string; description: string; c
   },
   pro: {
     label: "PRO",
-    description: "Akses penuh tanpa batas",
+    description: "Akses penuh",
     color: "bg-segment-pro",
     textColor: "text-segment-pro",
   },
@@ -92,7 +92,7 @@ function RegularOverviewView({
   const { user } = useCurrentUser()
   const creditBalance = useQuery(
     api.billing.credits.getCreditBalance,
-    tier === "bpp" && user?._id ? { userId: user._id } : "skip"
+    (tier === "bpp" || tier === "pro") && user?._id ? { userId: user._id } : "skip"
   )
 
   return (
@@ -115,7 +115,7 @@ function RegularOverviewView({
               <span className="font-sans text-sm text-slate-600 dark:text-slate-300">{tierConfig.description}</span>
             </div>
 
-            {(tier === "bpp" || tier === "pro") && (
+            {tier === "bpp" && (
               <Link
                 href="/checkout/bpp?from=overview"
                 className="focus-ring font-mono mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -261,6 +261,29 @@ function RegularOverviewView({
             </div>
             <SectionCTA href="/checkout/pro?from=overview">
               Upgrade ke Pro
+            </SectionCTA>
+          </div>
+        </div>
+      )}
+
+      {/* Top Up Card — Pro only */}
+      {tier === "pro" && (
+        <div className="rounded-shell border border-slate-200 dark:border-slate-700 border-l-4 border-l-amber-500 bg-white dark:bg-slate-900 p-5">
+          <h2 className="font-sans text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <CreditCard className="h-4 w-4 text-amber-500" />
+            Top Up Kredit
+          </h2>
+          <p className="font-sans text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+            Kuota bulanan habis? Tambah kredit kapan saja tanpa menunggu reset bulanan.
+          </p>
+          {(creditBalance?.remainingCredits ?? 0) > 0 && (
+            <p className="font-sans text-xs text-slate-500 dark:text-slate-400 mt-2">
+              Saldo kredit tambahan: {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit
+            </p>
+          )}
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <SectionCTA href="/subscription/topup?from=overview">
+              Top Up Kredit
             </SectionCTA>
           </div>
         </div>

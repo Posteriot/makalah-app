@@ -20,6 +20,7 @@ import {
   WarningCircle,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
+import { getEffectiveTier } from "@/lib/utils/subscription"
 import { toast } from "sonner"
 import Image from "next/image"
 import { QRCodeSVG } from "qrcode.react"
@@ -134,6 +135,7 @@ function CheckoutBPPContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const currentTier = user ? getEffectiveTier(user.role, user.subscriptionStatus) : null
   const backRoute = getSubscriptionBackRoute(searchParams.get("from"))
   const handleBackToSubscription = useCallback(() => {
     router.push(backRoute)
@@ -387,7 +389,7 @@ function CheckoutBPPContent() {
                 <h1 className="text-narrative text-xl font-medium text-foreground">Beli Kredit</h1>
               </div>
               <p className="text-interface text-xs text-muted-foreground">
-                Bayar Per Paper - 1 paper lengkap
+                {currentTier === "pro" ? "Top Up Kredit" : "Bayar Per Paper - 1 paper lengkap"}
               </p>
             </div>
 
@@ -403,14 +405,16 @@ function CheckoutBPPContent() {
 
             <div className={sectionCardClass}>
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-interface text-xs text-muted-foreground">Saldo kredit saat ini</p>
-                  <p className="text-interface text-2xl font-medium tracking-tight text-foreground">
-                    {currentCredits}
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">kredit</span>
-                  </p>
-                </div>
-                <div className="text-right">
+                {currentTier !== "pro" && (
+                  <div>
+                    <p className="text-interface text-xs text-muted-foreground">Saldo kredit saat ini</p>
+                    <p className="text-interface text-2xl font-medium tracking-tight text-foreground">
+                      {currentCredits}
+                      <span className="ml-1 text-sm font-normal text-muted-foreground">kredit</span>
+                    </p>
+                  </div>
+                )}
+                <div className={currentTier === "pro" ? "" : "text-right"}>
                   <p className="text-signal text-[10px] text-muted-foreground">Paket Paper</p>
                   <p className="text-interface text-lg font-medium text-foreground">
                     {BPP_PACKAGE.credits} kredit
@@ -550,12 +554,14 @@ function CheckoutBPPContent() {
                   Rp {BPP_PACKAGE.priceIDR.toLocaleString("id-ID")}
                 </span>
               </div>
-              <div className="flex items-center justify-between mb-3 text-sm">
-                <span className="text-narrative text-muted-foreground">Kredit setelah top up</span>
-                <span className="text-interface font-medium text-foreground">
-                  {currentCredits + BPP_PACKAGE.credits} kredit
-                </span>
-              </div>
+              {currentTier !== "pro" && (
+                <div className="flex items-center justify-between mb-3 text-sm">
+                  <span className="text-narrative text-muted-foreground">Kredit setelah top up</span>
+                  <span className="text-interface font-medium text-foreground">
+                    {currentCredits + BPP_PACKAGE.credits} kredit
+                  </span>
+                </div>
+              )}
               <button
                 onClick={handleTopUp}
                 disabled={isProcessing}
