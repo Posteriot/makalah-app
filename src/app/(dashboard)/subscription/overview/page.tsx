@@ -198,18 +198,18 @@ function RegularOverviewView({
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             {/* Left: Description */}
             <div className="flex-1">
-              <h2 className="text-interface text-sm font-medium text-foreground flex items-center gap-1.5">
+              <h2 className="text-interface text-sm font-semibold text-foreground flex items-center gap-1.5">
                 <Sparks className="h-4 w-4 text-primary" />
                 Leluasa dengan Paket Pro
               </h2>
-              <p className="text-interface text-sm text-muted-foreground mt-1">
+              <p className="text-interface text-xs text-muted-foreground mt-1.5 leading-relaxed">
                 Mendapat 5.000 kredit, untuk menyusun 5–6 paper dan diskusi mendalam
                 <br />
                 dengan masing-masing paper setara 15 halaman
               </p>
               {(creditBalance?.remainingCredits ?? 0) > 0 && (
-                <p className="text-interface text-xs text-muted-foreground/70 mt-3">
-                  Sisa {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit BPP Anda tetap tersimpan setelah upgrade.
+                <p className="text-interface text-[11px] text-muted-foreground/50 mt-3">
+                  Sisa {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit BPP tetap tersimpan setelah upgrade.
                 </p>
               )}
             </div>
