@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { SectionCTA } from "@/components/ui/section-cta"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
@@ -90,28 +91,28 @@ function RegularOverviewView({
 
   return (
     <>
-      {/* Merged Tier + Saldo Card */}
-      <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-border">
+      {/* Tier + Saldo Card */}
+      <div className="rounded-shell border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6">
           {/* Left: Tier Info */}
-          <div className="pb-4 md:pb-0 md:pr-4">
-            <p className="text-signal text-[10px] text-muted-foreground">Tier Saat Ini</p>
-            <div className="flex items-center gap-2 mt-1">
+          <div>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Tier Saat Ini</p>
+            <div className="flex items-center gap-3 mt-2">
               <span
                 className={cn(
-                  "text-[10px] font-bold px-2 py-0.5 rounded-badge text-white",
+                  "font-mono text-[10px] font-bold px-2 py-0.5 rounded-badge text-white",
                   tierConfig.color
                 )}
               >
                 {tierConfig.label}
               </span>
+              <span className="font-sans text-sm text-slate-600 dark:text-slate-300">{tierConfig.description}</span>
             </div>
-            <p className="text-sm text-muted-foreground mt-2">{tierConfig.description}</p>
 
             {tier === "gratis" && (
               <Link
                 href="/subscription/upgrade"
-                className="focus-ring text-interface mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
+                className="focus-ring font-mono mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
               >
                 <ArrowUpCircle className="h-4 w-4" />
                 Upgrade
@@ -121,7 +122,7 @@ function RegularOverviewView({
             {(tier === "bpp" || tier === "pro") && (
               <Link
                 href="/checkout/bpp?from=overview"
-                className="focus-ring text-interface mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
+                className="focus-ring font-mono mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
               >
                 <CreditCard className="h-4 w-4" />
                 Top Up Kredit
@@ -130,51 +131,51 @@ function RegularOverviewView({
           </div>
 
           {/* Right: Saldo Kredit */}
-          <div className="border-t border-border pt-4 md:border-t-0 md:pt-0 md:pl-4">
-            <h2 className="text-signal text-[10px] text-muted-foreground mb-3">Saldo Kredit</h2>
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-4 md:border-t-0 md:pt-0 md:border-l md:border-slate-200 md:dark:border-slate-700 md:pl-6">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Saldo Kredit</p>
 
             {/* Progress Bar */}
-            <div className="relative h-3 bg-muted rounded-full overflow-hidden">
+            <div className="relative h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
                 className={cn(
                   "absolute left-0 top-0 h-full rounded-full transition-all",
-                  meter.level === "depleted" ? "bg-destructive"
-                    : meter.level === "critical" ? "bg-destructive"
+                  meter.level === "depleted" ? "bg-rose-500"
+                    : meter.level === "critical" ? "bg-rose-500"
                     : meter.level === "warning" ? "bg-amber-500"
-                    : "bg-primary"
+                    : "bg-amber-500"
                 )}
                 style={{ width: `${Math.min(meter.percentage, 100)}%` }}
               />
             </div>
 
             {/* Kredit text */}
-            <div className="mt-2">
-              <span className="font-mono text-xl font-bold">
-                <span className={cn("text-foreground", (meter.level === "warning" || meter.level === "critical" || meter.level === "depleted") && "text-destructive")}>
+            <div className="mt-3">
+              <span className="font-mono text-xl font-bold text-slate-900 dark:text-slate-100">
+                <span className={cn((meter.level === "warning" || meter.level === "critical" || meter.level === "depleted") && "text-rose-600 dark:text-rose-400")}>
                   {meter.used.toLocaleString("id-ID")}
                 </span>
-                <span className="text-muted-foreground"> / {meter.total.toLocaleString("id-ID")}</span>
-                {" "}
-                <span className="text-signal text-[10px] text-muted-foreground">kredit</span>
+                <span className="text-slate-400 dark:text-slate-500"> / </span>
+                <span className="text-slate-600 dark:text-slate-300">{meter.total.toLocaleString("id-ID")}</span>
               </span>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-2">kredit</span>
             </div>
 
-            {/* Pro: subtle reset note */}
+            {/* Pro: reset note */}
             {tier === "pro" && (
-              <p className="font-mono text-[10px] text-muted-foreground mt-1">Direset setiap bulan</p>
+              <p className="font-mono text-xs text-slate-500 dark:text-slate-400 mt-1">Direset setiap bulan</p>
             )}
 
             {/* Blocked state */}
             {meter.level === "depleted" && (
-              <div className="mt-2 space-y-2">
-                <p className="text-xs text-destructive">
+              <div className="mt-3 space-y-2">
+                <p className="font-sans text-xs text-rose-600 dark:text-rose-400">
                   {tier === "gratis"
                     ? "Kredit habis. Upgrade untuk melanjutkan."
                     : "Kredit habis. Top up untuk melanjutkan."}
                 </p>
                 <Link
                   href={tier === "gratis" ? "/subscription/upgrade" : "/checkout/bpp?from=overview"}
-                  className="focus-ring text-interface inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
+                  className="focus-ring font-mono inline-flex h-8 items-center gap-1.5 rounded-action border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
                 >
                   <CreditCard className="h-3.5 w-3.5" />
                   {tier === "gratis" ? "Upgrade" : "Top Up Kredit"}
@@ -184,7 +185,7 @@ function RegularOverviewView({
 
             {/* Warning state */}
             {(meter.level === "warning" || meter.level === "critical") && (
-              <p className="text-xs text-amber-600 mt-2">
+              <p className="font-sans text-xs text-amber-600 dark:text-amber-400 mt-2">
                 Kredit hampir habis. {tier === "gratis" ? "Pertimbangkan upgrade." : "Pertimbangkan top up."}
               </p>
             )}
@@ -194,41 +195,32 @@ function RegularOverviewView({
 
       {/* Pro Upgrade Pitch — BPP only */}
       {tier === "bpp" && proPlan && (
-        <div className="rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 p-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            {/* Left: Description */}
-            <div className="flex-1">
-              <h2 className="text-interface text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <Sparks className="h-4 w-4 text-primary" />
-                Leluasa dengan Paket Pro
-              </h2>
-              <p className="text-interface text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                Mendapat 5.000 kredit, untuk menyusun 5–6 paper dan diskusi mendalam
-                <br />
-                dengan masing-masing paper setara 15 halaman
+        <div className="rounded-shell border border-slate-200 dark:border-slate-700 border-l-4 border-l-amber-500 bg-white dark:bg-slate-900 p-5">
+          <h2 className="font-sans text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <Sparks className="h-4 w-4 text-amber-500" />
+            Leluasa dengan Paket Pro
+          </h2>
+          <p className="font-sans text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+            Mendapat 5.000 kredit, untuk menyusun 5–6 paper dan diskusi mendalam
+            dengan masing-masing paper setara 15 halaman
+          </p>
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div>
+              <p className="font-mono text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                {proPlan.price}
+                {proPlan.unit && (
+                  <span className="font-mono text-xs font-normal text-slate-500 dark:text-slate-400"> {proPlan.unit}</span>
+                )}
               </p>
               {(creditBalance?.remainingCredits ?? 0) > 0 && (
-                <p className="text-interface text-[11px] text-muted-foreground/50 mt-3">
+                <p className="font-sans text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Sisa {creditBalance!.remainingCredits.toLocaleString("id-ID")} kredit BPP tetap tersimpan setelah upgrade.
                 </p>
               )}
             </div>
-
-            {/* Right: Price + Action (compact, grouped) */}
-            <div className="flex flex-col items-start gap-2 shrink-0">
-              <p className="text-interface text-lg font-semibold tabular-nums text-foreground whitespace-nowrap">
-                {proPlan.price}
-                {proPlan.unit && (
-                  <span className="text-xs font-normal text-muted-foreground">/{proPlan.unit}</span>
-                )}
-              </p>
-              <Link
-                href="/checkout/pro?from=overview"
-                className="focus-ring text-interface inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-4 py-1.5 text-xs font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-              >
-                Lanjut ke Checkout Pro
-              </Link>
-            </div>
+            <SectionCTA href="/checkout/pro?from=overview">
+              Upgrade ke Pro
+            </SectionCTA>
           </div>
         </div>
       )}
@@ -701,12 +693,12 @@ export default function SubscriptionOverviewPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-interface text-xl font-semibold flex items-center gap-2">
-          <Sparks className="h-5 w-5 text-primary" />
+        <h1 className="font-sans text-2xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <Sparks className="h-5 w-5 text-amber-500" />
           Subskripsi
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Kelola langganan dan pantau penggunaan Anda
+        <p className="font-sans text-sm text-slate-600 dark:text-slate-300 mt-1">
+          Kelola langganan dan pantau penggunaan
         </p>
       </div>
 
