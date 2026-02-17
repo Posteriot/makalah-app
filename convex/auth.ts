@@ -3,7 +3,7 @@ import { components } from "./_generated/api";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
-import { magicLink, twoFactor } from "better-auth/plugins";
+import { magicLink, twoFactor, admin } from "better-auth/plugins";
 import { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
 import {
@@ -109,6 +109,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
         },
       }),
       twoFactorCrossDomainBypass(),
+      admin(), // Enables admin.createUser() for waitlist invite flow
     ],
   }) satisfies BetterAuthOptions;
 

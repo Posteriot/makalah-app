@@ -12,6 +12,8 @@ const PUBLIC_ROUTES = [
   "/blog",
   "/documentation",
   "/waiting-list",
+  "/admin-login",
+  "/accept-invite",
   "/privacy",
 ]
 
