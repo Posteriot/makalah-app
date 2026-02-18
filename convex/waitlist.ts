@@ -56,52 +56,6 @@ export const register = mutation({
   },
 })
 
-/**
- * Mark entry as registered after user completes signup.
- * Also enforces gratis tier for any existing user with this email.
- * Tier enforcement runs ALWAYS regardless of entry status — security critical.
- */
-export const markAsRegistered = mutation({
-  args: {
-    email: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const email = args.email.toLowerCase().trim()
-
-    const entry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique()
-
-    if (!entry) {
-      return null
-    }
-
-    // Update entry status if still "invited"
-    if (entry.status === "invited") {
-      await ctx.db.patch(entry._id, {
-        status: "registered",
-        registeredAt: Date.now(),
-      })
-    }
-
-    // SECURITY: Always enforce gratis tier for waitlist users, regardless of entry status.
-    // Prevents existing Pro/BPP users from keeping paid tier via waitlist invite.
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique()
-
-    if (existingUser && existingUser.subscriptionStatus !== "free") {
-      await ctx.db.patch(existingUser._id, {
-        subscriptionStatus: "free",
-      })
-    }
-
-    return entry._id
-  },
-})
-
 // ════════════════════════════════════════════════════════════════
 // Public Queries
 // ════════════════════════════════════════════════════════════════
