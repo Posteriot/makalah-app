@@ -22,7 +22,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { Authenticated, Unauthenticated } from "convex/react"
+import { useConvexAuth } from "convex/react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { signOut, useSession } from "@/lib/auth-client"
 import { usePathname } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
@@ -81,6 +82,22 @@ export function GlobalHeader() {
   const isMobileMenuOpen = useMemo(() => {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
   }, [mobileMenuState.isOpen, mobileMenuState.pathname, pathname])
+
+  // Auth state from Convex (replaces <Authenticated>/<Unauthenticated> wrappers)
+  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
+
+  // Track whether auth has resolved at least once — prevents skeleton flash
+  // on tab refocus when Convex re-validates JWT (briefly sets isLoading=true).
+  // React supports setState during render for derived state (replaces getDerivedStateFromProps).
+  const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
+  if (isAuthenticated && !hasBeenAuthenticated) {
+    setHasBeenAuthenticated(true)
+  }
+
+  // Only show skeleton on initial load, not on tab-refocus re-auth
+  const showAuthSkeleton = isAuthLoading && !hasBeenAuthenticated
+  // Keep showing authenticated UI during brief re-auth cycles
+  const showAsAuthenticated = isAuthenticated || hasBeenAuthenticated
 
   // Auth session and Convex user data for mobile menu
   const { data: session } = useSession()
@@ -225,17 +242,19 @@ export function GlobalHeader() {
             />
           </Link>
           {/* Subscription Badge - shows when logged in */}
-          <Authenticated>
-            {isConvexLoading ? (
-              <RefreshDouble className="icon-interface animate-spin text-muted-foreground" />
+          {showAuthSkeleton ? (
+            <Skeleton className="h-5 w-12 rounded-badge shrink-0" />
+          ) : showAsAuthenticated ? (
+            isConvexLoading ? (
+              <Skeleton className="h-5 w-12 rounded-badge shrink-0" />
             ) : convexUser ? (
               <SegmentBadge
                 role={convexUser.role}
                 subscriptionStatus={convexUser.subscriptionStatus}
                 className="shrink-0"
               />
-            ) : null}
-          </Authenticated>
+            ) : null
+          ) : null}
         </div>
 
         {/* Header Right - Nav, Theme Toggle & Auth */}
@@ -263,7 +282,9 @@ export function GlobalHeader() {
             })}
           </nav>
           {/* Theme Toggle - Mobile (icon only, left of hamburger) */}
-          <Authenticated>
+          {showAuthSkeleton ? (
+            <Skeleton className="md:hidden h-6 w-6 rounded-action mr-2" />
+          ) : showAsAuthenticated ? (
             <button
               onClick={toggleTheme}
               className={cn(
@@ -298,7 +319,7 @@ export function GlobalHeader() {
                 )}
               </span>
             </button>
-          </Authenticated>
+          ) : null}
 
           {/* Mobile Menu Toggle */}
           <button
@@ -316,7 +337,9 @@ export function GlobalHeader() {
           </button>
 
           {/* Theme Toggle - Desktop only for logged-in users */}
-          <Authenticated>
+          {showAuthSkeleton ? (
+            <Skeleton className="hidden md:block h-7.5 w-7.5 rounded-action" />
+          ) : showAsAuthenticated ? (
             <button
               onClick={toggleTheme}
               className={cn(
@@ -344,23 +367,23 @@ export function GlobalHeader() {
               <SunLight className="relative z-10 icon-interface block dark:hidden" />
               <HalfMoon className="relative z-10 icon-interface hidden dark:block" />
             </button>
-          </Authenticated>
+          ) : null}
 
           {/* Auth State - Desktop only (mobile shows in panel) */}
-          <Unauthenticated>
+          {showAuthSkeleton ? (
+            <Skeleton className="hidden md:block h-[30px] w-[100px] rounded-action" />
+          ) : showAsAuthenticated ? (
+            <div className="hidden md:block">
+              <UserDropdown />
+            </div>
+          ) : (
             <Link
               href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
               className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-slate-950 bg-slate-950 px-2 py-1 text-xs font-medium text-narrative uppercase text-slate-50 transition-colors hover:bg-slate-900 dark:border-slate-50 dark:bg-slate-50 dark:text-slate-950 dark:hover:bg-slate-200 focus-ring"
             >
               Masuk
             </Link>
-          </Unauthenticated>
-
-          <Authenticated>
-            <div className="hidden md:block">
-              <UserDropdown />
-            </div>
-          </Authenticated>
+          )}
         </div>
       </div>
       {/* End header-inner */}
@@ -388,7 +411,7 @@ export function GlobalHeader() {
           })}
 
           {/* SignedOut: Show login button */}
-          <Unauthenticated>
+          {!showAuthSkeleton && !showAsAuthenticated && (
             <Link
               href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
               className="mt-2 inline-flex items-center justify-center rounded-action border-main border-border px-3 py-2 text-signal text-[11px] font-bold uppercase tracking-widest text-foreground hover:bg-accent transition-colors"
@@ -396,10 +419,10 @@ export function GlobalHeader() {
             >
               Masuk
             </Link>
-          </Unauthenticated>
+          )}
 
           {/* SignedIn: Auth section */}
-          <Authenticated>
+          {showAsAuthenticated && (
             <div className="mt-3 rounded-shell border-hairline bg-slate-100 dark:bg-slate-900 p-3">
               <Accordion type="single" collapsible>
                 <AccordionItem value="user" className="border-none">
@@ -475,7 +498,7 @@ export function GlobalHeader() {
                 </AccordionItem>
               </Accordion>
             </div>
-          </Authenticated>
+          )}
         </nav>
       )}
 

@@ -15,6 +15,7 @@ import {
   UserPlus,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface UserDropdownProps {
   /** "default" = full name + chevron (marketing/dashboard), "compact" = icon only (chat) */
@@ -25,18 +26,19 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Get Convex user for role and subscription status
   const { user: convexUser } = useCurrentUser()
 
-  // Prevent hydration mismatch - only render after mount
-  /* eslint-disable react-hooks/set-state-in-effect -- Standard pattern for hydration safety */
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-  /* eslint-enable react-hooks/set-state-in-effect */
+  // Cache last session — prevents skeleton flash on tab refocus
+  // when BetterAuth briefly re-validates session.
+  // Uses setState-during-render pattern (React-supported derived state).
+  const [lastSession, setLastSession] = useState(session)
+  if (session && session !== lastSession) {
+    setLastSession(session)
+  }
+  const stableSession = session ?? lastSession
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -62,11 +64,15 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
     return () => document.removeEventListener("keydown", handleEscape)
   }, [])
 
-  // Return null consistently on server and before mount to prevent hydration mismatch
-  if (!mounted || !session) return null
+  // Show skeleton only on initial load (no cached session yet)
+  if (!stableSession) {
+    return variant === "compact"
+      ? <Skeleton className="w-8 h-8 rounded-full" />
+      : <Skeleton className="h-[30px] w-[100px] rounded-action" />
+  }
 
-  const firstName = convexUser?.firstName || session?.user?.name?.split(" ")[0] || "User"
-  const lastName = convexUser?.lastName || session?.user?.name?.split(" ").slice(1).join(" ") || ""
+  const firstName = convexUser?.firstName || stableSession?.user?.name?.split(" ")[0] || "User"
+  const lastName = convexUser?.lastName || stableSession?.user?.name?.split(" ").slice(1).join(" ") || ""
   const fullName = `${firstName} ${lastName}`.trim()
 
   // isAdmin berdasarkan ROLE untuk menampilkan Admin Panel link

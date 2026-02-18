@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSession } from "@/lib/auth-client"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
@@ -20,6 +20,14 @@ export function useCurrentUser() {
 
   const createAppUser = useMutation(api.users.createAppUser)
   const creationAttemptedRef = useRef(false)
+
+  // Cache last known user — prevents flash when queries briefly re-load
+  // on tab refocus (Convex re-authenticates JWT, queries return undefined).
+  // Uses setState-during-render pattern (React-supported derived state).
+  const [lastKnownUser, setLastKnownUser] = useState(convexUser ?? null)
+  if (convexUser && convexUser !== lastKnownUser) {
+    setLastKnownUser(convexUser)
+  }
 
   // Auto-create app user if authenticated but no Convex record yet
   useEffect(() => {
@@ -42,9 +50,11 @@ export function useCurrentUser() {
     }
   }, [session, convexUser, createAppUser])
 
-  // Session still loading
+  // Session still loading — return cached user if available
   if (isSessionPending) {
-    return { user: null, isLoading: true }
+    return lastKnownUser
+      ? { user: lastKnownUser, isLoading: false }
+      : { user: null, isLoading: true }
   }
 
   // User not authenticated
@@ -52,9 +62,11 @@ export function useCurrentUser() {
     return { user: null, isLoading: false }
   }
 
-  // Convex query still loading (undefined = loading, null = not found)
+  // Convex query still loading — return cached user if available
   if (convexUser === undefined) {
-    return { user: null, isLoading: true }
+    return lastKnownUser
+      ? { user: lastKnownUser, isLoading: false }
+      : { user: null, isLoading: true }
   }
 
   // User authenticated and data ready
