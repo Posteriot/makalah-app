@@ -1,28 +1,33 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Mail, CheckCircle } from "iconoir-react"
-import { toast } from "sonner"
-import { sendConfirmationEmail } from "@/app/(auth)/waiting-list/actions"
+import { SectionCTA } from "@/components/ui/section-cta"
+import { Mail, User, CheckCircle, WarningTriangle } from "iconoir-react"
+import { sendConfirmationEmail } from "@/app/(auth)/waitinglist/actions"
 
 type FormState = "idle" | "loading" | "success"
 
 export function WaitlistForm() {
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [formState, setFormState] = useState<FormState>("idle")
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
 
   const registerMutation = useMutation(api.waitlist.register)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Basic name validation
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Nama depan dan nama belakang wajib diisi")
+      return
+    }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -35,24 +40,14 @@ export function WaitlistForm() {
 
     try {
       // Register to waitlist
-      await registerMutation({ email })
+      await registerMutation({ firstName, lastName, email })
 
       // Send confirmation email (fire-and-forget)
-      sendConfirmationEmail(email).catch((err) => {
+      sendConfirmationEmail(email, firstName).catch((err) => {
         console.error("Failed to send confirmation email:", err)
       })
 
       setFormState("success")
-
-      // Show success toast
-      toast.success("Berhasil terdaftar!", {
-        description: "Cek email kamu untuk konfirmasi. Kalau belum masuk dalam 3-5 menit, cek folder Spam/Junk/Promosi.",
-      })
-
-      // Redirect after short delay
-      setTimeout(() => {
-        router.push("/?waitlist=success")
-      }, 1500)
     } catch (err) {
       setFormState("idle")
       if (err instanceof Error) {
@@ -65,16 +60,29 @@ export function WaitlistForm() {
 
   if (formState === "success") {
     return (
-      <div className="w-full flex flex-col items-center justify-center py-8 text-center">
-        <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4">
-          <CheckCircle className="w-8 h-8 text-success" />
+      <div className="w-full flex flex-col items-center justify-center py-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4">
+          <CheckCircle className="w-7 h-7 text-success" />
         </div>
-        <h3 className="text-lg font-mono font-bold text-foreground mb-2 tracking-tight">
+
+        <h3 className="text-lg font-mono font-bold text-foreground mb-1 tracking-tight">
           Pendaftaran Berhasil!
         </h3>
-        <p className="text-sm text-muted-foreground">
-          Mengalihkan ke halaman utama...
+
+        <p className="text-interface text-xs text-muted-foreground mb-5">
+          {email}
         </p>
+
+        <p className="text-narrative text-sm leading-relaxed text-foreground mb-5">
+          Email konfirmasi sudah dikirim. Saat giliran kamu tiba, tim kami akan mengirim email undangan berisi link pendaftaran.
+        </p>
+
+        <div className="w-full rounded-action border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-2.5 text-left">
+          <WarningTriangle className="h-4 w-4 min-w-4 text-amber-500 mt-0.5" />
+          <p className="text-interface text-xs leading-relaxed text-foreground">
+            Periksa folder <span className="font-bold">Inbox/Primary</span>, <span className="font-bold">Spam</span>, <span className="font-bold">Update</span>, atau <span className="font-bold">Promosi</span> — email kami bisa masuk ke folder mana saja.
+          </p>
+        </div>
       </div>
     )
   }
@@ -82,6 +90,36 @@ export function WaitlistForm() {
   return (
     <form onSubmit={handleSubmit} className="w-full space-y-4">
       <div className="space-y-2">
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Nama depan"
+            value={firstName}
+            onChange={(e) => {
+              setFirstName(e.target.value)
+              setError(null)
+            }}
+            disabled={formState === "loading"}
+            className="pl-10 h-10 rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary"
+            required
+          />
+        </div>
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Nama belakang"
+            value={lastName}
+            onChange={(e) => {
+              setLastName(e.target.value)
+              setError(null)
+            }}
+            disabled={formState === "loading"}
+            className="pl-10 h-10 rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary"
+            required
+          />
+        </div>
         <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -103,20 +141,13 @@ export function WaitlistForm() {
         )}
       </div>
 
-      <Button
+      <SectionCTA
         type="submit"
-        disabled={formState === "loading" || !email}
-        className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-mono font-bold text-xs uppercase tracking-widest rounded-action hover-slash"
+        isLoading={formState === "loading"}
+        className="w-full justify-center py-2.5"
       >
-        {formState === "loading" ? (
-          <>
-            <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            <span>MENDAFTAR...</span>
-          </>
-        ) : (
-          <span>DAFTAR WAITING LIST</span>
-        )}
-      </Button>
+        {formState === "loading" ? "MENDAFTAR..." : "DAFTAR WAITING LIST"}
+      </SectionCTA>
 
       <p className="text-xs text-center text-muted-foreground font-sans">
         Dengan mendaftar, kamu akan menerima email undangan saat giliran kamu tiba.

@@ -5,9 +5,10 @@ import type { TeaserPlan } from "./types"
  * TeaserCard - Individual pricing card
  * Styling mengikuti BentoBenefitsGrid (bento design tokens)
  */
-export function TeaserCard({ plan }: { plan: TeaserPlan }) {
+export function TeaserCard({ plan, isWaitlistMode }: { plan: TeaserPlan; isWaitlistMode?: boolean }) {
+  const isDisabledByWaitlist = isWaitlistMode && plan.name.toLowerCase() !== "gratis"
   return (
-    <div className="group relative h-full">
+    <div className={cn("group relative h-full", isDisabledByWaitlist && "opacity-60")}>
       {/* Popular tag for highlighted card */}
       {plan.isHighlighted && (
         <div
@@ -59,6 +60,14 @@ export function TeaserCard({ plan }: { plan: TeaserPlan }) {
         <p className="text-interface text-xs leading-relaxed text-foreground mt-6 md:mt-0 pt-3 md:pt-6 mb-6 md:md-0">
           {plan.creditNote}
         </p>
+
+        {isDisabledByWaitlist && (
+          <div className="mt-auto pt-4">
+            <span className="inline-flex items-center justify-center w-full px-4 py-2 text-signal text-[11px] font-bold uppercase tracking-widest rounded-action bg-slate-200 dark:bg-slate-700 text-muted-foreground">
+              SEGERA HADIR
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )

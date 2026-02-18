@@ -13,6 +13,7 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { isFreeTierForLoginGate } from "@/lib/utils/freeLoginGate"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
 import { SectionCTA } from "@/components/ui/section-cta"
+import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 
 const FEEDBACK_DELAY_MS = 3_000
 
@@ -149,6 +150,7 @@ export default function GetStartedPage() {
   const [showFeedback, setShowFeedback] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
   const isFreeTier = isFreeTierForLoginGate(user?.role, user?.subscriptionStatus)
+  const { isWaitlistMode } = useWaitlistMode()
 
   // Show "Mempersiapkan..." after FEEDBACK_DELAY_MS while auth/user sync stabilizes.
   useEffect(() => {
@@ -181,7 +183,7 @@ export default function GetStartedPage() {
   // Route guard: this page is only for free-tier users.
   useEffect(() => {
     if (!isOnboardingLoading && !isUserLoading && isAuthenticated && user && !isFreeTier) {
-      router.replace("/chat")
+      router.replace("/")
     }
   }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, router])
 
@@ -209,7 +211,7 @@ export default function GetStartedPage() {
 
     // Fallbacks: prevent dead-end when ctaHref is missing/malformed.
     if (plan.id === "gratis") {
-      await completeThenNavigate("/chat")
+      await completeThenNavigate("/")
       return
     }
 
@@ -234,15 +236,16 @@ export default function GetStartedPage() {
       price: plan.price,
       unit: plan.unit,
       isHighlighted: plan.isHighlighted,
-      isDisabled: resolvePlanDisabledState(plan),
+      isDisabled: isWaitlistMode ? true : resolvePlanDisabledState(plan),
       description: plan.teaserDescription || plan.tagline,
       creditNote: plan.teaserCreditNote || plan.features[0] || "",
-      ctaLabel:
+      ctaLabel: isWaitlistMode ? "Segera Hadir" : (
         plan.slug === "pro" &&
         resolvePlanDisabledState(plan) === false &&
         plan.ctaText.toLowerCase().includes("segera hadir")
           ? "Langganan Pro"
-          : plan.ctaText,
+          : plan.ctaText
+      ),
       ctaHref: plan.ctaHref,
     }))
 

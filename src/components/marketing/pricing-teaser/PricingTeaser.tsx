@@ -10,6 +10,7 @@ import { TeaserCarousel } from "./TeaserCarousel"
 import { TeaserSkeleton } from "./TeaserSkeleton"
 import { TeaserCTA } from "./TeaserCTA"
 import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
+import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 
 // ════════════════════════════════════════════════════════════════
 // Main Component
@@ -28,6 +29,8 @@ export function PricingTeaser() {
     description: plan.teaserDescription || "",
     creditNote: plan.teaserCreditNote || "",
   }))
+
+  const { isWaitlistMode } = useWaitlistMode()
 
   // Loading state
   if (!plansData) {
@@ -60,12 +63,12 @@ export function PricingTeaser() {
           <div className="col-span-16 md:col-span-12 md:col-start-3">
             <div className="hidden md:grid grid-cols-3 gap-6 items-stretch">
               {teaserPlans.map((plan) => (
-                <TeaserCard key={plan._id} plan={plan} />
+                <TeaserCard key={plan._id} plan={plan} isWaitlistMode={isWaitlistMode} />
               ))}
             </div>
 
             {/* Mobile: Carousel */}
-            <TeaserCarousel plans={teaserPlans} />
+            <TeaserCarousel plans={teaserPlans} isWaitlistMode={isWaitlistMode} />
           </div>
 
           {/* Global CTA - Link to full pricing page */}

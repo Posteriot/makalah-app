@@ -5,7 +5,6 @@ import {
   Page,
   Cpu,
   EditPencil,
-  UserPlus,
   StatsReport,
 } from "iconoir-react"
 import type { ComponentType, SVGProps } from "react"
@@ -61,14 +60,6 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
     headerTitle: "Refrasa",
     headerDescription: "Kelola style constitution untuk tool Refrasa",
     headerIcon: EditPencil,
-  },
-  {
-    id: "waitlist",
-    label: "Waiting List",
-    icon: UserPlus,
-    headerTitle: "Waiting List",
-    headerDescription: "Kelola pendaftar waiting list dan kirim undangan",
-    headerIcon: UserPlus,
   },
   {
     id: "stats",

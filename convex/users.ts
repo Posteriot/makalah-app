@@ -1,5 +1,6 @@
-import { mutationGeneric, queryGeneric } from "convex/server"
+import { mutationGeneric, queryGeneric, type GenericDatabaseWriter } from "convex/server"
 import { v } from "convex/values"
+import type { DataModel } from "./_generated/dataModel"
 import { requireRole } from "./permissions"
 import { requireAuthUserId } from "./authHelpers"
 
@@ -256,6 +257,27 @@ export const updateProfile = mutationGeneric({
 // Create App User (for BetterAuth signup)
 // ════════════════════════════════════════════════════════════════
 
+
+/**
+ * If email exists in waitlistEntries as "invited", mark as "registered".
+ * Called during createAppUser to auto-detect waitlist signups.
+ */
+async function markWaitlistRegistered(
+  db: GenericDatabaseWriter<DataModel>,
+  email: string
+) {
+  const entry = await db
+    .query("waitlistEntries")
+    .withIndex("by_email", (q) => q.eq("email", email.toLowerCase().trim()))
+    .unique()
+
+  if (entry && entry.status === "invited") {
+    await db.patch(entry._id, {
+      status: "registered",
+      registeredAt: Date.now(),
+    })
+  }
+}
 /**
  * Create or link application user record after BetterAuth signup.
  * Called from the frontend after successful authentication.
@@ -305,6 +327,8 @@ export const createAppUser = mutationGeneric({
         lastLoginAt: Date.now(),
         updatedAt: Date.now(),
       })
+      // Auto-detect waitlist registration
+      await markWaitlistRegistered(ctx.db, email)
       return linkCandidate._id
     }
 
@@ -314,7 +338,7 @@ export const createAppUser = mutationGeneric({
       ? "superadmin"
       : "user"
 
-    return await ctx.db.insert("users", {
+    const newUserId = await ctx.db.insert("users", {
       betterAuthUserId,
       email,
       firstName,
@@ -325,5 +349,10 @@ export const createAppUser = mutationGeneric({
       createdAt: now,
       lastLoginAt: now,
     })
+
+    // Auto-detect waitlist registration
+    await markWaitlistRegistered(ctx.db, email)
+
+    return newUserId
   },
 })

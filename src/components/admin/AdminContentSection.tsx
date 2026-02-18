@@ -6,7 +6,6 @@ import { StyleConstitutionManager } from "./StyleConstitutionManager"
 import { SystemHealthPanel } from "./SystemHealthPanel"
 import { SystemPromptsManager } from "./SystemPromptsManager"
 import { UserList, type User } from "./UserList"
-import { WaitlistManager } from "./WaitlistManager"
 import { ADMIN_SIDEBAR_ITEMS, type AdminTabId } from "./adminPanelConfig"
 
 type AdminContentSectionProps = {
@@ -68,8 +67,6 @@ export function AdminContentSection({
             <StyleConstitutionManager userId={userId} />
           </div>
         )}
-
-        {activeTab === "waitlist" && <WaitlistManager userId={userId} />}
 
         {activeTab === "stats" && (
           <div className="rounded-shell border-main border border-border bg-card/60">

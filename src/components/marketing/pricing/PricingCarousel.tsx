@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { PricingCard, type PricingPlan } from "./PricingCard"
 
-export function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
+export function PricingCarousel({ plans, isWaitlistMode }: { plans: PricingPlan[]; isWaitlistMode?: boolean }) {
   // Start at highlighted plan (BPP)
   const highlightedIndex = plans.findIndex((p) => p.isHighlighted)
   const [activeSlide, setActiveSlide] = useState(
@@ -78,7 +78,7 @@ export function PricingCarousel({ plans }: { plans: PricingPlan[] }) {
         {plans.map((plan) => (
           <div key={plan._id} className="flex-shrink-0 w-full px-2 box-border">
             <div className="w-full max-w-[300px] mx-auto">
-              <PricingCard plan={plan} />
+              <PricingCard plan={plan} isWaitlistMode={isWaitlistMode} />
             </div>
           </div>
         ))}

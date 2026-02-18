@@ -13,7 +13,7 @@ const ALLOWED_REDIRECT_PATH_PREFIXES = [
   "/pricing",
   "/blog",
   "/documentation",
-  "/waiting-list",
+  "/waitinglist",
   "/privacy",
   "/get-started",
   "/checkout/bpp",

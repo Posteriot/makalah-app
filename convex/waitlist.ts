@@ -1,5 +1,7 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, internalMutation, action } from "./_generated/server"
+import type { Id } from "./_generated/dataModel"
+import { internal } from "./_generated/api"
 import { requireRole } from "./permissions"
 
 // ════════════════════════════════════════════════════════════════
@@ -12,10 +14,18 @@ import { requireRole } from "./permissions"
  */
 export const register = mutation({
   args: {
+    firstName: v.string(),
+    lastName: v.string(),
     email: v.string(),
   },
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim()
+    const firstName = args.firstName.trim()
+    const lastName = args.lastName.trim()
+
+    if (!firstName || !lastName) {
+      throw new Error("Nama depan dan nama belakang wajib diisi")
+    }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -35,46 +45,14 @@ export const register = mutation({
 
     // Insert new entry
     const entryId = await ctx.db.insert("waitlistEntries", {
+      firstName,
+      lastName,
       email,
       status: "pending",
       createdAt: Date.now(),
     })
 
     return entryId
-  },
-})
-
-/**
- * Mark entry as registered after user completes signup (webhook)
- */
-export const markAsRegistered = mutation({
-  args: {
-    email: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const email = args.email.toLowerCase().trim()
-
-    const entry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique()
-
-    if (!entry) {
-      // Not from waitlist, ignore silently
-      return null
-    }
-
-    if (entry.status !== "invited") {
-      // Only update if currently invited
-      return null
-    }
-
-    await ctx.db.patch(entry._id, {
-      status: "registered",
-      registeredAt: Date.now(),
-    })
-
-    return entry._id
   },
 })
 
@@ -99,40 +77,6 @@ export const checkEmailExists = query({
       .unique()
 
     return entry !== null
-  },
-})
-
-/**
- * Validate invite token and return entry if valid
- * Used by sign-up page for magic link flow
- */
-export const getByToken = query({
-  args: {
-    token: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const entry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_invite_token", (q) => q.eq("inviteToken", args.token))
-      .unique()
-
-    if (!entry) {
-      return { valid: false, error: "Token tidak valid" }
-    }
-
-    if (entry.status !== "invited") {
-      return { valid: false, error: "Token sudah digunakan" }
-    }
-
-    if (entry.inviteTokenExpiresAt && entry.inviteTokenExpiresAt < Date.now()) {
-      return { valid: false, error: "Token sudah kedaluwarsa" }
-    }
-
-    return {
-      valid: true,
-      email: entry.email,
-      entryId: entry._id,
-    }
   },
 })
 
@@ -196,48 +140,6 @@ export const getStats = query({
 // ════════════════════════════════════════════════════════════════
 
 /**
- * Bulk invite selected entries (admin only)
- * Generates invite tokens and returns entries for email sending
- */
-export const bulkInvite = mutation({
-  args: {
-    adminUserId: v.id("users"),
-    entryIds: v.array(v.id("waitlistEntries")),
-  },
-  handler: async (ctx, args) => {
-    await requireRole(ctx.db, args.adminUserId, "admin")
-
-    const invitedEntries: Array<{ email: string; inviteToken: string }> = []
-    const now = Date.now()
-    const expiresAt = now + 7 * 24 * 60 * 60 * 1000 // 7 days
-
-    for (const entryId of args.entryIds) {
-      const entry = await ctx.db.get(entryId)
-
-      if (!entry) continue
-      if (entry.status !== "pending") continue
-
-      // Generate secure token
-      const inviteToken = crypto.randomUUID()
-
-      await ctx.db.patch(entryId, {
-        status: "invited",
-        invitedAt: now,
-        inviteToken,
-        inviteTokenExpiresAt: expiresAt,
-      })
-
-      invitedEntries.push({
-        email: entry.email,
-        inviteToken,
-      })
-    }
-
-    return invitedEntries
-  },
-})
-
-/**
  * Delete waitlist entry (admin only)
  */
 export const deleteEntry = mutation({
@@ -260,10 +162,10 @@ export const deleteEntry = mutation({
 })
 
 /**
- * Resend invite to a single entry (admin only)
- * Generates new token and returns for email sending
+ * Reset entry back to "pending" (admin only).
+ * Allows re-inviting the same email for testing without deleting the entry.
  */
-export const resendInvite = mutation({
+export const resetToPending = mutation({
   args: {
     adminUserId: v.id("users"),
     entryId: v.id("waitlistEntries"),
@@ -276,24 +178,94 @@ export const resendInvite = mutation({
       throw new Error("Entry tidak ditemukan")
     }
 
-    if (entry.status === "registered") {
-      throw new Error("User sudah terdaftar")
+    if (entry.status === "pending") {
+      throw new Error("Entry sudah berstatus pending")
     }
 
-    const now = Date.now()
-    const expiresAt = now + 7 * 24 * 60 * 60 * 1000 // 7 days
-    const inviteToken = crypto.randomUUID()
-
     await ctx.db.patch(args.entryId, {
+      status: "pending",
+      invitedAt: undefined,
+      registeredAt: undefined,
+    })
+
+    return { success: true }
+  },
+})
+
+// ════════════════════════════════════════════════════════════════
+// Internal Mutations (used by sendInviteEmail action)
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Mark entry as invited and return entry data (for HTTP action).
+ * Admin role check included.
+ */
+export const inviteSingleInternal = internalMutation({
+  args: {
+    adminUserId: v.string(),
+    entryId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Validate admin role
+    const admin = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("_id"), args.adminUserId))
+      .unique()
+
+    if (!admin || (admin.role !== "admin" && admin.role !== "superadmin")) {
+      throw new Error("Unauthorized")
+    }
+
+    const entryId = args.entryId as Id<"waitlistEntries">
+    const entry = await ctx.db.get(entryId)
+    if (!entry) return null
+    if (entry.status !== "pending") return null
+
+    await ctx.db.patch(entry._id, {
       status: "invited",
-      invitedAt: now,
-      inviteToken,
-      inviteTokenExpiresAt: expiresAt,
+      invitedAt: Date.now(),
     })
 
     return {
       email: entry.email,
-      inviteToken,
+      firstName: entry.firstName,
+      lastName: entry.lastName,
     }
+  },
+})
+
+// ════════════════════════════════════════════════════════════════
+// Actions (orchestrate mutations + side effects)
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Send invite email to a waitlist entry (admin only).
+ * Marks entry as invited, then sends signup link email via Resend.
+ */
+export const sendInviteEmail = action({
+  args: {
+    adminUserId: v.id("users"),
+    entryId: v.id("waitlistEntries"),
+  },
+  handler: async (ctx, args): Promise<{ email: string }> => {
+    // Mark entry as invited (admin role check inside mutation)
+    const result: { email: string; firstName: string | undefined; lastName: string | undefined } | null = await ctx.runMutation(internal.waitlist.inviteSingleInternal, {
+      adminUserId: args.adminUserId as string,
+      entryId: args.entryId as string,
+    })
+
+    if (!result) {
+      throw new Error("Entry tidak ditemukan atau sudah diundang")
+    }
+
+    const firstName = result.firstName ?? "Pengguna"
+    const appUrl = process.env.APP_URL ?? "https://makalah.ai"
+    const signupUrl = `${appUrl}/waitinglist/sign-up`
+
+    // Send invite email via Resend
+    const { sendWaitlistInviteEmail } = await import("./authEmails")
+    await sendWaitlistInviteEmail(result.email, firstName, signupUrl)
+
+    return { email: result.email }
   },
 })

@@ -886,6 +886,8 @@ export default defineSchema({
     .index("by_expiry", ["expiresAt"]),
 
   waitlistEntries: defineTable({
+    firstName: v.string(),
+    lastName: v.string(),
     email: v.string(),
     status: v.union(
       v.literal("pending"),
@@ -894,11 +896,16 @@ export default defineSchema({
     ),
     invitedAt: v.optional(v.number()),
     registeredAt: v.optional(v.number()),
-    inviteToken: v.optional(v.string()),
-    inviteTokenExpiresAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_email", ["email"])
-    .index("by_status", ["status", "createdAt"])
-    .index("by_invite_token", ["inviteToken"]),
+    .index("by_status", ["status", "createdAt"]),
+
+  appConfig: defineTable({
+    key: v.string(),
+    value: v.boolean(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+  })
+    .index("by_key", ["key"]),
 })

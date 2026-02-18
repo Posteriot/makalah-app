@@ -2,42 +2,36 @@
 
 import { useSession } from "@/lib/auth-client"
 import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
+import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 import { SectionCTA } from "@/components/ui/section-cta"
 
-/**
- * HeroCTA Component
- *
- * Smart CTA button that determines destination based on user state:
- * - Not signed in → /sign-up
- * - Signed in + completed onboarding → /chat
- * - Signed in + not completed onboarding → /get-started
- */
 export function HeroCTA() {
   const { data: session, isPending: isSessionPending } = useSession()
   const isSignedIn = !!session
   const { hasCompletedOnboarding, isLoading: isOnboardingLoading } = useOnboardingStatus()
+  const { isWaitlistMode } = useWaitlistMode()
 
-  // Determine destination based on auth and onboarding state
   const getHref = (): string => {
-    if (!isSignedIn) {
-      return "/sign-up"
-    }
-
-    if (hasCompletedOnboarding) {
-      return "/chat"
-    }
-
+    if (isWaitlistMode) return "/waitinglist"
+    if (!isSignedIn) return "/sign-up"
+    if (hasCompletedOnboarding) return "/chat"
     return "/get-started"
   }
 
-  // Show loading state while checking auth/onboarding
-  const isLoading = isSessionPending || (isSignedIn && isOnboardingLoading)
+  const isLoading = isSessionPending || (!isWaitlistMode && isSignedIn && isOnboardingLoading)
 
   return (
-    <div className="flex justify-center lg:justify-start w-full mt-4">
-      <SectionCTA href={getHref()} isLoading={isLoading}>
-        AYO MULAI
-      </SectionCTA>
+    <div className="flex flex-col items-center lg:items-start w-full mt-4 gap-3">
+      {isWaitlistMode && (
+        <p className="text-interface text-sm text-muted-foreground text-center lg:text-left max-w-md">
+          Daftarkan email untuk menggunakan Makalah AI, lalu tunggu undangan kami
+        </p>
+      )}
+      <div className="flex justify-center lg:justify-start w-full">
+        <SectionCTA href={getHref()} isLoading={isLoading}>
+          {isWaitlistMode ? "IKUT DAFTAR TUNGGU" : "AYO MULAI"}
+        </SectionCTA>
+      </div>
     </div>
   )
 }

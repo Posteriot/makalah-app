@@ -10,6 +10,7 @@ import { setPending2FA } from "@/lib/auth-2fa"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
 import { TurnstileWidget } from "@/components/auth/TurnstileWidget"
 import { getRedirectUrl } from "@/lib/utils/redirectAfterAuth"
+import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 
 type SignInMode =
   | "sign-in"
@@ -60,6 +61,7 @@ function getOAuthErrorMessage(errorCode: string | null) {
 export default function SignInPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { isWaitlistMode } = useWaitlistMode()
   const resetToken = searchParams.get("token")
   const oauthErrorCode = searchParams.get("error")
   const redirectParam =
@@ -70,7 +72,7 @@ export default function SignInPage() {
   const verify2FAHref = redirectParam
     ? `/verify-2fa?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
     : "/verify-2fa"
-  const callbackURL = getRedirectUrl(searchParams, "/chat")
+  const callbackURL = getRedirectUrl(searchParams, "/")
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
   const requiresRecoveryCaptcha = Boolean(turnstileSiteKey)
   const initialOAuthErrorMessage =
@@ -574,13 +576,15 @@ export default function SignInPage() {
             </button>
           </form>
 
-          {/* Footer */}
-          <p className="text-muted-foreground text-xs font-sans text-center mt-4">
-            Belum punya akun?{" "}
-            <Link href={signUpHref} className="text-slate-50 hover:text-slate-300 font-bold">
-              Daftar
-            </Link>
-          </p>
+          {/* Footer (hidden in waitlist mode) */}
+          {!isWaitlistMode && (
+            <p className="text-muted-foreground text-xs font-sans text-center mt-4">
+              Belum punya akun?{" "}
+              <Link href={signUpHref} className="text-slate-50 hover:text-slate-300 font-bold">
+                Daftar
+              </Link>
+            </p>
+          )}
 
         </div>
       )}
