@@ -207,6 +207,37 @@ export const deleteEntry = mutation({
   },
 })
 
+/**
+ * Reset entry back to "pending" (admin only).
+ * Allows re-inviting the same email for testing without deleting the entry.
+ */
+export const resetToPending = mutation({
+  args: {
+    adminUserId: v.id("users"),
+    entryId: v.id("waitlistEntries"),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx.db, args.adminUserId, "admin")
+
+    const entry = await ctx.db.get(args.entryId)
+    if (!entry) {
+      throw new Error("Entry tidak ditemukan")
+    }
+
+    if (entry.status === "pending") {
+      throw new Error("Entry sudah berstatus pending")
+    }
+
+    await ctx.db.patch(args.entryId, {
+      status: "pending",
+      invitedAt: undefined,
+      registeredAt: undefined,
+    })
+
+    return { success: true }
+  },
+})
+
 // ════════════════════════════════════════════════════════════════
 // Internal Mutations (used by sendInviteEmail action)
 // ════════════════════════════════════════════════════════════════

@@ -26,6 +26,7 @@ import {
   Trash,
   Mail,
   NavArrowLeft,
+  RefreshDouble,
 } from "iconoir-react"
 import Link from "next/link"
 
@@ -47,9 +48,6 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
   const { isWaitlistMode, isLoading: isWaitlistLoading } = useWaitlistMode()
   const setWaitlistModeMutation = useMutation(api.appConfig.setWaitlistMode)
 
-  const getStartedEnabled = useQuery(api.appConfig.getGetStartedEnabled)
-  const setGetStartedEnabledMutation = useMutation(api.appConfig.setGetStartedEnabled)
-
   const entries = useQuery(api.waitlist.getAll, {
     adminUserId: userId,
     statusFilter,
@@ -60,6 +58,7 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
   })
 
   const deleteEntryMutation = useMutation(api.waitlist.deleteEntry)
+  const resetToPendingMutation = useMutation(api.waitlist.resetToPending)
   const sendInviteEmailAction = useAction(api.waitlist.sendInviteEmail)
 
   const handleToggleWaitlist = async () => {
@@ -79,20 +78,16 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
     }
   }
 
-  const handleToggleGetStarted = async () => {
+  const handleResetToPending = async (entryId: Id<"waitlistEntries">) => {
     try {
-      await setGetStartedEnabledMutation({
+      await resetToPendingMutation({
         adminUserId: userId,
-        enabled: !(getStartedEnabled ?? true),
+        entryId,
       })
-      toast.success(
-        getStartedEnabled
-          ? "Halaman Get Started dinonaktifkan"
-          : "Halaman Get Started diaktifkan"
-      )
+      toast.success("Entry direset ke status Menunggu")
     } catch (error) {
-      console.error("Toggle get-started error:", error)
-      toast.error("Gagal mengubah status halaman Get Started")
+      console.error("Reset error:", error)
+      toast.error("Gagal mereset entry")
     }
   }
 
@@ -219,43 +214,6 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
                   )}
                 >
                   {isWaitlistMode ? "AKTIF" : "NONAKTIF"}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="text-interface text-xs font-mono text-muted-foreground">
-                  Get Started
-                </span>
-                <button
-                  type="button"
-                  onClick={handleToggleGetStarted}
-                  disabled={getStartedEnabled === undefined}
-                  className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50",
-                    (getStartedEnabled ?? true) ? "bg-primary" : "bg-slate-600"
-                  )}
-                  aria-label={
-                    getStartedEnabled
-                      ? "Nonaktifkan halaman Get Started"
-                      : "Aktifkan halaman Get Started"
-                  }
-                >
-                  <span
-                    className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                      (getStartedEnabled ?? true) ? "translate-x-6" : "translate-x-1"
-                    )}
-                  />
-                </button>
-                <span
-                  className={cn(
-                    "text-signal text-[10px] font-bold",
-                    (getStartedEnabled ?? true)
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {(getStartedEnabled ?? true) ? "AKTIF" : "NONAKTIF"}
                 </span>
               </div>
             </div>
@@ -406,6 +364,17 @@ export function WaitlistDashboard({ userId }: WaitlistDashboardProps) {
                                 <Mail className="h-3.5 w-3.5" />
                               )}
                               Undang
+                            </button>
+                          )}
+                          {(entry.status === "invited" || entry.status === "registered") && (
+                            <button
+                              type="button"
+                              onClick={() => handleResetToPending(entry._id)}
+                              title="Reset ke Menunggu"
+                              className="focus-ring inline-flex h-8 items-center gap-1.5 rounded-action border-main border border-border px-2.5 text-xs font-mono text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400"
+                            >
+                              <RefreshDouble className="h-3.5 w-3.5" />
+                              Reset
                             </button>
                           )}
                           <button
