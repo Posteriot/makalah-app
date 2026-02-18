@@ -12,7 +12,7 @@ export function HeroCTA() {
   const { isWaitlistMode } = useWaitlistMode()
 
   const getHref = (): string => {
-    if (isWaitlistMode) return "/waiting-list"
+    if (isWaitlistMode) return "/waitinglist"
     if (!isSignedIn) return "/sign-up"
     if (hasCompletedOnboarding) return "/chat"
     return "/get-started"

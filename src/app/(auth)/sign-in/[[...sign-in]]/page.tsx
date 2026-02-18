@@ -72,7 +72,7 @@ export default function SignInPage() {
   const verify2FAHref = redirectParam
     ? `/verify-2fa?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
     : "/verify-2fa"
-  const callbackURL = getRedirectUrl(searchParams, "/chat")
+  const callbackURL = getRedirectUrl(searchParams, "/")
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
   const requiresRecoveryCaptcha = Boolean(turnstileSiteKey)
   const initialOAuthErrorMessage =

@@ -33,7 +33,7 @@ function Verify2FAPage() {
     redirectTarget
       ? new URLSearchParams({ redirect_url: redirectTarget })
       : searchParams,
-    "/chat"
+    "/"
   )
   const signInHref = redirectTarget
     ? `/sign-in?${new URLSearchParams({ redirect_url: redirectTarget }).toString()}`

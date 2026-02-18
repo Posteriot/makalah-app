@@ -69,7 +69,6 @@ import type * as twoFactorHttp from "../twoFactorHttp.js";
 import type * as twoFactorOtp from "../twoFactorOtp.js";
 import type * as users from "../users.js";
 import type * as waitlist from "../waitlist.js";
-import type * as waitlistInviteHttp from "../waitlistInviteHttp.js";
 
 import type {
   ApiFromModules,
@@ -139,7 +138,6 @@ declare const fullApi: ApiFromModules<{
   twoFactorOtp: typeof twoFactorOtp;
   users: typeof users;
   waitlist: typeof waitlist;
-  waitlistInviteHttp: typeof waitlistInviteHttp;
 }>;
 
 /**

@@ -19,7 +19,7 @@ export default function SignUpPage() {
   const signInHref = redirectParam
     ? `/sign-in?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
     : "/sign-in"
-  const callbackURL = getRedirectUrl(searchParams, "/chat")
+  const callbackURL = getRedirectUrl(searchParams, "/")
 
   const [mode, setMode] = useState<SignUpMode>("sign-up")
   const [firstName, setFirstName] = useState("")
