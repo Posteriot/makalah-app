@@ -25,9 +25,9 @@ export function WorkflowFeatureSection() {
             <h2 className="mt-3 text-narrative text-3xl font-medium tracking-tight text-foreground md:text-5xl">
               Dipagari di tiap tahap penyusunan
             </h2>
-            <p className="mt-4 max-w-[580px] text-narrative text-base leading-relaxed text-slate-700 dark:text-slate-200 md:text-2xl">
+            <p className="mt-7 max-w-[580px] text-narrative text-base leading-relaxed text-slate-700 dark:text-slate-200 md:mt-8 md:text-2xl">
               Workflow yang tertanam dalam Makalah Ai, akan menjadi pengawal ketat selama penyusunan paper. Konteks
-              terjaga agar tidak melenceng, percakapan apapun berujung pada output paper.
+              terjaga, percakapan apapun berujung pada output paper.
             </p>
           </div>
         </div>
