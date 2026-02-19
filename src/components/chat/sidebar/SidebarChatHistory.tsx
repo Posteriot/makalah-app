@@ -243,19 +243,14 @@ export function SidebarChatHistory({
                         <TooltipTrigger asChild>
                           <span
                             className="font-sans font-medium text-sm truncate"
-                            onDoubleClick={(e) => {
-                              if (hasPaperSession) return
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleStartEdit(conv._id, conv.title)
-                            }}
                           >
                             {conv.title}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent
-                          side="right"
-                          sideOffset={8}
+                          side="top"
+                          align="start"
+                          sideOffset={4}
                           className="max-w-[280px] font-mono text-xs"
                         >
                           {conv.title}
@@ -276,73 +271,6 @@ export function SidebarChatHistory({
                     </div>
                   )}
                 </div>
-                {/* Action buttons - hidden saat editing */}
-                {!isEditing && (
-                  <div className="flex items-center gap-0.5">
-                    {/* Edit button - hidden untuk paper session */}
-                    {!hasPaperSession && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onMouseDown={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                            }}
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleStartEdit(conv._id, conv.title)
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                handleStartEdit(conv._id, conv.title)
-                              }
-                            }}
-                            className="rounded-action p-1.5 opacity-0 transition-all hover:bg-foreground/8 focus:opacity-100 group-hover:opacity-100"
-                            aria-label="Edit judul"
-                          >
-                            <EditPencil className="h-4 w-4" />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>Edit judul</TooltipContent>
-                      </Tooltip>
-                    )}
-                    {/* Delete button */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onMouseDown={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                          }}
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            handleDeleteClick(conv._id, conv.title)
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleDeleteClick(conv._id, conv.title)
-                            }
-                          }}
-                          className="rounded-action p-1.5 opacity-0 transition-all hover:bg-foreground/8 focus:opacity-100 group-hover:opacity-100"
-                          aria-label="Hapus percakapan"
-                        >
-                          <Trash className="h-4 w-4" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>Hapus percakapan</TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
                 {/* Loading indicator saat updating */}
                 {isEditing && isUpdating && (
                   <RefreshDouble className="h-4 w-4 animate-spin text-muted-foreground" />
