@@ -64,7 +64,7 @@ export function TopBar({
         className={cn(
           "flex items-center justify-between",
           "pl-4 pr-6 py-0",
-          "shrink-0 bg-slate-50 dark:bg-slate-900"
+          "shrink-0 bg-white dark:bg-slate-900"
         )}
       >
         {/* Left: Expand sidebar toggle (only when collapsed) */}
