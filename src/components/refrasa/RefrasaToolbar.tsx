@@ -11,6 +11,7 @@ import {
   NavArrowDown,
   NavArrowRight,
   Expand,
+  ViewColumns2,
 } from "iconoir-react"
 import type { Doc, Id } from "@convex/_generated/dataModel"
 import type { RefrasaIssue } from "@/lib/refrasa/types"
@@ -50,6 +51,8 @@ interface RefrasaToolbarProps {
   isApplying?: boolean
   isApplied?: boolean
   onExpand?: () => void
+  showCompare?: boolean
+  onToggleCompare?: () => void
 }
 
 const iconBtnClass =
@@ -71,6 +74,8 @@ export function RefrasaToolbar({
   isApplying = false,
   isApplied = false,
   onExpand,
+  showCompare = false,
+  onToggleCompare,
 }: RefrasaToolbarProps): React.ReactElement {
   const [copied, setCopied] = useState(false)
   const [showIssues, setShowIssues] = useState(false)
@@ -147,6 +152,24 @@ export function RefrasaToolbar({
 
         {/* Right: action buttons */}
         <div className="flex items-center gap-1.5">
+          {/* Compare */}
+          {onToggleCompare && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onToggleCompare}
+                  className={cn(iconBtnClass, showCompare && "bg-sky-500/15 text-sky-600 dark:text-sky-400")}
+                  aria-label="Bandingkan"
+                >
+                  <ViewColumns2 className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">
+                {showCompare ? "Tutup perbandingan" : "Bandingkan asli vs refrasa"}
+              </TooltipContent>
+            </Tooltip>
+          )}
+
           {/* Download */}
           <DropdownMenu>
             <Tooltip>

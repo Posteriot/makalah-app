@@ -51,6 +51,8 @@ interface ArtifactItem {
   version: number
   conversationId: Id<"conversations">
   invalidatedAt?: number
+  sourceArtifactId?: Id<"artifacts">
+  createdAt: number
 }
 
 /**
@@ -555,10 +557,31 @@ function getLatestArtifactVersions(artifacts: ArtifactItem[]): ArtifactItem[] {
     }
   }
 
-  // Sort by title for consistent display
-  return Array.from(latestMap.values()).sort((a, b) =>
-    a.title.localeCompare(b.title)
-  )
+  const latest = Array.from(latestMap.values())
+
+  // Separate parents (non-refrasa) and refrasa
+  const parents = latest.filter((a) => a.type !== "refrasa")
+  const refrasas = latest.filter((a) => a.type === "refrasa")
+
+  // Sort parents by createdAt ASC (stage order)
+  parents.sort((a, b) => a.createdAt - b.createdAt)
+
+  // Build grouped list: each parent followed by its refrasa children
+  const result: ArtifactItem[] = []
+  for (const parent of parents) {
+    result.push(parent)
+    const children = refrasas.filter((r) => r.sourceArtifactId === parent._id)
+    children.sort((a, b) => a.createdAt - b.createdAt)
+    result.push(...children)
+  }
+
+  // Orphan refrasas (source not in latest list — safety net)
+  const placedIds = new Set(result.map((a) => a._id))
+  for (const r of refrasas) {
+    if (!placedIds.has(r._id)) result.push(r)
+  }
+
+  return result
 }
 
 export default SidebarPaperSessions

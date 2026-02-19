@@ -379,7 +379,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
               <div className="flex h-full flex-col overflow-hidden rounded-sm border border-slate-300/85 bg-slate-50 dark:border-slate-700/70 dark:bg-slate-900">
                 <div className="relative flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
                   {isRefrasaLoading && (
-                    <div className="absolute inset-2 z-10 flex items-center justify-center rounded-action border border-slate-300/85 bg-slate-100/80 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75">
+                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-slate-100/95 backdrop-blur-md dark:bg-slate-900/95">
                       <RefrasaLoadingIndicator />
                     </div>
                   )}

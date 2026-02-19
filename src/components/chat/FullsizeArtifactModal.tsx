@@ -26,6 +26,7 @@ import {
   MagicWand,
   WarningTriangle,
   NavArrowDown,
+  OpenBook,
 } from "iconoir-react"
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { toast } from "sonner"
@@ -86,6 +87,8 @@ type SessionArtifact = {
   title: string
   type: string
   version: number
+  sourceArtifactId?: Id<"artifacts">
+  createdAt: number
 }
 
 function formatShortDate(timestamp: number): string {
@@ -97,7 +100,7 @@ function formatShortDate(timestamp: number): string {
   })
 }
 
-function getLatestArtifactVersions<T extends { title: string; type: string; version: number }>(
+function getLatestArtifactVersions<T extends { _id: Id<"artifacts">; title: string; type: string; version: number; sourceArtifactId?: Id<"artifacts">; createdAt: number }>(
   artifacts: T[]
 ): T[] {
   const latestMap = new Map<string, T>()
@@ -108,7 +111,28 @@ function getLatestArtifactVersions<T extends { title: string; type: string; vers
       latestMap.set(key, artifact)
     }
   }
-  return Array.from(latestMap.values()).sort((a, b) => a.title.localeCompare(b.title))
+
+  const latest = Array.from(latestMap.values())
+
+  const parents = latest.filter((a) => a.type !== "refrasa")
+  const refrasas = latest.filter((a) => a.type === "refrasa")
+
+  parents.sort((a, b) => a.createdAt - b.createdAt)
+
+  const result: T[] = []
+  for (const parent of parents) {
+    result.push(parent)
+    const children = refrasas.filter((r) => r.sourceArtifactId === parent._id)
+    children.sort((a, b) => a.createdAt - b.createdAt)
+    result.push(...children)
+  }
+
+  const placedIds = new Set(result.map((a) => a._id))
+  for (const r of refrasas) {
+    if (!placedIds.has(r._id)) result.push(r)
+  }
+
+  return result
 }
 
 export function FullsizeArtifactModal({
@@ -168,6 +192,14 @@ export function FullsizeArtifactModal({
       : "skip"
   )
   const isFinal = finalStatus?.isFinal ?? false
+
+  // Query existing refrasas for current artifact (for "Lihat Refrasa" button)
+  const existingRefrasas = useQuery(
+    api.artifacts.getBySourceArtifact,
+    activeArtifactId && currentUser?._id && artifact?.type !== "refrasa"
+      ? { sourceArtifactId: activeArtifactId, userId: currentUser._id }
+      : "skip"
+  )
 
   // Refrasa — persists to DB, opens new tab
   const {
@@ -572,6 +604,26 @@ export function FullsizeArtifactModal({
                       </Button>
                     )}
 
+                    {existingRefrasas && existingRefrasas.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const latest = existingRefrasas[0]
+                          openModalTab({
+                            id: latest._id,
+                            title: latest.title,
+                            type: "refrasa",
+                            sourceArtifactId: activeArtifactId!,
+                          })
+                        }}
+                        className="h-7 px-2.5 font-mono text-[11px]"
+                      >
+                        <OpenBook className="mr-1.5 h-3.5 w-3.5" />
+                        Lihat Refrasa
+                      </Button>
+                    )}
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -624,7 +676,7 @@ export function FullsizeArtifactModal({
           <div className="flex min-h-0 flex-1 overflow-hidden">
             <div className="relative min-w-0 flex-1 overflow-hidden px-4 py-3 md:px-5 md:py-4">
               {isRefrasaLoading && (
-                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-action border border-slate-300/85 bg-slate-100/75 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75">
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-slate-100/95 backdrop-blur-md dark:bg-slate-900/95">
                   <RefrasaLoadingIndicator />
                 </div>
               )}

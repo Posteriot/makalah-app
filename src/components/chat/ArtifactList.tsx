@@ -10,10 +10,11 @@ import {
   Table2Columns,
   Book,
   Calculator,
+  MagicWand,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
-type ArtifactType = "code" | "outline" | "section" | "table" | "citation" | "formula"
+type ArtifactType = "code" | "outline" | "section" | "table" | "citation" | "formula" | "refrasa"
 
 interface Artifact {
   _id: Id<"artifacts">
@@ -22,6 +23,7 @@ interface Artifact {
   version: number
   createdAt: number
   invalidatedAt?: number
+  sourceArtifactId?: Id<"artifacts">
 }
 
 interface ArtifactListProps {
@@ -42,6 +44,7 @@ const typeIcons: Record<ArtifactType, ElementType> = {
   table: Table2Columns,
   citation: Book,
   formula: Calculator,
+  refrasa: MagicWand,
 }
 
 const typeLabels: Record<ArtifactType, string> = {
@@ -51,6 +54,7 @@ const typeLabels: Record<ArtifactType, string> = {
   table: "TABEL",
   citation: "SITASI",
   formula: "FORMULA",
+  refrasa: "REFRASA",
 }
 
 function formatDate(timestamp: number): string {
@@ -71,7 +75,27 @@ function getLatestArtifactVersions(artifacts: Artifact[]): Artifact[] {
     }
   }
 
-  return Array.from(latestMap.values()).sort((a, b) => a.title.localeCompare(b.title))
+  const latest = Array.from(latestMap.values())
+
+  const parents = latest.filter((a) => a.type !== "refrasa")
+  const refrasas = latest.filter((a) => a.type === "refrasa")
+
+  parents.sort((a, b) => a.createdAt - b.createdAt)
+
+  const result: Artifact[] = []
+  for (const parent of parents) {
+    result.push(parent)
+    const children = refrasas.filter((r) => r.sourceArtifactId === parent._id)
+    children.sort((a, b) => a.createdAt - b.createdAt)
+    result.push(...children)
+  }
+
+  const placedIds = new Set(result.map((a) => a._id))
+  for (const r of refrasas) {
+    if (!placedIds.has(r._id)) result.push(r)
+  }
+
+  return result
 }
 
 export function ArtifactList({

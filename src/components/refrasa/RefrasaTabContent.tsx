@@ -7,6 +7,7 @@ import type { Id } from "@convex/_generated/dataModel"
 import type { RefrasaIssue } from "@/lib/refrasa/types"
 import { RefrasaToolbar } from "./RefrasaToolbar"
 import { RefrasaLoadingIndicator } from "./RefrasaLoadingIndicator"
+import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer"
 
 interface RefrasaTabContentProps {
   artifactId: Id<"artifacts">
@@ -29,6 +30,8 @@ export function RefrasaTabContent({
   const [viewingArtifactId, setViewingArtifactId] =
     useState<Id<"artifacts">>(artifactId)
   const [isApplying, setIsApplying] = useState(false)
+  const [showCompare, setShowCompare] = useState(false)
+  const [mobileCompareTab, setMobileCompareTab] = useState<"asli" | "refrasa">("refrasa")
 
   // Sync viewingArtifactId when prop changes (e.g. parent switches tab)
   useEffect(() => {
@@ -197,14 +200,83 @@ export function RefrasaTabContent({
         isApplying={isApplying}
         isApplied={isApplied}
         onExpand={onExpand}
+        showCompare={showCompare}
+        onToggleCompare={() => setShowCompare((v) => !v)}
       />
 
-      {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-900 dark:text-slate-100">
-          {artifact.content}
-        </p>
-      </div>
+      {/* Content area */}
+      {showCompare ? (
+        <>
+          {/* Desktop: side-by-side */}
+          <div className="hidden flex-1 overflow-hidden md:grid md:grid-cols-2 md:gap-0">
+            {/* Left: Original */}
+            <div className="overflow-y-auto border-r border-slate-300/75 p-4 scrollbar-thin dark:border-slate-700/80">
+              <span className="mb-3 inline-block rounded-badge border border-slate-400/50 bg-slate-200/80 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-slate-700 dark:border-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
+                Asli
+              </span>
+              {sourceArtifact?.content && (
+                <MarkdownRenderer
+                  markdown={sourceArtifact.content}
+                  className="text-sm leading-relaxed text-slate-600 dark:text-slate-400"
+                  context="artifact"
+                />
+              )}
+            </div>
+            {/* Right: Refrasa */}
+            <div className="overflow-y-auto p-4 scrollbar-thin">
+              <span className="mb-3 inline-block rounded-badge border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/20 dark:text-amber-300">
+                Refrasa
+              </span>
+              <MarkdownRenderer
+                markdown={artifact.content}
+                className="text-sm leading-relaxed text-slate-900 dark:text-slate-100"
+                context="artifact"
+              />
+            </div>
+          </div>
+
+          {/* Mobile: toggle tabs */}
+          <div className="flex flex-1 flex-col overflow-hidden md:hidden">
+            <div className="flex shrink-0 gap-2 border-b border-slate-300/75 px-4 py-2 dark:border-slate-700/80">
+              <button
+                onClick={() => setMobileCompareTab("asli")}
+                className={`rounded-badge border px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-widest transition-colors ${
+                  mobileCompareTab === "asli"
+                    ? "border-slate-400/60 bg-slate-200/90 text-slate-800 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-200"
+                    : "border-slate-300/50 bg-transparent text-slate-500 hover:bg-slate-200/50 dark:border-slate-700 dark:hover:bg-slate-700/40"
+                }`}
+              >
+                Asli
+              </button>
+              <button
+                onClick={() => setMobileCompareTab("refrasa")}
+                className={`rounded-badge border px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-widest transition-colors ${
+                  mobileCompareTab === "refrasa"
+                    ? "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/20 dark:text-amber-300"
+                    : "border-slate-300/50 bg-transparent text-slate-500 hover:bg-slate-200/50 dark:border-slate-700 dark:hover:bg-slate-700/40"
+                }`}
+              >
+                Refrasa
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
+              <MarkdownRenderer
+                markdown={(mobileCompareTab === "asli" ? sourceArtifact?.content : artifact.content) ?? ""}
+                className="text-sm leading-relaxed text-slate-900 dark:text-slate-100"
+                context="artifact"
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
+          <MarkdownRenderer
+            markdown={artifact.content}
+            className="text-sm leading-relaxed text-slate-900 dark:text-slate-100"
+            context="artifact"
+          />
+        </div>
+      )}
     </div>
   )
 }
