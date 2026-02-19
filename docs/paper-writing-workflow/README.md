@@ -7,7 +7,7 @@ Dokumentasi high-level untuk guided workflow penulisan paper akademik di Makalah
 1. **Linear & sequential** — Tahap harus diselesaikan berurutan; tidak bisa skip atau lompat
 2. **Dialog-first** — AI berdiskusi dulu dengan user sebelum drafting, bukan langsung generate
 3. **Validation-gated** — Setiap tahap butuh persetujuan eksplisit dari user sebelum lanjut
-4. **Referensi nyata** — Semua referensi akademik wajib dari web search, tidak boleh dikarang AI
+4. **Referensi berbasis web search (policy prompt)** — Prompt mode paper menginstruksikan AI untuk mencari referensi faktual via web search dan menghindari referensi karangan
 
 ---
 
@@ -114,7 +114,7 @@ Setiap tahap memiliki dua level ringkasan:
 
 | Field | Batas | Tujuan |
 |-------|-------|--------|
-| **`ringkasan`** (wajib) | 280 karakter | Keputusan kunci — ringkasan singkat yang dicatat ke Paper Memory Digest. Tanpa ini, approval gagal. |
+| **`ringkasan`** (wajib) | Batas operasional 280 karakter di tool layer | Keputusan kunci. Tanpa ini, submit/approval gagal. |
 | **`ringkasanDetail`** (opsional) | 1.000 karakter | Detail pendukung — reasoning, konteks tambahan, alasan pemilihan opsi. Diinjeksi hanya untuk 3 tahap terakhir yang selesai (sliding window). |
 
 Dual-layer ini memastikan AI selalu punya `ringkasan` pendek dari semua tahap selesai sebagai sinyal keputusan, ditambah `ringkasanDetail` dari tahap-tahap terdekat untuk konteks yang lebih kaya tanpa membebani context window.
@@ -178,7 +178,9 @@ Tidak semua tahap membutuhkan web search secara aktif:
 **Tahap dengan search pasif** (hanya jika user meminta):
 - Outline, Abstrak, Hasil, Kesimpulan, Daftar Pustaka, Lampiran, Judul
 
-### Minimum Referensi Per Tahap
+### Target Referensi Per Tahap (Helper Keputusan Search)
+
+Jumlah di bawah ini dipakai sebagai acuan helper `isStageResearchIncomplete` untuk keputusan mode search pada stage aktif. Ini **bukan hard validation** di mutation approval.
 
 | Tahap | Field Referensi | Jumlah Minimum |
 |-------|----------------|----------------|
@@ -198,7 +200,7 @@ Saat AI melakukan web search (baik via Google Search maupun fallback OpenRouter 
 - Untuk tahap Gagasan dan Topik, referensi juga di-dual-write ke field native (`referensiAwal` / `referensiPendukung`)
 - Referensi yang tersimpan diformat secara prominent di prompt injection via `formatWebSearchReferences()` (`formatStageData.ts`) — ditampilkan sebagai blok "REFERENSI WEB SEARCH TERSIMPAN (WAJIB gunakan, JANGAN fabricate)" agar AI wajib merujuk referensi yang sudah ada dan tidak mengarang baru
 
-**Partial message save:** Jika web search streaming terputus (abort/error), pesan parsial tetap disimpan ke database agar referensi yang sudah ditemukan tidak hilang.
+**Partial message save:** Saat stream web search **primary path** menerima event `abort`, pesan parsial disimpan ke database. Pada fallback `:online`, event `abort` saat ini belum menyimpan pesan parsial.
 
 ### Anti-Halusinasi Referensi
 
@@ -206,18 +208,19 @@ Berlapis proteksi untuk mencegah AI mengarang referensi:
 
 | Layer | Mekanisme | Lokasi |
 |-------|-----------|--------|
-| **URL validation** | Setiap referensi wajib punya field `url` yang tidak kosong. Referensi tanpa URL ditolak dengan warning. | `convex/paperSessions.ts` |
+| **URL validation** | Referensi tanpa URL diberi warning pada response `updateStageData` (bukan hard reject mutation). | `convex/paperSessions.ts` |
 | **Anti-placeholder** | Warning eksplisit di setiap tahap sitasi: dilarang menggunakan placeholder seperti "(Wijaya, 2023)" tanpa URL | Stage instructions |
 | **Anti-domain-as-author** | Rule di ATURAN UMUM per-turn: dilarang menggunakan domain sebagai author (e.g., "Kuanta.id, t.t.") | `paper-mode-prompt.ts` |
 | **APA format enforcement** | Format sitasi APA web source yang benar diinjeksi di semua tahap sitasi | Stage instructions |
 | **URL quality filtering** | Proxy URLs (Vertex AI Search) dan low-value URLs (/tag/, /berita/, root domain) difilter | `route.ts` |
 | **Prominent reference injection** | Referensi tersimpan diinjeksi sebagai blok wajib-rujuk di prompt: "WAJIB gunakan, JANGAN fabricate" | `formatStageData.ts` |
 
-### Aturan Tegas
+### Aturan Operasional (Berbasis Prompt + Helper)
 
-- **Semua referensi harus dari web search** — AI dilarang keras mengarang atau menghallucinate referensi
-- Referensi disimpan dalam format terstruktur (judul, penulis, tahun, URL)
-- Sitasi mengikuti format APA 7th Edition
+- Prompt mode paper menegaskan referensi faktual harus berbasis web search dan melarang fabrikasi referensi.
+- Auto-persist web search menyimpan format terstruktur minimal `url`, `title`, opsional `publishedAt` di `webSearchReferences`.
+- Field sitasi tahap (mis. `referensi`, `sitasiAPA`, `sitasiTambahan`) dapat menyimpan metadata tambahan seperti penulis/tahun sesuai hasil olahan AI.
+- Instruksi sitasi menggunakan format APA 7th berada di stage instructions/prompt (guidance level).
 - Domain tidak boleh digunakan sebagai nama author (e.g., ~~"Kuanta.id, t.t."~~ → harus nama penulis asli atau "tanpa penulis")
 
 ---
@@ -226,10 +229,10 @@ Berlapis proteksi untuk mencegah AI mengarang referensi:
 
 ### Panel Validasi
 
-Ketika AI submit tahap untuk validasi, UI menampilkan **panel validasi** dengan:
-- Ringkasan keputusan yang disepakati
-- Field-field utama hasil tahap tersebut
-- Dua tombol aksi: **Approve & Lanjut** atau **Revise**
+Ketika AI submit tahap untuk validasi, UI menampilkan panel validasi dengan:
+- Label tahap aktif (`Validasi Tahap: ...`)
+- Instruksi untuk mengecek draft di artifact
+- Dua tombol aksi: **Approve & Lanjut** dan **Revisi**
 
 ### Approve
 
@@ -329,14 +332,13 @@ Catatan keputusan kumulatif yang disetujui user di setiap tahap. Berfungsi sebag
 
 ### Cara Kerja
 
-- Setiap kali tahap di-approve, ringkasan keputusan (maks 200 karakter) dicatat ke digest
-- AI menerima seluruh digest sebagai konteks di setiap tahap berikutnya
-- Saat rewind, entri digest dari tahap yang di-invalidate ditandai `superseded`
-- Entri baru menggantikan yang lama setelah tahap di-approve ulang
+- Setiap kali tahap di-approve, ringkasan keputusan dicatat ke `paperMemoryDigest` (dipotong hingga 200 karakter).
+- Saat rewind, entri digest dari tahap yang terdampak ditandai `superseded`.
+- Entri baru ditambahkan lagi setelah tahap di-approve ulang.
 
-### Mengapa Digest, Bukan Full Chat History
+### Catatan Implementasi Saat Ini
 
-Chat history penuh mengandung noise (eksplorasi, revisi, tangential discussion). Digest hanya menyimpan keputusan final yang disetujui — sinyal bersih untuk konsistensi AI.
+Konteks prompt AI saat ini dibangun terutama dari `stageData` (ringkasan tahap tervalidasi + detail sliding window + artifact summaries), bukan dari `paperMemoryDigest` secara langsung. `paperMemoryDigest` saat ini berfungsi sebagai jejak keputusan terstruktur untuk tracking/audit dan AI Ops.
 
 ---
 
@@ -351,7 +353,7 @@ Paper writing mengkonsumsi kredit dengan multiplier khusus:
 | Web search | 2.0x |
 | Refrasa | 0.8x |
 
-Setiap Paper Session memiliki soft cap kredit (default: 300 kredit). Saat mendekati limit, user mendapat notifikasi. Sistem billing detail ada di dokumentasi terpisah (`docs/billing-tier-enforcement/`).
+Setiap Paper Session mendukung tracking kredit dengan baseline `creditAllotted` (jika tidak diisi, perhitungan menggunakan fallback 300 pada saat deduksi). Status bisa menjadi soft-block saat `creditRemaining <= 0`. Detail billing ada di `docs/billing-tier-enforcement/`.
 
 ### Session Credit Tracking
 
@@ -462,12 +464,12 @@ Saat key sering di-drop (misalnya AI konsisten mengirim field baru yang belum ad
 
 ## 15. Export
 
-Paper yang sudah selesai (atau sebagian) bisa diekspor dalam format:
+Paper yang sudah **completed** bisa diekspor dalam format:
 
 - **Word (.docx)** — via endpoint export
 - **PDF** — via endpoint export
 
-Export mengompilasi artifact dari semua tahap yang sudah selesai ke dalam dokumen tunggal.
+Export mengompilasi `stageData` ke dokumen tunggal (melalui content compiler), lalu menghasilkan file Word/PDF.
 
 ---
 

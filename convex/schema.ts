@@ -653,6 +653,9 @@ export default defineSchema({
     userId: v.id("users"),
     conversationId: v.optional(v.id("conversations")),
     sessionId: v.optional(v.id("paperSessions")),
+    // Legacy compatibility: old records may still contain this field
+    // from the removed discussion session feature.
+    discussionSessionId: v.optional(v.string()),
 
     // Token tracking
     promptTokens: v.number(),
