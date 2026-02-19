@@ -106,7 +106,7 @@ export function ConstitutionEditor({
 
   // ---- Render --------------------------------------------------------------
   return (
-    <div className="relative isolate min-h-screen overflow-hidden bg-[color:var(--section-bg-alt)]">
+    <div className="admin-container relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[color:var(--section-bg-alt)]">
       <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
 
       <div className="relative z-10 mx-auto w-full max-w-4xl px-4 pb-6 pt-4 md:px-8">
