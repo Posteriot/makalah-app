@@ -8,7 +8,7 @@ import {
   HeroCTA,
 } from "@/components/marketing/hero"
 import { BenefitsSection } from "@/components/marketing/benefits"
-import { WorkflowFeatureSection } from "@/components/marketing/features"
+import { WorkflowFeatureSection, RefrasaFeatureSection } from "@/components/marketing/features"
 import { PricingTeaser } from "@/components/marketing/pricing-teaser"
 import { WaitlistToast } from "@/components/marketing/WaitlistToast"
 import { GridPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
@@ -57,6 +57,9 @@ export default function MarketingHomePage() {
 
       {/* Workflow Feature Section */}
       <WorkflowFeatureSection />
+
+      {/* Refrasa Feature Section */}
+      <RefrasaFeatureSection />
 
       {/* Pricing Teaser */}
       <PricingTeaser />
