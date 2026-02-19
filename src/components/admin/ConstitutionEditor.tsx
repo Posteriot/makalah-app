@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation"
 import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { NavArrowLeft } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
+import { DottedPattern } from "@/components/marketing/SectionBackground"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,118 +106,121 @@ export function ConstitutionEditor({
 
   // ---- Render --------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative isolate min-h-screen overflow-hidden bg-[color:var(--section-bg-alt)]">
+      <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
+
       {/* Sticky top bar */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
+      <div className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur-sm dark:bg-slate-900/95">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3 md:px-8">
           <button
             type="button"
             onClick={handleBack}
-            className="text-interface flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="text-interface flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <NavArrowLeft className="h-4 w-4" strokeWidth={1.5} />
             Kembali ke Refrasa
           </button>
 
           <div className="flex items-center gap-2">
-            <Button
+            <button
               type="button"
-              variant="outline"
-              className="rounded-action"
               onClick={handleBack}
+              className="focus-ring inline-flex h-8 items-center rounded-action border-main border border-border px-3 py-1.5 text-xs font-mono font-medium text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
             >
               Batal
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
               form="constitution-form"
-              className="rounded-action"
               disabled={!hasChanges || isSubmitting}
+              className="focus-ring inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             >
               {isSubmitting
                 ? "Menyimpan..."
                 : isEditMode
                   ? `Simpan (Buat v${constitution.version + 1})`
                   : "Buat Constitution"}
-            </Button>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Content area */}
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        {/* Title + subtitle */}
-        <div className="mb-6">
-          <h1 className="text-narrative text-2xl font-semibold tracking-tight">
-            {isEditMode
-              ? `Edit: ${constitution.name} (v${constitution.version})`
-              : "Buat Constitution Baru"}
-          </h1>
-          <p className="text-interface mt-1 text-sm text-muted-foreground">
-            {isEditMode
-              ? "Perubahan akan membuat versi baru. Versi sebelumnya tetap tersimpan di riwayat."
-              : "Constitution baru akan tidak aktif secara default."}
-          </p>
-        </div>
-
-        <form id="constitution-form" onSubmit={handleSubmit}>
-          {/* Metadata fields */}
-          <div className="mb-6 grid gap-4 md:grid-cols-5">
-            {/* Nama */}
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="constitution-name" className="text-interface">
-                Nama
-              </Label>
-              <Input
-                id="constitution-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nama constitution"
-                disabled={isEditMode}
-                className={
-                  isEditMode
-                    ? "rounded-action bg-muted text-muted-foreground"
-                    : "rounded-action"
-                }
-              />
-            </div>
-
-            {/* Deskripsi */}
-            <div className="space-y-2 md:col-span-3">
-              <Label
-                htmlFor="constitution-description"
-                className="text-interface"
-              >
-                Deskripsi
-              </Label>
-              <Input
-                id="constitution-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Deskripsi singkat (opsional)"
-                className="rounded-action"
-              />
-            </div>
-          </div>
-
-          {/* Textarea */}
-          <div className="space-y-2">
-            <Label htmlFor="constitution-content" className="text-interface">
-              Konten
-            </Label>
-            <Textarea
-              id="constitution-content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Tulis style constitution di sini (mendukung Markdown)..."
-              className="h-[calc(100vh-340px)] min-h-[50vh] resize-y font-mono text-sm rounded-action"
-            />
-            <p className="text-interface text-xs text-muted-foreground">
-              Gunakan format Markdown. Constitution berisi aturan gaya penulisan
-              untuk Refrasa.
+      {/* Content card */}
+      <div className="relative z-10 mx-auto max-w-4xl px-4 py-6 md:px-8">
+        <div className="rounded-shell border-hairline bg-card/90 px-5 py-6 backdrop-blur-[1px] dark:bg-slate-900 md:px-8">
+          {/* Title + subtitle */}
+          <div className="mb-6 space-y-2">
+            <h1 className="text-narrative text-2xl font-medium tracking-tight text-foreground">
+              {isEditMode
+                ? `Edit: ${constitution.name} (v${constitution.version})`
+                : "Buat Constitution Baru"}
+            </h1>
+            <p className="text-narrative text-sm text-muted-foreground">
+              {isEditMode
+                ? "Perubahan akan membuat versi baru. Versi sebelumnya tetap tersimpan di riwayat."
+                : "Constitution baru akan tidak aktif secara default."}
             </p>
           </div>
-        </form>
+
+          <form id="constitution-form" onSubmit={handleSubmit}>
+            {/* Metadata fields */}
+            <div className="mb-6 grid gap-4 md:grid-cols-5">
+              {/* Nama */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="constitution-name" className="text-interface text-xs">
+                  Nama Constitution *
+                </Label>
+                <Input
+                  id="constitution-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Nama constitution"
+                  disabled={isEditMode}
+                  className={
+                    isEditMode
+                      ? "rounded-action bg-muted text-muted-foreground"
+                      : "rounded-action"
+                  }
+                />
+              </div>
+
+              {/* Deskripsi */}
+              <div className="space-y-2 md:col-span-3">
+                <Label
+                  htmlFor="constitution-description"
+                  className="text-interface text-xs"
+                >
+                  Deskripsi (Opsional)
+                </Label>
+                <Input
+                  id="constitution-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Deskripsi singkat tentang constitution ini"
+                  className="rounded-action"
+                />
+              </div>
+            </div>
+
+            {/* Textarea */}
+            <div className="space-y-2">
+              <Label htmlFor="constitution-content" className="text-interface text-xs">
+                Konten Constitution *
+              </Label>
+              <Textarea
+                id="constitution-content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Tulis style constitution di sini (mendukung Markdown)..."
+                className="h-[calc(100vh-400px)] min-h-[50vh] resize-y rounded-action font-mono text-sm"
+              />
+              <p className="text-interface text-xs text-muted-foreground">
+                Gunakan format Markdown. Constitution berisi aturan gaya penulisan
+                untuk Refrasa.
+              </p>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )
