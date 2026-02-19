@@ -38,7 +38,7 @@ type ContentBlockGroup =
 
 const isNextStepsBlock = (block: DocumentationSection["blocks"][number]) =>
   block.type === "section" &&
-  /^(ke mana setelah ini\??|next steps?)$/i.test(block.title.trim())
+  /^(ke mana setelah ini\??|selanjutnya)$/i.test(block.title.trim())
 
 const getTldrText = (content: DocumentationSection | null) => {
   if (!content) return null
@@ -74,11 +74,6 @@ export function DocArticle({
   onSelectSection,
 }: DocArticleProps) {
   const tldrText = getTldrText(activeContent)
-  const legacyNextStepsBlock = activeContent?.blocks.find(isNextStepsBlock)
-  const legacyNextStepsDescription =
-    legacyNextStepsBlock?.type === "section"
-      ? legacyNextStepsBlock.paragraphs?.[0] ?? legacyNextStepsBlock.description
-      : undefined
   const contentBlocks = activeContent
     ? activeContent.blocks.filter((block) => !isNextStepsBlock(block))
     : []
@@ -129,7 +124,7 @@ export function DocArticle({
                     aria-hidden
                     className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-sky-300 to-sky-500 dark:from-sky-200 dark:to-sky-400"
                   />
-                  <p className="text-narrative relative text-sm leading-relaxed text-slate-700 dark:text-slate-100">
+                  <p className="text-narrative relative text-base leading-relaxed text-slate-700 dark:text-slate-100">
                     {tldrText}
                   </p>
                 </section>
@@ -150,9 +145,9 @@ export function DocArticle({
                         <AccordionItem
                           key={`${block.type}-${index}`}
                           value={`section-${index}`}
-                          className="rounded-shell border-main border border-border bg-card transition-colors duration-200 hover:bg-muted/40"
+                          className="rounded-shell border-main border border-border bg-card transition-colors duration-200 hover:bg-muted/40 last:border-b"
                         >
-                          <AccordionTrigger className="text-interface px-5 py-4 text-base font-medium text-foreground hover:no-underline">
+                          <AccordionTrigger className="text-interface px-5 py-4 font-mono text-sm font-medium text-slate-800 hover:no-underline dark:text-foreground">
                             {block.title}
                           </AccordionTrigger>
                           <AccordionContent className="px-5 pt-0 pb-5">
@@ -271,11 +266,7 @@ export function DocArticle({
 
             {nextStepSections.length > 0 && (
               <section className="space-y-3 pt-6">
-                <h2 className="text-interface text-base font-medium text-foreground">Next Steps</h2>
-                <p className="text-narrative text-sm leading-relaxed text-muted-foreground">
-                  {legacyNextStepsDescription ??
-                    "Lanjutkan ke topik berikut agar alur belajarnya tetap runtut."}
-                </p>
+                <h2 className="text-interface text-base font-medium text-foreground">Selanjutnya</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {nextStepSections.map((section) => {
                     const Icon = getIcon(section.icon)

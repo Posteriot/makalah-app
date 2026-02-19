@@ -94,8 +94,6 @@ Halaman dokumentasi memuat konten section dari database dan menampilkan section 
 
 ### Ke Mana Setelah Ini
 
-Agar onboarding cepat dan tidak melebar, lanjutkan urutan ini:
-
 1. Klik menu `Dokumentasi` di header, lalu buka bagian `Memulai` untuk memahami alur masuk/daftar sampai bisa memakai chat.
 2. Dari bagian yang sama, lanjut klik `Panduan Cepat` untuk langkah praktis dari ide sampai naskah awal.
 3. Setelah itu, klik `Workflow 13 Tahapan Penyusunan` agar paham ritme kerja lengkap sampai paper utuh.

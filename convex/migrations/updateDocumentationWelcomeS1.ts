@@ -143,7 +143,6 @@ const WELCOME_SECTION = {
     {
       type: "section" as const,
       title: "Ke Mana Setelah Ini",
-      paragraphs: ["Agar onboarding cepat dan tidak melebar, lanjutkan urutan ini:"],
       list: {
         variant: "numbered" as const,
         items: [
