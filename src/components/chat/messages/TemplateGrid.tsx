@@ -34,7 +34,7 @@ export function TemplateGrid({
 }: TemplateGridProps) {
   return (
     <div className="max-w-2xl text-center space-y-6">
-      <div className="mx-auto w-20 h-20 rounded-shell bg-card border border-border/60 flex items-center justify-center">
+      <div className="mx-auto w-20 h-20 flex items-center justify-center">
         <Image
           src="/logo/makalah_logo_dark.svg"
           alt="Makalah Logo"
