@@ -1,64 +1,39 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
 import type { RefrasaIssue } from "@/lib/refrasa/types"
 
 interface RefrasaIssueItemProps {
   issue: RefrasaIssue
 }
 
-/**
- * RefrasaIssueItem - Display a single issue from Refrasa analysis
- *
- * Shows:
- * - Category badge (naturalness=purple, style=teal)
- * - Severity badge (info=blue, warning=yellow, critical=red)
- * - Message
- * - Suggestion (if exists)
- */
 export function RefrasaIssueItem({ issue }: RefrasaIssueItemProps) {
-  const { type, category, message, severity, suggestion } = issue
+  const { type, message, severity, suggestion } = issue
 
-  // Severity badge colors (info=blue, warning=yellow, critical=red)
-  const getSeverityClassName = () => {
+  const getSeverityClassName = function(): string {
     switch (severity) {
       case "critical":
-        return "bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900 dark:text-red-300"
+        return "rounded-badge border border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-300"
       case "warning":
-        return "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-300"
+        return "rounded-badge border border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300"
       case "info":
       default:
-        return "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-300"
+        return "rounded-badge border border-slate-300/80 bg-slate-200/80 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100"
     }
   }
 
-  const getSeverityLabel = () => {
+  const getSeverityLabel = function(): string {
     switch (severity) {
       case "critical":
-        return "Kritis"
+        return "KRITIS"
       case "warning":
-        return "Peringatan"
+        return "PERINGATAN"
       case "info":
       default:
-        return "Info"
+        return "INFO"
     }
   }
 
-  // Category badge colors using custom classes
-  const getCategoryClassName = () => {
-    if (category === "naturalness") {
-      return "bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900 dark:text-purple-300"
-    }
-    // style
-    return "bg-teal-100 text-teal-700 hover:bg-teal-100 dark:bg-teal-900 dark:text-teal-300"
-  }
-
-  const getCategoryLabel = () => {
-    return category === "naturalness" ? "Naturalness" : "Style"
-  }
-
-  // Type label mapping
-  const getTypeLabel = () => {
+  const getTypeLabel = function(): string {
     const labels: Record<string, string> = {
       vocabulary_repetition: "Pengulangan Kosa Kata",
       sentence_pattern: "Pola Kalimat",
@@ -71,32 +46,23 @@ export function RefrasaIssueItem({ issue }: RefrasaIssueItemProps) {
   }
 
   return (
-    <div className="rounded-md border p-3 space-y-2">
-      {/* Header with badges */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Category badge */}
-        <Badge variant="outline" className={getCategoryClassName()}>
-          {getCategoryLabel()}
-        </Badge>
-
-        {/* Severity badge */}
-        <Badge variant="outline" className={getSeverityClassName()}>
+    <div className="rounded-action border border-slate-300/80 p-2.5 space-y-1.5 dark:border-slate-700/70">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className={`${getSeverityClassName()} px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide`}>
           {getSeverityLabel()}
-        </Badge>
-
-        {/* Type label */}
-        <span className="text-xs text-muted-foreground">
+        </span>
+        <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">
           {getTypeLabel()}
         </span>
       </div>
 
-      {/* Message */}
-      <p className="text-sm">{message}</p>
+      <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100">
+        {message}
+      </p>
 
-      {/* Suggestion (if exists) */}
       {suggestion && (
-        <p className="text-sm text-muted-foreground italic">
-          Saran: {suggestion}
+        <p className="text-xs font-mono text-slate-600 dark:text-slate-400">
+          → {suggestion}
         </p>
       )}
     </div>
