@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,17 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import {
   Plus,
@@ -83,9 +73,8 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
     requestorUserId: userId,
   })
 
+  const router = useRouter()
   const allConstitutions = (constitutions ?? []) as StyleConstitution[]
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingConstitution, setEditingConstitution] = useState<StyleConstitution | null>(null)
   const [historyConstitution, setHistoryConstitution] = useState<StyleConstitution | null>(null)
   const [deleteConstitution, setDeleteConstitution] = useState<StyleConstitution | null>(null)
   const [activateConstitution, setActivateConstitution] = useState<StyleConstitution | null>(null)
@@ -93,35 +82,13 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
   const [isLoading, setIsLoading] = useState(false)
   const [dynamicColumnStart, setDynamicColumnStart] = useState(0)
 
-  // Form state
-  const [formName, setFormName] = useState("")
-  const [formContent, setFormContent] = useState("")
-  const [formDescription, setFormDescription] = useState("")
-
   const activateMutation = useMutation(api.styleConstitutions.activate)
   const deactivateMutation = useMutation(api.styleConstitutions.deactivate)
   const deleteMutation = useMutation(api.styleConstitutions.deleteChain)
-  const createMutation = useMutation(api.styleConstitutions.create)
-  const updateMutation = useMutation(api.styleConstitutions.update)
   // Refrasa tool visibility toggle
   const isRefrasaEnabled = useQuery(api.aiProviderConfigs.getRefrasaEnabled)
   const setRefrasaEnabledMutation = useMutation(api.aiProviderConfigs.setRefrasaEnabled)
   const [isTogglingRefrasa, setIsTogglingRefrasa] = useState(false)
-
-  // Reset form when dialog opens/closes or editing constitution changes
-  useEffect(() => {
-    if (isCreateDialogOpen || editingConstitution) {
-      if (editingConstitution) {
-        setFormName(editingConstitution.name)
-        setFormContent(editingConstitution.content)
-        setFormDescription(editingConstitution.description ?? "")
-      } else {
-        setFormName("")
-        setFormContent("")
-        setFormDescription("")
-      }
-    }
-  }, [isCreateDialogOpen, editingConstitution])
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("id-ID", {
@@ -210,62 +177,6 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
     }
   }
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!formContent.trim()) {
-      toast.error("Konten constitution tidak boleh kosong")
-      return
-    }
-
-    if (!editingConstitution && !formName.trim()) {
-      toast.error("Nama constitution tidak boleh kosong")
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      if (editingConstitution) {
-        // Update (creates new version)
-        const result = await updateMutation({
-          requestorUserId: userId,
-          constitutionId: editingConstitution._id,
-          content: formContent.trim(),
-          description: formDescription.trim() || undefined,
-        })
-        toast.success(result.message)
-      } else {
-        // Create new constitution
-        const result = await createMutation({
-          requestorUserId: userId,
-          name: formName.trim(),
-          content: formContent.trim(),
-          description: formDescription.trim() || undefined,
-        })
-        toast.success(result.message)
-      }
-      handleCloseFormDialog()
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Terjadi kesalahan"
-      toast.error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleCloseFormDialog = () => {
-    if (!isLoading) {
-      setIsCreateDialogOpen(false)
-      setEditingConstitution(null)
-    }
-  }
-
-  const isEditing = !!editingConstitution
-  const hasChanges = isEditing
-    ? formContent !== editingConstitution.content || formDescription !== (editingConstitution.description ?? "")
-    : formName.trim() !== "" && formContent.trim() !== ""
-
   const DESKTOP_DYNAMIC_COLUMN_COUNT = 2
   const MOBILE_DYNAMIC_COLUMN_COUNT = 1
 
@@ -303,7 +214,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
     <div className="flex items-center justify-center gap-1">
       <button
         type="button"
-        onClick={() => setEditingConstitution(constitution)}
+        onClick={() => router.push(`/dashboard/constitution/${constitution._id}/edit`)}
         title="Edit"
         className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border-main border border-border text-muted-foreground transition-colors hover:bg-slate-200 hover:text-foreground dark:hover:bg-slate-800"
       >
@@ -457,7 +368,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
             </div>
             <button
               type="button"
-              onClick={() => setIsCreateDialogOpen(true)}
+              onClick={() => router.push("/dashboard/constitution/new")}
               className="focus-ring inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             >
               <Plus className="h-4 w-4" />
@@ -480,7 +391,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
               </p>
               <button
                 type="button"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={() => router.push("/dashboard/constitution/new")}
                 className="focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
               >
                 <Plus className="h-4 w-4" />
@@ -621,87 +532,6 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
 
         </div>
       </div>
-
-      {/* Create/Edit Dialog */}
-      <Dialog
-        open={isCreateDialogOpen || !!editingConstitution}
-        onOpenChange={handleCloseFormDialog}
-      >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {isEditing
-                ? `Edit Constitution: ${editingConstitution.name} (v${editingConstitution.version})`
-                : "Buat Constitution Baru"}
-            </DialogTitle>
-            <DialogDescription>
-              {isEditing
-                ? "Perubahan akan membuat versi baru. Versi sebelumnya tetap tersimpan di riwayat."
-                : "Buat constitution baru untuk Refrasa. Constitution baru akan tidak aktif secara default."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleFormSubmit} className="space-y-4">
-            {!isEditing && (
-              <div className="space-y-2">
-                <Label htmlFor="name">Nama Constitution *</Label>
-                <Input
-                  id="name"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g., Makalah Style Constitution"
-                  disabled={isLoading}
-                />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Deskripsi (Opsional)</Label>
-              <Input
-                id="description"
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="Deskripsi singkat tentang constitution ini"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="content">Konten Constitution *</Label>
-              <Textarea
-                id="content"
-                value={formContent}
-                onChange={(e) => setFormContent(e.target.value)}
-                placeholder="Tulis style constitution di sini (mendukung Markdown)..."
-                rows={20}
-                className="font-mono text-sm"
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Gunakan format Markdown. Constitution berisi aturan gaya penulisan untuk Refrasa.
-              </p>
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCloseFormDialog}
-                disabled={isLoading}
-              >
-                Batal
-              </Button>
-              <Button type="submit" disabled={!hasChanges || isLoading}>
-                {isLoading
-                  ? "Menyimpan..."
-                  : isEditing
-                    ? `Simpan (Buat v${editingConstitution.version + 1})`
-                    : "Buat Constitution"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Version History Dialog */}
       <StyleConstitutionVersionHistoryDialog
