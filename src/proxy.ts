@@ -13,6 +13,8 @@ const PUBLIC_ROUTES = [
   "/documentation",
   "/waitinglist",
   "/privacy",
+  "/security",
+  "/terms",
 ]
 
 function isPublicRoute(pathname: string): boolean {

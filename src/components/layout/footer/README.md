@@ -56,11 +56,10 @@ Integrasi utama:
 - `RESOURCE_LINKS`:
   - `/blog` → "Blog"
   - `/documentation` → "Dokumentasi"
-  - `/about#kontak` → "Hubungi Sales"
+  - `/about#kontak` → "Kerja Sama Bisnis"
 - `COMPANY_LINKS`:
   - `/about#bergabung-dengan-tim` → "Karier"
   - `/about` → "Tentang kami"
-  - `/about#security` → "Security"
 - `LEGAL_LINKS`:
   - `/about#privacy-policy` → "Privacy"
   - `/about#terms` → "Terms"
@@ -78,6 +77,7 @@ Catatan:
 - Section "Sumber Daya", "Perusahaan", dan "Legal" beserta link-linknya.
 - Hairline separator (`h-[0.5px] bg-[color:var(--border-hairline)]`).
 - Copyright:
+  - `Jl. H. Jian, Kebayoran Baru, Jakarta Selatan`
   - `© {tahun sekarang} Makalah AI. Hak cipta dilindungi.`
 - Social icons: X, LinkedIn, Instagram (masing-masing `icon-interface` = 16px).
 

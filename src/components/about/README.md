@@ -268,7 +268,7 @@ Semua data statik di `data.ts` — TIDAK di-fetch dari Convex.
 
 **CAREER_CONTACT_ITEMS** (2 items):
 1. `karier` — "Karier" — iconName: `"Briefcase"`, content: string, anchorId: `"bergabung-dengan-tim"`
-2. `kontak` — "Kontak" — iconName: `"Mail"`, content: `ContactContent { company: "PT The Management Asia", address: ["Menara Cakrawala 12th floor unit 05A", "Jalan MH. Thamrin, Jakarta Pusat"], email: "dukungan@makalah.ai" }`, anchorId: `"hubungi-kami"`
+2. `kontak` — "Kontak" — iconName: `"Mail"`, content: `ContactContent { company: "PT The Management Asia", address: ["Jl. H. Jian, Kebayoran Baru, Jakarta Selatan"], email: "dukungan@makalah.ai" }`, anchorId: `"hubungi-kami"`
 
 **AGENT_STATUS_LABELS:**
 - `"available"` → `"Tersedia"`
@@ -325,7 +325,7 @@ Semua data statik di `data.ts` — TIDAK di-fetch dari Convex.
 - Karier card: Suitcase icon + "Karier" title + paragraph text
 - Kontak card: Mail icon + "Kontak" title + structured content:
   - Company: "PT The Management Asia" (bold)
-  - Address: "Menara Cakrawala 12th floor unit 05A" + "Jalan MH. Thamrin, Jakarta Pusat"
+  - Address: "Jl. H. Jian, Kebayoran Baru, Jakarta Selatan"
   - Email: dukungan@makalah.ai (hover underline)
 
 ## Manifesto Terminal Panel

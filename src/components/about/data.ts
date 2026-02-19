@@ -149,10 +149,7 @@ export const CAREER_CONTACT_ITEMS: CareerContactItem[] = [
     title: "Kontak",
     content: {
       company: "PT The Management Asia",
-      address: [
-        "Menara Cakrawala 12th floor unit 05A",
-        "Jalan MH. Thamrin, Jakarta Pusat",
-      ],
+      address: ["Jl. H. Jian, Kebayoran Baru, Jakarta Selatan"],
       email: "dukungan@makalah.ai",
     },
   },

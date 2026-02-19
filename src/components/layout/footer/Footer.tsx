@@ -8,18 +8,18 @@ import { DiagonalStripes } from "@/components/marketing/SectionBackground"
 const RESOURCE_LINKS = [
   { href: "/blog", label: "Blog" },
   { href: "/documentation", label: "Dokumentasi" },
-  { href: "/about#kontak", label: "Hubungi Sales" },
+  { href: "/about#kontak", label: "Kerja Sama Bisnis" },
 ]
 
 const COMPANY_LINKS = [
   { href: "/about#bergabung-dengan-tim", label: "Karier" },
   { href: "/about", label: "Tentang kami" },
-  { href: "/about#security", label: "Security" },
 ]
 
 const LEGAL_LINKS = [
-  { href: "/about#privacy-policy", label: "Privacy" },
-  { href: "/about#terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/security", label: "Security" },
+  { href: "/terms", label: "Terms" },
 ]
 
 const SOCIAL_LINKS = [
