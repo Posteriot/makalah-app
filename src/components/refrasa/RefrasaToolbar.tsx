@@ -10,6 +10,7 @@ import {
   DocMagnifyingGlass,
   NavArrowDown,
   NavArrowRight,
+  Expand,
 } from "iconoir-react"
 import type { Doc, Id } from "@convex/_generated/dataModel"
 import type { RefrasaIssue } from "@/lib/refrasa/types"
@@ -47,6 +48,8 @@ interface RefrasaToolbarProps {
   onCopy: () => void
   onDownload: (format: "docx" | "pdf" | "txt") => void
   isApplying?: boolean
+  isApplied?: boolean
+  onExpand?: () => void
 }
 
 const iconBtnClass =
@@ -66,6 +69,8 @@ export function RefrasaToolbar({
   onCopy,
   onDownload,
   isApplying = false,
+  isApplied = false,
+  onExpand,
 }: RefrasaToolbarProps): React.ReactElement {
   const [copied, setCopied] = useState(false)
   const [showIssues, setShowIssues] = useState(false)
@@ -282,19 +287,40 @@ export function RefrasaToolbar({
             )}
           </div>
 
+          {/* Expand — only in panel mode */}
+          {onExpand && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onExpand}
+                  className={iconBtnClass}
+                  aria-label="Fullscreen"
+                >
+                  <Expand className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">Fullscreen</TooltipContent>
+            </Tooltip>
+          )}
+
           {/* Apply */}
           <Button
             size="sm"
             onClick={onApply}
-            disabled={isApplying}
-            className="h-7 bg-emerald-600 px-2.5 font-mono text-[11px] text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-700"
+            disabled={isApplying || isApplied}
+            className={cn(
+              "h-7 px-2.5 font-mono text-[11px] text-white",
+              isApplied
+                ? "bg-slate-500 hover:bg-slate-500 dark:bg-slate-600 dark:hover:bg-slate-600"
+                : "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+            )}
           >
             {isApplying ? (
               <span className="mr-1.5 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
             ) : (
               <Check className="mr-1.5 h-3.5 w-3.5" />
             )}
-            {isApplying ? "Menerapkan..." : "Terapkan"}
+            {isApplying ? "Menerapkan..." : isApplied ? "Diterapkan" : "Terapkan"}
           </Button>
         </div>
       </div>

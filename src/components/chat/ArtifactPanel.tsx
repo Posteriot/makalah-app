@@ -144,6 +144,8 @@ export function ArtifactPanel({
             conversationId={conversationId}
             userId={currentUser._id}
             onTabClose={onTabClose}
+            onExpand={() => setIsFullsizeOpen(true)}
+            onActivateTab={onTabChange}
           />
         ) : activeTabId && activeArtifact ? (
           <ArtifactViewer
@@ -191,6 +193,11 @@ export function ArtifactPanel({
           artifactId={activeTabId}
           isOpen={isFullsizeOpen}
           onClose={() => setIsFullsizeOpen(false)}
+          openTabs={openTabs}
+          activeTabId={activeTabId}
+          onTabChange={onTabChange}
+          onTabClose={onTabClose}
+          onOpenTab={onOpenTab!}
         />
       )}
     </div>

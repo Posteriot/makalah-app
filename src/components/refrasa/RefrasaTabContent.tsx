@@ -13,6 +13,8 @@ interface RefrasaTabContentProps {
   conversationId: Id<"conversations">
   userId: Id<"users">
   onTabClose?: (artifactId: Id<"artifacts">) => void
+  onExpand?: () => void
+  onActivateTab?: (tabId: Id<"artifacts">) => void
 }
 
 export function RefrasaTabContent({
@@ -20,11 +22,14 @@ export function RefrasaTabContent({
   conversationId,
   userId,
   onTabClose,
+  onExpand,
+  onActivateTab,
 }: RefrasaTabContentProps) {
   // Local state to track which version is being viewed
   const [viewingArtifactId, setViewingArtifactId] =
     useState<Id<"artifacts">>(artifactId)
   const [isApplying, setIsApplying] = useState(false)
+  const [isApplied, setIsApplied] = useState(false)
 
   // Sync viewingArtifactId when prop changes (e.g. parent switches tab)
   useEffect(() => {
@@ -87,12 +92,19 @@ export function RefrasaTabContent({
         userId,
         content: artifact.content,
       })
+      setIsApplied(true)
+
+      // After 1.5s, switch to source artifact tab and reset
+      setTimeout(() => {
+        onActivateTab?.(artifact.sourceArtifactId!)
+        setIsApplied(false)
+      }, 1500)
     } catch (err) {
       console.error("[RefrasaTabContent] Apply failed:", err)
     } finally {
       setIsApplying(false)
     }
-  }, [artifact, userId, updateArtifact])
+  }, [artifact, userId, updateArtifact, onActivateTab])
 
   const handleDelete = useCallback(async () => {
     if (!artifact) return
@@ -181,6 +193,8 @@ export function RefrasaTabContent({
         onCopy={handleCopy}
         onDownload={handleDownload}
         isApplying={isApplying}
+        isApplied={isApplied}
+        onExpand={onExpand}
       />
 
       {/* Scrollable content area */}

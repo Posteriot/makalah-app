@@ -46,7 +46,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
 import { RefrasaLoadingIndicator } from "@/components/refrasa"
 import { RefrasaTabContent } from "@/components/refrasa/RefrasaTabContent"
-import { useArtifactTabs } from "@/lib/hooks/useArtifactTabs"
+import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
 import { ArtifactTabs } from "./ArtifactTabs"
 import {
   AlertDialog,
@@ -63,6 +63,12 @@ interface FullsizeArtifactModalProps {
   artifactId: Id<"artifacts">
   isOpen: boolean
   onClose: () => void
+  // Shared tab state from parent (ArtifactPanel)
+  openTabs: ArtifactTab[]
+  activeTabId: Id<"artifacts"> | null
+  onTabChange: (tabId: Id<"artifacts">) => void
+  onTabClose: (tabId: Id<"artifacts">) => void
+  onOpenTab: (tab: ArtifactTab) => void
 }
 
 const formatToLanguage: Record<string, string> = {
@@ -109,6 +115,11 @@ export function FullsizeArtifactModal({
   artifactId,
   isOpen,
   onClose,
+  openTabs: modalTabs,
+  activeTabId: modalActiveTabId,
+  onTabChange: setModalActiveTab,
+  onTabClose: closeModalTab,
+  onOpenTab: openModalTab,
 }: FullsizeArtifactModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const primaryCloseButtonRef = useRef<HTMLButtonElement>(null)
@@ -120,15 +131,6 @@ export function FullsizeArtifactModal({
   const [copied, setCopied] = useState(false)
   const [closeGuardOpen, setCloseGuardOpen] = useState(false)
   const { user: currentUser } = useCurrentUser()
-
-  // Tab state for fullscreen modal
-  const {
-    openTabs: modalTabs,
-    activeTabId: modalActiveTabId,
-    openTab: openModalTab,
-    closeTab: closeModalTab,
-    setActiveTab: setModalActiveTab,
-  } = useArtifactTabs()
 
   const isRefrasaEnabled = useQuery(api.aiProviderConfigs.getRefrasaEnabled)
   const updateArtifact = useMutation(api.artifacts.update)
@@ -180,13 +182,6 @@ export function FullsizeArtifactModal({
       openModalTab({ id: newArtifactId, title, type: "refrasa" })
     },
   })
-
-  // Initialize modal tabs with current artifact
-  useEffect(() => {
-    if (isOpen && artifact) {
-      openModalTab({ id: artifact._id, title: artifact.title, type: artifact.type })
-    }
-  }, [isOpen, artifact?._id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isActiveTabRefrasa = modalTabs.find((t) => t.id === modalActiveTabId)?.type === "refrasa"
   const latestArtifactsInSession = useMemo(
@@ -621,6 +616,7 @@ export function FullsizeArtifactModal({
                 conversationId={artifact.conversationId}
                 userId={currentUser._id}
                 onTabClose={(id) => closeModalTab(id)}
+                onActivateTab={setModalActiveTab}
               />
             </div>
           ) : (

@@ -70,7 +70,7 @@ export function useRefrasa(options: UseRefrasaOptions): UseRefrasaReturn {
         setState({ isLoading: false, result: data, error: null })
 
         // Notify caller to open tab
-        options.onArtifactCreated?.(artifactId, `R: ${sourceTitle}`)
+        options.onArtifactCreated?.(artifactId, sourceTitle)
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Terjadi kesalahan saat memproses"

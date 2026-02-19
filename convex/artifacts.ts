@@ -361,7 +361,7 @@ export const createRefrasa = mutationGeneric({
       conversationId,
       userId,
       type: "refrasa",
-      title: `R: ${sourceArtifact.title}`,
+      title: sourceArtifact.title,
       content,
       sourceArtifactId,
       refrasaIssues,
