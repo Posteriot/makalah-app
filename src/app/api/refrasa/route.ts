@@ -78,10 +78,12 @@ export async function POST(req: Request) {
       // Continue with hardcoded fallbacks
     }
 
-    // 4. Build two-layer prompt
-    const prompt = buildRefrasaPrompt(content, styleContent, naturalnessContent)
+    // 4. Build two-layer prompt (split: system instructions + user input)
+    const { system, prompt } = buildRefrasaPrompt(content, styleContent, naturalnessContent)
 
     // 5. Call LLM with generateObject
+    // system = constitution + instructions (highest LLM compliance)
+    // prompt = user text input
     // Primary: Gateway, Fallback: OpenRouter
     let result: RefrasaResponse
 
@@ -92,6 +94,7 @@ export async function POST(req: Request) {
       const { object } = await generateObject({
         model: primaryModel,
         schema: RefrasaOutputSchema,
+        system,
         prompt,
         temperature: 0.7,
       })
@@ -110,6 +113,7 @@ export async function POST(req: Request) {
         const { object } = await generateObject({
           model: fallbackModel,
           schema: RefrasaOutputSchema,
+          system,
           prompt,
           temperature: 0.7,
         })

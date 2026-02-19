@@ -155,24 +155,25 @@ Berikan output dalam format JSON dengan struktur:
 // ============================================================================
 
 /**
- * Build the complete Refrasa prompt with two-layer architecture
+ * Build the Refrasa prompt split into system (instructions) and prompt (user input).
+ *
+ * system role = constitution + instructions → highest LLM compliance
+ * prompt role = user text to analyze → treated as input data
  *
  * @param content - The text to analyze and refrasa
  * @param constitution - Optional Style Constitution content (Layer 2)
- *                       If null/undefined, only Layer 1 is applied
  * @param naturalnessConstitution - Optional Naturalness Constitution content (Layer 1 from DB)
- *                                  If null/undefined, hardcoded LAYER_1_CORE_NATURALNESS is used as fallback
- * @returns Complete prompt string for LLM
+ * @returns { system, prompt } for separate passing to generateObject()
  */
 export function buildRefrasaPrompt(
   content: string,
   constitution?: string | null,
   naturalnessConstitution?: string | null
-): string {
-  const parts: string[] = []
+): { system: string; prompt: string } {
+  // ── SYSTEM: All instructions, constitution, output format ──
+  const systemParts: string[] = []
 
-  // System introduction
-  parts.push(`# Refrasa: Perbaikan Gaya Penulisan Akademis
+  systemParts.push(`# Refrasa: Perbaikan Gaya Penulisan Akademis
 
 Anda adalah Refrasa, asisten perbaikan gaya penulisan akademis Bahasa Indonesia.
 
@@ -188,20 +189,20 @@ Anda adalah Refrasa, asisten perbaikan gaya penulisan akademis Bahasa Indonesia.
 
   // Layer 1: Naturalness — from DB if available, else hardcoded fallback
   if (naturalnessConstitution && naturalnessConstitution.trim()) {
-    parts.push(`## LAYER 1: Core Naturalness Criteria (KRITERIA UTAMA - TIDAK BISA DI-OVERRIDE)
+    systemParts.push(`## LAYER 1: Core Naturalness Criteria (KRITERIA UTAMA - TIDAK BISA DI-OVERRIDE)
 
 ${naturalnessConstitution.trim()}
 `)
   } else {
-    parts.push(LAYER_1_CORE_NATURALNESS)
+    systemParts.push(LAYER_1_CORE_NATURALNESS)
   }
 
   // Academic Escape Clause (ALWAYS included)
-  parts.push(ACADEMIC_ESCAPE_CLAUSE)
+  systemParts.push(ACADEMIC_ESCAPE_CLAUSE)
 
   // Layer 2: Style Constitution (Optional, dynamic from database)
   if (constitution && constitution.trim()) {
-    parts.push(`
+    systemParts.push(`
 ## LAYER 2: Style Constitution (PANDUAN GAYA TAMBAHAN)
 
 ${constitution.trim()}
@@ -209,7 +210,7 @@ ${constitution.trim()}
 **PENTING:** Style Constitution memberikan panduan gaya TAMBAHAN. Jika ada konflik dengan Layer 1 Core Naturalness, Layer 1 SELALU menang.
 `)
   } else {
-    parts.push(`
+    systemParts.push(`
 ## LAYER 2: Style Constitution
 
 *Tidak ada Style Constitution aktif. Gunakan hanya Layer 1 Core Naturalness.*
@@ -217,26 +218,26 @@ ${constitution.trim()}
   }
 
   // Output format specification
-  parts.push(OUTPUT_FORMAT_SPEC)
+  systemParts.push(OUTPUT_FORMAT_SPEC)
 
-  // Content to analyze
-  parts.push(`
-## TEKS INPUT UNTUK DIANALISIS DAN DIPERBAIKI
+  const system = systemParts.join("\n\n")
+
+  // ── PROMPT: Only the user's text input ──
+  const prompt = `## TEKS INPUT UNTUK DIANALISIS DAN DIPERBAIKI
 
 \`\`\`
 ${content}
 \`\`\`
 
-Analisis teks di atas menggunakan kriteria Layer 1 ${constitution ? "dan Layer 2 " : ""}kemudian berikan output dalam format JSON yang diminta.
-`)
+Analisis teks di atas menggunakan kriteria Layer 1 ${constitution ? "dan Layer 2 " : ""}kemudian berikan output dalam format JSON yang diminta.`
 
-  return parts.join("\n\n")
+  return { system, prompt }
 }
 
 /**
  * Build a simpler prompt for Layer 1 only (when no constitution is available)
  * This is equivalent to buildRefrasaPrompt(content, null) but more explicit
  */
-export function buildRefrasaPromptLayer1Only(content: string): string {
+export function buildRefrasaPromptLayer1Only(content: string): { system: string; prompt: string } {
   return buildRefrasaPrompt(content, null, null)
 }
