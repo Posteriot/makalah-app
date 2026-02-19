@@ -1,9 +1,9 @@
 /**
  * Refrasa Tool - LLM Powered
  *
- * Two-Layer Architecture:
- * - Layer 1: Core Naturalness Criteria (hardcoded)
- * - Layer 2: Style Constitution (editable via admin panel)
+ * Single constitution architecture:
+ * - Style Constitution (editable via admin panel, optional)
+ * - Built-in naturalness rules as fallback
  */
 
 // Type definitions
@@ -29,7 +29,6 @@ export {
 // Prompt builder
 export {
   buildRefrasaPrompt,
-  buildRefrasaPromptLayer1Only,
 } from "./prompt-builder"
 
 // Loading messages

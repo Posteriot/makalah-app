@@ -18,9 +18,8 @@ export const maxDuration = 300
 /**
  * POST /api/refrasa
  *
- * Analyze and improve text using two-layer architecture:
- * - Layer 1: Core Naturalness Criteria (hardcoded)
- * - Layer 2: Style Constitution (from database, optional)
+ * Analyze and improve text using Refrasa constitution.
+ * Constitution is optional — if none active, basic naturalness rules apply.
  *
  * Request body:
  * - content: string (min 50 chars) - Text to analyze
@@ -57,29 +56,21 @@ export async function POST(req: Request) {
 
     const { content } = validationResult.data
 
-    // 3. Fetch active constitutions (Layer 1: Naturalness, Layer 2: Style)
-    let naturalnessContent: string | null = null
-    let styleContent: string | null = null
+    // 3. Fetch active constitution
+    let constitutionContent: string | null = null
 
     try {
-      const [activeNaturalness, activeStyle] = await Promise.all([
-        fetchQuery(api.styleConstitutions.getActiveNaturalness),
-        fetchQuery(api.styleConstitutions.getActive),
-      ])
-
-      if (activeNaturalness?.content) {
-        naturalnessContent = activeNaturalness.content
-      }
-      if (activeStyle?.content) {
-        styleContent = activeStyle.content
+      const activeConstitution = await fetchQuery(api.styleConstitutions.getActive)
+      if (activeConstitution?.content) {
+        constitutionContent = activeConstitution.content
       }
     } catch (error) {
-      console.error("[Refrasa API] Failed to fetch constitutions:", error)
-      // Continue with hardcoded fallbacks
+      console.error("[Refrasa API] Failed to fetch constitution:", error)
+      // Continue without constitution
     }
 
-    // 4. Build two-layer prompt (split: system instructions + user input)
-    const { system, prompt } = buildRefrasaPrompt(content, styleContent, naturalnessContent)
+    // 4. Build prompt (split: system instructions + user input)
+    const { system, prompt } = buildRefrasaPrompt(content, constitutionContent)
 
     // 5. Call LLM with generateObject
     // system = constitution + instructions (highest LLM compliance)
