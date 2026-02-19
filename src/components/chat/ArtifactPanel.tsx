@@ -6,6 +6,7 @@ import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { ArtifactViewer, ArtifactViewerRef } from "./ArtifactViewer"
+import { RefrasaTabContent } from "@/components/refrasa/RefrasaTabContent"
 import { ArtifactTabs } from "./ArtifactTabs"
 import { ArtifactToolbar } from "./ArtifactToolbar"
 import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
@@ -23,6 +24,7 @@ interface ArtifactPanelProps {
   activeTabId: Id<"artifacts"> | null
   onTabChange: (tabId: Id<"artifacts">) => void
   onTabClose: (tabId: Id<"artifacts">) => void
+  onOpenTab?: (tab: ArtifactTab) => void
 }
 
 /**
@@ -49,6 +51,7 @@ export function ArtifactPanel({
   activeTabId,
   onTabChange,
   onTabClose,
+  onOpenTab,
 }: ArtifactPanelProps) {
   const [isFullsizeOpen, setIsFullsizeOpen] = useState(false)
   const { user: currentUser } = useCurrentUser()
@@ -72,7 +75,9 @@ export function ArtifactPanel({
     return null
   }
 
-  // Find active artifact data from query
+  // Find active tab metadata and artifact data
+  const activeTab = activeTabId ? openTabs.find((t) => t.id === activeTabId) : null
+  const isRefrasaTab = activeTab?.type === "refrasa"
   const activeArtifact = activeTabId
     ? artifacts?.find((a) => a._id === activeTabId)
     : null
@@ -102,37 +107,52 @@ export function ArtifactPanel({
         onTabClose={onTabClose}
       />
 
-      {/* Artifact Toolbar — metadata + actions */}
-      <ArtifactToolbar
-        artifact={
-          activeArtifact
-            ? {
-                title: activeArtifact.title,
-                type: activeArtifact.type,
-                version: activeArtifact.version,
-                createdAt: activeArtifact.createdAt ?? activeArtifact._creationTime,
-                contentLength: activeArtifact.content.length,
-                wordCount,
-                contentTypeLabel,
-              }
-            : null
-        }
-        openTabCount={openTabCount}
-        onDownload={(format) => {
-          viewerRef.current?.setDownloadFormat(format)
-          viewerRef.current?.download()
-        }}
-        onEdit={() => viewerRef.current?.startEdit()}
-        onRefrasa={() => viewerRef.current?.triggerRefrasa()}
-        onCopy={() => viewerRef.current?.copy()}
-        onExpand={() => setIsFullsizeOpen(true)}
-        onClosePanel={onToggle}
-      />
+      {/* Artifact Toolbar — metadata + actions (hidden for refrasa tabs) */}
+      {!isRefrasaTab && (
+        <ArtifactToolbar
+          artifact={
+            activeArtifact
+              ? {
+                  title: activeArtifact.title,
+                  type: activeArtifact.type,
+                  version: activeArtifact.version,
+                  createdAt: activeArtifact.createdAt ?? activeArtifact._creationTime,
+                  contentLength: activeArtifact.content.length,
+                  wordCount,
+                  contentTypeLabel,
+                }
+              : null
+          }
+          openTabCount={openTabCount}
+          onDownload={(format) => {
+            viewerRef.current?.setDownloadFormat(format)
+            viewerRef.current?.download()
+          }}
+          onEdit={() => viewerRef.current?.startEdit()}
+          onRefrasa={() => viewerRef.current?.triggerRefrasa()}
+          onCopy={() => viewerRef.current?.copy()}
+          onExpand={() => setIsFullsizeOpen(true)}
+          onClosePanel={onToggle}
+        />
+      )}
 
       {/* Main viewer area */}
       <div className="flex-1 overflow-hidden">
-        {activeTabId && activeArtifact ? (
-          <ArtifactViewer ref={viewerRef} artifactId={activeTabId} />
+        {activeTabId && isRefrasaTab && conversationId && currentUser?._id ? (
+          <RefrasaTabContent
+            artifactId={activeTabId}
+            conversationId={conversationId}
+            userId={currentUser._id}
+            onTabClose={onTabClose}
+          />
+        ) : activeTabId && activeArtifact ? (
+          <ArtifactViewer
+            ref={viewerRef}
+            artifactId={activeTabId}
+            onOpenRefrasaTab={(tab) => {
+              onOpenTab?.(tab as ArtifactTab)
+            }}
+          />
         ) : activeTabId && !activeArtifact ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
             <Page className="h-10 w-10 text-slate-500 dark:text-muted-foreground/60" />

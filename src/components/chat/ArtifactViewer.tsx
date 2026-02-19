@@ -31,13 +31,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
-import {
-  RefrasaConfirmDialog,
-  RefrasaLoadingIndicator,
-} from "@/components/refrasa"
+import { RefrasaLoadingIndicator } from "@/components/refrasa"
 
 interface ArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
+  onOpenRefrasaTab?: (tab: { id: Id<"artifacts">; title: string; type: string }) => void
 }
 
 // Exposed methods via ref for parent component (ArtifactPanel)
@@ -100,23 +98,12 @@ function getStageLabelSafe(stageId: string | undefined): string {
 }
 
 export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>(
-  function ArtifactViewer({ artifactId }, ref) {
+  function ArtifactViewer({ artifactId, onOpenRefrasaTab }, ref) {
     const [copied, setCopied] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [viewingVersionId, setViewingVersionId] = useState<Id<"artifacts"> | null>(artifactId)
     const { user: currentUser } = useCurrentUser()
-
-    // Refrasa state
-    const [showRefrasaDialog, setShowRefrasaDialog] = useState(false)
-    const [isApplyingRefrasa, setIsApplyingRefrasa] = useState(false)
-    const {
-      isLoading: isRefrasaLoading,
-      result: refrasaResult,
-      error: refrasaError,
-      analyzeAndRefrasa,
-      reset: resetRefrasa,
-    } = useRefrasa()
 
     // Download format state
     type DownloadFormat = "docx" | "pdf" | "txt"
@@ -143,6 +130,20 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         ? { artifactId, userId: currentUser._id }
         : "skip"
     )
+
+    // Refrasa — persists to DB, notifies parent to open tab
+    const {
+      isLoading: isRefrasaLoading,
+      error: refrasaError,
+      analyzeAndRefrasa,
+      reset: resetRefrasa,
+    } = useRefrasa({
+      conversationId: artifact?.conversationId ?? null,
+      userId: currentUser?._id ?? null,
+      onArtifactCreated: (newArtifactId, title) => {
+        onOpenRefrasaTab?.({ id: newArtifactId, title, type: "refrasa" })
+      },
+    })
 
     const canRefrasa = isRefrasaEnabled !== false && artifact?.type !== "chart" && (artifact?.content?.length ?? 0) >= 50
 
@@ -216,46 +217,14 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     const handleRefrasaTrigger = useCallback(async () => {
       if (!artifact || !canRefrasa || isRefrasaLoading) return
       resetRefrasa()
-      await analyzeAndRefrasa(artifact.content, artifact._id)
+      await analyzeAndRefrasa(artifact.content, artifact._id, artifact.title)
     }, [artifact, canRefrasa, isRefrasaLoading, analyzeAndRefrasa, resetRefrasa])
-
-    useEffect(() => {
-      if (refrasaResult && !refrasaError) {
-        setShowRefrasaDialog(true)
-      }
-    }, [refrasaResult, refrasaError])
 
     useEffect(() => {
       if (refrasaError) {
         toast.error(`Gagal menganalisis: ${refrasaError}`)
       }
     }, [refrasaError])
-
-    const handleApplyRefrasa = async () => {
-      if (!artifact || !currentUser?._id || !refrasaResult) return
-
-      setIsApplyingRefrasa(true)
-      try {
-        await updateArtifact({
-          artifactId: artifact._id,
-          userId: currentUser._id,
-          content: refrasaResult.refrasedText,
-        })
-        toast.success(`Tulisan berhasil diperbaiki ke v${artifact.version + 1}`)
-        setShowRefrasaDialog(false)
-        resetRefrasa()
-      } catch (error) {
-        console.error("Failed to apply refrasa:", error)
-        toast.error("Gagal menerapkan perbaikan")
-      } finally {
-        setIsApplyingRefrasa(false)
-      }
-    }
-
-    const handleCloseRefrasaDialog = () => {
-      setShowRefrasaDialog(false)
-      resetRefrasa()
-    }
 
     useImperativeHandle(
       ref,
@@ -468,17 +437,6 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
           </>
         )}
 
-        {refrasaResult && (
-          <RefrasaConfirmDialog
-            open={showRefrasaDialog}
-            onOpenChange={handleCloseRefrasaDialog}
-            originalContent={artifact.content}
-            refrasedText={refrasaResult.refrasedText}
-            issues={refrasaResult.issues}
-            onApply={handleApplyRefrasa}
-            isApplying={isApplyingRefrasa}
-          />
-        )}
       </div>
     )
   }
