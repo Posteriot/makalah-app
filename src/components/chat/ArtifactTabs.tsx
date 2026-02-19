@@ -16,6 +16,14 @@ import { cn } from "@/lib/utils"
 import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
 import { Id } from "../../../convex/_generated/dataModel"
 
+function RefrasaBadge() {
+  return (
+    <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-amber-500/20 text-[9px] font-mono font-bold text-amber-700 dark:text-amber-300">
+      R
+    </span>
+  )
+}
+
 /** Map artifact type to icon and human label */
 const typeMeta: Record<string, { icon: React.ElementType; label: string }> = {
   code: { icon: Code, label: "Code" },
@@ -24,6 +32,7 @@ const typeMeta: Record<string, { icon: React.ElementType; label: string }> = {
   table: { icon: Table2Columns, label: "Tabel" },
   citation: { icon: Book, label: "Sitasi" },
   formula: { icon: Calculator, label: "Formula" },
+  refrasa: { icon: RefrasaBadge, label: "Refrasa" },
 }
 
 function getTabMeta(type: string) {
