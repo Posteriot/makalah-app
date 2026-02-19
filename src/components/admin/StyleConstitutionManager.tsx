@@ -36,8 +36,6 @@ import {
   Trash,
   Journal,
   InfoCircle,
-  Download,
-  WarningCircle,
   Settings,
   NavArrowLeft,
   NavArrowRight,
@@ -52,7 +50,6 @@ interface StyleConstitution {
   description?: string
   version: number
   isActive: boolean
-  type?: "naturalness" | "style"
   createdBy: Id<"users">
   createdAt: number
   updatedAt: number
@@ -86,14 +83,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
     requestorUserId: userId,
   })
 
-  const naturalnessConstitutions = (constitutions ?? []).filter(
-    (c) => (c as StyleConstitution).type === "naturalness"
-  ) as StyleConstitution[]
-  const styleConstitutions = (constitutions ?? []).filter(
-    (c) => (c as StyleConstitution).type !== "naturalness"
-  ) as StyleConstitution[]
-
-  const [createType, setCreateType] = useState<"naturalness" | "style">("style")
+  const allConstitutions = (constitutions ?? []) as StyleConstitution[]
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingConstitution, setEditingConstitution] = useState<StyleConstitution | null>(null)
   const [historyConstitution, setHistoryConstitution] = useState<StyleConstitution | null>(null)
@@ -101,7 +91,6 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
   const [activateConstitution, setActivateConstitution] = useState<StyleConstitution | null>(null)
   const [deactivateConstitution, setDeactivateConstitution] = useState<StyleConstitution | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isSeedingDefault, setIsSeedingDefault] = useState(false)
   const [dynamicColumnStart, setDynamicColumnStart] = useState(0)
 
   // Form state
@@ -114,8 +103,6 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
   const deleteMutation = useMutation(api.styleConstitutions.deleteChain)
   const createMutation = useMutation(api.styleConstitutions.create)
   const updateMutation = useMutation(api.styleConstitutions.update)
-  const seedDefaultMutation = useMutation(api.styleConstitutions.seedDefault)
-
   // Refrasa tool visibility toggle
   const isRefrasaEnabled = useQuery(api.aiProviderConfigs.getRefrasaEnabled)
   const setRefrasaEnabledMutation = useMutation(api.aiProviderConfigs.setRefrasaEnabled)
@@ -206,22 +193,6 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
     }
   }
 
-  const handleSeedDefault = async () => {
-    setIsSeedingDefault(true)
-    try {
-      const result = await seedDefaultMutation({
-        requestorUserId: userId,
-      })
-      toast.success(result.message)
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Terjadi kesalahan"
-      toast.error(errorMessage)
-    } finally {
-      setIsSeedingDefault(false)
-    }
-  }
-
   const handleToggleRefrasa = async (enabled: boolean) => {
     setIsTogglingRefrasa(true)
     try {
@@ -270,7 +241,6 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
           name: formName.trim(),
           content: formContent.trim(),
           description: formDescription.trim() || undefined,
-          type: createType,
         })
         toast.success(result.message)
       }
@@ -288,7 +258,6 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
     if (!isLoading) {
       setIsCreateDialogOpen(false)
       setEditingConstitution(null)
-      setCreateType("style")
     }
   }
 
@@ -473,210 +442,22 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
         </div>
       </div>
 
-      {/* Naturalness Constitution Manager (Layer 1) */}
-      <div className="mb-4 overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
-        <div className="border-b border-border px-4 py-4 md:px-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="space-y-1">
-              <h3 className="text-interface flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Journal className="h-4 w-4 text-muted-foreground" />
-                Refrasa - Naturalness Constitution
-              </h3>
-              <p className="text-narrative text-xs text-muted-foreground">
-                Kelola kriteria naturalness (Layer 1). Jika tidak ada yang aktif, menggunakan kriteria default.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCreateType("naturalness")
-                setIsCreateDialogOpen(true)
-              }}
-              className="focus-ring inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Buat Constitution Baru</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="p-4 md:p-6">
-          {naturalnessConstitutions.length === 0 ? (
-            <div className="rounded-shell border-main border border-border bg-card/80 px-4 py-10 text-center dark:bg-slate-900/80">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-sky-500/30 bg-sky-500/10">
-                <InfoCircle className="h-6 w-6 text-sky-600 dark:text-sky-400" />
-              </div>
-              <h3 className="text-interface mb-2 text-lg font-semibold text-foreground">
-                Belum Ada Naturalness Constitution
-              </h3>
-              <p className="text-narrative mx-auto mb-6 max-w-md text-sm text-muted-foreground">
-                Refrasa menggunakan kriteria naturalness default (hardcoded). Buat constitution baru untuk meng-override.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateType("naturalness")
-                  setIsCreateDialogOpen(true)
-                }}
-                className="focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Buat Sendiri</span>
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
-              <div className="hidden md:block">
-                <table className="text-interface w-full table-fixed border-collapse text-left text-sm">
-                  <thead className="border-b border-border bg-slate-300/70 dark:bg-slate-800/95">
-                    <tr>
-                      <th className="text-signal h-12 w-[36%] bg-slate-200/75 px-4 py-3 text-[10px] font-bold tracking-wider text-muted-foreground uppercase dark:bg-slate-900/85">
-                        Constitution
-                      </th>
-                      <th className="h-12 w-[8%] border-l border-border bg-slate-200/75 px-2 py-2 dark:bg-slate-900/85">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={goToPrevColumns}
-                            aria-label="Kolom sebelumnya"
-                            className="focus-ring inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
-                          >
-                            <NavArrowLeft className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={goToNextColumns}
-                            aria-label="Kolom berikutnya"
-                            className="focus-ring inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
-                          >
-                            <NavArrowRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </th>
-                      {visibleDynamicColumnsDesktop.map((column) => (
-                        <th
-                          key={`nat-${column.key}`}
-                          className="text-signal h-12 w-[28%] px-4 py-3 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
-                        >
-                          {column.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {naturalnessConstitutions.map((constitution) => (
-                      <tr key={constitution._id} className="group transition-colors hover:bg-muted/50">
-                        <td className="bg-slate-200/35 px-4 py-3 align-top group-hover:bg-slate-200/55 dark:bg-slate-900/55 dark:group-hover:bg-slate-800/70">
-                          <div className="text-narrative font-medium text-foreground">
-                            {constitution.name}
-                          </div>
-                          {constitution.description ? (
-                            <div className="text-narrative mt-0.5 break-words text-xs text-muted-foreground">
-                              {constitution.description}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className="border-l border-border bg-gradient-to-r from-slate-300/45 to-card/40 px-2 py-3 group-hover:from-slate-300/65 group-hover:to-muted/40 dark:from-slate-900/80 dark:to-slate-900/40 dark:group-hover:from-slate-800/95 dark:group-hover:to-slate-800/50" />
-                        {visibleDynamicColumnsDesktop.map((column) => (
-                          <td key={`${constitution._id}-nat-${column.key}`} className="px-4 py-3 text-center align-top">
-                            <div className="inline-flex items-center justify-center">
-                              {renderDynamicCell(column.key, constitution)}
-                            </div>
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="md:hidden">
-                <table className="text-interface w-full table-fixed border-collapse text-left text-xs">
-                  <thead className="border-b border-border bg-slate-300/70 dark:bg-slate-800/95">
-                    <tr>
-                      <th className="text-signal h-11 w-[44%] bg-slate-200/75 px-2 py-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase dark:bg-slate-900/85">
-                        Constitution
-                      </th>
-                      <th className="h-11 w-[18%] border-l border-border bg-slate-200/75 px-1 py-1 dark:bg-slate-900/85">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={goToPrevColumns}
-                            aria-label="Kolom sebelumnya"
-                            className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
-                          >
-                            <NavArrowLeft className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={goToNextColumns}
-                            aria-label="Kolom berikutnya"
-                            className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-action border-main border border-border text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
-                          >
-                            <NavArrowRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </th>
-                      {visibleDynamicColumnsMobile.map((column) => (
-                        <th
-                          key={`nat-mobile-${column.key}`}
-                          className="text-signal h-11 w-[38%] px-2 py-2 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
-                        >
-                          {column.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {naturalnessConstitutions.map((constitution) => (
-                      <tr key={constitution._id} className="group transition-colors hover:bg-muted/50">
-                        <td className="bg-slate-200/35 px-2 py-3 align-top group-hover:bg-slate-200/55 dark:bg-slate-900/55 dark:group-hover:bg-slate-800/70">
-                          <div className="text-narrative text-xs font-medium text-foreground">
-                            {constitution.name}
-                          </div>
-                          {constitution.description ? (
-                            <div className="text-narrative mt-1 break-words text-[11px] text-muted-foreground">
-                              {constitution.description}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className="border-l border-border bg-gradient-to-r from-slate-300/45 to-card/40 px-1 py-3 dark:from-slate-900/80 dark:to-slate-900/40" />
-                        {visibleDynamicColumnsMobile.map((column) => (
-                          <td key={`${constitution._id}-nat-mobile-${column.key}`} className="px-2 py-3 text-center align-top">
-                            <div className="inline-flex items-center justify-center">
-                              {renderDynamicCell(column.key, constitution)}
-                            </div>
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Style Constitution Manager (Layer 2) */}
+      {/* Refrasa Constitution Manager */}
       <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
         <div className="border-b border-border px-4 py-4 md:px-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="space-y-1">
               <h3 className="text-interface flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Journal className="h-4 w-4 text-muted-foreground" />
-                Refrasa - Style Constitution
+                Refrasa Constitution
               </h3>
               <p className="text-narrative text-xs text-muted-foreground">
-                Kelola panduan gaya penulisan (Layer 2) untuk Refrasa tool. Hanya satu constitution yang bisa aktif.
+                Kelola constitution untuk Refrasa tool. Hanya satu constitution yang bisa aktif.
               </p>
             </div>
             <button
               type="button"
-              onClick={() => {
-                setCreateType("style")
-                setIsCreateDialogOpen(true)
-              }}
+              onClick={() => setIsCreateDialogOpen(true)}
               className="focus-ring inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             >
               <Plus className="h-4 w-4" />
@@ -686,39 +467,25 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
         </div>
 
         <div className="p-4 md:p-6">
-          {styleConstitutions.length === 0 ? (
+          {allConstitutions.length === 0 ? (
             <div className="rounded-shell border-main border border-border bg-card/80 px-4 py-10 text-center dark:bg-slate-900/80">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10">
-                <WarningCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-sky-500/30 bg-sky-500/10">
+                <InfoCircle className="h-6 w-6 text-sky-600 dark:text-sky-400" />
               </div>
               <h3 className="text-interface mb-2 text-lg font-semibold text-foreground">
-                Belum Ada Style Constitution
+                Belum Ada Constitution
               </h3>
               <p className="text-narrative mx-auto mb-6 max-w-md text-sm text-muted-foreground">
-                Refrasa membutuhkan Style Constitution (Layer 2) untuk panduan gaya penulisan.
+                Refrasa membutuhkan constitution untuk panduan gaya penulisan.
               </p>
-              <div className="flex flex-col justify-center gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={handleSeedDefault}
-                  disabled={isSeedingDefault}
-                  className="focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-action border-main border border-border bg-card px-3 py-1.5 text-xs font-mono text-foreground transition-colors hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-900 dark:hover:bg-slate-800"
-                >
-                  <Download className="h-4 w-4" />
-                  <span>{isSeedingDefault ? "Memproses..." : "Gunakan Default"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreateType("style")
-                    setIsCreateDialogOpen(true)
-                  }}
-                  className="focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Buat Sendiri</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateDialogOpen(true)}
+                className="focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Buat Sendiri</span>
+              </button>
             </div>
           ) : (
             <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
@@ -760,7 +527,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {styleConstitutions.map((constitution) => (
+                    {allConstitutions.map((constitution) => (
                       <tr key={constitution._id} className="group transition-colors hover:bg-muted/50">
                         <td className="bg-slate-200/35 px-4 py-3 align-top group-hover:bg-slate-200/55 dark:bg-slate-900/55 dark:group-hover:bg-slate-800/70">
                           <div className="text-narrative font-medium text-foreground">
@@ -824,7 +591,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {styleConstitutions.map((constitution) => (
+                    {allConstitutions.map((constitution) => (
                       <tr key={constitution._id} className="group transition-colors hover:bg-muted/50">
                         <td className="bg-slate-200/35 px-2 py-3 align-top group-hover:bg-slate-200/55 dark:bg-slate-900/55 dark:group-hover:bg-slate-800/70">
                           <div className="text-narrative text-xs font-medium text-foreground">
@@ -852,11 +619,6 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
             </div>
           )}
 
-          {(styleConstitutions.length > 0 || naturalnessConstitutions.length > 0) && (
-            <p className="text-narrative mt-4 text-xs text-muted-foreground">
-              Catatan: Jika tidak ada naturalness constitution aktif, Refrasa menggunakan kriteria naturalness default (hardcoded). Jika tidak ada style constitution aktif, Layer 2 dilewati.
-            </p>
-          )}
         </div>
       </div>
 
@@ -875,7 +637,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
             <DialogDescription>
               {isEditing
                 ? "Perubahan akan membuat versi baru. Versi sebelumnya tetap tersimpan di riwayat."
-                : `Buat ${createType === "naturalness" ? "naturalness" : "style"} constitution baru untuk Refrasa. Constitution baru akan tidak aktif secara default.`}
+                : "Buat constitution baru untuk Refrasa. Constitution baru akan tidak aktif secara default."}
             </DialogDescription>
           </DialogHeader>
 
@@ -916,7 +678,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
                 disabled={isLoading}
               />
               <p className="text-xs text-muted-foreground">
-                Gunakan format Markdown. {createType === "naturalness" || editingConstitution?.type === "naturalness" ? "Constitution berisi kriteria naturalness (Layer 1)." : "Constitution berisi panduan gaya penulisan (Layer 2)."}
+                Gunakan format Markdown. Constitution berisi aturan gaya penulisan untuk Refrasa.
               </p>
             </div>
 
@@ -981,7 +743,7 @@ export function StyleConstitutionManager({ userId }: StyleConstitutionManagerPro
             <AlertDialogTitle>Nonaktifkan Constitution</AlertDialogTitle>
             <AlertDialogDescription>
               Apakah Anda yakin ingin menonaktifkan &quot;{deactivateConstitution?.name}&quot;?
-              Refrasa akan menggunakan hanya Layer 1 (Core Naturalness Criteria).
+              Refrasa akan berjalan tanpa constitution.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
