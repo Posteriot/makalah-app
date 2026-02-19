@@ -110,12 +110,13 @@ Saat menulis, AI harus bertindak sebagai **Penulis Esai**, bukan **Pembuat Lapor
 export const getActive = queryGeneric({
   args: {},
   handler: async ({ db }) => {
-    const active = await db
+    const allActive = await db
       .query("styleConstitutions")
       .withIndex("by_active", (q) => q.eq("isActive", true))
-      .first()
+      .collect()
 
-    return active
+    // Filter for style type only (undefined type = legacy style record)
+    return allActive.find((c) => c.type !== "naturalness") ?? null
   },
 })
 
