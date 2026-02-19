@@ -98,10 +98,8 @@ Flow server:
 
 1. Auth check (`isAuthenticated`)
 2. Validasi body (`RequestBodySchema`)
-3. Fetch **kedua** constitution aktif secara parallel:
-   - `styleConstitutions.getActiveNaturalness` — Layer 1 (naturalness)
-   - `styleConstitutions.getActive` — Layer 2 (style, filtered: exclude naturalness type)
-4. Build prompt dua lapis via `buildRefrasaPrompt(content, styleContent, naturalnessContent)`
+3. Fetch constitution aktif: `styleConstitutions.getActive`
+4. Build prompt via `buildRefrasaPrompt(content, constitutionContent)` — constitution opsional (bisa `null`)
 5. `generateObject` ke provider utama (`getGatewayModel`)
 6. Fallback ke `getOpenRouterModel` jika primary gagal
 7. Return JSON `{ issues, refrasedText }`
@@ -110,22 +108,17 @@ Referensi:
 
 - `src/app/api/refrasa/route.ts`
 
-## 7. Prompting: Two-Layer Architecture
+## 7. Prompting: Single Constitution Architecture
 
-Refrasa pakai arsitektur prompt dua lapis. Kedua layer sekarang editable via admin panel.
+Refrasa pakai arsitektur prompt satu lapis dengan constitution tunggal yang editable via admin panel.
 
-### Layer 1: Core Naturalness Criteria
+### Constitution (Opsional)
 
-- **Primary source:** Database (`styleConstitutions` dengan `type: "naturalness"`)
-- **Fallback:** Hardcoded constant `LAYER_1_CORE_NATURALNESS` di `prompt-builder.ts`
-- Jika tidak ada naturalness constitution aktif di DB, atau fetch gagal, fallback hardcoded dipakai
-- Berisi: vocabulary diversity, sentence pattern variance, paragraph rhythm, hedging balance, burstiness
-
-### Layer 2: Style Constitution
-
-- **Source:** Database (`styleConstitutions` dengan `type: "style"` atau `undefined` untuk legacy)
-- Opsional — jika tidak ada yang aktif, Layer 2 dilewati
-- Berisi: panduan gaya penulisan spesifik (diksi, struktur kalimat, frasa, dll)
+- **Source:** Database (`styleConstitutions`) — constitution aktif pertama
+- Opsional — jika tidak ada yang aktif, instruksi naturalness minimal dipakai
+- Berisi: panduan gaya penulisan (diksi, struktur kalimat, naturalness criteria, dll)
+- Jika active constitution ada → inject sebagai rules di system role
+- Jika tidak ada active constitution → instruksi naturalness minimal hardcoded
 
 ### Academic Escape Clause
 
@@ -133,17 +126,10 @@ Refrasa pakai arsitektur prompt dua lapis. Kedua layer sekarang editable via adm
 - Menjaga istilah teknis, sitasi, struktur markdown, proper nouns
 - Safety rule: tidak boleh dimodifikasi oleh constitution manapun
 
-### Fallback Flow
+### Prompt Split
 
-```
-Naturalness (Layer 1):
-  DB ada active naturalness constitution? → pakai dari DB
-  DB kosong/error?                        → pakai LAYER_1_CORE_NATURALNESS hardcoded
-
-Style (Layer 2):
-  DB ada active style constitution? → pakai dari DB
-  DB kosong/error?                  → skip (Layer 2 opsional)
-```
+- **System role:** Constitution rules (jika ada) + academic escape clause + naturalness instructions
+- **Prompt role:** Teks user yang akan di-refrasa
 
 Referensi:
 
@@ -153,42 +139,25 @@ Referensi:
 
 ## 8. Constitution Data Model
 
-Kedua tipe constitution (naturalness dan style) disimpan di tabel `styleConstitutions` yang sama.
+Constitution disimpan di tabel `styleConstitutions`.
 
 ### Schema
 
-Field `type` pada tabel `styleConstitutions`:
+Field `type` masih ada di schema (`v.optional(...)`) untuk backward-compatibility, tapi tidak lagi digunakan oleh kode aktif. Semua constitution diperlakukan secara seragam.
 
-- `"naturalness"` — Layer 1 constitution
-- `"style"` — Layer 2 constitution
-- `undefined` — Legacy record, diperlakukan sebagai `"style"`
+### Single-Active Constraint (Global)
 
-Field `type` adalah `v.optional(...)` untuk backward-compatibility dengan record lama.
-
-### Single-Active Constraint Per Type
-
-- Aktivasi constitution hanya menonaktifkan constitution **sesama type**.
-- Boleh ada 1 naturalness aktif DAN 1 style aktif bersamaan.
-- Mutation `activate` filter per-type via `(c.type ?? "style") === targetType`.
+- Aktivasi constitution menonaktifkan **semua** constitution lain (global, bukan per-type).
+- Hanya boleh ada 1 constitution aktif pada satu waktu.
 
 ### Queries
 
-- `getActiveNaturalness` — Fetch active `by_active` index, filter `type === "naturalness"` di application code
-- `getActive` — Fetch active `by_active` index, filter `type !== "naturalness"` (style + legacy)
-
-Index `by_active_type` tidak dipakai karena Convex tidak support chained `.eq()` pada optional field di compound index. Filtering dilakukan di application code.
-
-### Migration Seed
-
-- `convex/migrations/seedNaturalnessConstitution.ts` — Seed hardcoded Layer 1 ke DB sebagai naturalness constitution v1
-- Jalankan via: `npx convex run migrations:seedNaturalnessConstitution`
-- Guard: skip jika naturalness constitution aktif sudah ada
+- `getActive` — Fetch constitution aktif pertama via index `by_active`. Tidak ada filtering per type.
 
 Referensi:
 
-- `convex/schema.ts` (field `type` + index `by_active`)
+- `convex/schema.ts` (index `by_active`)
 - `convex/styleConstitutions.ts`
-- `convex/migrations/seedNaturalnessConstitution.ts`
 
 ## 9. Tab Workspace Refrasa (`RefrasaTabContent`)
 
@@ -280,14 +249,7 @@ Referensi:
 Kontrol admin yang relevan:
 
 1. **Toggle global** visibilitas tool Refrasa (`isRefrasaEnabled`)
-2. **Naturalness Constitution (Layer 1):** Section terpisah di admin panel. CRUD, versioning, single-active per type. Jika tidak ada yang aktif, fallback ke hardcoded.
-3. **Style Constitution (Layer 2):** Section terpisah di admin panel. CRUD, versioning, single-active per type. Opsional.
-
-Admin panel menampilkan dua section card terpisah:
-- "Refrasa - Naturalness Constitution" (Layer 1)
-- "Refrasa - Style Constitution" (Layer 2)
-
-Create dialog context-aware: description dan helper text menyesuaikan tipe constitution yang sedang dibuat.
+2. **Refrasa Constitution:** Single section di admin panel. CRUD, versioning, single-active secara global. Opsional — jika tidak ada yang aktif, instruksi naturalness minimal dipakai.
 
 Referensi:
 
@@ -304,11 +266,10 @@ Dari sisi `src`, fitur ini memanggil mutation/query berikut:
 - `api.artifacts.update`
 - `api.artifacts.remove`
 - `api.aiProviderConfigs.getRefrasaEnabled`
-- `api.styleConstitutions.getActive` (Layer 2 style, filtered exclude naturalness)
-- `api.styleConstitutions.getActiveNaturalness` (Layer 1 naturalness)
-- `api.styleConstitutions.list` (admin panel — returns both types)
-- `api.styleConstitutions.create` (with `type` param)
-- `api.styleConstitutions.activate` (per-type single-active)
+- `api.styleConstitutions.getActive` (constitution aktif, tanpa filtering type)
+- `api.styleConstitutions.list` (admin panel)
+- `api.styleConstitutions.create`
+- `api.styleConstitutions.activate` (global single-active)
 
 ## 16. Known Gaps (Sesuai Kode Saat Ini)
 
@@ -337,6 +298,5 @@ Dari sisi `src`, fitur ini memanggil mutation/query berikut:
 - `src/components/refrasa/RefrasaLoadingIndicator.tsx`
 - `src/components/refrasa/RefrasaButton.tsx` (komponen legacy, masih ada dan dites, tapi bukan jalur utama UI aktif)
 - `src/components/admin/StyleConstitutionManager.tsx`
-- `convex/schema.ts` (tabel `styleConstitutions` — field `type`)
+- `convex/schema.ts` (tabel `styleConstitutions`)
 - `convex/styleConstitutions.ts` (queries + mutations)
-- `convex/migrations/seedNaturalnessConstitution.ts`

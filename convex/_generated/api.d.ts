@@ -46,10 +46,8 @@ import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/f
 import type * as migrations_removeClerkFields from "../migrations/removeClerkFields.js";
 import type * as migrations_removeOldPaperWorkflowSection from "../migrations/removeOldPaperWorkflowSection.js";
 import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultAIConfig.js";
-import type * as migrations_seedDefaultStyleConstitution from "../migrations/seedDefaultStyleConstitution.js";
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
 import type * as migrations_seedDocumentationSections from "../migrations/seedDocumentationSections.js";
-import type * as migrations_seedNaturalnessConstitution from "../migrations/seedNaturalnessConstitution.js";
 import type * as migrations_seedPricingPlans from "../migrations/seedPricingPlans.js";
 import type * as migrations_seedWaitlistConfig from "../migrations/seedWaitlistConfig.js";
 import type * as migrations_updateAIConfigForToolCalling from "../migrations/updateAIConfigForToolCalling.js";
@@ -128,10 +126,8 @@ declare const fullApi: ApiFromModules<{
   "migrations/removeClerkFields": typeof migrations_removeClerkFields;
   "migrations/removeOldPaperWorkflowSection": typeof migrations_removeOldPaperWorkflowSection;
   "migrations/seedDefaultAIConfig": typeof migrations_seedDefaultAIConfig;
-  "migrations/seedDefaultStyleConstitution": typeof migrations_seedDefaultStyleConstitution;
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
   "migrations/seedDocumentationSections": typeof migrations_seedDocumentationSections;
-  "migrations/seedNaturalnessConstitution": typeof migrations_seedNaturalnessConstitution;
   "migrations/seedPricingPlans": typeof migrations_seedPricingPlans;
   "migrations/seedWaitlistConfig": typeof migrations_seedWaitlistConfig;
   "migrations/updateAIConfigForToolCalling": typeof migrations_updateAIConfigForToolCalling;
