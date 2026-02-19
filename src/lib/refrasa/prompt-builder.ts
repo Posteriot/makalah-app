@@ -1,66 +1,11 @@
 /**
- * Two-Layer Prompt Builder for Refrasa Tool
+ * Prompt Builder for Refrasa Tool
  *
  * ARCHITECTURE:
- * - Layer 1 (Core Naturalness Criteria): HARDCODED - Anti-AI detection patterns
- * - Layer 2 (Style Constitution): DYNAMIC - Editable via admin panel
- *
- * CRITICAL RULE: Layer 1 CANNOT be overridden by constitution
- *
- * LLM LIMITATION NOTE:
- * LLM buruk dalam counting → gunakan instruksi KUALITATIF, bukan kuantitatif
+ * - Constitution: Single, editable via admin panel (optional)
+ * - Academic Escape Clause: HARDCODED safety rule (always included)
+ * - System/prompt split: constitution in system role, user text in prompt role
  */
-
-// ============================================================================
-// LAYER 1: Core Naturalness Criteria (HARDCODED)
-// ============================================================================
-
-/**
- * Layer 1 contains QUALITATIVE instructions for naturalness.
- * These criteria are designed to help text pass AI detection tools.
- *
- * NEVER use quantitative instructions like:
- * - "No word >3x per 500 words" (LLM can't count reliably)
- * - "Mix lengths (short <10, medium 10-20, long >20 words)"
- *
- * ALWAYS use qualitative instructions like:
- * - "Strictly avoid repeating vocabulary close together"
- * - "Vary sentence structures naturally"
- */
-const LAYER_1_CORE_NATURALNESS = `
-## LAYER 1: Core Naturalness Criteria (KRITERIA UTAMA - TIDAK BISA DI-OVERRIDE)
-
-### 1. Vocabulary Diversity (Variasi Kosakata)
-Strictly avoid repeating non-technical vocabulary close together. Use synonyms aggressively for common words.
-- Jika kata yang sama muncul dalam jarak dekat, WAJIB ganti dengan sinonim
-- Pengecualian: Istilah teknis dan proper nouns (lihat Academic Escape Clause)
-- Fokus pada kata kerja, kata sifat, dan kata keterangan umum
-
-### 2. Sentence Pattern Variance (Variasi Pola Kalimat)
-Vary sentence structures naturally. Mix short punchy sentences with longer explanatory ones.
-- Hindari memulai kalimat berturut-turut dengan kata atau frasa yang sama
-- Variasikan posisi subjek, predikat, dan keterangan
-- Gunakan kalimat pendek untuk penekanan, kalimat panjang untuk penjelasan detail
-
-### 3. Paragraph Rhythm (Ritme Paragraf)
-Create natural paragraph flow. Some paragraphs should be brief for emphasis, others more developed for detailed explanation.
-- Jangan membuat semua paragraf sama panjangnya
-- Paragraf pendek untuk transisi atau penekanan
-- Paragraf panjang untuk pembahasan mendalam
-
-### 4. Hedging Balance (Keseimbangan Hedging Akademik)
-Include appropriate academic hedging language where claims are not absolute.
-- Gunakan penanda seperti 'cenderung', 'kemungkinan', 'tampaknya', 'dapat diargumentasikan', 'mengindikasikan'
-- Hedging WAJIB untuk klaim yang bersifat interpretatif atau tidak mutlak
-- Hindari hedging berlebihan yang melemahkan argumen
-
-### 5. Burstiness (Variabilitas Kompleksitas)
-Write with variable complexity like humans do. Mix technical precision with accessible explanations.
-- Manusia menulis dengan variasi kompleksitas alami
-- Kalimat teknis boleh lebih kompleks
-- Selingi dengan penjelasan sederhana untuk readability
-- Pertahankan formalitas akademis secara keseluruhan
-`.trim()
 
 // ============================================================================
 // ACADEMIC ESCAPE CLAUSE (CRITICAL)
@@ -136,8 +81,8 @@ Berikan output dalam format JSON dengan struktur:
 \`\`\`
 
 ### Issue Categories:
-- **naturalness**: Masalah dari Layer 1 (vocabulary_repetition, sentence_pattern, paragraph_rhythm, hedging_balance, burstiness)
-- **style**: Masalah dari Layer 2 Style Constitution (style_violation)
+- **naturalness**: Masalah naturalness (vocabulary_repetition, sentence_pattern, paragraph_rhythm, hedging_balance, burstiness)
+- **style**: Masalah gaya penulisan dari constitution (style_violation)
 
 ### Severity Levels:
 - **info**: Saran minor, perbaikan kosmetik
@@ -161,16 +106,13 @@ Berikan output dalam format JSON dengan struktur:
  * prompt role = user text to analyze → treated as input data
  *
  * @param content - The text to analyze and refrasa
- * @param constitution - Optional Style Constitution content (Layer 2)
- * @param naturalnessConstitution - Optional Naturalness Constitution content (Layer 1 from DB)
+ * @param constitution - Optional Style Constitution content
  * @returns { system, prompt } for separate passing to generateObject()
  */
 export function buildRefrasaPrompt(
   content: string,
-  constitution?: string | null,
-  naturalnessConstitution?: string | null
+  constitution?: string | null
 ): { system: string; prompt: string } {
-  // ── SYSTEM: All instructions, constitution, output format ──
   const systemParts: string[] = []
 
   systemParts.push(`# Refrasa: Perbaikan Gaya Penulisan Akademis
@@ -187,57 +129,30 @@ Anda adalah Refrasa, asisten perbaikan gaya penulisan akademis Bahasa Indonesia.
 2. **Anti-Deteksi LLM** - Upaya mengurangi pola deteksi AI (tanpa jaminan lolos)
 `)
 
-  // Layer 1: Naturalness — from DB if available, else hardcoded fallback
-  if (naturalnessConstitution && naturalnessConstitution.trim()) {
-    systemParts.push(`## LAYER 1: Core Naturalness Criteria (KRITERIA UTAMA - TIDAK BISA DI-OVERRIDE)
-
-${naturalnessConstitution.trim()}
-`)
-  } else {
-    systemParts.push(LAYER_1_CORE_NATURALNESS)
-  }
-
-  // Academic Escape Clause (ALWAYS included)
-  systemParts.push(ACADEMIC_ESCAPE_CLAUSE)
-
-  // Layer 2: Style Constitution (Optional, dynamic from database)
   if (constitution && constitution.trim()) {
-    systemParts.push(`
-## LAYER 2: Style Constitution (PANDUAN GAYA TAMBAHAN)
+    systemParts.push(`## CONSTITUTION (ATURAN WAJIB)
 
 ${constitution.trim()}
-
-**PENTING:** Style Constitution memberikan panduan gaya TAMBAHAN. Jika ada konflik dengan Layer 1 Core Naturalness, Layer 1 SELALU menang.
 `)
   } else {
-    systemParts.push(`
-## LAYER 2: Style Constitution
+    systemParts.push(`## CONSTITUTION
 
-*Tidak ada Style Constitution aktif. Gunakan hanya Layer 1 Core Naturalness.*
+*Tidak ada constitution aktif. Perbaiki naturalness teks secara umum: variasi kosakata, pola kalimat, ritme paragraf, dan hedging akademik.*
 `)
   }
 
-  // Output format specification
+  systemParts.push(ACADEMIC_ESCAPE_CLAUSE)
   systemParts.push(OUTPUT_FORMAT_SPEC)
 
   const system = systemParts.join("\n\n")
 
-  // ── PROMPT: Only the user's text input ──
   const prompt = `## TEKS INPUT UNTUK DIANALISIS DAN DIPERBAIKI
 
 \`\`\`
 ${content}
 \`\`\`
 
-Analisis teks di atas menggunakan kriteria Layer 1 ${constitution ? "dan Layer 2 " : ""}kemudian berikan output dalam format JSON yang diminta.`
+Analisis teks di atas menggunakan constitution${constitution ? " " : " (instruksi umum) "}kemudian berikan output dalam format JSON yang diminta.`
 
   return { system, prompt }
-}
-
-/**
- * Build a simpler prompt for Layer 1 only (when no constitution is available)
- * This is equivalent to buildRefrasaPrompt(content, null) but more explicit
- */
-export function buildRefrasaPromptLayer1Only(content: string): { system: string; prompt: string } {
-  return buildRefrasaPrompt(content, null, null)
 }
