@@ -126,6 +126,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
           activeTabId={activeArtifactTabId}
           onTabChange={setActiveArtifactTab}
           onTabClose={closeArtifactTab}
+          onOpenTab={openArtifactTab}
         />
       }
     >
