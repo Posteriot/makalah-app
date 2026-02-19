@@ -91,20 +91,62 @@ export function RefrasaFeatureMock() {
               </div>
             </div>
 
-            <div className="absolute inset-0 flex items-center justify-center bg-[linear-gradient(120deg,rgba(16,185,129,0.16)_0%,rgba(2,6,23,0.72)_48%,rgba(245,158,11,0.18)_100%)] backdrop-blur-[3.6px]">
-              <span className="pointer-events-none absolute inset-0 bg-slate-950/30" />
+            <div className="absolute inset-0 flex items-center justify-center bg-[linear-gradient(120deg,rgba(16,185,129,0.16)_0%,rgba(2,6,23,0.74)_48%,rgba(245,158,11,0.18)_100%)] backdrop-blur-[3.9px]">
+              <span className="pointer-events-none absolute inset-0 bg-slate-950/36" />
+              <span className="pointer-events-none absolute inset-0 opacity-45 bg-[repeating-linear-gradient(180deg,rgba(148,163,184,0.1)_0px,rgba(148,163,184,0.1)_1px,transparent_1px,transparent_8px)]" />
+              <span className="pointer-events-none absolute inset-0 opacity-25 mix-blend-screen bg-[radial-gradient(circle_at_1px_1px,rgba(248,250,252,0.12)_0.8px,transparent_0.8px)] bg-[size:7px_7px]" />
               <span className="pointer-events-none absolute left-1/2 top-1/2 h-44 w-[74%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,rgba(16,185,129,0.3)_0%,rgba(245,158,11,0.28)_100%)] blur-3xl" />
               <span className="pointer-events-none absolute left-[22%] top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-emerald-400/28 blur-[56px]" />
               <span className="pointer-events-none absolute right-[22%] top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-amber-400/28 blur-[56px]" />
-              <div className="flex flex-col items-center gap-3">
-                <div className="relative h-12 w-12">
-                  <span className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,rgba(203,213,225,0.08),rgba(226,232,240,0.9),rgba(148,163,184,0.28),rgba(203,213,225,0.08))]" />
-                  <span className="absolute inset-[4px] rounded-full bg-slate-900/80 shadow-[inset_0_0_10px_rgba(148,163,184,0.25)]" />
-                  <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-100/85 shadow-[0_0_10px_rgba(226,232,240,0.75)]" />
+
+              <div className="relative w-[78%] max-w-[430px] rounded-lg border border-slate-300/20 bg-slate-900/58 px-4 py-4 shadow-[0_8px_30px_rgba(2,6,23,0.45)] backdrop-blur-[0.4px]">
+                <span className="pointer-events-none absolute left-2 top-2 h-3.5 w-3.5 border-l border-t border-emerald-300/75" />
+                <span className="pointer-events-none absolute right-2 top-2 h-3.5 w-3.5 border-r border-t border-amber-300/75" />
+                <span className="pointer-events-none absolute bottom-2 left-2 h-3.5 w-3.5 border-b border-l border-emerald-300/75" />
+                <span className="pointer-events-none absolute bottom-2 right-2 h-3.5 w-3.5 border-b border-r border-amber-300/75" />
+
+                <div className="flex items-center justify-between gap-3 font-mono text-[8px] uppercase tracking-[0.2em] text-slate-300/85">
+                  <span className="text-emerald-200/95">Refrasa Engine</span>
+                  <span>Pass 02/05</span>
+                  <span className="text-amber-200/95">Quality Check</span>
                 </div>
-                <p className="font-mono text-[18px] tracking-[0.06em] text-slate-50">
-                  Memeriksa variasi kosa kata
-                </p>
+
+                <div className="mt-3 flex flex-wrap gap-1.5 font-mono text-[8px] uppercase tracking-[0.16em]">
+                  <span className="rounded-badge border border-emerald-400/45 bg-emerald-500/12 px-2 py-1 text-emerald-200/95">
+                    Normalisasi sintaks
+                  </span>
+                  <span className="rounded-badge border border-amber-400/50 bg-amber-500/14 px-2 py-1 text-amber-200">
+                    Variasi kosa kata
+                  </span>
+                  <span className="rounded-badge border border-slate-400/30 bg-slate-500/14 px-2 py-1 text-slate-300/90">
+                    Konsistensi tone
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  <div className="grid grid-cols-5 gap-1.5">
+                    <span className="h-1.5 rounded-full bg-emerald-400/90" />
+                    <span className="h-1.5 rounded-full bg-emerald-400/90" />
+                    <span className="h-1.5 rounded-full bg-emerald-400/90" />
+                    <span className="h-1.5 rounded-full bg-amber-400/90" />
+                    <span className="h-1.5 rounded-full bg-slate-500/70" />
+                  </div>
+                  <div className="flex items-center justify-between font-mono text-[8px] uppercase tracking-[0.16em] text-slate-300/75">
+                    <span>Syntactic audit</span>
+                    <span>64%</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-col items-center gap-2.5">
+                  <div className="relative h-11 w-11">
+                    <span className="absolute inset-0 rounded-full border border-slate-100/35 bg-[conic-gradient(from_0deg,rgba(226,232,240,0.12),rgba(245,158,11,0.34),rgba(16,185,129,0.36),rgba(226,232,240,0.12))]" />
+                    <span className="absolute inset-[4px] rounded-full bg-slate-900/80 shadow-[inset_0_0_10px_rgba(148,163,184,0.25)]" />
+                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-100/85 shadow-[0_0_10px_rgba(226,232,240,0.75)]" />
+                  </div>
+                  <p className="font-mono text-[18px] tracking-[0.06em] text-slate-50">
+                    Memeriksa variasi kosa kata
+                  </p>
+                </div>
               </div>
             </div>
           </div>
