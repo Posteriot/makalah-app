@@ -224,6 +224,27 @@ export const getVersionHistory = queryGeneric({
   },
 })
 
+/**
+ * Get all refrasa artifacts derived from a source artifact
+ * Used to display refrasa history for a given source
+ */
+export const getBySourceArtifact = queryGeneric({
+  args: {
+    sourceArtifactId: v.id("artifacts"),
+    userId: v.id("users"),
+  },
+  handler: async ({ db }, { sourceArtifactId, userId }) => {
+    const results = await db
+      .query("artifacts")
+      .withIndex("by_source_artifact", (q) => q.eq("sourceArtifactId", sourceArtifactId))
+      .collect()
+
+    return results
+      .filter((a) => a.type === "refrasa" && a.userId === userId)
+      .sort((a, b) => b.version - a.version)
+  },
+})
+
 // ============================================================================
 // MUTATIONS
 // ============================================================================
@@ -292,6 +313,65 @@ export const create = mutationGeneric({
     })
 
     return { artifactId }
+  },
+})
+
+/**
+ * Create a refrasa artifact linked to a source artifact
+ * Versions are tracked per sourceArtifactId (not the global artifact chain)
+ */
+export const createRefrasa = mutationGeneric({
+  args: {
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+    sourceArtifactId: v.id("artifacts"),
+    content: v.string(),
+    refrasaIssues: v.array(v.object({
+      type: v.string(),
+      category: v.string(),
+      message: v.string(),
+      severity: v.string(),
+      suggestion: v.optional(v.string()),
+    })),
+  },
+  handler: async ({ db }, { conversationId, userId, sourceArtifactId, content, refrasaIssues }) => {
+    const conversation = await db.get(conversationId)
+    if (!conversation || conversation.userId !== userId) {
+      throw new Error("Unauthorized")
+    }
+
+    const sourceArtifact = await db.get(sourceArtifactId)
+    if (!sourceArtifact) {
+      throw new Error("Source artifact tidak ditemukan")
+    }
+
+    const existingRefrasas = await db
+      .query("artifacts")
+      .withIndex("by_source_artifact", (q) => q.eq("sourceArtifactId", sourceArtifactId))
+      .collect()
+
+    const latestRefrasa = existingRefrasas
+      .filter((a) => a.type === "refrasa")
+      .sort((a, b) => b.version - a.version)[0]
+
+    const now = Date.now()
+    const newVersion = latestRefrasa ? latestRefrasa.version + 1 : 1
+
+    const artifactId = await db.insert("artifacts", {
+      conversationId,
+      userId,
+      type: "refrasa",
+      title: `R: ${sourceArtifact.title}`,
+      content,
+      sourceArtifactId,
+      refrasaIssues,
+      version: newVersion,
+      parentId: latestRefrasa?._id,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    return { artifactId, version: newVersion }
   },
 })
 
