@@ -148,21 +148,22 @@ export default defineSchema({
     .index("by_extraction_status", ["extractionStatus"]),
 
   // Style Constitutions for Refrasa tool (admin-managed)
-  // Two-layer architecture: Layer 1 (Core Naturalness) hardcoded in prompt-builder,
-  // Layer 2 (Style Constitution) editable via this table
+  // Two-layer architecture: Layer 1 (Naturalness) and Layer 2 (Style) both editable via this table
+  // Hardcoded Layer 1 serves as fallback when no active naturalness constitution exists
   styleConstitutions: defineTable({
     name: v.string(), // Display name (e.g., "Makalah Style Constitution")
     content: v.string(), // Full constitution content (markdown)
     description: v.optional(v.string()), // Optional description
     version: v.number(), // Version number (1, 2, 3, ...)
-    isActive: v.boolean(), // Only one can be active at a time
+    isActive: v.boolean(), // Only one per type can be active at a time
+    type: v.optional(v.union(v.literal("naturalness"), v.literal("style"))), // Constitution type (legacy records have undefined = "style")
     parentId: v.optional(v.id("styleConstitutions")), // Link to parent version (null for v1)
     rootId: v.optional(v.id("styleConstitutions")), // Link to root constitution (for easier history queries)
     createdBy: v.id("users"), // User who created this version
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_active", ["isActive"]) // Query active constitution
+    .index("by_active", ["isActive"]) // Query active constitutions (filter by type in code)
     .index("by_root", ["rootId", "version"]) // Query version history
     .index("by_createdAt", ["createdAt"]), // List all by date
 

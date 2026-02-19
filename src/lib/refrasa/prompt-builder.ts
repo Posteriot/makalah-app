@@ -160,11 +160,14 @@ Berikan output dalam format JSON dengan struktur:
  * @param content - The text to analyze and refrasa
  * @param constitution - Optional Style Constitution content (Layer 2)
  *                       If null/undefined, only Layer 1 is applied
+ * @param naturalnessConstitution - Optional Naturalness Constitution content (Layer 1 from DB)
+ *                                  If null/undefined, hardcoded LAYER_1_CORE_NATURALNESS is used as fallback
  * @returns Complete prompt string for LLM
  */
 export function buildRefrasaPrompt(
   content: string,
-  constitution?: string | null
+  constitution?: string | null,
+  naturalnessConstitution?: string | null
 ): string {
   const parts: string[] = []
 
@@ -183,8 +186,15 @@ Anda adalah Refrasa, asisten perbaikan gaya penulisan akademis Bahasa Indonesia.
 2. **Anti-Deteksi LLM** - Upaya mengurangi pola deteksi AI (tanpa jaminan lolos)
 `)
 
-  // Layer 1: Core Naturalness (ALWAYS included, CANNOT be overridden)
-  parts.push(LAYER_1_CORE_NATURALNESS)
+  // Layer 1: Naturalness — from DB if available, else hardcoded fallback
+  if (naturalnessConstitution && naturalnessConstitution.trim()) {
+    parts.push(`## LAYER 1: Core Naturalness Criteria (KRITERIA UTAMA - TIDAK BISA DI-OVERRIDE)
+
+${naturalnessConstitution.trim()}
+`)
+  } else {
+    parts.push(LAYER_1_CORE_NATURALNESS)
+  }
 
   // Academic Escape Clause (ALWAYS included)
   parts.push(ACADEMIC_ESCAPE_CLAUSE)
@@ -228,5 +238,5 @@ Analisis teks di atas menggunakan kriteria Layer 1 ${constitution ? "dan Layer 2
  * This is equivalent to buildRefrasaPrompt(content, null) but more explicit
  */
 export function buildRefrasaPromptLayer1Only(content: string): string {
-  return buildRefrasaPrompt(content, null)
+  return buildRefrasaPrompt(content, null, null)
 }

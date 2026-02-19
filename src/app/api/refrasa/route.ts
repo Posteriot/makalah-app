@@ -57,23 +57,29 @@ export async function POST(req: Request) {
 
     const { content } = validationResult.data
 
-    // 3. Fetch active Style Constitution (Layer 2)
-    // If no active constitution, proceed with Layer 1 only
-    let constitutionContent: string | null = null
+    // 3. Fetch active constitutions (Layer 1: Naturalness, Layer 2: Style)
+    let naturalnessContent: string | null = null
+    let styleContent: string | null = null
+
     try {
-      const activeConstitution = await fetchQuery(
-        api.styleConstitutions.getActive
-      )
-      if (activeConstitution?.content) {
-        constitutionContent = activeConstitution.content
+      const [activeNaturalness, activeStyle] = await Promise.all([
+        fetchQuery(api.styleConstitutions.getActiveNaturalness),
+        fetchQuery(api.styleConstitutions.getActive),
+      ])
+
+      if (activeNaturalness?.content) {
+        naturalnessContent = activeNaturalness.content
+      }
+      if (activeStyle?.content) {
+        styleContent = activeStyle.content
       }
     } catch (error) {
-      console.error("[Refrasa API] Failed to fetch Style Constitution:", error)
-      // Continue with Layer 1 only
+      console.error("[Refrasa API] Failed to fetch constitutions:", error)
+      // Continue with hardcoded fallbacks
     }
 
     // 4. Build two-layer prompt
-    const prompt = buildRefrasaPrompt(content, constitutionContent)
+    const prompt = buildRefrasaPrompt(content, styleContent, naturalnessContent)
 
     // 5. Call LLM with generateObject
     // Primary: Gateway, Fallback: OpenRouter

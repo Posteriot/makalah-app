@@ -120,6 +120,23 @@ export const getActive = queryGeneric({
 })
 
 /**
+ * Get the currently active naturalness constitution (Layer 1)
+ * Used by Refrasa API - no auth required for reading active constitution
+ * If no active naturalness constitution exists, returns null (API uses hardcoded fallback)
+ */
+export const getActiveNaturalness = queryGeneric({
+  args: {},
+  handler: async ({ db }) => {
+    const allActive = await db
+      .query("styleConstitutions")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .collect()
+
+    return allActive.find((c) => c.type === "naturalness") ?? null
+  },
+})
+
+/**
  * List all style constitutions (latest versions only)
  * Admin/superadmin only
  */
@@ -261,8 +278,9 @@ export const create = mutationGeneric({
     name: v.string(),
     content: v.string(),
     description: v.optional(v.string()),
+    type: v.optional(v.union(v.literal("naturalness"), v.literal("style"))),
   },
-  handler: async ({ db }, { requestorUserId, name, content, description }) => {
+  handler: async ({ db }, { requestorUserId, name, content, description, type }) => {
     // Permission check
     await requireRole(db, requestorUserId, "admin")
 
@@ -283,6 +301,7 @@ export const create = mutationGeneric({
       description: description?.trim(),
       version: 1,
       isActive: false, // Not active by default
+      type: type ?? "style",
       parentId: undefined,
       rootId: undefined, // v1 constitutions have no rootId
       createdBy: requestorUserId,
@@ -376,6 +395,7 @@ export const update = mutationGeneric({
       description: description?.trim() ?? oldConstitution.description,
       version: newVersion,
       isActive: oldConstitution.isActive, // Inherit active status
+      type: oldConstitution.type, // Propagate type from parent
       parentId: constitutionId, // Link to previous version
       rootId: rootId, // Link to root constitution
       createdBy: requestorUserId,
@@ -421,13 +441,21 @@ export const activate = mutationGeneric({
 
     const now = Date.now()
 
-    // Deactivate all currently active constitutions (single-active constraint)
-    const activeConstitutions = await db
+    // Deactivate all currently active constitutions of the same type (per-type single-active constraint)
+    const targetType = targetConstitution.type ?? "style"
+
+    const allActive = await db
       .query("styleConstitutions")
       .withIndex("by_active", (q) => q.eq("isActive", true))
       .collect()
 
-    for (const constitution of activeConstitutions) {
+    // Filter to same type, including legacy records (undefined type = "style")
+    const sameTypeActive = allActive.filter((c) => {
+      const cType = c.type ?? "style"
+      return cType === targetType
+    })
+
+    for (const constitution of sameTypeActive) {
       await db.patch(constitution._id, { isActive: false, updatedAt: now })
     }
 
