@@ -157,6 +157,27 @@ function DocumentationContent() {
     currentIndex >= 0 && currentIndex < orderedSections.length - 1
       ? orderedSections[currentIndex + 1]
       : null
+  const nextStepSections = useMemo(() => {
+    if (!orderedSections.length || currentIndex < 0 || !activeSection) return []
+
+    const directNext = orderedSections
+      .slice(currentIndex + 1, currentIndex + 3)
+      .filter((section) => section.slug !== activeSection)
+
+    if (directNext.length >= 2) {
+      return directNext
+    }
+
+    const fallback = [...directNext]
+    for (const section of orderedSections) {
+      if (section.slug === activeSection) continue
+      if (fallback.some((item) => item.slug === section.slug)) continue
+      fallback.push(section)
+      if (fallback.length === 2) break
+    }
+
+    return fallback
+  }, [orderedSections, currentIndex, activeSection])
 
   return (
     <div className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)] pt-[var(--header-h)]">
@@ -191,6 +212,7 @@ function DocumentationContent() {
               activeContent={activeContent}
               previousSection={previousSection}
               nextSection={nextSectionNav}
+              nextStepSections={nextStepSections}
               onSelectSection={handleSetActiveSection}
             />
           </div>

@@ -11,9 +11,9 @@ const WELCOME_SECTION = {
   blocks: [
     {
       type: "section" as const,
-      title: "Apa Itu Makalah AI",
+      title: "Apa itu Makalah AI?",
       paragraphs: [
-        "Makalah AI adalah aplikasi penyusunan paper berbasis percakapan. Di halaman utama, pesan produk menekankan bahwa Anda tidak perlu alur prompt yang rumit karena gagasan diproses runtut sampai menjadi paper utuh.",
+        "Makalah AI adalah aplikasi penyusunan paper berbasis percakapan. Anda tidak perlu alur prompt yang rumit karena gagasan diproses runtut oleh Agent Makalah sampai menjadi paper utuh.",
       ],
     },
     {
