@@ -13,6 +13,8 @@ export interface ArtifactTab {
   title: string
   /** Artifact type (code, outline, section, table, citation, formula) */
   type: string
+  /** Source artifact ID — used for refrasa tab reuse */
+  sourceArtifactId?: Id<"artifacts">
 }
 
 /** Maximum number of open artifact tabs */
@@ -48,12 +50,26 @@ export function useArtifactTabs(): UseArtifactTabsReturn {
 
   const openTab = useCallback((artifact: ArtifactTab) => {
     setOpenTabs((prev) => {
-      // Already open — just activate
+      // Already open — just activate and update title
       const existing = prev.find((tab) => tab.id === artifact.id)
       if (existing) {
         return prev.map((tab) =>
           tab.id === artifact.id ? { ...tab, title: artifact.title } : tab
         )
+      }
+
+      // Refrasa tab reuse: replace existing tab with same sourceArtifactId
+      if (artifact.type === "refrasa" && artifact.sourceArtifactId) {
+        const idx = prev.findIndex(
+          (tab) =>
+            tab.type === "refrasa" &&
+            tab.sourceArtifactId === artifact.sourceArtifactId
+        )
+        if (idx >= 0) {
+          const updated = [...prev]
+          updated[idx] = artifact
+          return updated
+        }
       }
 
       // At max — remove oldest (first) tab

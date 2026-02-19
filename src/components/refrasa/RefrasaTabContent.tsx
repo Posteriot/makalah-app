@@ -29,7 +29,6 @@ export function RefrasaTabContent({
   const [viewingArtifactId, setViewingArtifactId] =
     useState<Id<"artifacts">>(artifactId)
   const [isApplying, setIsApplying] = useState(false)
-  const [isApplied, setIsApplied] = useState(false)
 
   // Sync viewingArtifactId when prop changes (e.g. parent switches tab)
   useEffect(() => {
@@ -59,6 +58,10 @@ export function RefrasaTabContent({
   // Mutations
   const updateArtifact = useMutation(api.artifacts.update)
   const removeArtifact = useMutation(api.artifacts.remove)
+  const markApplied = useMutation(api.artifacts.markRefrasaApplied)
+
+  // Derive applied state from DB (persistent across tab switches)
+  const isApplied = artifact?.appliedAt !== undefined
 
   // Parse issues from artifact
   const issues: RefrasaIssue[] =
@@ -92,19 +95,18 @@ export function RefrasaTabContent({
         userId,
         content: artifact.content,
       })
-      setIsApplied(true)
+      await markApplied({ artifactId: viewingArtifactId, userId })
 
-      // After 1.5s, switch to source artifact tab and reset
+      // After 1.5s, switch to source artifact tab
       setTimeout(() => {
         onActivateTab?.(artifact.sourceArtifactId!)
-        setIsApplied(false)
       }, 1500)
     } catch (err) {
       console.error("[RefrasaTabContent] Apply failed:", err)
     } finally {
       setIsApplying(false)
     }
-  }, [artifact, userId, updateArtifact, onActivateTab])
+  }, [artifact, viewingArtifactId, userId, updateArtifact, markApplied, onActivateTab])
 
   const handleDelete = useCallback(async () => {
     if (!artifact) return

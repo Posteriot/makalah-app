@@ -35,7 +35,7 @@ import { RefrasaLoadingIndicator } from "@/components/refrasa"
 
 interface ArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
-  onOpenRefrasaTab?: (tab: { id: Id<"artifacts">; title: string; type: string }) => void
+  onOpenRefrasaTab?: (tab: { id: Id<"artifacts">; title: string; type: string; sourceArtifactId?: Id<"artifacts"> }) => void
 }
 
 // Exposed methods via ref for parent component (ArtifactPanel)
@@ -141,7 +141,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       conversationId: artifact?.conversationId ?? null,
       userId: currentUser?._id ?? null,
       onArtifactCreated: (newArtifactId, title) => {
-        onOpenRefrasaTab?.({ id: newArtifactId, title, type: "refrasa" })
+        onOpenRefrasaTab?.({ id: newArtifactId, title, type: "refrasa", sourceArtifactId: artifact!._id })
       },
     })
 

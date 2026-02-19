@@ -539,6 +539,27 @@ export const removeChain = mutationGeneric({
 })
 
 // ============================================================================
+// REFRASA LIFECYCLE
+// ============================================================================
+
+/**
+ * Mark a refrasa artifact as applied (content pushed to source artifact)
+ * Simple patch — no new version created
+ */
+export const markRefrasaApplied = mutationGeneric({
+  args: {
+    artifactId: v.id("artifacts"),
+    userId: v.id("users"),
+  },
+  handler: async ({ db }, { artifactId, userId }) => {
+    const artifact = await db.get(artifactId)
+    if (!artifact || artifact.userId !== userId) throw new Error("Unauthorized")
+    if (artifact.type !== "refrasa") throw new Error("Bukan artifact refrasa")
+    await db.patch(artifactId, { appliedAt: Date.now() })
+  },
+})
+
+// ============================================================================
 // REWIND FEATURE: INVALIDATION MANAGEMENT
 // ============================================================================
 

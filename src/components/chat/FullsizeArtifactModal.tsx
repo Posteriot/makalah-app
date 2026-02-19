@@ -179,7 +179,7 @@ export function FullsizeArtifactModal({
     conversationId: artifact?.conversationId ?? null,
     userId: currentUser?._id ?? null,
     onArtifactCreated: (newArtifactId, title) => {
-      openModalTab({ id: newArtifactId, title, type: "refrasa" })
+      openModalTab({ id: newArtifactId, title, type: "refrasa", sourceArtifactId: activeArtifactId ?? undefined })
     },
   })
 

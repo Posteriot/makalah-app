@@ -234,6 +234,7 @@ export default defineSchema({
 
     // Refrasa: link to source artifact + analysis issues
     sourceArtifactId: v.optional(v.id("artifacts")),
+    appliedAt: v.optional(v.number()),
     refrasaIssues: v.optional(v.array(v.object({
       type: v.string(),
       category: v.string(),

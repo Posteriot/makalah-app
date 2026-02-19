@@ -118,6 +118,12 @@ export function RefrasaToolbar({
           </span>
 
           {versions.length > 1 && (
+            <span className="rounded-badge border border-slate-300/80 bg-slate-200/60 px-1.5 py-px text-[10px] font-mono font-semibold text-slate-600 dark:border-slate-700/70 dark:bg-slate-800/60 dark:text-slate-400">
+              {versions.length} versi
+            </span>
+          )}
+
+          {versions.length > 1 && (
             <Select
               value={artifact._id}
               onValueChange={(value) => onVersionChange(value as Id<"artifacts">)}
