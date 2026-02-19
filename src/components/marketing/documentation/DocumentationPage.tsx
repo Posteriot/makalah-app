@@ -36,7 +36,16 @@ function DocumentationContent() {
       list.push(section)
       groups.set(section.group, list)
     }
-    return Array.from(groups.entries()).map(([title, items]) => ({ title, items }))
+
+    const sidebarGroupOrder = ["Mulai", "Fitur Utama", "Subskripsi", "Panduan Lanjutan"]
+    const rank = (groupTitle: string) => {
+      const idx = sidebarGroupOrder.indexOf(groupTitle)
+      return idx === -1 ? Number.MAX_SAFE_INTEGER : idx
+    }
+
+    return Array.from(groups.entries())
+      .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
+      .map(([title, items]) => ({ title, items }))
   }, [orderedSections])
 
   const searchIndex = useMemo<SearchRecord[]>(() => {

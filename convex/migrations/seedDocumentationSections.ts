@@ -56,7 +56,7 @@ const DEFAULT_DOCUMENTATION_SECTIONS: DocumentationSectionSeed[] = [
     icon: "BookOpen",
     headerIcon: "Lightbulb",
     summary:
-      "Makalah AI membantu Anda menyusun makalah akademik secara end-to-end melalui percakapan yang terarah. Alur kerja mengikuti tujuh fase akademik (dari penetapan topik hingga finalisasi), dengan antarmuka yang tetap sederhana: Anda berdiskusi, AI merespons, dan progres tersimpan otomatis.",
+      "Makalah AI membantu Anda menyusun makalah akademik secara end-to-end melalui percakapan yang terarah. Alur kerja mengikuti workflow 13 tahapan penyusunan (dari gagasan paper hingga pemilihan judul), dengan antarmuka yang tetap sederhana: Anda berdiskusi, AI merespons, dan progres tersimpan otomatis.",
     blocks: [
       {
         type: "infoCard",
@@ -64,7 +64,7 @@ const DEFAULT_DOCUMENTATION_SECTIONS: DocumentationSectionSeed[] = [
         description: "Fokus pada kualitas isi; pemrosesan dibantu AI.",
         items: [
           "**Chat akademik** - diskusi topik, memperjelas pertanyaan riset (RQ), hingga penulisan per bagian.",
-          "**Kerangka tujuh fase** - AI membantu menjaga alur kerja agar tetap terstruktur dan tidak melompat-lompat.",
+          "**Kerangka workflow 13 tahapan** - AI membantu menjaga alur kerja agar tetap terstruktur dan tidak melompat-lompat.",
           "**Pencarian web (otomatis)** - bila diperlukan dan didukung penyedia, AI menelusuri informasi eksternal yang relevan.",
         ],
       },
@@ -79,7 +79,7 @@ const DEFAULT_DOCUMENTATION_SECTIONS: DocumentationSectionSeed[] = [
             icon: "Zap",
           },
           {
-            title: "7 Fase Penulisan",
+            title: "Workflow 13 Tahapan Penyusunan",
             description: "Metode kerja yang digunakan Makalah AI.",
             targetSection: "workflow",
             ctaText: "Pelajari Lebih Lanjut",
@@ -439,7 +439,7 @@ const DEFAULT_DOCUMENTATION_SECTIONS: DocumentationSectionSeed[] = [
         type: "section",
         title: "Ke Mana Setelah Ini?",
         paragraphs: [
-          "Lihat \"Memulai\" untuk autentikasi dan \"Panduan Cepat\" untuk langkah eksekusi dari topik ke draf. Butuh panduan metodologi? Buka \"7 Fase Penulisan\".",
+          "Lihat \"Memulai\" untuk autentikasi dan \"Panduan Cepat\" untuk langkah eksekusi dari topik ke draf. Butuh panduan metodologi? Buka \"Workflow 13 Tahapan Penyusunan\".",
         ],
       },
     ],
@@ -569,114 +569,105 @@ const DEFAULT_DOCUMENTATION_SECTIONS: DocumentationSectionSeed[] = [
   },
   {
     slug: "workflow",
-    title: "7 Fase Penulisan",
+    title: "Workflow 13 Tahapan Penyusunan",
     group: "Fitur Utama",
     order: 6,
     icon: "Settings",
     summary:
-      "Kerangka kerja ini jadi kompas percakapan, bukan pagar pembatas. Lu tetap bebas diskusi secara natural; fase membantu jaga arah dan kualitas.",
+      "Workflow 13 tahapan menjaga obrolan tetap fokus jadi paper dari ide awal sampai judul final. User tetap pegang kontrol lewat approve/revisi di tiap tahap.",
     blocks: [
       {
         type: "section",
-        title: "Orientasi Alur",
+        title: "Apa Itu Workflow 13 Tahapan",
         paragraphs: [
-          "Sebelum Fase 1, boleh ada obrolan \"pre-topic\" untuk eksplorasi ide. Workflow formal dimulai saat topik mulai didefinisikan.",
+          "Workflow ini adalah alur resmi mode paper di Makalah AI. Proses berjalan berurutan dari tahap 1 sampai tahap 13 dan sesi baru dianggap selesai setelah tahap akhir disetujui.",
         ],
       },
       {
         type: "section",
-        title: "Fase 1 - Topic Clarification",
+        title: "Kenapa Obrolan Tetap Fokus Jadi Paper",
         list: {
-          variant: "bullet",
+          variant: "numbered",
           items: [
-            { text: "Tujuan: mengubah ide kasar jadi topik riset yang fokus dan layak." },
-            { text: "Yang terjadi: brainstorming, tanya-jawab terarah, challenge ide yang terlalu luas." },
-            { text: "Peran AI: ajukan probing questions; sarankan fokus; tunjukkan trade-off." },
-            { text: "Peran Anda: jelaskan konteks, batasan, dan tujuan akademik." },
-            { text: "Output: resume keputusan fase (topik, batasan, asumsi awal)." },
+            { text: "Saat mode paper aktif, agen diarahkan untuk bekerja pada tahap aktif, bukan keluar konteks." },
+            { text: "Tool penyimpanan progres otomatis mengikuti tahap aktif dari session." },
+            { text: "Backend menolak update jika tidak sesuai tahap aktif atau status belum tepat." },
+            { text: "User tetap menentukan kelanjutan lewat aksi **Approve & Lanjut** atau **Revisi**." },
           ],
         },
       },
       {
         type: "section",
-        title: "Fase 2 - Evidence dan RQs Framing",
+        title: "Prinsip Kolaborasi Human-in-the-Loop",
+        paragraphs: [
+          "Tujuan workflow ini adalah membantu user menghasilkan paper berkualitas lewat kolaborasi aktif dengan AI.",
+        ],
         list: {
           variant: "bullet",
           items: [
-            { text: "Tujuan: kumpulkan bukti awal dan menetapkan Research Questions (RQ)." },
-            { text: "Yang terjadi: identifikasi tema literatur, rumuskan RQ, dan temukan gap." },
-            { text: "Peran AI: ringkas temuan, highlight gap, dan usulkan RQ terukur." },
-            { text: "Peran Anda: validasi relevansi sumber dan setujui RQ." },
-            { text: "Output: ringkasan bukti + daftar RQ yang disepakati." },
+            { text: "Agen Makalah berperan sebagai **juru tulis** yang membantu merapikan hasil diskusi ke format akademik." },
+            { text: "Agen Makalah adalah **mitra cari dan olah data** untuk membantu menemukan, merangkum, dan menyusun referensi." },
+            { text: "Agen Makalah menjadi **kawan diskusi** untuk klarifikasi, mempertajam ide, dan menguji argumen." },
+            { text: "Agen Makalah juga **penimbang** untuk memberi pertimbangan plus-minus sebelum user ambil keputusan." },
+            { text: "Paper akhir adalah hasil kolaborasi user + AI, bukan paper yang sepenuhnya dibuatkan AI tanpa keterlibatan user." },
           ],
         },
       },
       {
         type: "section",
-        title: "Fase 3 - Structure Planning (Outline)",
+        title: "Urutan 13 Tahapan",
         list: {
-          variant: "bullet",
+          variant: "numbered",
           items: [
-            { text: "Tujuan: desain outline lengkap (bagian, sub-bagian, target kata, mapping RQ -> section)." },
-            { text: "Yang terjadi: iterasi struktur sampai logis dan comply standar akademik." },
-            { text: "Peran AI: susun outline, set target kata, beri alasan urutan." },
-            { text: "Peran Anda: review, minta revisi, lalu \"kunci\" outline." },
-            { text: "Output: **Outline - LOCKED** sebagai blueprint drafting." },
+            { text: "Gagasan Paper" },
+            { text: "Penentuan Topik" },
+            { text: "Menyusun Outline" },
+            { text: "Penyusunan Abstrak" },
+            { text: "Pendahuluan" },
+            { text: "Tinjauan Literatur" },
+            { text: "Metodologi" },
+            { text: "Hasil Penelitian" },
+            { text: "Diskusi" },
+            { text: "Kesimpulan" },
+            { text: "Daftar Pustaka" },
+            { text: "Lampiran" },
+            { text: "Pemilihan Judul" },
           ],
         },
       },
       {
         type: "section",
-        title: "Fase 4 - Content Creation",
+        title: "Cara Kerja Singkat di Tiap Tahap",
         list: {
-          variant: "bullet",
+          variant: "numbered",
           items: [
-            { text: "Tujuan: tulis prose akademik per section sesuai outline." },
-            { text: "Yang terjadi: AI menulis tiap section (Bahasa Indonesia formal) dengan sitasi inline; Anda validasi sebelum lanjut." },
-            { text: "Peran AI: jaga word count +/-10% dari target; pastikan alur dan sitasi konsisten." },
-            { text: "Peran Anda: beri revisi, minta alternatif, dan setujui tiap section." },
-            { text: "Output: draf bagian per bagian yang siap diintegrasikan." },
+            { text: "User berdiskusi dengan AI pada tahap yang sedang aktif." },
+            { text: "AI menyimpan progres tahap dan mengajukan validasi tahap." },
+            { text: "User memilih **Approve & Lanjut** atau **Revisi**." },
+            { text: "Jika approve, sistem pindah ke tahap berikutnya." },
           ],
         },
       },
       {
         type: "section",
-        title: "Fase 5 - Integration dan Citation",
+        title: "Kontrol Alur",
         list: {
           variant: "bullet",
           items: [
-            { text: "Tujuan: harmonisasi gaya dan logika, susun transisi antarbagian, dan rapikan sitasi." },
-            { text: "Yang terjadi: gabungkan section, samakan istilah, cek konsistensi RQ-to-section, dan kompilasi \"REFERENCES\"." },
-            { text: "Peran AI: sinkronkan nada dan struktur; tandai klaim yang butuh bukti tambahan." },
-            { text: "Peran Anda: verifikasi sumber dan minta perbaikan bila ada lompatan logika." },
-            { text: "Output: draf terintegrasi lengkap dengan daftar referensi." },
+            { text: "Rewind maksimal 2 tahap ke belakang." },
+            { text: "Edit pesan di mode paper dibatasi agar konteks tahap tetap aman." },
+            { text: "Web search dikelola per tahap, dan referensi yang dipakai bisa dipersist ke data tahap aktif." },
           ],
         },
       },
       {
         type: "section",
-        title: "Fase 6 - Academic Review / Polish",
+        title: "Kapan Sesi Selesai dan Bisa Diekspor",
         list: {
           variant: "bullet",
           items: [
-            { text: "Tujuan: quality assurance-grammar, ketepatan istilah, konsistensi heading, dan standar sitasi." },
-            { text: "Yang terjadi: perapihan bahasa, penyeragaman format sitasi sesuai gaya yang diminta, dan final checks." },
-            { text: "Peran AI: laporkan perubahan (edit report) dan alasan perbaikan yang signifikan." },
-            { text: "Peran Anda: pilih gaya sitasi (APA/MLA/Chicago/Harvard) dan setujui hasil polish." },
-            { text: "Output: naskah polished yang siap diformat akhir." },
-          ],
-        },
-      },
-      {
-        type: "section",
-        title: "Fase 7 - Finalization dan Packaging",
-        list: {
-          variant: "bullet",
-          items: [
-            { text: "Tujuan: memfinalkan format, memastikan kelengkapan referensi, dan menyiapkan berkas untuk pengumpulan." },
-            { text: "Yang terjadi: cek akhir formatting, ringkasan kontribusi, dan daftar periksa submission." },
-            { text: "Catatan implementasi: hasil akhir tersedia di percakapan; ekspor/salin sesuai kebutuhan Anda." },
-            { text: "Output: dokumen final siap dikumpulkan." },
+            { text: "Sesi dianggap selesai setelah tahap 13 (judul) disetujui." },
+            { text: "Export Word/PDF tersedia saat sesi sudah berstatus **completed**." },
           ],
         },
       },
@@ -684,8 +675,83 @@ const DEFAULT_DOCUMENTATION_SECTIONS: DocumentationSectionSeed[] = [
         type: "section",
         title: "Catatan",
         paragraphs: [
-          "Fase adalah pedoman; UI chat tetap bebas. Minta AI menjelaskan alasan keputusan pada tiap fase untuk memastikan akuntabilitas akademik.",
+          "Konten seed ini adalah baseline untuk environment baru. Sumber kebenaran konten aktif tetap database `documentationSections`.",
         ],
+      },
+    ],
+    isPublished: true,
+  },
+  {
+    slug: "refrasa",
+    title: "Refrasa",
+    group: "Fitur Utama",
+    order: 9,
+    icon: "Zap",
+    summary:
+      "Refrasa membantu merapikan gaya bahasa artifak agar lebih natural dan mudah dibaca, dengan keputusan akhir tetap di tangan user.",
+    blocks: [
+      {
+        type: "section",
+        title: "Apa Itu Refrasa",
+        paragraphs: [
+          "Refrasa adalah fitur untuk memperbaiki gaya penulisan pada artifak, supaya teks lebih natural tanpa mengubah makna inti tulisan.",
+        ],
+        list: {
+          variant: "bullet",
+          items: [
+            { text: "Bekerja pada konten artifak, bukan sekadar balasan chat." },
+            { text: "Membantu keterbacaan dan naturalness bahasa akademik." },
+            { text: "Keputusan akhir tetap di user melalui dialog konfirmasi." },
+          ],
+        },
+      },
+      {
+        type: "section",
+        title: "Syarat Tombol Refrasa Aktif",
+        list: {
+          variant: "numbered",
+          items: [
+            { text: "Konten artifak minimal 50 karakter." },
+            { text: "Tipe artifak bukan chart." },
+            { text: "Status tool Refrasa sedang aktif (tidak dimatikan admin)." },
+          ],
+        },
+      },
+      {
+        type: "section",
+        title: "Cara Pakai Singkat",
+        list: {
+          variant: "numbered",
+          items: [
+            { text: "Buka artifak di panel atau fullscreen." },
+            { text: "Klik tombol **Refrasa**." },
+            { text: "Tinjau perbandingan teks asli dan hasil perbaikan." },
+            { text: "Pilih **Terapkan** atau **Batal**." },
+          ],
+        },
+      },
+      {
+        type: "section",
+        title: "Yang Terjadi Setelah Terapkan",
+        list: {
+          variant: "bullet",
+          items: [
+            { text: "Hasil Refrasa disimpan sebagai versi artifak baru." },
+            { text: "Riwayat versi tetap tersimpan rapi untuk audit perubahan." },
+            { text: "User bisa lanjut revisi dari versi terbaru." },
+          ],
+        },
+      },
+      {
+        type: "section",
+        title: "Batas Klaim",
+        list: {
+          variant: "bullet",
+          items: [
+            { text: "Refrasa adalah upaya peningkatan naturalness, bukan jaminan mutlak pada alat deteksi tertentu." },
+            { text: "Refrasa meningkatkan kualitas bahasa, bukan menggantikan keputusan akademik user." },
+          ],
+        },
       },
     ],
     isPublished: true,
