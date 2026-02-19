@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useMutation } from "convex/react"
+import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
 import type { RefrasaResponse, RefrasaIssue } from "@/lib/refrasa/types"
 
 interface UseRefrasaState {
@@ -9,47 +12,41 @@ interface UseRefrasaState {
   error: string | null
 }
 
+interface UseRefrasaOptions {
+  conversationId: Id<"conversations"> | null
+  userId: Id<"users"> | null
+  onArtifactCreated?: (artifactId: Id<"artifacts">, title: string) => void
+}
+
 interface UseRefrasaReturn extends UseRefrasaState {
-  /** Analyze and refrasa the content */
-  analyzeAndRefrasa: (content: string, artifactId?: string) => Promise<void>
-  /** Reset state */
+  analyzeAndRefrasa: (content: string, sourceArtifactId: Id<"artifacts">, sourceTitle: string) => Promise<void>
   reset: () => void
-  /** Get issue count (for UI indicator) */
   issueCount: number
-  /** Get issues grouped by category */
   issuesByCategory: {
     naturalness: RefrasaIssue[]
     style: RefrasaIssue[]
   }
 }
 
-/**
- * useRefrasa - Hook for managing Refrasa API calls
- *
- * Handles:
- * - Loading state
- * - Error handling
- * - Result storage
- * - Issue count for UI indicator
- */
-export function useRefrasa(): UseRefrasaReturn {
+export function useRefrasa(options: UseRefrasaOptions): UseRefrasaReturn {
   const [state, setState] = useState<UseRefrasaState>({
     isLoading: false,
     result: null,
     error: null,
   })
 
+  const createRefrasaMutation = useMutation(api.artifacts.createRefrasa)
+
   const analyzeAndRefrasa = useCallback(
-    async (content: string, artifactId?: string) => {
+    async (content: string, sourceArtifactId: Id<"artifacts">, sourceTitle: string) => {
+      if (!options.conversationId || !options.userId) return
       setState({ isLoading: true, result: null, error: null })
 
       try {
         const response = await fetch("/api/refrasa", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ content, artifactId }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, artifactId: sourceArtifactId }),
         })
 
         if (!response.ok) {
@@ -60,21 +57,33 @@ export function useRefrasa(): UseRefrasaReturn {
         }
 
         const data: RefrasaResponse = await response.json()
+
+        // Persist to DB
+        const { artifactId } = await createRefrasaMutation({
+          conversationId: options.conversationId,
+          userId: options.userId,
+          sourceArtifactId,
+          content: data.refrasedText,
+          refrasaIssues: data.issues,
+        })
+
         setState({ isLoading: false, result: data, error: null })
+
+        // Notify caller to open tab
+        options.onArtifactCreated?.(artifactId, `R: ${sourceTitle}`)
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Terjadi kesalahan saat memproses"
         setState({ isLoading: false, result: null, error: errorMessage })
       }
     },
-    []
+    [options.conversationId, options.userId, createRefrasaMutation, options.onArtifactCreated]
   )
 
   const reset = useCallback(() => {
     setState({ isLoading: false, result: null, error: null })
   }, [])
 
-  // Computed values
   const issueCount = state.result?.issues.length ?? 0
 
   const issuesByCategory = {
