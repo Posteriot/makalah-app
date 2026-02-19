@@ -44,10 +44,10 @@ const MermaidRenderer = dynamic(
 )
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
-import {
-  RefrasaConfirmDialog,
-  RefrasaLoadingIndicator,
-} from "@/components/refrasa"
+import { RefrasaLoadingIndicator } from "@/components/refrasa"
+import { RefrasaTabContent } from "@/components/refrasa/RefrasaTabContent"
+import { useArtifactTabs } from "@/lib/hooks/useArtifactTabs"
+import { ArtifactTabs } from "./ArtifactTabs"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,16 +121,14 @@ export function FullsizeArtifactModal({
   const [closeGuardOpen, setCloseGuardOpen] = useState(false)
   const { user: currentUser } = useCurrentUser()
 
-  // Refrasa state
-  const [showRefrasaDialog, setShowRefrasaDialog] = useState(false)
-  const [isApplyingRefrasa, setIsApplyingRefrasa] = useState(false)
+  // Tab state for fullscreen modal
   const {
-    isLoading: isRefrasaLoading,
-    result: refrasaResult,
-    error: refrasaError,
-    analyzeAndRefrasa,
-    reset: resetRefrasa,
-  } = useRefrasa()
+    openTabs: modalTabs,
+    activeTabId: modalActiveTabId,
+    openTab: openModalTab,
+    closeTab: closeModalTab,
+    setActiveTab: setModalActiveTab,
+  } = useArtifactTabs()
 
   const isRefrasaEnabled = useQuery(api.aiProviderConfigs.getRefrasaEnabled)
   const updateArtifact = useMutation(api.artifacts.update)
@@ -168,6 +166,29 @@ export function FullsizeArtifactModal({
       : "skip"
   )
   const isFinal = finalStatus?.isFinal ?? false
+
+  // Refrasa — persists to DB, opens new tab
+  const {
+    isLoading: isRefrasaLoading,
+    error: refrasaError,
+    analyzeAndRefrasa,
+    reset: resetRefrasa,
+  } = useRefrasa({
+    conversationId: artifact?.conversationId ?? null,
+    userId: currentUser?._id ?? null,
+    onArtifactCreated: (newArtifactId, title) => {
+      openModalTab({ id: newArtifactId, title, type: "refrasa" })
+    },
+  })
+
+  // Initialize modal tabs with current artifact
+  useEffect(() => {
+    if (isOpen && artifact) {
+      openModalTab({ id: artifact._id, title: artifact.title, type: artifact.type })
+    }
+  }, [isOpen, artifact?._id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isActiveTabRefrasa = modalTabs.find((t) => t.id === modalActiveTabId)?.type === "refrasa"
   const latestArtifactsInSession = useMemo(
     () => (artifactsInSession ? getLatestArtifactVersions(artifactsInSession) : []),
     [artifactsInSession]
@@ -190,7 +211,6 @@ export function FullsizeArtifactModal({
       setIsEditing(false)
       setCopied(false)
       setCloseGuardOpen(false)
-      setShowRefrasaDialog(false)
       resetRefrasa()
     }
   }, [isOpen, resetRefrasa])
@@ -235,7 +255,7 @@ export function FullsizeArtifactModal({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return
-      if (closeGuardOpen || showRefrasaDialog) return
+      if (closeGuardOpen) return
 
       if (e.key === "Escape") {
         e.preventDefault()
@@ -267,7 +287,7 @@ export function FullsizeArtifactModal({
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, requestClose, closeGuardOpen, showRefrasaDialog])
+  }, [isOpen, requestClose, closeGuardOpen])
 
   const handleCopy = useCallback(async () => {
     if (!artifact) return
@@ -334,41 +354,14 @@ export function FullsizeArtifactModal({
   const handleRefrasaTrigger = useCallback(async () => {
     if (!artifact || !canRefrasa || isRefrasaLoading) return
     resetRefrasa()
-    await analyzeAndRefrasa(artifact.content, artifact._id)
+    await analyzeAndRefrasa(artifact.content, artifact._id, artifact.title)
   }, [artifact, canRefrasa, isRefrasaLoading, analyzeAndRefrasa, resetRefrasa])
-
-  useEffect(() => {
-    if (refrasaResult && !refrasaError) {
-      setShowRefrasaDialog(true)
-    }
-  }, [refrasaResult, refrasaError])
 
   useEffect(() => {
     if (refrasaError) {
       toast.error(`Gagal menganalisis: ${refrasaError}`)
     }
   }, [refrasaError])
-
-  const handleApplyRefrasa = useCallback(async () => {
-    if (!artifact || !currentUser?._id || !refrasaResult) return
-
-    setIsApplyingRefrasa(true)
-    try {
-      await updateArtifact({
-        artifactId: artifact._id,
-        userId: currentUser._id,
-        content: refrasaResult.refrasedText,
-      })
-      toast.success(`Tulisan berhasil diperbaiki ke v${artifact.version + 1}`)
-      setShowRefrasaDialog(false)
-      resetRefrasa()
-    } catch (error) {
-      console.error("Failed to apply refrasa:", error)
-      toast.error("Gagal menerapkan perbaikan")
-    } finally {
-      setIsApplyingRefrasa(false)
-    }
-  }, [artifact, currentUser?._id, refrasaResult, resetRefrasa, updateArtifact])
 
   if (!isOpen) return null
 
@@ -608,7 +601,30 @@ export function FullsizeArtifactModal({
             </div>
           </div>
 
+          {/* Tab bar — shown when 2+ tabs */}
+          {modalTabs.length > 1 && (
+            <div className="shrink-0 border-b border-slate-300/70 dark:border-slate-700/70">
+              <ArtifactTabs
+                tabs={modalTabs}
+                activeTabId={modalActiveTabId}
+                onTabChange={setModalActiveTab}
+                onTabClose={closeModalTab}
+              />
+            </div>
+          )}
+
           {/* Content */}
+          {isActiveTabRefrasa && modalActiveTabId && artifact?.conversationId && currentUser?._id ? (
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <RefrasaTabContent
+                artifactId={modalActiveTabId}
+                conversationId={artifact.conversationId}
+                userId={currentUser._id}
+                onTabClose={(id) => closeModalTab(id)}
+              />
+            </div>
+          ) : (
+          <>
           <div className="flex min-h-0 flex-1 overflow-hidden">
             <div className="relative min-w-0 flex-1 overflow-hidden px-4 py-3 md:px-5 md:py-4">
               {isRefrasaLoading && (
@@ -783,6 +799,8 @@ export function FullsizeArtifactModal({
               )}
             </div>
           )}
+          </>
+          )}
 
         </div>
       </div>
@@ -813,20 +831,6 @@ export function FullsizeArtifactModal({
         </AlertDialogContent>
       </AlertDialog>
 
-      {refrasaResult && artifact && (
-        <RefrasaConfirmDialog
-          open={showRefrasaDialog}
-          onOpenChange={() => {
-            setShowRefrasaDialog(false)
-            resetRefrasa()
-          }}
-          originalContent={artifact.content}
-          refrasedText={refrasaResult.refrasedText}
-          issues={refrasaResult.issues}
-          onApply={handleApplyRefrasa}
-          isApplying={isApplyingRefrasa}
-        />
-      )}
     </>
   )
 }
