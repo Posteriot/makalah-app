@@ -497,13 +497,19 @@ function ArtifactTreeItem({
           )}
           aria-current={isSelected ? "page" : undefined}
         >
-          {/* Document Icon */}
-          <Page
-            className={cn(
-              "h-4 w-4 shrink-0",
-              isFinal ? "text-slate-500 dark:text-slate-200" : "text-amber-600 dark:text-amber-300"
-            )}
-          />
+          {/* Document Icon / Refrasa Badge */}
+          {artifact.type === "refrasa" ? (
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-amber-500/20 text-[9px] font-mono font-bold text-amber-700 dark:text-amber-300">
+              R
+            </span>
+          ) : (
+            <Page
+              className={cn(
+                "h-4 w-4 shrink-0",
+                isFinal ? "text-slate-500 dark:text-slate-200" : "text-amber-600 dark:text-amber-300"
+              )}
+            />
+          )}
 
           {/* File Name */}
           <span className="flex-1 truncate text-[13px]">{artifact.title}</span>
