@@ -13,6 +13,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -91,23 +92,15 @@ export function RefrasaConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden border-slate-300/75 bg-slate-100 p-0 dark:border-slate-700/80 dark:bg-slate-800"
+        className="flex max-h-[90vh] w-[90vw] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden border-slate-300/75 bg-slate-100 p-0 sm:max-w-6xl md:min-h-[60vh] dark:border-slate-700/80 dark:bg-slate-800"
         showCloseButton={false}
       >
         {/* Header */}
         <div className="shrink-0 border-b border-slate-300/75 px-4 py-3 dark:border-slate-700/80">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Tinjau Hasil Refrasa
-              </h2>
-              {totalIssues > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-badge border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-amber-700 dark:text-amber-300">
-                  <WarningTriangle className="h-3 w-3" />
-                  {totalIssues}
-                </span>
-              )}
-            </div>
+            <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Tinjau Hasil Refrasa
+            </DialogTitle>
 
             <div className="flex items-center gap-1.5">
               {/* Compare toggle — desktop only */}
@@ -130,27 +123,45 @@ export function RefrasaConfirmDialog({
                 </TooltipContent>
               </Tooltip>
 
-              {/* Issues toggle */}
-              {totalIssues > 0 && (
-                <div className="relative" ref={issuesPanelRef}>
+              {/* Issues toggle — clickable badge or disabled icon fallback */}
+              <div className="relative" ref={issuesPanelRef}>
+                {totalIssues > 0 ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => setShowIssues((v) => !v)}
                         className={cn(
-                          iconBtnClass,
-                          showIssues && "bg-slate-200/80 text-slate-900 dark:bg-slate-700/70 dark:text-slate-100"
+                          "inline-flex items-center gap-1 rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                          showIssues
+                            ? "border-amber-500/50 bg-amber-500/20 text-amber-600 dark:text-amber-300"
+                            : "border-amber-500/35 bg-amber-500/10 text-amber-700 hover:border-amber-500/50 hover:bg-amber-500/20 dark:text-amber-300 dark:hover:border-amber-500/50 dark:hover:bg-amber-500/20"
                         )}
                         aria-label="Lihat masalah"
                         aria-expanded={showIssues}
                       >
-                        <DocMagnifyingGlass className="h-4 w-4" />
+                        <WarningTriangle className="h-3 w-3" />
+                        {totalIssues}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent className="font-mono text-xs">
                       {showIssues ? "Tutup masalah" : "Lihat masalah"}
                     </TooltipContent>
                   </Tooltip>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className="flex h-8 w-8 cursor-default items-center justify-center rounded-action text-slate-400 dark:text-slate-600"
+                        aria-label="Tidak ada masalah"
+                      >
+                        <DocMagnifyingGlass className="h-4 w-4" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="font-mono text-xs">
+                      Tidak ada masalah terdeteksi
+                    </TooltipContent>
+                  </Tooltip>
+                )}
 
                   {/* Issues floating panel */}
                   {showIssues && (
@@ -166,7 +177,7 @@ export function RefrasaConfirmDialog({
                               <CollapsibleContent>
                                 <div className="mt-2 space-y-2">
                                   {naturalnessIssues.map((issue) => (
-                                    <RefrasaIssueItem key={`nat-${issue.type}-${issue.severity}`} issue={issue} />
+                                    <RefrasaIssueItem key={`nat-${issue.type}-${issue.severity}-${issue.message.slice(0, 30)}`} issue={issue} />
                                   ))}
                                 </div>
                               </CollapsibleContent>
@@ -182,7 +193,7 @@ export function RefrasaConfirmDialog({
                               <CollapsibleContent>
                                 <div className="mt-2 space-y-2">
                                   {styleIssues.map((issue) => (
-                                    <RefrasaIssueItem key={`sty-${issue.type}-${issue.severity}`} issue={issue} />
+                                    <RefrasaIssueItem key={`sty-${issue.type}-${issue.severity}-${issue.message.slice(0, 30)}`} issue={issue} />
                                   ))}
                                 </div>
                               </CollapsibleContent>
@@ -193,7 +204,6 @@ export function RefrasaConfirmDialog({
                     </div>
                   )}
                 </div>
-              )}
 
               {/* Close */}
               <Tooltip>
@@ -226,7 +236,7 @@ export function RefrasaConfirmDialog({
               size="sm"
               onClick={onApply}
               disabled={isApplying}
-              className="h-7 px-2.5 font-mono text-[11px]"
+              className="h-7 bg-emerald-600 px-2.5 font-mono text-[11px] text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-700"
             >
               {isApplying ? (
                 <span className="mr-1.5 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
