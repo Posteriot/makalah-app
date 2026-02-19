@@ -197,7 +197,8 @@ export default defineSchema({
       v.literal("table"),
       v.literal("citation"),
       v.literal("formula"),
-      v.literal("chart")
+      v.literal("chart"),
+      v.literal("refrasa")
     ),
     title: v.string(),
     description: v.optional(v.string()),
@@ -231,6 +232,16 @@ export default defineSchema({
     invalidatedAt: v.optional(v.number()), // Timestamp when invalidated by rewind
     invalidatedByRewindToStage: v.optional(v.string()), // Stage that triggered invalidation
 
+    // Refrasa: link to source artifact + analysis issues
+    sourceArtifactId: v.optional(v.id("artifacts")),
+    refrasaIssues: v.optional(v.array(v.object({
+      type: v.string(),
+      category: v.string(),
+      message: v.string(),
+      severity: v.string(),
+      suggestion: v.optional(v.string()),
+    }))),
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -238,7 +249,8 @@ export default defineSchema({
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_type", ["type"])
     .index("by_user", ["userId", "createdAt"])
-    .index("by_parent", ["parentId"]),
+    .index("by_parent", ["parentId"])
+    .index("by_source_artifact", ["sourceArtifactId"]),
 
   // System Alerts for monitoring (admin panel)
   systemAlerts: defineTable({
