@@ -49,8 +49,12 @@ export function SimplePolicyPage({ badge, title, children }: SimplePolicyPagePro
                         className="mt-9 space-y-10"
                     >
                         {introNode && (
-                            <div className="rounded-shell bg-[color:var(--slate-100)]/70 px-4 py-4 dark:bg-[color:var(--slate-800)]/65 md:px-5">
-                                <div className="text-narrative text-sm leading-relaxed text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground">
+                            <div className="relative overflow-hidden rounded-shell border-main border border-sky-300/45 bg-sky-400/10 px-4 py-4 dark:border-sky-200/35 dark:bg-sky-400/20 md:px-5">
+                                <span
+                                    aria-hidden
+                                    className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-sky-300 to-sky-500 dark:from-sky-200 dark:to-sky-400"
+                                />
+                                <div className="text-narrative relative text-sm leading-relaxed text-slate-700 dark:text-slate-100 [&_strong]:font-semibold [&_strong]:text-foreground">
                                     {introNode}
                                 </div>
                             </div>
