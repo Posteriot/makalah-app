@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { SidebarExpand, SidebarCollapse } from "iconoir-react"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
@@ -19,7 +20,9 @@ export function AdminPanelContainer({
   userId,
   userRole,
 }: AdminPanelContainerProps) {
-  const [activeTab, setActiveTab] = useState<AdminTabId>("overview")
+  const searchParams = useSearchParams()
+  const initialTab = (searchParams.get("tab") as AdminTabId) || "overview"
+  const [activeTab, setActiveTab] = useState<AdminTabId>(initialTab)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const users = useQuery(api.users.listAllUsers, { requestorUserId: userId })
 
