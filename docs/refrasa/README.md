@@ -98,8 +98,10 @@ Flow server:
 
 1. Auth check (`isAuthenticated`)
 2. Validasi body (`RequestBodySchema`)
-3. Ambil Layer 2 constitution aktif dari Convex (`styleConstitutions.getActive`)
-4. Build prompt dua lapis
+3. Fetch **kedua** constitution aktif secara parallel:
+   - `styleConstitutions.getActiveNaturalness` — Layer 1 (naturalness)
+   - `styleConstitutions.getActive` — Layer 2 (style, filtered: exclude naturalness type)
+4. Build prompt dua lapis via `buildRefrasaPrompt(content, styleContent, naturalnessContent)`
 5. `generateObject` ke provider utama (`getGatewayModel`)
 6. Fallback ke `getOpenRouterModel` jika primary gagal
 7. Return JSON `{ issues, refrasedText }`
@@ -110,11 +112,38 @@ Referensi:
 
 ## 7. Prompting: Two-Layer Architecture
 
-Refrasa pakai arsitektur prompt:
+Refrasa pakai arsitektur prompt dua lapis. Kedua layer sekarang editable via admin panel.
 
-- **Layer 1 (hardcoded):** Core naturalness criteria (non-override)
-- **Layer 2 (dynamic):** Style Constitution dari admin
-- **Academic Escape Clause:** menjaga istilah teknis, sitasi, struktur markdown, proper nouns
+### Layer 1: Core Naturalness Criteria
+
+- **Primary source:** Database (`styleConstitutions` dengan `type: "naturalness"`)
+- **Fallback:** Hardcoded constant `LAYER_1_CORE_NATURALNESS` di `prompt-builder.ts`
+- Jika tidak ada naturalness constitution aktif di DB, atau fetch gagal, fallback hardcoded dipakai
+- Berisi: vocabulary diversity, sentence pattern variance, paragraph rhythm, hedging balance, burstiness
+
+### Layer 2: Style Constitution
+
+- **Source:** Database (`styleConstitutions` dengan `type: "style"` atau `undefined` untuk legacy)
+- Opsional — jika tidak ada yang aktif, Layer 2 dilewati
+- Berisi: panduan gaya penulisan spesifik (diksi, struktur kalimat, frasa, dll)
+
+### Academic Escape Clause
+
+- Selalu hardcoded, tidak editable
+- Menjaga istilah teknis, sitasi, struktur markdown, proper nouns
+- Safety rule: tidak boleh dimodifikasi oleh constitution manapun
+
+### Fallback Flow
+
+```
+Naturalness (Layer 1):
+  DB ada active naturalness constitution? → pakai dari DB
+  DB kosong/error?                        → pakai LAYER_1_CORE_NATURALNESS hardcoded
+
+Style (Layer 2):
+  DB ada active style constitution? → pakai dari DB
+  DB kosong/error?                  → skip (Layer 2 opsional)
+```
 
 Referensi:
 
@@ -122,17 +151,63 @@ Referensi:
 - `src/lib/refrasa/schemas.ts`
 - `src/lib/refrasa/types.ts`
 
-## 8. Tab Workspace Refrasa (`RefrasaTabContent`)
+## 8. Constitution Data Model
+
+Kedua tipe constitution (naturalness dan style) disimpan di tabel `styleConstitutions` yang sama.
+
+### Schema
+
+Field `type` pada tabel `styleConstitutions`:
+
+- `"naturalness"` — Layer 1 constitution
+- `"style"` — Layer 2 constitution
+- `undefined` — Legacy record, diperlakukan sebagai `"style"`
+
+Field `type` adalah `v.optional(...)` untuk backward-compatibility dengan record lama.
+
+### Single-Active Constraint Per Type
+
+- Aktivasi constitution hanya menonaktifkan constitution **sesama type**.
+- Boleh ada 1 naturalness aktif DAN 1 style aktif bersamaan.
+- Mutation `activate` filter per-type via `(c.type ?? "style") === targetType`.
+
+### Queries
+
+- `getActiveNaturalness` — Fetch active `by_active` index, filter `type === "naturalness"` di application code
+- `getActive` — Fetch active `by_active` index, filter `type !== "naturalness"` (style + legacy)
+
+Index `by_active_type` tidak dipakai karena Convex tidak support chained `.eq()` pada optional field di compound index. Filtering dilakukan di application code.
+
+### Migration Seed
+
+- `convex/migrations/seedNaturalnessConstitution.ts` — Seed hardcoded Layer 1 ke DB sebagai naturalness constitution v1
+- Jalankan via: `npx convex run migrations:seedNaturalnessConstitution`
+- Guard: skip jika naturalness constitution aktif sudah ada
+
+Referensi:
+
+- `convex/schema.ts` (field `type` + index `by_active`)
+- `convex/styleConstitutions.ts`
+- `convex/migrations/seedNaturalnessConstitution.ts`
+
+## 9. Tab Workspace Refrasa (`RefrasaTabContent`)
 
 `RefrasaTabContent` adalah pusat review hasil Refrasa.
 
 Kemampuan utama:
 
-- Menampilkan isi artifact Refrasa aktif
+- Menampilkan isi artifact Refrasa aktif (rendered markdown, bukan raw)
 - Menampilkan daftar issue dari `artifact.refrasaIssues`
 - Version switching untuk versi Refrasa per source artifact
-- Compare mode (desktop split, mobile toggle)
+- Compare mode: side-by-side di desktop, toggle tab di mobile
 - Action: apply, delete, copy, download
+
+### Compare View
+
+- Toggle via tombol `ViewColumns2` di toolbar
+- **Desktop (>=md):** Grid 2 kolom — kiri "Asli" (slate badge), kanan "Refrasa" (amber badge)
+- **Mobile (<md):** Pill tab toggle antara "Asli" dan "Refrasa"
+- Source artifact content diambil via query `artifacts.get` pada `sourceArtifactId`
 
 Referensi:
 
@@ -140,7 +215,7 @@ Referensi:
 - `src/components/refrasa/RefrasaToolbar.tsx`
 - `src/components/refrasa/RefrasaIssueItem.tsx`
 
-## 9. Apply Flow (Aktual)
+## 10. Apply Flow (Aktual)
 
 Saat klik `Terapkan` di toolbar Refrasa:
 
@@ -152,14 +227,14 @@ Referensi:
 
 - `src/components/refrasa/RefrasaTabContent.tsx`
 
-## 10. Versioning dan Tab Reuse
+## 11. Versioning dan Tab Reuse
 
-### 10.1 Versioning Refrasa
+### 11.1 Versioning Refrasa
 
 - Refrasa disimpan sebagai chain versi per `sourceArtifactId`.
 - Daftar versi ditarik via `getBySourceArtifact`.
 
-### 10.2 Refrasa Tab Reuse
+### 11.2 Refrasa Tab Reuse
 
 - Jika source artifact sama, tab Refrasa lama di-replace (bukan buka tab baru terus-menerus).
 
@@ -169,13 +244,29 @@ Referensi:
 - `src/components/chat/ArtifactTabs.tsx`
 - `src/components/refrasa/RefrasaTabContent.tsx`
 
-## 11. Loading States
+## 12. Sorting: Parent-Child Grouping
 
-Loading indikator dipakai di tiga konteks:
+Artifact refrasa dikelompokkan tepat di bawah parent-nya di sidebar dan fullscreen dropdown.
 
-1. Overlay di `ArtifactViewer`
-2. Overlay di `FullsizeArtifactModal`
-3. Fallback loading di `RefrasaTabContent`
+- Parent (non-refrasa) sorted by `createdAt` ASC (urutan stage)
+- Refrasa children langsung di bawah parent-nya, sorted by `createdAt` ASC
+- Orphan refrasa (source tidak ditemukan) ditampilkan di akhir
+
+Logika grouping ada di fungsi `getLatestArtifactVersions()` di 3 file:
+
+- `src/components/chat/sidebar/SidebarPaperSessions.tsx`
+- `src/components/chat/FullsizeArtifactModal.tsx`
+- `src/components/chat/ArtifactList.tsx`
+
+## 13. Loading States
+
+Loading overlay saat Refrasa memproses:
+
+- **Panel** (`ArtifactViewer`): `absolute inset-0`, `bg-slate-100/95 backdrop-blur-md`
+- **Fullscreen** (`FullsizeArtifactModal`): `absolute inset-0`, `bg-slate-100/95 backdrop-blur-md`
+- **Tab Refrasa** (`RefrasaTabContent`): Fallback loading via `RefrasaLoadingIndicator`
+
+Overlay menggunakan `inset-0` (full coverage) dan opacity 95% + blur 12px untuk memastikan teks di bawah sepenuhnya tertutup.
 
 Referensi:
 
@@ -184,18 +275,26 @@ Referensi:
 - `src/components/refrasa/RefrasaLoadingIndicator.tsx`
 - `src/lib/refrasa/loading-messages.ts`
 
-## 12. Kontrol Admin
+## 14. Kontrol Admin
 
 Kontrol admin yang relevan:
 
-1. Toggle global visibilitas tool Refrasa (`isRefrasaEnabled`)
-2. CRUD dan aktivasi Style Constitution (Layer 2)
+1. **Toggle global** visibilitas tool Refrasa (`isRefrasaEnabled`)
+2. **Naturalness Constitution (Layer 1):** Section terpisah di admin panel. CRUD, versioning, single-active per type. Jika tidak ada yang aktif, fallback ke hardcoded.
+3. **Style Constitution (Layer 2):** Section terpisah di admin panel. CRUD, versioning, single-active per type. Opsional.
+
+Admin panel menampilkan dua section card terpisah:
+- "Refrasa - Naturalness Constitution" (Layer 1)
+- "Refrasa - Style Constitution" (Layer 2)
+
+Create dialog context-aware: description dan helper text menyesuaikan tipe constitution yang sedang dibuat.
 
 Referensi:
 
 - `src/components/admin/StyleConstitutionManager.tsx`
+- `src/components/admin/StyleConstitutionVersionHistoryDialog.tsx`
 
-## 13. Ketergantungan Data Layer yang Dipakai dari `src`
+## 15. Ketergantungan Data Layer yang Dipakai dari `src`
 
 Dari sisi `src`, fitur ini memanggil mutation/query berikut:
 
@@ -205,15 +304,19 @@ Dari sisi `src`, fitur ini memanggil mutation/query berikut:
 - `api.artifacts.update`
 - `api.artifacts.remove`
 - `api.aiProviderConfigs.getRefrasaEnabled`
-- `api.styleConstitutions.getActive`
+- `api.styleConstitutions.getActive` (Layer 2 style, filtered exclude naturalness)
+- `api.styleConstitutions.getActiveNaturalness` (Layer 1 naturalness)
+- `api.styleConstitutions.list` (admin panel — returns both types)
+- `api.styleConstitutions.create` (with `type` param)
+- `api.styleConstitutions.activate` (per-type single-active)
 
-## 14. Known Gaps (Sesuai Kode Saat Ini)
+## 16. Known Gaps (Sesuai Kode Saat Ini)
 
 1. `artifactId` dikirim ke `/api/refrasa`, tapi belum dipakai di handler server.
 2. Download `DOCX` dan `PDF` di tab Refrasa masih TODO; saat ini baru `TXT` yang implement.
 3. Sebagian test Refrasa lama masih merefleksikan flow lama berbasis context menu/dialog apply, sehingga tidak sepenuhnya merepresentasikan arsitektur tab-based terbaru.
 
-## 15. Peta File Utama (`src`)
+## 17. Peta File Utama (`src`)
 
 - `src/app/api/refrasa/route.ts`
 - `src/lib/hooks/useRefrasa.ts`
@@ -224,12 +327,16 @@ Dari sisi `src`, fitur ini memanggil mutation/query berikut:
 - `src/components/chat/ArtifactPanel.tsx`
 - `src/components/chat/ArtifactViewer.tsx`
 - `src/components/chat/ArtifactToolbar.tsx`
+- `src/components/chat/ArtifactList.tsx`
 - `src/components/chat/FullsizeArtifactModal.tsx`
 - `src/components/chat/ArtifactTabs.tsx`
+- `src/components/chat/sidebar/SidebarPaperSessions.tsx`
 - `src/components/refrasa/RefrasaTabContent.tsx`
 - `src/components/refrasa/RefrasaToolbar.tsx`
 - `src/components/refrasa/RefrasaIssueItem.tsx`
 - `src/components/refrasa/RefrasaLoadingIndicator.tsx`
 - `src/components/refrasa/RefrasaButton.tsx` (komponen legacy, masih ada dan dites, tapi bukan jalur utama UI aktif)
 - `src/components/admin/StyleConstitutionManager.tsx`
-
+- `convex/schema.ts` (tabel `styleConstitutions` — field `type`)
+- `convex/styleConstitutions.ts` (queries + mutations)
+- `convex/migrations/seedNaturalnessConstitution.ts`
