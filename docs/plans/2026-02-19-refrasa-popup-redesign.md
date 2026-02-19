@@ -1,136 +1,575 @@
-# Refrasa Popup Redesign
+# Refrasa Popup Redesign — Implementation Plan
 
-## Goal
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-Redesain popup "Tinjau Hasil Refrasa" supaya konsisten dengan visual vocabulary halaman chat dan artifact. Prioritas: hasil refrasa sebagai konten utama, issues dan teks asli sebagai secondary.
+**Goal:** Redesain popup "Tinjau Hasil Refrasa" supaya konsisten dengan visual vocabulary halaman chat dan artifact. Result-first layout, icon-driven secondary actions.
 
-## Design Principles
+**Architecture:** 3 file UI-only changes (no logic/API changes). RefrasaConfirmDialog gets full rewrite with split-toggle + mobile tabs. RefrasaIssueItem restyled to artifact chip vocabulary. RefrasaLoadingIndicator restyled to artifact font patterns.
 
-1. **Result-first**: Hasil perbaikan = full width/height by default (seperti artifact content area)
-2. **Icon-driven**: Gunakan icon buttons (bukan teks panjang) untuk secondary actions
-3. **Progressive disclosure**: Teks asli dan issues di-toggle, bukan selalu visible
-4. **Visual consistency**: Copy exact styling dari ArtifactToolbar, ArtifactViewer, FullsizeArtifactModal
+**Tech Stack:** React, Tailwind CSS, Iconoir icons, shadcn Dialog + Tabs + Tooltip + Collapsible, existing `cn()` utility.
 
-## Visual Reference (from chat/artifact components)
+---
 
-### Surface Colors
-- Dialog background: `bg-slate-100 dark:bg-slate-800` (same as FullsizeArtifactModal)
+## Design Reference
+
+### Visual Vocabulary (from chat/artifact components, NOT global CSS)
+
+**Surface colors:**
+- Dialog bg: `bg-slate-100 dark:bg-slate-800`
 - Content container: `rounded-sm border border-slate-300/85 bg-slate-50 dark:border-slate-700/70 dark:bg-slate-900`
 - Header border: `border-b border-slate-300/75 dark:border-slate-700/80`
 
-### Typography
-- Title: sans-serif semibold (same as artifact title)
+**Typography:**
+- Title: sans-serif semibold
 - Labels: `text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400`
 - Body: `text-sm leading-relaxed text-slate-900 dark:text-slate-100`
 - Buttons: `font-mono text-[11px]`
 
-### Badges (from ArtifactToolbar chips)
+**Badges (artifact chip style):**
 - Neutral: `rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100`
-- Warning (issue count): `rounded-badge border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-mono text-amber-700 dark:text-amber-300`
+- Warning: `rounded-badge border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-mono text-amber-700 dark:text-amber-300`
+- Critical: `rounded-badge border border-rose-500/35 bg-rose-500/10 ... text-rose-700 dark:text-rose-300`
+- Info: same as Neutral
 
-### Buttons
-- Icon buttons: `h-8 w-8 rounded-action` (same as ArtifactToolbar)
-- Text buttons: `h-7 px-2.5 font-mono text-[11px]` (same as FullsizeArtifactModal)
-- Ghost cancel: `text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100`
+**Buttons:**
+- Icon: `h-8 w-8 rounded-action` (same as ArtifactToolbar)
+- Text: `h-7 px-2.5 font-mono text-[11px]` (same as FullsizeArtifactModal)
 
-### Issue Card Badges (severity)
-- Warning: `rounded-badge border border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300`
-- Critical: `rounded-badge border border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-300`
-- Info: `rounded-badge border border-slate-300/80 bg-slate-200/80 text-slate-700 dark:text-slate-100`
-
-## Wireframe
-
-### Desktop (default state: result-only)
-
-```
-┌──────────────────────────────────────────────┐
-│ Tinjau Hasil Refrasa                         │
-│ [⚠ 3]   <ViewColumns2> <DocSearch> <X>      │
-│          [Batal] [✓ Terapkan]                │
-├──────────────────────────────────────────────┤
-│                                              │
-│ HASIL PERBAIKAN (100% width, full height)    │
-│ refrasad text, maximum readability           │
-│ same container as artifact content area      │
-│                                              │
-└──────────────────────────────────────────────┘
-```
-
-### Desktop (after ViewColumns2 toggle: split view)
-
-```
-┌──────────────┬───────────────────────────────┐
-│ TEKS ASLI    │ HASIL PERBAIKAN               │
-│ 40% width    │ 60% width                     │
-│ muted text   │ primary text                  │
-│ scrollable   │ scrollable                    │
-└──────────────┴───────────────────────────────┘
-```
-
-### DocMagnifyingGlass issues popover
-
-```
-┌────────────────────────┐
-│ ▼ Naturalness (2)      │
-│   [severity + message] │
-│   [severity + message] │
-│ ▼ Style (1)            │
-│   [severity + message] │
-└────────────────────────┘
-```
-
-### Mobile (< md breakpoint)
-
-```
-┌──────────────────────┐
-│ Tinjau Hasil Refrasa │
-│ [⚠ 3]  <DocSrch> <X>│
-├──────────────────────┤
-│ [Asli] [█Hasil█]    │  ← tabs, "Hasil" default
-├──────────────────────┤
-│                      │
-│ tab content          │
-│ full height          │
-│                      │
-├──────────────────────┤
-│  [Batal] [Terapkan]  │
-└──────────────────────┘
-```
-
-Mobile: no ViewColumns2 toggle (tabs handle comparison).
-
-## Icon Mapping (Iconoir)
+**Icons (Iconoir):**
 
 | Button | Icon | Purpose |
 |--------|------|---------|
 | Compare toggle | `ViewColumns2` | Show/hide teks asli (desktop only) |
-| Issues inspect | `DocMagnifyingGlass` | Open issues popover |
+| Issues inspect | `DocMagnifyingGlass` | Open issues panel |
 | Issue count | `WarningTriangle` | Amber badge in header |
 | Apply changes | `Check` | Inside "Terapkan" button |
 | Close dialog | `Xmark` | Top-right corner |
-| Collapse section | `NavArrowDown` / `NavArrowRight` | In issues popover |
+| Collapse section | `NavArrowDown` / `NavArrowRight` | In issues panel |
 
-## Components to Modify
+---
 
-| File | Change |
-|------|--------|
-| `src/components/refrasa/RefrasaConfirmDialog.tsx` | Full rewrite: new layout, icon buttons, split toggle, mobile tabs |
-| `src/components/refrasa/RefrasaIssueItem.tsx` | Restyle badges to match artifact chip vocabulary |
-| `src/components/refrasa/RefrasaLoadingIndicator.tsx` | Restyle to match artifact surface/font patterns |
+## Unchanged Files
 
-## Components NOT Modified
+- `src/lib/hooks/useRefrasa.ts` — logic stays same
+- `src/lib/refrasa/*` — types, schemas, prompt builder stay same
+- `src/app/api/refrasa/route.ts` — API stays same
+- `src/components/chat/ArtifactViewer.tsx` — integration stays same (same props)
+- `src/components/chat/FullsizeArtifactModal.tsx` — integration stays same (same props)
+- `src/components/refrasa/index.ts` — exports stay same
 
-- `src/lib/hooks/useRefrasa.ts` — no changes (logic stays same)
-- `src/lib/refrasa/*` — no changes (types, schemas, prompt builder stay same)
-- `src/app/api/refrasa/route.ts` — no changes (API stays same)
-- `src/components/chat/ArtifactViewer.tsx` — no changes (integration stays same)
-- `src/components/chat/FullsizeArtifactModal.tsx` — no changes (integration stays same)
+---
 
-## Behavior Details
+### Task 1: Restyle RefrasaLoadingIndicator
 
-1. **Default state**: Dialog opens with result-only view (full width)
-2. **ViewColumns2 toggle**: Splits into 40/60 teks asli | hasil perbaikan
-3. **DocMagnifyingGlass**: Opens Popover component below icon with issues list (max-h-[300px], scrollable)
-4. **Mobile tabs**: "Hasil" tab active by default (result-first), "Asli" tab shows original
-5. **Terapkan**: Same behavior as current (calls onApply, creates new artifact version)
-6. **Batal/X**: Same behavior as current (closes dialog, resets refrasa state)
+**Files:**
+- Modify: `src/components/refrasa/RefrasaLoadingIndicator.tsx`
+
+**Step 1: Rewrite component styling**
+
+Replace the current generic styling with artifact-consistent patterns:
+
+```tsx
+"use client"
+
+import { useState, useEffect } from "react"
+import {
+  LOADING_MESSAGES,
+  LOADING_ROTATION_INTERVAL,
+} from "@/lib/refrasa/loading-messages"
+
+interface RefrasaLoadingIndicatorProps {
+  className?: string
+}
+
+export function RefrasaLoadingIndicator({
+  className = "",
+}: RefrasaLoadingIndicatorProps) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % LOADING_MESSAGES.length)
+    }, LOADING_ROTATION_INTERVAL)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <div className={`flex flex-col items-center justify-center gap-3 py-8 ${className}`}>
+      <span className="h-6 w-6 animate-spin rounded-full border-2 border-slate-400 border-t-transparent dark:border-slate-500 dark:border-t-transparent" />
+      <p className="text-[11px] font-mono text-slate-600 animate-pulse dark:text-slate-400">
+        {LOADING_MESSAGES[currentIndex]}
+      </p>
+    </div>
+  )
+}
+```
+
+Changes: spinner uses slate (not primary), text uses font-mono text-[11px] (artifact data style), gap-3 (tighter).
+
+**Step 2: Visual verify**
+
+Run dev server, trigger Refrasa on any artifact, check loading overlay uses slate spinner + mono font.
+
+**Step 3: Commit**
+
+```bash
+git add src/components/refrasa/RefrasaLoadingIndicator.tsx
+git commit -m "style(refrasa): restyle loading indicator to artifact vocabulary"
+```
+
+---
+
+### Task 2: Restyle RefrasaIssueItem
+
+**Files:**
+- Modify: `src/components/refrasa/RefrasaIssueItem.tsx`
+
+**Step 1: Rewrite component with artifact chip styling**
+
+Replace purple/teal/red/yellow/blue badge colors with artifact-consistent palette (amber/rose/slate):
+
+```tsx
+"use client"
+
+import type { RefrasaIssue } from "@/lib/refrasa/types"
+
+interface RefrasaIssueItemProps {
+  issue: RefrasaIssue
+}
+
+export function RefrasaIssueItem({ issue }: RefrasaIssueItemProps) {
+  const { type, category, message, severity, suggestion } = issue
+
+  const severityClass = {
+    critical: "border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    warning: "border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    info: "border-slate-300/80 bg-slate-200/80 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100",
+  }[severity] ?? severityClass.info
+
+  const severityLabel = {
+    critical: "KRITIS",
+    warning: "PERINGATAN",
+    info: "INFO",
+  }[severity] ?? "INFO"
+
+  const typeLabels: Record<string, string> = {
+    vocabulary_repetition: "Pengulangan Kosa Kata",
+    sentence_pattern: "Pola Kalimat",
+    paragraph_rhythm: "Ritme Paragraf",
+    hedging_balance: "Hedging Akademik",
+    burstiness: "Variasi Kompleksitas",
+    style_violation: "Pelanggaran Gaya",
+  }
+
+  return (
+    <div className="rounded-action border border-slate-300/80 p-2.5 space-y-1.5 dark:border-slate-700/70">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className={`rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide ${severityClass}`}>
+          {severityLabel}
+        </span>
+        <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">
+          {typeLabels[type] || type}
+        </span>
+      </div>
+      <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100">{message}</p>
+      {suggestion && (
+        <p className="text-xs font-mono text-slate-600 dark:text-slate-400">
+          → {suggestion}
+        </p>
+      )}
+    </div>
+  )
+}
+```
+
+Changes:
+- Removed Badge component dependency (inline spans with artifact chip styling)
+- Removed category badge (redundant — issues already grouped by category in parent)
+- Severity badges use artifact color vocabulary (amber/rose/slate, not yellow/red/blue)
+- Labels are uppercase mono tracking-wide (artifact signal style)
+- Container uses `rounded-action` (not generic `rounded-md`)
+- Suggestion uses `→` prefix (not italic "Saran:")
+- Tighter spacing: p-2.5, gap-1.5, space-y-1.5
+
+**Step 2: Visual verify**
+
+Open Refrasa dialog, check issue cards use correct slate/amber/rose badges.
+
+**Step 3: Commit**
+
+```bash
+git add src/components/refrasa/RefrasaIssueItem.tsx
+git commit -m "style(refrasa): restyle issue items to artifact chip vocabulary"
+```
+
+---
+
+### Task 3: Rewrite RefrasaConfirmDialog — Desktop Layout
+
+**Files:**
+- Modify: `src/components/refrasa/RefrasaConfirmDialog.tsx`
+
+This is the main rewrite. Same props interface, completely new layout.
+
+**Step 1: Write the full component**
+
+```tsx
+"use client"
+
+import { useState, useRef, useEffect } from "react"
+import {
+  ViewColumns2,
+  DocMagnifyingGlass,
+  WarningTriangle,
+  Check,
+  Xmark,
+  NavArrowDown,
+  NavArrowRight,
+} from "iconoir-react"
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
+import { RefrasaIssueItem } from "./RefrasaIssueItem"
+import type { RefrasaIssue } from "@/lib/refrasa/types"
+
+interface RefrasaConfirmDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  originalContent: string
+  refrasedText: string
+  issues: RefrasaIssue[]
+  onApply: () => void
+  isApplying?: boolean
+}
+
+export function RefrasaConfirmDialog({
+  open,
+  onOpenChange,
+  originalContent,
+  refrasedText,
+  issues,
+  onApply,
+  isApplying = false,
+}: RefrasaConfirmDialogProps) {
+  const [showOriginal, setShowOriginal] = useState(false)
+  const [showIssues, setShowIssues] = useState(false)
+  const [naturalnessOpen, setNaturalnessOpen] = useState(true)
+  const [styleOpen, setStyleOpen] = useState(true)
+  const issuesPanelRef = useRef<HTMLDivElement>(null)
+
+  const naturalnessIssues = issues.filter((i) => i.category === "naturalness")
+  const styleIssues = issues.filter((i) => i.category === "style")
+  const totalIssues = issues.length
+
+  // Close issues panel on outside click
+  useEffect(() => {
+    if (!showIssues) return
+    const handleClick = (e: MouseEvent) => {
+      if (issuesPanelRef.current && !issuesPanelRef.current.contains(e.target as Node)) {
+        setShowIssues(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [showIssues])
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setShowOriginal(false)
+      setShowIssues(false)
+    }
+  }, [open])
+
+  const iconBtnClass =
+    "flex h-8 w-8 items-center justify-center rounded-action text-slate-600 transition-colors hover:bg-slate-200/80 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+
+  const contentContainerClass =
+    "flex-1 overflow-y-auto rounded-sm border border-slate-300/85 bg-slate-50 p-4 scrollbar-thin dark:border-slate-700/70 dark:bg-slate-900"
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden border-slate-300/75 bg-slate-100 p-0 dark:border-slate-700/80 dark:bg-slate-800">
+        {/* Header */}
+        <div className="shrink-0 border-b border-slate-300/75 px-4 py-3 dark:border-slate-700/80">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Tinjau Hasil Refrasa
+              </h2>
+              {totalIssues > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-badge border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-amber-700 dark:text-amber-300">
+                  <WarningTriangle className="h-3 w-3" />
+                  {totalIssues}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {/* Compare toggle — desktop only */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowOriginal((v) => !v)}
+                    className={cn(
+                      iconBtnClass,
+                      "hidden md:flex",
+                      showOriginal && "bg-slate-200/80 text-slate-900 dark:bg-slate-700/70 dark:text-slate-100"
+                    )}
+                    aria-label="Bandingkan teks asli"
+                  >
+                    <ViewColumns2 className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="font-mono text-xs">
+                  {showOriginal ? "Sembunyikan teks asli" : "Bandingkan teks asli"}
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Issues toggle */}
+              {totalIssues > 0 && (
+                <div className="relative" ref={issuesPanelRef}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setShowIssues((v) => !v)}
+                        className={cn(
+                          iconBtnClass,
+                          showIssues && "bg-slate-200/80 text-slate-900 dark:bg-slate-700/70 dark:text-slate-100"
+                        )}
+                        aria-label="Lihat masalah"
+                      >
+                        <DocMagnifyingGlass className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="font-mono text-xs">
+                      {showIssues ? "Tutup masalah" : "Lihat masalah"}
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Issues floating panel */}
+                  {showIssues && (
+                    <div className="absolute right-0 top-full z-50 mt-2 w-[320px] overflow-hidden rounded-action border border-slate-300/85 bg-slate-100 shadow-lg dark:border-slate-700/70 dark:bg-slate-800">
+                      <div className="max-h-[300px] overflow-y-auto p-3 scrollbar-thin">
+                        <div className="space-y-3">
+                          {naturalnessIssues.length > 0 && (
+                            <Collapsible open={naturalnessOpen} onOpenChange={setNaturalnessOpen}>
+                              <CollapsibleTrigger className="flex items-center gap-1.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+                                {naturalnessOpen ? <NavArrowDown className="h-3 w-3" /> : <NavArrowRight className="h-3 w-3" />}
+                                Naturalness ({naturalnessIssues.length})
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="mt-2 space-y-2">
+                                  {naturalnessIssues.map((issue, idx) => (
+                                    <RefrasaIssueItem key={`nat-${idx}`} issue={issue} />
+                                  ))}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
+                          {styleIssues.length > 0 && (
+                            <Collapsible open={styleOpen} onOpenChange={setStyleOpen}>
+                              <CollapsibleTrigger className="flex items-center gap-1.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
+                                {styleOpen ? <NavArrowDown className="h-3 w-3" /> : <NavArrowRight className="h-3 w-3" />}
+                                Style ({styleIssues.length})
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="mt-2 space-y-2">
+                                  {styleIssues.map((issue, idx) => (
+                                    <RefrasaIssueItem key={`sty-${idx}`} issue={issue} />
+                                  ))}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Close */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onOpenChange(false)}
+                    className={iconBtnClass}
+                    aria-label="Tutup"
+                  >
+                    <Xmark className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="font-mono text-xs">Tutup</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+
+          {/* Action buttons row */}
+          <div className="mt-2 flex items-center justify-end gap-1.5 border-t border-slate-300/80 pt-2 dark:border-slate-700/70">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              disabled={isApplying}
+              className="h-7 px-2.5 font-mono text-[11px] text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+            >
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              onClick={onApply}
+              disabled={isApplying}
+              className="h-7 px-2.5 font-mono text-[11px]"
+            >
+              {isApplying ? (
+                <span className="mr-1.5 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <Check className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {isApplying ? "Menerapkan..." : "Terapkan"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Content — Desktop (md+) */}
+        <div className="hidden min-h-0 flex-1 overflow-hidden p-4 md:flex md:gap-4">
+          {showOriginal && (
+            <div className="flex w-[40%] shrink-0 flex-col">
+              <p className="mb-2 text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                Teks Asli
+              </p>
+              <div className={cn(contentContainerClass, "text-slate-600 dark:text-slate-400")}>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">{originalContent}</p>
+              </div>
+            </div>
+          )}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <p className="mb-2 text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+              Hasil Perbaikan
+            </p>
+            <div className={contentContainerClass}>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-900 dark:text-slate-100">{refrasedText}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Content — Mobile (<md) */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:hidden">
+          <Tabs defaultValue="hasil" className="flex min-h-0 flex-1 flex-col">
+            <TabsList className="mx-4 mt-3 shrink-0">
+              <TabsTrigger value="asli" className="font-mono text-[11px]">Asli</TabsTrigger>
+              <TabsTrigger value="hasil" className="font-mono text-[11px]">Hasil</TabsTrigger>
+            </TabsList>
+            <TabsContent value="asli" className="flex-1 overflow-hidden px-4 pb-4">
+              <div className={cn(contentContainerClass, "h-full text-slate-600 dark:text-slate-400")}>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">{originalContent}</p>
+              </div>
+            </TabsContent>
+            <TabsContent value="hasil" className="flex-1 overflow-hidden px-4 pb-4">
+              <div className={cn(contentContainerClass, "h-full")}>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-900 dark:text-slate-100">{refrasedText}</p>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* Mobile footer */}
+          <div className="shrink-0 border-t border-slate-300/80 px-4 py-2.5 dark:border-slate-700/70">
+            <div className="flex justify-end gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                disabled={isApplying}
+                className="h-7 px-2.5 font-mono text-[11px] text-slate-600 dark:text-slate-400"
+              >
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                onClick={onApply}
+                disabled={isApplying}
+                className="h-7 px-2.5 font-mono text-[11px]"
+              >
+                {isApplying ? (
+                  <span className="mr-1.5 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <Check className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                {isApplying ? "Menerapkan..." : "Terapkan"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+**Step 2: Visual verify — desktop**
+
+Run dev server at 1920x1080. Trigger Refrasa on artifact:
+1. Default: result-only, full width
+2. Click ViewColumns2: split 40/60
+3. Click DocMagnifyingGlass: floating issues panel
+4. Click Terapkan: applies
+
+**Step 3: Visual verify — mobile**
+
+Set viewport to 375x812. Same flow:
+1. Default: "Hasil" tab active
+2. Switch to "Asli" tab
+3. Click DocMagnifyingGlass: floating issues panel
+4. Footer actions work
+
+**Step 4: Commit**
+
+```bash
+git add src/components/refrasa/RefrasaConfirmDialog.tsx
+git commit -m "feat(refrasa): rewrite confirm dialog with result-first layout"
+```
+
+---
+
+### Task 4: Final Integration Test
+
+**Step 1: Test in ArtifactViewer (panel mode)**
+
+1. Open chat with artifact
+2. Click Refrasa from toolbar dropdown
+3. Verify loading overlay uses new slate styling
+4. Verify dialog opens with result-first view
+5. Toggle compare, check split view
+6. Open issues panel, verify badge colors
+7. Apply changes, verify new version created
+
+**Step 2: Test in FullsizeArtifactModal**
+
+1. Open fullscreen artifact
+2. Click Refrasa button in toolbar
+3. Same checks as Step 1
+4. Verify dialog appears on top of fullscreen modal (z-index OK)
+
+**Step 3: Test dark mode + light mode**
+
+Toggle theme, verify both modes look correct for all states.
+
+**Step 4: Commit (if any fixes needed)**
+
+```bash
+git add -A
+git commit -m "fix(refrasa): address visual issues from integration testing"
+```
