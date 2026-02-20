@@ -21,9 +21,12 @@ import { twoFactorCrossDomainBypass } from "./twoFactorBypass";
 const siteUrl = process.env.SITE_URL!;
 const convexSiteUrl = process.env.CONVEX_SITE_URL!;
 
-// Allow both production and local dev origins (single Convex deployment shared by both)
+// Allow production domains + local dev origins (single Convex deployment shared by all)
 const trustedOrigins = [
   siteUrl,
+  "https://makalah.ai",
+  "https://www.makalah.ai",
+  "https://dev.makalah.ai",
   "http://localhost:3000",
   "http://localhost:3001",
 ];
