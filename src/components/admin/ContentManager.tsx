@@ -5,6 +5,7 @@ import { NavArrowRight, NavArrowDown } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 import { HeroSectionEditor } from "./cms/HeroSectionEditor"
 import { BenefitsSectionEditor } from "./cms/BenefitsSectionEditor"
+import { FeatureShowcaseEditor } from "./cms/FeatureShowcaseEditor"
 
 type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer"
 type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
@@ -185,6 +186,10 @@ export function ContentManager({ userId }: ContentManagerProps) {
             <HeroSectionEditor userId={userId} />
           ) : selectedPage === "home" && selectedSection === "benefits" ? (
             <BenefitsSectionEditor userId={userId} />
+          ) : selectedPage === "home" && selectedSection === "features-workflow" ? (
+            <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-workflow" userId={userId} />
+          ) : selectedPage === "home" && selectedSection === "features-refrasa" ? (
+            <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-refrasa" userId={userId} />
           ) : selectionLabel ? (
             <div className="text-center">
               <span className="text-signal mb-3 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
