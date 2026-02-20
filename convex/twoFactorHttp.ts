@@ -8,6 +8,8 @@ import { sendTwoFactorOtpEmail } from "./authEmails"
 const siteUrl = process.env.SITE_URL!
 const trustedOrigins = [
   siteUrl,
+  "https://www.makalah.ai",
+  "https://dev.makalah.ai",
   "http://localhost:3000",
   "http://localhost:3001",
 ]
