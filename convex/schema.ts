@@ -925,4 +925,73 @@ export default defineSchema({
     updatedBy: v.id("users"),
   })
     .index("by_key", ["key"]),
+
+  // ── CMS Tables ──────────────────────────────────────────
+
+  pageContent: defineTable({
+    pageSlug: v.string(),
+    sectionSlug: v.string(),
+    sectionType: v.union(
+      v.literal("hero"),
+      v.literal("benefits"),
+      v.literal("feature-showcase"),
+    ),
+    title: v.optional(v.string()),
+    subtitle: v.optional(v.string()),
+    description: v.optional(v.string()),
+    ctaText: v.optional(v.string()),
+    ctaHref: v.optional(v.string()),
+    badgeText: v.optional(v.string()),
+    items: v.optional(v.array(v.object({
+      title: v.string(),
+      description: v.string(),
+      icon: v.optional(v.string()),
+      imageId: v.optional(v.id("_storage")),
+    }))),
+    primaryImageId: v.optional(v.id("_storage")),
+    primaryImageAlt: v.optional(v.string()),
+    isPublished: v.boolean(),
+    sortOrder: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
+  })
+    .index("by_page", ["pageSlug", "sortOrder"])
+    .index("by_page_section", ["pageSlug", "sectionSlug"]),
+
+  richTextPages: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    content: v.string(),
+    lastUpdatedLabel: v.optional(v.string()),
+    isPublished: v.boolean(),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
+  })
+    .index("by_slug", ["slug"]),
+
+  siteConfig: defineTable({
+    key: v.string(),
+    navLinks: v.optional(v.array(v.object({
+      label: v.string(),
+      href: v.string(),
+      isVisible: v.boolean(),
+    }))),
+    footerSections: v.optional(v.array(v.object({
+      title: v.string(),
+      links: v.array(v.object({
+        label: v.string(),
+        href: v.string(),
+        isExternal: v.optional(v.boolean()),
+      })),
+    }))),
+    socialLinks: v.optional(v.array(v.object({
+      platform: v.string(),
+      url: v.string(),
+      isVisible: v.boolean(),
+    }))),
+    copyrightText: v.optional(v.string()),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
+  })
+    .index("by_key", ["key"]),
 })
