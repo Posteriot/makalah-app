@@ -10,11 +10,10 @@ import { motion } from "framer-motion"
 type CmsPageWrapperProps = {
   slug: string
   badge: string
-  fallbackTitle: string
   children: React.ReactNode
 }
 
-export function CmsPageWrapper({ slug, badge, fallbackTitle, children }: CmsPageWrapperProps) {
+export function CmsPageWrapper({ slug, badge, children }: CmsPageWrapperProps) {
   const page = useQuery(api.richTextPages.getPageBySlug, { slug })
 
   // Loading

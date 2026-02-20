@@ -8,7 +8,7 @@ import {
 
 export default function AboutPage() {
   return (
-    <CmsPageWrapper slug="about" badge="Tentang" fallbackTitle="Tentang Makalah AI">
+    <CmsPageWrapper slug="about" badge="Tentang">
       <main className="bg-background">
         <ManifestoSection />
         <ProblemsSection />

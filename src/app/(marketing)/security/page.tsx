@@ -3,7 +3,7 @@ import { SimplePolicyPage } from "@/components/marketing/SimplePolicyPage"
 
 export default function SecurityPage() {
     return (
-        <CmsPageWrapper slug="security" badge="Security" fallbackTitle="Keamanan Data di Makalah AI">
+        <CmsPageWrapper slug="security" badge="Security">
             <SimplePolicyPage badge="Security" title="Keamanan Data di Makalah AI">
                 <p>
                     Makalah AI dirancang dengan prinsip bahwa data Anda adalah milik Anda sepenuhnya. Kami membangun sistem keamanan berlapis untuk memastikan akses hanya terbatas pada pemilik akun, setiap transaksi terlindungi, dan seluruh alur kerja AI kami berjalan dalam koridor yang aman dan transparan.

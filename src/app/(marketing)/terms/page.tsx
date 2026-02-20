@@ -3,7 +3,7 @@ import { SimplePolicyPage } from "@/components/marketing/SimplePolicyPage"
 
 export default function TermsPage() {
     return (
-        <CmsPageWrapper slug="terms" badge="Legal" fallbackTitle="Ketentuan Layanan Makalah AI">
+        <CmsPageWrapper slug="terms" badge="Legal">
             <SimplePolicyPage badge="Legal" title="Ketentuan Layanan Makalah AI">
                 <p>
                     Selamat datang di Makalah AI. Dengan mengakses atau menggunakan layanan kami, Anda setuju untuk terikat oleh Ketentuan Layanan ini. Makalah AI adalah platform asisten penulisan akademis berbasis AI yang dikelola oleh <strong>PT THE MANAGEMENT ASIA</strong>.

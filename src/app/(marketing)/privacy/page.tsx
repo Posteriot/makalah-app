@@ -3,7 +3,7 @@ import { SimplePolicyPage } from "@/components/marketing/SimplePolicyPage"
 
 export default function PrivacyPage() {
     return (
-        <CmsPageWrapper slug="privacy" badge="Legal" fallbackTitle="Kebijakan Privasi Makalah AI">
+        <CmsPageWrapper slug="privacy" badge="Legal">
             <SimplePolicyPage badge="Legal" title="Kebijakan Privasi Makalah AI">
                 <p>
                     Makalah AI (dioperasikan oleh PT THE MANAGEMENT ASIA) sangat menghargai privasi Anda. Sebagai aplikasi <strong>AI Academic Writing Assistant</strong>, kami berkomitmen untuk transparan dalam mengelola data yang Anda berikan agar layanan kami dapat membantu Anda menyusun karya tulis ilmiah dengan maksimal.
