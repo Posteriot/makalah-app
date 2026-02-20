@@ -52,6 +52,13 @@ export const register = mutation({
       createdAt: Date.now(),
     })
 
+    // Notify admins about new registration
+    await ctx.scheduler.runAfter(0, internal.waitlist.notifyAdminsWaitlistEvent, {
+      event: "new_registration" as const,
+      entryEmail: email,
+      entryName: `${firstName} ${lastName}`,
+    })
+
     return entryId
   },
 })
@@ -265,6 +272,13 @@ export const sendInviteEmail = action({
     // Send invite email via Resend
     const { sendWaitlistInviteEmail } = await import("./authEmails")
     await sendWaitlistInviteEmail(result.email, firstName, signupUrl)
+
+    // Notify admins about invite sent
+    await ctx.runAction(internal.waitlist.notifyAdminsWaitlistEvent, {
+      event: "invited" as const,
+      entryEmail: result.email,
+      entryName: `${result.firstName ?? ""} ${result.lastName ?? ""}`.trim() || "Pengguna",
+    })
 
     return { email: result.email }
   },
