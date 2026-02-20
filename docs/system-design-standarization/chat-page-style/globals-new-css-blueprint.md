@@ -183,3 +183,7 @@ Token wajib ini mengikuti `token-mapping-v1.md`:
 ## 11. Governance Konsistensi
 
 - Keputusan selector `data-ds-scope="chat-v1"` bersifat final untuk fase chat v1 dan hanya boleh diubah lewat revisi eksplisit dokumen aturan.
+- DQ-01 (LOCKED):
+- Untuk intent core lintas halaman (`surface-*`, `text-*`, `border-*`), canonical neutral family adalah `slate` melalui semantic token core `--ds-*`.
+- `stone` tidak dipakai pada token core. Jika dibutuhkan untuk visual showcase/ilustratif, wajib lewat semantic token showcase terpisah, bukan hardcoded class.
+- Komponen shared shell dan shared interaction lintas chat-home wajib pakai token core yang sama untuk intent yang sama.

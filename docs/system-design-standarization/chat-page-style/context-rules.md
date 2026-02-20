@@ -85,3 +85,10 @@ Tujuan utamanya menjaga konsistensi keputusan saat sesi chat panjang, compact co
 - `docs/chat-page/chat-runtime-architecture.md`
 - `docs/chat-page/chat-ui-shell-responsive-and-theme-spec.md`
 - `docs/chat-page/chat-quality-gates-and-regression-checklist.md`
+
+## 9. Keputusan Terkunci Lintas Halaman
+
+- DQ-01 (LOCKED):
+- Untuk intent core lintas halaman (`surface-*`, `text-*`, `border-*`), canonical neutral family adalah `slate` melalui semantic token core `--ds-*`.
+- `stone` tidak dipakai pada token core. Jika dibutuhkan untuk visual showcase/ilustratif, wajib lewat semantic token showcase terpisah, bukan hardcoded class.
+- Komponen shared shell dan shared interaction lintas chat-home wajib pakai token core yang sama untuk intent yang sama.

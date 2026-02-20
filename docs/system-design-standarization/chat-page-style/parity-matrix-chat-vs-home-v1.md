@@ -87,16 +87,21 @@ Ringkasan inventaris home pada scope di atas:
 | DQ-03 | Overlay dan glow di home mock pakai literal gradient/rgba (contoh `RefrasaFeatureMock`) | Sulit distandarkan jika belum diputuskan apakah ini bagian design-system atau “illustrative-only” |
 | DQ-04 | Header home sudah campur semantic token + hardcoded slate | Potensi inkonsistensi dengan chat shell saat token v1 diadopsi lintas halaman |
 
-## 6. Keputusan Parity yang Disarankan (Untuk Diskusi)
+## 6. Keputusan Parity (Status Saat Ini)
 
-- Rule P-1:
-- Jika intent sama lintas halaman (contoh `surface-base`, `text-primary`, `border-subtle`), gunakan semantic token yang sama.
+- DQ-01 (LOCKED):
+- Untuk intent core lintas halaman (`surface-*`, `text-*`, `border-*`), canonical neutral family adalah `slate` melalui semantic token core `--ds-*`.
+- `stone` tidak dipakai pada token core. Jika dibutuhkan untuk visual showcase/ilustratif, wajib lewat semantic token showcase terpisah, bukan hardcoded class.
+- Komponen shared shell dan shared interaction lintas chat-home wajib pakai token core yang sama untuk intent yang sama.
 
-- Rule P-2:
-- Jika intent memang berbeda (contoh “showcase mock visual”), gunakan token intent khusus showcase, bukan hardcoded raw color.
+- DQ-02 (OPEN):
+- Komponen home yang masih `dark:` langsung akan diputuskan strategi migrasi bertahap setelah wave awal chat selesai.
 
-- Rule P-3:
-- Komponen yang tergolong “illustrative-only” tetap harus tokenized, tapi boleh berada pada grup semantic terpisah agar tidak mengganggu token core app shell.
+- DQ-03 (OPEN):
+- Overlay/glow literal pada komponen showcase home akan diputuskan apakah masuk token showcase atau direduksi.
+
+- DQ-04 (OPEN):
+- Header parity (token murni vs campuran hardcoded) akan diputuskan pada fase sinkronisasi shell lintas halaman.
 
 ## 7. Prioritas Sinkronisasi Chat vs Home
 
