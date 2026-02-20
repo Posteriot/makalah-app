@@ -4,6 +4,7 @@ import { useState } from "react"
 import { NavArrowRight, NavArrowDown } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 import { HeroSectionEditor } from "./cms/HeroSectionEditor"
+import { BenefitsSectionEditor } from "./cms/BenefitsSectionEditor"
 
 type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer"
 type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
@@ -182,6 +183,8 @@ export function ContentManager({ userId }: ContentManagerProps) {
         <div className="flex flex-1 items-center justify-center p-comfort">
           {selectedPage === "home" && selectedSection === "hero" ? (
             <HeroSectionEditor userId={userId} />
+          ) : selectedPage === "home" && selectedSection === "benefits" ? (
+            <BenefitsSectionEditor userId={userId} />
           ) : selectionLabel ? (
             <div className="text-center">
               <span className="text-signal mb-3 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
