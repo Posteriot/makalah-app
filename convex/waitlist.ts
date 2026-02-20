@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query, internalMutation, action } from "./_generated/server"
+import { mutation, query, internalMutation, internalAction, action } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
 import { requireRole } from "./permissions"
@@ -267,5 +267,48 @@ export const sendInviteEmail = action({
     await sendWaitlistInviteEmail(result.email, firstName, signupUrl)
 
     return { email: result.email }
+  },
+})
+
+// ════════════════════════════════════════════════════════════════
+// Admin Notification (internal, called by scheduler or other actions)
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Send email notification to all admins/superadmins about a waitlist event.
+ * Called via ctx.scheduler.runAfter(0, ...) from mutations,
+ * or directly from actions.
+ */
+export const notifyAdminsWaitlistEvent = internalAction({
+  args: {
+    event: v.union(
+      v.literal("new_registration"),
+      v.literal("invited"),
+      v.literal("registered")
+    ),
+    entryEmail: v.string(),
+    entryName: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const superadminEmails = (process.env.SUPERADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+
+    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+
+    // Dedupe
+    const allAdmins = [...new Set([...superadminEmails, ...adminEmails])]
+
+    if (allAdmins.length === 0) {
+      console.warn("[Waitlist Admin] No admin emails configured, skipping notification")
+      return
+    }
+
+    const { sendWaitlistAdminNotification } = await import("./authEmails")
+    await sendWaitlistAdminNotification(allAdmins, args.event, args.entryEmail, args.entryName)
   },
 })
