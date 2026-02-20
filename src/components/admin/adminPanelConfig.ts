@@ -2,7 +2,6 @@ import {
   Computer,
   Dashboard,
   Group,
-  Journal,
   Page,
   Cpu,
   EditPencil,
@@ -61,14 +60,6 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
     headerTitle: "Refrasa",
     headerDescription: "Kelola style constitution untuk tool Refrasa",
     headerIcon: EditPencil,
-  },
-  {
-    id: "content",
-    label: "Content",
-    icon: Journal,
-    headerTitle: "Content Manager",
-    headerDescription: "Kelola konten halaman marketing dan pengaturan situs",
-    headerIcon: Journal,
   },
   {
     id: "stats",

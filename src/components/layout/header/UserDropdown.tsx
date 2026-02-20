@@ -202,7 +202,7 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
                 <span>Admin Panel</span>
               </Link>
               <Link
-                href="/dashboard?tab=content"
+                href="/cms"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
               >
