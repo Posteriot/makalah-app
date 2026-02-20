@@ -273,12 +273,8 @@ export const sendInviteEmail = action({
     const { sendWaitlistInviteEmail } = await import("./authEmails")
     await sendWaitlistInviteEmail(result.email, firstName, signupUrl)
 
-    // Notify admins about invite sent
-    await ctx.runAction(internal.waitlist.notifyAdminsWaitlistEvent, {
-      event: "invited" as const,
-      entryEmail: result.email,
-      entryName: `${result.firstName ?? ""} ${result.lastName ?? ""}`.trim() || "Pengguna",
-    })
+    // Notify admins about invite sent (direct call — avoids action-in-action overhead)
+    await resolveAndNotifyAdmins("invited", result.email, `${result.firstName ?? ""} ${result.lastName ?? ""}`.trim() || "Pengguna")
 
     return { email: result.email }
   },
@@ -289,9 +285,40 @@ export const sendInviteEmail = action({
 // ════════════════════════════════════════════════════════════════
 
 /**
+ * Resolve admin emails from env vars and send notification.
+ * Plain helper — callable directly from action context without action-in-action overhead.
+ * Also used by internalAction below (for scheduler calls from mutations).
+ */
+async function resolveAndNotifyAdmins(
+  event: "new_registration" | "invited" | "registered",
+  entryEmail: string,
+  entryName: string
+): Promise<void> {
+  const superadminEmails = (process.env.SUPERADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+
+  // Dedupe
+  const allAdmins = [...new Set([...superadminEmails, ...adminEmails])]
+
+  if (allAdmins.length === 0) {
+    console.warn("[Waitlist Admin] No admin emails configured, skipping notification")
+    return
+  }
+
+  const { sendWaitlistAdminNotification } = await import("./authEmails")
+  await sendWaitlistAdminNotification(allAdmins, event, entryEmail, entryName)
+}
+
+/**
  * Send email notification to all admins/superadmins about a waitlist event.
- * Called via ctx.scheduler.runAfter(0, ...) from mutations,
- * or directly from actions.
+ * Called via ctx.scheduler.runAfter(0, ...) from mutations.
  */
 export const notifyAdminsWaitlistEvent = internalAction({
   args: {
@@ -304,25 +331,6 @@ export const notifyAdminsWaitlistEvent = internalAction({
     entryName: v.string(),
   },
   handler: async (_ctx, args) => {
-    const superadminEmails = (process.env.SUPERADMIN_EMAILS ?? "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean)
-
-    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean)
-
-    // Dedupe
-    const allAdmins = [...new Set([...superadminEmails, ...adminEmails])]
-
-    if (allAdmins.length === 0) {
-      console.warn("[Waitlist Admin] No admin emails configured, skipping notification")
-      return
-    }
-
-    const { sendWaitlistAdminNotification } = await import("./authEmails")
-    await sendWaitlistAdminNotification(allAdmins, args.event, args.entryEmail, args.entryName)
+    await resolveAndNotifyAdmins(args.event, args.entryEmail, args.entryName)
   },
 })
