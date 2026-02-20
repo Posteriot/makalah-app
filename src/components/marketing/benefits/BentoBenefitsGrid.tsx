@@ -40,7 +40,7 @@ export function BentoBenefitsGrid() {
       {benefits.map((benefit) => (
         <div
           key={benefit.id}
-          className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-transparent p-comfort transition-colors duration-200 hover:bg-slate-50 dark:hover:bg-slate-900"
+          className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-card/85 p-comfort backdrop-blur-[1px] transition-all duration-300 hover:-translate-y-1 hover:bg-slate-200 hover:border-slate-400 dark:bg-slate-900/85 dark:hover:bg-slate-700 dark:hover:border-slate-600"
         >
           <div className="relative flex-1 flex flex-col">
             <h3 className="text-narrative font-light text-3xl leading-[1.1] text-foreground m-0 mb-6">
