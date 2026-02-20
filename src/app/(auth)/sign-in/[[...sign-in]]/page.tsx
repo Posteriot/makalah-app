@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -62,6 +62,7 @@ export default function SignInPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { isWaitlistMode } = useWaitlistMode()
+  const verifiedEmail = searchParams.get("verified_email")
   const resetToken = searchParams.get("token")
   const oauthErrorCode = searchParams.get("error")
   const redirectParam =
@@ -85,7 +86,7 @@ export default function SignInPage() {
   const [mode, setMode] = useState<SignInMode>(() =>
     resetToken ? "reset-password" : "sign-in"
   )
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState(verifiedEmail ?? "")
   const [password, setPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -97,6 +98,15 @@ export default function SignInPage() {
   const [forgotPasswordCaptchaToken, setForgotPasswordCaptchaToken] = useState<string | null>(null)
   const [magicLinkCaptchaResetCounter, setMagicLinkCaptchaResetCounter] = useState(0)
   const [forgotPasswordCaptchaResetCounter, setForgotPasswordCaptchaResetCounter] = useState(0)
+
+  useEffect(() => {
+    if (verifiedEmail) {
+      toast.success("Email berhasil diverifikasi! Silakan masuk.")
+      const url = new URL(window.location.href)
+      url.searchParams.delete("verified_email")
+      window.history.replaceState({}, "", url.toString())
+    }
+  }, [verifiedEmail])
 
   function clearError() {
     if (error || errorCode) {

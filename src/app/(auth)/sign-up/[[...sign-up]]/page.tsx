@@ -74,11 +74,13 @@ export default function SignUpPage() {
     setIsLoading(true)
     try {
       const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ")
+      const origin = typeof window !== "undefined" ? window.location.origin : ""
+      const verifiedCallbackURL = `${origin}/sign-in?verified_email=${encodeURIComponent(email.trim())}`
       const result = await signUp.email({
         email: email.trim(),
         password,
         name: fullName,
-        callbackURL,
+        callbackURL: verifiedCallbackURL,
       })
       if (result.error) {
         setError(result.error.message || "Terjadi kesalahan.")
