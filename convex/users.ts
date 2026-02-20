@@ -1,6 +1,7 @@
 import { mutationGeneric, queryGeneric, type GenericDatabaseWriter } from "convex/server"
 import { v } from "convex/values"
 import type { DataModel } from "./_generated/dataModel"
+import { internal } from "./_generated/api"
 import { requireRole } from "./permissions"
 import { requireAuthUserId } from "./authHelpers"
 
@@ -265,7 +266,7 @@ export const updateProfile = mutationGeneric({
 async function markWaitlistRegistered(
   db: GenericDatabaseWriter<DataModel>,
   email: string
-) {
+): Promise<{ firstName: string; lastName: string; email: string } | null> {
   const entry = await db
     .query("waitlistEntries")
     .withIndex("by_email", (q) => q.eq("email", email.toLowerCase().trim()))
@@ -276,7 +277,10 @@ async function markWaitlistRegistered(
       status: "registered",
       registeredAt: Date.now(),
     })
+    return { firstName: entry.firstName, lastName: entry.lastName, email: entry.email }
   }
+
+  return null
 }
 /**
  * Create or link application user record after BetterAuth signup.
@@ -328,7 +332,14 @@ export const createAppUser = mutationGeneric({
         updatedAt: Date.now(),
       })
       // Auto-detect waitlist registration
-      await markWaitlistRegistered(ctx.db, email)
+      const waitlistEntry = await markWaitlistRegistered(ctx.db, email)
+      if (waitlistEntry) {
+        await ctx.scheduler.runAfter(0, internal.waitlist.notifyAdminsWaitlistEvent, {
+          event: "registered" as const,
+          entryEmail: waitlistEntry.email,
+          entryName: `${waitlistEntry.firstName} ${waitlistEntry.lastName}`,
+        })
+      }
       return linkCandidate._id
     }
 
@@ -351,7 +362,14 @@ export const createAppUser = mutationGeneric({
     })
 
     // Auto-detect waitlist registration
-    await markWaitlistRegistered(ctx.db, email)
+    const waitlistEntry = await markWaitlistRegistered(ctx.db, email)
+    if (waitlistEntry) {
+      await ctx.scheduler.runAfter(0, internal.waitlist.notifyAdminsWaitlistEvent, {
+        event: "registered" as const,
+        entryEmail: waitlistEntry.email,
+        entryName: `${waitlistEntry.firstName} ${waitlistEntry.lastName}`,
+      })
+    }
 
     return newUserId
   },
