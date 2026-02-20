@@ -73,25 +73,33 @@ npm run convex:dashboard           # Open dashboard
 - **Backend**: Convex (real-time database + serverless)
 - **Auth**: BetterAuth (`better-auth` + `@convex-dev/better-auth` Convex component)
 - **AI/LLM**: Vercel AI SDK v5
-  - Primary: Vercel AI Gateway → `google/gemini-2.5-flash`
-  - Fallback: OpenRouter → `openai/gpt-5.1` (recommended, 10% cheaper than GPT-4o)
+  - Primary: Vercel AI Gateway (default seed: `google/gemini-2.5-flash-lite`)
+  - Fallback: OpenRouter (default seed: `google/gemini-2.5-flash-lite`)
   - Web Search: `google_search` provider-defined tool (Gateway), `:online` suffix (OpenRouter)
-  - **NOTE:** Actual config stored in `aiProviderConfigs` table. Check Admin Panel for current values.
+  - **NOTE:** Actual config stored in `aiProviderConfigs` table. Check Admin Panel for current values. Seed defaults may differ from runtime config.
 - **Email**: Resend
 - **UI**: Radix UI primitives + shadcn/ui
 
 ### Key Directories
 - `src/app`: Next.js App Router
-  - `(marketing)`: Public pages
-  - `(auth)`: Custom sign-in/sign-up (BetterAuth)
+  - `(marketing)`: Public pages (home, pricing, about, blog, docs, privacy)
+  - `(auth)`: Custom sign-in/sign-up/verify-2fa (BetterAuth)
   - `(dashboard)`: Protected area (admin, settings, subscription)
+  - `(account)`: User account (settings, checkout)
+  - `(onboarding)`: First-time user flow (get-started)
   - `chat`: AI chat interface (landing page)
   - `chat/[conversationId]`: Dynamic route for specific conversations
   - `api/chat`: Chat streaming endpoint
-  - `api/export/word|pdf`: Document export
-- `src/components`: UI components (admin/, chat/, paper/, ui/)
-- `src/lib`: Utilities (ai/, export/, hooks/, citations/, utils/)
-- `convex`: Backend schema and functions
+  - `api/export/word|pdf|receipt`: Document and receipt export
+  - `api/refrasa`: Refrasa endpoint
+  - `api/extract-file`: File text extraction
+  - `api/admin/validate-provider|verify-model-compatibility`: Admin AI config validation
+  - `api/payments/topup`: BPP credit topup
+  - `api/webhooks/xendit`: Xendit payment webhook
+  - `api/auth`: BetterAuth API + email recovery precheck
+- `src/components`: UI components (admin/, ai-elements/, ai-ops/, auth/, billing/, chat/, layout/, marketing/, onboarding/, paper/, refrasa/, settings/, theme/, ui/)
+- `src/lib`: Utilities (ai/, billing/, citations/, convex/, date/, email/, export/, file-extraction/, hooks/, paper/, refrasa/, utils/, xendit/)
+- `convex`: Backend schema and functions (billing/, migrations/, paperSessions/)
 
 ### Data Flow Patterns
 
@@ -110,21 +118,23 @@ npm run convex:dashboard           # Open dashboard
 
 ### Authentication Flow
 1. BetterAuth handles auth via custom sign-in/sign-up forms (no third-party UI)
-2. Auth methods: Email/Password, Google OAuth, Magic Link
+2. Auth methods: Email/Password, Google OAuth, Magic Link, Two-Factor Auth (OTP via email)
 3. `convex/auth.ts` configures BetterAuth with Convex component adapter (`@convex-dev/better-auth`)
-4. `convex/auth.config.ts` defines JWT providers for Convex token validation
-5. `src/proxy.ts` protects routes via `better-auth.session_token` cookie (Next.js 16 pattern)
-6. Two-table strategy: BetterAuth manages its own `user` table; app has separate `users` table linked via `betterAuthUserId`
-7. Client-side user sync: `useCurrentUser()` hook auto-creates app user record if authenticated but no Convex record yet
-8. Hooks: `useCurrentUser()` returns `{ user, isLoading }`, `usePermissions()`
+4. Plugins: `crossDomain`, `convex`, `magicLink`, `twoFactor`, `twoFactorCrossDomainBypass`
+5. `convex/auth.config.ts` defines JWT providers for Convex token validation
+6. `src/proxy.ts` protects routes via `ba_session` cookie (set by `SessionCookieSync` in providers)
+7. Two-table strategy: BetterAuth manages its own `user` table; app has separate `users` table linked via `betterAuthUserId`
+8. Client-side user sync: `useCurrentUser()` hook auto-creates app user record if authenticated but no Convex record yet
+9. Hooks: `useCurrentUser()` returns `{ user, isLoading }`, `usePermissions()`
 
 **Key Auth Files:**
 - `convex/auth.ts` - BetterAuth server config (providers, plugins, email callbacks)
 - `convex/auth.config.ts` - JWT provider config for Convex
-- `convex/http.ts` - HTTP routes for BetterAuth API endpoints
-- `src/lib/auth-client.ts` - Client-side auth (`useSession`, `signIn`, `signUp`, `signOut`, `authClient`)
-- `src/lib/auth-server.ts` - Server-side auth (`isAuthenticated()`, `getToken()`, `fetchAuthQuery/Mutation()`)
-- `src/lib/providers.tsx` - `ConvexBetterAuthProvider` wrapping the app
+- `convex/http.ts` - HTTP routes for BetterAuth API endpoints + custom 2FA OTP endpoints
+- `convex/twoFactorHttp.ts` - Two-factor cross-domain OTP send/verify
+- `src/lib/auth-client.ts` - Client-side auth (`useSession`, `signIn`, `signUp`, `signOut`, `authClient`) with `twoFactorClient` and `magicLinkClient` plugins
+- `src/lib/auth-server.ts` - Server-side auth (`isAuthenticated()`, `getToken()`, `getBetterAuthCookies()`)
+- `src/app/providers.tsx` - `AppProviders` wrapping the app (includes `ConvexBetterAuthProvider`)
 
 ### Database Schema (Key Tables)
 
@@ -136,7 +146,7 @@ npm run convex:dashboard           # Open dashboard
 
 **files**: userId, conversationId, storageId, name, type, size, status, extractedText, extractionStatus
 
-**styleConstitutions**: name, content, version, isActive (for Refrasa tool - Layer 2 style rules)
+**styleConstitutions**: name, content, version, isActive, type (naturalness|style), parentId, rootId (for Refrasa tool - Layer 2 style rules)
 
 **paperSessions**: userId, conversationId, currentStage (13 stages), stageStatus, stageData, paperTitle, archivedAt, completedAt, paperMemoryDigest
 
@@ -148,7 +158,7 @@ npm run convex:dashboard           # Open dashboard
 
 **systemAlerts**: alertType, severity (info|warning|critical), message, source, resolved, metadata
 
-**aiProviderConfigs**: primaryProvider, primaryModel, fallbackProvider, temperature, isActive, web search settings, tool visibility
+**aiProviderConfigs**: primaryProvider, primaryModel, fallbackProvider, fallbackModel, temperature, isActive, maxTokens, web search settings, tool visibility
 
 **Billing & Subscriptions:**
 - **usageEvents**: Token tracking per operation (chat, paper, web search, refrasa)
@@ -162,11 +172,23 @@ npm run convex:dashboard           # Open dashboard
 - **documentationSections**: Docs page content blocks
 - **blogSections**: Blog content with categories
 
+**Auth & Security:**
+- **authRecoveryAttempts**: Rate limiting for magic link and forgot password (keyHash, emailHash, ipHash, intent, attemptCount, blockedUntil)
+- **twoFactorOtps**: OTP for cross-domain 2FA workaround (email, otpHash, expiresAt, attempts, used)
+
+**Other:**
+- **papers**: Standalone paper records (userId, title, abstract)
+- **waitlistEntries**: Pre-registration waitlist (email, status: pending|invited|registered)
+- **appConfig**: Key-value app configuration (key, value)
+
 ### Environment Variables
-- **Convex**: `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_DEPLOYMENT`
-- **BetterAuth**: `BETTER_AUTH_SECRET`, `SITE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_CONVEX_SITE_URL`
-- **AI**: `VERCEL_AI_GATEWAY_API_KEY` (auto-aliased to `AI_GATEWAY_API_KEY`), `OPENROUTER_API_KEY`, `MODEL`, `APP_URL`
-- **Other**: `RESEND_API_KEY`, `OPENAI_API_KEY` (for image OCR)
+- **Convex**: `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_DEPLOYMENT`, `CONVEX_INTERNAL_KEY` (server-side Convex access)
+- **BetterAuth**: `BETTER_AUTH_SECRET`, `SITE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_CONVEX_SITE_URL`, `CONVEX_SITE_URL` (used in `convex/auth.ts`)
+- **AI**: `VERCEL_AI_GATEWAY_API_KEY` (auto-aliased to `AI_GATEWAY_API_KEY`), `OPENROUTER_API_KEY`, `APP_URL`
+- **Payments**: `XENDIT_SECRET_KEY`, `XENDIT_WEBHOOK_TOKEN`, `XENDIT_WEBHOOK_SECRET`
+- **Security**: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `AUTH_EMAIL_PRECHECK_ENABLED`
+- **Email**: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
+- **Admin**: `SUPERADMIN_EMAILS`, `ADMIN_EMAILS`
 
 ### Prerequisites
 - Node.js 20+ (see `engines` in package.json)
@@ -336,14 +358,14 @@ Migration ke Mechanical Grace dilakukan **incremental** (Fase 1: Foundation toke
 Use `v` from `convex/values` for argument validation. Pattern: `query/mutation({ args: { field: v.type() }, handler: async (ctx, args) => {} })`
 
 ### useCurrentUser Hook
-**IMPORTANT:** Always returns `{ user, isLoading }`, never null. Handle loading state first, then check user existence.
+**IMPORTANT:** Always returns `{ user, isLoading }` object (never null itself, but `user` can be null). Handle loading state first, then check user existence.
 - Uses `useSession()` from BetterAuth to get auth state
 - Queries Convex `users` table via `getUserByBetterAuthId`
 - Auto-creates app user record via `createAppUser` mutation if authenticated but no Convex record exists
 
 ### Multi-provider AI Strategy
 - Primary: Vercel AI Gateway (via `createGateway` from `@ai-sdk/gateway`)
-- Fallback: OpenRouter (via `createOpenAI` with custom baseURL)
+- Fallback: OpenRouter (via `createOpenRouter` from `@openrouter/ai-sdk-provider`)
 - Automatic failover via try-catch in `src/app/api/chat/route.ts`
 - See `src/lib/ai/streaming.ts` for `getGatewayModel()` and `getOpenRouterModel()`
 
@@ -359,7 +381,7 @@ When Gateway fails during web search, fallback uses OpenRouter's `:online` suffi
 
 **How it works:**
 1. Gateway fails + web search requested → check `fallbackWebSearchEnabled` config
-2. If enabled → append `:online` to model ID (e.g., `openai/gpt-5.1:online`)
+2. If enabled → append `:online` to model ID (e.g., `model-id:online`)
 3. OpenRouter annotations → `normalizeCitations('openrouter')` → citations UI
 
 **Admin Config (Admin Panel → AI Providers → Web Search Settings):**
@@ -501,7 +523,7 @@ Messages in paper mode have edit restrictions:
 
 Uses Next.js API route (not Convex) because pdf-parse/mammoth need Node.js.
 
-**Supported:** TXT, PDF (pdf-parse), DOCX (mammoth), XLSX (xlsx), Images (OpenAI Vision OCR)
+**Supported:** TXT, PDF (pdf-parse), DOCX (mammoth), XLSX (xlsx), Images (OpenRouter Vision OCR)
 
 **Flow:** FileUploadButton -> POST /api/extract-file -> Update Convex with extractedText
 
@@ -527,7 +549,7 @@ Uses Next.js API route (not Convex) because pdf-parse/mammoth need Node.js.
 - Verify `BETTER_AUTH_SECRET` is set (generate via `openssl rand -base64 32`)
 - Verify `SITE_URL` matches your dev URL (e.g., `http://localhost:3000`)
 - Verify `NEXT_PUBLIC_CONVEX_SITE_URL` points to your Convex HTTP actions URL
-- Check `src/proxy.ts` for cookie-based route protection (`better-auth.session_token`)
+- Check `src/proxy.ts` for cookie-based route protection (`ba_session`)
 - Google OAuth: verify `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Google Cloud Console
 - No webhooks needed — BetterAuth runs server-side in Convex, no external callbacks
 
@@ -593,6 +615,8 @@ Deterministic helpers for web search mode decisions in paper workflow.
 - `aiIndicatedSaveIntent(previousMsg)` - AI promised to save?
 - `isUserConfirmation(text)` - Short confirmation like "ya", "ok", "lakukan"
 - `isExplicitMoreSearchRequest(text)` - "cari lagi", "tambah referensi"
+- `isExplicitSaveSubmitRequest(text)` - Explicit save/submit patterns
+- `getLastAssistantMessage(messages)` - Get last assistant message from array
 
 ### Stage Research Requirements
 | Stage | Required Field | Min Count |
@@ -626,7 +650,7 @@ Deterministic helpers for web search mode decisions in paper workflow.
 
 ### Next.js 16: proxy.ts
 - This project uses `proxy.ts` instead of `middleware.ts` for route protection
-- Reads `better-auth.session_token` cookie to determine auth state
+- Reads `ba_session` cookie (set by `SessionCookieSync` in `src/app/providers.tsx`) to determine auth state
 - Protected routes redirect to `/sign-in` with `redirect_url` param if no session cookie
 - Pattern choice for cleaner auth integration (Next.js 16 still supports both)
 
@@ -667,31 +691,3 @@ In `ChatWindow.tsx`: Query conversation with `"skip"` when no ID. If `conversati
 Server components receive `params` as `Promise<{...}>`. Must `await params` before accessing properties.
 
 **Reference:** `.references/conversation-id-routing/` for full documentation
-
-## TODO: Google OAuth Branding Verification
-
-_BLOCKING for production launch. Remind user to complete this before go-live._
-
-Google OAuth consent screen currently shows "accounts.dev" instead of "Makalah AI" because branding verification has not passed. Custom credentials are configured (Google Cloud Console) and working in Testing mode.
-
-**Required to pass verification:**
-1. Create `/privacy` page (kebijakan privasi)
-2. Add visible link to privacy policy in homepage footer
-3. Ensure "Makalah AI" name and app purpose description are visible on homepage `https://makalah.ai/`
-4. After fixes: Google Cloud Console → OAuth consent screen → Publish app → "I have fixed the issues" → Google re-reviews (2-3 business days)
-
-**Reference:** Google Cloud Console → APIs & Services → OAuth consent screen → Branding
-
-## TODO: CLAUDE.md Improvements
-
-_To be addressed later. Do not action these yet._
-
-1. **Missing API routes**: Beberapa API routes belum documented:
-   - `api/refrasa` — Refrasa endpoint
-   - `api/admin/validate-provider` — Provider validation
-   - `api/admin/verify-model-compatibility` — Model compatibility check
-   - `api/payments/topup` — BPP topup
-   - `api/webhooks/xendit` — Xendit payment webhook
-2. **`.references/` directory not explained**: CLAUDE.md references `.references/system-prompt/`, `.references/paper-workflow/`, `.references/conversation-id-routing/` tapi nggak ada overview tentang `.references/aisdk/` yang punya extensive AI SDK documentation/cookbook
-3. **Minor: `vitest.config.ts` has `globals: true`** — ini berarti test bisa pakai `describe`, `it`, `expect` tanpa import, tapi ini nggak di-mention di Testing section
-4. **Potential staleness**: Beberapa detail mungkin outdated karena codebase terus evolve. Perlu deeper inspection untuk verifikasi
