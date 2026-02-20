@@ -268,8 +268,8 @@ export function GlobalHeader() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "relative px-2.5 py-1.5 text-narrative text-xs uppercase",
-                    "text-foreground transition-colors hover:text-muted-foreground",
+                    "relative rounded-action px-2.5 py-1.5 text-narrative text-xs uppercase",
+                    "text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800",
                     "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-1",
                     "after:border-b after:border-dotted after:border-current after:scale-x-0 after:origin-left after:transition-transform",
                     "hover:after:scale-x-100",
@@ -390,20 +390,20 @@ export function GlobalHeader() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <nav className="absolute top-full left-0 right-0 md:hidden flex flex-col bg-background border-b border-hairline p-4">
+        <nav className="absolute top-full left-0 right-0 z-40 flex flex-col border-b border-slate-300 bg-slate-100 p-4 shadow-sm dark:border-slate-800 dark:bg-background md:hidden">
           {/* Main Navigation Links */}
           {visibleNavLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "block px-3 py-2 text-narrative text-[11px] uppercase tracking-wider rounded-action",
-                  "text-foreground hover:bg-accent transition-colors",
-                  isActive && "text-muted-foreground"
-                )}
-                onClick={() => setMobileMenuState({ isOpen: false, pathname })}
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "flex min-h-11 items-center rounded-action px-3 py-2.5 text-[11px] text-narrative uppercase tracking-wider",
+                    "text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800",
+                    isActive && "text-muted-foreground"
+                  )}
+                  onClick={() => setMobileMenuState({ isOpen: false, pathname })}
               >
                 {link.label}
               </Link>
@@ -423,24 +423,24 @@ export function GlobalHeader() {
 
           {/* SignedIn: Auth section */}
           {showAsAuthenticated && (
-            <div className="mt-3 rounded-shell border-hairline bg-slate-100 dark:bg-slate-900 p-3">
+            <div className="mt-3 rounded-sm border-hairline border-slate-300 bg-slate-200 dark:border-slate-700 dark:bg-slate-900 p-4">
               <Accordion type="single" collapsible>
                 <AccordionItem value="user" className="border-none">
-                  <AccordionTrigger className="p-0 hover:no-underline">
-                    <div className="flex items-center gap-3 w-full text-left px-2 py-2 rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                      <div className={cn("h-7 w-7 rounded-action flex items-center justify-center text-[12px] font-semibold", segmentConfig.className)}>
+                  <AccordionTrigger className="items-center py-0 hover:no-underline [&>svg]:self-center [&>svg]:translate-y-0">
+                    <div className="flex min-h-12 w-full items-center gap-3 rounded-action px-3 py-3 text-left transition-colors hover:bg-slate-300 dark:hover:bg-slate-800">
+                      <div className={cn("h-8 w-8 rounded-action flex items-center justify-center text-xs font-semibold", segmentConfig.className)}>
                         {initial}
                       </div>
-                      <span className="text-narrative text-[11px] font-medium text-foreground flex-1">
+                      <span className="flex-1 text-narrative text-xs font-medium text-foreground">
                         {fullName}
                       </span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-2 pl-2">
+                  <AccordionContent className="pt-2">
                     <Link
                       href="/settings"
                       onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                      className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
                     >
                       <User className="icon-interface" />
                       <span>Atur Akun</span>
@@ -448,7 +448,7 @@ export function GlobalHeader() {
 
                     <Link
                       href="/subscription/overview"
-                      className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
                       onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                     >
                       <CreditCard className="icon-interface" />
@@ -459,7 +459,7 @@ export function GlobalHeader() {
                       <>
                         <Link
                           href="/dashboard"
-                          className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                          className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
                           onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                         >
                           <Settings className="icon-interface" />
@@ -467,7 +467,7 @@ export function GlobalHeader() {
                         </Link>
                         <Link
                           href="/dashboard/waitlist"
-                          className="w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative text-foreground rounded-action hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                          className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
                           onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                         >
                           <UserPlus className="icon-interface" />
@@ -480,7 +480,7 @@ export function GlobalHeader() {
                       onClick={handleSignOut}
                       disabled={isSigningOut}
                       className={cn(
-                        "w-full flex items-center gap-3 px-2 py-2 text-[11px] text-narrative rounded-action transition-colors",
+                        "flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative transition-colors",
                         isSigningOut
                           ? "text-muted-foreground cursor-not-allowed"
                           : "text-rose-500 hover:bg-rose-500/10"
