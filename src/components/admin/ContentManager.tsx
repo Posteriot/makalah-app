@@ -8,6 +8,7 @@ import { BenefitsSectionEditor } from "./cms/BenefitsSectionEditor"
 import { FeatureShowcaseEditor } from "./cms/FeatureShowcaseEditor"
 import { HeaderConfigEditor } from "./cms/HeaderConfigEditor"
 import { FooterConfigEditor } from "./cms/FooterConfigEditor"
+import { RichTextPageEditor } from "./cms/RichTextPageEditor"
 
 type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer"
 type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
@@ -196,6 +197,14 @@ export function ContentManager({ userId }: ContentManagerProps) {
             <HeaderConfigEditor userId={userId} />
           ) : selectedPage === "footer" ? (
             <FooterConfigEditor userId={userId} />
+          ) : selectedPage === "about" && selectedSection === null ? (
+            <RichTextPageEditor slug="about" userId={userId} />
+          ) : selectedPage === "privacy" && selectedSection === null ? (
+            <RichTextPageEditor slug="privacy" userId={userId} />
+          ) : selectedPage === "security" && selectedSection === null ? (
+            <RichTextPageEditor slug="security" userId={userId} />
+          ) : selectedPage === "terms" && selectedSection === null ? (
+            <RichTextPageEditor slug="terms" userId={userId} />
           ) : selectionLabel ? (
             <div className="text-center">
               <span className="text-signal mb-3 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
