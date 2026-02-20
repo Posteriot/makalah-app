@@ -100,3 +100,74 @@ export async function sendWaitlistInviteEmail(
     </div>`
   );
 }
+
+export type WaitlistAdminEvent = "new_registration" | "invited" | "registered";
+
+export async function sendWaitlistAdminNotification(
+  adminEmails: string[],
+  event: WaitlistAdminEvent,
+  entryEmail: string,
+  entryName: string,
+): Promise<void> {
+  if (adminEmails.length === 0) return;
+
+  const appUrl = process.env.SITE_URL ?? process.env.APP_URL ?? DEFAULT_APP_URL;
+  const dashboardUrl = `${appUrl}/dashboard/waitlist`;
+  const timestamp = new Date().toLocaleString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+  });
+
+  const eventConfig: Record<WaitlistAdminEvent, { subject: string; label: string; color: string; description: string }> = {
+    new_registration: {
+      subject: `[Waitlist] Pendaftar Baru: ${entryName} (${entryEmail})`,
+      label: "PENDAFTAR BARU",
+      color: "#f59e0b",
+      description: `<strong>${entryName}</strong> (${entryEmail}) baru saja mendaftar di waiting list.`,
+    },
+    invited: {
+      subject: `[Waitlist] Undangan Terkirim: ${entryName} (${entryEmail})`,
+      label: "UNDANGAN TERKIRIM",
+      color: "#0ea5e9",
+      description: `Undangan telah dikirim ke <strong>${entryName}</strong> (${entryEmail}).`,
+    },
+    registered: {
+      subject: `[Waitlist] Registrasi Selesai: ${entryName} (${entryEmail})`,
+      label: "REGISTRASI SELESAI",
+      color: "#10b981",
+      description: `<strong>${entryName}</strong> (${entryEmail}) telah berhasil mendaftar akun setelah diundang.`,
+    },
+  };
+
+  const config = eventConfig[event];
+
+  const html = `<div style="font-family: 'Geist Mono', 'SF Mono', monospace; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #0f172a; color: #e2e8f0; border-radius: 8px;">
+    <div style="border-bottom: 1px solid #334155; padding-bottom: 16px; margin-bottom: 24px;">
+      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8;">Makalah AI — Admin Notification</span>
+    </div>
+    <div style="display: inline-block; background: ${config.color}20; border: 1px solid ${config.color}40; border-radius: 4px; padding: 4px 10px; margin-bottom: 16px;">
+      <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: ${config.color};">${config.label}</span>
+    </div>
+    <p style="font-size: 13px; color: #cbd5e1; margin: 0 0 16px 0; line-height: 1.6;">${config.description}</p>
+    <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px;">
+      <p style="font-size: 11px; color: #94a3b8; margin: 0 0 4px 0;">WAKTU</p>
+      <p style="font-size: 13px; color: #f8fafc; margin: 0;">${timestamp}</p>
+    </div>
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="${dashboardUrl}" style="display: inline-block; background: #334155; color: #f8fafc; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; padding: 10px 24px; border-radius: 6px;">BUKA DASHBOARD</a>
+    </div>
+    <p style="font-size: 10px; color: #475569; margin: 16px 0 0 0; text-align: center;">Email otomatis dari sistem Makalah AI. Tidak perlu dibalas.</p>
+  </div>`;
+
+  for (const adminEmail of adminEmails) {
+    try {
+      await sendViaResend(adminEmail, config.subject, html);
+    } catch (error) {
+      console.warn(`[Waitlist Admin] Failed to notify ${adminEmail}:`, error);
+    }
+  }
+}
