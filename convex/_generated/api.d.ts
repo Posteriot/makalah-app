@@ -45,6 +45,7 @@ import type * as migrations_fix13TahapReference from "../migrations/fix13TahapRe
 import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/fixAgentPersonaAndCapabilities.js";
 import type * as migrations_removeClerkFields from "../migrations/removeClerkFields.js";
 import type * as migrations_removeOldPaperWorkflowSection from "../migrations/removeOldPaperWorkflowSection.js";
+import type * as migrations_seedAboutContent from "../migrations/seedAboutContent.js";
 import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultAIConfig.js";
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
 import type * as migrations_seedDocumentationSections from "../migrations/seedDocumentationSections.js";
@@ -131,6 +132,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/fixAgentPersonaAndCapabilities": typeof migrations_fixAgentPersonaAndCapabilities;
   "migrations/removeClerkFields": typeof migrations_removeClerkFields;
   "migrations/removeOldPaperWorkflowSection": typeof migrations_removeOldPaperWorkflowSection;
+  "migrations/seedAboutContent": typeof migrations_seedAboutContent;
   "migrations/seedDefaultAIConfig": typeof migrations_seedDefaultAIConfig;
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
   "migrations/seedDocumentationSections": typeof migrations_seedDocumentationSections;
