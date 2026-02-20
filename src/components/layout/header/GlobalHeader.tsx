@@ -22,7 +22,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { useConvexAuth } from "convex/react"
+import { useConvexAuth, useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { signOut, useSession } from "@/lib/auth-client"
 import { usePathname } from "next/navigation"
@@ -74,10 +75,18 @@ export function GlobalHeader() {
   const isThemeReady = resolvedTheme !== undefined
   const shouldHideHeader = pathname?.startsWith("/chat")
   const { isWaitlistMode } = useWaitlistMode()
+  const headerConfig = useQuery(api.siteConfig.getConfig, { key: "header" })
+
+  // CMS-driven nav links with hardcoded fallback
+  const baseNavLinks = headerConfig?.navLinks
+    ? (headerConfig.navLinks as Array<{ label: string; href: string; isVisible: boolean }>)
+        .filter((link) => link.isVisible)
+        .map((link) => ({ href: link.href, label: link.label }))
+    : NAV_LINKS
 
   const visibleNavLinks = isWaitlistMode
-    ? NAV_LINKS.filter((link) => link.href !== "/blog")
-    : NAV_LINKS
+    ? baseNavLinks.filter((link) => link.href !== "/blog")
+    : baseNavLinks
 
   const isMobileMenuOpen = useMemo(() => {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
