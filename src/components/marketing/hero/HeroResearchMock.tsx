@@ -12,10 +12,10 @@ export function HeroResearchMock() {
       )}
     >
       <Image
-        src="/images/hero-research-mock-v2.png"
-        alt="Mockup progress workflow Makalah AI"
-        width={1120}
-        height={1154}
+        src="/images/hero-paper-session-mock.png"
+        alt="Mockup sesi paper Makalah AI"
+        width={769}
+        height={768}
         className="h-auto w-full rounded-md"
       />
     </div>
