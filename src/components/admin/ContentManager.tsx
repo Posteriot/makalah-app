@@ -9,9 +9,14 @@ import { FeatureShowcaseEditor } from "./cms/FeatureShowcaseEditor"
 import { HeaderConfigEditor } from "./cms/HeaderConfigEditor"
 import { FooterConfigEditor } from "./cms/FooterConfigEditor"
 import { RichTextPageEditor } from "./cms/RichTextPageEditor"
+import { ManifestoSectionEditor } from "./cms/ManifestoSectionEditor"
+import { ProblemsSectionEditor } from "./cms/ProblemsSectionEditor"
+import { AgentsSectionEditor } from "./cms/AgentsSectionEditor"
+import { CareerContactEditor } from "./cms/CareerContactEditor"
 
 type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer"
 type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
+  | "manifesto" | "problems" | "agents" | "career-contact"
 
 type NavSection = {
   id: SectionId
@@ -36,7 +41,16 @@ const PAGES_NAV: { pages: NavPage[]; global: NavPage[] } = {
         { id: "features-refrasa", label: "Fitur: Refrasa" },
       ],
     },
-    { id: "about", label: "About" },
+    {
+      id: "about",
+      label: "About",
+      sections: [
+        { id: "manifesto", label: "Manifesto" },
+        { id: "problems", label: "Problems" },
+        { id: "agents", label: "Agents" },
+        { id: "career-contact", label: "Karier & Kontak" },
+      ],
+    },
     { id: "privacy", label: "Privacy" },
     { id: "security", label: "Security" },
     { id: "terms", label: "Terms" },
@@ -54,11 +68,19 @@ type ContentManagerProps = {
 export function ContentManager({ userId }: ContentManagerProps) {
   const [selectedPage, setSelectedPage] = useState<PageId | null>(null)
   const [selectedSection, setSelectedSection] = useState<SectionId | null>(null)
-  const [homeExpanded, setHomeExpanded] = useState(false)
+  const [expandedPages, setExpandedPages] = useState<Set<PageId>>(new Set())
 
   function handlePageClick(page: NavPage) {
     if (page.sections) {
-      setHomeExpanded((prev) => !prev)
+      setExpandedPages((prev) => {
+        const next = new Set(prev)
+        if (next.has(page.id)) {
+          next.delete(page.id)
+        } else {
+          next.add(page.id)
+        }
+        return next
+      })
     } else {
       setSelectedPage(page.id)
       setSelectedSection(null)
@@ -125,7 +147,7 @@ export function ContentManager({ userId }: ContentManagerProps) {
                   >
                     {page.sections && (
                       <span className="shrink-0">
-                        {homeExpanded ? (
+                        {expandedPages.has(page.id) ? (
                           <NavArrowDown className="h-4 w-4" strokeWidth={1.5} />
                         ) : (
                           <NavArrowRight className="h-4 w-4" strokeWidth={1.5} />
@@ -135,8 +157,8 @@ export function ContentManager({ userId }: ContentManagerProps) {
                     <span>{page.label}</span>
                   </button>
 
-                  {/* Sections under Home */}
-                  {page.sections && homeExpanded && (
+                  {/* Expandable sections */}
+                  {page.sections && expandedPages.has(page.id) && (
                     <div className="ml-4 mt-1 flex flex-col gap-dense border-l border-border pl-2">
                       {page.sections.map((section) => (
                         <button
@@ -197,8 +219,14 @@ export function ContentManager({ userId }: ContentManagerProps) {
             <HeaderConfigEditor userId={userId} />
           ) : selectedPage === "footer" ? (
             <FooterConfigEditor userId={userId} />
-          ) : selectedPage === "about" && selectedSection === null ? (
-            <RichTextPageEditor slug="about" userId={userId} />
+          ) : selectedPage === "about" && selectedSection === "manifesto" ? (
+            <ManifestoSectionEditor userId={userId} />
+          ) : selectedPage === "about" && selectedSection === "problems" ? (
+            <ProblemsSectionEditor userId={userId} />
+          ) : selectedPage === "about" && selectedSection === "agents" ? (
+            <AgentsSectionEditor userId={userId} />
+          ) : selectedPage === "about" && selectedSection === "career-contact" ? (
+            <CareerContactEditor userId={userId} />
           ) : selectedPage === "privacy" && selectedSection === null ? (
             <RichTextPageEditor slug="privacy" userId={userId} />
           ) : selectedPage === "security" && selectedSection === null ? (
