@@ -22,10 +22,9 @@ Setelah dijalankan, data yang ada di database **menjadi source of truth**, bukan
 
 ```
 # Di seedDefaultAIConfig.ts:
-fallbackModel: "google/gemini-2.5-flash-lite"
+primaryModel: "gemini-2.5-flash", fallbackModel: "openai/gpt-5.1"
 
-# Di database (actual):
-fallbackModel: "openai/gpt-4o"  ← INI YANG BENAR
+# Di database (actual) — bisa berbeda jika admin sudah update via Admin Panel
 ```
 
 File migration menunjukkan nilai **saat seed pertama kali**, bukan nilai saat ini.

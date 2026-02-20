@@ -210,13 +210,13 @@ export function AIProviderFormDialog({
 
   // Primary provider (default: Vercel Gateway)
   const [primaryProvider, setPrimaryProvider] = useState("vercel-gateway")
-  const [primaryModel, setPrimaryModel] = useState("gemini-2.5-flash-lite")
-  const [primaryModelPreset, setPrimaryModelPreset] = useState("gemini-2.5-flash-lite")
+  const [primaryModel, setPrimaryModel] = useState("gemini-2.5-flash")
+  const [primaryModelPreset, setPrimaryModelPreset] = useState("gemini-2.5-flash")
 
   // Fallback provider (default: OpenRouter)
   const [fallbackProvider, setFallbackProvider] = useState("openrouter")
-  const [fallbackModel, setFallbackModel] = useState("google/gemini-2.5-flash-lite")
-  const [fallbackModelPreset, setFallbackModelPreset] = useState("google/gemini-2.5-flash-lite")
+  const [fallbackModel, setFallbackModel] = useState("openai/gpt-5.1")
+  const [fallbackModelPreset, setFallbackModelPreset] = useState("openai/gpt-5.1")
   const [gatewayApiKey, setGatewayApiKey] = useState("")
   const [openrouterApiKey, setOpenrouterApiKey] = useState("")
   const [gatewayUseEnvKey, setGatewayUseEnvKey] = useState(false)
@@ -292,11 +292,11 @@ export function AIProviderFormDialog({
         setName("")
         setDescription("")
         setPrimaryProvider("vercel-gateway")
-        setPrimaryModel("gemini-2.5-flash-lite") // Vercel Gateway format
-        setPrimaryModelPreset("gemini-2.5-flash-lite")
+        setPrimaryModel("gemini-2.5-flash") // Vercel Gateway format
+        setPrimaryModelPreset("gemini-2.5-flash")
         setFallbackProvider("openrouter")
-        setFallbackModel("google/gemini-2.5-flash-lite") // OpenRouter format
-        setFallbackModelPreset("google/gemini-2.5-flash-lite")
+        setFallbackModel("openai/gpt-5.1") // OpenRouter format
+        setFallbackModelPreset("openai/gpt-5.1")
         setGatewayApiKey("")
         setOpenrouterApiKey("")
         setGatewayUseEnvKey(false)

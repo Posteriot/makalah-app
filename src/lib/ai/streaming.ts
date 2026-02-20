@@ -240,8 +240,8 @@ export async function getGatewayModel() {
  * When `enableWebSearch` is true, appends `:online` suffix to the model ID.
  * This works with ANY model on OpenRouter - the model ID comes from database config
  * (Admin Panel), not hardcoded. Examples:
- * - "openai/gpt-4o" → "openai/gpt-4o:online"
- * - "google/gemini-2.5-flash-lite" → "google/gemini-2.5-flash-lite:online"
+ * - "openai/gpt-5.1" → "openai/gpt-5.1:online"
+ * - "google/gemini-2.5-flash" → "google/gemini-2.5-flash:online"
  * - "anthropic/claude-3.5-sonnet" → "anthropic/claude-3.5-sonnet:online"
  *
  * @param options.enableWebSearch - If true, append `:online` suffix for web search capability

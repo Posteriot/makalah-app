@@ -60,10 +60,10 @@ export const seedDefaultAIConfig = internalMutationGeneric({
 
       // Primary: Vercel AI Gateway
       primaryProvider: "vercel-gateway",
-      primaryModel: "google/gemini-2.5-flash-lite",
+      primaryModel: "gemini-2.5-flash",
       // Fallback: OpenRouter
       fallbackProvider: "openrouter",
-      fallbackModel: "google/gemini-2.5-flash-lite",
+      fallbackModel: "openai/gpt-5.1",
       gatewayApiKey: gatewayKey,
       openrouterApiKey: openrouterKey,
       // Legacy slot-based keys (kept for compatibility)

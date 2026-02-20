@@ -281,11 +281,11 @@ export default defineSchema({
 
     // Primary Provider Config
     primaryProvider: v.string(), // "vercel-gateway" | "openrouter"
-    primaryModel: v.string(), // e.g., "google/gemini-2.5-flash-lite"
+    primaryModel: v.string(), // e.g., "gemini-2.5-flash" (Gateway format, no provider prefix)
 
     // Fallback Provider Config
     fallbackProvider: v.string(), // "openrouter" | "vercel-gateway"
-    fallbackModel: v.string(), // e.g., "google/gemini-2.5-flash-lite"
+    fallbackModel: v.string(), // e.g., "openai/gpt-5.1" (OpenRouter format, with provider prefix)
 
     // Provider API keys (global per provider)
     gatewayApiKey: v.optional(v.string()), // Vercel AI Gateway key (stored as-is)

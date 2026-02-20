@@ -73,10 +73,10 @@ npm run convex:dashboard           # Open dashboard
 - **Backend**: Convex (real-time database + serverless)
 - **Auth**: BetterAuth (`better-auth` + `@convex-dev/better-auth` Convex component)
 - **AI/LLM**: Vercel AI SDK v5
-  - Primary: Vercel AI Gateway (default seed: `google/gemini-2.5-flash-lite`)
-  - Fallback: OpenRouter (default seed: `google/gemini-2.5-flash-lite`)
+  - Primary: Vercel AI Gateway → `gemini-2.5-flash`
+  - Fallback: OpenRouter → `openai/gpt-5.1`
   - Web Search: `google_search` provider-defined tool (Gateway), `:online` suffix (OpenRouter)
-  - **NOTE:** Actual config stored in `aiProviderConfigs` table. Check Admin Panel for current values. Seed defaults may differ from runtime config.
+  - **NOTE:** Actual config stored in `aiProviderConfigs` table. Check Admin Panel for current values.
 - **Email**: Resend
 - **UI**: Radix UI primitives + shadcn/ui
 
