@@ -38,9 +38,9 @@ export default function CmsPage() {
   }
 
   return (
-    <div className="relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[color:var(--section-bg-alt)]">
+    <div className="relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[color:var(--section-bg-alt)] pt-[var(--header-h)]">
       <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-6 pt-4 lg:px-8">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-6 pt-6 lg:px-8">
         <div className="mx-auto w-full max-w-4xl rounded-shell border-hairline bg-card/90 px-5 py-6 backdrop-blur-[1px] dark:bg-slate-900 md:px-8">
           <ContentManager userId={user._id} />
         </div>
