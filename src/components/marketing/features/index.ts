@@ -1,4 +1,6 @@
 export { WorkflowFeatureSection } from "./WorkflowFeatureSection"
+export { WorkflowFeatureStatic } from "./WorkflowFeatureStatic"
+export { WorkflowFeatureCMS } from "./WorkflowFeatureCMS"
 export { WorkflowFeatureMock } from "./WorkflowFeatureMock"
 export { RefrasaFeatureSection } from "./RefrasaFeatureSection"
 export { RefrasaFeatureMock } from "./RefrasaFeatureMock"
