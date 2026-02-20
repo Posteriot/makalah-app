@@ -16,7 +16,20 @@ import {
  * - All collapsed by default
  * - Blinking dot matching desktop design (Amber)
  * - Design tokens: Slate surface, Hairline border, text-narrative, text-interface
+ *
+ * Accepts optional `items` prop from CMS. If provided, uses CMS data;
+ * otherwise falls back to hardcoded `benefits` array.
  */
+
+type BenefitItem = {
+  title: string
+  description: string
+  icon?: string
+}
+
+type BenefitsAccordionProps = {
+  items?: BenefitItem[]
+}
 
 const benefits = [
   {
@@ -45,8 +58,16 @@ const benefits = [
   },
 ]
 
-export function BenefitsAccordion() {
+export function BenefitsAccordion({ items }: BenefitsAccordionProps) {
   const [openItem, setOpenItem] = useState<string>("")
+
+  const benefitsData = items
+    ? items.map((item, i) => ({
+        id: `benefit-${i}`,
+        title: item.title,
+        description: item.description,
+      }))
+    : benefits
 
   return (
     <div className="md:hidden">
@@ -57,7 +78,7 @@ export function BenefitsAccordion() {
         onValueChange={(value) => setOpenItem(value ?? "")}
         className="flex flex-col gap-comfort"
       >
-        {benefits.map((benefit) => (
+        {benefitsData.map((benefit) => (
           <AccordionItem
             key={benefit.id}
             value={benefit.id}

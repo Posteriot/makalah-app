@@ -5,7 +5,10 @@
  * Lihat README.md untuk dokumentasi lengkap.
  */
 
-// Main section wrapper
+// Main section wrapper (CMS-driven with static fallback)
+export { BenefitsSectionWrapper } from "./BenefitsSectionWrapper"
+
+// Static section (used by wrapper, or standalone for direct static usage)
 export { BenefitsSection } from "./BenefitsSection"
 
 // Sub-components (untuk customization jika diperlukan)

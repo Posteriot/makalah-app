@@ -12,8 +12,22 @@ import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBa
  * - Desktop (md+): Bento grid 2x2 di atas grid 16-kolom
  * - Mobile (<md): Accordion with card styling, single open, all collapsed by default
  * - DocsCTA at bottom center
+ *
+ * Accepts optional `items` prop from CMS. If provided, passes to grid/accordion;
+ * otherwise they use their own hardcoded fallback arrays.
  */
-export function BenefitsSection() {
+
+type BenefitItem = {
+  title: string
+  description: string
+  icon?: string
+}
+
+type BenefitsSectionProps = {
+  items?: BenefitItem[]
+}
+
+export function BenefitsSection({ items }: BenefitsSectionProps) {
   return (
     <section
       className="relative isolate h-[100svh] min-h-[100svh] overflow-hidden bg-[var(--section-bg-alt)]"
@@ -33,12 +47,12 @@ export function BenefitsSection() {
 
           {/* Desktop: Bento Grid */}
           <div className="col-span-16 md:col-span-12 md:col-start-3">
-            <BentoBenefitsGrid />
+            <BentoBenefitsGrid items={items} />
           </div>
 
           {/* Mobile: Accordion */}
           <div className="col-span-16 md:col-span-12 md:col-start-3">
-            <BenefitsAccordion />
+            <BenefitsAccordion items={items} />
           </div>
 
           {/* Documentation CTA - Bottom Center */}
