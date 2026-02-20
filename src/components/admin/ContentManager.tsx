@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { NavArrowRight, NavArrowDown } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
+import { HeroSectionEditor } from "./cms/HeroSectionEditor"
 
 type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer"
 type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
@@ -49,9 +50,6 @@ export function ContentManager({ userId }: ContentManagerProps) {
   const [selectedPage, setSelectedPage] = useState<PageId | null>(null)
   const [selectedSection, setSelectedSection] = useState<SectionId | null>(null)
   const [homeExpanded, setHomeExpanded] = useState(false)
-
-  // Suppress unused variable warning — userId will be passed to editor components later
-  void userId
 
   function handlePageClick(page: NavPage) {
     if (page.sections) {
@@ -182,7 +180,9 @@ export function ContentManager({ userId }: ContentManagerProps) {
 
         {/* Right panel: editor area */}
         <div className="flex flex-1 items-center justify-center p-comfort">
-          {selectionLabel ? (
+          {selectedPage === "home" && selectedSection === "hero" ? (
+            <HeroSectionEditor userId={userId} />
+          ) : selectionLabel ? (
             <div className="text-center">
               <span className="text-signal mb-3 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 {selectionLabel}
