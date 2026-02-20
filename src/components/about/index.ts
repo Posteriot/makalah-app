@@ -31,6 +31,10 @@ export {
 
 // Section components
 export { ManifestoSection } from "./ManifestoSection"
+export { ManifestoSectionStatic } from "./ManifestoSectionStatic"
+export { ManifestoSectionCMS } from "./ManifestoSectionCMS"
 export { ProblemsSection } from "./ProblemsSection"
+export { ProblemsSectionStatic } from "./ProblemsSectionStatic"
+export { ProblemsSectionCMS } from "./ProblemsSectionCMS"
 export { AgentsSection } from "./AgentsSection"
 export { CareerContactSection } from "./CareerContactSection"
