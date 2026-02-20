@@ -27,7 +27,11 @@ export function HeroCTA() {
           Jadilah 100 orang pertama pengguna Makalah AI. Daftarkan email, lalu tunggu undangan kami
         </p>
       )}
-      <div className="flex justify-center lg:justify-start w-full">
+      <div
+        className={`flex w-full justify-center lg:justify-start ${
+          isWaitlistMode ? "mt-3 md:mt-4" : ""
+        }`}
+      >
         <SectionCTA href={getHref()} isLoading={isLoading}>
           {isWaitlistMode ? "IKUT DAFTAR TUNGGU" : "AYO MULAI"}
         </SectionCTA>
