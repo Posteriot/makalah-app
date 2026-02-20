@@ -257,7 +257,7 @@ export default function GetStartedPage() {
         <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
         <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4">
           <Image
-            src="/logo/makalah_logo_light.svg"
+            src="/logo/logo-color-lightmode.png"
             alt=""
             width={48}
             height={48}
@@ -304,7 +304,7 @@ export default function GetStartedPage() {
               <div className="relative z-10">
                 <Link href="/" className="inline-flex items-center gap-2">
                   <Image
-                    src="/logo/makalah_logo_light.svg"
+                    src="/logo/logo-color-darkmode.png"
                     alt="Makalah"
                     width={28}
                     height={28}

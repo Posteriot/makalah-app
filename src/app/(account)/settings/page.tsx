@@ -76,14 +76,14 @@ function SettingsContent() {
           <div className="flex items-center justify-between w-full">
             <Link href="/" className="inline-flex items-center focus-ring rounded-action">
               <Image
-                src="/logo/makalah_logo_dark.svg"
+                src="/logo/logo-color-lightmode.png"
                 alt="Makalah"
                 width={28}
                 height={28}
                 className="block h-7 w-7 dark:hidden"
               />
               <Image
-                src="/logo/makalah_logo_light.svg"
+                src="/logo/logo-color-darkmode.png"
                 alt="Makalah"
                 width={28}
                 height={28}
@@ -163,14 +163,14 @@ function SettingsContent() {
         <div className="md:hidden relative z-10 mb-3 flex items-center justify-between px-3 py-2">
           <Link href="/" className="inline-flex items-center gap-2 focus-ring rounded-action">
             <Image
-              src="/logo/makalah_logo_dark.svg"
+              src="/logo/logo-color-lightmode.png"
               alt="Makalah"
               width={24}
               height={24}
               className="block h-6 w-6 dark:hidden"
             />
             <Image
-              src="/logo/makalah_logo_light.svg"
+              src="/logo/logo-color-darkmode.png"
               alt="Makalah"
               width={24}
               height={24}

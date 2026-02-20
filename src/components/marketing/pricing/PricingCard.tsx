@@ -90,8 +90,9 @@ export function PricingCard({ plan, isWaitlistMode }: { plan: PricingPlan; isWai
       <div
         className={cn(
           "relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
-          "border border-slate-500",
-          "group-hover/card:bg-slate-200 dark:group-hover/card:bg-slate-700",
+          "bg-card/88 backdrop-blur-[1px] dark:bg-slate-900/88",
+          "border border-[color:var(--slate-400)]",
+          "group-hover/card:bg-slate-100 group-hover/card:border-[color:var(--slate-500)] dark:group-hover/card:bg-slate-800 dark:group-hover/card:border-[color:var(--slate-600)]",
           "group-hover/card:-translate-y-1 transition-all duration-300",
           plan.isHighlighted && "border-2 border-emerald-500"
         )}

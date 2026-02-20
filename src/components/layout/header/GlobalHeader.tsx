@@ -208,17 +208,17 @@ export function GlobalHeader() {
         {/* Header Left - Logo & Brand */}
         <div className="col-span-8 md:col-span-4 flex items-center gap-dense flex-nowrap">
           <Link href="/" className="flex items-center gap-3 shrink-0">
-            {/* Light logo icon (for dark mode) */}
+            {/* Dark mode logo icon */}
             <Image
-              src="/logo/makalah_logo_light.svg"
+              src="/logo/logo-color-darkmode.png"
               alt="Makalah"
               width={24}
               height={24}
               className="h-6 w-6 rounded-[4px] hidden dark:block"
             />
-            {/* Dark logo icon (for light mode) */}
+            {/* Light mode logo icon */}
             <Image
-              src="/logo/makalah_logo_dark.svg"
+              src="/logo/logo-color-lightmode.png"
               alt="Makalah"
               width={24}
               height={24}

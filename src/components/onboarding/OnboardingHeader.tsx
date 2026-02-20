@@ -46,14 +46,14 @@ export function OnboardingHeader() {
         <div className="col-span-10 md:col-span-8 flex items-center gap-3">
           <Link href="/" className="flex items-center gap-3 shrink-0">
             <Image
-              src="/logo/makalah_logo_light.svg"
+              src="/logo/logo-color-darkmode.png"
               alt="Makalah"
               width={24}
               height={24}
               className="h-6 w-6 rounded-[4px] hidden dark:block"
             />
             <Image
-              src="/logo/makalah_logo_dark.svg"
+              src="/logo/logo-color-lightmode.png"
               alt="Makalah"
               width={24}
               height={24}

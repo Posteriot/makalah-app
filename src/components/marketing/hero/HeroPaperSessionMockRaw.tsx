@@ -38,7 +38,7 @@ export function HeroPaperSessionMockRaw() {
         <aside className="border-r border-stone-700 bg-stone-900">
           <div className="flex h-14 items-center justify-center border-b border-stone-700">
             <Image
-              src="/logo/makalah_logo_light.svg"
+              src="/logo/logo-color-darkmode.png"
               alt=""
               width={28}
               height={28}

@@ -73,11 +73,11 @@ export function AuthWideCard({
                             <Link href="/" className="inline-flex items-center gap-2 group w-fit">
                                 {/* Logo Icon */}
                                 <Image
-                                    src="/logo/makalah_logo_light.svg"
+                                    src="/logo/logo-color-darkmode.png"
                                     alt=""
                                     width={28}
                                     height={28}
-                                    className="transition-transform group-hover:scale-105 brightness-[.88] sepia-[.06] hue-rotate-[185deg] saturate-[3]"
+                                    className="transition-transform group-hover:scale-105"
                                 />
                             </Link>
                             {showBackButton ? (

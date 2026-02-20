@@ -64,14 +64,14 @@ export function WorkflowFeatureMock() {
                 )}
               >
                 <Image
-                  src="/logo/makalah_logo_light.svg"
+                  src="/logo/logo-color-darkmode.png"
                   alt="Makalah"
                   width={18}
                   height={18}
                   className="hidden dark:block"
                 />
                 <Image
-                  src="/logo/makalah_logo_dark.svg"
+                  src="/logo/logo-color-lightmode.png"
                   alt="Makalah"
                   width={18}
                   height={18}
