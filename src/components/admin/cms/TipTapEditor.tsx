@@ -69,6 +69,7 @@ export default function TipTapEditor({
         },
       }),
     ],
+    immediatelyRender: false,
     content: content ? JSON.parse(content) : undefined,
     editable: editable ?? true,
     onUpdate: ({ editor }) => {
