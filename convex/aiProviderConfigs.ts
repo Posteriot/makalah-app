@@ -32,6 +32,27 @@ export const getActiveConfig = query({
 })
 
 /**
+ * Get a single AI provider config by ID
+ * Admin only
+ */
+export const getConfig = query({
+  args: {
+    configId: v.id("aiProviderConfigs"),
+    requestorUserId: v.id("users"),
+  },
+  handler: async (ctx, { configId, requestorUserId }) => {
+    await requireRole(ctx.db, requestorUserId, "admin")
+
+    const config = await ctx.db.get(configId)
+    if (!config) {
+      return null
+    }
+
+    return config
+  },
+})
+
+/**
  * List all AI provider configs (latest versions only)
  * Returns configs with creator email for display
  * Admin only

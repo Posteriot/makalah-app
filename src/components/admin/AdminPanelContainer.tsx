@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { SidebarExpand, SidebarCollapse } from "iconoir-react"
 import { useQuery } from "convex/react"
@@ -21,9 +21,14 @@ export function AdminPanelContainer({
   userRole,
 }: AdminPanelContainerProps) {
   const searchParams = useSearchParams()
-  const initialTab = (searchParams.get("tab") as AdminTabId) || "overview"
-  const [activeTab, setActiveTab] = useState<AdminTabId>(initialTab)
+  const tabParam = (searchParams.get("tab") as AdminTabId) || "overview"
+  const [activeTab, setActiveTab] = useState<AdminTabId>(tabParam)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Sync activeTab when URL ?tab= param changes (e.g., navigating back from editor)
+  useEffect(() => {
+    setActiveTab(tabParam)
+  }, [tabParam])
   const users = useQuery(api.users.listAllUsers, { requestorUserId: userId })
 
   if (users === undefined) {

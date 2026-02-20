@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
@@ -35,101 +35,7 @@ import {
 } from "iconoir-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Id } from "@convex/_generated/dataModel"
-
-// Model presets per provider
-// Vercel AI Gateway: model ID tanpa prefix provider
-// OpenRouter: model ID dengan prefix provider/model
-
-const VERCEL_GATEWAY_MODELS = [
-  // Google
-  { value: "gemini-2.5-flash-lite", label: "Google Gemini 2.5 Flash Lite" },
-  { value: "gemini-2.5-flash", label: "Google Gemini 2.5 Flash" },
-  { value: "gemini-2.5-pro", label: "Google Gemini 2.5 Pro" },
-  { value: "gemini-2.0-flash", label: "Google Gemini 2.0 Flash" },
-  { value: "gemini-2.0-flash-lite", label: "Google Gemini 2.0 Flash Lite" },
-  // OpenAI
-  { value: "gpt-4o", label: "OpenAI GPT-4o" },
-  { value: "gpt-4o-mini", label: "OpenAI GPT-4o Mini" },
-  { value: "gpt-4.1", label: "OpenAI GPT-4.1" },
-  { value: "gpt-4.1-mini", label: "OpenAI GPT-4.1 Mini" },
-  { value: "gpt-4-turbo", label: "OpenAI GPT-4 Turbo" },
-  { value: "o1", label: "OpenAI o1" },
-  { value: "o3-mini", label: "OpenAI o3 Mini" },
-  // Anthropic
-  { value: "claude-sonnet-4", label: "Anthropic Claude Sonnet 4" },
-  { value: "claude-3.7-sonnet", label: "Anthropic Claude 3.7 Sonnet" },
-  { value: "claude-3.5-sonnet", label: "Anthropic Claude 3.5 Sonnet" },
-  { value: "claude-3.5-haiku", label: "Anthropic Claude 3.5 Haiku" },
-  { value: "claude-opus-4", label: "Anthropic Claude Opus 4" },
-  // Meta Llama
-  { value: "llama-3.3-70b", label: "Meta Llama 3.3 70B" },
-  { value: "llama-4-scout", label: "Meta Llama 4 Scout" },
-  { value: "llama-4-maverick", label: "Meta Llama 4 Maverick" },
-  // DeepSeek
-  { value: "deepseek-v3", label: "DeepSeek V3" },
-  { value: "deepseek-r1", label: "DeepSeek R1" },
-  // Mistral
-  { value: "mistral-large", label: "Mistral Large" },
-  { value: "mistral-small", label: "Mistral Small" },
-  // Qwen
-  { value: "qwen3-max", label: "Qwen 3 Max" },
-  { value: "qwen3-coder", label: "Qwen 3 Coder" },
-  // Custom
-  { value: "custom", label: "Custom (input manual)" },
-]
-
-const OPENROUTER_MODELS = [
-  // Google Gemini (from https://openrouter.ai/models)
-  { value: "google/gemini-2.5-flash-lite", label: "Google Gemini 2.5 Flash Lite" },
-  { value: "google/gemini-2.5-flash", label: "Google Gemini 2.5 Flash" },
-  { value: "google/gemini-2.5-pro", label: "Google Gemini 2.5 Pro" },
-  { value: "google/gemini-2.0-flash-001", label: "Google Gemini 2.0 Flash" },
-  { value: "google/gemini-2.0-flash-lite-001", label: "Google Gemini 2.0 Flash Lite" },
-  // OpenAI
-  { value: "openai/gpt-5.1", label: "OpenAI GPT-5.1 (Recommended)" },
-  { value: "openai/gpt-5.2", label: "OpenAI GPT-5.2" },
-  { value: "openai/o3", label: "OpenAI o3 (Reasoning)" },
-  { value: "openai/gpt-4o", label: "OpenAI GPT-4o" },
-  { value: "openai/gpt-4o-mini", label: "OpenAI GPT-4o Mini" },
-  { value: "openai/gpt-4.1", label: "OpenAI GPT-4.1" },
-  { value: "openai/gpt-4.1-mini", label: "OpenAI GPT-4.1 Mini" },
-  { value: "openai/gpt-4-turbo", label: "OpenAI GPT-4 Turbo" },
-  { value: "openai/chatgpt-4o-latest", label: "OpenAI ChatGPT-4o Latest" },
-  // Anthropic Claude
-  { value: "anthropic/claude-sonnet-4", label: "Anthropic Claude Sonnet 4" },
-  { value: "anthropic/claude-3.7-sonnet", label: "Anthropic Claude 3.7 Sonnet" },
-  { value: "anthropic/claude-3.5-sonnet", label: "Anthropic Claude 3.5 Sonnet" },
-  { value: "anthropic/claude-3.5-haiku", label: "Anthropic Claude 3.5 Haiku" },
-  { value: "anthropic/claude-opus-4", label: "Anthropic Claude Opus 4" },
-  // Meta Llama
-  { value: "meta-llama/llama-3.3-70b-instruct", label: "Meta Llama 3.3 70B" },
-  { value: "meta-llama/llama-4-scout", label: "Meta Llama 4 Scout" },
-  { value: "meta-llama/llama-4-maverick", label: "Meta Llama 4 Maverick" },
-  { value: "meta-llama/llama-3.1-405b-instruct", label: "Meta Llama 3.1 405B" },
-  // DeepSeek
-  { value: "deepseek/deepseek-chat", label: "DeepSeek Chat" },
-  { value: "deepseek/deepseek-r1", label: "DeepSeek R1" },
-  { value: "deepseek/deepseek-v3.2", label: "DeepSeek V3.2" },
-  // Mistral
-  { value: "mistralai/mistral-large", label: "Mistral Large" },
-  { value: "mistralai/ministral-8b", label: "Ministral 8B" },
-  { value: "mistralai/codestral-2508", label: "Codestral" },
-  // Qwen
-  { value: "qwen/qwen-2.5-72b-instruct", label: "Qwen 2.5 72B" },
-  { value: "qwen/qwen-2.5-coder-32b-instruct", label: "Qwen 2.5 Coder 32B" },
-  { value: "qwen/qwen3-235b-a22b", label: "Qwen 3 235B" },
-  { value: "qwen/qwen-max", label: "Qwen Max" },
-  // Custom
-  { value: "custom", label: "Custom (input manual)" },
-]
-
-// Helper function to get models based on provider
-const getModelsForProvider = (provider: string) => {
-  if (provider === "vercel-gateway") {
-    return VERCEL_GATEWAY_MODELS
-  }
-  return OPENROUTER_MODELS
-}
+import { useGatewayModels } from "@/lib/hooks/useGatewayModels"
 
 const PROVIDER_OPTIONS = [
   { value: "vercel-gateway", label: "Vercel AI Gateway" },
@@ -203,6 +109,16 @@ export function AIProviderFormDialog({
   onClose,
 }: AIProviderFormDialogProps) {
   const isEditing = !!config
+
+  // Dynamic model lists from Gateway API
+  const { gatewayModels, openrouterModels, isLoading: modelsLoading } = useGatewayModels()
+
+  const getModelsForProvider = useCallback((provider: string) => {
+    if (provider === "vercel-gateway") {
+      return gatewayModels
+    }
+    return openrouterModels
+  }, [gatewayModels, openrouterModels])
 
   // Form state
   const [name, setName] = useState("")
@@ -318,7 +234,7 @@ export function AIProviderFormDialog({
       setFallbackValidation("idle")
       setCompatibilityResult(null)
     }
-  }, [open, config])
+  }, [open, config, getModelsForProvider])
 
   // Reset model when provider changes
   const handlePrimaryProviderChange = (provider: string) => {
@@ -346,6 +262,12 @@ export function AIProviderFormDialog({
     setPrimaryModelPreset(value)
     if (value !== "custom") {
       setPrimaryModel(value)
+      // Auto-fill context window from model metadata
+      const models = getModelsForProvider(primaryProvider)
+      const selected = models.find((m) => m.value === value)
+      if (selected && selected.context > 0) {
+        setPrimaryContextWindow(selected.context)
+      }
     }
   }
 
@@ -353,6 +275,12 @@ export function AIProviderFormDialog({
     setFallbackModelPreset(value)
     if (value !== "custom") {
       setFallbackModel(value)
+      // Auto-fill context window from model metadata
+      const models = getModelsForProvider(fallbackProvider)
+      const selected = models.find((m) => m.value === value)
+      if (selected && selected.context > 0) {
+        setFallbackContextWindow(selected.context)
+      }
     }
     setCompatibilityResult(null) // Reset compatibility when model changes
   }
@@ -729,8 +657,8 @@ export function AIProviderFormDialog({
               <div className="space-y-2">
                 <Label htmlFor="primaryModelPreset">Model</Label>
                 <Select value={primaryModelPreset} onValueChange={handlePrimaryModelPresetChange}>
-                  <SelectTrigger id="primaryModelPreset" disabled={isLoading}>
-                    <SelectValue />
+                  <SelectTrigger id="primaryModelPreset" disabled={isLoading || modelsLoading}>
+                    <SelectValue placeholder={modelsLoading ? "Loading models..." : undefined} />
                   </SelectTrigger>
                   <SelectContent>
                     {getModelsForProvider(primaryProvider).map((preset) => (
@@ -816,8 +744,8 @@ export function AIProviderFormDialog({
               <div className="space-y-2">
                 <Label htmlFor="fallbackModelPreset">Model</Label>
                 <Select value={fallbackModelPreset} onValueChange={handleFallbackModelPresetChange}>
-                  <SelectTrigger id="fallbackModelPreset" disabled={isLoading}>
-                    <SelectValue />
+                  <SelectTrigger id="fallbackModelPreset" disabled={isLoading || modelsLoading}>
+                    <SelectValue placeholder={modelsLoading ? "Loading models..." : undefined} />
                   </SelectTrigger>
                   <SelectContent>
                     {getModelsForProvider(fallbackProvider).map((preset) => (

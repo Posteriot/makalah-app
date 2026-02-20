@@ -1,6 +1,6 @@
 # Plan: Dynamic Gateway Model List for Admin Panel
 
-> **Status:** PLANNED — belum diimplementasi
+> **Status:** IMPLEMENTED — semua 4 steps selesai
 > **Created:** 2026-02-20
 > **Context:** Admin Panel dropdown model saat ini hardcoded di `AIProviderFormDialog.tsx`. Vercel AI Gateway punya REST API `/v1/models` yang bisa di-fetch untuk selalu up-to-date.
 

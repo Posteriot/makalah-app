@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
@@ -27,7 +28,6 @@ import {
   ServerConnection,
 } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
-import { AIProviderFormDialog } from "./AIProviderFormDialog"
 
 interface AIProviderConfig {
   _id: Id<"aiProviderConfigs">
@@ -79,12 +79,11 @@ function formatTokenCount(n: number): string {
 }
 
 export function AIProviderManager({ userId }: AIProviderManagerProps) {
+  const router = useRouter()
   const configs = useQuery(api.aiProviderConfigs.listConfigs, {
     requestorUserId: userId,
   })
 
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingConfig, setEditingConfig] = useState<AIProviderConfig | null>(null)
   const [deleteConfig, setDeleteConfig] = useState<AIProviderConfig | null>(null)
   const [activateConfig, setActivateConfig] = useState<AIProviderConfig | null>(null)
   const [swapConfig, setSwapConfig] = useState<AIProviderConfig | null>(null)
@@ -192,7 +191,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
               </button>
               <button
                 className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-slate-900 px-3 py-1.5 font-mono text-xs font-medium text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={() => router.push("/dashboard/ai-config/new")}
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Buat Config Baru</span>
@@ -215,7 +214,7 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
               <ConfigCard
                 key={config._id}
                 config={config as AIProviderConfig}
-                onEdit={() => setEditingConfig(config as AIProviderConfig)}
+                onEdit={() => router.push(`/dashboard/ai-config/${config._id}/edit`)}
                 onSwap={() => setSwapConfig(config as AIProviderConfig)}
                 onActivate={() => setActivateConfig(config as AIProviderConfig)}
                 onDelete={() => setDeleteConfig(config as AIProviderConfig)}
@@ -240,17 +239,6 @@ export function AIProviderManager({ userId }: AIProviderManagerProps) {
           </div>
         </div>
       </div>
-
-      {/* Create/Edit Dialog */}
-      <AIProviderFormDialog
-        open={isCreateDialogOpen || !!editingConfig}
-        config={editingConfig}
-        userId={userId}
-        onClose={() => {
-          setIsCreateDialogOpen(false)
-          setEditingConfig(null)
-        }}
-      />
 
       {/* Activate Confirmation */}
       <AlertDialog

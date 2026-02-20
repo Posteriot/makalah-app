@@ -4,6 +4,7 @@
 > **Last crawled:** 2026-02-20
 > **Format:** Model ID menggunakan Gateway format (tanpa provider prefix). Untuk OpenRouter, tambahkan prefix provider (e.g., `google/gemini-2.5-flash`).
 > **Note:** Context window dan max output bisa bervariasi tergantung provider endpoint. Angka di bawah adalah yang ditampilkan di halaman Gateway.
+> **Dynamic Fetch:** Admin Panel sekarang fetch model list secara dinamis dari Gateway API (`GET /v1/models`). File ini adalah snapshot reference saja, bukan source of truth untuk dropdown model.
 
 ---
 
