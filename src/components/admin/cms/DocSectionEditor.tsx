@@ -44,7 +44,7 @@ const BLOCK_TYPE_OPTIONS = [
 const BLOCK_TYPE_BADGE_STYLES: Record<string, string> = {
   section: "bg-blue-500/10 text-blue-600",
   infoCard: "bg-sky-500/10 text-sky-600",
-  ctaCards: "bg-amber-500/10 text-amber-600",
+  ctaCards: "bg-emerald-500/10 text-emerald-600",
 }
 
 const BLOCK_TYPE_LABELS: Record<string, string> = {
