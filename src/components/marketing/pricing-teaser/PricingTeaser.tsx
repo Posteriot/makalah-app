@@ -42,7 +42,7 @@ export function PricingTeaser() {
 
   return (
     <section
-      className="relative h-[100svh] flex flex-col justify-center overflow-hidden bg-background"
+      className="relative min-h-[100svh] md:h-[100svh] flex flex-col justify-center overflow-hidden bg-background"
       id="pemakaian-harga"
     >
       {/* Background patterns - using memoized React components */}

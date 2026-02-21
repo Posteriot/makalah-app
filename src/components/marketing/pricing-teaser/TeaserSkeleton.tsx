@@ -3,13 +3,13 @@ import { GridPattern } from "@/components/marketing/SectionBackground"
 export function TeaserSkeleton() {
   return (
     <section
-      className="relative py-20 md:py-28 px-4 md:px-6 overflow-hidden bg-background"
+      className="relative min-h-[100svh] md:h-[100svh] flex flex-col justify-center overflow-hidden bg-background"
       id="pemakaian-harga"
     >
       {/* Background pattern */}
       <GridPattern className="z-0" />
 
-      <div className="relative z-10 max-w-[var(--container-max-width)] mx-auto">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-6 md:px-8 md:py-10">
         {/* Section Header Skeleton */}
         <div className="text-left mb-12">
           <div className="inline-flex items-center gap-2.5 bg-muted rounded-full px-4 py-2 mb-6">
