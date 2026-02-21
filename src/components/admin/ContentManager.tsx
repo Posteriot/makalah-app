@@ -15,8 +15,10 @@ import { AgentsSectionEditor } from "./cms/AgentsSectionEditor"
 import { CareerContactEditor } from "./cms/CareerContactEditor"
 import { DocSectionListEditor } from "./cms/DocSectionListEditor"
 import { DocSectionEditor } from "./cms/DocSectionEditor"
+import { BlogPostListEditor } from "./cms/BlogPostListEditor"
+import { BlogPostEditor } from "./cms/BlogPostEditor"
 
-type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer" | "documentation"
+type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer" | "documentation" | "blog"
 type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
   | "manifesto" | "problems" | "agents" | "career-contact"
 
@@ -54,6 +56,7 @@ const PAGES_NAV: { pages: NavPage[]; global: NavPage[] } = {
       ],
     },
     { id: "documentation", label: "Dokumentasi" },
+    { id: "blog", label: "Blog" },
     { id: "privacy", label: "Privacy" },
     { id: "security", label: "Security" },
     { id: "terms", label: "Terms" },
@@ -73,6 +76,7 @@ export function ContentManager({ userId }: ContentManagerProps) {
   const [selectedSection, setSelectedSection] = useState<SectionId | null>(null)
   const [expandedPages, setExpandedPages] = useState<Set<PageId>>(new Set())
   const [selectedDocSlug, setSelectedDocSlug] = useState<string | null>(null)
+  const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(null)
 
   function handlePageClick(page: NavPage) {
     if (page.sections) {
@@ -89,6 +93,7 @@ export function ContentManager({ userId }: ContentManagerProps) {
       setSelectedPage(page.id)
       setSelectedSection(null)
       setSelectedDocSlug(null)
+      setSelectedBlogSlug(null)
     }
   }
 
@@ -96,6 +101,7 @@ export function ContentManager({ userId }: ContentManagerProps) {
     setSelectedPage(pageId)
     setSelectedSection(section.id)
     setSelectedDocSlug(null)
+    setSelectedBlogSlug(null)
   }
 
   function isPageActive(pageId: PageId) {
@@ -250,6 +256,18 @@ export function ContentManager({ userId }: ContentManagerProps) {
               slug={selectedDocSlug === "__new__" ? null : selectedDocSlug}
               userId={userId}
               onBack={() => setSelectedDocSlug(null)}
+            />
+          ) : selectedPage === "blog" && selectedBlogSlug === null ? (
+            <BlogPostListEditor
+              userId={userId}
+              onSelectPost={(slug) => setSelectedBlogSlug(slug)}
+              onCreateNew={() => setSelectedBlogSlug("__new__")}
+            />
+          ) : selectedPage === "blog" && selectedBlogSlug !== null ? (
+            <BlogPostEditor
+              slug={selectedBlogSlug === "__new__" ? null : selectedBlogSlug}
+              userId={userId}
+              onBack={() => setSelectedBlogSlug(null)}
             />
           ) : selectionLabel ? (
             <div className="text-center">
