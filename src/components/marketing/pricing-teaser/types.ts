@@ -8,6 +8,7 @@ export type TeaserPlan = {
   price: string
   unit?: string
   isHighlighted: boolean
+  isDisabled?: boolean
   description: string
   creditNote: string
 }

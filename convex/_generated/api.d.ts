@@ -22,6 +22,7 @@ import type * as billing_constants from "../billing/constants.js";
 import type * as billing_credits from "../billing/credits.js";
 import type * as billing_index from "../billing/index.js";
 import type * as billing_payments from "../billing/payments.js";
+import type * as billing_pricingHelpers from "../billing/pricingHelpers.js";
 import type * as billing_quotas from "../billing/quotas.js";
 import type * as billing_subscriptionCron from "../billing/subscriptionCron.js";
 import type * as billing_subscriptions from "../billing/subscriptions.js";
@@ -110,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   "billing/credits": typeof billing_credits;
   "billing/index": typeof billing_index;
   "billing/payments": typeof billing_payments;
+  "billing/pricingHelpers": typeof billing_pricingHelpers;
   "billing/quotas": typeof billing_quotas;
   "billing/subscriptionCron": typeof billing_subscriptionCron;
   "billing/subscriptions": typeof billing_subscriptions;
