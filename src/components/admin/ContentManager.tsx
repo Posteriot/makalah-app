@@ -13,8 +13,10 @@ import { ManifestoSectionEditor } from "./cms/ManifestoSectionEditor"
 import { ProblemsSectionEditor } from "./cms/ProblemsSectionEditor"
 import { AgentsSectionEditor } from "./cms/AgentsSectionEditor"
 import { CareerContactEditor } from "./cms/CareerContactEditor"
+import { DocSectionListEditor } from "./cms/DocSectionListEditor"
+import { DocSectionEditor } from "./cms/DocSectionEditor"
 
-type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer"
+type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer" | "documentation"
 type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
   | "manifesto" | "problems" | "agents" | "career-contact"
 
@@ -51,6 +53,7 @@ const PAGES_NAV: { pages: NavPage[]; global: NavPage[] } = {
         { id: "career-contact", label: "Karier & Kontak" },
       ],
     },
+    { id: "documentation", label: "Dokumentasi" },
     { id: "privacy", label: "Privacy" },
     { id: "security", label: "Security" },
     { id: "terms", label: "Terms" },
@@ -69,6 +72,7 @@ export function ContentManager({ userId }: ContentManagerProps) {
   const [selectedPage, setSelectedPage] = useState<PageId | null>(null)
   const [selectedSection, setSelectedSection] = useState<SectionId | null>(null)
   const [expandedPages, setExpandedPages] = useState<Set<PageId>>(new Set())
+  const [selectedDocSlug, setSelectedDocSlug] = useState<string | null>(null)
 
   function handlePageClick(page: NavPage) {
     if (page.sections) {
@@ -84,12 +88,14 @@ export function ContentManager({ userId }: ContentManagerProps) {
     } else {
       setSelectedPage(page.id)
       setSelectedSection(null)
+      setSelectedDocSlug(null)
     }
   }
 
   function handleSectionClick(pageId: PageId, section: NavSection) {
     setSelectedPage(pageId)
     setSelectedSection(section.id)
+    setSelectedDocSlug(null)
   }
 
   function isPageActive(pageId: PageId) {
@@ -233,6 +239,18 @@ export function ContentManager({ userId }: ContentManagerProps) {
             <RichTextPageEditor slug="security" userId={userId} />
           ) : selectedPage === "terms" && selectedSection === null ? (
             <RichTextPageEditor slug="terms" userId={userId} />
+          ) : selectedPage === "documentation" && selectedDocSlug === null ? (
+            <DocSectionListEditor
+              userId={userId}
+              onSelectSection={(slug) => setSelectedDocSlug(slug)}
+              onCreateNew={() => setSelectedDocSlug("__new__")}
+            />
+          ) : selectedPage === "documentation" && selectedDocSlug !== null ? (
+            <DocSectionEditor
+              slug={selectedDocSlug === "__new__" ? null : selectedDocSlug}
+              userId={userId}
+              onBack={() => setSelectedDocSlug(null)}
+            />
           ) : selectionLabel ? (
             <div className="text-center">
               <span className="text-signal mb-3 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
