@@ -12,6 +12,11 @@ type CmsImageUploadProps = {
   userId: Id<"users">
   label?: string
   aspectRatio?: string
+  // Custom Convex function references for different CMS contexts (e.g. blog)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  generateUploadUrlFn?: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getImageUrlFn?: any
 }
 
 export function CmsImageUpload({
@@ -20,14 +25,18 @@ export function CmsImageUpload({
   userId,
   label = "Gambar",
   aspectRatio = "16/9",
+  generateUploadUrlFn,
+  getImageUrlFn,
 }: CmsImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const generateUploadUrl = useMutation(api.pageContent.generateUploadUrl)
+  const generateUploadUrl = useMutation(
+    generateUploadUrlFn ?? api.pageContent.generateUploadUrl
+  )
 
   const imageUrl = useQuery(
-    api.pageContent.getImageUrl,
+    getImageUrlFn ?? api.pageContent.getImageUrl,
     currentImageId ? { storageId: currentImageId } : "skip"
   )
 
