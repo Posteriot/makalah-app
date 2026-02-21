@@ -1,5 +1,6 @@
 import { v } from "convex/values"
-import { query } from "./_generated/server"
+import { query, mutation } from "./_generated/server"
+import { requireRole } from "./permissions"
 import { TOP_UP_PACKAGES, CREDIT_PACKAGES } from "./billing/constants"
 
 /**
@@ -138,5 +139,89 @@ export const getCreditPackagesForPlan = query({
         popular: pkg.type === "paper",
       })),
     }
+  },
+})
+
+/**
+ * Update a pricing plan's editable fields.
+ * Admin only. Gratis plan has locked price and isDisabled.
+ */
+export const updatePricingPlan = mutation({
+  args: {
+    requestorId: v.id("users"),
+    id: v.id("pricingPlans"),
+    name: v.optional(v.string()),
+    price: v.optional(v.string()),
+    priceValue: v.optional(v.number()),
+    unit: v.optional(v.string()),
+    tagline: v.optional(v.string()),
+    teaserDescription: v.optional(v.string()),
+    teaserCreditNote: v.optional(v.string()),
+    features: v.optional(v.array(v.string())),
+    ctaText: v.optional(v.string()),
+    ctaHref: v.optional(v.string()),
+    isHighlighted: v.optional(v.boolean()),
+    isDisabled: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx.db, args.requestorId, "admin")
+
+    const plan = await ctx.db.get(args.id)
+    if (!plan) throw new Error("Plan not found")
+
+    // Gratis lockdown: reject price and disable changes
+    if (plan.slug === "gratis") {
+      if (args.price !== undefined || args.priceValue !== undefined) {
+        throw new Error("Cannot change Gratis plan price")
+      }
+      if (args.isDisabled !== undefined) {
+        throw new Error("Cannot disable Gratis plan")
+      }
+    }
+
+    const { requestorId, id, ...updates } = args
+    const patch: Record<string, unknown> = { updatedAt: Date.now() }
+    for (const [key, value] of Object.entries(updates)) {
+      if (value !== undefined) {
+        patch[key] = value
+      }
+    }
+
+    await ctx.db.patch(id, patch)
+  },
+})
+
+/**
+ * Update credit packages for a pricing plan (BPP only).
+ * Admin only.
+ */
+export const updateCreditPackages = mutation({
+  args: {
+    requestorId: v.id("users"),
+    id: v.id("pricingPlans"),
+    creditPackages: v.array(
+      v.object({
+        type: v.union(v.literal("paper"), v.literal("extension_s"), v.literal("extension_m")),
+        credits: v.number(),
+        tokens: v.number(),
+        priceIDR: v.number(),
+        label: v.string(),
+        description: v.optional(v.string()),
+        ratePerCredit: v.optional(v.number()),
+        popular: v.optional(v.boolean()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx.db, args.requestorId, "admin")
+
+    const plan = await ctx.db.get(args.id)
+    if (!plan) throw new Error("Plan not found")
+    if (plan.slug !== "bpp") throw new Error("Credit packages only for BPP plan")
+
+    await ctx.db.patch(args.id, {
+      creditPackages: args.creditPackages,
+      updatedAt: Date.now(),
+    })
   },
 })
