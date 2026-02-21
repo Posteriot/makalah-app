@@ -18,6 +18,13 @@
   --ds-surface-subtle: var(--ds-ref-slate-100);
   --ds-surface-panel: var(--ds-ref-slate-100);
   --ds-border-subtle: var(--ds-ref-slate-400-a);
+  --ds-text-toolbar-muted: var(--slate-600);
+  --ds-text-toolbar-hover: var(--slate-800);
+  --ds-text-toolbar-active: var(--slate-800);
+  --ds-text-toolbar-hover-active: var(--slate-950);
+  --ds-text-toolbar-disabled: var(--slate-400);
+  --ds-badge-artifact-bg: var(--emerald-600);
+  --ds-badge-artifact-fg: var(--slate-100);
 }
 
 .dark [data-ds-scope="chat-v1"] {
@@ -25,4 +32,11 @@
   --ds-surface-subtle: var(--ds-ref-slate-800);
   --ds-surface-panel: var(--ds-ref-slate-800);
   --ds-border-subtle: var(--ds-ref-slate-600-a);
+  --ds-text-toolbar-muted: var(--slate-200);
+  --ds-text-toolbar-hover: var(--slate-50);
+  --ds-text-toolbar-active: var(--slate-100);
+  --ds-text-toolbar-hover-active: var(--slate-50);
+  --ds-text-toolbar-disabled: var(--slate-500);
+  --ds-badge-artifact-bg: var(--emerald-600);
+  --ds-badge-artifact-fg: var(--slate-100);
 }

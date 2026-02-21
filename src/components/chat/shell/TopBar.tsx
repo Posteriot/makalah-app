@@ -64,7 +64,7 @@ export function TopBar({
         className={cn(
           "flex items-center justify-between",
           "pl-4 pr-6 py-0",
-          "shrink-0 bg-white dark:bg-slate-900"
+          "shrink-0 bg-[var(--ds-surface-base)]"
         )}
       >
         {/* Left: Expand sidebar toggle (only when collapsed) */}
@@ -128,12 +128,12 @@ export function TopBar({
                   "transition-colors duration-150",
                   hasArtifacts &&
                     isPanelCollapsed &&
-                    "border-transparent bg-transparent text-slate-600 hover:bg-transparent hover:text-slate-800 dark:border-transparent dark:bg-transparent dark:text-slate-200 dark:hover:bg-transparent dark:hover:text-slate-50",
+                    "border-transparent bg-transparent text-[var(--ds-text-toolbar-muted)] hover:bg-transparent hover:text-[var(--ds-text-toolbar-hover)]",
                   hasArtifacts &&
                     !isPanelCollapsed &&
-                    "border-transparent bg-transparent text-slate-800 hover:bg-transparent hover:text-slate-950 dark:border-transparent dark:bg-transparent dark:text-slate-100 dark:hover:bg-transparent dark:hover:text-slate-50",
+                    "border-transparent bg-transparent text-[var(--ds-text-toolbar-active)] hover:bg-transparent hover:text-[var(--ds-text-toolbar-hover-active)]",
                   !hasArtifacts &&
-                    "cursor-not-allowed border border-transparent bg-transparent text-slate-400 hover:bg-transparent hover:text-slate-400 dark:text-slate-500 dark:hover:text-slate-500"
+                    "cursor-not-allowed border border-transparent bg-transparent text-[var(--ds-text-toolbar-disabled)] hover:bg-transparent hover:text-[var(--ds-text-toolbar-disabled)]"
                 )}
                 aria-label={
                   !hasArtifacts
@@ -155,7 +155,7 @@ export function TopBar({
                     className={cn(
                       "pointer-events-none absolute -bottom-0 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
                       "text-[9px] font-semibold font-mono leading-none",
-                      "bg-emerald-600 text-slate-100"
+                      "bg-[var(--ds-badge-artifact-bg)] text-[var(--ds-badge-artifact-fg)]"
                     )}
                   >
                     {compactArtifactCount}
