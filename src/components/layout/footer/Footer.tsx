@@ -63,16 +63,16 @@ export function Footer() {
               <Image
                 src="/logo/makalah_logo_light.svg"
                 alt="Makalah AI"
-                width={32}
-                height={32}
+                width={24}
+                height={24}
                 className="hidden dark:block"
               />
               {/* Dark logo (for light mode) */}
               <Image
                 src="/logo/makalah_logo_dark.svg"
                 alt="Makalah AI"
-                width={32}
-                height={32}
+                width={24}
+                height={24}
                 className="block dark:hidden"
               />
             </div>

@@ -75,9 +75,9 @@ export function AuthWideCard({
                                 <Image
                                     src="/logo/logo-color-darkmode.png"
                                     alt=""
-                                    width={28}
-                                    height={28}
-                                    className="transition-transform group-hover:scale-105"
+                                    width={32}
+                                    height={32}
+                                    className="h-8 w-8 shrink-0 transition-transform group-hover:scale-105"
                                 />
                             </Link>
                             {showBackButton ? (

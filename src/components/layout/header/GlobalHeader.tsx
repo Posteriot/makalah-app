@@ -221,17 +221,17 @@ export function GlobalHeader() {
             <Image
               src="/logo/logo-color-darkmode.png"
               alt="Makalah"
-              width={24}
-              height={24}
-              className="h-6 w-6 rounded-[4px] hidden dark:block"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-[4px] hidden dark:block"
             />
             {/* Light mode logo icon */}
             <Image
               src="/logo/logo-color-lightmode.png"
               alt="Makalah"
-              width={24}
-              height={24}
-              className="h-6 w-6 rounded-[4px] block dark:hidden"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-[4px] block dark:hidden"
             />
             {/* White brand text (for dark mode) */}
             <Image
