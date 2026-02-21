@@ -17,7 +17,7 @@ import {
   type EWalletChannel,
 } from "@/lib/xendit/client"
 import { randomUUID } from "crypto"
-import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
+// DB pricing via pricingHelpers (no hardcoded constants)
 
 type PlanType = "pro_monthly"
 const PRO_PLAN_TYPE: PlanType = "pro_monthly"
@@ -81,7 +81,17 @@ export async function POST(req: NextRequest) {
     const { paymentMethod, vaChannel, ewalletChannel, mobileNumber } = body
     const planType: PlanType = PRO_PLAN_TYPE
 
-    const pricing = SUBSCRIPTION_PRICING[planType]
+    // Check if Pro tier is disabled
+    const proDisabled = await fetchQuery(api.billing.pricingHelpers.isPlanDisabled, { slug: "pro" }, convexOptions)
+    if (proDisabled) {
+      return NextResponse.json(
+        { error: "Paket Pro sedang tidak tersedia" },
+        { status: 403 }
+      )
+    }
+
+    // Get pricing from DB (fallback to constants)
+    const pricing = await fetchQuery(api.billing.pricingHelpers.getProPricing, {}, convexOptions)
     const { priceIDR: amount, label: planLabel } = pricing
     const description = `${planLabel} — Makalah AI`
 
