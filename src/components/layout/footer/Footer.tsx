@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 import { X as XIcon, Linkedin, Instagram } from "iconoir-react"
 import { DiagonalStripes } from "@/components/marketing/SectionBackground"
 
@@ -29,6 +31,22 @@ const SOCIAL_LINKS = [
 ]
 
 export function Footer() {
+  const footerConfig = useQuery(api.siteConfig.getConfig, { key: "footer" })
+
+  // CMS footer sections with hardcoded fallback
+  const footerSections = footerConfig?.footerSections
+    ? (footerConfig.footerSections as Array<{ title: string; links: Array<{ label: string; href: string }> }>)
+    : [
+        { title: "Sumber Daya", links: RESOURCE_LINKS },
+        { title: "Perusahaan", links: COMPANY_LINKS },
+        { title: "Legal", links: LEGAL_LINKS },
+      ]
+
+  // CMS copyright with fallback
+  const copyrightText = footerConfig?.copyrightText
+    ? (footerConfig.copyrightText as string).replace("{year}", String(new Date().getFullYear()))
+    : `\u00a9 ${new Date().getFullYear()} Makalah AI. Hak cipta dilindungi.`
+
   return (
     <div id="footer" className="bg-background text-foreground">
       <footer className="relative overflow-hidden bg-[color:var(--footer-background)]">
@@ -61,53 +79,22 @@ export function Footer() {
 
             {/* Links - right side, left-aligned text */}
             <div className="col-span-16 grid grid-cols-1 justify-items-center gap-comfort md:col-span-7 md:col-start-10 md:grid-cols-3 md:items-start md:justify-items-center">
-              {/* Sumber Daya */}
-              <div className="text-center md:text-left">
-                <h4 className="text-narrative mb-3 text-[14px] font-medium text-foreground">
-                  Sumber Daya
-                </h4>
-                {RESOURCE_LINKS.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="text-narrative mb-3 block text-[14px] font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-
-              {/* Perusahaan */}
-              <div className="text-center md:text-left">
-                <h4 className="text-narrative mb-3 text-[14px] font-medium text-foreground">
-                  Perusahaan
-                </h4>
-                {COMPANY_LINKS.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="text-narrative mb-3 block text-[14px] font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-
-              {/* Legal */}
-              <div className="text-center md:text-left">
-                <h4 className="text-narrative mb-3 text-[14px] font-medium text-foreground">
-                  Legal
-                </h4>
-                {LEGAL_LINKS.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="text-narrative mb-3 block text-[14px] font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
+              {footerSections.map((section, index) => (
+                <div key={index} className="text-center md:text-left">
+                  <h4 className="text-narrative mb-3 text-[14px] font-medium text-foreground">
+                    {section.title}
+                  </h4>
+                  {section.links.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="text-narrative mb-3 block text-[14px] font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -120,7 +107,7 @@ export function Footer() {
                 Makalah AI adalah produk dari PT THE MANAGEMENT ASIA
               </p>
               <p className="text-interface m-0 text-[12px] text-muted-foreground">
-                &copy; {new Date().getFullYear()} Makalah AI. Hak cipta dilindungi.
+                {copyrightText}
               </p>
             </div>
             <div className="flex justify-center gap-6">

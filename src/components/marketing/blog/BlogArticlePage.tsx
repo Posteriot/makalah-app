@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight } from "iconoir-react"
 import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
+import { RichTextRenderer } from "@/components/marketing/RichTextRenderer"
 import { createPlaceholderImageDataUri, normalizeCategory } from "./utils"
 
 type DocListItem = {
@@ -198,7 +199,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
   }, [post])
   const articleCoverSrc = useMemo(() => {
     if (!post) return ""
-    if (post.coverImage) return post.coverImage
+    if (post.coverImageUrl) return post.coverImageUrl
     return createPlaceholderImageDataUri({
       title: post.title,
       category: normalizedCategory ?? "Update",
@@ -314,7 +315,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
                 fill
                 className="object-cover"
                 priority
-                unoptimized={!post.coverImage}
+                unoptimized={!post.coverImageUrl}
               />
             </div>
           </div>
@@ -372,9 +373,11 @@ export function BlogArticlePage({ slug }: { slug: string }) {
             <article className="md:col-span-12">
               <div className={cn(
                 "rounded-shell bg-card/90 p-6 dark:bg-slate-800/90 md:p-8",
-                blocks.length > 0 && "space-y-8"
+                "space-y-8"
               )}>
-                {blocks.length > 0 ? (
+                {post.content ? (
+                  <RichTextRenderer content={post.content} />
+                ) : blocks.length > 0 ? (
                   blocks.map((block, index) => (
                     <BlockRenderer key={`${block.type}-${index}`} block={block} />
                   ))

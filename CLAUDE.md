@@ -171,6 +171,9 @@ npm run convex:dashboard           # Open dashboard
 - **pricingPlans**: Pricing tier configurations
 - **documentationSections**: Docs page content blocks
 - **blogSections**: Blog content with categories
+- **pageContent**: Structured CMS sections (hero, benefits, features) with image storage
+- **richTextPages**: TipTap WYSIWYG pages (about, privacy, security, terms)
+- **siteConfig**: Global config (header nav links, footer sections/copyright)
 
 **Auth & Security:**
 - **authRecoveryAttempts**: Rate limiting for magic link and forgot password (keyHash, emailHash, ipHash, intent, attemptCount, blockedUntil)
@@ -180,6 +183,61 @@ npm run convex:dashboard           # Open dashboard
 - **papers**: Standalone paper records (userId, title, abstract)
 - **waitlistEntries**: Pre-registration waitlist (email, status: pending|invited|registered)
 - **appConfig**: Key-value app configuration (key, value)
+
+## Frontend CMS Architecture
+
+Hybrid CMS for all marketing pages. Admin-only (superadmin/admin). Static fallback when unpublished.
+
+### CMS Tables
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| **pageContent** | Structured sections (hero, benefits, features) | pageSlug, sectionSlug, sectionType, title, description, items[], imageId, isPublished, sortOrder |
+| **richTextPages** | TipTap WYSIWYG pages (about, privacy, security, terms) | slug, title, content (JSON), lastUpdatedLabel, isPublished |
+| **siteConfig** | Global config (header nav, footer) | key, value (JSON), updatedBy |
+
+### Frontend Rendering Pattern
+
+Two patterns depending on content type:
+
+**Wrapper Pattern** (home page sections — hero, benefits, features):
+- `XxxSection.tsx` — `"use client"` wrapper with `useQuery(api.pageContent.getSection)`
+- `XxxStatic.tsx` — exact copy of original static component
+- `XxxCMS.tsx` — renders from DB data
+- Loading → null, unpublished → Static, published → CMS
+
+**CmsPageWrapper** (policy/about pages):
+- Wraps existing page component with `useQuery(api.richTextPages.getPageBySlug)`
+- Loading → null, no data → render children as-is (static page), published → TipTap RichTextRenderer
+- CMS mode does NOT use SimplePolicyPage (it splits children into intro callout + article)
+
+**Inline Fallback** (header/footer):
+- CMS query inside existing component, derive data from CMS with fallback to hardcoded constants
+
+### Admin Panel
+
+Content editors in `/dashboard` → CMS tab → ContentManager left sidebar:
+- `ContentManager.tsx` — section selector + editor routing
+- `HeroSectionEditor.tsx` — hero section fields + image upload
+- `BenefitsSectionEditor.tsx` — benefits accordion items
+- `FeatureShowcaseEditor.tsx` — reusable for workflow + refrasa features
+- `HeaderConfigEditor.tsx` — nav link list editor
+- `FooterConfigEditor.tsx` — footer sections, social links, copyright
+- `RichTextPageEditor.tsx` — TipTap WYSIWYG for policy/about pages
+- `TipTapEditor.tsx` — TipTap editor component (default export)
+- `CmsImageUpload.tsx` — Convex file storage image upload
+
+### Key Frontend Files
+- `src/components/marketing/CmsPageWrapper.tsx` — policy/about CMS wrapper
+- `src/components/marketing/RichTextRenderer.tsx` — TipTap read-only renderer
+- `src/components/marketing/hero/HeroSection.tsx` — hero wrapper
+- `src/components/marketing/benefits/BenefitsSection.tsx` — benefits wrapper
+- `src/components/marketing/features/WorkflowFeatureSection.tsx` — workflow wrapper
+- `src/components/marketing/features/RefrasaFeatureSection.tsx` — refrasa wrapper
+- `convex/pageContent.ts` — structured content CRUD
+- `convex/richTextPages.ts` — rich text pages CRUD
+- `convex/siteConfig.ts` — global config CRUD
+- `convex/migrations/seedHomeContent.ts` — seed data for home page sections
 
 ### Environment Variables
 - **Convex**: `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_DEPLOYMENT`, `CONVEX_INTERNAL_KEY` (server-side Convex access)

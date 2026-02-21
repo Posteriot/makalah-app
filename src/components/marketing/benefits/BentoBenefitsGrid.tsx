@@ -5,7 +5,20 @@
  * Tokens used:
  * - Colors: Slate (surface/hover), Amber (dot), Hairline border
  * - Typography: text-narrative (title), text-interface (description)
+ *
+ * Accepts optional `items` prop from CMS. If provided, uses CMS data;
+ * otherwise falls back to hardcoded `benefits` array.
  */
+
+type BenefitItem = {
+  title: string
+  description: string
+  icon?: string
+}
+
+type BentoBenefitsGridProps = {
+  items?: BenefitItem[]
+}
 
 const benefits = [
   {
@@ -34,10 +47,21 @@ const benefits = [
   },
 ]
 
-export function BentoBenefitsGrid() {
+export function BentoBenefitsGrid({ items }: BentoBenefitsGridProps) {
+  const benefitsData = items
+    ? items.map((item, i) => {
+        const words = item.title.split(" ")
+        return {
+          id: `benefit-${i}`,
+          title: [words[0], words.slice(1).join(" ")],
+          description: item.description,
+        }
+      })
+    : benefits
+
   return (
     <div className="hidden md:grid grid-cols-16 gap-comfort">
-      {benefits.map((benefit) => (
+      {benefitsData.map((benefit) => (
         <div
           key={benefit.id}
           className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-card/85 p-comfort backdrop-blur-[1px] transition-all duration-300 hover:-translate-y-1 hover:bg-slate-200 hover:border-slate-400 dark:bg-slate-900/85 dark:hover:bg-slate-700 dark:hover:border-slate-600"

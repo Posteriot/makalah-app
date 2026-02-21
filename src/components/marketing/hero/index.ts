@@ -15,3 +15,8 @@ export { HeroCTA } from "./HeroCTA"
 // Visual mockups (layered)
 export { HeroResearchMock } from "./HeroResearchMock"
 export { ChatInputHeroMock } from "./ChatInputHeroMock"
+
+// CMS-driven wrapper
+export { HeroSection } from "./HeroSection"
+export { HeroStatic } from "./HeroStatic"
+export { HeroCMS } from "./HeroCMS"

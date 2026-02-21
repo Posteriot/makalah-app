@@ -20,11 +20,11 @@ interface BlogFeedSectionProps {
 
 function RowThumbnail({
   title,
-  coverImage,
+  coverImageUrl,
   category,
 }: {
   title: string
-  coverImage?: string
+  coverImageUrl?: string | null
   category: string
 }) {
   const placeholderSrc = createPlaceholderImageDataUri({
@@ -34,10 +34,10 @@ function RowThumbnail({
     height: 256,
   })
 
-  if (coverImage) {
+  if (coverImageUrl) {
     return (
       <div className="relative aspect-square w-full overflow-hidden rounded-action border-hairline">
-        <Image src={coverImage} alt={title} fill className="object-cover" sizes="88px" />
+        <Image src={coverImageUrl} alt={title} fill className="object-cover" sizes="88px" />
       </div>
     )
   }
@@ -126,7 +126,7 @@ export function BlogFeedSection({
                   <div className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3 md:grid-cols-[88px_minmax(0,1fr)]">
                     <RowThumbnail
                       title={post.title}
-                      coverImage={post.coverImage}
+                      coverImageUrl={post.coverImageUrl}
                       category={normalizedCategory}
                     />
                     <div className="min-w-0">

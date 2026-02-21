@@ -1,0 +1,331 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Skeleton } from "@/components/ui/skeleton"
+import { CmsImageUpload } from "./CmsImageUpload"
+
+type FeatureItem = {
+  title: string
+  description: string
+}
+
+type FeatureShowcaseEditorProps = {
+  pageSlug: string
+  sectionSlug: string
+  userId: Id<"users">
+}
+
+const SORT_ORDER_MAP: Record<string, number> = {
+  "features-workflow": 3,
+  "features-refrasa": 4,
+}
+
+function getSectionTitle(sectionSlug: string): string {
+  if (sectionSlug === "features-workflow") return "Feature Showcase: Workflow"
+  if (sectionSlug === "features-refrasa") return "Feature Showcase: Refrasa"
+  // Generic fallback: capitalize and replace hyphens
+  return sectionSlug
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ")
+}
+
+const EMPTY_ITEMS: FeatureItem[] = [
+  { title: "", description: "" },
+  { title: "", description: "" },
+]
+
+export function FeatureShowcaseEditor({
+  pageSlug,
+  sectionSlug,
+  userId,
+}: FeatureShowcaseEditorProps) {
+  const section = useQuery(api.pageContent.getSection, {
+    pageSlug,
+    sectionSlug,
+  })
+
+  const upsertSection = useMutation(api.pageContent.upsertSection)
+
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [badgeText, setBadgeText] = useState("")
+  const [items, setItems] = useState<FeatureItem[]>(EMPTY_ITEMS)
+  const [primaryImageId, setPrimaryImageId] = useState<Id<"_storage"> | null>(
+    null
+  )
+  const [primaryImageAlt, setPrimaryImageAlt] = useState("")
+  const [isPublished, setIsPublished] = useState(false)
+
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveLabel, setSaveLabel] = useState("Simpan")
+
+  // Sync form state when section data loads
+  useEffect(() => {
+    if (section) {
+      setTitle(section.title ?? "")
+      setDescription(section.description ?? "")
+      setBadgeText(section.badgeText ?? "")
+      setPrimaryImageId(section.primaryImageId ?? null)
+      setPrimaryImageAlt(section.primaryImageAlt ?? "")
+      setIsPublished(section.isPublished ?? false)
+
+      if (section.items && Array.isArray(section.items)) {
+        const loaded = (
+          section.items as Array<{
+            title?: string
+            description?: string
+          }>
+        ).map((item) => ({
+          title: item.title ?? "",
+          description: item.description ?? "",
+        }))
+        setItems(loaded.length > 0 ? loaded : EMPTY_ITEMS)
+      }
+    }
+  }, [section])
+
+  function updateItem(
+    index: number,
+    field: keyof FeatureItem,
+    value: string
+  ) {
+    setItems((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    )
+  }
+
+  function addItem() {
+    setItems((prev) => [...prev, { title: "", description: "" }])
+  }
+
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  async function handleSave() {
+    setIsSaving(true)
+    try {
+      await upsertSection({
+        requestorId: userId,
+        id: section?._id,
+        pageSlug,
+        sectionSlug,
+        sectionType: "feature-showcase",
+        title,
+        description,
+        badgeText,
+        items: items.map((item) => ({
+          title: item.title,
+          description: item.description,
+          icon: undefined,
+        })),
+        primaryImageId: primaryImageId ?? undefined,
+        primaryImageAlt,
+        isPublished,
+        sortOrder: SORT_ORDER_MAP[sectionSlug] ?? 3,
+      })
+      setSaveLabel("Tersimpan!")
+      setTimeout(() => setSaveLabel("Simpan"), 2000)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Loading skeleton
+  if (section === undefined) {
+    return (
+      <div className="w-full max-w-2xl space-y-4 p-comfort">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-9 w-full" />
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div
+            key={i}
+            className="space-y-2 rounded-action border border-border p-4"
+          >
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ))}
+        <Skeleton className="aspect-video w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full max-w-2xl space-y-6 p-comfort">
+      {/* Section header */}
+      <div>
+        <h3 className="text-narrative text-lg font-medium tracking-tight text-foreground">
+          {getSectionTitle(sectionSlug)}
+        </h3>
+        <div className="mt-2 border-t border-border" />
+      </div>
+
+      {/* Form fields */}
+      <div className="space-y-4">
+        {/* Title */}
+        <div>
+          <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+            Title
+          </label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Judul section"
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+            Description
+          </label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Deskripsi paragraf section"
+            rows={3}
+          />
+        </div>
+
+        {/* Badge Text */}
+        <div>
+          <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+            Badge Text
+          </label>
+          <Input
+            value={badgeText}
+            onChange={(e) => setBadgeText(e.target.value)}
+            placeholder='Label badge, mis. "Workflow" atau "Refrasa"'
+          />
+        </div>
+
+        {/* Items */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Items
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addItem}
+              className="rounded-action text-xs"
+            >
+              + Tambah Item
+            </Button>
+          </div>
+
+          {items.map((item, index) => (
+            <div
+              key={index}
+              className="rounded-action border border-border p-4 space-y-3"
+            >
+              {/* Card header */}
+              <div className="flex items-center justify-between">
+                <span className="text-interface text-sm font-medium text-foreground">
+                  Item {index + 1}
+                </span>
+                {items.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeItem(index)}
+                    className="rounded-action text-xs text-destructive hover:text-destructive"
+                  >
+                    Hapus
+                  </Button>
+                )}
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+                  Title
+                </label>
+                <Input
+                  value={item.title}
+                  onChange={(e) => updateItem(index, "title", e.target.value)}
+                  placeholder="Judul item"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+                  Description
+                </label>
+                <Textarea
+                  value={item.description}
+                  onChange={(e) =>
+                    updateItem(index, "description", e.target.value)
+                  }
+                  placeholder="Deskripsi item"
+                  rows={3}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Primary Image */}
+        <CmsImageUpload
+          currentImageId={primaryImageId}
+          onUpload={(storageId) => setPrimaryImageId(storageId)}
+          userId={userId}
+          label="Section Image"
+          aspectRatio="16/9"
+        />
+
+        {/* Image Alt Text */}
+        <div>
+          <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+            Image Alt Text
+          </label>
+          <Input
+            value={primaryImageAlt}
+            onChange={(e) => setPrimaryImageAlt(e.target.value)}
+            placeholder="Deskripsi gambar untuk aksesibilitas"
+          />
+        </div>
+
+        {/* Published toggle */}
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Published
+          </label>
+          <Switch checked={isPublished} onCheckedChange={setIsPublished} />
+        </div>
+      </div>
+
+      {/* Save button */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="rounded-action"
+        >
+          {isSaving ? "Menyimpan..." : saveLabel}
+        </Button>
+      </div>
+    </div>
+  )
+}

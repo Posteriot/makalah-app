@@ -10,17 +10,17 @@ import {
   OutlineData,
 } from "./paperSessions/types"
 
-const documentationListItem = v.object({
+export const documentationListItem = v.object({
   text: v.string(),
   subItems: v.optional(v.array(v.string())),
 })
 
-const documentationList = v.object({
+export const documentationList = v.object({
   variant: v.union(v.literal("bullet"), v.literal("numbered")),
   items: v.array(documentationListItem),
 })
 
-const documentationBlock = v.union(
+export const documentationBlock = v.union(
   v.object({
     type: v.literal("infoCard"),
     title: v.string(),
@@ -43,6 +43,7 @@ const documentationBlock = v.union(
     description: v.optional(v.string()),
     paragraphs: v.optional(v.array(v.string())),
     list: v.optional(documentationList),
+    richContent: v.optional(v.string()),
   })
 )
 
@@ -648,8 +649,9 @@ export default defineSchema({
     featured: v.boolean(),
     isPublished: v.boolean(),
     publishedAt: v.number(),
+    content: v.optional(v.string()), // TipTap JSON string for article body
     blocks: v.array(documentationBlock),
-    coverImage: v.optional(v.string()), // Optional cover image URL
+    coverImageId: v.optional(v.id("_storage")), // Convex file storage for cover images
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -923,6 +925,87 @@ export default defineSchema({
     value: v.boolean(),
     updatedAt: v.number(),
     updatedBy: v.id("users"),
+  })
+    .index("by_key", ["key"]),
+
+  // ── CMS Tables ──────────────────────────────────────────
+
+  pageContent: defineTable({
+    pageSlug: v.string(),
+    sectionSlug: v.string(),
+    sectionType: v.union(
+      v.literal("hero"),
+      v.literal("benefits"),
+      v.literal("feature-showcase"),
+      v.literal("manifesto"),
+      v.literal("problems"),
+      v.literal("agents"),
+      v.literal("career-contact"),
+    ),
+    title: v.optional(v.string()),
+    subtitle: v.optional(v.string()),
+    description: v.optional(v.string()),
+    ctaText: v.optional(v.string()),
+    ctaHref: v.optional(v.string()),
+    badgeText: v.optional(v.string()),
+    items: v.optional(v.array(v.object({
+      title: v.string(),
+      description: v.string(),
+      icon: v.optional(v.string()),
+      imageId: v.optional(v.id("_storage")),
+    }))),
+    primaryImageId: v.optional(v.id("_storage")),
+    primaryImageAlt: v.optional(v.string()),
+    headingLines: v.optional(v.array(v.string())),
+    subheading: v.optional(v.string()),
+    paragraphs: v.optional(v.array(v.string())),
+    contactInfo: v.optional(v.object({
+      company: v.string(),
+      address: v.array(v.string()),
+      email: v.string(),
+    })),
+    isPublished: v.boolean(),
+    sortOrder: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
+  })
+    .index("by_page", ["pageSlug", "sortOrder"])
+    .index("by_page_section", ["pageSlug", "sectionSlug"]),
+
+  richTextPages: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    content: v.string(),
+    lastUpdatedLabel: v.optional(v.string()),
+    isPublished: v.boolean(),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
+  })
+    .index("by_slug", ["slug"]),
+
+  siteConfig: defineTable({
+    key: v.string(),
+    navLinks: v.optional(v.array(v.object({
+      label: v.string(),
+      href: v.string(),
+      isVisible: v.boolean(),
+    }))),
+    footerSections: v.optional(v.array(v.object({
+      title: v.string(),
+      links: v.array(v.object({
+        label: v.string(),
+        href: v.string(),
+        isExternal: v.optional(v.boolean()),
+      })),
+    }))),
+    socialLinks: v.optional(v.array(v.object({
+      platform: v.string(),
+      url: v.string(),
+      isVisible: v.boolean(),
+    }))),
+    copyrightText: v.optional(v.string()),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
   })
     .index("by_key", ["key"]),
 })

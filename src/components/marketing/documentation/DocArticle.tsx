@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { SectionBadge } from "@/components/ui/section-badge"
+import { RichTextRenderer } from "@/components/marketing/RichTextRenderer"
 import type { DocumentationSection } from "./types"
 import { getIcon, renderInline } from "./utils"
 
@@ -151,46 +152,50 @@ export function DocArticle({
                             {block.title}
                           </AccordionTrigger>
                           <AccordionContent className="px-5 pt-0 pb-5">
-                            <div className="space-y-3">
-                              {block.description && (
-                                <p className="text-narrative text-sm leading-relaxed text-muted-foreground">
-                                  {block.description}
-                                </p>
-                              )}
-                              {block.paragraphs?.map((paragraph, paragraphIndex) => (
-                                <p
-                                  key={`${block.title}-p-${paragraphIndex}`}
-                                  className="text-narrative text-sm leading-relaxed text-muted-foreground"
-                                >
-                                  {renderInline(paragraph)}
-                                </p>
-                              ))}
-                              {block.list && (
-                                <ol
-                                  className={cn(
-                                    "ml-4 space-y-2 pl-6 text-sm text-muted-foreground",
-                                    block.list.variant === "bullet"
-                                      ? "list-disc"
-                                      : "list-decimal"
-                                  )}
-                                >
-                                  {block.list.items.map((item, itemIndex) => (
-                                    <li key={`${block.title}-item-${itemIndex}`}>
-                                      <div>{renderInline(item.text)}</div>
-                                      {item.subItems && item.subItems.length > 0 && (
-                                        <ul className="mt-2 ml-2 list-disc space-y-1 pl-6 text-xs text-muted-foreground">
-                                          {item.subItems.map((subItem, subIndex) => (
-                                            <li key={`${block.title}-sub-${subIndex}`}>
-                                              {renderInline(subItem)}
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      )}
-                                    </li>
-                                  ))}
-                                </ol>
-                              )}
-                            </div>
+                            {block.richContent ? (
+                              <RichTextRenderer content={block.richContent} />
+                            ) : (
+                              <div className="space-y-3">
+                                {block.description && (
+                                  <p className="text-narrative text-sm leading-relaxed text-muted-foreground">
+                                    {block.description}
+                                  </p>
+                                )}
+                                {block.paragraphs?.map((paragraph, paragraphIndex) => (
+                                  <p
+                                    key={`${block.title}-p-${paragraphIndex}`}
+                                    className="text-narrative text-sm leading-relaxed text-muted-foreground"
+                                  >
+                                    {renderInline(paragraph)}
+                                  </p>
+                                ))}
+                                {block.list && (
+                                  <ol
+                                    className={cn(
+                                      "ml-4 space-y-2 pl-6 text-sm text-muted-foreground",
+                                      block.list.variant === "bullet"
+                                        ? "list-disc"
+                                        : "list-decimal"
+                                    )}
+                                  >
+                                    {block.list.items.map((item, itemIndex) => (
+                                      <li key={`${block.title}-item-${itemIndex}`}>
+                                        <div>{renderInline(item.text)}</div>
+                                        {item.subItems && item.subItems.length > 0 && (
+                                          <ul className="mt-2 ml-2 list-disc space-y-1 pl-6 text-xs text-muted-foreground">
+                                            {item.subItems.map((subItem, subIndex) => (
+                                              <li key={`${block.title}-sub-${subIndex}`}>
+                                                {renderInline(subItem)}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ol>
+                                )}
+                              </div>
+                            )}
                           </AccordionContent>
                         </AccordionItem>
                       ))}
