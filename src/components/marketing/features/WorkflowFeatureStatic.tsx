@@ -11,10 +11,10 @@ export function WorkflowFeatureStatic() {
       <GridPattern className="z-0 opacity-80" />
       <DiagonalStripes className="opacity-70" />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-7xl items-center px-4 py-10 md:px-8 md:py-20">
-        <div className="grid w-full grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:items-stretch lg:gap-16">
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-7xl items-center px-4 py-6 sm:py-8 md:px-8 md:py-20">
+        <div className="grid w-full grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-16">
           <div className="order-2 lg:order-1 lg:col-span-6">
-            <div className="relative mx-auto w-[92%] max-w-[480px] rounded-xl shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.18)] dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.22)] sm:w-full sm:max-w-[500px] lg:mx-0 lg:ml-auto lg:mr-0 lg:max-w-[452px]">
+            <div className="relative mx-auto w-full max-w-[320px] rounded-xl shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.18)] dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.22)] sm:max-w-[360px] md:max-w-[420px] lg:mx-0 lg:ml-auto lg:mr-0 lg:max-w-[452px]">
               <Image
                 src="/images/workflow-feature-mock-light.png"
                 alt="Mockup fitur Workflow Makalah AI"
@@ -33,7 +33,7 @@ export function WorkflowFeatureStatic() {
           </div>
 
           <div className="order-1 lg:order-2 lg:col-span-6 lg:flex lg:h-full lg:flex-col lg:justify-center">
-            <div className="space-y-7 lg:mr-auto lg:max-w-[520px]">
+            <div className="space-y-5 sm:space-y-6 lg:mr-auto lg:max-w-[520px] lg:space-y-7">
               <div>
                 <SectionBadge>Fitur</SectionBadge>
                 <p className="mt-4 text-signal text-xs font-bold uppercase tracking-[0.26em] text-[color:var(--amber-500)]">
