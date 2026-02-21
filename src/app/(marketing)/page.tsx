@@ -1,4 +1,3 @@
-import { Suspense } from "react"
 import {
   PawangBadge,
   ChatInputHeroMock,
@@ -10,17 +9,11 @@ import {
 import { BenefitsSection } from "@/components/marketing/benefits"
 import { WorkflowFeatureSection, RefrasaFeatureSection } from "@/components/marketing/features"
 import { PricingTeaser } from "@/components/marketing/pricing-teaser"
-import { WaitlistToast } from "@/components/marketing/WaitlistToast"
 import { GridPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
 
 export default function MarketingHomePage() {
   return (
     <>
-      {/* Waitlist Toast Handler */}
-      <Suspense fallback={null}>
-        <WaitlistToast />
-      </Suspense>
-
       {/* Hero Section */}
       <section className="relative isolate min-h-[100svh] overflow-hidden bg-background">
         {/* Background Layers (bottom to top) */}
