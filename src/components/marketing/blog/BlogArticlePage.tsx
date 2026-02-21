@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight } from "iconoir-react"
 import Link from "next/link"
 import Image from "next/image"
 import { RichTextRenderer } from "@/components/marketing/RichTextRenderer"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { createPlaceholderImageDataUri, normalizeCategory } from "./utils"
 
 type DocListItem = {
@@ -293,6 +294,36 @@ export function BlogArticlePage({ slug }: { slug: string }) {
                 Kembali ke Blog
               </Link>
 
+              <section className="mt-3 rounded-shell border-hairline bg-card/90 p-4 backdrop-blur-[1px] dark:bg-slate-800/90 md:hidden">
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="mobile-metadata" className="border-b-0">
+                    <AccordionTrigger className="text-signal py-1 text-[10px] font-bold tracking-widest text-muted-foreground hover:no-underline">
+                      / METADATA
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-3 pb-0">
+                      <div className="rounded-action border-hairline grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-3">
+                        <div>
+                          <p className="text-interface text-xs text-muted-foreground">Tanggal</p>
+                          <p className="text-interface mt-1 text-sm">{publishedDate}</p>
+                        </div>
+                        <div>
+                          <p className="text-interface text-xs text-muted-foreground">Kategori</p>
+                          <p className="text-interface mt-1 text-sm">{normalizedCategory ?? "-"}</p>
+                        </div>
+                        <div>
+                          <p className="text-interface text-xs text-muted-foreground">Penulis</p>
+                          <p className="text-interface mt-1 text-sm">{post.author}</p>
+                        </div>
+                        <div>
+                          <p className="text-interface text-xs text-muted-foreground">Waktu baca</p>
+                          <p className="text-interface mt-1 text-sm">{post.readTime}</p>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </section>
+
               <div className="hidden rounded-shell border-hairline bg-card/90 p-4 backdrop-blur-[1px] dark:bg-slate-800/90 md:block md:p-5">
                 <Link
                   href="/blog"
@@ -374,30 +405,6 @@ export function BlogArticlePage({ slug }: { slug: string }) {
                 </article>
               </section>
 
-              <section className="mt-6 rounded-shell border-hairline bg-card/90 p-4 backdrop-blur-[1px] dark:bg-slate-800/90 md:hidden">
-                <p className="text-signal mb-3 text-[10px] font-bold tracking-widest text-muted-foreground">
-                  / METADATA
-                </p>
-
-                <div className="rounded-action border-hairline grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-3">
-                  <div>
-                    <p className="text-interface text-xs text-muted-foreground">Tanggal</p>
-                    <p className="text-interface mt-1 text-sm">{publishedDate}</p>
-                  </div>
-                  <div>
-                    <p className="text-interface text-xs text-muted-foreground">Kategori</p>
-                    <p className="text-interface mt-1 text-sm">{normalizedCategory ?? "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-interface text-xs text-muted-foreground">Penulis</p>
-                    <p className="text-interface mt-1 text-sm">{post.author}</p>
-                  </div>
-                  <div>
-                    <p className="text-interface text-xs text-muted-foreground">Waktu baca</p>
-                    <p className="text-interface mt-1 text-sm">{post.readTime}</p>
-                  </div>
-                </div>
-              </section>
             </div>
           </div>
         </div>
