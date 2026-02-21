@@ -27,16 +27,8 @@ import { QRCodeSVG } from "qrcode.react"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
 
 // ════════════════════════════════════════════════════════════════
-// Constants — Single BPP package (300 kredit = Rp 80.000)
+// Constants
 // ════════════════════════════════════════════════════════════════
-
-const BPP_PACKAGE = {
-  type: "paper" as const,
-  credits: 300,
-  priceIDR: 80_000,
-  label: "Paket Paper",
-  description: "1 paper lengkap (~15 halaman)",
-}
 
 const PAYMENT_METHODS = [
   { id: "qris" as const, label: "QRIS", icon: QrCode, description: "Scan dengan e-wallet" },
@@ -137,6 +129,18 @@ function CheckoutBPPContent() {
 
   const currentTier = user ? getEffectiveTier(user.role, user.subscriptionStatus) : null
   const backRoute = getSubscriptionBackRoute(searchParams.get("from"))
+
+  const bppPlan = useQuery(api.pricingPlans.getPlanBySlug, { slug: "bpp" })
+  const bppPackage = useQuery(api.billing.pricingHelpers.getBppCreditPackage, { packageType: "paper" })
+
+  useEffect(() => {
+    if (bppPlan?.isDisabled) {
+      router.replace("/subscription/overview")
+    }
+  }, [bppPlan?.isDisabled, router])
+
+  const pkg = bppPackage ?? { credits: 300, priceIDR: 80_000, label: "Paket Paper", description: "1 paper lengkap (~15 halaman)" }
+
   const handleBackToSubscription = useCallback(() => {
     router.push(backRoute)
   }, [router, backRoute])
@@ -206,7 +210,7 @@ function CheckoutBPPContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          packageType: BPP_PACKAGE.type,
+          packageType: "paper",
           paymentMethod: selectedMethod,
           vaChannel: selectedMethod === "va" ? selectedVAChannel : undefined,
           ewalletChannel: selectedMethod === "ewallet" ? selectedEWalletChannel : undefined,
@@ -241,7 +245,7 @@ function CheckoutBPPContent() {
   }, [])
 
   // Loading state
-  if (userLoading) {
+  if (userLoading || bppPackage === undefined) {
     return (
       <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
         <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
@@ -282,7 +286,7 @@ function CheckoutBPPContent() {
                     Rp {paymentResult.amount.toLocaleString("id-ID")}
                   </p>
                   <p className="text-narrative text-sm text-muted-foreground">
-                    {BPP_PACKAGE.credits} kredit ({BPP_PACKAGE.description})
+                    {pkg.credits} kredit ({pkg.description})
                   </p>
                 </div>
 
@@ -417,10 +421,10 @@ function CheckoutBPPContent() {
                 <div className={currentTier === "pro" ? "" : "text-right"}>
                   <p className="text-signal text-[10px] text-muted-foreground">Paket Paper</p>
                   <p className="text-interface text-lg font-medium text-foreground">
-                    {BPP_PACKAGE.credits} kredit
+                    {pkg.credits} kredit
                   </p>
                   <p className="text-interface text-sm text-muted-foreground">
-                    Rp {BPP_PACKAGE.priceIDR.toLocaleString("id-ID")}
+                    Rp {pkg.priceIDR.toLocaleString("id-ID")}
                   </p>
                 </div>
               </div>
@@ -551,14 +555,14 @@ function CheckoutBPPContent() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-narrative text-sm text-muted-foreground">Total Pembayaran</span>
                 <span className="text-interface text-2xl font-medium tracking-tight text-foreground">
-                  Rp {BPP_PACKAGE.priceIDR.toLocaleString("id-ID")}
+                  Rp {pkg.priceIDR.toLocaleString("id-ID")}
                 </span>
               </div>
               {currentTier !== "pro" && (
                 <div className="flex items-center justify-between mb-3 text-sm">
                   <span className="text-narrative text-muted-foreground">Kredit setelah top up</span>
                   <span className="text-interface font-medium text-foreground">
-                    {currentCredits + BPP_PACKAGE.credits} kredit
+                    {currentCredits + pkg.credits} kredit
                   </span>
                 </div>
               )}
