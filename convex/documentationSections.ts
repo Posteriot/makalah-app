@@ -10,16 +10,26 @@ import { documentationBlock } from "./schema"
 /**
  * Recursively extract plain text from a TipTap JSON node.
  */
-function extractTextFromTipTap(node: any): string {
+function extractTextFromTipTap(node: { type?: string; text?: string; content?: Array<{ type?: string; text?: string; content?: unknown[] }> }): string {
   if (node.type === "text") return node.text ?? ""
-  if (node.content) return node.content.map((n: any) => extractTextFromTipTap(n)).join(" ")
+  if (node.content) return node.content.map((n) => extractTextFromTipTap(n as typeof node)).join(" ")
   return ""
 }
 
 /**
  * Build searchText from title, summary, and all block content.
  */
-function generateSearchText(data: { title: string; summary?: string; blocks: any[] }): string {
+type SearchableBlock = {
+  type: string
+  title?: string
+  description?: string
+  paragraphs?: string[]
+  richContent?: string
+  list?: { items: { text: string; subItems?: string[] }[] }
+  items?: (string | { title: string; description: string })[]
+}
+
+function generateSearchText(data: { title: string; summary?: string; blocks: SearchableBlock[] }): string {
   const parts: string[] = [data.title]
   if (data.summary) parts.push(data.summary)
 
@@ -41,10 +51,14 @@ function generateSearchText(data: { title: string; summary?: string; blocks: any
         }
       }
     }
-    if (block.type === "infoCard" && block.items) parts.push(...block.items)
+    if (block.type === "infoCard" && block.items) {
+      for (const item of block.items) {
+        if (typeof item === "string") parts.push(item)
+      }
+    }
     if (block.type === "ctaCards" && block.items) {
       for (const item of block.items) {
-        parts.push(item.title, item.description)
+        if (typeof item === "object") parts.push(item.title, item.description)
       }
     }
   }
