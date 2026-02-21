@@ -19,6 +19,16 @@ export type CmsSectionId =
   | "career-contact"
 
 /**
+ * Legal sub-page identifiers (children of "legal" parent)
+ */
+export type LegalPageId = "privacy" | "security" | "terms"
+
+/**
+ * Global layout sub-page identifiers (children of "global-layout" parent)
+ */
+export type GlobalLayoutPageId = "header" | "footer"
+
+/**
  * Documentation group identifiers for drill-down navigation
  */
 export type DocGroupId =
@@ -52,6 +62,17 @@ const ABOUT_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
   { id: "career-contact", label: "Karier & Kontak" },
 ]
 
+const LEGAL_PAGES: Array<{ id: LegalPageId; label: string }> = [
+  { id: "privacy", label: "Privacy" },
+  { id: "security", label: "Security" },
+  { id: "terms", label: "Terms" },
+]
+
+const GLOBAL_LAYOUT_PAGES: Array<{ id: GlobalLayoutPageId; label: string }> = [
+  { id: "header", label: "Header" },
+  { id: "footer", label: "Footer" },
+]
+
 const DOC_GROUPS: Array<{ id: DocGroupId; label: string; group: string }> = [
   { id: "doc-mulai", label: "Mulai", group: "Mulai" },
   { id: "doc-fitur-utama", label: "Fitur Utama", group: "Fitur Utama" },
@@ -71,17 +92,22 @@ const PAGE_TITLES: Record<CmsPageId, string> = {
   about: "About",
   documentation: "Dokumentasi",
   blog: "Blog",
-  privacy: "Privacy",
-  security: "Security",
-  terms: "Terms",
-  header: "Header",
-  footer: "Footer",
+  legal: "Legal",
+  "global-layout": "Global Layout",
 }
 
 interface CmsSidebarProps {
   activePage: CmsPageId | null
   activeSection: CmsSectionId | null
   onSectionChange: (section: CmsSectionId) => void
+
+  // Legal sub-page
+  activeLegalPage: LegalPageId | null
+  onLegalPageChange: (page: LegalPageId) => void
+
+  // Global layout sub-page
+  activeGlobalLayoutPage: GlobalLayoutPageId | null
+  onGlobalLayoutPageChange: (page: GlobalLayoutPageId) => void
 
   // Documentation drill-down
   activeDocGroup: DocGroupId | null
@@ -97,19 +123,33 @@ interface CmsSidebarProps {
 }
 
 /**
+ * Chat-style item classes (mimics SidebarChatHistory conversation items)
+ */
+function getItemClasses(isActive: boolean) {
+  return cn(
+    "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center rounded-action border px-2.5 py-2.5 text-left text-sm transition-colors",
+    "border-transparent font-sans",
+    isActive
+      ? "border-slate-300/90 bg-slate-50 shadow-[inset_0_1px_0_var(--border-hairline-soft)] dark:border-slate-700 dark:bg-slate-900/60"
+      : "cursor-pointer hover:bg-slate-300 dark:hover:bg-slate-600/60"
+  )
+}
+
+/**
  * CmsSidebar - Dynamic sidebar for CMS layout
  *
- * Shows different content based on the active CMS page:
- * - Home / About: Simple section list with active indicator
- * - Documentation: Group drill-down (groups -> back button when selected)
- * - Blog: Category drill-down (categories -> back button when selected)
- * - Other pages: Empty state (editor loads in main area)
- * - No page selected: Placeholder message
+ * Header is always "Content Manager" (static).
+ * Page title shown above child items in the content area.
+ * Active items use chat conversation history styling (border + bg, no amber stripe).
  */
 export function CmsSidebar({
   activePage,
   activeSection,
   onSectionChange,
+  activeLegalPage,
+  onLegalPageChange,
+  activeGlobalLayoutPage,
+  onGlobalLayoutPageChange,
   activeDocGroup,
   onDocGroupChange,
   activeBlogCategory,
@@ -120,25 +160,39 @@ export function CmsSidebar({
   // Render section list for Home or About pages
   function renderSectionList(sections: Array<{ id: CmsSectionId; label: string }>) {
     return (
-      <div className="flex flex-col gap-dense">
-        {sections.map((section) => {
-          const isActive = activeSection === section.id
-          return (
-            <button
-              key={section.id}
-              type="button"
-              onClick={() => onSectionChange(section.id)}
-              className={cn(
-                "text-interface w-full rounded-action px-3 py-1.5 text-left text-sm transition-colors duration-50",
-                isActive
-                  ? "border-l-2 border-amber-500 bg-muted/30 text-foreground"
-                  : "cursor-pointer border-l-2 border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              )}
-            >
-              {section.label}
-            </button>
-          )
-        })}
+      <div className="flex flex-col">
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            onClick={() => onSectionChange(section.id)}
+            className={getItemClasses(activeSection === section.id)}
+          >
+            <span className="truncate">{section.label}</span>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  // Render simple sub-page list (Legal, Global Layout)
+  function renderSubPageList<T extends string>(
+    items: Array<{ id: T; label: string }>,
+    activeItem: T | null,
+    onItemChange: (item: T) => void
+  ) {
+    return (
+      <div className="flex flex-col">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onItemChange(item.id)}
+            className={getItemClasses(activeItem === item.id)}
+          >
+            <span className="truncate">{item.label}</span>
+          </button>
+        ))}
       </div>
     )
   }
@@ -153,13 +207,13 @@ export function CmsSidebar({
     if (activeItem !== null) {
       const selectedItem = items.find((item) => item.id === activeItem)
       return (
-        <div className="flex flex-col gap-dense">
+        <div className="flex flex-col">
           <button
             type="button"
             onClick={() => onItemChange(null)}
             className={cn(
-              "text-interface flex w-full items-center gap-2 rounded-action px-3 py-1.5 text-left text-sm",
-              "cursor-pointer text-muted-foreground transition-colors duration-50 hover:bg-muted/50 hover:text-foreground"
+              "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center gap-2 rounded-action border border-transparent px-2.5 py-2.5 text-left text-sm",
+              "cursor-pointer font-sans transition-colors hover:bg-slate-300 dark:hover:bg-slate-600/60"
             )}
           >
             <NavArrowLeft className="h-4 w-4 shrink-0" strokeWidth={1.5} />
@@ -171,15 +225,15 @@ export function CmsSidebar({
 
     // Show the list of groups/categories
     return (
-      <div className="flex flex-col gap-dense">
+      <div className="flex flex-col">
         {items.map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => onItemChange(item.id)}
             className={cn(
-              "text-interface flex w-full items-center justify-between rounded-action px-3 py-1.5 text-left text-sm",
-              "cursor-pointer border-l-2 border-transparent text-muted-foreground transition-colors duration-50 hover:bg-muted/50 hover:text-foreground"
+              "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center justify-between rounded-action border border-transparent px-2.5 py-2.5 text-left text-sm",
+              "cursor-pointer font-sans transition-colors hover:bg-slate-300 dark:hover:bg-slate-600/60"
             )}
           >
             <span>{item.label}</span>
@@ -205,37 +259,42 @@ export function CmsSidebar({
     switch (activePage) {
       case "home":
         return (
-          <div className="px-2 py-3">
+          <div className="py-1">
             {renderSectionList(HOME_SECTIONS)}
           </div>
         )
       case "about":
         return (
-          <div className="px-2 py-3">
+          <div className="py-1">
             {renderSectionList(ABOUT_SECTIONS)}
+          </div>
+        )
+      case "legal":
+        return (
+          <div className="py-1">
+            {renderSubPageList(LEGAL_PAGES, activeLegalPage, onLegalPageChange)}
+          </div>
+        )
+      case "global-layout":
+        return (
+          <div className="py-1">
+            {renderSubPageList(GLOBAL_LAYOUT_PAGES, activeGlobalLayoutPage, onGlobalLayoutPageChange)}
           </div>
         )
       case "documentation":
         return (
-          <div className="px-2 py-3">
+          <div className="py-1">
             {renderDrillDownList(DOC_GROUPS, activeDocGroup, onDocGroupChange)}
           </div>
         )
       case "blog":
         return (
-          <div className="px-2 py-3">
+          <div className="py-1">
             {renderDrillDownList(BLOG_CATEGORIES, activeBlogCategory, onBlogCategoryChange)}
           </div>
         )
-      // Pages without sections: privacy, security, terms, header, footer
       default:
-        return (
-          <div className="flex flex-1 items-center justify-center px-3">
-            <p className="text-interface text-center text-sm text-muted-foreground">
-              Editor loaded
-            </p>
-          </div>
-        )
+        return null
     }
   }
 
@@ -247,10 +306,10 @@ export function CmsSidebar({
         className
       )}
     >
-      {/* Header with page title and collapse button */}
+      {/* Header — static title "Content Manager" + collapse button */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-slate-300/90 px-3 dark:border-slate-700/80">
         <h3 className="text-interface text-sm font-medium text-foreground truncate">
-          {activePage ? PAGE_TITLES[activePage] : "CMS"}
+          Content Manager
         </h3>
         <Button
           variant="ghost"
@@ -262,6 +321,15 @@ export function CmsSidebar({
           <FastArrowLeft className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Page title label (above child items) */}
+      {activePage && (
+        <div className="shrink-0 px-3 pt-3 pb-1">
+          <span className="text-signal text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {PAGE_TITLES[activePage]}
+          </span>
+        </div>
+      )}
 
       {/* Dynamic content area */}
       <div className="flex flex-1 flex-col overflow-y-auto">

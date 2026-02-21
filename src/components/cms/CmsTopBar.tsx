@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import { useTheme } from "next-themes"
-import { SunLight, HalfMoon, FastArrowRight, Dashboard } from "iconoir-react"
+import { SunLight, HalfMoon, FastArrowRight, Settings } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { UserDropdown } from "@/components/layout/header"
@@ -117,7 +117,7 @@ export function CmsTopBar({
                   )}
                   aria-label="Admin Dashboard"
                 >
-                  <Dashboard className="h-4 w-4" aria-hidden="true" />
+                  <Settings className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </TooltipTrigger>
               <TooltipContent className="font-mono text-xs">

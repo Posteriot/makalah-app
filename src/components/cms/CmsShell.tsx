@@ -8,7 +8,7 @@ import { CmsSidebar } from "./CmsSidebar"
 import { PanelResizer } from "@/components/ui/PanelResizer"
 import type { Id } from "../../../convex/_generated/dataModel"
 import type { CmsPageId } from "./CmsActivityBar"
-import type { CmsSectionId, DocGroupId, BlogCategoryId } from "./CmsSidebar"
+import type { CmsSectionId, LegalPageId, GlobalLayoutPageId, DocGroupId, BlogCategoryId } from "./CmsSidebar"
 
 import { HeroSectionEditor } from "@/components/admin/cms/HeroSectionEditor"
 import { BenefitsSectionEditor } from "@/components/admin/cms/BenefitsSectionEditor"
@@ -33,10 +33,6 @@ import { BlogPostEditor } from "@/components/admin/cms/BlogPostEditor"
  * - Column 2: Sidebar (280px default, resizable)
  * - Column 3: Resizer (2px)
  * - Column 4: Main Content (1fr)
- *
- * Constraints:
- * - Sidebar: min 180px, max 50% viewport
- * - Collapse threshold: 100px
  */
 
 interface CmsShellProps {
@@ -52,6 +48,8 @@ export function CmsShell({ userId }: CmsShellProps) {
   // Layout state
   const [activePage, setActivePage] = useState<CmsPageId | null>(null)
   const [activeSection, setActiveSection] = useState<CmsSectionId | null>(null)
+  const [activeLegalPage, setActiveLegalPage] = useState<LegalPageId | null>(null)
+  const [activeGlobalLayoutPage, setActiveGlobalLayoutPage] = useState<GlobalLayoutPageId | null>(null)
   const [activeDocGroup, setActiveDocGroup] = useState<DocGroupId | null>(null)
   const [selectedDocSlug, setSelectedDocSlug] = useState<string | null>(null)
   const [activeBlogCategory, setActiveBlogCategory] = useState<BlogCategoryId | null>(null)
@@ -63,6 +61,8 @@ export function CmsShell({ userId }: CmsShellProps) {
   const handlePageChange = useCallback((page: CmsPageId) => {
     setActivePage(page)
     setActiveSection(null)
+    setActiveLegalPage(null)
+    setActiveGlobalLayoutPage(null)
     setActiveDocGroup(null)
     setSelectedDocSlug(null)
     setActiveBlogCategory(null)
@@ -125,14 +125,14 @@ export function CmsShell({ userId }: CmsShellProps) {
     if (activePage === "about" && activeSection === "agents") return <AgentsSectionEditor userId={userId} />
     if (activePage === "about" && activeSection === "career-contact") return <CareerContactEditor userId={userId} />
 
-    // Rich text pages (no sections)
-    if (activePage === "privacy") return <RichTextPageEditor slug="privacy" userId={userId} />
-    if (activePage === "security") return <RichTextPageEditor slug="security" userId={userId} />
-    if (activePage === "terms") return <RichTextPageEditor slug="terms" userId={userId} />
+    // Legal sub-pages
+    if (activePage === "legal" && activeLegalPage === "privacy") return <RichTextPageEditor slug="privacy" userId={userId} />
+    if (activePage === "legal" && activeLegalPage === "security") return <RichTextPageEditor slug="security" userId={userId} />
+    if (activePage === "legal" && activeLegalPage === "terms") return <RichTextPageEditor slug="terms" userId={userId} />
 
-    // Header/Footer
-    if (activePage === "header") return <HeaderConfigEditor userId={userId} />
-    if (activePage === "footer") return <FooterConfigEditor userId={userId} />
+    // Global layout sub-pages
+    if (activePage === "global-layout" && activeGlobalLayoutPage === "header") return <HeaderConfigEditor userId={userId} />
+    if (activePage === "global-layout" && activeGlobalLayoutPage === "footer") return <FooterConfigEditor userId={userId} />
 
     // Documentation drill-down
     if (activePage === "documentation" && activeDocGroup && !selectedDocSlug) {
@@ -188,8 +188,8 @@ export function CmsShell({ userId }: CmsShellProps) {
       )
     }
 
-    // Empty states
-    if (activePage && !activeSection && !["privacy", "security", "terms", "header", "footer", "documentation", "blog"].includes(activePage)) {
+    // Empty states for pages that need child selection
+    if (activePage === "home" && !activeSection) {
       return (
         <div className="flex items-center justify-center h-full">
           <p className="text-interface text-sm text-muted-foreground">
@@ -198,7 +198,33 @@ export function CmsShell({ userId }: CmsShellProps) {
         </div>
       )
     }
-
+    if (activePage === "about" && !activeSection) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-interface text-sm text-muted-foreground">
+            Pilih section dari sidebar untuk mulai editing
+          </p>
+        </div>
+      )
+    }
+    if (activePage === "legal" && !activeLegalPage) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-interface text-sm text-muted-foreground">
+            Pilih halaman dari sidebar untuk mulai editing
+          </p>
+        </div>
+      )
+    }
+    if (activePage === "global-layout" && !activeGlobalLayoutPage) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-interface text-sm text-muted-foreground">
+            Pilih komponen dari sidebar untuk mulai editing
+          </p>
+        </div>
+      )
+    }
     if (activePage === "documentation" && !activeDocGroup) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -208,7 +234,6 @@ export function CmsShell({ userId }: CmsShellProps) {
         </div>
       )
     }
-
     if (activePage === "blog" && !activeBlogCategory) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -261,6 +286,10 @@ export function CmsShell({ userId }: CmsShellProps) {
           activePage={activePage}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
+          activeLegalPage={activeLegalPage}
+          onLegalPageChange={setActiveLegalPage}
+          activeGlobalLayoutPage={activeGlobalLayoutPage}
+          onGlobalLayoutPageChange={setActiveGlobalLayoutPage}
           activeDocGroup={activeDocGroup}
           onDocGroupChange={setActiveDocGroup}
           activeBlogCategory={activeBlogCategory}

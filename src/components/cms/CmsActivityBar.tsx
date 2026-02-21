@@ -9,11 +9,8 @@ import {
   InfoCircle,
   Book,
   Journal,
-  Lock,
-  Shield,
-  Page,
-  ViewColumns2,
-  ViewColumns3,
+  ScaleFrameEnlarge,
+  PrivacyPolicy,
 } from "iconoir-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,17 +22,18 @@ import {
 
 /**
  * CMS page identifiers for activity bar navigation
+ *
+ * - home, about, documentation, blog: Content pages with sidebar sections
+ * - legal: Parent for Privacy, Security, Terms (children in sidebar)
+ * - global-layout: Parent for Header, Footer (children in sidebar)
  */
 export type CmsPageId =
   | "home"
   | "about"
   | "documentation"
   | "blog"
-  | "privacy"
-  | "security"
-  | "terms"
-  | "header"
-  | "footer"
+  | "legal"
+  | "global-layout"
 
 interface CmsActivityBarProps {
   activePage: CmsPageId | null
@@ -114,19 +112,9 @@ const contentPageItems: Array<{
     label: "Blog",
   },
   {
-    page: "privacy",
-    icon: <Lock className="h-5 w-5" aria-hidden="true" />,
-    label: "Privacy",
-  },
-  {
-    page: "security",
-    icon: <Shield className="h-5 w-5" aria-hidden="true" />,
-    label: "Security",
-  },
-  {
-    page: "terms",
-    icon: <Page className="h-5 w-5" aria-hidden="true" />,
-    label: "Terms",
+    page: "legal",
+    icon: <PrivacyPolicy className="h-5 w-5" aria-hidden="true" />,
+    label: "Legal",
   },
 ]
 
@@ -137,14 +125,9 @@ const globalComponentItems: Array<{
   label: string
 }> = [
   {
-    page: "header",
-    icon: <ViewColumns2 className="h-5 w-5" aria-hidden="true" />,
-    label: "Header",
-  },
-  {
-    page: "footer",
-    icon: <ViewColumns3 className="h-5 w-5" aria-hidden="true" />,
-    label: "Footer",
+    page: "global-layout",
+    icon: <ScaleFrameEnlarge className="h-5 w-5" aria-hidden="true" />,
+    label: "Global Layout",
   },
 ]
 
@@ -157,18 +140,9 @@ const allPages: CmsPageId[] = [
 /**
  * CmsActivityBar - Vertical navigation bar for CMS layout
  *
- * Located at the leftmost side of the CMS layout (48px width).
- * Provides page switching between CMS content pages and global components.
- *
  * Two groups separated by a visual divider:
- * 1. Content Pages - home, about, documentation, blog, privacy, security, terms
- * 2. Global Components - header, footer
- *
- * Accessibility:
- * - Uses role="navigation" with aria-label
- * - Each button has aria-label and aria-pressed
- * - Keyboard navigation with arrow keys
- * - Focus visible ring for keyboard users
+ * 1. Content Pages - home, about, documentation, blog, legal
+ * 2. Global Components - global-layout (header + footer)
  */
 export function CmsActivityBar({
   activePage,
