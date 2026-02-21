@@ -91,11 +91,11 @@ export async function sendWaitlistInviteEmail(
         <span style="font-size: 11px; font-family: 'Geist Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8;">Makalah AI — Undangan Waiting List</span>
       </div>
       <p style="font-size: 15px; color: #f8fafc; margin: 0 0 8px 0;">Halo, ${firstName}!</p>
-      <p style="font-size: 13px; color: #cbd5e1; margin: 0 0 24px 0;">Kamu telah diundang untuk bergabung dengan Makalah AI. Klik tombol di bawah untuk mendaftar — pilih Google atau buat akun dengan email dan password.</p>
+      <p style="font-size: 13px; color: #cbd5e1; margin: 0 0 24px 0;">Giliran kamu sudah tiba! Klik tombol di bawah untuk mendaftar di Makalah AI. Kamu bisa pilih masuk lewat Google atau daftar dengan email dan password.</p>
       <div style="text-align: center; margin-bottom: 24px;">
         <a href="${signupUrl}" style="display: inline-block; background: #f59e0b; color: #0f172a; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; text-decoration: none; padding: 12px 32px; border-radius: 6px;">DAFTAR SEKARANG</a>
       </div>
-      <p style="font-size: 11px; color: #64748b; margin: 0 0 8px 0;">Setelah mendaftar, kamu bisa langsung mulai menyusun paper dengan Makalah AI.</p>
+      <p style="font-size: 11px; color: #64748b; margin: 0 0 8px 0;">Data kamu sudah kami siapkan di form pendaftaran — tinggal pilih metode masuk.</p>
       <p style="font-size: 11px; color: #64748b; margin: 0;">Kalau kamu tidak merasa mendaftar di Makalah AI, abaikan email ini.</p>
     </div>`
   );

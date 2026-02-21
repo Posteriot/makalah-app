@@ -22,9 +22,9 @@ export default function SignUpPage() {
   const callbackURL = getRedirectUrl(searchParams, "/")
 
   const [mode, setMode] = useState<SignUpMode>("sign-up")
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [email, setEmail] = useState("")
+  const [firstName, setFirstName] = useState(searchParams.get("firstName") ?? "")
+  const [lastName, setLastName] = useState(searchParams.get("lastName") ?? "")
+  const [email, setEmail] = useState(searchParams.get("email") ?? "")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)

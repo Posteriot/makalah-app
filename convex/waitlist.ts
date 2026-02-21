@@ -267,7 +267,12 @@ export const sendInviteEmail = action({
 
     const firstName = result.firstName ?? "Pengguna"
     const appUrl = process.env.APP_URL ?? "https://makalah.ai"
-    const signupUrl = `${appUrl}/waitinglist/sign-up`
+    const params = new URLSearchParams({
+      firstName: result.firstName ?? "",
+      lastName: result.lastName ?? "",
+      email: result.email,
+    })
+    const signupUrl = `${appUrl}/sign-up?${params.toString()}`
 
     // Send invite email via Resend
     const { sendWaitlistInviteEmail } = await import("./authEmails")
