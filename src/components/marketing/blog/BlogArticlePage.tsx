@@ -7,7 +7,6 @@ import { DottedPattern } from "@/components/marketing/SectionBackground"
 import { ArrowLeft, ArrowRight } from "iconoir-react"
 import Link from "next/link"
 import Image from "next/image"
-import { cn } from "@/lib/utils"
 import { RichTextRenderer } from "@/components/marketing/RichTextRenderer"
 import { createPlaceholderImageDataUri, normalizeCategory } from "./utils"
 
@@ -188,11 +187,6 @@ function BlockRenderer({ block }: { block: DocBlock }) {
 
 export function BlogArticlePage({ slug }: { slug: string }) {
   const post = useQuery(api.blog.getPostBySlug, { slug })
-  const articleUrl = useMemo(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "")
-    if (!baseUrl) return `/blog/${slug}`
-    return `${baseUrl}/blog/${slug}`
-  }, [slug])
   const normalizedCategory = useMemo(() => {
     if (!post) return null
     return normalizeCategory(post.category, post.title, post.excerpt)
@@ -289,43 +283,27 @@ export function BlogArticlePage({ slug }: { slug: string }) {
         <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-10 pt-[calc(var(--header-h)+16px)] md:px-8 md:pb-14 md:pt-[calc(var(--header-h)+20px)]">
-          <Link
-            href="/blog"
-            className="text-signal mb-6 inline-flex items-center gap-2 rounded-action border-main border-border px-3 py-2 text-[10px] font-bold tracking-widest text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <ArrowLeft className="icon-interface" />
-            Kembali ke Blog
-          </Link>
-
-          <header className="mb-8 md:mb-10">
-            <h1 className="text-narrative max-w-6xl text-[2.35rem] leading-[0.98] font-medium tracking-tight md:text-[5.2rem]">
-              {post.title}
-            </h1>
-
-            <p className="text-narrative mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              {post.excerpt}
-            </p>
-          </header>
-
-          <div className="mb-8 overflow-hidden rounded-shell border-hairline md:mb-10">
-            <div className="relative h-[220px] w-full md:h-[460px]">
-              <Image
-                src={articleCoverSrc}
-                alt={post.title}
-                fill
-                className="object-cover"
-                priority
-                unoptimized={!post.coverImageUrl}
-              />
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 gap-7 md:grid-cols-16 md:gap-8">
             <aside className="md:col-span-4">
-              <div
-                className="rounded-shell border-hairline bg-card/90 p-4 backdrop-blur-[1px] dark:bg-slate-800/90 md:p-5"
-                style={{ position: "sticky", top: "calc(var(--header-h) + 16px)" }}
+              <Link
+                href="/blog"
+                className="text-interface inline-flex items-center gap-2 text-sm uppercase tracking-[0.12em] text-foreground/70 transition-colors hover:text-sky-700 hover:underline hover:decoration-2 hover:underline-offset-4 dark:hover:text-sky-300 md:hidden"
               >
+                <ArrowLeft className="icon-interface" />
+                Kembali ke Blog
+              </Link>
+
+              <div className="hidden rounded-shell border-hairline bg-card/90 p-4 backdrop-blur-[1px] dark:bg-slate-800/90 md:block md:p-5">
+                <Link
+                  href="/blog"
+                  className="text-interface inline-flex items-center gap-2 text-sm uppercase tracking-[0.12em] text-foreground/70 transition-colors hover:text-sky-700 hover:underline hover:decoration-2 hover:underline-offset-4 dark:hover:text-sky-300"
+                >
+                  <ArrowLeft className="icon-interface" />
+                  Kembali ke Blog
+                </Link>
+
+                <div className="my-3 h-px w-full bg-[color:var(--border-hairline)]" />
+
                 <p className="text-signal mb-3 text-[10px] font-bold tracking-widest text-muted-foreground">
                   / METADATA
                 </p>
@@ -345,54 +323,82 @@ export function BlogArticlePage({ slug }: { slug: string }) {
                   </div>
                   <div className="flex items-center justify-between px-4 py-3.5 text-sm">
                     <span className="text-interface text-muted-foreground">Kategori</span>
-                    <span className="text-interface">{normalizedCategory}</span>
+                    <span className="text-interface">{normalizedCategory ?? "-"}</span>
                   </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <Link
-                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(articleUrl)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-signal inline-flex items-center justify-center rounded-action border-main border-border px-3 py-2 text-[10px] font-bold tracking-widest text-foreground transition-colors hover:bg-accent"
-                  >
-                    Twitter/X
-                  </Link>
-                  <Link
-                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(articleUrl)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-signal inline-flex items-center justify-center rounded-action border-main border-border px-3 py-2 text-[10px] font-bold tracking-widest text-foreground transition-colors hover:bg-accent"
-                  >
-                    LinkedIn
-                  </Link>
                 </div>
               </div>
             </aside>
 
-            <article className="md:col-span-12">
-              <div className={cn(
-                "rounded-shell bg-card/90 p-6 dark:bg-slate-800/90 md:p-8",
-                "space-y-8"
-              )}>
-                {post.content ? (
-                  <RichTextRenderer content={post.content} />
-                ) : blocks.length > 0 ? (
-                  blocks.map((block, index) => (
-                    <BlockRenderer key={`${block.type}-${index}`} block={block} />
-                  ))
-                ) : (
-                  <section>
-                    <h2 className="text-narrative mb-4 text-2xl leading-tight font-medium md:text-3xl">
-                      Ringkasan
-                    </h2>
-                    <p className="text-narrative text-lg leading-relaxed text-foreground/90">
-                      {post.excerpt}
-                    </p>
-                  </section>
-                )}
-              </div>
-            </article>
+            <div className="md:col-span-12">
+              <section className="rounded-shell border-hairline bg-card/90 p-4 backdrop-blur-[1px] dark:bg-slate-800/90 md:p-6">
+                <header className="mb-6 md:mb-8">
+                  <h1 className="text-narrative text-[1.55rem] leading-[1.06] font-medium tracking-tight md:text-[2.9rem]">
+                    {post.title}
+                  </h1>
+
+                  <p className="text-narrative mt-4 text-base leading-relaxed text-muted-foreground md:text-xl">
+                    {post.excerpt}
+                  </p>
+                </header>
+
+                <div className="mb-7 overflow-hidden rounded-shell border-hairline md:mb-8">
+                  <div className="relative h-[220px] w-full md:h-[460px]">
+                    <Image
+                      src={articleCoverSrc}
+                      alt={post.title}
+                      fill
+                      className="object-cover"
+                      priority
+                      unoptimized={!post.coverImageUrl}
+                    />
+                  </div>
+                </div>
+
+                <article className="space-y-8">
+                  {post.content ? (
+                    <RichTextRenderer content={post.content} />
+                  ) : blocks.length > 0 ? (
+                    blocks.map((block, index) => (
+                      <BlockRenderer key={`${block.type}-${index}`} block={block} />
+                    ))
+                  ) : (
+                    <section>
+                      <h2 className="text-narrative mb-4 text-2xl leading-tight font-medium md:text-3xl">
+                        Ringkasan
+                      </h2>
+                      <p className="text-narrative text-lg leading-relaxed text-foreground/90">
+                        {post.excerpt}
+                      </p>
+                    </section>
+                  )}
+                </article>
+              </section>
+
+              <section className="mt-6 rounded-shell border-hairline bg-card/90 p-4 backdrop-blur-[1px] dark:bg-slate-800/90 md:hidden">
+                <p className="text-signal mb-3 text-[10px] font-bold tracking-widest text-muted-foreground">
+                  / METADATA
+                </p>
+
+                <div className="rounded-action border-hairline grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-3">
+                  <div>
+                    <p className="text-interface text-xs text-muted-foreground">Tanggal</p>
+                    <p className="text-interface mt-1 text-sm">{publishedDate}</p>
+                  </div>
+                  <div>
+                    <p className="text-interface text-xs text-muted-foreground">Kategori</p>
+                    <p className="text-interface mt-1 text-sm">{normalizedCategory ?? "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-interface text-xs text-muted-foreground">Penulis</p>
+                    <p className="text-interface mt-1 text-sm">{post.author}</p>
+                  </div>
+                  <div>
+                    <p className="text-interface text-xs text-muted-foreground">Waktu baca</p>
+                    <p className="text-interface mt-1 text-sm">{post.readTime}</p>
+                  </div>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       </section>
