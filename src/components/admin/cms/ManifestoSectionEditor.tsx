@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
+import { CmsImageUpload } from "./CmsImageUpload"
 
 type ManifestoSectionEditorProps = {
   userId: Id<"users">
@@ -26,6 +27,8 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
   const [headingLines, setHeadingLines] = useState<[string, string, string]>(["", "", ""])
   const [subheading, setSubheading] = useState("")
   const [paragraphs, setParagraphs] = useState<string[]>([])
+  const [terminalDarkId, setTerminalDarkId] = useState<Id<"_storage"> | null>(null)
+  const [terminalLightId, setTerminalLightId] = useState<Id<"_storage"> | null>(null)
   const [isPublished, setIsPublished] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
@@ -40,6 +43,8 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
       setSubheading(section.subheading ?? "")
       const paras = (section.paragraphs as string[] | undefined) ?? []
       setParagraphs(paras)
+      setTerminalDarkId((section.primaryImageId as Id<"_storage"> | undefined) ?? null)
+      setTerminalLightId((section.secondaryImageId as Id<"_storage"> | undefined) ?? null)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
@@ -77,6 +82,8 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
         subheading,
         paragraphs,
         badgeText,
+        primaryImageId: terminalDarkId ?? undefined,
+        secondaryImageId: terminalLightId ?? undefined,
         isPublished,
         sortOrder: 1,
       })
@@ -195,6 +202,31 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
           >
             Tambah Paragraf
           </Button>
+        </div>
+
+        {/* Terminal Panel Image */}
+        <div className="space-y-3">
+          <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Terminal Panel Image
+          </span>
+          <div className="grid grid-cols-2 gap-4">
+            <CmsImageUpload
+              currentImageId={terminalDarkId}
+              onUpload={(storageId) => setTerminalDarkId(storageId)}
+              userId={userId}
+              label="Terminal (Dark)"
+              aspectRatio="16/9"
+              fallbackPreviewUrl="/images/manifesto-terminal-dark.png"
+            />
+            <CmsImageUpload
+              currentImageId={terminalLightId}
+              onUpload={(storageId) => setTerminalLightId(storageId)}
+              userId={userId}
+              label="Terminal (Light)"
+              aspectRatio="16/9"
+              fallbackPreviewUrl="/images/manifesto-terminal-light.png"
+            />
+          </div>
         </div>
 
         {/* Published toggle */}
