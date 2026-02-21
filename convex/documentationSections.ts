@@ -196,3 +196,15 @@ export const generateDocUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl()
   },
 })
+
+/**
+ * Get a public URL for a stored image by storageId.
+ * Mutation wrapper so it can be called imperatively from client components
+ * (e.g. after uploading an inline image in the TipTap editor).
+ */
+export const getDocImageUrlMutation = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId)
+  },
+})
