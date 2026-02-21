@@ -2,7 +2,10 @@ import type { ReactNode } from "react"
 
 export default function ChatLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div
+      data-ds-scope="chat-v1"
+      className="min-h-screen bg-background text-foreground"
+    >
       {children}
     </div>
   )
