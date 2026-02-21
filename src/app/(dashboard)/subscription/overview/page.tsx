@@ -84,6 +84,12 @@ function RegularOverviewView({
     tier === "bpp" ? { slug: "pro" } : "skip"
   )
 
+  // BPP plan data for disabled check
+  const bppPlan = useQuery(
+    api.pricingPlans.getPlanBySlug,
+    tier === "bpp" ? { slug: "bpp" } : "skip"
+  )
+
   // All plans for gratis upgrade section
   const allPlans = useQuery(
     api.pricingPlans.getActivePlans,
@@ -115,7 +121,7 @@ function RegularOverviewView({
               <span className="font-sans text-sm text-slate-600 dark:text-slate-300">{tierConfig.description}</span>
             </div>
 
-            {tier === "bpp" && (
+            {tier === "bpp" && bppPlan && !bppPlan.isDisabled && (
               <Link
                 href="/checkout/bpp?from=overview"
                 className="focus-ring font-mono mt-4 inline-flex h-8 items-center gap-1.5 rounded-action border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -197,7 +203,7 @@ function RegularOverviewView({
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               {allPlans
-                .filter((plan) => plan.slug === "bpp" || plan.slug === "pro")
+                .filter((plan) => (plan.slug === "bpp" || plan.slug === "pro") && !plan.isDisabled)
                 .map((plan) => {
                   const isBPP = plan.slug === "bpp"
                   const teaserCreditNote = plan.teaserCreditNote || plan.features[0] || ""
@@ -235,7 +241,7 @@ function RegularOverviewView({
       </div>
 
       {/* Pro Upgrade Pitch — BPP only */}
-      {tier === "bpp" && proPlan && (
+      {tier === "bpp" && proPlan && !proPlan.isDisabled && (
         <div className="rounded-shell border border-slate-200 dark:border-slate-700 border-l-4 border-l-amber-500 bg-white dark:bg-slate-900 p-5">
           <h2 className="font-sans text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
             <Sparks className="h-4 w-4 text-amber-500" />
