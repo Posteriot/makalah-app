@@ -1,6 +1,6 @@
 import type { Doc } from "@convex/_generated/dataModel"
 
-export type BlogPost = Doc<"blogSections">
+export type BlogPost = Doc<"blogSections"> & { coverImageUrl?: string | null }
 
 export const CATEGORY_OPTIONS = ["Semua", "Update", "Tutorial", "Opini", "Event"] as const
 export type CategoryFilter = (typeof CATEGORY_OPTIONS)[number]
