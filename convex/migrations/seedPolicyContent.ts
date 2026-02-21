@@ -905,7 +905,7 @@ export const seedPolicyContent = internalMutationGeneric({
     for (const page of pages) {
       const existing = await db
         .query("richTextPages")
-        .withIndex("by_slug", (q: any) => q.eq("slug", page.slug))
+        .withIndex("by_slug", (q) => q.eq("slug", page.slug))
         .first()
 
       if (existing) {
