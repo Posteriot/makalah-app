@@ -2,6 +2,75 @@ import { v } from "convex/values"
 import { mutation } from "./_generated/server"
 
 /**
+ * Link an existing BetterAuth user to Convex users table.
+ * Use via CLI: npx convex run adminManualUserCreation:linkBetterAuthUser '{...}'
+ * For manual user creation when sign-up flow is unavailable.
+ */
+export const linkBetterAuthUser = mutation({
+  args: {
+    betterAuthUserId: v.string(),
+    email: v.string(),
+    firstName: v.string(),
+    lastName: v.string(),
+    role: v.union(v.literal("user"), v.literal("admin"), v.literal("superadmin")),
+    subscriptionStatus: v.union(
+      v.literal("free"),
+      v.literal("pro"),
+      v.literal("canceled"),
+      v.literal("unlimited")
+    ),
+  },
+  handler: async (ctx, args) => {
+    // Check if already linked
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_betterAuthUserId", (q) =>
+        q.eq("betterAuthUserId", args.betterAuthUserId)
+      )
+      .unique()
+
+    if (existing) {
+      return {
+        userId: existing._id,
+        message: `User sudah terhubung: ${existing.email}`,
+      }
+    }
+
+    // Check if email already exists
+    const byEmail = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .collect()
+
+    const realUser = byEmail.find(
+      (u) => !u.betterAuthUserId?.startsWith("pending_")
+    )
+
+    if (realUser) {
+      throw new Error(`Email ${args.email} sudah terdaftar di users table`)
+    }
+
+    const now = Date.now()
+    const userId = await ctx.db.insert("users", {
+      betterAuthUserId: args.betterAuthUserId,
+      email: args.email,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      role: args.role,
+      emailVerified: true,
+      subscriptionStatus: args.subscriptionStatus,
+      createdAt: now,
+      lastLoginAt: now,
+    })
+
+    return {
+      userId,
+      message: `User ${args.email} berhasil ditambahkan dan di-link ke BetterAuth.`,
+    }
+  },
+})
+
+/**
  * Manually create admin or superadmin user
  * Creates a "pending" user record that will be updated when they sign up via BetterAuth
  */
