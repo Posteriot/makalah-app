@@ -72,16 +72,16 @@ export function BlogPostListEditor({
   }
 
   return (
-    <div className="w-full space-y-6 p-comfort">
+    <div className="w-full self-start space-y-4 overflow-hidden p-comfort">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="text-narrative text-lg font-medium tracking-tight text-foreground">
           Blog Posts
         </h3>
         <button
           type="button"
           onClick={onCreateNew}
-          className="flex items-center gap-1.5 rounded-action border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-50 hover:bg-muted/50"
+          className="flex shrink-0 items-center gap-1.5 rounded-action border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-50 hover:bg-muted/50"
         >
           <Plus className="h-4 w-4" strokeWidth={1.5} />
           Buat Post Baru
@@ -99,45 +99,43 @@ export function BlogPostListEditor({
             <div
               key={post._id}
               onClick={() => onSelectPost(post.slug)}
-              className="flex cursor-pointer items-center justify-between rounded-action border border-border p-3 transition-colors duration-50 hover:bg-muted/30"
+              className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-action border border-border px-3 py-2.5 transition-colors duration-50 hover:bg-muted/30"
             >
-              {/* Left: status dot + title + badges */}
-              <div className="flex min-w-0 items-center gap-3">
-                {/* Published status dot */}
-                <span
-                  className={`h-2 w-2 shrink-0 rounded-full ${
-                    post.isPublished ? "bg-emerald-500" : "bg-slate-400"
-                  }`}
-                  title={post.isPublished ? "Published" : "Draft"}
-                />
+              {/* Published status dot */}
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  post.isPublished ? "bg-emerald-500" : "bg-slate-400"
+                }`}
+                title={post.isPublished ? "Published" : "Draft"}
+              />
 
-                {/* Title */}
-                <span className="text-interface truncate text-sm font-medium text-foreground">
-                  {post.title}
-                </span>
+              {/* Title — truncates to fill available space */}
+              <span className="min-w-0 flex-1 truncate text-interface text-sm font-medium text-foreground">
+                {post.title}
+              </span>
 
+              {/* Badges + date + actions — shrink-0 block */}
+              <div className="flex shrink-0 items-center gap-2">
                 {/* Category badge */}
                 <span
-                  className={`text-signal shrink-0 rounded-badge px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${getCategoryColor(post.category)}`}
+                  className={`text-signal rounded-badge px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${getCategoryColor(post.category)}`}
                 >
                   {post.category}
                 </span>
 
                 {/* Featured badge */}
                 {post.featured && (
-                  <span className="text-signal shrink-0 rounded-badge bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-600">
+                  <span className="text-signal rounded-badge bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-600">
                     Featured
                   </span>
                 )}
 
                 {/* Published date */}
-                <span className="text-interface hidden shrink-0 text-xs text-muted-foreground sm:inline">
+                <span className="text-interface hidden text-xs text-muted-foreground lg:inline">
                   {formatPublishedDate(post.publishedAt)}
                 </span>
-              </div>
 
-              {/* Right: actions */}
-              <div className="flex shrink-0 items-center gap-2 pl-3">
+                {/* Actions */}
                 <button
                   type="button"
                   onClick={(e) => {
