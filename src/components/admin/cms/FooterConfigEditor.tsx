@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
@@ -9,6 +9,101 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
+import { X as XIcon, Linkedin, Instagram, Upload, Globe } from "iconoir-react"
+import type { ComponentType, SVGProps } from "react"
+
+// Map platform names to iconoir icons (same as frontend Footer)
+const PLATFORM_ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
+  x: XIcon,
+  twitter: XIcon,
+  linkedin: Linkedin,
+  instagram: Instagram,
+}
+
+// Inline social icon preview with upload support
+function SocialIconPreview({
+  iconId,
+  platform,
+  userId,
+  onUpload,
+}: {
+  iconId: Id<"_storage"> | null | undefined
+  platform: string
+  userId: Id<"users">
+  onUpload: (storageId: Id<"_storage">) => void
+}) {
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const imageUrl = useQuery(
+    api.pageContent.getImageUrl,
+    iconId ? { storageId: iconId } : "skip"
+  )
+  const generateUploadUrl = useMutation(api.pageContent.generateUploadUrl)
+
+  const PlatformIcon = PLATFORM_ICON_MAP[platform.toLowerCase()] ?? Globe
+
+  async function handleUpload(file: File) {
+    setIsUploading(true)
+    try {
+      const uploadUrl = await generateUploadUrl({ requestorId: userId })
+      const result = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      })
+      const { storageId } = await result.json()
+      onUpload(storageId)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) handleUpload(file)
+    e.target.value = ""
+  }
+
+  const hasCustomIcon = iconId && imageUrl
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="text-signal text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        Ikon
+      </span>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isUploading}
+        className="group relative flex h-12 w-12 items-center justify-center rounded-action border border-border bg-background transition-colors hover:bg-muted/50 disabled:opacity-50"
+        title={hasCustomIcon ? "Ganti ikon custom" : `Default: ${platform || "icon"}`}
+      >
+        {isUploading ? (
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-foreground" />
+        ) : hasCustomIcon ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={imageUrl} alt={platform} className="h-6 w-6 object-contain" />
+        ) : (
+          <PlatformIcon className="h-5 w-5 text-muted-foreground" />
+        )}
+        <div className="absolute inset-0 flex items-center justify-center rounded-action bg-background/70 opacity-0 transition-opacity group-hover:opacity-100">
+          <Upload className="h-3.5 w-3.5 text-foreground" strokeWidth={1.5} />
+        </div>
+      </button>
+      {hasCustomIcon && (
+        <span className="text-[9px] text-emerald-600">Custom</span>
+      )}
+    </div>
+  )
+}
 
 type FooterLink = {
   label: string
@@ -197,7 +292,7 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   // Loading skeleton
   if (config === undefined) {
     return (
-      <div className="w-full max-w-2xl space-y-4 p-comfort">
+      <div className="w-full space-y-4 p-comfort">
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-px w-full" />
         <Skeleton className="h-9 w-full" />
@@ -210,59 +305,13 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   }
 
   return (
-    <div className="w-full max-w-2xl space-y-6 p-comfort">
+    <div className="w-full space-y-6 p-comfort">
       {/* Section header */}
       <div>
         <h3 className="text-narrative text-lg font-medium tracking-tight text-foreground">
           Footer Configuration
         </h3>
         <div className="mt-2 border-t border-border" />
-      </div>
-
-      {/* Logo */}
-      <div className="space-y-4">
-        <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Logo Footer
-        </span>
-
-        <div className="grid grid-cols-2 gap-4">
-          <CmsImageUpload
-            currentImageId={logoDarkId}
-            onUpload={(storageId) => setLogoDarkId(storageId)}
-            userId={userId}
-            label="Logo (Dark Mode)"
-            aspectRatio="1/1"
-            fallbackPreviewUrl="/logo/makalah_logo_light.svg"
-          />
-          <CmsImageUpload
-            currentImageId={logoLightId}
-            onUpload={(storageId) => setLogoLightId(storageId)}
-            userId={userId}
-            label="Logo (Light Mode)"
-            aspectRatio="1/1"
-            fallbackPreviewUrl="/logo/makalah_logo_dark.svg"
-          />
-        </div>
-
-        <p className="text-interface text-xs text-muted-foreground">
-          Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang. Kosongkan untuk pakai default.
-        </p>
-      </div>
-
-      {/* Company Description */}
-      <div className="space-y-2">
-        <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Deskripsi Perusahaan
-        </span>
-
-        <Input
-          value={companyDescription}
-          onChange={(e) => setCompanyDescription(e.target.value)}
-          placeholder="Makalah AI adalah produk dari PT THE MANAGEMENT ASIA"
-        />
-        <p className="text-interface text-xs text-muted-foreground">
-          Teks yang muncul di atas copyright. Kosongkan untuk pakai default.
-        </p>
       </div>
 
       {/* Group 1: Footer Sections */}
@@ -396,13 +445,12 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
               </div>
 
               <div className="flex gap-3">
-                <div className="w-16 shrink-0">
-                  <CmsImageUpload
-                    currentImageId={social.iconId ?? null}
-                    onUpload={(storageId) => updateSocialIcon(index, storageId)}
+                <div className="shrink-0">
+                  <SocialIconPreview
+                    iconId={social.iconId ?? null}
+                    platform={social.platform}
                     userId={userId}
-                    label="Ikon"
-                    aspectRatio="1/1"
+                    onUpload={(storageId) => updateSocialIcon(index, storageId)}
                   />
                 </div>
                 <div className="flex-1 space-y-2">
@@ -421,6 +469,7 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
                       Visible
                     </label>
                     <Switch
+                      className="data-[state=checked]:bg-emerald-600"
                       checked={social.isVisible}
                       onCheckedChange={(checked) => updateSocial(index, "isVisible", checked)}
                     />
@@ -432,31 +481,80 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
         </div>
       </div>
 
-      {/* Group 3: Copyright */}
-      <div className="space-y-2">
-        <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Copyright
-        </span>
+      {/* Group 3: Bottom Bar + Footer Logo — side by side, each 50% */}
+      <div className="grid grid-cols-2 items-stretch gap-4">
+        {/* Bottom Bar — 50% */}
+        <div className="space-y-3">
+          <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Bottom Bar
+          </span>
+          <div className="space-y-3 rounded-action border border-border p-4">
+            <div className="space-y-1">
+              <label className="text-interface text-xs font-medium text-muted-foreground">
+                Deskripsi Perusahaan
+              </label>
+              <Input
+                value={companyDescription}
+                onChange={(e) => setCompanyDescription(e.target.value)}
+                placeholder="Makalah AI adalah produk dari PT THE MANAGEMENT ASIA"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-interface text-xs font-medium text-muted-foreground">
+                Copyright
+              </label>
+              <Input
+                value={copyrightText}
+                onChange={(e) => setCopyrightText(e.target.value)}
+                placeholder="© {year} Makalah. All rights reserved."
+              />
+              <p className="text-interface text-[10px] text-muted-foreground">
+                Gunakan {"{year}"} untuk tahun otomatis
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <Input
-          value={copyrightText}
-          onChange={(e) => setCopyrightText(e.target.value)}
-          placeholder="© {year} Makalah. All rights reserved."
-        />
-        <p className="text-interface text-xs text-muted-foreground">
-          Gunakan {"{year}"} untuk tahun otomatis
-        </p>
+        {/* Footer Logo — 50% */}
+        <div className="flex flex-col space-y-3">
+          <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Footer Logo
+          </span>
+          <div className="grid flex-1 grid-cols-2 gap-6 rounded-action border border-border p-4">
+            <div className="mx-auto w-24">
+              <CmsImageUpload
+                currentImageId={logoDarkId}
+                onUpload={(storageId) => setLogoDarkId(storageId)}
+                userId={userId}
+                label="Logo (Dark)"
+                aspectRatio="1/1"
+                fallbackPreviewUrl="/logo/makalah_logo_light.svg"
+              />
+            </div>
+            <div className="mx-auto w-24">
+              <CmsImageUpload
+                currentImageId={logoLightId}
+                onUpload={(storageId) => setLogoLightId(storageId)}
+                userId={userId}
+                label="Logo (Light)"
+                aspectRatio="1/1"
+                fallbackPreviewUrl="/logo/makalah_logo_dark.svg"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Save button */}
       <div className="flex justify-end">
-        <Button
+        <button
+          type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="rounded-action"
+          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {isSaving ? "Menyimpan..." : saveLabel}
-        </Button>
+        </button>
       </div>
     </div>
   )

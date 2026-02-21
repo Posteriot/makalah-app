@@ -86,7 +86,7 @@ function ToolbarButton({
       title={title}
       className={`flex h-7 w-7 items-center justify-center rounded-action transition-colors duration-50 ${
         isActive
-          ? "bg-primary/10 text-primary"
+          ? "bg-emerald-600/10 text-emerald-600"
           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
       } disabled:cursor-not-allowed disabled:opacity-40`}
     >
@@ -348,7 +348,7 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
   // Loading skeleton for edit mode
   if (!isCreateMode && existingPost === undefined) {
     return (
-      <div className="w-full max-w-3xl space-y-4 p-comfort">
+      <div className="w-full space-y-4 p-comfort">
         <Skeleton className="h-6 w-48" />
         <Skeleton className="h-px w-full" />
         <Skeleton className="h-9 w-full" />
@@ -363,7 +363,7 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
   }
 
   return (
-    <div className="w-full max-w-3xl space-y-6 p-comfort">
+    <div className="w-full space-y-6 p-comfort">
       {/* Back button */}
       <button
         type="button"
@@ -490,7 +490,7 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
           <label className="text-signal text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Featured
           </label>
-          <Switch checked={featured} onCheckedChange={setFeatured} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={featured} onCheckedChange={setFeatured} />
         </div>
 
         {/* Published toggle */}
@@ -498,7 +498,7 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
           <label className="text-signal text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Published
           </label>
-          <Switch checked={isPublished} onCheckedChange={setIsPublished} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
         </div>
       </div>
 
@@ -677,7 +677,7 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="rounded-action bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {isSaving ? "Menyimpan..." : saveLabel}
         </button>

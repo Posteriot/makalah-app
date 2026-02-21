@@ -316,7 +316,7 @@ export function CmsShell({ userId }: CmsShellProps) {
           onToggleSidebar={handleToggleSidebar}
         />
         <div className="flex-1 overflow-y-auto p-comfort">
-          <div className="mx-auto max-w-3xl">
+          <div className="mx-auto max-w-5xl">
             {renderEditor()}
           </div>
         </div>

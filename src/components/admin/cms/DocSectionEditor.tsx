@@ -201,7 +201,7 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
   // Loading skeleton for edit mode
   if (!isCreateMode && existingSection === undefined) {
     return (
-      <div className="w-full max-w-2xl space-y-4 p-comfort">
+      <div className="w-full space-y-4 p-comfort">
         <Skeleton className="h-6 w-48" />
         <Skeleton className="h-px w-full" />
         <Skeleton className="h-9 w-full" />
@@ -216,7 +216,7 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
   }
 
   return (
-    <div className="w-full max-w-2xl space-y-6 p-comfort">
+    <div className="w-full space-y-6 p-comfort">
       {/* Back button */}
       <button
         type="button"
@@ -351,7 +351,7 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
           <label className="text-signal text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Published
           </label>
-          <Switch checked={isPublished} onCheckedChange={setIsPublished} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
         </div>
       </div>
 
@@ -461,7 +461,7 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="rounded-action bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {isSaving ? "Menyimpan..." : saveLabel}
         </button>

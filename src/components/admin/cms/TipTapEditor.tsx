@@ -39,7 +39,7 @@ function ToolbarButton({
       title={title}
       className={`flex h-7 w-7 items-center justify-center rounded-action transition-colors duration-50 ${
         isActive
-          ? "bg-primary/10 text-primary"
+          ? "bg-emerald-600/10 text-emerald-600"
           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
       }`}
     >
