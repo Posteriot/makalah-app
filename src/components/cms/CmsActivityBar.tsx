@@ -11,6 +11,7 @@ import {
   Journal,
   ScaleFrameEnlarge,
   PrivacyPolicy,
+  CreditCard,
 } from "iconoir-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,6 +31,7 @@ import {
 export type CmsPageId =
   | "home"
   | "about"
+  | "pricing"
   | "documentation"
   | "blog"
   | "legal"
@@ -100,6 +102,11 @@ const contentPageItems: Array<{
     page: "about",
     icon: <InfoCircle className="h-5 w-5" aria-hidden="true" />,
     label: "About",
+  },
+  {
+    page: "pricing",
+    icon: <CreditCard className="h-5 w-5" aria-hidden="true" />,
+    label: "Pricing",
   },
   {
     page: "documentation",

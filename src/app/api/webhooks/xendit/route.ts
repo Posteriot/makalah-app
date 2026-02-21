@@ -12,7 +12,6 @@ import {
   sendPaymentSuccessEmail,
   sendPaymentFailedEmail,
 } from "@/lib/email/sendPaymentEmail"
-import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
 
 const internalKey = process.env.CONVEX_INTERNAL_KEY
 
@@ -267,11 +266,15 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
       console.warn(`[Xendit] Unknown payment type: ${paymentType}`)
   }
 
-  // Set subscription plan label for email
+  // Set subscription plan label for email (from DB)
   let subscriptionPlanLabel: string | undefined
   if (paymentType === "subscription_initial" || paymentType === "subscription_renewal") {
-    const planType = (payment as any).planType ?? "pro_monthly"
-    subscriptionPlanLabel = SUBSCRIPTION_PRICING[planType as keyof typeof SUBSCRIPTION_PRICING]?.label
+    try {
+      const proPricing = await fetchQuery(api.billing.pricingHelpers.getProPricing, {})
+      subscriptionPlanLabel = proPricing.label
+    } catch {
+      subscriptionPlanLabel = "Pro Bulanan"
+    }
   }
 
   // 5. Send confirmation email

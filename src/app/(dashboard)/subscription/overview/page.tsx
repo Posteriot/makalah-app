@@ -668,14 +668,14 @@ function AdminOverviewView({
           <li className="flex items-start gap-2">
             <span className="text-amber-500">2.</span>
             <span>
-              <strong>Top Up Credit:</strong> Beli credit mulai Rp 25.000, bayar sesuai
+              <strong>Top Up Credit:</strong> Beli credit sesuai kebutuhan, bayar sesuai
               pemakaian
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-amber-500">3.</span>
             <span>
-              <strong>Pro:</strong> Rp 200.000/bulan untuk menyusun 5-6 paper
+              <strong>Pro:</strong> Langganan bulanan untuk akses penuh dan menyusun paper tanpa batas kredit harian
             </span>
           </li>
         </ul>

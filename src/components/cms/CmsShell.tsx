@@ -24,6 +24,7 @@ import { DocSectionListEditor } from "@/components/admin/cms/DocSectionListEdito
 import { DocSectionEditor } from "@/components/admin/cms/DocSectionEditor"
 import { BlogPostListEditor } from "@/components/admin/cms/BlogPostListEditor"
 import { BlogPostEditor } from "@/components/admin/cms/BlogPostEditor"
+import { PricingPlanEditor } from "@/components/admin/cms/PricingPlanEditor"
 
 /**
  * CmsShell - 4-column CSS Grid orchestrator for CMS layout
@@ -125,6 +126,11 @@ export function CmsShell({ userId }: CmsShellProps) {
     if (activePage === "about" && activeSection === "agents") return <AgentsSectionEditor userId={userId} />
     if (activePage === "about" && activeSection === "career-contact") return <CareerContactEditor userId={userId} />
 
+    // Pricing sections
+    if (activePage === "pricing" && activeSection === "pricing-gratis") return <PricingPlanEditor slug="gratis" userId={userId} />
+    if (activePage === "pricing" && activeSection === "pricing-bpp") return <PricingPlanEditor slug="bpp" userId={userId} />
+    if (activePage === "pricing" && activeSection === "pricing-pro") return <PricingPlanEditor slug="pro" userId={userId} />
+
     // Legal sub-pages
     if (activePage === "legal" && activeLegalPage === "privacy") return <RichTextPageEditor slug="privacy" userId={userId} />
     if (activePage === "legal" && activeLegalPage === "security") return <RichTextPageEditor slug="security" userId={userId} />
@@ -203,6 +209,15 @@ export function CmsShell({ userId }: CmsShellProps) {
         <div className="flex items-center justify-center h-full">
           <p className="text-interface text-sm text-muted-foreground">
             Pilih section dari sidebar untuk mulai editing
+          </p>
+        </div>
+      )
+    }
+    if (activePage === "pricing" && !activeSection) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-interface text-sm text-muted-foreground">
+            Pilih paket dari sidebar untuk mulai editing
           </p>
         </div>
       )

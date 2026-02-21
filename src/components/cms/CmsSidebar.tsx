@@ -17,6 +17,9 @@ export type CmsSectionId =
   | "problems"
   | "agents"
   | "career-contact"
+  | "pricing-gratis"
+  | "pricing-bpp"
+  | "pricing-pro"
 
 /**
  * Legal sub-page identifiers (children of "legal" parent)
@@ -62,6 +65,12 @@ const ABOUT_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
   { id: "career-contact", label: "Karier & Kontak" },
 ]
 
+const PRICING_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
+  { id: "pricing-gratis", label: "Gratis" },
+  { id: "pricing-bpp", label: "Bayar Per Paper" },
+  { id: "pricing-pro", label: "Pro" },
+]
+
 const LEGAL_PAGES: Array<{ id: LegalPageId; label: string }> = [
   { id: "privacy", label: "Privacy" },
   { id: "security", label: "Security" },
@@ -90,6 +99,7 @@ const BLOG_CATEGORIES: Array<{ id: BlogCategoryId; label: string; category: stri
 const PAGE_TITLES: Record<CmsPageId, string> = {
   home: "Home",
   about: "About",
+  pricing: "Pricing",
   documentation: "Dokumentasi",
   blog: "Blog",
   legal: "Legal",
@@ -267,6 +277,12 @@ export function CmsSidebar({
         return (
           <div className="py-1">
             {renderSectionList(ABOUT_SECTIONS)}
+          </div>
+        )
+      case "pricing":
+        return (
+          <div className="py-1">
+            {renderSectionList(PRICING_SECTIONS)}
           </div>
         )
       case "legal":
