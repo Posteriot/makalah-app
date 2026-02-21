@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 import type { Doc } from "@convex/_generated/dataModel"
 import { SectionBadge } from "@/components/ui/section-badge"
 import {
@@ -20,6 +22,17 @@ export function ManifestoSectionCMS({ content }: ManifestoSectionCMSProps) {
   const subheading = content.subheading ?? ""
   const paragraphs = content.paragraphs ?? []
   const badgeText = content.badgeText ?? "Tentang Kami"
+
+  // Resolve terminal panel images from CMS
+  const terminalDarkUrl = useQuery(
+    api.pageContent.getImageUrl,
+    content.primaryImageId ? { storageId: content.primaryImageId } : "skip"
+  )
+  const terminalLightUrl = useQuery(
+    api.pageContent.getImageUrl,
+    content.secondaryImageId ? { storageId: content.secondaryImageId } : "skip"
+  )
+  const hasTerminalImages = !!(terminalDarkUrl || terminalLightUrl)
 
   // Mobile accordion state (same as static)
   const [isManifestoOpen, setIsManifestoOpen] = useState(false)
@@ -89,7 +102,26 @@ export function ManifestoSectionCMS({ content }: ManifestoSectionCMSProps) {
           </div>
 
           <div className="hidden lg:col-span-9 lg:flex lg:self-stretch lg:min-h-full lg:items-center lg:justify-end lg:-translate-y-8">
-            <ManifestoTerminalPanel paragraphs={paragraphs} />
+            {hasTerminalImages ? (
+              <>
+                {terminalDarkUrl && (
+                  <img
+                    src={terminalDarkUrl}
+                    alt="Manifesto terminal panel"
+                    className="hidden w-full max-w-[720px] rounded-md dark:block"
+                  />
+                )}
+                {terminalLightUrl && (
+                  <img
+                    src={terminalLightUrl}
+                    alt="Manifesto terminal panel"
+                    className="block w-full max-w-[720px] rounded-md dark:hidden"
+                  />
+                )}
+              </>
+            ) : (
+              <ManifestoTerminalPanel paragraphs={paragraphs} />
+            )}
           </div>
         </div>
       </div>

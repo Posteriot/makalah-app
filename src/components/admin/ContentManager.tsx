@@ -17,12 +17,14 @@ import { DocSectionListEditor } from "./cms/DocSectionListEditor"
 import { DocSectionEditor } from "./cms/DocSectionEditor"
 import { BlogPostListEditor } from "./cms/BlogPostListEditor"
 import { BlogPostEditor } from "./cms/BlogPostEditor"
+import { PricingPlanEditor } from "./cms/PricingPlanEditor"
 
-type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer" | "documentation" | "blog"
+type PageId = "home" | "pricing" | "about" | "privacy" | "security" | "terms" | "header" | "footer" | "documentation" | "blog"
 type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
   | "manifesto" | "problems" | "agents" | "career-contact"
   | "doc-mulai" | "doc-fitur-utama" | "doc-subskripsi" | "doc-panduan-lanjutan"
   | "blog-update" | "blog-tutorial" | "blog-opini" | "blog-event"
+  | "pricing-gratis" | "pricing-bpp" | "pricing-pro"
 
 type NavSection = {
   id: SectionId
@@ -45,6 +47,15 @@ const PAGES_NAV: { pages: NavPage[]; global: NavPage[] } = {
         { id: "benefits", label: "Benefits" },
         { id: "features-workflow", label: "Fitur: Workflow" },
         { id: "features-refrasa", label: "Fitur: Refrasa" },
+      ],
+    },
+    {
+      id: "pricing",
+      label: "Pricing",
+      sections: [
+        { id: "pricing-gratis", label: "Gratis" },
+        { id: "pricing-bpp", label: "Bayar Per Paper" },
+        { id: "pricing-pro", label: "Pro" },
       ],
     },
     {
@@ -99,6 +110,12 @@ const BLOG_CATEGORY_MAP: Record<string, string> = {
   "blog-tutorial": "Tutorial",
   "blog-opini": "Opini",
   "blog-event": "Event",
+}
+
+const PRICING_SLUG_MAP: Record<string, string> = {
+  "pricing-gratis": "gratis",
+  "pricing-bpp": "bpp",
+  "pricing-pro": "pro",
 }
 
 type ContentManagerProps = {
@@ -304,6 +321,11 @@ export function ContentManager({ userId }: ContentManagerProps) {
               slug={selectedBlogSlug === "__new__" ? null : selectedBlogSlug}
               userId={userId}
               onBack={() => setSelectedBlogSlug(null)}
+            />
+          ) : selectedPage === "pricing" && selectedSection && PRICING_SLUG_MAP[selectedSection] ? (
+            <PricingPlanEditor
+              slug={PRICING_SLUG_MAP[selectedSection]}
+              userId={userId}
             />
           ) : selectionLabel ? (
             <div className="text-center">

@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { NavArrowRight } from "iconoir-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
@@ -29,27 +30,42 @@ function SidebarNav({
             const Icon = item.icon
             const isActive = activeTab === item.id
 
+            const itemClasses = cn(
+              "text-interface flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition-colors",
+              isActive
+                ? "bg-slate-900/60 text-slate-100 dark:bg-slate-200/10 dark:text-slate-100"
+                : "text-muted-foreground hover:bg-slate-200 hover:text-slate-900 dark:hover:bg-slate-500 dark:hover:text-slate-50"
+            )
+
             return (
               <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onTabChange(item.id)
-                    closeAfterSelect?.()
-                  }}
-                  className={cn(
-                    "text-interface flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition-colors",
-                    isActive
-                      ? "bg-slate-900/60 text-slate-100 dark:bg-slate-200/10 dark:text-slate-100"
-                      : "text-muted-foreground hover:bg-slate-200 hover:text-slate-900 dark:hover:bg-slate-500 dark:hover:text-slate-50"
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1 truncate text-left">
-                    {item.label}
-                  </span>
-                  {isActive && <NavArrowRight className="h-4 w-4 shrink-0" />}
-                </button>
+                {item.href ? (
+                  <Link
+                    href={item.href}
+                    className={itemClasses}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate text-left">
+                      {item.label}
+                    </span>
+                    <NavArrowRight className="h-4 w-4 shrink-0" />
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onTabChange(item.id)
+                      closeAfterSelect?.()
+                    }}
+                    className={itemClasses}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate text-left">
+                      {item.label}
+                    </span>
+                    {isActive && <NavArrowRight className="h-4 w-4 shrink-0" />}
+                  </button>
+                )}
               </li>
             )
           })}

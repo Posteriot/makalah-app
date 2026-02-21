@@ -27,10 +27,17 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [hasMounted, setHasMounted] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Get Convex user for role and subscription status
   const { user: convexUser } = useCurrentUser()
+
+  // Prevent hydration mismatch: server always renders skeleton,
+  // client also renders skeleton on first paint, then swaps after mount.
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
 
   // Cache last session — prevents skeleton flash on tab refocus
   // when BetterAuth briefly re-validates session.
@@ -65,8 +72,9 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
     return () => document.removeEventListener("keydown", handleEscape)
   }, [])
 
-  // Show skeleton only on initial load (no cached session yet)
-  if (!stableSession) {
+  // Show skeleton on SSR + first client paint (hasMounted=false) OR when no session yet.
+  // Both server and client render the same skeleton initially → no hydration mismatch.
+  if (!hasMounted || !stableSession) {
     return variant === "compact"
       ? <Skeleton className="w-8 h-8 rounded-full" />
       : <Skeleton className="h-[30px] w-[100px] rounded-action" />

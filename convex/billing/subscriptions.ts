@@ -6,6 +6,31 @@
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { SUBSCRIPTION_PRICING } from "./constants"
+import type { DatabaseReader } from "../_generated/server"
+
+/**
+ * Internal helper: resolve subscription pricing from DB, fallback to constants.
+ * Queries pricingPlans table for Pro plan's priceValue + name.
+ * intervalMonths derived from planType (monthly=1, yearly=12).
+ */
+async function resolveSubscriptionPricing(
+  db: DatabaseReader,
+  planType: "pro_monthly" | "pro_yearly"
+) {
+  const plan = await db
+    .query("pricingPlans")
+    .withIndex("by_slug", (q) => q.eq("slug", "pro"))
+    .first()
+
+  const constantPricing = SUBSCRIPTION_PRICING[planType]
+  const intervalMonths = planType === "pro_yearly" ? 12 : 1
+
+  return {
+    priceIDR: plan?.priceValue ?? constantPricing.priceIDR,
+    intervalMonths,
+    label: plan?.name ?? constantPricing.label,
+  }
+}
 
 /**
  * Create a new subscription
@@ -23,7 +48,7 @@ export const createSubscription = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now()
-    const pricing = SUBSCRIPTION_PRICING[args.planType]
+    const pricing = await resolveSubscriptionPricing(ctx.db, args.planType)
 
     // Calculate period
     const periodEnd = new Date(now)
@@ -83,7 +108,7 @@ export const createSubscriptionInternal = mutation({
     }
 
     const now = Date.now()
-    const pricing = SUBSCRIPTION_PRICING[args.planType]
+    const pricing = await resolveSubscriptionPricing(ctx.db, args.planType)
 
     const periodEnd = new Date(now)
     periodEnd.setMonth(periodEnd.getMonth() + pricing.intervalMonths)
@@ -137,7 +162,7 @@ export const renewSubscriptionInternal = mutation({
     if (!subscription) throw new Error("Subscription not found")
 
     const now = Date.now()
-    const pricing = SUBSCRIPTION_PRICING[subscription.planType]
+    const pricing = await resolveSubscriptionPricing(ctx.db, subscription.planType)
 
     const newPeriodStart = subscription.currentPeriodEnd
     const newPeriodEnd = new Date(newPeriodStart)
@@ -206,7 +231,7 @@ export const renewSubscription = mutation({
     }
 
     const now = Date.now()
-    const pricing = SUBSCRIPTION_PRICING[subscription.planType]
+    const pricing = await resolveSubscriptionPricing(ctx.db, subscription.planType)
 
     // Calculate new period
     const newPeriodStart = subscription.currentPeriodEnd

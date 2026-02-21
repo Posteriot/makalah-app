@@ -23,7 +23,6 @@ import {
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { getEffectiveTier } from "@/lib/utils/subscription"
-import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
 import { toast } from "sonner"
 import Image from "next/image"
 import Link from "next/link"
@@ -32,7 +31,6 @@ import { DottedPattern } from "@/components/marketing/SectionBackground"
 
 type PaymentMethod = "qris" | "va" | "ewallet"
 const PRO_PLAN_TYPE = "pro_monthly" as const
-const PRO_PRICING = SUBSCRIPTION_PRICING[PRO_PLAN_TYPE]
 
 interface PaymentResult {
   paymentId: string
@@ -128,10 +126,19 @@ function CheckoutPROContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const proPlan = useQuery(api.pricingPlans.getPlanBySlug, { slug: "pro" })
+  const proPricing = useQuery(api.billing.pricingHelpers.getProPricing)
+
   const backRoute = getSubscriptionBackRoute(searchParams.get("from"))
   const handleBackToSubscription = useCallback(() => {
     router.push(backRoute)
   }, [router, backRoute])
+
+  useEffect(() => {
+    if (proPlan?.isDisabled) {
+      router.replace("/subscription/overview")
+    }
+  }, [proPlan?.isDisabled, router])
 
   useEffect(() => {
     if (!hasCompletedOnboarding && !onboardingCompletedRef.current) {
@@ -240,7 +247,7 @@ function CheckoutPROContent() {
     setError(null)
   }, [])
 
-  if (userLoading) {
+  if (userLoading || proPricing === undefined) {
     return (
       <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
         <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
@@ -263,7 +270,7 @@ function CheckoutPROContent() {
 
   const currentTier = getEffectiveTier(user.role, user.subscriptionStatus)
   const currentCredits = creditBalance?.remainingCredits ?? 0
-  const pricing = PRO_PRICING
+  const pricing = proPricing ?? { priceIDR: 200_000, label: "Pro Bulanan" }
   const paymentState = paymentStatus?.status || paymentResult?.status
 
   if (currentTier === "pro" || currentTier === "unlimited") {

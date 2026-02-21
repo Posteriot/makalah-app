@@ -13,6 +13,10 @@ import { getEffectiveTier } from "@/lib/utils/subscription"
 const PRO_CHECKOUT_ROUTE = "/checkout/pro?from=plans"
 const TOPUP_ROUTE = "/subscription/topup?from=plans"
 
+function maskPrice(price: string): string {
+  return price.replace(/\d/g, "0")
+}
+
 export default function PlansHubPage() {
   const { user, isLoading: userLoading } = useCurrentUser()
   const router = useRouter()
@@ -126,10 +130,11 @@ export default function PlansHubPage() {
           const isCurrentTier = plan.slug === currentTier
           const isPro = plan.slug === "pro"
           const isBPP = plan.slug === "bpp"
+          const isEffectiveDisabled = plan.isDisabled ?? false
           const teaserCreditNote = plan.teaserCreditNote || plan.features[0] || ""
 
           const showProCancel = isPro && currentTier === "pro" && !!subscriptionStatus?.hasSubscription
-          const showProCheckout = isPro && currentTier !== "pro" && currentTier !== "unlimited"
+          const showProCheckout = isPro && currentTier !== "pro" && currentTier !== "unlimited" && !isEffectiveDisabled
 
           return (
             <div key={plan._id} className="group/card relative h-full">
@@ -158,7 +163,7 @@ export default function PlansHubPage() {
                   {plan.name}
                 </h3>
                 <p className="text-interface mb-6 text-center text-3xl font-medium tracking-tight tabular-nums text-foreground">
-                  {plan.price}
+                  {isEffectiveDisabled ? maskPrice(plan.price) : plan.price}
                   {plan.unit && (
                     <span className="text-interface ml-1 text-sm font-normal text-muted-foreground">
                       {plan.unit}
@@ -198,6 +203,12 @@ export default function PlansHubPage() {
                     onCancel={handleCancelSubscription}
                     onReactivate={handleReactivate}
                   />
+                )}
+
+                {isEffectiveDisabled && !isCurrentTier && (
+                  <span className="mt-auto inline-flex w-full items-center justify-center rounded-action bg-slate-200 px-4 py-2.5 text-signal text-[11px] font-bold uppercase tracking-widest text-muted-foreground dark:bg-slate-700">
+                    SEGERA HADIR
+                  </span>
                 )}
               </div>
             </div>

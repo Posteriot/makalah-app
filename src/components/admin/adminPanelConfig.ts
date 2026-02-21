@@ -6,6 +6,7 @@ import {
   Cpu,
   EditPencil,
   StatsReport,
+  DesignNib,
 } from "iconoir-react"
 import type { ComponentType, SVGProps } from "react"
 
@@ -18,6 +19,8 @@ export interface AdminSidebarItem {
   headerTitle: string
   headerDescription: string
   headerIcon: IconoirIcon
+  /** External route link — renders as <Link> instead of tab button */
+  href?: string
 }
 
 export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
@@ -68,6 +71,15 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
     headerTitle: "Statistik",
     headerDescription: "Lihat statistik penggunaan aplikasi",
     headerIcon: StatsReport,
+  },
+  {
+    id: "cms",
+    label: "Content Manager",
+    icon: DesignNib,
+    headerTitle: "Content Manager",
+    headerDescription: "Kelola konten halaman marketing",
+    headerIcon: DesignNib,
+    href: "/cms",
   },
 ]
 

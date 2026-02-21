@@ -39,7 +39,6 @@ const DEFAULT_SOCIAL_LINKS = [
   { href: "#", label: "Instagram", icon: Instagram },
 ]
 
-const DEFAULT_COMPANY_DESCRIPTION = "Makalah AI adalah produk dari PT THE MANAGEMENT ASIA"
 
 function SocialIcon({ iconId, icon: IconComponent, label }: {
   iconId?: Id<"_storage"> | null
@@ -88,13 +87,13 @@ export function Footer() {
         { title: "Legal", links: LEGAL_LINKS },
       ]
 
-  // CMS company description with fallback
-  const companyDescription = (footerConfig?.companyDescription as string | undefined) || DEFAULT_COMPANY_DESCRIPTION
+  // CMS company description (no fallback — empty if not set)
+  const companyDescription = (footerConfig?.companyDescription as string | undefined) || ""
 
-  // CMS copyright with fallback
+  // CMS copyright (no fallback — empty if not set)
   const copyrightText = footerConfig?.copyrightText
     ? (footerConfig.copyrightText as string).replace("{year}", String(new Date().getFullYear()))
-    : `\u00a9 ${new Date().getFullYear()} Makalah AI. Hak cipta dilindungi.`
+    : ""
 
   // CMS social links with fallback
   type CmsSocialLink = { platform: string; url: string; isVisible: boolean; iconId?: Id<"_storage"> }
@@ -155,12 +154,16 @@ export function Footer() {
           {/* Bottom: Copyright + Socials */}
           <div className="flex flex-col items-center gap-6 pt-6 text-center md:flex-row md:justify-between md:text-left">
             <div className="space-y-1">
-              <p className="text-interface m-0 text-[12px] text-muted-foreground">
-                {companyDescription}
-              </p>
-              <p className="text-interface m-0 text-[12px] text-muted-foreground">
-                {copyrightText}
-              </p>
+              {companyDescription && (
+                <p className="text-interface m-0 text-[12px] text-muted-foreground">
+                  {companyDescription}
+                </p>
+              )}
+              {copyrightText && (
+                <p className="text-interface m-0 text-[12px] text-muted-foreground">
+                  {copyrightText}
+                </p>
+              )}
             </div>
             <div className="flex justify-center gap-6">
               {socialLinks.map((social) => (

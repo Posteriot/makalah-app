@@ -17,7 +17,7 @@ import {
   type EWalletChannel,
 } from "@/lib/xendit/client"
 import { randomUUID } from "crypto"
-import { isValidPackageType, getPackageByType } from "@convex/billing/constants"
+import { isValidPackageType } from "@convex/billing/constants"
 
 // Request body type
 interface TopUpRequest {
@@ -60,14 +60,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const pkg = getPackageByType(packageType)
+    // Check if BPP tier is disabled
+    const bppDisabled = await fetchQuery(api.billing.pricingHelpers.isPlanDisabled, { slug: "bpp" }, convexOptions)
+    if (bppDisabled) {
+      return NextResponse.json(
+        { error: "Paket BPP sedang tidak tersedia" },
+        { status: 403 }
+      )
+    }
+
+    // Get pricing from DB (fallback to constants)
+    const pkg = await fetchQuery(api.billing.pricingHelpers.getBppCreditPackage, { packageType }, convexOptions)
     if (!pkg) {
       return NextResponse.json(
         { error: "Paket tidak ditemukan" },
         { status: 400 }
       )
     }
-
     const { credits, priceIDR: amount, label: packageLabel } = pkg
 
     // 5. Generate unique reference ID and idempotency key

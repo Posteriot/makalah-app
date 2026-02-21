@@ -25,6 +25,7 @@ export function PricingTeaser() {
     price: plan.price,
     unit: plan.unit,
     isHighlighted: plan.isHighlighted,
+    isDisabled: plan.isDisabled,
     description: plan.teaserDescription || "",
     creditNote: plan.teaserCreditNote || "",
   }))

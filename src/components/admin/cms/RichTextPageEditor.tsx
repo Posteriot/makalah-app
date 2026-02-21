@@ -5,7 +5,6 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import TipTapEditor from "./TipTapEditor"
@@ -70,7 +69,7 @@ export function RichTextPageEditor({ slug, userId }: RichTextPageEditorProps) {
   // Loading skeleton
   if (page === undefined) {
     return (
-      <div className="w-full max-w-2xl space-y-4 p-comfort">
+      <div className="w-full space-y-4 p-comfort">
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-px w-full" />
         <Skeleton className="h-9 w-full" />
@@ -84,7 +83,7 @@ export function RichTextPageEditor({ slug, userId }: RichTextPageEditorProps) {
   const sectionTitle = SLUG_TITLES[slug] ?? `${slug} Page`
 
   return (
-    <div className="w-full max-w-2xl space-y-6 p-comfort">
+    <div className="w-full space-y-6 p-comfort">
       {/* Section header */}
       <div>
         <h3 className="text-narrative text-lg font-medium tracking-tight text-foreground">
@@ -138,19 +137,20 @@ export function RichTextPageEditor({ slug, userId }: RichTextPageEditorProps) {
           <label className="text-interface text-xs font-medium text-muted-foreground">
             Published
           </label>
-          <Switch checked={isPublished} onCheckedChange={setIsPublished} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
         </div>
       </div>
 
       {/* Save button */}
       <div className="flex justify-end">
-        <Button
+        <button
+          type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="rounded-action"
+          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {isSaving ? "Menyimpan..." : saveLabel}
-        </Button>
+        </button>
       </div>
     </div>
   )

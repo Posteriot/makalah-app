@@ -17,12 +17,12 @@ type BlogPostListEditorProps = {
 const CATEGORY_COLORS: Record<string, string> = {
   Update: "bg-emerald-500/10 text-emerald-600",
   Tutorial: "bg-blue-500/10 text-blue-600",
-  Opini: "bg-amber-500/10 text-amber-600",
+  Opini: "bg-emerald-500/10 text-emerald-600",
   Event: "bg-fuchsia-500/10 text-fuchsia-600",
   Produk: "bg-emerald-500/10 text-emerald-600",
   Penelitian: "bg-blue-500/10 text-blue-600",
   Dinamika: "bg-fuchsia-500/10 text-fuchsia-600",
-  Perspektif: "bg-amber-500/10 text-amber-600",
+  Perspektif: "bg-emerald-500/10 text-emerald-600",
 }
 
 const DEFAULT_CATEGORY_COLOR = "bg-slate-500/10 text-slate-600"
@@ -131,7 +131,7 @@ export function BlogPostListEditor({
 
                 {/* Featured badge */}
                 {post.featured && (
-                  <span className="text-signal rounded-badge bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-600">
+                  <span className="text-signal rounded-badge bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
                     Featured
                   </span>
                 )}
