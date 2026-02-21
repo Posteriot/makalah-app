@@ -25,6 +25,7 @@ export function RichTextRenderer({ content }: RichTextRendererProps) {
     ],
     content: content ? JSON.parse(content) : undefined,
     editable: false,
+    immediatelyRender: false,
   })
 
   if (!editor) return null
