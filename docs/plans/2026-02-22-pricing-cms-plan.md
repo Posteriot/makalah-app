@@ -915,7 +915,312 @@ git commit -m "feat(pricing): mask price display when tier is disabled"
 
 ---
 
-### Task 7: Verify End-to-End
+### Task 7: TeaserCard — Add `isDisabled` Check + Price Masking
+
+**Files:**
+- Modify: `src/components/marketing/pricing-teaser/types.ts`
+- Modify: `src/components/marketing/pricing-teaser/TeaserCard.tsx`
+
+**Context:** TeaserCard (home page pricing teaser) currently only checks `isWaitlistMode` to disable cards. It does NOT check the per-tier `isDisabled` field from DB. It also doesn't mask the price. The `TeaserPlan` type doesn't include `isDisabled`.
+
+**Step 1: Add `isDisabled` to TeaserPlan type**
+
+In `src/components/marketing/pricing-teaser/types.ts`:
+
+```typescript
+export type TeaserPlan = {
+  _id: string
+  name: string
+  price: string
+  unit?: string
+  isHighlighted: boolean
+  isDisabled?: boolean    // <-- add this
+  description: string
+  creditNote: string
+}
+```
+
+**Step 2: Update TeaserCard to check `isDisabled` + mask price**
+
+In `src/components/marketing/pricing-teaser/TeaserCard.tsx`:
+
+Add helper at top:
+```typescript
+function maskPrice(price: string): string {
+  return price.replace(/\d/g, "0")
+}
+```
+
+Change `isDisabledByWaitlist` logic (line 9):
+```typescript
+const isDisabledByWaitlist = isWaitlistMode && plan.name.toLowerCase() !== "gratis"
+const effectiveDisabled = plan.isDisabled || isDisabledByWaitlist
+```
+
+Replace all usages of `isDisabledByWaitlist` with `effectiveDisabled` in the JSX. This affects:
+- The card opacity class: `effectiveDisabled && "opacity-60"`
+- The "SEGERA HADIR" button render: `{effectiveDisabled && (`
+- The price display: `{effectiveDisabled ? maskPrice(plan.price) : plan.price}`
+
+**Step 3: Verify caller passes `isDisabled` from DB**
+
+Check the parent component that constructs `TeaserPlan` objects. Ensure `isDisabled` is passed from the DB plan data. The `pricingPlans` table already has `isDisabled` field, so the data should flow through.
+
+**Step 4: Verify TypeScript compiles**
+
+Run: `npx tsc --noEmit`
+Expected: No errors
+
+**Step 5: Commit**
+
+```bash
+git add src/components/marketing/pricing-teaser/types.ts src/components/marketing/pricing-teaser/TeaserCard.tsx
+git commit -m "feat(pricing): add isDisabled check and price masking to TeaserCard"
+```
+
+---
+
+### Task 8: BPP Checkout — Replace Hardcoded Prices + Disabled Guard
+
+**Files:**
+- Modify: `src/app/(onboarding)/checkout/bpp/page.tsx`
+
+**Context:** This page has `BPP_PACKAGE = { credits: 300, priceIDR: 80_000 }` hardcoded at line 33. If admin changes BPP price in CMS, this page would still show the old price. Also no check for `isDisabled`. Must query DB for pricing and redirect if disabled.
+
+**Step 1: Replace hardcoded `BPP_PACKAGE` with DB query**
+
+In `CheckoutBPPContent`, add queries:
+```typescript
+const bppPlan = useQuery(api.pricingPlans.getPlanBySlug, { slug: "bpp" })
+const bppPackage = useQuery(api.billing.pricingHelpers.getBppCreditPackage, { packageType: "paper" })
+```
+
+Remove the hardcoded `BPP_PACKAGE` constant at top of file.
+
+Create a derived object from DB data with fallback:
+```typescript
+const pkg = bppPackage ?? { credits: 300, priceIDR: 80_000, label: "Paket Paper", description: "1 paper lengkap (~15 halaman)" }
+```
+
+**Step 2: Add disabled guard with redirect**
+
+After `bppPlan` loads, if disabled → redirect to overview:
+```typescript
+useEffect(() => {
+  if (bppPlan?.isDisabled) {
+    router.replace("/subscription/overview")
+  }
+}, [bppPlan?.isDisabled, router])
+```
+
+Also show loading while `bppPlan === undefined` or `bppPackage === undefined`.
+
+**Step 3: Replace all `BPP_PACKAGE` references**
+
+Replace every `BPP_PACKAGE.credits`, `BPP_PACKAGE.priceIDR`, `BPP_PACKAGE.description` with the derived `pkg` object. Key locations:
+- Line 209: `packageType: BPP_PACKAGE.type` → `packageType: "paper"` (type stays "paper")
+- Line 285: `{BPP_PACKAGE.credits} kredit ({BPP_PACKAGE.description})` → `{pkg.credits} kredit ({pkg.description})`
+- Line 420: `{BPP_PACKAGE.credits} kredit` → `{pkg.credits} kredit`
+- Line 423: `Rp {BPP_PACKAGE.priceIDR.toLocaleString("id-ID")}` → `Rp {pkg.priceIDR.toLocaleString("id-ID")}`
+- Line 554: Same pattern for total payment
+- Line 561: `currentCredits + BPP_PACKAGE.credits` → `currentCredits + pkg.credits`
+
+**Step 4: Verify TypeScript compiles**
+
+Run: `npx tsc --noEmit`
+Expected: No errors
+
+**Step 5: Commit**
+
+```bash
+git add src/app/(onboarding)/checkout/bpp/page.tsx
+git commit -m "feat(checkout): replace hardcoded BPP pricing with DB query + disabled guard"
+```
+
+---
+
+### Task 9: Pro Checkout — Replace Hardcoded Prices + Disabled Guard
+
+**Files:**
+- Modify: `src/app/(onboarding)/checkout/pro/page.tsx`
+
+**Context:** This page imports `SUBSCRIPTION_PRICING` from constants and uses `PRO_PRICING = SUBSCRIPTION_PRICING[PRO_PLAN_TYPE]` (line 35). If admin changes Pro price in CMS, this page still shows old price. Also no `isDisabled` check.
+
+**Step 1: Replace `SUBSCRIPTION_PRICING` import with DB query**
+
+In `CheckoutPROContent`, add queries:
+```typescript
+const proPlan = useQuery(api.pricingPlans.getPlanBySlug, { slug: "pro" })
+const proPricing = useQuery(api.billing.pricingHelpers.getProPricing)
+```
+
+Remove the top-level import and constants:
+```typescript
+// Remove these:
+import { SUBSCRIPTION_PRICING } from "@convex/billing/constants"
+const PRO_PLAN_TYPE = "pro_monthly" as const
+const PRO_PRICING = SUBSCRIPTION_PRICING[PRO_PLAN_TYPE]
+```
+
+Create derived pricing object:
+```typescript
+const pricing = proPricing ?? { priceIDR: 200_000, label: "Pro Bulanan" }
+```
+
+**Step 2: Add disabled guard with redirect**
+
+```typescript
+useEffect(() => {
+  if (proPlan?.isDisabled) {
+    router.replace("/subscription/overview")
+  }
+}, [proPlan?.isDisabled, router])
+```
+
+Also show loading while `proPlan === undefined` or `proPricing === undefined`.
+
+**Step 3: Replace all `pricing` references**
+
+The variable `pricing` is already used throughout the component. After replacing the source from constants to DB, the usages at lines 360, 443-444, 554 should continue to work since the shape is the same (`priceIDR`, `label`).
+
+Keep `PRO_PLAN_TYPE = "pro_monthly"` for the subscribe API call body — the server endpoint still needs the plan type string.
+
+**Step 4: Verify TypeScript compiles**
+
+Run: `npx tsc --noEmit`
+Expected: No errors
+
+**Step 5: Commit**
+
+```bash
+git add src/app/(onboarding)/checkout/pro/page.tsx
+git commit -m "feat(checkout): replace hardcoded Pro pricing with DB query + disabled guard"
+```
+
+---
+
+### Task 10: Subscription Overview — Hide Upgrade Cards When Target Tier Disabled
+
+**Files:**
+- Modify: `src/app/(dashboard)/subscription/overview/page.tsx`
+
+**Context:** The `RegularOverviewView` shows upgrade cards (Gratis→BPP, Gratis→Pro, BPP→Pro). These don't check `isDisabled`. If admin disables BPP, the "Top Up Kredit" card should hide. If admin disables Pro, the "Upgrade ke Pro" card should hide.
+
+**Step 1: Gratis tier — filter disabled plans from upgrade cards**
+
+In `RegularOverviewView`, lines 199-201 — the plans are already queried from `getActivePlans`. The filter currently only checks slug:
+```typescript
+.filter((plan) => plan.slug === "bpp" || plan.slug === "pro")
+```
+
+Add `isDisabled` check:
+```typescript
+.filter((plan) => (plan.slug === "bpp" || plan.slug === "pro") && !plan.isDisabled)
+```
+
+**Step 2: BPP tier — hide Pro upgrade pitch when Pro disabled**
+
+Lines 238-267 show the Pro upgrade pitch when `tier === "bpp" && proPlan`. Add disabled check:
+```typescript
+{tier === "bpp" && proPlan && !proPlan.isDisabled && (
+```
+
+**Step 3: BPP tier — hide Top Up button when BPP disabled**
+
+The BPP "Top Up Kredit" button at line 119-126 is shown when `tier === "bpp"`. Query BPP plan to check disabled:
+```typescript
+const bppPlan = useQuery(
+  api.pricingPlans.getPlanBySlug,
+  tier === "bpp" ? { slug: "bpp" } : "skip"
+)
+```
+
+Then conditionally render:
+```typescript
+{tier === "bpp" && bppPlan && !bppPlan.isDisabled && (
+  <Link href="/checkout/bpp?from=overview" ...>Top Up Kredit</Link>
+)}
+```
+
+**Step 4: Admin overview — hardcoded prices in "Cara Kerja Pembayaran" section**
+
+Lines 657-676 have hardcoded text: "Beli credit mulai Rp 25.000" and "Rp 200.000/bulan". These are informational text in the admin view. Since these are not user-facing payment values and the admin can see current prices in CMS, leave these as-is (they're admin-only educational content).
+
+**Step 5: Verify TypeScript compiles**
+
+Run: `npx tsc --noEmit`
+Expected: No errors
+
+**Step 6: Commit**
+
+```bash
+git add src/app/(dashboard)/subscription/overview/page.tsx
+git commit -m "feat(subscription): hide upgrade cards when target tier is disabled"
+```
+
+---
+
+### Task 11: Plans Hub — Guard Disabled State
+
+**Files:**
+- Modify: `src/app/(dashboard)/subscription/plans/page.tsx`
+
+**Context:** The Plans Hub page (Pro-only) shows plan cards but doesn't check `isDisabled`. This page already queries `getActivePlans` and only shows `plan.slug === "pro"`. If Pro is disabled and user is already Pro (viewing their subscription), the page still works — it shows cancel/reactivate. But if Pro is disabled, hide the checkout CTA. Also mask price when disabled.
+
+**Step 1: Add disabled check to plan card**
+
+In the `.map()` at line 125, derive disabled state:
+```typescript
+const isEffectiveDisabled = plan.isDisabled ?? false
+```
+
+**Step 2: Mask price when disabled**
+
+Add the `maskPrice` helper:
+```typescript
+function maskPrice(price: string): string {
+  return price.replace(/\d/g, "0")
+}
+```
+
+Update price display at line 161:
+```typescript
+{isEffectiveDisabled ? maskPrice(plan.price) : plan.price}
+```
+
+**Step 3: Hide checkout CTA when disabled**
+
+Update `showProCheckout` at line 132:
+```typescript
+const showProCheckout = isPro && currentTier !== "pro" && currentTier !== "unlimited" && !isEffectiveDisabled
+```
+
+**Step 4: Show "Segera Hadir" when disabled**
+
+After the existing CTA blocks, add:
+```typescript
+{isEffectiveDisabled && !isCurrentTier && (
+  <span className="mt-auto inline-flex w-full items-center justify-center rounded-action bg-slate-200 px-4 py-2.5 text-signal text-[11px] font-bold uppercase tracking-widest text-muted-foreground dark:bg-slate-700">
+    SEGERA HADIR
+  </span>
+)}
+```
+
+**Step 5: Verify TypeScript compiles**
+
+Run: `npx tsc --noEmit`
+Expected: No errors
+
+**Step 6: Commit**
+
+```bash
+git add src/app/(dashboard)/subscription/plans/page.tsx
+git commit -m "feat(plans): add disabled guard, price masking, and 'Segera Hadir' to Plans Hub"
+```
+
+---
+
+### Task 12: Verify End-to-End
 
 **Step 1: Run TypeScript check**
 
@@ -935,13 +1240,30 @@ Expected: Build succeeds
 
 With `npm run dev` + `npx convex dev` running:
 
+**CMS Editor:**
 1. Admin Panel → CMS → Pricing → Gratis: verify price fields disabled, isDisabled toggle hidden
 2. Admin Panel → CMS → Pricing → BPP: edit price → save → verify pricing page shows new price
 3. Admin Panel → CMS → Pricing → BPP: toggle "Nonaktif" on → verify pricing page shows "Rp00rb" + "SEGERA HADIR"
 4. Admin Panel → CMS → Pricing → Pro: same as BPP
-5. Home teaser: verify price masking works same as pricing page
-6. Topup endpoint: with BPP disabled, attempt topup → expect 403 error
-7. Subscribe endpoint: with Pro disabled, attempt subscribe → expect 403 error
+
+**Frontend Price Masking:**
+5. Pricing page: verify price masking when disabled
+6. Home teaser: verify TeaserCard shows masked price + "SEGERA HADIR" when `isDisabled` true
+
+**Checkout Pages (hardcoded prices eliminated):**
+7. `/checkout/bpp`: with BPP enabled, verify price matches DB value (not hardcoded 80_000)
+8. `/checkout/bpp`: with BPP disabled, verify redirect to `/subscription/overview`
+9. `/checkout/pro`: with Pro enabled, verify price matches DB value (not hardcoded 200_000)
+10. `/checkout/pro`: with Pro disabled, verify redirect to `/subscription/overview`
+
+**Payment Endpoints:**
+11. Topup endpoint: with BPP disabled, attempt topup → expect 403 error
+12. Subscribe endpoint: with Pro disabled, attempt subscribe → expect 403 error
+
+**Subscription Pages:**
+13. `/subscription/overview` (Gratis): with BPP disabled → BPP upgrade card hidden, Pro card visible (if enabled)
+14. `/subscription/overview` (BPP): with Pro disabled → Pro upgrade pitch hidden
+15. `/subscription/plans` (Pro): with Pro disabled → price masked, checkout CTA hidden, "SEGERA HADIR" shown
 
 **Step 4: Commit any fixes found during verification**
 
