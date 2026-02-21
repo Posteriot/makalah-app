@@ -225,7 +225,7 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
         {/* Teaser Description */}
         <div>
           <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-            Teaser Description (Home)
+            Teaser Description (Home &amp; Get Started)
           </label>
           <Textarea
             value={teaserDescription}
@@ -238,7 +238,7 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
         {/* Teaser Credit Note */}
         <div>
           <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-            Teaser Credit Note (Home)
+            Teaser Credit Note (Home &amp; Get Started)
           </label>
           <Input
             value={teaserCreditNote}

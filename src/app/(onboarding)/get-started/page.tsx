@@ -37,19 +37,8 @@ function toSafeInternalPath(path?: string): string | null {
   return path
 }
 
-function resolvePlanDisabledState(plan: {
-  slug: string
-  isDisabled: boolean
-  ctaHref?: string
-}): boolean {
-  if (!plan.isDisabled) return false
-
-  // Legacy pricing data can keep Pro as disabled while checkout path is already live.
-  if (plan.slug === "pro" && toSafeInternalPath(plan.ctaHref)) {
-    return false
-  }
-
-  return true
+function maskPrice(price: string): string {
+  return price.replace(/\d/g, "0")
 }
 
 function GetStartedPlanCard({
@@ -83,7 +72,8 @@ function GetStartedPlanCard({
           "border border-[color:var(--slate-400)]",
           "group-hover/card:bg-[color:var(--slate-200)] dark:group-hover/card:bg-[color:var(--slate-700)]",
           "group-hover/card:-translate-y-1 transition-all duration-300",
-          plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
+          plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]",
+          plan.isDisabled && "opacity-60"
         )}
       >
         <h3 className="text-narrative text-xl md:text-2xl font-light text-foreground text-center mb-3 mt-4 md:mt-0">
@@ -91,7 +81,7 @@ function GetStartedPlanCard({
         </h3>
 
         <p className="text-interface text-3xl font-medium tracking-tight tabular-nums text-foreground text-center mb-6">
-          {plan.price}
+          {plan.isDisabled ? maskPrice(plan.price) : plan.price}
           {plan.unit && (
             <span className="text-interface text-sm font-normal text-muted-foreground ml-1">
               {plan.unit}
@@ -234,16 +224,10 @@ export default function GetStartedPage() {
       price: plan.price,
       unit: plan.unit,
       isHighlighted: plan.isHighlighted,
-      isDisabled: resolvePlanDisabledState(plan),
+      isDisabled: plan.isDisabled,
       description: plan.teaserDescription || plan.tagline,
       creditNote: plan.teaserCreditNote || plan.features[0] || "",
-      ctaLabel: (
-        plan.slug === "pro" &&
-        resolvePlanDisabledState(plan) === false &&
-        plan.ctaText.toLowerCase().includes("segera hadir")
-          ? "Langganan Pro"
-          : plan.ctaText
-      ),
+      ctaLabel: plan.ctaText,
       ctaHref: plan.ctaHref,
     }))
 
