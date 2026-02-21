@@ -31,6 +31,7 @@ export type DocBlock =
     description?: string
     paragraphs?: string[]
     list?: DocList
+    richContent?: string
   }
 
 export type DocumentationSection = {

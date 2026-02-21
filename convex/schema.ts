@@ -43,6 +43,7 @@ export const documentationBlock = v.union(
     description: v.optional(v.string()),
     paragraphs: v.optional(v.array(v.string())),
     list: v.optional(documentationList),
+    richContent: v.optional(v.string()),
   })
 )
 
