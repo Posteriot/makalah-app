@@ -86,16 +86,10 @@ interface CmsSidebarProps {
   // Documentation drill-down
   activeDocGroup: DocGroupId | null
   onDocGroupChange: (group: DocGroupId | null) => void
-  selectedDocSlug: string | null
-  onDocSlugChange: (slug: string | null) => void
-  onDocCreateNew: () => void
 
   // Blog drill-down
   activeBlogCategory: BlogCategoryId | null
   onBlogCategoryChange: (category: BlogCategoryId | null) => void
-  selectedBlogSlug: string | null
-  onBlogSlugChange: (slug: string | null) => void
-  onBlogCreateNew: () => void
 
   // Sidebar chrome
   onCollapseSidebar: () => void
@@ -118,14 +112,8 @@ export function CmsSidebar({
   onSectionChange,
   activeDocGroup,
   onDocGroupChange,
-  selectedDocSlug: _selectedDocSlug,
-  onDocSlugChange: _onDocSlugChange,
-  onDocCreateNew: _onDocCreateNew,
   activeBlogCategory,
   onBlogCategoryChange,
-  selectedBlogSlug: _selectedBlogSlug,
-  onBlogSlugChange: _onBlogSlugChange,
-  onBlogCreateNew: _onBlogCreateNew,
   onCollapseSidebar,
   className,
 }: CmsSidebarProps) {

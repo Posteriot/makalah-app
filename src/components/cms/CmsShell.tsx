@@ -263,14 +263,8 @@ export function CmsShell({ userId }: CmsShellProps) {
           onSectionChange={setActiveSection}
           activeDocGroup={activeDocGroup}
           onDocGroupChange={setActiveDocGroup}
-          selectedDocSlug={selectedDocSlug}
-          onDocSlugChange={setSelectedDocSlug}
-          onDocCreateNew={() => setSelectedDocSlug("__new__")}
           activeBlogCategory={activeBlogCategory}
           onBlogCategoryChange={setActiveBlogCategory}
-          selectedBlogSlug={selectedBlogSlug}
-          onBlogSlugChange={setSelectedBlogSlug}
-          onBlogCreateNew={() => setSelectedBlogSlug("__new__")}
           onCollapseSidebar={handleToggleSidebar}
         />
       </aside>
