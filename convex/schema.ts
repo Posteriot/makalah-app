@@ -10,17 +10,17 @@ import {
   OutlineData,
 } from "./paperSessions/types"
 
-const documentationListItem = v.object({
+export const documentationListItem = v.object({
   text: v.string(),
   subItems: v.optional(v.array(v.string())),
 })
 
-const documentationList = v.object({
+export const documentationList = v.object({
   variant: v.union(v.literal("bullet"), v.literal("numbered")),
   items: v.array(documentationListItem),
 })
 
-const documentationBlock = v.union(
+export const documentationBlock = v.union(
   v.object({
     type: v.literal("infoCard"),
     title: v.string(),
