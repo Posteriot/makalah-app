@@ -8,22 +8,24 @@ For developer maintenance, scaling, and onboarding.
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Database Schema](#database-schema)
-3. [Backend API (Convex Functions)](#backend-api-convex-functions)
-4. [Frontend Rendering Patterns](#frontend-rendering-patterns)
-5. [Admin Panel Architecture](#admin-panel-architecture)
-6. [Image Storage & Upload](#image-storage--upload)
-7. [TipTap WYSIWYG Integration](#tiptap-wysiwyg-integration)
-8. [Seed & Migration Data](#seed--migration-data)
-9. [File Reference Map](#file-reference-map)
-10. [Adding New CMS Sections](#adding-new-cms-sections)
-11. [Common Patterns & Conventions](#common-patterns--conventions)
+2. [CMS Shell Architecture](#cms-shell-architecture)
+3. [Database Schema](#database-schema)
+4. [Backend API (Convex Functions)](#backend-api-convex-functions)
+5. [Frontend Rendering Patterns](#frontend-rendering-patterns)
+6. [Admin Panel — Editor Components](#admin-panel--editor-components)
+7. [Pricing CMS & DB-Driven Pricing](#pricing-cms--db-driven-pricing)
+8. [Image Storage & Upload](#image-storage--upload)
+9. [TipTap WYSIWYG Integration](#tiptap-wysiwyg-integration)
+10. [Seed & Migration Data](#seed--migration-data)
+11. [File Reference Map](#file-reference-map)
+12. [Adding New CMS Sections](#adding-new-cms-sections)
+13. [Common Patterns & Conventions](#common-patterns--conventions)
 
 ---
 
 ## Overview
 
-Hybrid CMS for all marketing pages. Admin-only (superadmin/admin roles). Static fallback when CMS content is unpublished or absent.
+Hybrid CMS for all marketing pages and pricing configuration. Admin-only (superadmin/admin roles). Static fallback when CMS content is unpublished or absent.
 
 ### Design Principles
 
@@ -31,6 +33,7 @@ Hybrid CMS for all marketing pages. Admin-only (superadmin/admin roles). Static 
 - **Zero downtime**: Static components always available. CMS enhances, never blocks.
 - **Real-time**: Convex subscriptions auto-update frontend when admin saves.
 - **Image storage**: Convex file storage with CDN URLs. No external image hosts.
+- **DB as single source of truth for pricing**: All prices flow from `pricingPlans` table. Constants used only as fallback safety net.
 
 ### Tech Stack
 
@@ -42,11 +45,150 @@ Hybrid CMS for all marketing pages. Admin-only (superadmin/admin roles). Static 
 | Image Upload | Convex Storage API (PUT to upload URL) |
 | Frontend | Next.js App Router (`useQuery` subscriptions) |
 
+### CMS Route
+
+| File | Purpose |
+|------|---------|
+| `src/app/cms/page.tsx` | CMS entry point. Protected: requires `admin` or `superadmin` role. Renders `<CmsShell userId={user._id} />` |
+| `src/app/cms/layout.tsx` | Fullscreen wrapper (`h-dvh bg-background`) |
+
+---
+
+## CMS Shell Architecture
+
+The CMS uses a dedicated 4-column CSS Grid layout, completely separate from the admin dashboard. Accessed at `/cms`.
+
+### Layout Structure
+
+```
+┌──────────┬─────────────────┬──┬──────────────────────────────┐
+│ Activity │    Sidebar      │R │         Main Content         │
+│   Bar    │  (collapsible,  │e │  ┌──────────────────────┐   │
+│  (48px)  │   resizable)    │s │  │      CmsTopBar       │   │
+│          │                 │i │  ├──────────────────────┤   │
+│  [Logo]  │ Content Manager │z │  │                      │   │
+│  [Home]  │ ─── PAGE ───── │e │  │   Editor Component   │   │
+│  [About] │  ○ Section 1   │r │  │   (scrollable)       │   │
+│ [Pricing]│  ● Section 2   │  │  │                      │   │
+│  [Docs]  │  ○ Section 3   │2 │  │                      │   │
+│  [Blog]  │                 │p │  │                      │   │
+│  [Legal] │                 │x │  │                      │   │
+│  ─────── │                 │  │  │                      │   │
+│ [Global] │                 │  │  │                      │   │
+└──────────┴─────────────────┴──┴──────────────────────────────┘
+     48px      280px (default)       1fr
+```
+
+**Grid CSS:** `grid-template-columns: 48px ${sidebarWidth}px 2px 1fr`
+
+### Shell Components
+
+| Component | File | Role |
+|-----------|------|------|
+| `CmsShell` | `src/components/cms/CmsShell.tsx` | 4-column grid orchestrator. Holds all state. Routes to editors via `renderEditor()`. |
+| `CmsActivityBar` | `src/components/cms/CmsActivityBar.tsx` | Vertical icon sidebar (48px). Defines `CmsPageId` type. Two groups: Content Pages + Global. |
+| `CmsSidebar` | `src/components/cms/CmsSidebar.tsx` | Dynamic section sidebar (280px default, min 180px, collapses at <100px). Defines `CmsSectionId` and sub-page types. |
+| `CmsTopBar` | `src/components/cms/CmsTopBar.tsx` | Top bar above content area. Expand sidebar toggle (when collapsed), theme toggle, Admin Dashboard link, user dropdown. |
+| `PanelResizer` | `src/components/ui/PanelResizer.tsx` | Draggable 2px divider for sidebar resize. Double-click resets to 280px. |
+
+### Page & Section Type System
+
+**`CmsPageId`** (activity bar navigation):
+
+| Page ID | Icon | Label | Sidebar Pattern |
+|---------|------|-------|-----------------|
+| `home` | `Home` | Home | Section list |
+| `about` | `InfoCircle` | About | Section list |
+| `pricing` | `CreditCard` | Pricing | Section list |
+| `documentation` | `Book` | Dokumentasi | Drill-down (group → section list → detail) |
+| `blog` | `Journal` | Blog | Drill-down (category → post list → detail) |
+| `legal` | `PrivacyPolicy` | Legal | Sub-page list |
+| `global-layout` | `ScaleFrameEnlarge` | Global Layout | Sub-page list |
+
+**`CmsSectionId`** (sidebar items for section-list pages):
+
+| Section ID | Parent Page | Editor |
+|------------|-------------|--------|
+| `hero` | home | `HeroSectionEditor` |
+| `benefits` | home | `BenefitsSectionEditor` |
+| `features-workflow` | home | `FeatureShowcaseEditor` (sectionSlug="features-workflow") |
+| `features-refrasa` | home | `FeatureShowcaseEditor` (sectionSlug="features-refrasa") |
+| `manifesto` | about | `ManifestoSectionEditor` |
+| `problems` | about | `ProblemsSectionEditor` |
+| `agents` | about | `AgentsSectionEditor` |
+| `career-contact` | about | `CareerContactEditor` |
+| `pricing-gratis` | pricing | `PricingPlanEditor` (slug="gratis") |
+| `pricing-bpp` | pricing | `PricingPlanEditor` (slug="bpp") |
+| `pricing-pro` | pricing | `PricingPlanEditor` (slug="pro") |
+
+**Other navigation types** (defined in `CmsSidebar.tsx`):
+
+| Type | Values | Used By |
+|------|--------|---------|
+| `LegalPageId` | `privacy`, `security`, `terms` | legal page → `RichTextPageEditor` |
+| `GlobalLayoutPageId` | `header`, `footer` | global-layout → `HeaderConfigEditor` / `FooterConfigEditor` |
+| `DocGroupId` | `doc-mulai`, `doc-fitur-utama`, `doc-subskripsi`, `doc-panduan-lanjutan` | documentation drill-down → `DocSectionListEditor` → `DocSectionEditor` |
+| `BlogCategoryId` | `blog-update`, `blog-tutorial`, `blog-opini`, `blog-event` | blog drill-down → `BlogPostListEditor` → `BlogPostEditor` |
+
+### Sidebar Rendering Patterns
+
+The sidebar uses 3 different rendering functions:
+
+| Function | Used By | Behavior |
+|----------|---------|----------|
+| `renderSectionList()` | home, about, pricing | Simple flat list, highlights `activeSection` |
+| `renderSubPageList()` | legal, global-layout | Generic typed list, highlights active sub-page |
+| `renderDrillDownList()` | documentation, blog | Two-level: shows groups initially, then back-button when drilled in |
+
+### Navigation Tree (Complete)
+
+```
+Content Pages
+├── Home
+│   ├── Hero                → HeroSectionEditor
+│   ├── Benefits            → BenefitsSectionEditor
+│   ├── Fitur: Workflow     → FeatureShowcaseEditor
+│   └── Fitur: Refrasa      → FeatureShowcaseEditor
+├── About
+│   ├── Manifesto           → ManifestoSectionEditor
+│   ├── Problems            → ProblemsSectionEditor
+│   ├── Agents              → AgentsSectionEditor
+│   └── Karier & Kontak     → CareerContactEditor
+├── Pricing
+│   ├── Gratis              → PricingPlanEditor (slug="gratis")
+│   ├── Bayar Per Paper     → PricingPlanEditor (slug="bpp")
+│   └── Pro                 → PricingPlanEditor (slug="pro")
+├── Dokumentasi (drill-down)
+│   ├── Mulai               → DocSectionListEditor → DocSectionEditor
+│   ├── Fitur Utama         → DocSectionListEditor → DocSectionEditor
+│   ├── Subskripsi          → DocSectionListEditor → DocSectionEditor
+│   └── Panduan Lanjutan    → DocSectionListEditor → DocSectionEditor
+├── Blog (drill-down)
+│   ├── Update              → BlogPostListEditor → BlogPostEditor
+│   ├── Tutorial            → BlogPostListEditor → BlogPostEditor
+│   ├── Opini               → BlogPostListEditor → BlogPostEditor
+│   └── Event               → BlogPostListEditor → BlogPostEditor
+└── Legal
+    ├── Privacy             → RichTextPageEditor (slug="privacy")
+    ├── Security            → RichTextPageEditor (slug="security")
+    └── Terms               → RichTextPageEditor (slug="terms")
+
+Global Components
+├── Header                  → HeaderConfigEditor
+└── Footer                  → FooterConfigEditor
+```
+
+### Legacy `ContentManager.tsx`
+
+**File:** `src/components/admin/ContentManager.tsx`
+
+This is the OLD CMS navigation component used in the admin dashboard (`/dashboard` → CMS tab). It is **NOT used** by the current CMS at `/cms`. The new CMS uses `CmsShell` + `CmsActivityBar` + `CmsSidebar`. `ContentManager.tsx` remains in the codebase but is not imported by any route.
+
 ---
 
 ## Database Schema
 
-Five tables power the CMS. All defined in `convex/schema.ts`.
+Six tables power the CMS. All defined in `convex/schema.ts`.
 
 ### 1. `pageContent` — Structured Sections
 
@@ -69,7 +211,7 @@ Five tables power the CMS. All defined in `convex/schema.ts`.
 | `secondaryImageId` | `Id<"_storage">?` | Secondary image (dark mode variant for features) |
 | `headingImageDarkId` | `Id<"_storage">?` | Hero heading SVG for dark theme |
 | `headingImageLightId` | `Id<"_storage">?` | Hero heading SVG for light theme |
-| `headingLines[]` | `string[]?` | Multi-line heading text |
+| `headingLines[]` | `string[]?` | Multi-line heading text (manifesto) |
 | `subheading` | `string?` | Sub-heading text |
 | `paragraphs[]` | `string[]?` | Multi-paragraph body content |
 | `contactInfo` | `object?` | Career-contact: `{ company, address[], email }` |
@@ -104,9 +246,9 @@ Five tables power the CMS. All defined in `convex/schema.ts`.
 |-------|------|-------------|
 | `key` | `string` | Config identifier (`"header"` or `"footer"`) |
 | `navLinks[]` | `array?` | Header nav: `{ label, href, isVisible }` |
-| `footerSections[]` | `array?` | Footer columns: `{ title, links[{ label, href }] }` |
+| `footerSections[]` | `array?` | Footer columns: `{ title, links[{ label, href, isExternal? }] }` |
 | `socialLinks[]` | `array?` | Social icons: `{ platform, url, isVisible, iconId? }` |
-| `copyrightText` | `string?` | Footer copyright text |
+| `copyrightText` | `string?` | Footer copyright text (`{year}` placeholder auto-replaced) |
 | `companyDescription` | `string?` | Footer company description |
 | `logoDarkId` | `Id<"_storage">?` | Logo for dark theme |
 | `logoLightId` | `Id<"_storage">?` | Logo for light theme |
@@ -117,9 +259,36 @@ Five tables power the CMS. All defined in `convex/schema.ts`.
 
 **Index:** `by_key`
 
-### 4. `blogSections` — Blog Posts
+### 4. `pricingPlans` — Pricing Tiers
 
-**Purpose:** Blog articles with cover images, categories, and TipTap/block content.
+**Purpose:** Single source of truth for all pricing — marketing display, checkout pages, and payment endpoints.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Plan name (e.g., "Gratis", "Bayar Per Tugas", "Pro") |
+| `slug` | `string` | Identifier: `"gratis"`, `"bpp"`, `"pro"` |
+| `price` | `string` | Display price (e.g., "Rp0", "Rp80rb", "Rp200rb") |
+| `priceValue` | `number?` | Numeric price for payments (e.g., 0, 80000, 200000) |
+| `unit` | `string?` | Price unit (e.g., "per paper", "per bulan") |
+| `tagline` | `string` | Short description for full pricing page |
+| `teaserDescription` | `string?` | Description for home page teaser card |
+| `teaserCreditNote` | `string?` | Credit note for teaser card |
+| `features[]` | `string[]` | Feature list for full pricing page |
+| `isHighlighted` | `boolean` | Highlight with brand border |
+| `isDisabled` | `boolean` | Plan not yet available (masks price, hides CTA, rejects payments) |
+| `ctaText` | `string` | Button text |
+| `ctaHref` | `string?` | Button link |
+| `sortOrder` | `number` | Display order |
+| `topupOptions[]` | `array?` | **@deprecated** — use `creditPackages` |
+| `creditPackages[]` | `array?` | BPP credit packages: `{ type, credits, tokens, priceIDR, label, description?, ratePerCredit?, popular? }` |
+| `createdAt` | `number` | Creation timestamp |
+| `updatedAt` | `number` | Last update timestamp |
+
+**Indices:** `by_sortOrder`, `by_slug`
+
+### 5. `blogSections` — Blog Posts
+
+**Purpose:** Blog articles with cover images, categories, and TipTap content.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -142,7 +311,7 @@ Five tables power the CMS. All defined in `convex/schema.ts`.
 
 **Category Normalization:** Legacy seed data uses categories like `"Produk"`, `"Penelitian"`, `"Dinamika"`, `"Perspektif"`. The `normalizeCategory()` function in `src/components/marketing/blog/utils.ts` maps these to canonical names (`Update`, `Tutorial`, `Opini`, `Event`).
 
-### 5. `documentationSections` — Documentation
+### 6. `documentationSections` — Documentation
 
 **Purpose:** Marketing docs with structured block-based content.
 
@@ -166,7 +335,7 @@ Five tables power the CMS. All defined in `convex/schema.ts`.
 - `infoCard` — Card: title, description, items[]
 - `ctaCards` — CTA grid: items[] with title, description, targetSection, ctaText, icon
 
-**Index:** `by_order`, `by_slug`, `by_published`
+**Indices:** `by_order`, `by_slug`, `by_published`
 
 ---
 
@@ -204,6 +373,25 @@ All public queries are unauthenticated (for frontend rendering).
 | `listAllConfigs(requestorId)` | query | admin | List all configs |
 | `upsertConfig(requestorId, key, ...)` | mutation | admin | Upsert by key |
 
+### `convex/pricingPlans.ts`
+
+| Function | Type | Auth | Description |
+|----------|------|------|-------------|
+| `getActivePlans()` | query | public | All plans sorted by sortOrder |
+| `getPlanBySlug(slug)` | query | public | Single plan by slug |
+| `getTopupOptionsForPlan(slug)` | query | public | Topup options with fallback |
+| `getCreditPackagesForPlan(slug)` | query | public | Credit packages with fallback |
+| `updatePricingPlan(requestorId, ...)` | mutation | admin | Update plan (Gratis price locked) |
+| `updateCreditPackages(requestorId, ...)` | mutation | admin | Update BPP credit packages |
+
+### `convex/billing/pricingHelpers.ts`
+
+| Function | Type | Auth | Description |
+|----------|------|------|-------------|
+| `getBppCreditPackage(packageType)` | query | public | BPP package from DB, fallback to constants |
+| `getProPricing()` | query | public | Pro pricing from DB, fallback to constants |
+| `isPlanDisabled(slug)` | query | public | Check if a plan tier is disabled |
+
 ### `convex/blog.ts`
 
 | Function | Type | Auth | Description |
@@ -223,8 +411,9 @@ All public queries are unauthenticated (for frontend rendering).
 | Function | Type | Auth | Description |
 |----------|------|------|-------------|
 | `getPublishedSections()` | query | public | Published sections ordered by `order` |
+| `getSectionBySlug(slug)` | query | public | Single section by slug (published only) |
 | `listAllSections(requestorId)` | query | admin | All sections |
-| `getSectionBySlug(requestorId, slug)` | query | admin | Single section by slug |
+| `getSectionBySlugAdmin(requestorId, slug)` | query | admin | Single section by slug (admin) |
 | `getDocImageUrl(storageId)` | query | public | Resolve doc image URL |
 | `upsertSection(requestorId, ...)` | mutation | admin | Create/update (auto-generates `searchText`) |
 | `deleteSection(requestorId, id)` | mutation | admin | Delete section |
@@ -234,11 +423,11 @@ All public queries are unauthenticated (for frontend rendering).
 
 ## Frontend Rendering Patterns
 
-Three patterns used depending on content type.
+Four patterns used depending on content type.
 
-### Pattern 1: Wrapper Pattern (Structured Sections)
+### Pattern 1: Wrapper Pattern (Structured Sections — Home Page)
 
-Used for home/about page sections. Three-component architecture per section.
+Used for home page sections. Three-component architecture per section.
 
 ```
 XxxSection.tsx          ← "use client" wrapper with useQuery
@@ -266,7 +455,20 @@ useQuery(api.pageContent.getSection, { pageSlug, sectionSlug })
 
 **Note on Benefits:** `BenefitsSection` is a single component that accepts optional `items` prop. Without items, it renders hardcoded defaults. With items from CMS, it renders CMS data. This is a shared-component variant of the Wrapper Pattern.
 
-### Pattern 2: CmsPageWrapper (Rich Text Pages)
+### Pattern 2: Wrapper Pattern (Structured Sections — About Page)
+
+Same three-component architecture, but components live in `src/components/about/`.
+
+| Section | Wrapper | Static | CMS |
+|---------|---------|--------|-----|
+| Manifesto | `about/ManifestoSection.tsx` | `about/ManifestoSectionStatic.tsx` | `about/ManifestoSectionCMS.tsx` |
+| Problems | `about/ProblemsSection.tsx` | `about/ProblemsSectionStatic.tsx` | `about/ProblemsSectionCMS.tsx` |
+| Agents | `about/AgentsSection.tsx` | `about/AgentsSectionStatic.tsx` | `about/AgentsSectionCMS.tsx` |
+| Career & Contact | `about/CareerContactSection.tsx` | `about/CareerContactSectionStatic.tsx` | `about/CareerContactSectionCMS.tsx` |
+
+Exported via barrel file `src/components/about/index.ts`.
+
+### Pattern 3: CmsPageWrapper (Rich Text Pages)
 
 Used for policy pages (privacy, security, terms).
 
@@ -290,9 +492,9 @@ useQuery(api.richTextPages.getPageBySlug, { slug })
 
 **Key distinction:** CMS mode renders a completely different layout (badge + h1 + RichTextRenderer + lastUpdatedLabel) — it does NOT use SimplePolicyPage.
 
-### Pattern 3: Inline Fallback (Global Config)
+### Pattern 4: Inline Fallback (Global Config + Pricing)
 
-Used for header navigation and footer sections.
+Used for header navigation, footer sections, and pricing pages.
 
 ```tsx
 // Inside GlobalHeader.tsx
@@ -303,98 +505,55 @@ const navLinks = headerConfig?.navLinks?.filter(l => l.isVisible) ?? HEADER_LINK
 **Logic:** Query CMS config inside existing component. If CMS data exists, derive props from it. Otherwise, fall back to hardcoded constants. No separate wrapper/static/CMS split.
 
 **Files using this pattern:**
-- `src/components/layout/header/GlobalHeader.tsx` — nav links, logo, brand text
-- `src/components/layout/footer/Footer.tsx` — sections, social links, copyright, logos
+
+| File | Data Source |
+|------|------------|
+| `src/components/layout/header/GlobalHeader.tsx` | `siteConfig` key="header" |
+| `src/components/layout/footer/Footer.tsx` | `siteConfig` key="footer" |
+| `src/app/(marketing)/pricing/page.tsx` | `pricingPlans.getActivePlans()` |
+| `src/components/marketing/pricing-teaser/PricingTeaser.tsx` | `pricingPlans.getActivePlans()` |
+| `src/app/(dashboard)/subscription/plans/page.tsx` | `pricingPlans.getActivePlans()` |
+| `src/app/(dashboard)/subscription/overview/page.tsx` | `pricingPlans.getPlanBySlug()` |
+| `src/app/(onboarding)/checkout/bpp/page.tsx` | `pricingHelpers.getBppCreditPackage()` |
+| `src/app/(onboarding)/checkout/pro/page.tsx` | `pricingHelpers.getProPricing()` |
 
 ---
 
-## Admin Panel Architecture
-
-### ContentManager — Main Router
-
-**File:** `src/components/admin/ContentManager.tsx`
-
-Central navigation hub with sidebar + editor panel. Located in admin dashboard CMS tab.
-
-**Navigation tree:**
-
-```
-Pages
-├── Home (collapsible)
-│   ├── Hero           → HeroSectionEditor
-│   ├── Benefits       → BenefitsSectionEditor
-│   ├── Fitur: Workflow → FeatureShowcaseEditor (sectionSlug="features-workflow")
-│   └── Fitur: Refrasa  → FeatureShowcaseEditor (sectionSlug="features-refrasa")
-├── About (collapsible)
-│   ├── Manifesto      → ManifestoSectionEditor
-│   ├── Problems       → ProblemsSectionEditor
-│   ├── Agents         → AgentsSectionEditor
-│   └── Karier & Kontak → CareerContactEditor
-├── Dokumentasi (collapsible)
-│   ├── Mulai          → DocSectionListEditor (group="Mulai")
-│   ├── Fitur Utama    → DocSectionListEditor (group="Fitur Utama")
-│   ├── Subskripsi     → DocSectionListEditor (group="Subskripsi")
-│   └── Panduan Lanjutan → DocSectionListEditor (group="Panduan Lanjutan")
-├── Blog (collapsible)
-│   ├── Update         → BlogPostListEditor (category="Update")
-│   ├── Tutorial       → BlogPostListEditor (category="Tutorial")
-│   ├── Opini          → BlogPostListEditor (category="Opini")
-│   └── Event          → BlogPostListEditor (category="Event")
-├── Privacy            → RichTextPageEditor (slug="privacy")
-├── Security           → RichTextPageEditor (slug="security")
-└── Terms              → RichTextPageEditor (slug="terms")
-
-Global
-├── Header             → HeaderConfigEditor
-└── Footer             → FooterConfigEditor
-```
-
-**State management:**
-- `selectedPage` — which page is active
-- `selectedSection` — which section within a page
-- `expandedPages` — Set of pages with expanded sidebar
-- `selectedDocSlug` — drill-down slug for doc editor (null = list, `"__new__"` = create, else = edit)
-- `selectedBlogSlug` — drill-down slug for blog editor (same pattern)
-
-**Routing maps:**
-
-```typescript
-// Documentation: sidebar section → group filter
-const DOC_SECTION_GROUP_MAP = {
-  "doc-mulai": "Mulai",
-  "doc-fitur-utama": "Fitur Utama",
-  "doc-subskripsi": "Subskripsi",
-  "doc-panduan-lanjutan": "Panduan Lanjutan",
-}
-
-// Blog: sidebar section → category filter
-const BLOG_CATEGORY_MAP = {
-  "blog-update": "Update",
-  "blog-tutorial": "Tutorial",
-  "blog-opini": "Opini",
-  "blog-event": "Event",
-}
-```
-
-### Editor Components
+## Admin Panel — Editor Components
 
 All located in `src/components/admin/cms/`.
 
-#### Structured Section Editors
+### Structured Section Editors
 
 These editors share a common pattern: query existing data → populate form state → save via `upsertSection`.
 
 | Editor | Section | Key Fields |
 |--------|---------|------------|
-| `HeroSectionEditor` | hero | title, subtitle, badgeText, ctaText/Href, primaryImage, headingImageDark/Light |
-| `BenefitsSectionEditor` | benefits | items[] (title + description + icon) |
-| `FeatureShowcaseEditor` | features-workflow, features-refrasa | title, description, badgeText, items[], primaryImage (light), secondaryImage (dark) |
-| `ManifestoSectionEditor` | manifesto | title, description, paragraphs[] |
-| `ProblemsSectionEditor` | problems | title, description, items[] |
-| `AgentsSectionEditor` | agents | title, description, items[] |
-| `CareerContactEditor` | career-contact | title, description, contactInfo |
+| `HeroSectionEditor` | hero | title, subtitle, badgeText, ctaText/Href, primaryImage + alt, headingImageDark/Light |
+| `BenefitsSectionEditor` | benefits | items[] (title + description + icon name) — fixed 4 items |
+| `FeatureShowcaseEditor` | features-workflow, features-refrasa | title, description, badgeText, items[] (dynamic), primaryImage (light), secondaryImage (dark) |
+| `ManifestoSectionEditor` | manifesto | badgeText, headingLines[] (3 lines), subheading, paragraphs[] (dynamic), terminalDark/Light images |
+| `ProblemsSectionEditor` | problems | badgeText, title, items[] (title + description, dynamic) |
+| `AgentsSectionEditor` | agents | badgeText, title, items[] (name + description + status dropdown) |
+| `CareerContactEditor` | career-contact | badgeText, title, careerText, contactInfo { company, address, email } |
 
-#### List + Detail Editors (Drill-down Pattern)
+### Pricing Plan Editor
+
+**`PricingPlanEditor`** — Edits a single pricing tier.
+
+**Props:** `{ slug: string; userId: Id<"users"> }`
+
+| Slug | Special Behavior |
+|------|-----------------|
+| `gratis` | `price` and `priceValue` fields are read-only (locked at Rp0) |
+| `bpp` | Shows editable `creditPackages[]` section (type, credits, tokens, priceIDR, label, description, ratePerCredit, popular) |
+| `pro` | Full edit access to all fields |
+
+**Fields:** name, price (display string), priceValue (numeric), unit, tagline, teaserDescription, teaserCreditNote, features[] (dynamic list), ctaText, ctaHref, isHighlighted, isDisabled
+
+**Mutations:** `api.pricingPlans.updatePricingPlan` for plan fields, `api.pricingPlans.updateCreditPackages` for BPP credit packages.
+
+### List + Detail Editors (Drill-down Pattern)
 
 Documentation and Blog use a two-level flow: **List** → **Detail**.
 
@@ -410,26 +569,98 @@ BlogPostListEditor (filtered by category)
   └── Click "< Kembali ke Daftar" → setSelectedBlogSlug(null) → back to list
 ```
 
-#### Global Config Editors
+### Global Config Editors
 
 | Editor | Config Key | Key Fields |
 |--------|-----------|------------|
-| `HeaderConfigEditor` | `"header"` | navLinks[], logoDark/Light, brandTextDark/Light |
-| `FooterConfigEditor` | `"footer"` | footerSections[], socialLinks[], copyrightText, companyDescription, logoDark/Light, brandTextDark/Light |
+| `HeaderConfigEditor` | `"header"` | navLinks[] (label, href, isVisible), logoDark/Light (1:1), brandTextDark/Light (4:1) |
+| `FooterConfigEditor` | `"footer"` | footerSections[] (title + links), socialLinks[] (platform, url, isVisible, iconId), copyrightText (`{year}` placeholder), companyDescription, logoDark/Light |
 
-#### Rich Text Page Editor
+### Rich Text Page Editor
 
 `RichTextPageEditor` — Shared for privacy, security, terms pages. Uses TipTapEditor for content editing.
 
-#### Block Sub-editors
+**Fields:** title, content (TipTap JSON), lastUpdatedLabel, isPublished
+
+### Block Sub-editors
 
 For documentation sections, blocks have type-specific editors in `blocks/`:
 
 | Editor | Block Type | Fields |
 |--------|-----------|--------|
-| `SectionBlockEditor` | `"section"` | title, description, paragraphs, list, richContent (TipTap) |
-| `InfoCardBlockEditor` | `"infoCard"` | title, description, items[] |
-| `CtaCardsBlockEditor` | `"ctaCards"` | items[] with title, description, targetSection, ctaText, icon |
+| `SectionBlockEditor` | `"section"` | title, description, paragraphs, list, richContent (TipTap), image |
+| `InfoCardBlockEditor` | `"infoCard"` | title, items[] (list of strings) |
+| `CtaCardsBlockEditor` | `"ctaCards"` | items[] (title, description, targetSection, ctaText, icon) |
+
+---
+
+## Pricing CMS & DB-Driven Pricing
+
+### Architecture
+
+All pricing flows from the `pricingPlans` Convex table. No frontend or payment endpoint uses hardcoded price values directly.
+
+```
+                  ┌─────────────────────────┐
+                  │   pricingPlans (Convex)  │  ← Single source of truth
+                  │  gratis | bpp | pro      │
+                  └────────┬────────────────┘
+                           │
+              ┌────────────┼────────────────────────┐
+              │            │                        │
+     ┌────────▼──────┐  ┌─▼──────────────┐  ┌──────▼───────────┐
+     │  Marketing    │  │  Dashboard     │  │  Payment APIs   │
+     │  (frontend)   │  │  (checkout)    │  │  (server-side)  │
+     └───────────────┘  └────────────────┘  └─────────────────┘
+     PricingTeaser       checkout/bpp        api/payments/topup
+     PricingPage         checkout/pro        api/payments/subscribe
+     Plans Hub           subscription/*      Xendit webhook
+```
+
+### Pricing Data Flow
+
+| Consumer | Query Used | Fallback |
+|----------|-----------|----------|
+| Home page pricing teaser | `pricingPlans.getActivePlans()` | — (no static fallback, shows skeleton) |
+| `/pricing` page | `pricingPlans.getActivePlans()` | — |
+| `/subscription/plans` | `pricingPlans.getActivePlans()` | — |
+| `/subscription/overview` | `pricingPlans.getPlanBySlug()` | — |
+| `/checkout/bpp` | `billing.pricingHelpers.getBppCreditPackage()` | Constants in `billing/constants.ts` |
+| `/checkout/pro` | `billing.pricingHelpers.getProPricing()` | Constants: `{ priceIDR: 200_000, label: "Pro Bulanan" }` |
+| `api/payments/subscribe` | `billing.pricingHelpers.getProPricing()` | Constants fallback |
+| `api/payments/topup` | `billing.pricingHelpers.getBppCreditPackage()` | Constants fallback |
+| Xendit webhook (email label) | `billing.pricingHelpers.getProPricing()` | `"Pro Bulanan"` |
+| Subscription mutations | `resolveSubscriptionPricing()` (internal) | `SUBSCRIPTION_PRICING` constants |
+
+### `isDisabled` Guard
+
+When `isDisabled === true` for a plan:
+
+| Area | Behavior |
+|------|----------|
+| Marketing pages | Price masked (`"Rp80rb"` → `"Rp00rb"`), CTA replaced with "SEGERA HADIR" badge |
+| Checkout page | `useEffect` redirects to `/subscription/overview` |
+| Payment API | Returns HTTP 403 `"Paket ... sedang tidak tersedia"` |
+| Subscription overview | Plan hidden from upgrade cards |
+| Plans hub | Price masked, checkout CTA hidden, "SEGERA HADIR" badge shown |
+
+**Price masking:** `price.replace(/\d/g, "0")` — purely frontend cosmetic.
+
+### Gratis Lockdown
+
+The Gratis plan has special protections:
+- `price` and `priceValue` are read-only in CMS editor
+- `updatePricingPlan` mutation skips `price`/`priceValue` updates for Gratis slug
+- `isDisabled` is always `false` (Gratis tier cannot be disabled)
+
+### Constants as Fallback Only
+
+`convex/billing/constants.ts` still contains `SUBSCRIPTION_PRICING`, `CREDIT_PACKAGES`, etc. These are **never used directly** by frontend or API routes. They serve only as fallback values inside:
+
+- `convex/billing/pricingHelpers.ts` — `getBppCreditPackage()`, `getProPricing()` query functions
+- `convex/billing/subscriptions.ts` — `resolveSubscriptionPricing()` internal helper
+
+If the DB query returns data, constants are ignored.
 
 ---
 
@@ -449,7 +680,7 @@ Reusable component for all CMS image uploads.
 | `onUpload` | `(storageId) => void` | Callback when upload completes |
 | `userId` | `Id<"users">` | Admin user ID |
 | `label` | `string` | Display label above upload area |
-| `aspectRatio` | `string?` | CSS aspect-ratio (e.g., `"16/9"`, `"4/1"`) |
+| `aspectRatio` | `string?` | CSS aspect-ratio (e.g., `"16/9"`, `"4/1"`, `"1/1"`) |
 | `fallbackPreviewUrl` | `string?` | Static image URL shown when no CMS image uploaded |
 | `generateUploadUrlFn` | `ConvexMutation?` | Custom upload URL mutation (default: `api.pageContent.generateUploadUrl`) |
 | `getImageUrlFn` | `ConvexQuery?` | Custom image URL query (default: `api.pageContent.getImageUrl`) |
@@ -481,6 +712,7 @@ Reusable component for all CMS image uploads.
 | Feature sections | `primaryImageId` | `secondaryImageId` |
 | Hero heading SVG | `headingImageLightId` | `headingImageDarkId` |
 | Hero mockup | `primaryImageId` | — |
+| Manifesto terminal | `primaryImageId` (via items) | `secondaryImageId` (via items) |
 | Header/Footer logo | `logoLightId` | `logoDarkId` |
 | Header/Footer brand text | `brandTextLightId` | `brandTextDarkId` |
 | Social link icon | — (per social link `iconId`) | — |
@@ -505,6 +737,27 @@ Feature sections render two `<img>` tags with CSS class switching:
 | Hero Heading (dark theme) | `/heading-light-color.svg` | — |
 | Hero Heading (light theme) | `/heading-dark-color.svg` | — |
 | Blog Cover | Dynamic SVG via `createPlaceholderImageDataUri()` | — |
+
+### Image Upload Endpoints Per CMS Area
+
+Different CMS areas use different Convex endpoints for image storage:
+
+```tsx
+// Blog images
+<CmsImageUpload
+  generateUploadUrlFn={api.blog.generateBlogUploadUrl}
+  getImageUrlFn={api.blog.getBlogImageUrl}
+/>
+
+// Documentation images
+<CmsImageUpload
+  generateUploadUrlFn={api.documentationSections.generateDocUploadUrl}
+  getImageUrlFn={api.documentationSections.getDocImageUrl}
+/>
+
+// Default (pageContent images) — no custom props needed
+<CmsImageUpload ... />
+```
 
 ---
 
@@ -567,6 +820,7 @@ Located in `convex/migrations/`. Run via `npx convex run migrations:<name>`.
 | `seedSiteConfig.ts` | Header nav + footer sections/links | Yes (per key) |
 | `seedPolicyContent.ts` | Additional policy content | Yes |
 | `seedDocumentationSections.ts` | Documentation sections with blocks | Yes |
+| `seedPricingPlans.ts` | Pricing tiers (gratis, bpp, pro) with credit packages | Yes (checks by slug) |
 
 **Note:** Blog posts are seeded via `blog.ts` functions (`seedBlogPosts`), not a separate migration file.
 
@@ -576,6 +830,17 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 
 ## File Reference Map
 
+### CMS Shell (Layout)
+
+| File | Responsibility |
+|------|---------------|
+| `src/app/cms/page.tsx` | CMS route entry point (admin gate + renders CmsShell) |
+| `src/app/cms/layout.tsx` | Fullscreen `h-dvh` wrapper |
+| `src/components/cms/CmsShell.tsx` | 4-column grid orchestrator, all state, `renderEditor()` routing |
+| `src/components/cms/CmsActivityBar.tsx` | Vertical icon nav, defines `CmsPageId` type |
+| `src/components/cms/CmsSidebar.tsx` | Dynamic sidebar, defines `CmsSectionId` + sub-page types |
+| `src/components/cms/CmsTopBar.tsx` | Top bar (expand toggle, theme, dashboard link, user) |
+
 ### Backend (Convex)
 
 | File | Responsibility |
@@ -584,16 +849,18 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `convex/pageContent.ts` | Structured section CRUD + image URL resolution |
 | `convex/richTextPages.ts` | Rich text page CRUD |
 | `convex/siteConfig.ts` | Header/footer config CRUD |
+| `convex/pricingPlans.ts` | Pricing plan CRUD + credit packages |
+| `convex/billing/pricingHelpers.ts` | DB pricing queries with constant fallback (getBppCreditPackage, getProPricing, isPlanDisabled) |
+| `convex/billing/subscriptions.ts` | Subscription mutations using `resolveSubscriptionPricing()` from DB |
 | `convex/blog.ts` | Blog post CRUD + cover image handling |
 | `convex/documentationSections.ts` | Documentation CRUD + searchText generation |
 | `convex/permissions.ts` | `requireRole()` admin check |
 | `convex/migrations/seed*.ts` | Seed data scripts |
 
-### Admin Panel
+### Admin Panel (Editors)
 
 | File | Responsibility |
 |------|---------------|
-| `src/components/admin/ContentManager.tsx` | Navigation sidebar + editor router |
 | `src/components/admin/cms/HeroSectionEditor.tsx` | Hero section form |
 | `src/components/admin/cms/BenefitsSectionEditor.tsx` | Benefits items form |
 | `src/components/admin/cms/FeatureShowcaseEditor.tsx` | Workflow/Refrasa features form (reusable) |
@@ -601,6 +868,7 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `src/components/admin/cms/ProblemsSectionEditor.tsx` | Problems section form |
 | `src/components/admin/cms/AgentsSectionEditor.tsx` | Agents section form |
 | `src/components/admin/cms/CareerContactEditor.tsx` | Career & contact section form |
+| `src/components/admin/cms/PricingPlanEditor.tsx` | Pricing tier editor (gratis/bpp/pro) |
 | `src/components/admin/cms/RichTextPageEditor.tsx` | TipTap page editor (privacy/security/terms) |
 | `src/components/admin/cms/HeaderConfigEditor.tsx` | Header nav + logos form |
 | `src/components/admin/cms/FooterConfigEditor.tsx` | Footer sections + social + logos form |
@@ -630,9 +898,24 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `src/components/marketing/features/RefrasaFeatureSection.tsx` | Refrasa wrapper |
 | `src/components/marketing/features/RefrasaFeatureCMS.tsx` | Refrasa CMS renderer |
 | `src/components/marketing/features/RefrasaFeatureStatic.tsx` | Refrasa static fallback |
+| `src/components/about/ManifestoSection.tsx` | Manifesto wrapper |
+| `src/components/about/ManifestoSectionStatic.tsx` | Manifesto static fallback |
+| `src/components/about/ManifestoSectionCMS.tsx` | Manifesto CMS renderer |
+| `src/components/about/ProblemsSection.tsx` | Problems wrapper |
+| `src/components/about/ProblemsSectionStatic.tsx` | Problems static fallback |
+| `src/components/about/ProblemsSectionCMS.tsx` | Problems CMS renderer |
+| `src/components/about/AgentsSection.tsx` | Agents wrapper |
+| `src/components/about/AgentsSectionStatic.tsx` | Agents static fallback |
+| `src/components/about/AgentsSectionCMS.tsx` | Agents CMS renderer |
+| `src/components/about/CareerContactSection.tsx` | Career-Contact wrapper |
+| `src/components/about/CareerContactSectionStatic.tsx` | Career-Contact static fallback |
+| `src/components/about/CareerContactSectionCMS.tsx` | Career-Contact CMS renderer |
 | `src/components/marketing/CmsPageWrapper.tsx` | Rich text page wrapper |
 | `src/components/marketing/RichTextRenderer.tsx` | TipTap read-only renderer |
 | `src/components/marketing/SimplePolicyPage.tsx` | Static policy page layout |
+| `src/components/marketing/pricing-teaser/PricingTeaser.tsx` | Home page pricing teaser (reads from DB) |
+| `src/components/marketing/pricing-teaser/TeaserCard.tsx` | Individual teaser card (with price masking) |
+| `src/components/marketing/pricing/PricingCard.tsx` | Full pricing page card (with price masking) |
 | `src/components/layout/header/GlobalHeader.tsx` | Header with inline CMS fallback |
 | `src/components/layout/footer/Footer.tsx` | Footer with inline CMS fallback |
 
@@ -642,18 +925,25 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 |------|---------------|
 | `src/components/marketing/blog/utils.ts` | `normalizeCategory()`, `createPlaceholderImageDataUri()` |
 | `src/components/marketing/blog/types.ts` | `CanonicalCategory`, `TimeRangeFilter` types |
+| `src/components/marketing/pricing-teaser/types.ts` | `TeaserPlan` type (includes `isDisabled`) |
 
-### Page Routes (consumers)
+### Page Routes (Consumers)
 
 | File | CMS Pattern Used |
 |------|-----------------|
-| `src/app/(marketing)/page.tsx` | Wrapper (HeroSection, BenefitsSectionWrapper, WorkflowFeatureSection, RefrasaFeatureSection) |
+| `src/app/(marketing)/page.tsx` | Wrapper (HeroSection, BenefitsSectionWrapper, WorkflowFeatureSection, RefrasaFeatureSection, PricingTeaser) |
+| `src/app/(marketing)/about/page.tsx` | Wrapper (ManifestoSection, ProblemsSection, AgentsSection, CareerContactSection) |
+| `src/app/(marketing)/pricing/page.tsx` | Inline (`pricingPlans.getActivePlans`) |
 | `src/app/(marketing)/privacy/page.tsx` | CmsPageWrapper |
 | `src/app/(marketing)/security/page.tsx` | CmsPageWrapper |
 | `src/app/(marketing)/terms/page.tsx` | CmsPageWrapper |
 | `src/app/(marketing)/blog/page.tsx` | Direct query (getPublishedPosts) |
 | `src/app/(marketing)/blog/[slug]/page.tsx` | Direct query (getPostBySlug) |
 | `src/app/(marketing)/documentation/page.tsx` | Direct query (getPublishedSections) |
+| `src/app/(dashboard)/subscription/plans/page.tsx` | Inline (getActivePlans + price masking) |
+| `src/app/(dashboard)/subscription/overview/page.tsx` | Inline (getPlanBySlug for upgrade cards) |
+| `src/app/(onboarding)/checkout/bpp/page.tsx` | Inline (getBppCreditPackage + disabled guard) |
+| `src/app/(onboarding)/checkout/pro/page.tsx` | Inline (getProPricing + disabled guard) |
 
 ---
 
@@ -671,18 +961,19 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 
 3. **Admin Editor** (`src/components/admin/cms/`):
    - Create `NewSectionEditor.tsx` with form fields
-   - Register in `ContentManager.tsx`:
-     - Add to `SectionId` type
-     - Add to appropriate page's `sections[]` in `PAGES_NAV`
-     - Add routing condition in the right panel
 
-4. **Frontend Rendering** (`src/components/marketing/`):
+4. **CMS Shell** (register in 3 files):
+   - `CmsActivityBar.tsx` — Add page to `CmsPageId` type + icon in `contentPageItems` (if new page)
+   - `CmsSidebar.tsx` — Add section to `CmsSectionId` type + section data array + `case` in `renderContent()`
+   - `CmsShell.tsx` — Import editor + add routing in `renderEditor()` + add empty state
+
+5. **Frontend Rendering** (`src/components/marketing/`):
    - Create `NewSectionStatic.tsx` (hardcoded fallback)
    - Create `NewSectionCMS.tsx` (renders from DB)
    - Create `NewSection.tsx` (wrapper with useQuery + fallback logic)
    - Import wrapper in page route
 
-5. **Seed Data** (`convex/migrations/`):
+6. **Seed Data** (`convex/migrations/`):
    - Add seed function for initial content (isPublished: false)
 
 ### Adding a new rich text page (CmsPageWrapper)
@@ -704,28 +995,36 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
    }
    ```
 
-2. Register slug in `ContentManager.tsx`:
-   - Add to `PageId` type
-   - Add to `PAGES_NAV.pages`
-   - Add routing: `selectedPage === "new-page" && selectedSection === null ? <RichTextPageEditor slug="new-page" ... />`
+2. Register in CMS Shell:
+   - `CmsSidebar.tsx` — Add to `LegalPageId` type (or create new type) + data array
+   - `CmsShell.tsx` — Add routing: `activePage === "legal" && activeLegalPage === "new-page" ? <RichTextPageEditor slug="new-page" ... />`
 
 3. Add to `SLUG_TITLES` in `RichTextPageEditor.tsx`
+
+### Adding a new pricing tier
+
+1. **Seed** — Add new plan to `seedPricingPlans.ts`
+2. **CMS Sidebar** — Add new section ID to `CmsSectionId` + `PRICING_SECTIONS` array in `CmsSidebar.tsx`
+3. **CMS Shell** — Add routing in `renderEditor()` in `CmsShell.tsx`
+4. **Frontend** — Plan automatically appears in `getActivePlans()` queries (PricingTeaser, PricingPage, etc.)
 
 ### Adding a new blog category
 
 1. Update `CATEGORY_OPTIONS` in `BlogPostEditor.tsx`
-2. Update `BLOG_CATEGORY_MAP` in `ContentManager.tsx`
-3. Add new section entry in `PAGES_NAV` blog sections
-4. Update `CATEGORY_COLORS` in `BlogPostListEditor.tsx`
-5. Update `PLACEHOLDER_PALETTE` in `blog/utils.ts` (for cover image placeholder)
-6. Update `normalizeCategory()` if legacy names need mapping
+2. Add new `BlogCategoryId` value in `CmsSidebar.tsx`
+3. Add to `BLOG_CATEGORIES` array in `CmsSidebar.tsx`
+4. Add group map entry in `CmsShell.tsx` `renderEditor()` → `categoryMap`
+5. Update `CATEGORY_COLORS` in `BlogPostListEditor.tsx`
+6. Update `PLACEHOLDER_PALETTE` in `blog/utils.ts` (for cover image placeholder)
+7. Update `normalizeCategory()` if legacy names need mapping
 
 ### Adding a new documentation group
 
 1. Update `GROUP_OPTIONS` in `DocSectionEditor.tsx`
-2. Update `DOC_SECTION_GROUP_MAP` in `ContentManager.tsx`
-3. Add new section entry in `PAGES_NAV` documentation sections
-4. Update `GROUP_ORDER` in `DocSectionListEditor.tsx`
+2. Add new `DocGroupId` value in `CmsSidebar.tsx`
+3. Add to `DOC_GROUPS` array in `CmsSidebar.tsx`
+4. Add group map entry in `CmsShell.tsx` `renderEditor()` → `groupMap`
+5. Update `GROUP_ORDER` in `DocSectionListEditor.tsx`
 
 ---
 
@@ -741,6 +1040,7 @@ All editors follow the same lifecycle:
 3. useEffect() to populate state from query result
 4. handleSave() → useMutation(api.xxx.upsert)
 5. Loading skeleton while query === undefined
+6. "Tersimpan!" feedback after successful save (auto-resets after 2s)
 ```
 
 ### Published Status Dot
@@ -776,7 +1076,7 @@ Every mutation checks admin role:
 const user = await requireRole(ctx.db, args.requestorId, "admin")
 ```
 
-The `requireRole` function is in `convex/permissions.ts`. It checks the user's `role` field in the `users` table.
+The `requireRole` function is in `convex/permissions.ts`. It checks the user's `role` field in the `users` table. Accepts both `"admin"` and `"superadmin"`.
 
 ### Category Normalization (Blog)
 
@@ -811,25 +1111,15 @@ Detail editors (DocSectionEditor, BlogPostEditor) use consistent back button lay
 </div>
 ```
 
-### Image Upload Context
+### Price Masking (Pricing)
 
-Different CMS areas use different Convex endpoints for image storage. Pass custom functions via props:
+When a plan has `isDisabled: true` (or waitlist mode is active), prices are masked:
 
-```tsx
-// Blog images
-<CmsImageUpload
-  generateUploadUrlFn={api.blog.generateBlogUploadUrl}
-  getImageUrlFn={api.blog.getBlogImageUrl}
-  ...
-/>
-
-// Documentation images
-<CmsImageUpload
-  generateUploadUrlFn={api.documentationSections.generateDocUploadUrl}
-  getImageUrlFn={api.documentationSections.getDocImageUrl}
-  ...
-/>
-
-// Default (pageContent images) — no custom props needed
-<CmsImageUpload ... />
+```typescript
+function maskPrice(price: string): string {
+  return price.replace(/\d/g, "0")
+}
+// "Rp80rb" → "Rp00rb"
 ```
+
+Used in `TeaserCard.tsx`, `PricingCard.tsx`, and `plans/page.tsx`.
