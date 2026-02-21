@@ -218,7 +218,7 @@ export function ContentManager({ userId }: ContentManagerProps) {
         </div>
 
         {/* Right panel: editor area */}
-        <div className="flex flex-1 items-center justify-center p-comfort">
+        <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden p-comfort">
           {selectedPage === "home" && selectedSection === "hero" ? (
             <HeroSectionEditor userId={userId} />
           ) : selectedPage === "home" && selectedSection === "benefits" ? (
