@@ -50,6 +50,7 @@ import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultA
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
 import type * as migrations_seedDocumentationSections from "../migrations/seedDocumentationSections.js";
 import type * as migrations_seedHomeContent from "../migrations/seedHomeContent.js";
+import type * as migrations_seedPolicyContent from "../migrations/seedPolicyContent.js";
 import type * as migrations_seedPricingPlans from "../migrations/seedPricingPlans.js";
 import type * as migrations_seedRichTextPages from "../migrations/seedRichTextPages.js";
 import type * as migrations_seedSiteConfig from "../migrations/seedSiteConfig.js";
@@ -137,6 +138,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
   "migrations/seedDocumentationSections": typeof migrations_seedDocumentationSections;
   "migrations/seedHomeContent": typeof migrations_seedHomeContent;
+  "migrations/seedPolicyContent": typeof migrations_seedPolicyContent;
   "migrations/seedPricingPlans": typeof migrations_seedPricingPlans;
   "migrations/seedRichTextPages": typeof migrations_seedRichTextPages;
   "migrations/seedSiteConfig": typeof migrations_seedSiteConfig;
