@@ -8,7 +8,7 @@ interface ManifestoTerminalPanelProps {
 
 export function ManifestoTerminalPanel({ paragraphs }: ManifestoTerminalPanelProps) {
   return (
-    <div className="relative w-full max-w-[720px] overflow-hidden rounded-md border-[2px] border-stone-500 bg-stone-800 shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.3)] dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.2)]">
+    <div className="relative w-full max-w-[720px] overflow-hidden rounded-md bg-transparent shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.3)] dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.2)]">
       <div className="pointer-events-none absolute inset-0 z-0">
         <Image
           src="/images/manifesto-terminal-light.png"
@@ -29,20 +29,13 @@ export function ManifestoTerminalPanel({ paragraphs }: ManifestoTerminalPanelPro
       </div>
 
       <div className="relative z-[1]">
-        {/* Terminal Header */}
-        <div className="flex items-center gap-4 border-b-[0.5px] border-stone-700 bg-stone-600 p-3">
-          <div className="flex gap-1.5 px-1">
-            <span className="h-2 w-2 rounded-full bg-rose-500" />
-            <span className="h-2 w-2 rounded-full bg-amber-500" />
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          </div>
-          <div className="rounded-none border-[0.5px] border-stone-600 bg-stone-800 px-3 py-1 font-mono text-[9px] font-medium tracking-widest text-stone-100">
+        <div className="px-3 py-3">
+          <p className="ml-16 px-3 py-1 font-mono text-[9px] font-medium tracking-widest text-stone-100">
             makalah.ai/about#manifesto
-          </div>
+          </p>
         </div>
 
-        {/* Terminal Body */}
-        <div className="p-6">
+        <div className="p-6 pt-[25px]">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-amber-500">
             MANIFESTO_STREAM
           </p>
@@ -61,15 +54,13 @@ export function ManifestoTerminalPanel({ paragraphs }: ManifestoTerminalPanelPro
                       {paragraph}
                     </p>
                   </div>
-                  {!isLast && (
-                    <div className="absolute right-0 bottom-0 left-0 border-b-[0.5px] border-dashed border-stone-700/30" />
-                  )}
+                  {!isLast && <div className="h-[1px]" />}
                 </div>
               )
             })}
           </div>
 
-          <div className="mt-3 border-t-[0.5px] border-stone-700/50 pt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-stone-400">
+          <div className="mt-3 pt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-stone-400">
             MODE: GUIDED_COLLABORATION · SOURCE: HUMAN+AI
           </div>
         </div>
