@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { useTheme } from "next-themes"
 import {
   Menu,
@@ -24,6 +23,7 @@ import {
 } from "@/components/ui/accordion"
 import { useConvexAuth, useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
 import { Skeleton } from "@/components/ui/skeleton"
 import { signOut, useSession } from "@/lib/auth-client"
 import { usePathname } from "next/navigation"
@@ -76,6 +76,29 @@ export function GlobalHeader() {
   const shouldHideHeader = pathname?.startsWith("/chat")
   const { isWaitlistMode } = useWaitlistMode()
   const headerConfig = useQuery(api.siteConfig.getConfig, { key: "header" })
+
+  // CMS logo/brand image URLs (resolve storage IDs, fallback to static)
+  const cmsLogoDarkUrl = useQuery(
+    api.pageContent.getImageUrl,
+    headerConfig?.logoDarkId ? { storageId: headerConfig.logoDarkId as Id<"_storage"> } : "skip"
+  )
+  const cmsLogoLightUrl = useQuery(
+    api.pageContent.getImageUrl,
+    headerConfig?.logoLightId ? { storageId: headerConfig.logoLightId as Id<"_storage"> } : "skip"
+  )
+  const cmsBrandDarkUrl = useQuery(
+    api.pageContent.getImageUrl,
+    headerConfig?.brandTextDarkId ? { storageId: headerConfig.brandTextDarkId as Id<"_storage"> } : "skip"
+  )
+  const cmsBrandLightUrl = useQuery(
+    api.pageContent.getImageUrl,
+    headerConfig?.brandTextLightId ? { storageId: headerConfig.brandTextLightId as Id<"_storage"> } : "skip"
+  )
+
+  const logoIconDark = cmsLogoDarkUrl ?? "/logo/logo-color-darkmode.png"
+  const logoIconLight = cmsLogoLightUrl ?? "/logo/logo-color-lightmode.png"
+  const brandTextDark = cmsBrandDarkUrl ?? "/logo-makalah-ai-white.svg"
+  const brandTextLight = cmsBrandLightUrl ?? "/logo-makalah-ai-black.svg"
 
   // CMS-driven nav links with hardcoded fallback
   const baseNavLinks = headerConfig?.navLinks
@@ -217,38 +240,14 @@ export function GlobalHeader() {
         {/* Header Left - Logo & Brand */}
         <div className="col-span-8 md:col-span-4 flex items-center gap-dense flex-nowrap">
           <Link href="/" className="flex items-center gap-3 shrink-0">
-            {/* Dark mode logo icon */}
-            <Image
-              src="/logo/logo-color-darkmode.png"
-              alt="Makalah"
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-[4px] hidden dark:block"
-            />
-            {/* Light mode logo icon */}
-            <Image
-              src="/logo/logo-color-lightmode.png"
-              alt="Makalah"
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-[4px] block dark:hidden"
-            />
-            {/* White brand text (for dark mode) */}
-            <Image
-              src="/logo-makalah-ai-white.svg"
-              alt="Makalah"
-              width={80}
-              height={18}
-              className="h-[18px] w-auto hidden dark:block"
-            />
-            {/* Black brand text (for light mode) */}
-            <Image
-              src="/logo-makalah-ai-black.svg"
-              alt="Makalah"
-              width={80}
-              height={18}
-              className="h-[18px] w-auto block dark:hidden"
-            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoIconDark} alt="Makalah" className="h-6 w-6 rounded-[4px] hidden dark:block" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoIconLight} alt="Makalah" className="h-6 w-6 rounded-[4px] block dark:hidden" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={brandTextDark} alt="Makalah" className="h-[18px] w-auto hidden dark:block" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={brandTextLight} alt="Makalah" className="h-[18px] w-auto block dark:hidden" />
           </Link>
           {/* Subscription Badge - shows when logged in */}
           {showAuthSkeleton ? (

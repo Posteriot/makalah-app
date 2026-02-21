@@ -23,6 +23,7 @@ import {
   Undo,
   Redo,
 } from "iconoir-react"
+import { createPlaceholderImageDataUri } from "@/components/marketing/blog/utils"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -99,6 +100,78 @@ function ToolbarSeparator() {
 }
 
 // ---------------------------------------------------------------------------
+// Blocks → TipTap conversion
+// ---------------------------------------------------------------------------
+
+type BlockData = {
+  type: string
+  title?: string
+  description?: string
+  paragraphs?: string[]
+  items?: string[]
+  list?: { variant: string; items: Array<{ text: string; subItems?: string[] }> }
+}
+
+/**
+ * Convert legacy `blocks` array to TipTap JSON so existing content
+ * appears in the WYSIWYG editor when `content` field is empty.
+ */
+function blocksToTipTapJson(blocks: BlockData[]): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nodes: any[] = []
+
+  for (const block of blocks) {
+    if (block.title) {
+      nodes.push({
+        type: "heading",
+        attrs: { level: 2 },
+        content: [{ type: "text", text: block.title }],
+      })
+    }
+    if (block.description) {
+      nodes.push({
+        type: "paragraph",
+        content: [{ type: "text", text: block.description }],
+      })
+    }
+    if (block.paragraphs) {
+      for (const p of block.paragraphs) {
+        nodes.push({
+          type: "paragraph",
+          content: [{ type: "text", text: p }],
+        })
+      }
+    }
+    if (block.items) {
+      for (const item of block.items) {
+        nodes.push({
+          type: "paragraph",
+          content: [{ type: "text", text: item }],
+        })
+      }
+    }
+    if (block.list) {
+      const listType = block.list.variant === "numbered" ? "orderedList" : "bulletList"
+      nodes.push({
+        type: listType,
+        content: block.list.items.map((li) => ({
+          type: "listItem",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: li.text }],
+            },
+          ],
+        })),
+      })
+    }
+  }
+
+  if (nodes.length === 0) return ""
+  return JSON.stringify({ type: "doc", content: nodes })
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -157,7 +230,13 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
       setFeatured(existingPost.featured ?? false)
       setIsPublished(existingPost.isPublished)
       setCoverImageId(existingPost.coverImageId ?? null)
-      setBodyContent(existingPost.content ?? "")
+      if (existingPost.content) {
+        setBodyContent(existingPost.content)
+      } else if (existingPost.blocks && (existingPost.blocks as BlockData[]).length > 0) {
+        setBodyContent(blocksToTipTapJson(existingPost.blocks as BlockData[]))
+      } else {
+        setBodyContent("")
+      }
       setSlugManuallyEdited(true)
     }
   }, [existingPost])
@@ -175,10 +254,12 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
     setSlugManuallyEdited(true)
   }
 
-  // TipTap editor
+  // TipTap editor — prefer `content` (TipTap JSON), fallback to `blocks` conversion
   const initialContent = existingPost?.content
     ? existingPost.content
-    : undefined
+    : existingPost?.blocks && existingPost.blocks.length > 0
+      ? blocksToTipTapJson(existingPost.blocks as BlockData[])
+      : undefined
 
   const editor = useEditor(
     {
@@ -283,22 +364,23 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
 
   return (
     <div className="w-full max-w-3xl space-y-6 p-comfort">
-      {/* Header bar */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-1 text-interface text-xs text-muted-foreground hover:text-foreground"
-        >
-          <NavArrowLeft width={16} height={16} strokeWidth={1.5} />
-          Kembali
-        </button>
+      {/* Back button */}
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center gap-1 text-interface text-xs text-muted-foreground hover:text-foreground"
+      >
+        <NavArrowLeft width={16} height={16} strokeWidth={1.5} />
+        Kembali ke Daftar
+      </button>
+
+      {/* Section header */}
+      <div>
         <h3 className="text-narrative text-lg font-medium tracking-tight text-foreground">
           {isCreateMode ? "Post Baru" : "Edit Post"}
         </h3>
+        <div className="mt-2 border-t border-border" />
       </div>
-
-      <div className="border-t border-border" />
 
       {/* Metadata section - two column grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -432,6 +514,12 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
         aspectRatio="16/9"
         generateUploadUrlFn={api.blog.generateBlogUploadUrl}
         getImageUrlFn={api.blog.getBlogImageUrl}
+        fallbackPreviewUrl={createPlaceholderImageDataUri({
+          title: title || "Blog Post",
+          category,
+          width: 1200,
+          height: 675,
+        })}
       />
 
       {/* Divider */}

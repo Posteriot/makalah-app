@@ -21,6 +21,8 @@ import { BlogPostEditor } from "./cms/BlogPostEditor"
 type PageId = "home" | "about" | "privacy" | "security" | "terms" | "header" | "footer" | "documentation" | "blog"
 type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
   | "manifesto" | "problems" | "agents" | "career-contact"
+  | "doc-mulai" | "doc-fitur-utama" | "doc-subskripsi" | "doc-panduan-lanjutan"
+  | "blog-update" | "blog-tutorial" | "blog-opini" | "blog-event"
 
 type NavSection = {
   id: SectionId
@@ -55,8 +57,26 @@ const PAGES_NAV: { pages: NavPage[]; global: NavPage[] } = {
         { id: "career-contact", label: "Karier & Kontak" },
       ],
     },
-    { id: "documentation", label: "Dokumentasi" },
-    { id: "blog", label: "Blog" },
+    {
+      id: "documentation",
+      label: "Dokumentasi",
+      sections: [
+        { id: "doc-mulai", label: "Mulai" },
+        { id: "doc-fitur-utama", label: "Fitur Utama" },
+        { id: "doc-subskripsi", label: "Subskripsi" },
+        { id: "doc-panduan-lanjutan", label: "Panduan Lanjutan" },
+      ],
+    },
+    {
+      id: "blog",
+      label: "Blog",
+      sections: [
+        { id: "blog-update", label: "Update" },
+        { id: "blog-tutorial", label: "Tutorial" },
+        { id: "blog-opini", label: "Opini" },
+        { id: "blog-event", label: "Event" },
+      ],
+    },
     { id: "privacy", label: "Privacy" },
     { id: "security", label: "Security" },
     { id: "terms", label: "Terms" },
@@ -65,6 +85,20 @@ const PAGES_NAV: { pages: NavPage[]; global: NavPage[] } = {
     { id: "header", label: "Header" },
     { id: "footer", label: "Footer" },
   ],
+}
+
+const DOC_SECTION_GROUP_MAP: Record<string, string> = {
+  "doc-mulai": "Mulai",
+  "doc-fitur-utama": "Fitur Utama",
+  "doc-subskripsi": "Subskripsi",
+  "doc-panduan-lanjutan": "Panduan Lanjutan",
+}
+
+const BLOG_CATEGORY_MAP: Record<string, string> = {
+  "blog-update": "Update",
+  "blog-tutorial": "Tutorial",
+  "blog-opini": "Opini",
+  "blog-event": "Event",
 }
 
 type ContentManagerProps = {
@@ -245,9 +279,10 @@ export function ContentManager({ userId }: ContentManagerProps) {
             <RichTextPageEditor slug="security" userId={userId} />
           ) : selectedPage === "terms" && selectedSection === null ? (
             <RichTextPageEditor slug="terms" userId={userId} />
-          ) : selectedPage === "documentation" && selectedDocSlug === null ? (
+          ) : selectedPage === "documentation" && selectedSection && selectedDocSlug === null ? (
             <DocSectionListEditor
               userId={userId}
+              group={DOC_SECTION_GROUP_MAP[selectedSection]}
               onSelectSection={(slug) => setSelectedDocSlug(slug)}
               onCreateNew={() => setSelectedDocSlug("__new__")}
             />
@@ -257,9 +292,10 @@ export function ContentManager({ userId }: ContentManagerProps) {
               userId={userId}
               onBack={() => setSelectedDocSlug(null)}
             />
-          ) : selectedPage === "blog" && selectedBlogSlug === null ? (
+          ) : selectedPage === "blog" && selectedSection && selectedBlogSlug === null ? (
             <BlogPostListEditor
               userId={userId}
+              category={BLOG_CATEGORY_MAP[selectedSection]}
               onSelectPost={(slug) => setSelectedBlogSlug(slug)}
               onCreateNew={() => setSelectedBlogSlug("__new__")}
             />

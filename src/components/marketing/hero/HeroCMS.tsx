@@ -6,6 +6,7 @@ import type { Doc } from "@convex/_generated/dataModel"
 import { SectionBadge } from "@/components/ui/section-badge"
 import { SectionCTA } from "@/components/ui/section-cta"
 import { GridPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
+import { HeroHeadingSvg } from "./HeroHeadingSvg"
 import { HeroResearchMock } from "./HeroResearchMock"
 import { ChatInputHeroMock } from "./ChatInputHeroMock"
 
@@ -25,6 +26,17 @@ export function HeroCMS({ content }: HeroCMSProps) {
     content.primaryImageId ? { storageId: content.primaryImageId } : "skip"
   )
 
+  const headingDarkUrl = useQuery(
+    api.pageContent.getImageUrl,
+    content.headingImageDarkId ? { storageId: content.headingImageDarkId } : "skip"
+  )
+  const headingLightUrl = useQuery(
+    api.pageContent.getImageUrl,
+    content.headingImageLightId ? { storageId: content.headingImageLightId } : "skip"
+  )
+
+  const hasCmsHeading = headingDarkUrl || headingLightUrl
+
   return (
     <section className="relative isolate min-h-[100svh] overflow-hidden bg-background">
       <GridPattern className="z-0 opacity-80" />
@@ -40,9 +52,36 @@ export function HeroCMS({ content }: HeroCMSProps) {
               </SectionBadge>
             )}
 
-            {content.title && (
+            {hasCmsHeading ? (
+              <h1 className="text-[0px] mt-4 leading-[0] w-full">
+                <span className="sr-only">{content.title ?? "Makalah AI"}</span>
+                <span className="block w-full max-w-[520px] h-auto" aria-hidden="true">
+                  {headingDarkUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={headingDarkUrl}
+                      alt=""
+                      className="hidden dark:block w-full h-auto object-contain"
+                    />
+                  )}
+                  {headingLightUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={headingLightUrl}
+                      alt=""
+                      className="block dark:hidden w-full h-auto object-contain"
+                    />
+                  )}
+                </span>
+              </h1>
+            ) : content.title ? (
               <h1 className="text-narrative text-3xl md:text-5xl font-semibold tracking-tight mt-4 max-w-[520px]">
                 {content.title}
+              </h1>
+            ) : (
+              <h1 className="text-[0px] mt-4 leading-[0] w-full">
+                <span className="sr-only">Makalah AI</span>
+                <HeroHeadingSvg />
               </h1>
             )}
 

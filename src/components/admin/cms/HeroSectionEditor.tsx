@@ -32,6 +32,8 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
     null
   )
   const [primaryImageAlt, setPrimaryImageAlt] = useState("")
+  const [headingImageDarkId, setHeadingImageDarkId] = useState<Id<"_storage"> | null>(null)
+  const [headingImageLightId, setHeadingImageLightId] = useState<Id<"_storage"> | null>(null)
   const [isPublished, setIsPublished] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
@@ -47,6 +49,8 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
       setCtaHref(section.ctaHref ?? "")
       setPrimaryImageId(section.primaryImageId ?? null)
       setPrimaryImageAlt(section.primaryImageAlt ?? "")
+      setHeadingImageDarkId(section.headingImageDarkId ?? null)
+      setHeadingImageLightId(section.headingImageLightId ?? null)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
@@ -67,6 +71,8 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
         ctaHref,
         primaryImageId: primaryImageId ?? undefined,
         primaryImageAlt,
+        headingImageDarkId: headingImageDarkId ?? undefined,
+        headingImageLightId: headingImageLightId ?? undefined,
         isPublished,
         sortOrder: 1,
       })
@@ -170,6 +176,34 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
           </div>
         </div>
 
+        {/* Heading SVG */}
+        <div className="space-y-2">
+          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Heading SVG
+          </span>
+          <div className="grid grid-cols-2 gap-4">
+            <CmsImageUpload
+              currentImageId={headingImageDarkId}
+              onUpload={(storageId) => setHeadingImageDarkId(storageId)}
+              userId={userId}
+              label="Dark Mode"
+              aspectRatio="4/1"
+              fallbackPreviewUrl="/heading-light-color.svg"
+            />
+            <CmsImageUpload
+              currentImageId={headingImageLightId}
+              onUpload={(storageId) => setHeadingImageLightId(storageId)}
+              userId={userId}
+              label="Light Mode"
+              aspectRatio="4/1"
+              fallbackPreviewUrl="/heading-dark-color.svg"
+            />
+          </div>
+          <p className="text-interface text-xs text-muted-foreground">
+            Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang. Kosongkan untuk pakai default.
+          </p>
+        </div>
+
         {/* Hero Image */}
         <CmsImageUpload
           currentImageId={primaryImageId}
@@ -177,6 +211,7 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
           userId={userId}
           label="Hero Image"
           aspectRatio="16/9"
+          fallbackPreviewUrl="/images/hero-paper-session-mock.png"
         />
 
         {/* Image Alt Text */}

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
+import { CmsImageUpload } from "./CmsImageUpload"
 
 type FooterLink = {
   label: string
@@ -23,6 +24,7 @@ type SocialLink = {
   platform: string
   url: string
   isVisible: boolean
+  iconId?: Id<"_storage"> | null
 }
 
 type FooterConfigEditorProps = {
@@ -48,6 +50,9 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   const [footerSections, setFooterSections] = useState<FooterSection[]>(DEFAULT_SECTIONS)
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(DEFAULT_SOCIALS)
   const [copyrightText, setCopyrightText] = useState("")
+  const [companyDescription, setCompanyDescription] = useState("")
+  const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(null)
+  const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveLabel, setSaveLabel] = useState("Simpan")
 
@@ -61,10 +66,14 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
       setSocialLinks(socials.length > 0 ? socials : DEFAULT_SOCIALS)
 
       setCopyrightText((config.copyrightText as string | undefined) ?? "")
+      setCompanyDescription((config.companyDescription as string | undefined) ?? "")
+      setLogoDarkId((config.logoDarkId as Id<"_storage"> | undefined) ?? null)
+      setLogoLightId((config.logoLightId as Id<"_storage"> | undefined) ?? null)
     } else if (config === null) {
       setFooterSections(DEFAULT_SECTIONS)
       setSocialLinks(DEFAULT_SOCIALS)
       setCopyrightText("")
+      setCompanyDescription("")
     }
   }, [config])
 
@@ -136,6 +145,14 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
     )
   }
 
+  function updateSocialIcon(index: number, storageId: Id<"_storage">) {
+    setSocialLinks((prev) =>
+      prev.map((social, i) =>
+        i === index ? { ...social, iconId: storageId } : social
+      )
+    )
+  }
+
   function addSocial() {
     setSocialLinks((prev) => [...prev, { platform: "", url: "", isVisible: true }])
   }
@@ -163,8 +180,12 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
           platform: s.platform,
           url: s.url,
           isVisible: s.isVisible,
+          iconId: s.iconId ?? undefined,
         })),
         copyrightText,
+        companyDescription,
+        logoDarkId: logoDarkId ?? undefined,
+        logoLightId: logoLightId ?? undefined,
       })
       setSaveLabel("Tersimpan!")
       setTimeout(() => setSaveLabel("Simpan"), 2000)
@@ -196,6 +217,52 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
           Footer Configuration
         </h3>
         <div className="mt-2 border-t border-border" />
+      </div>
+
+      {/* Logo */}
+      <div className="space-y-4">
+        <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Logo Footer
+        </span>
+
+        <div className="grid grid-cols-2 gap-4">
+          <CmsImageUpload
+            currentImageId={logoDarkId}
+            onUpload={(storageId) => setLogoDarkId(storageId)}
+            userId={userId}
+            label="Logo (Dark Mode)"
+            aspectRatio="1/1"
+            fallbackPreviewUrl="/logo/makalah_logo_light.svg"
+          />
+          <CmsImageUpload
+            currentImageId={logoLightId}
+            onUpload={(storageId) => setLogoLightId(storageId)}
+            userId={userId}
+            label="Logo (Light Mode)"
+            aspectRatio="1/1"
+            fallbackPreviewUrl="/logo/makalah_logo_dark.svg"
+          />
+        </div>
+
+        <p className="text-interface text-xs text-muted-foreground">
+          Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang. Kosongkan untuk pakai default.
+        </p>
+      </div>
+
+      {/* Company Description */}
+      <div className="space-y-2">
+        <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Deskripsi Perusahaan
+        </span>
+
+        <Input
+          value={companyDescription}
+          onChange={(e) => setCompanyDescription(e.target.value)}
+          placeholder="Makalah AI adalah produk dari PT THE MANAGEMENT ASIA"
+        />
+        <p className="text-interface text-xs text-muted-foreground">
+          Teks yang muncul di atas copyright. Kosongkan untuk pakai default.
+        </p>
       </div>
 
       {/* Group 1: Footer Sections */}
@@ -312,37 +379,54 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
           {socialLinks.map((social, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 rounded-action border border-border p-3"
+              className="rounded-action border border-border p-4 space-y-3"
             >
-              <Input
-                value={social.platform}
-                onChange={(e) => updateSocial(index, "platform", e.target.value)}
-                placeholder="Platform"
-                className="w-24"
-              />
-              <Input
-                value={social.url}
-                onChange={(e) => updateSocial(index, "url", e.target.value)}
-                placeholder="https://..."
-                className="flex-1"
-              />
-              <div className="flex items-center gap-2">
-                <label className="text-interface text-xs font-medium text-muted-foreground">
-                  Visible
-                </label>
-                <Switch
-                  checked={social.isVisible}
-                  onCheckedChange={(checked) => updateSocial(index, "isVisible", checked)}
-                />
+              <div className="flex items-center justify-between">
+                <span className="text-signal text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Social {index + 1}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => removeSocial(index)}
+                >
+                  Hapus
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0 text-destructive hover:text-destructive"
-                onClick={() => removeSocial(index)}
-              >
-                Hapus
-              </Button>
+
+              <div className="flex gap-3">
+                <div className="w-16 shrink-0">
+                  <CmsImageUpload
+                    currentImageId={social.iconId ?? null}
+                    onUpload={(storageId) => updateSocialIcon(index, storageId)}
+                    userId={userId}
+                    label="Ikon"
+                    aspectRatio="1/1"
+                  />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={social.platform}
+                    onChange={(e) => updateSocial(index, "platform", e.target.value)}
+                    placeholder="Platform (x, linkedin, instagram)"
+                  />
+                  <Input
+                    value={social.url}
+                    onChange={(e) => updateSocial(index, "url", e.target.value)}
+                    placeholder="https://..."
+                  />
+                  <div className="flex items-center gap-3">
+                    <label className="text-interface text-xs font-medium text-muted-foreground">
+                      Visible
+                    </label>
+                    <Switch
+                      checked={social.isVisible}
+                      onCheckedChange={(checked) => updateSocial(index, "isVisible", checked)}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>

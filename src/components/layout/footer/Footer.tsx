@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
+import type { ComponentType, SVGProps } from "react"
 import { X as XIcon, Linkedin, Instagram } from "iconoir-react"
 import { DiagonalStripes } from "@/components/marketing/SectionBackground"
 
@@ -24,14 +25,59 @@ const LEGAL_LINKS = [
   { href: "/terms", label: "Terms" },
 ]
 
-const SOCIAL_LINKS = [
+// Map CMS platform names to iconoir icons
+const PLATFORM_ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
+  x: XIcon,
+  twitter: XIcon,
+  linkedin: Linkedin,
+  instagram: Instagram,
+}
+
+const DEFAULT_SOCIAL_LINKS = [
   { href: "#", label: "X", icon: XIcon },
   { href: "#", label: "LinkedIn", icon: Linkedin },
   { href: "#", label: "Instagram", icon: Instagram },
 ]
 
+const DEFAULT_COMPANY_DESCRIPTION = "Makalah AI adalah produk dari PT THE MANAGEMENT ASIA"
+
+function SocialIcon({ iconId, icon: IconComponent, label }: {
+  iconId?: Id<"_storage"> | null
+  icon: ComponentType<SVGProps<SVGSVGElement>> | null
+  label: string
+}) {
+  const iconUrl = useQuery(
+    api.pageContent.getImageUrl,
+    iconId ? { storageId: iconId } : "skip"
+  )
+
+  if (iconUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={iconUrl} alt={label} className="h-4 w-4" />
+  }
+
+  if (IconComponent) {
+    return <IconComponent className="icon-interface" />
+  }
+
+  return null
+}
+
 export function Footer() {
   const footerConfig = useQuery(api.siteConfig.getConfig, { key: "footer" })
+
+  // CMS logo URLs (resolve storage IDs, fallback to static)
+  const cmsLogoDarkUrl = useQuery(
+    api.pageContent.getImageUrl,
+    footerConfig?.logoDarkId ? { storageId: footerConfig.logoDarkId as Id<"_storage"> } : "skip"
+  )
+  const cmsLogoLightUrl = useQuery(
+    api.pageContent.getImageUrl,
+    footerConfig?.logoLightId ? { storageId: footerConfig.logoLightId as Id<"_storage"> } : "skip"
+  )
+
+  const logoDark = cmsLogoDarkUrl ?? "/logo/makalah_logo_light.svg"
+  const logoLight = cmsLogoLightUrl ?? "/logo/makalah_logo_dark.svg"
 
   // CMS footer sections with hardcoded fallback
   const footerSections = footerConfig?.footerSections
@@ -42,10 +88,28 @@ export function Footer() {
         { title: "Legal", links: LEGAL_LINKS },
       ]
 
+  // CMS company description with fallback
+  const companyDescription = (footerConfig?.companyDescription as string | undefined) || DEFAULT_COMPANY_DESCRIPTION
+
   // CMS copyright with fallback
   const copyrightText = footerConfig?.copyrightText
     ? (footerConfig.copyrightText as string).replace("{year}", String(new Date().getFullYear()))
     : `\u00a9 ${new Date().getFullYear()} Makalah AI. Hak cipta dilindungi.`
+
+  // CMS social links with fallback
+  type CmsSocialLink = { platform: string; url: string; isVisible: boolean; iconId?: Id<"_storage"> }
+  const cmsSocials = footerConfig?.socialLinks as CmsSocialLink[] | undefined
+  const socialLinks = cmsSocials
+    ? cmsSocials
+        .filter((s) => s.isVisible && s.url)
+        .map((s) => ({
+          href: s.url,
+          label: s.platform,
+          icon: PLATFORM_ICON_MAP[s.platform.toLowerCase()] ?? null,
+          iconId: s.iconId ?? null,
+        }))
+        .filter((s) => s.icon !== null || s.iconId !== null)
+    : DEFAULT_SOCIAL_LINKS
 
   return (
     <div id="footer" className="bg-background text-foreground">
@@ -59,22 +123,10 @@ export function Footer() {
           <div className="mb-10 grid grid-cols-16 gap-comfort text-center md:mb-16">
             {/* Brand */}
             <div className="col-span-16 flex items-center justify-center md:col-span-4 md:items-start md:justify-start">
-              {/* Light logo (for dark mode) */}
-              <Image
-                src="/logo/makalah_logo_light.svg"
-                alt="Makalah AI"
-                width={24}
-                height={24}
-                className="hidden dark:block"
-              />
-              {/* Dark logo (for light mode) */}
-              <Image
-                src="/logo/makalah_logo_dark.svg"
-                alt="Makalah AI"
-                width={24}
-                height={24}
-                className="block dark:hidden"
-              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoDark} alt="Makalah AI" width={24} height={24} className="hidden dark:block" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoLight} alt="Makalah AI" width={24} height={24} className="block dark:hidden" />
             </div>
 
             {/* Links - right side, left-aligned text */}
@@ -104,14 +156,14 @@ export function Footer() {
           <div className="flex flex-col items-center gap-6 pt-6 text-center md:flex-row md:justify-between md:text-left">
             <div className="space-y-1">
               <p className="text-interface m-0 text-[12px] text-muted-foreground">
-                Makalah AI adalah produk dari PT THE MANAGEMENT ASIA
+                {companyDescription}
               </p>
               <p className="text-interface m-0 text-[12px] text-muted-foreground">
                 {copyrightText}
               </p>
             </div>
             <div className="flex justify-center gap-6">
-              {SOCIAL_LINKS.map((social) => (
+              {socialLinks.map((social) => (
                 <a
                   key={social.label}
                   href={social.href}
@@ -120,7 +172,11 @@ export function Footer() {
                   rel="noopener noreferrer"
                   className="flex items-center justify-center text-muted-foreground transition-colors duration-300 hover:text-foreground"
                 >
-                  <social.icon className="icon-interface" />
+                  <SocialIcon
+                    iconId={"iconId" in social ? social.iconId : null}
+                    icon={social.icon}
+                    label={social.label}
+                  />
                 </a>
               ))}
             </div>

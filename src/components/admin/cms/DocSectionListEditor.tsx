@@ -8,13 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 type Props = {
   userId: Id<"users">
+  group?: string
   onSelectSection: (slug: string) => void
   onCreateNew: () => void
 }
 
 const GROUP_ORDER = ["Mulai", "Fitur Utama", "Subskripsi", "Panduan Lanjutan"]
 
-export function DocSectionListEditor({ userId, onSelectSection, onCreateNew }: Props) {
+export function DocSectionListEditor({ userId, group, onSelectSection, onCreateNew }: Props) {
   const sections = useQuery(api.documentationSections.listAllSections, {
     requestorId: userId,
   })
@@ -51,14 +52,19 @@ export function DocSectionListEditor({ userId, onSelectSection, onCreateNew }: P
     )
   }
 
+  // Filter by group if specified
+  const filtered = group
+    ? sections.filter((s) => s.group === group)
+    : sections
+
   // Group sections by group field
   const grouped = new Map<string, typeof sections>()
-  for (const section of sections) {
-    const group = section.group
-    if (!grouped.has(group)) {
-      grouped.set(group, [])
+  for (const section of filtered) {
+    const g = section.group
+    if (!grouped.has(g)) {
+      grouped.set(g, [])
     }
-    grouped.get(group)!.push(section)
+    grouped.get(g)!.push(section)
   }
 
   // Sort groups: predefined order first, then any others alphabetically
@@ -75,7 +81,7 @@ export function DocSectionListEditor({ userId, onSelectSection, onCreateNew }: P
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-narrative text-lg font-medium tracking-tight text-foreground">
-          Dokumentasi
+          Dokumentasi{group ? `: ${group}` : ""}
         </h3>
         <button
           type="button"

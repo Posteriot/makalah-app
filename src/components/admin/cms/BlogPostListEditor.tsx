@@ -5,9 +5,11 @@ import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { Plus, EditPencil, Trash } from "iconoir-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { normalizeCategory } from "@/components/marketing/blog/utils"
 
 type BlogPostListEditorProps = {
   userId: Id<"users">
+  category?: string
   onSelectPost: (slug: string) => void
   onCreateNew: () => void
 }
@@ -39,10 +41,14 @@ function formatPublishedDate(timestamp: number): string {
 
 export function BlogPostListEditor({
   userId,
+  category,
   onSelectPost,
   onCreateNew,
 }: BlogPostListEditorProps) {
-  const posts = useQuery(api.blog.listAllPosts, { requestorId: userId })
+  const allPosts = useQuery(api.blog.listAllPosts, { requestorId: userId })
+  const posts = allPosts && category
+    ? allPosts.filter((p) => normalizeCategory(p.category, p.title, p.excerpt ?? "") === category)
+    : allPosts
   const deletePost = useMutation(api.blog.deletePost)
 
   async function handleDelete(id: Id<"blogSections">, title: string) {
@@ -76,7 +82,7 @@ export function BlogPostListEditor({
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-narrative text-lg font-medium tracking-tight text-foreground">
-          Blog Posts
+          Blog{category ? `: ${category}` : " Posts"}
         </h3>
         <button
           type="button"

@@ -11,9 +11,13 @@ type WorkflowFeatureCMSProps = {
 }
 
 export function WorkflowFeatureCMS({ content }: WorkflowFeatureCMSProps) {
-  const imageUrl = useQuery(
+  const lightImageUrl = useQuery(
     api.pageContent.getImageUrl,
     content.primaryImageId ? { storageId: content.primaryImageId } : "skip"
+  )
+  const darkImageUrl = useQuery(
+    api.pageContent.getImageUrl,
+    content.secondaryImageId ? { storageId: content.secondaryImageId } : "skip"
   )
 
   return (
@@ -29,32 +33,18 @@ export function WorkflowFeatureCMS({ content }: WorkflowFeatureCMSProps) {
           {/* Left — Image/Mock (same layout order as static) */}
           <div className="order-2 lg:order-1 lg:col-span-6">
             <div className="relative mx-auto w-full max-w-[320px] rounded-xl shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.18)] dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.22)] sm:max-w-[360px] md:max-w-[420px] lg:mx-0 lg:ml-auto lg:mr-0 lg:max-w-[452px]">
-              {imageUrl ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageUrl}
-                    alt={content.primaryImageAlt ?? "Mockup fitur Workflow Makalah AI"}
-                    className="h-auto w-full"
-                  />
-                </>
-              ) : (
-                <>
-                  {/* Fallback to static PNG images when no CMS image */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/images/workflow-feature-mock-light.png"
-                    alt={content.primaryImageAlt ?? "Mockup fitur Workflow Makalah AI"}
-                    className="h-auto w-full dark:hidden"
-                  />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/images/workflow-feature-mock-dark.png"
-                    alt={content.primaryImageAlt ?? "Mockup fitur Workflow Makalah AI"}
-                    className="hidden h-auto w-full dark:block"
-                  />
-                </>
-              )}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightImageUrl ?? "/images/workflow-feature-mock-light.png"}
+                alt={content.primaryImageAlt ?? "Mockup fitur Workflow Makalah AI"}
+                className="h-auto w-full dark:hidden"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={darkImageUrl ?? "/images/workflow-feature-mock-dark.png"}
+                alt={content.primaryImageAlt ?? "Mockup fitur Workflow Makalah AI"}
+                className="hidden h-auto w-full dark:block"
+              />
             </div>
           </div>
 

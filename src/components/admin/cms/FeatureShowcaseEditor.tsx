@@ -37,6 +37,16 @@ function getSectionTitle(sectionSlug: string): string {
     .join(" ")
 }
 
+const FALLBACK_LIGHT_IMAGE_MAP: Record<string, string> = {
+  "features-workflow": "/images/workflow-feature-mock-light.png",
+  "features-refrasa": "/images/refrasa-feature-mock-light.png",
+}
+
+const FALLBACK_DARK_IMAGE_MAP: Record<string, string> = {
+  "features-workflow": "/images/workflow-feature-mock-dark.png",
+  "features-refrasa": "/images/refrasa-feature-mock-dark.png",
+}
+
 const EMPTY_ITEMS: FeatureItem[] = [
   { title: "", description: "" },
   { title: "", description: "" },
@@ -61,6 +71,9 @@ export function FeatureShowcaseEditor({
   const [primaryImageId, setPrimaryImageId] = useState<Id<"_storage"> | null>(
     null
   )
+  const [secondaryImageId, setSecondaryImageId] = useState<Id<"_storage"> | null>(
+    null
+  )
   const [primaryImageAlt, setPrimaryImageAlt] = useState("")
   const [isPublished, setIsPublished] = useState(false)
 
@@ -74,6 +87,7 @@ export function FeatureShowcaseEditor({
       setDescription(section.description ?? "")
       setBadgeText(section.badgeText ?? "")
       setPrimaryImageId(section.primaryImageId ?? null)
+      setSecondaryImageId(section.secondaryImageId ?? null)
       setPrimaryImageAlt(section.primaryImageAlt ?? "")
       setIsPublished(section.isPublished ?? false)
 
@@ -130,6 +144,7 @@ export function FeatureShowcaseEditor({
           icon: undefined,
         })),
         primaryImageId: primaryImageId ?? undefined,
+        secondaryImageId: secondaryImageId ?? undefined,
         primaryImageAlt,
         isPublished,
         sortOrder: SORT_ORDER_MAP[sectionSlug] ?? 3,
@@ -286,14 +301,33 @@ export function FeatureShowcaseEditor({
           ))}
         </div>
 
-        {/* Primary Image */}
-        <CmsImageUpload
-          currentImageId={primaryImageId}
-          onUpload={(storageId) => setPrimaryImageId(storageId)}
-          userId={userId}
-          label="Section Image"
-          aspectRatio="16/9"
-        />
+        {/* Section Images (Light + Dark) */}
+        <div className="space-y-2">
+          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Section Image
+          </span>
+          <div className="grid grid-cols-2 gap-4">
+            <CmsImageUpload
+              currentImageId={primaryImageId}
+              onUpload={(storageId) => setPrimaryImageId(storageId)}
+              userId={userId}
+              label="Light Mode"
+              aspectRatio="16/9"
+              fallbackPreviewUrl={FALLBACK_LIGHT_IMAGE_MAP[sectionSlug]}
+            />
+            <CmsImageUpload
+              currentImageId={secondaryImageId}
+              onUpload={(storageId) => setSecondaryImageId(storageId)}
+              userId={userId}
+              label="Dark Mode"
+              aspectRatio="16/9"
+              fallbackPreviewUrl={FALLBACK_DARK_IMAGE_MAP[sectionSlug]}
+            />
+          </div>
+          <p className="text-interface text-xs text-muted-foreground">
+            Light mode = tampil saat tema terang. Dark mode = tampil saat tema gelap. Kosongkan untuk pakai default.
+          </p>
+        </div>
 
         {/* Image Alt Text */}
         <div>

@@ -11,9 +11,13 @@ type RefrasaFeatureCMSProps = {
 }
 
 export function RefrasaFeatureCMS({ content }: RefrasaFeatureCMSProps) {
-  const imageUrl = useQuery(
+  const lightImageUrl = useQuery(
     api.pageContent.getImageUrl,
     content.primaryImageId ? { storageId: content.primaryImageId } : "skip"
+  )
+  const darkImageUrl = useQuery(
+    api.pageContent.getImageUrl,
+    content.secondaryImageId ? { storageId: content.secondaryImageId } : "skip"
   )
 
   return (
@@ -54,31 +58,18 @@ export function RefrasaFeatureCMS({ content }: RefrasaFeatureCMSProps) {
           {/* Right — Image/Mock */}
           <div className="order-2 lg:col-span-6">
             <div className="relative mx-auto w-full max-w-[320px] rounded-xl shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.18)] dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.22)] sm:max-w-[360px] md:max-w-[420px] lg:mx-0 lg:ml-0 lg:mr-auto lg:max-w-[452px]">
-              {imageUrl ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageUrl}
-                    alt={content.primaryImageAlt ?? "Mockup fitur Refrasa Makalah AI"}
-                    className="h-auto w-full"
-                  />
-                </>
-              ) : (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/images/refrasa-feature-mock-light.png"
-                    alt={content.primaryImageAlt ?? "Mockup fitur Refrasa Makalah AI"}
-                    className="h-auto w-full dark:hidden"
-                  />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/images/refrasa-feature-mock-dark.png"
-                    alt={content.primaryImageAlt ?? "Mockup fitur Refrasa Makalah AI"}
-                    className="hidden h-auto w-full dark:block"
-                  />
-                </>
-              )}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightImageUrl ?? "/images/refrasa-feature-mock-light.png"}
+                alt={content.primaryImageAlt ?? "Mockup fitur Refrasa Makalah AI"}
+                className="h-auto w-full dark:hidden"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={darkImageUrl ?? "/images/refrasa-feature-mock-dark.png"}
+                alt={content.primaryImageAlt ?? "Mockup fitur Refrasa Makalah AI"}
+                className="hidden h-auto w-full dark:block"
+              />
             </div>
           </div>
         </div>

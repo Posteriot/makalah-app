@@ -12,6 +12,7 @@ type CmsImageUploadProps = {
   userId: Id<"users">
   label?: string
   aspectRatio?: string
+  fallbackPreviewUrl?: string
   // Custom Convex function references for different CMS contexts (e.g. blog)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   generateUploadUrlFn?: any
@@ -25,6 +26,7 @@ export function CmsImageUpload({
   userId,
   label = "Gambar",
   aspectRatio = "16/9",
+  fallbackPreviewUrl,
   generateUploadUrlFn,
   getImageUrlFn,
 }: CmsImageUploadProps) {
@@ -69,7 +71,9 @@ export function CmsImageUpload({
     fileInputRef.current?.click()
   }
 
-  const hasImage = currentImageId && imageUrl
+  const hasCmsImage = currentImageId && imageUrl
+  const previewUrl = hasCmsImage ? imageUrl : fallbackPreviewUrl
+  const isFallbackPreview = !hasCmsImage && !!fallbackPreviewUrl
 
   return (
     <div>
@@ -87,7 +91,7 @@ export function CmsImageUpload({
         className="hidden"
       />
 
-      {hasImage ? (
+      {previewUrl ? (
         /* Image preview with replace overlay */
         <div
           className="group relative overflow-hidden rounded-action"
@@ -95,10 +99,17 @@ export function CmsImageUpload({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={imageUrl}
+            src={previewUrl}
             alt={label}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
           />
+
+          {/* Fallback badge */}
+          {isFallbackPreview && (
+            <span className="absolute top-2 left-2 rounded-badge bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              Default
+            </span>
+          )}
 
           {/* Upload overlay (visible on hover or during upload) */}
           <div
@@ -122,7 +133,9 @@ export function CmsImageUpload({
                 className="flex cursor-pointer items-center gap-2 rounded-action bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors duration-50 hover:bg-background"
               >
                 <Upload className="h-4 w-4" strokeWidth={1.5} />
-                <span className="text-interface">Ganti Gambar</span>
+                <span className="text-interface">
+                  {isFallbackPreview ? "Upload Custom" : "Ganti Gambar"}
+                </span>
               </button>
             )}
           </div>

@@ -74,10 +74,16 @@ export const upsertConfig = mutation({
           platform: v.string(),
           url: v.string(),
           isVisible: v.boolean(),
+          iconId: v.optional(v.id("_storage")),
         })
       )
     ),
     copyrightText: v.optional(v.string()),
+    companyDescription: v.optional(v.string()),
+    logoDarkId: v.optional(v.id("_storage")),
+    logoLightId: v.optional(v.id("_storage")),
+    brandTextDarkId: v.optional(v.id("_storage")),
+    brandTextLightId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorId, "admin")

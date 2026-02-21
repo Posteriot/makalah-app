@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
+import { CmsImageUpload } from "./CmsImageUpload"
 
 type NavLink = {
   label: string
@@ -24,6 +25,10 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
   const upsertConfig = useMutation(api.siteConfig.upsertConfig)
 
   const [navLinks, setNavLinks] = useState<NavLink[]>([])
+  const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(null)
+  const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(null)
+  const [brandTextDarkId, setBrandTextDarkId] = useState<Id<"_storage"> | null>(null)
+  const [brandTextLightId, setBrandTextLightId] = useState<Id<"_storage"> | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveLabel, setSaveLabel] = useState("Simpan")
 
@@ -40,8 +45,11 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
               isVisible: true,
             }))
       )
+      setLogoDarkId((config.logoDarkId as Id<"_storage"> | undefined) ?? null)
+      setLogoLightId((config.logoLightId as Id<"_storage"> | undefined) ?? null)
+      setBrandTextDarkId((config.brandTextDarkId as Id<"_storage"> | undefined) ?? null)
+      setBrandTextLightId((config.brandTextLightId as Id<"_storage"> | undefined) ?? null)
     } else if (config === null) {
-      // No config exists yet — default to 5 empty links
       setNavLinks(
         Array.from({ length: 5 }, () => ({
           label: "",
@@ -75,6 +83,10 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
         requestorId: userId,
         key: "header",
         navLinks: navLinks,
+        logoDarkId: logoDarkId ?? undefined,
+        logoLightId: logoLightId ?? undefined,
+        brandTextDarkId: brandTextDarkId ?? undefined,
+        brandTextLightId: brandTextLightId ?? undefined,
       })
       setSaveLabel("Tersimpan!")
       setTimeout(() => setSaveLabel("Simpan"), 2000)
@@ -108,11 +120,60 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
         <div className="mt-2 border-t border-border" />
       </div>
 
+      {/* Logo & Brand Images */}
+      <div className="space-y-4">
+        <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Logo & Brand
+        </span>
+
+        <div className="grid grid-cols-2 gap-4">
+          <CmsImageUpload
+            currentImageId={logoDarkId}
+            onUpload={(storageId) => setLogoDarkId(storageId)}
+            userId={userId}
+            label="Logo Icon (Dark Mode)"
+            aspectRatio="1/1"
+            fallbackPreviewUrl="/logo/logo-color-darkmode.png"
+          />
+          <CmsImageUpload
+            currentImageId={logoLightId}
+            onUpload={(storageId) => setLogoLightId(storageId)}
+            userId={userId}
+            label="Logo Icon (Light Mode)"
+            aspectRatio="1/1"
+            fallbackPreviewUrl="/logo/logo-color-lightmode.png"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <CmsImageUpload
+            currentImageId={brandTextDarkId}
+            onUpload={(storageId) => setBrandTextDarkId(storageId)}
+            userId={userId}
+            label="Brand Text (Dark Mode)"
+            aspectRatio="4/1"
+            fallbackPreviewUrl="/logo-makalah-ai-white.svg"
+          />
+          <CmsImageUpload
+            currentImageId={brandTextLightId}
+            onUpload={(storageId) => setBrandTextLightId(storageId)}
+            userId={userId}
+            label="Brand Text (Light Mode)"
+            aspectRatio="4/1"
+            fallbackPreviewUrl="/logo-makalah-ai-black.svg"
+          />
+        </div>
+
+        <p className="text-interface text-xs text-muted-foreground">
+          Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang. Kosongkan untuk pakai default.
+        </p>
+      </div>
+
       {/* Nav Links */}
       <div className="space-y-4">
-        <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+        <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Nav Links
-        </label>
+        </span>
 
         {/* Add button */}
         <Button
