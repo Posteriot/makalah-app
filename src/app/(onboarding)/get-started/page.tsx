@@ -13,7 +13,6 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { isFreeTierForLoginGate } from "@/lib/utils/freeLoginGate"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
 import { SectionCTA } from "@/components/ui/section-cta"
-import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 
 const FEEDBACK_DELAY_MS = 3_000
 
@@ -150,7 +149,6 @@ export default function GetStartedPage() {
   const [showFeedback, setShowFeedback] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
   const isFreeTier = isFreeTierForLoginGate(user?.role, user?.subscriptionStatus)
-  const { isWaitlistMode } = useWaitlistMode()
 
   // Show "Mempersiapkan..." after FEEDBACK_DELAY_MS while auth/user sync stabilizes.
   useEffect(() => {
@@ -236,10 +234,10 @@ export default function GetStartedPage() {
       price: plan.price,
       unit: plan.unit,
       isHighlighted: plan.isHighlighted,
-      isDisabled: isWaitlistMode ? true : resolvePlanDisabledState(plan),
+      isDisabled: resolvePlanDisabledState(plan),
       description: plan.teaserDescription || plan.tagline,
       creditNote: plan.teaserCreditNote || plan.features[0] || "",
-      ctaLabel: isWaitlistMode ? "Segera Hadir" : (
+      ctaLabel: (
         plan.slug === "pro" &&
         resolvePlanDisabledState(plan) === false &&
         plan.ctaText.toLowerCase().includes("segera hadir")

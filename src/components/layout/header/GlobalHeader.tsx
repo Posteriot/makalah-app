@@ -33,7 +33,6 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
 import { cn } from "@/lib/utils"
-import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 
 const NAV_LINKS = [
   { href: "/pricing", label: "Harga" },
@@ -74,7 +73,6 @@ export function GlobalHeader() {
   const lastScrollYRef = useRef(0)
   const isThemeReady = resolvedTheme !== undefined
   const shouldHideHeader = pathname?.startsWith("/chat")
-  const { isWaitlistMode } = useWaitlistMode()
   const headerConfig = useQuery(api.siteConfig.getConfig, { key: "header" })
 
   // CMS logo/brand image URLs (resolve storage IDs, fallback to static)
@@ -107,9 +105,7 @@ export function GlobalHeader() {
         .map((link) => ({ href: link.href, label: link.label }))
     : NAV_LINKS
 
-  const visibleNavLinks = isWaitlistMode
-    ? baseNavLinks.filter((link) => link.href !== "/blog")
-    : baseNavLinks
+  const visibleNavLinks = baseNavLinks
 
   const isMobileMenuOpen = useMemo(() => {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname

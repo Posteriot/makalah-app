@@ -68,8 +68,7 @@ function PricingCTA({
 // Main PricingCard Component
 // ════════════════════════════════════════════════════════════════
 
-export function PricingCard({ plan, isWaitlistMode }: { plan: PricingPlan; isWaitlistMode?: boolean }) {
-  const isDisabledByWaitlist = isWaitlistMode && plan.slug !== "gratis"
+export function PricingCard({ plan }: { plan: PricingPlan }) {
   return (
     <div className="group/card relative h-full">
       {/* Popular tag for highlighted card */}
@@ -135,23 +134,7 @@ export function PricingCard({ plan, isWaitlistMode }: { plan: PricingPlan; isWai
 
         {/* CTA Button */}
         <div className="mt-6 flex justify-center">
-          {isDisabledByWaitlist ? (
-            <button
-              disabled
-              className={cn(
-                "group relative overflow-hidden",
-                "inline-flex items-center justify-center gap-2 rounded-action px-4 py-2",
-                "text-signal text-[11px] font-bold uppercase tracking-widest",
-                "border border-transparent bg-slate-800 text-slate-100",
-                "dark:bg-slate-100 dark:text-slate-800",
-                "cursor-not-allowed opacity-60"
-              )}
-            >
-              SEGERA HADIR
-            </button>
-          ) : (
-            <PricingCTA plan={plan} />
-          )}
+          <PricingCTA plan={plan} />
         </div>
       </div>
     </div>
