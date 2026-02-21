@@ -649,8 +649,9 @@ export default defineSchema({
     featured: v.boolean(),
     isPublished: v.boolean(),
     publishedAt: v.number(),
+    content: v.optional(v.string()), // TipTap JSON string for article body
     blocks: v.array(documentationBlock),
-    coverImage: v.optional(v.string()), // Optional cover image URL
+    coverImageId: v.optional(v.id("_storage")), // Convex file storage for cover images
     createdAt: v.number(),
     updatedAt: v.number(),
   })
