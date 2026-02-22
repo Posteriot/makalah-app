@@ -87,6 +87,7 @@ npm run convex:dashboard           # Open dashboard
   - `(dashboard)`: Protected area (admin, settings, subscription)
   - `(account)`: User account (settings, checkout)
   - `(onboarding)`: First-time user flow (get-started)
+  - `cms`: CMS admin interface (dedicated shell, not inside dashboard)
   - `chat`: AI chat interface (landing page)
   - `chat/[conversationId]`: Dynamic route for specific conversations
   - `api/chat`: Chat streaming endpoint
@@ -97,7 +98,7 @@ npm run convex:dashboard           # Open dashboard
   - `api/payments/topup`: BPP credit topup
   - `api/webhooks/xendit`: Xendit payment webhook
   - `api/auth`: BetterAuth API + email recovery precheck
-- `src/components`: UI components (admin/, ai-elements/, ai-ops/, auth/, billing/, chat/, layout/, marketing/, onboarding/, paper/, refrasa/, settings/, theme/, ui/)
+- `src/components`: UI components (admin/, ai-elements/, ai-ops/, auth/, billing/, chat/, cms/, layout/, marketing/, onboarding/, paper/, refrasa/, settings/, theme/, ui/)
 - `src/lib`: Utilities (ai/, billing/, citations/, convex/, date/, email/, export/, file-extraction/, hooks/, paper/, refrasa/, utils/, xendit/)
 - `convex`: Backend schema and functions (billing/, migrations/, paperSessions/)
 
@@ -171,9 +172,9 @@ npm run convex:dashboard           # Open dashboard
 - **pricingPlans**: Pricing tier configurations
 - **documentationSections**: Docs page content blocks
 - **blogSections**: Blog content with categories
-- **pageContent**: Structured CMS sections (hero, benefits, features) with image storage
+- **pageContent**: Structured CMS sections (hero, benefits, features, pricing-header, page-settings) with image storage + background pattern toggles (showGridPattern, showDiagonalStripes, showDottedPattern)
 - **richTextPages**: TipTap WYSIWYG pages (about, privacy, security, terms)
-- **siteConfig**: Global config (header nav links, footer sections/copyright)
+- **siteConfig**: Global config (header nav links, footer sections/copyright, showDiagonalStripes)
 
 **Auth & Security:**
 - **authRecoveryAttempts**: Rate limiting for magic link and forgot password (keyHash, emailHash, ipHash, intent, attemptCount, blockedUntil)
@@ -192,9 +193,9 @@ Hybrid CMS for all marketing pages. Admin-only (superadmin/admin). Static fallba
 
 | Table | Purpose | Key Fields |
 |-------|---------|------------|
-| **pageContent** | Structured sections (hero, benefits, features) | pageSlug, sectionSlug, sectionType, title, description, items[], imageId, isPublished, sortOrder |
+| **pageContent** | Structured sections (hero, benefits, features, pricing-header, page-settings) | pageSlug, sectionSlug, sectionType, title, description, items[], imageId, isPublished, sortOrder, showGridPattern?, showDiagonalStripes?, showDottedPattern? |
 | **richTextPages** | TipTap WYSIWYG pages (about, privacy, security, terms) | slug, title, content (JSON), lastUpdatedLabel, isPublished |
-| **siteConfig** | Global config (header nav, footer) | key, value (JSON), updatedBy |
+| **siteConfig** | Global config (header nav, footer, background patterns) | key, value (JSON), updatedBy, showDiagonalStripes? |
 
 ### Frontend Rendering Pattern
 
@@ -202,9 +203,9 @@ Two patterns depending on content type:
 
 **Wrapper Pattern** (home page sections — hero, benefits, features):
 - `XxxSection.tsx` — `"use client"` wrapper with `useQuery(api.pageContent.getSection)`
-- `XxxStatic.tsx` — exact copy of original static component
-- `XxxCMS.tsx` — renders from DB data
-- Loading → null, unpublished → Static, published → CMS
+- `XxxCMS.tsx` — renders from DB data with conditional background patterns
+- Loading → null, unpublished → null (hidden), published → CMS
+- Background patterns respect `content.showGridPattern !== false` (default ON when undefined)
 
 **CmsPageWrapper** (policy/about pages):
 - Wraps existing page component with `useQuery(api.richTextPages.getPageBySlug)`
@@ -214,29 +215,75 @@ Two patterns depending on content type:
 **Inline Fallback** (header/footer):
 - CMS query inside existing component, derive data from CMS with fallback to hardcoded constants
 
-### Admin Panel
+### CMS Admin Interface
 
-Content editors in `/dashboard` → CMS tab → ContentManager left sidebar:
-- `ContentManager.tsx` — section selector + editor routing
-- `HeroSectionEditor.tsx` — hero section fields + image upload
-- `BenefitsSectionEditor.tsx` — benefits accordion items
-- `FeatureShowcaseEditor.tsx` — reusable for workflow + refrasa features
+Dedicated CMS at `/cms` route with shell-based architecture (not inside `/dashboard`):
+
+**Shell Components** (`src/components/cms/`):
+- `CmsShell.tsx` — main layout: activity bar + sidebar + editor area. Editor routing logic lives here
+- `CmsActivityBar.tsx` — vertical icon bar (left edge) for page switching
+- `CmsSidebar.tsx` — collapsible section list per page. "Content Manager" header is clickable to reset to main overview
+- `CmsTopBar.tsx` — breadcrumb navigation bar above editor
+- `CmsMainOverview.tsx` — dashboard shown on initial load (queries 6 data sources, shows per-page status)
+
+**Per-Page Overviews** (`src/components/cms/`):
+- `CmsPageOverview.tsx` — Home page section status
+- `CmsPricingOverview.tsx` — Pricing plans status
+- `CmsDocOverview.tsx` — Documentation sections status
+- `CmsBlogOverview.tsx` — Blog posts status
+- `CmsLegalOverview.tsx` — Legal/policy pages status
+- `CmsGlobalLayoutOverview.tsx` — Header/Footer config status
+
+**Section Editors** (`src/components/admin/cms/`):
+- `HeroSectionEditor.tsx` — hero section fields + image upload + pattern toggles
+- `BenefitsSectionEditor.tsx` — benefits accordion items + pattern toggles
+- `FeatureShowcaseEditor.tsx` — reusable for workflow + refrasa features + pattern toggles
+- `ManifestoSectionEditor.tsx` — manifesto section + pattern toggles
+- `ProblemsSectionEditor.tsx` — problems section + pattern toggles
+- `AgentsSectionEditor.tsx` — agents section + pattern toggles
+- `CareerContactEditor.tsx` — career/contact section + pattern toggles
+- `PricingHeaderEditor.tsx` — pricing section header (reusable for home teaser + pricing page)
+- `PricingPlanEditor.tsx` — individual pricing plan editor
 - `HeaderConfigEditor.tsx` — nav link list editor
-- `FooterConfigEditor.tsx` — footer sections, social links, copyright
+- `FooterConfigEditor.tsx` — footer sections, social links, copyright + pattern toggles
+- `DocSectionListEditor.tsx` / `DocSectionEditor.tsx` — documentation drill-down
+- `BlogPostListEditor.tsx` / `BlogPostEditor.tsx` — blog drill-down
 - `RichTextPageEditor.tsx` — TipTap WYSIWYG for policy/about pages
 - `TipTapEditor.tsx` — TipTap editor component (default export)
 - `CmsImageUpload.tsx` — Convex file storage image upload
+- `CmsSaveButton.tsx` — reusable save button with loading state
+
+**CMS Pages Managed:**
+| Page | Sections |
+|------|----------|
+| Home | hero, benefits, features-workflow, features-refrasa, pricing-teaser |
+| About | manifesto, problems, agents, career-contact |
+| Pricing | pricing-header, gratis plan, bpp plan, pro plan |
+| Docs | documentation sections (drill-down list → editor) |
+| Blog | blog posts by category (drill-down list → editor) |
+| Legal | privacy, security, terms (RichText pages) |
+| Global Layout | header config, footer config |
+
+### Background Pattern CMS Toggles
+
+Each CMS section can toggle background patterns (GridPattern, DiagonalStripes, DottedPattern). Fields are `v.optional(v.boolean())` — uses `!== false` check so default is ON when field is undefined (backward compatible).
+
+Pattern availability per section follows the design system's pattern map. Footer uses `siteConfig.showDiagonalStripes` instead of `pageContent`.
 
 ### Key Frontend Files
+- `src/app/cms/page.tsx` — CMS route entry point
+- `src/components/cms/CmsShell.tsx` — main CMS layout + editor routing
+- `src/components/cms/CmsMainOverview.tsx` — main dashboard overview
 - `src/components/marketing/CmsPageWrapper.tsx` — policy/about CMS wrapper
 - `src/components/marketing/RichTextRenderer.tsx` — TipTap read-only renderer
 - `src/components/marketing/hero/HeroSection.tsx` — hero wrapper
 - `src/components/marketing/benefits/BenefitsSection.tsx` — benefits wrapper
 - `src/components/marketing/features/WorkflowFeatureSection.tsx` — workflow wrapper
 - `src/components/marketing/features/RefrasaFeatureSection.tsx` — refrasa wrapper
-- `convex/pageContent.ts` — structured content CRUD
+- `src/components/marketing/pricing-teaser/PricingTeaser.tsx` — pricing teaser with CMS header
+- `convex/pageContent.ts` — structured content CRUD (includes pattern fields)
 - `convex/richTextPages.ts` — rich text pages CRUD
-- `convex/siteConfig.ts` — global config CRUD
+- `convex/siteConfig.ts` — global config CRUD (includes pattern fields)
 - `convex/migrations/seedHomeContent.ts` — seed data for home page sections
 
 ### Environment Variables
