@@ -858,11 +858,11 @@ export function FullsizeArtifactModal({
           <AlertDialogHeader>
             <AlertDialogTitle>Tutup workspace fullscreen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Ada perubahan di mode edit yang belum disimpan. Kalau workspace ditutup sekarang, perubahan akan hilang.
+              Ada perubahan pada mode edit yang belum disimpan. Jika workspace ditutup sekarang, perubahan akan hilang.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Lanjut edit</AlertDialogCancel>
+            <AlertDialogCancel>Lanjutkan edit</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 setCloseGuardOpen(false)

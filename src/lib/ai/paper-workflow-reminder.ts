@@ -22,7 +22,7 @@ User menunjukkan niat menulis paper/makalah/skripsi.
 ╔═══════════════════════════════════════════════════════════════════════════════╗
 ║ AKSI WAJIB: Panggil tool "startPaperSession" SEKARANG JUGA                    ║
 ║                                                                               ║
-║ JANGAN tanya topik dulu. JANGAN jelaskan workflow dulu.                       ║
+║ JANGAN tanya topik terlebih dahulu. JANGAN jelaskan workflow terlebih dahulu.                       ║
 ║ LANGSUNG panggil tool, baru setelahnya diskusi dengan user.                   ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 
@@ -37,7 +37,7 @@ CARA MENGISI PARAMETER initialIdea:
 │   → initialIdea: (kosongkan/jangan isi parameter ini)                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Skenario C: User bilang ingin skripsi/makalah/tesis                         │
-│   Input: "Saya mau bikin skripsi"                                           │
+│   Input: "Saya ingin membuat skripsi"                                           │
 │   → initialIdea: (kosongkan, topik akan ditanya setelah session aktif)      │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -47,21 +47,21 @@ URUTAN YANG BENAR:
 3. SETELAH ITU baru tanya/diskusi topik dengan user
 
 LARANGAN KERAS:
-❌ JANGAN respond dengan teks dulu lalu panggil tool
+❌ JANGAN respond dengan teks terlebih dahulu lalu panggil tool
 ❌ JANGAN tanya "Apa topik yang ingin Anda bahas?" SEBELUM panggil tool
 ❌ JANGAN gunakan createArtifact sebelum paper session aktif
 ❌ JANGAN jelaskan workflow sebelum panggil tool
 
 CONTOH RESPONS YANG SALAH:
 "Baik, saya siap membantu. Bisakah Anda berikan topik yang ingin dibahas?"
-↑ SALAH! Ini tanya dulu tanpa panggil tool.
+↑ SALAH! Ini tanya terlebih dahulu tanpa panggil tool.
 
 CONTOH RESPONS YANG BENAR:
 [Panggil startPaperSession dengan initialIdea kosong atau dari pesan user]
 "Sesi paper sudah aktif! Sekarang kita di tahap Gagasan. Mari mulai dengan brainstorming - apa topik atau bidang yang ingin Anda eksplorasi?"
 
 PENGECUALIAN (boleh langsung tanpa workflow):
-- User eksplisit bilang "jangan pakai workflow" atau "langsung saja"
+- User eksplisit bilang "jangan gunakan workflow" atau "langsung saja"
 - User hanya minta penjelasan konsep (bukan menulis)
 - User minta template/contoh format saja
 
@@ -72,4 +72,4 @@ PENGECUALIAN (boleh langsung tanpa workflow):
  * Short version for logging/debugging
  */
 export const PAPER_WORKFLOW_REMINDER_SHORT =
-    "[PAPER INTENT DETECTED] User ingin menulis paper utuh. WAJIB panggil startPaperSession dulu.";
+    "[PAPER INTENT DETECTED] User ingin menulis paper utuh. WAJIB panggil startPaperSession terlebih dahulu.";

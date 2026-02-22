@@ -51,7 +51,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                     <AlertDialogDescription asChild>
                         <div className="space-y-3">
                             <p>
-                                Lo akan kembali dari tahap <strong>{currentLabel}</strong> ke tahap <strong>{targetLabel}</strong>.
+                                Anda akan kembali dari tahap <strong>{currentLabel}</strong> ke tahap <strong>{targetLabel}</strong>.
                             </p>
                             <div className="flex items-start gap-2 p-3 bg-[var(--ds-state-warning-bg)] border border-[var(--ds-state-warning-border)] rounded-md">
                                 <WarningTriangle className="h-4 w-4 text-[var(--ds-state-warning-fg)] mt-0.5 shrink-0" />
@@ -60,7 +60,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                                 </div>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Progress lo tidak hilang, tapi perlu divalidasi ulang setelah revisi.
+                                Progres Anda tidak hilang, tetapi perlu divalidasi ulang setelah revisi.
                             </p>
                         </div>
                     </AlertDialogDescription>

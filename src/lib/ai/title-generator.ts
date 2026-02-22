@@ -11,13 +11,13 @@ type TitleGenerationInput = {
     assistantMessage?: string
 }
 
-// Template prompt (Indonesia) untuk bikin judul singkat
+// Template prompt (Indonesia) untuk membuat judul singkat
 const TITLE_PROMPT_TEMPLATE = `Buat judul singkat dan jelas untuk percakapan ini (maksimal ${TITLE_MAX_LENGTH} karakter).
 
 Aturan:
 - Bahasa Indonesia
 - Tanpa tanda kutip
-- Jangan pakai prefiks seperti "Judul:" atau "Title:"
+- Jangan gunakan prefiks seperti "Judul:" atau "Title:"
 - Output hanya judulnya saja
 
 Konteks:`

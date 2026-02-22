@@ -87,7 +87,7 @@ function formatWebSearchReferences(stageData: StageData, currentStage: PaperStag
         ...lines,
         ``,
         `SEMUA sitasi in-text HARUS merujuk ke referensi di atas.`,
-        `Jika butuh referensi tambahan, MINTA user untuk search dulu.`,
+        `Jika butuh referensi tambahan, MINTA user untuk search terlebih dahulu.`,
     ].join("\n");
 }
 

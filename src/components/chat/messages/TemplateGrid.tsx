@@ -11,13 +11,13 @@ export interface Template {
 const templates: Template[] = [
   {
     id: "starter-discussion",
-    label: "Kita diskusi dulu!",
-    message: "Kita diskusi dulu!",
+    label: "Mari berdiskusi terlebih dahulu.",
+    message: "Mari berdiskusi terlebih dahulu.",
   },
   {
     id: "starter-paper",
-    label: "Ayo kolaborasi menyusun paper akademik!",
-    message: "Ayo kolaborasi menyusun paper akademik!",
+    label: "Mari berkolaborasi menyusun paper akademik.",
+    message: "Mari berkolaborasi menyusun paper akademik.",
   },
 ]
 
@@ -55,11 +55,11 @@ export function TemplateGrid({
 
       <div className="space-y-2">
         <h2 className="text-narrative text-4xl font-medium tracking-tight text-foreground">
-          Ayo bercakap!
+          Mari berdiskusi!
         </h2>
         <p className="text-narrative text-muted-foreground text-sm leading-[1.4]">
           <span className="block">
-            Mau diskusi mengenai riset atau langsung menulis paper?
+            Ingin berdiskusi mengenai riset atau langsung menulis paper?
           </span>
           <span className="block">
             Silakan ketik maksud di kolom percakapan,

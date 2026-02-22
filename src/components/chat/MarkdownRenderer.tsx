@@ -556,7 +556,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       if (citationMatch) {
         const full = citationMatch[0]
         const after = text[cursor + full.length]
-        // Kalau langsung diikuti "(", ini kemungkinan link markdown [label](url), bukan sitasi.
+        // Jika langsung diikuti "(", ini kemungkinan link markdown [label](url), bukan sitasi.
         if (after !== "(") {
           const numbers = citationMatch[1]
             .split(",")

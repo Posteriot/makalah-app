@@ -210,8 +210,8 @@ export const PaperStageProgress: React.FC<PaperStageProgressProps> = ({
                                                     stageStatus === "revision" ? "bg-[var(--ds-state-danger-bg)] text-[var(--ds-state-danger-fg)]" :
                                                         "bg-[var(--ds-state-info-bg)] text-[var(--ds-state-info-fg)] animate-pulse"
                                             )}>
-                                                {stageStatus === "pending_validation" ? "Menunggu lo" :
-                                                    stageStatus === "revision" ? "Revisi" : "Ngetik..."}
+                                                {stageStatus === "pending_validation" ? "Menunggu Anda" :
+                                                    stageStatus === "revision" ? "Revisi" : "Sedang menulis..."}
                                             </span>
                                         </div>
                                     )}

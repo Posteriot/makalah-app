@@ -30,9 +30,9 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
         setIsSubmitting(true);
         try {
             await onApprove();
-            toast.success(`Mantap! Tahap "${stageLabel}" disetujui. Lanjut ke tahap berikutnya.`);
+            toast.success(`Tahap "${stageLabel}" disetujui. Lanjut ke tahap berikutnya.`);
         } catch {
-            toast.error("Gagal nyetujui tahap ini. Coba lagi, ya.");
+            toast.error("Gagal menyetujui tahap ini. Silakan coba lagi.");
         } finally {
             setIsSubmitting(false);
         }
@@ -40,17 +40,17 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
 
     const handleRevise = async () => {
         if (!feedback.trim()) {
-            toast.error("Isi feedback dulu biar AI tau apa yang harus diperbaiki.");
+            toast.error("Silakan isi feedback terlebih dahulu agar AI mengetahui bagian yang harus diperbaiki.");
             return;
         }
         setIsSubmitting(true);
         try {
             await onRevise(feedback);
-            toast.success("Feedback lo udah dikirim. AI bakal segera revisi.");
+            toast.success("Feedback Anda sudah dikirim. AI akan segera merevisi.");
             setShowRevisionForm(false);
             setFeedback("");
         } catch {
-            toast.error("Gagal ngirim feedback. Coba lagi.");
+            toast.error("Gagal mengirim feedback. Silakan coba lagi.");
         } finally {
             setIsSubmitting(false);
         }
@@ -136,7 +136,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             )}
                         >
                             <Check className="h-3.5 w-3.5" />
-                            <span>Approve & Lanjut</span>
+                            <span>Setujui & Lanjutkan</span>
                         </Button>
                     </div>
                 )}
@@ -145,7 +145,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                 {showRevisionForm && (
                     <div className="flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
                         <Textarea
-                            placeholder="Kasih tau AI yang mana yang kudu diganti..."
+                            placeholder="Jelaskan bagian yang harus diperbaiki..."
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
                             className={cn(
@@ -167,7 +167,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                                 )}
                             >
                                 <Send className="h-3.5 w-3.5" />
-                                <span>Kirim Feedback</span>
+                                <span>Kirim feedback</span>
                             </Button>
                         </div>
                     </div>
