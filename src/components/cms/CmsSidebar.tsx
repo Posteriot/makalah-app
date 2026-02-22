@@ -142,6 +142,7 @@ interface CmsSidebarProps {
 
   // Sidebar chrome
   onCollapseSidebar: () => void
+  onResetToOverview: () => void
   className?: string
 }
 
@@ -183,6 +184,7 @@ export function CmsSidebar({
   selectedBlogSlug,
   onBlogSlugChange,
   onCollapseSidebar,
+  onResetToOverview,
   className,
 }: CmsSidebarProps) {
   // Render section list for Home or About pages
@@ -469,11 +471,15 @@ export function CmsSidebar({
         className
       )}
     >
-      {/* Header — static title "Content Manager" + collapse button */}
+      {/* Header — clickable "Content Manager" title + collapse button */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-slate-300/90 px-3 dark:border-slate-700/80">
-        <h3 className="text-interface text-sm font-medium text-foreground truncate">
+        <button
+          type="button"
+          onClick={onResetToOverview}
+          className="text-interface text-sm font-medium text-foreground truncate transition-colors hover:text-primary"
+        >
           Content Manager
-        </h3>
+        </button>
         <Button
           variant="ghost"
           size="icon"

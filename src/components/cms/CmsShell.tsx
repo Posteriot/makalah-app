@@ -32,6 +32,7 @@ import { CmsDocOverview } from "./CmsDocOverview"
 import { CmsBlogOverview } from "./CmsBlogOverview"
 import { CmsLegalOverview } from "./CmsLegalOverview"
 import { CmsGlobalLayoutOverview } from "./CmsGlobalLayoutOverview"
+import { CmsMainOverview } from "./CmsMainOverview"
 import { HOME_SECTIONS, ABOUT_SECTIONS } from "./CmsSidebar"
 
 /**
@@ -63,7 +64,7 @@ export function CmsShell({ userId }: CmsShellProps) {
   const [selectedDocSlug, setSelectedDocSlug] = useState<string | null>(null)
   const [activeBlogCategory, setActiveBlogCategory] = useState<BlogCategoryId | null>(null)
   const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(null)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
 
   // Reset all drill-down state when page changes
@@ -76,6 +77,8 @@ export function CmsShell({ userId }: CmsShellProps) {
     setSelectedDocSlug(null)
     setActiveBlogCategory(null)
     setSelectedBlogSlug(null)
+    // Auto-expand sidebar when navigating to a page
+    setIsSidebarCollapsed(false)
   }, [])
 
   // Calculate max width (50% of viewport)
@@ -113,6 +116,18 @@ export function CmsShell({ userId }: CmsShellProps) {
   const handleSidebarReset = useCallback(() => {
     setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)
     setIsSidebarCollapsed(false)
+  }, [])
+
+  // Reset to main overview (no page selected)
+  const handleResetToOverview = useCallback(() => {
+    setActivePage(null)
+    setActiveSection(null)
+    setActiveLegalPage(null)
+    setActiveGlobalLayoutPage(null)
+    setActiveDocGroup(null)
+    setSelectedDocSlug(null)
+    setActiveBlogCategory(null)
+    setSelectedBlogSlug(null)
   }, [])
 
   // Sidebar toggle handler
@@ -281,13 +296,12 @@ export function CmsShell({ userId }: CmsShellProps) {
       )
     }
 
-    // Default empty state
+    // Default: main overview
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-interface text-sm text-muted-foreground">
-          Pilih halaman untuk mulai editing
-        </p>
-      </div>
+      <CmsMainOverview
+        userId={userId}
+        onPageClick={handlePageChange}
+      />
     )
   }
 
@@ -337,6 +351,7 @@ export function CmsShell({ userId }: CmsShellProps) {
           selectedBlogSlug={selectedBlogSlug}
           onBlogSlugChange={setSelectedBlogSlug}
           onCollapseSidebar={handleToggleSidebar}
+          onResetToOverview={handleResetToOverview}
         />
       </aside>
 
