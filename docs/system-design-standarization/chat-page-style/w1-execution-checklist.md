@@ -15,13 +15,13 @@ Dokumen ini adalah panduan eksekusi operasional untuk `Wave W1 (P0)` pada standa
 File target W1:
 
 - `src/components/chat/layout/ChatLayout.tsx`
-- `src/components/chat/layout/TopBar.tsx`
-- `src/components/chat/layout/ActivityBar.tsx`
+- `src/components/chat/shell/TopBar.tsx`
+- `src/components/chat/shell/ActivityBar.tsx`
 - `src/components/chat/ChatSidebar.tsx`
 - `src/components/chat/ChatWindow.tsx`
 - `src/components/chat/ChatInput.tsx`
 - `src/components/chat/MessageBubble.tsx`
-- `src/components/chat/layout/PanelResizer.tsx`
+- `src/components/ui/PanelResizer.tsx`
 - `src/components/chat/sidebar/SidebarChatHistory.tsx`
 - `src/components/chat/messages/TemplateGrid.tsx`
 - `src/components/chat/ChatProcessStatusBar.tsx`
@@ -89,19 +89,19 @@ Referensi gate:
 
 | File | Migrasi Token | Validasi A/B/C | Visual M1-M4 | Status |
 |---|---|---|---|---|
-| `src/components/chat/layout/ChatLayout.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/layout/TopBar.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/layout/ActivityBar.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ChatSidebar.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ChatWindow.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ChatInput.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/MessageBubble.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/layout/PanelResizer.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/sidebar/SidebarChatHistory.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/messages/TemplateGrid.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ChatProcessStatusBar.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ThinkingIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/QuickActions.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/chat/layout/ChatLayout.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/shell/TopBar.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/shell/ActivityBar.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ChatSidebar.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ChatWindow.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ChatInput.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/MessageBubble.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/ui/PanelResizer.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/sidebar/SidebarChatHistory.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/messages/TemplateGrid.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ChatProcessStatusBar.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ThinkingIndicator.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/QuickActions.tsx` | [x] | [x] | [ ] | [x] |
 
 ## 8. Evidence Template (Wajib Diisi)
 
@@ -120,6 +120,14 @@ Referensi gate:
 - mismatch kecil:
 - keputusan:
 ```
+
+### W1 Execution Evidence (Current)
+
+- Date: 2026-02-22
+- Scope: W1
+- Result summary:
+- 13/13 file W1 lolos validasi query A (`dark:`) = `0`
+- 13/13 file W1 lolos validasi query B (hardcoded color) = `0`
 
 ## 9. Aturan Stop
 

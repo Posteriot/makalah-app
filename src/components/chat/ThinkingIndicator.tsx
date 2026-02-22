@@ -25,7 +25,7 @@ export function ThinkingIndicator({ visible }: ThinkingIndicatorProps) {
             aria-label="Agen sedang berpikir"
         >
             {/* Text - Terminal style, Mono */}
-            <span className="text-[11px] font-mono tracking-wider text-slate-600 dark:text-slate-300">
+            <span className="text-[11px] font-mono tracking-wider text-[var(--ds-text-muted)]">
                 Agen memproses
             </span>
 
@@ -33,19 +33,19 @@ export function ThinkingIndicator({ visible }: ThinkingIndicatorProps) {
             <div className="flex items-center gap-1">
                 <span
                     className={cn(
-                        "h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-300",
+                        "h-1.5 w-1.5 rounded-full bg-[var(--ds-thinking-dot)]",
                         "animate-thinking-dot thinking-dot-1"
                     )}
                 />
                 <span
                     className={cn(
-                        "h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-300",
+                        "h-1.5 w-1.5 rounded-full bg-[var(--ds-thinking-dot)]",
                         "animate-thinking-dot thinking-dot-2"
                     )}
                 />
                 <span
                     className={cn(
-                        "h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-300",
+                        "h-1.5 w-1.5 rounded-full bg-[var(--ds-thinking-dot)]",
                         "animate-thinking-dot thinking-dot-3"
                     )}
                 />

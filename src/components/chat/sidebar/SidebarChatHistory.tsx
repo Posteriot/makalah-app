@@ -214,8 +214,8 @@ export function SidebarChatHistory({
               "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center rounded-action border px-2.5 py-2.5 text-left transition-colors",
               "border-transparent",
               currentConversationId === conv._id
-                ? "border-slate-300/90 bg-slate-50 shadow-[inset_0_1px_0_var(--border-hairline-soft)] dark:border-slate-700 dark:bg-slate-900/60"
-                : "hover:bg-slate-300 dark:hover:bg-slate-600/60"
+                ? "border-[color:var(--ds-chat-history-item-active-border)] bg-[var(--ds-chat-history-item-active-bg)] shadow-[inset_0_1px_0_var(--border-hairline-soft)]"
+                : "hover:bg-[var(--ds-chat-history-item-hover-bg)]"
             )
 
             // Content yang sama untuk edit mode dan normal mode

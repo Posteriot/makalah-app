@@ -119,9 +119,9 @@ export function PanelResizer({
         "w-full cursor-col-resize",
         "transition-colors duration-150",
         // Sidebar-main and main-panel separator tones
-        "bg-slate-50 dark:bg-slate-900",
-        "hover:bg-sky-300 dark:hover:bg-sky-700",
-        isDragging && "bg-sky-300 dark:bg-sky-700",
+        "bg-[var(--ds-resizer-base)]",
+        "hover:bg-[var(--ds-resizer-active)]",
+        isDragging && "bg-[var(--ds-resizer-active)]",
         // Position-specific margins for overlap
         position === "left" && "mx-0",
         position === "right" && "mx-0",

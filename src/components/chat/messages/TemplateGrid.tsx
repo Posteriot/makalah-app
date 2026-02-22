@@ -88,7 +88,7 @@ export function TemplateGrid({
               type="button"
               onClick={() => onTemplateSelect(template)}
               disabled={disabled}
-              className="w-fit max-w-full rounded-shell border-hairline bg-slate-200 dark:bg-card/90 px-5 py-2.5 text-center text-interface text-sm text-foreground hover:bg-slate-300 dark:hover:bg-card transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-fit max-w-full rounded-shell border-hairline bg-[var(--ds-template-button-bg)] px-5 py-2.5 text-center text-interface text-sm text-foreground hover:bg-[var(--ds-template-button-bg-hover)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {template.label}
             </button>

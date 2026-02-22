@@ -436,7 +436,7 @@ export function MessageBubble({
                     // User: card style, max-width, text align left
                     isUser && [
                         "rounded-shell",
-                        "bg-slate-200 dark:bg-card",
+                        "bg-[var(--ds-user-message-bg)]",
                         "border border-border/50",
                         "max-w-[85%]",
                         // Keep edit state wide for better readability and stable layout.
@@ -529,10 +529,10 @@ export function MessageBubble({
                         </div>
                     ) : autoUserAction ? (
                         autoUserAction.kind === "approved" ? (
-                            <div className="rounded-action border border-emerald-500/35 bg-emerald-500/10 px-3 py-2.5">
-                                <div className="flex flex-wrap items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                            <div className="rounded-action border border-[color:var(--ds-state-success-border)] bg-[var(--ds-state-success-bg)] px-3 py-2.5">
+                                <div className="flex flex-wrap items-center gap-2 text-[var(--ds-state-success-fg)]">
                                     <CheckCircle className="h-4 w-4" />
-                                    <span className="rounded-badge border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
+                                    <span className="rounded-badge border border-[color:var(--ds-state-success-border-soft)] bg-[var(--ds-state-success-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
                                         Tahap disetujui
                                     </span>
                                     <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
@@ -547,10 +547,10 @@ export function MessageBubble({
                                 </div>
                             </div>
                         ) : (
-                            <div className="rounded-action border border-amber-500/35 bg-amber-500/10 px-3 py-2.5">
-                                <div className="flex flex-wrap items-center gap-2 text-amber-700 dark:text-amber-300">
+                            <div className="rounded-action border border-[color:var(--ds-state-warning-border)] bg-[var(--ds-state-warning-bg)] px-3 py-2.5">
+                                <div className="flex flex-wrap items-center gap-2 text-[var(--ds-state-warning-fg)]">
                                     <EditPencil className="h-4 w-4" />
-                                    <span className="rounded-badge border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
+                                    <span className="rounded-badge border border-[color:var(--ds-state-warning-border-soft)] bg-[var(--ds-state-warning-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
                                         Permintaan revisi
                                     </span>
                                     <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">

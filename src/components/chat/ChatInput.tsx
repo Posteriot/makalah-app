@@ -61,7 +61,7 @@ export function ChatInput({
                 </div>
             )}
             <form onSubmit={onSubmit} className="flex">
-                <div className="grid w-full grid-cols-[auto_1fr_auto] items-end gap-x-2 gap-y-1 rounded-lg border border-slate-300/60 bg-card/90 px-3 py-1.5 dark:border-slate-700/60">
+                <div className="grid w-full grid-cols-[auto_1fr_auto] items-end gap-x-2 gap-y-1 rounded-lg border border-[color:var(--ds-border-subtle)] bg-card/90 px-3 py-1.5">
                     {/* Input Field */}
                     <div className="col-span-3">
                         <textarea
@@ -77,7 +77,7 @@ export function ChatInput({
                         />
                     </div>
 
-                    <div className="col-span-3 mt-0.5 flex items-center justify-between border-t border-slate-300/60 pt-1 dark:border-slate-700/60">
+                    <div className="col-span-3 mt-0.5 flex items-center justify-between border-t border-[color:var(--ds-border-subtle)] pt-1">
                         {/* Attachment Button */}
                         <div className="flex-none">
                             <FileUploadButton
