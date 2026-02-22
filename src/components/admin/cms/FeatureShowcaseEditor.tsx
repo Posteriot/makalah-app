@@ -353,14 +353,12 @@ export function FeatureShowcaseEditor({
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Background Patterns
         </span>
-        {sectionSlug === "features-workflow" && (
-          <div className="flex items-center gap-3">
-            <label className="text-interface text-xs font-medium text-muted-foreground">
-              Grid Pattern
-            </label>
-            <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Grid Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+        </div>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
             Diagonal Stripes

@@ -4,7 +4,7 @@ import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Doc } from "@convex/_generated/dataModel"
 import { SectionBadge } from "@/components/ui/section-badge"
-import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 
 type RefrasaFeatureCMSProps = {
   content: Doc<"pageContent">
@@ -25,6 +25,7 @@ export function RefrasaFeatureCMS({ content }: RefrasaFeatureCMSProps) {
       id="fitur-refrasa"
       className="relative isolate min-h-[100svh] overflow-hidden bg-[var(--section-bg-alt)]"
     >
+      {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
       {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 
