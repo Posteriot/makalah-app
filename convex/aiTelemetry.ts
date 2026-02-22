@@ -56,47 +56,48 @@ export const log = mutation({
       createdAt: Date.now(),
     })
 
-    // ── Health check: sample every ~50 records ──
-    const oneHourAgo = Date.now() - 60 * 60 * 1000
-    const recentRecords = await db
-      .query("aiTelemetry")
-      .withIndex("by_created", (q) => q.gte("createdAt", oneHourAgo))
-      .collect()
+    // ── Health check: only on failures, 50% sample to limit cost ──
+    if (!args.success && Math.random() < 0.5) {
+      const oneHourAgo = Date.now() - 60 * 60 * 1000
+      const recentRecords = await db
+        .query("aiTelemetry")
+        .withIndex("by_created", (q) => q.gte("createdAt", oneHourAgo))
+        .collect()
 
-    // Only check if we have enough data AND roughly every 50th record
-    if (recentRecords.length >= 10 && recentRecords.length % 50 < 1) {
-      const failures = recentRecords.filter((r) => !r.success).length
-      const successRate =
-        ((recentRecords.length - failures) / recentRecords.length) * 100
+      if (recentRecords.length >= 10) {
+        const failures = recentRecords.filter((r) => !r.success).length
+        const successRate =
+          ((recentRecords.length - failures) / recentRecords.length) * 100
 
-      if (successRate < 70) {
-        await db.insert("systemAlerts", {
-          alertType: "ai_health_critical",
-          severity: "critical",
-          message: `Tingkat keberhasilan AI hanya ${Math.round(successRate)}% dalam 1 jam terakhir (${failures} gagal dari ${recentRecords.length} permintaan)`,
-          source: "ai-telemetry",
-          resolved: false,
-          metadata: {
-            successRate: Math.round(successRate),
-            failures,
-            total: recentRecords.length,
-          },
-          createdAt: Date.now(),
-        })
-      } else if (successRate < 90) {
-        await db.insert("systemAlerts", {
-          alertType: "ai_health_degraded",
-          severity: "warning",
-          message: `Tingkat keberhasilan AI turun ke ${Math.round(successRate)}% dalam 1 jam terakhir (${failures} gagal dari ${recentRecords.length} permintaan)`,
-          source: "ai-telemetry",
-          resolved: false,
-          metadata: {
-            successRate: Math.round(successRate),
-            failures,
-            total: recentRecords.length,
-          },
-          createdAt: Date.now(),
-        })
+        if (successRate < 70) {
+          await db.insert("systemAlerts", {
+            alertType: "ai_health_critical",
+            severity: "critical",
+            message: `Tingkat keberhasilan AI hanya ${Math.round(successRate)}% dalam 1 jam terakhir (${failures} gagal dari ${recentRecords.length} permintaan)`,
+            source: "ai-telemetry",
+            resolved: false,
+            metadata: {
+              successRate: Math.round(successRate),
+              failures,
+              total: recentRecords.length,
+            },
+            createdAt: Date.now(),
+          })
+        } else if (successRate < 90) {
+          await db.insert("systemAlerts", {
+            alertType: "ai_health_degraded",
+            severity: "warning",
+            message: `Tingkat keberhasilan AI turun ke ${Math.round(successRate)}% dalam 1 jam terakhir (${failures} gagal dari ${recentRecords.length} permintaan)`,
+            source: "ai-telemetry",
+            resolved: false,
+            metadata: {
+              successRate: Math.round(successRate),
+              failures,
+              total: recentRecords.length,
+            },
+            createdAt: Date.now(),
+          })
+        }
       }
     }
 
@@ -403,6 +404,18 @@ export const getDashboardReport = query({
       })
     }
 
+    // --- Top-level aggregates ---
+    const totalRequests = records.length
+    const successCount = records.filter((r) => r.success).length
+    const failureCount = totalRequests - successCount
+    const latencies = records.map((r) => r.latencyMs)
+    const avgLatencyMs =
+      latencies.length > 0
+        ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+        : 0
+    const minLatencyMs = latencies.length > 0 ? Math.min(...latencies) : 0
+    const maxLatencyMs = latencies.length > 0 ? Math.max(...latencies) : 0
+
     // --- Latency tiers (fast / medium / slow) ---
     const fast = records.filter((r) => r.latencyMs < 1000).length
     const medium = records.filter(
@@ -472,6 +485,12 @@ export const getDashboardReport = query({
       }))
 
     return {
+      totalRequests,
+      successCount,
+      failureCount,
+      avgLatencyMs,
+      minLatencyMs,
+      maxLatencyMs,
       dailySuccessRates,
       latencyTiers,
       toolGroups: toolGroupsResult,

@@ -22,7 +22,7 @@ function rateColor(rate: number): string {
 
 function formatLatency(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`
-  return `${(ms / 1000).toFixed(1)}d`
+  return `${(ms / 1000).toFixed(1)}dtk`
 }
 
 function timeAgo(ts: number): string {

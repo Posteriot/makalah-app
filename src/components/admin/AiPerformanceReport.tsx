@@ -19,13 +19,9 @@ export function AiPerformanceReport({ userId }: AiPerformanceReportProps) {
   const report = useQuery(api.aiTelemetry.getDashboardReport, {
     requestorUserId: userId,
   })
-  const latencyDist = useQuery(api.aiTelemetry.getLatencyDistribution, {
-    requestorUserId: userId,
-    period: "7d",
-  })
 
   // Loading state
-  if (report === undefined || latencyDist === undefined) {
+  if (report === undefined) {
     return (
       <div className="animate-pulse space-y-3">
         <div className="h-8 w-64 rounded-action bg-muted" />
@@ -40,14 +36,8 @@ export function AiPerformanceReport({ userId }: AiPerformanceReportProps) {
     )
   }
 
-  // Compute derived values
-  const totalRequests = report.dailySuccessRates.reduce(
-    (sum, d) => sum + d.total,
-    0
-  )
-
   // Empty state
-  if (totalRequests === 0) {
+  if (report.totalRequests === 0) {
     return (
       <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
         <div className="border-b border-border bg-slate-200/45 px-4 py-3 dark:bg-slate-900/50">
@@ -67,21 +57,14 @@ export function AiPerformanceReport({ userId }: AiPerformanceReportProps) {
     )
   }
 
-  const totalSuccess = report.dailySuccessRates.reduce(
-    (sum, d) => sum + Math.round(d.successRate * d.total),
-    0
-  )
-  const failureCount = totalRequests - totalSuccess
+  const totalRequests = report.totalRequests
+  const failureCount = report.failureCount
   const successRate =
-    totalRequests > 0 ? (totalSuccess / totalRequests) * 100 : 0
+    totalRequests > 0 ? (report.successCount / totalRequests) * 100 : 0
 
-  const avgLatencyMs =
-    latencyDist.p50 > 0
-      ? // Approximate average from percentiles
-        (latencyDist.p50 + latencyDist.p75) / 2
-      : 0
-  const minLatencyMs = latencyDist.p50 > 0 ? latencyDist.p50 * 0.3 : 0
-  const maxLatencyMs = latencyDist.max
+  const avgLatencyMs = report.avgLatencyMs
+  const minLatencyMs = report.minLatencyMs
+  const maxLatencyMs = report.maxLatencyMs
 
   const failoverCount = report.failoverTimeline.length
   const failoverAllSuccess =

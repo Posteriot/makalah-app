@@ -25,21 +25,21 @@ export function LatencyOverviewChart({
   const tiers = [
     {
       label: "Cepat",
-      detail: "<1d",
+      detail: "<1dtk",
       count: latencyTiers.fast,
       pct: fastPct,
       color: "bg-emerald-500",
     },
     {
       label: "Sedang",
-      detail: "1-3d",
+      detail: "1-3dtk",
       count: latencyTiers.medium,
       pct: mediumPct,
       color: "bg-amber-500",
     },
     {
       label: "Lambat",
-      detail: ">3d",
+      detail: ">3dtk",
       count: latencyTiers.slow,
       pct: slowPct,
       color: "bg-rose-500",
@@ -50,7 +50,7 @@ export function LatencyOverviewChart({
     <div>
       <div className="flex items-baseline gap-2">
         <span className="font-mono text-3xl font-semibold text-foreground">
-          {msToSeconds(avgLatencyMs)}d
+          {msToSeconds(avgLatencyMs)}dtk
         </span>
         <span className="text-signal text-[10px] font-bold tracking-wider text-muted-foreground">
           RATA-RATA LATENSI
@@ -80,7 +80,7 @@ export function LatencyOverviewChart({
       </div>
 
       <p className="mt-3 font-mono text-xs text-muted-foreground">
-        tercepat: {msToSeconds(minLatencyMs)}d · terlambat: {msToSeconds(maxLatencyMs)}d
+        tercepat: {msToSeconds(minLatencyMs)}dtk · terlambat: {msToSeconds(maxLatencyMs)}dtk
       </p>
     </div>
   )
