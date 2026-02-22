@@ -45,7 +45,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
-                        <Undo className="h-5 w-5 text-amber-500" />
+                        <Undo className="h-5 w-5 text-[var(--ds-state-warning-fg)]" />
                         Kembali ke tahap {targetLabel}?
                     </AlertDialogTitle>
                     <AlertDialogDescription asChild>
@@ -53,9 +53,9 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                             <p>
                                 Lo akan kembali dari tahap <strong>{currentLabel}</strong> ke tahap <strong>{targetLabel}</strong>.
                             </p>
-                            <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-md">
-                                <WarningTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                                <div className="text-xs text-amber-200">
+                            <div className="flex items-start gap-2 p-3 bg-[var(--ds-state-warning-bg)] border border-[var(--ds-state-warning-border)] rounded-md">
+                                <WarningTriangle className="h-4 w-4 text-[var(--ds-state-warning-fg)] mt-0.5 shrink-0" />
+                                <div className="text-xs text-[var(--ds-state-warning-fg)]">
                                     <strong>Perhatian:</strong> Semua artifact dan keputusan dari tahap {targetLabel} sampai {currentLabel} akan ditandai sebagai <em>invalidated</em> dan perlu direvisi ulang.
                                 </div>
                             </div>
@@ -72,7 +72,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                     <AlertDialogAction
                         onClick={handleConfirm}
                         disabled={isSubmitting}
-                        className="bg-amber-500 hover:bg-amber-600 text-black"
+                        className="bg-[var(--ds-state-warning-fg)] hover:brightness-110 text-[var(--ds-sidebar-cta-fg)]"
                     >
                         {isSubmitting ? (
                             <>

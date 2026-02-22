@@ -61,13 +61,13 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
             className={cn(
                 // Container - centered card style like mockup
                 "max-w-[80%] mx-auto my-4",
-                "bg-slate-50 dark:bg-card border border-slate-200 dark:border-border rounded-lg",
+                "bg-[var(--ds-status-surface)] border border-[var(--ds-status-border)] rounded-lg",
                 "shadow-none",
                 "animate-in fade-in slide-in-from-bottom-4 duration-500"
             )}
         >
             {isDirty && (
-                <div className="flex items-start gap-2 p-3 mx-4 mt-4 mb-0 bg-amber-500/10 border border-amber-500/30 rounded-action text-xs text-amber-600 dark:text-amber-400">
+                <div className="flex items-start gap-2 p-3 mx-4 mt-4 mb-0 bg-[var(--ds-state-warning-bg)] border border-[var(--ds-state-warning-border)] rounded-action text-xs text-[var(--ds-state-warning-fg)]">
                     <WarningCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                     <div>
                         <span className="font-semibold">Percakapan berubah sejak data terakhir disimpan.</span>
@@ -118,9 +118,8 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             disabled={isSubmitting || isLoading}
                             className={cn(
                                 "gap-2 h-9 px-4 rounded-action",
-                                "border-slate-400 text-slate-700",
-                                "hover:bg-slate-300/70 hover:border-slate-500",
-                                "dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700/40 dark:hover:border-slate-500"
+                                "border-[var(--ds-artifact-chip-border)] text-[var(--ds-artifact-chip-fg)]",
+                                "hover:bg-[var(--ds-artifact-chip-hover-bg)] hover:border-[var(--ds-artifact-tab-active-border)]"
                             )}
                         >
                             <EditPencil className="h-3.5 w-3.5" />
@@ -132,8 +131,8 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             disabled={isSubmitting || isLoading}
                             className={cn(
                                 "gap-2 h-9 px-4 rounded-action",
-                                "bg-green-600 hover:bg-green-700",
-                                "text-white border-none"
+                                "bg-[var(--ds-status-progress-success)] hover:brightness-110",
+                                "text-[var(--ds-sidebar-cta-fg)] border-none"
                             )}
                         >
                             <Check className="h-3.5 w-3.5" />
