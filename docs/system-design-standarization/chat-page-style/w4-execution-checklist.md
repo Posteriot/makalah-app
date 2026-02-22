@@ -81,28 +81,41 @@ Referensi gate:
 
 | File | Migrasi Token | Validasi A/B/C | Visual M1-M4 | Status |
 |---|---|---|---|---|
-| `src/components/refrasa/RefrasaToolbar.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/refrasa/RefrasaTabContent.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/refrasa/RefrasaIssueItem.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/refrasa/RefrasaLoadingIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/refrasa/RefrasaToolbar.tsx` | [x] | [x] | [x] | [x] |
+| `src/components/refrasa/RefrasaTabContent.tsx` | [x] | [x] | [x] | [x] |
+| `src/components/refrasa/RefrasaIssueItem.tsx` | [x] | [x] | [x] | [x] |
+| `src/components/refrasa/RefrasaLoadingIndicator.tsx` | [x] | [x] | [x] | [x] |
 
 ## 8. Evidence Template (Wajib Diisi)
 
-```md
 ## W4 Execution Evidence
 
-- Date:
-- Commit/Branch:
+- Date: 2026-02-23 04:29:41 WIB
+- Commit/Branch: `5aabdc1` / `main`
 - Scope: W4
 
 | File | A (`dark:`) | B (hardcoded) | C (`var(--ds-)`) | Visual M1-M4 | Result |
 |---|---|---|---|---|---|
-| src/components/refrasa/RefrasaToolbar.tsx | 0 | 0 | 4 | PASS | PASS |
+| `src/components/refrasa/RefrasaToolbar.tsx` | 0 | 0 | 15 | M1-M4 PASS | PASS |
+| `src/components/refrasa/RefrasaTabContent.tsx` | 0 | 0 | 13 | M1-M4 PASS | PASS |
+| `src/components/refrasa/RefrasaIssueItem.tsx` | 0 | 0 | 7 | M1-M4 PASS | PASS |
+| `src/components/refrasa/RefrasaLoadingIndicator.tsx` | 0 | 0 | 2 | M1-M4 PASS | PASS |
 
 ### Notes
-- mismatch kecil:
-- keputusan:
-```
+- Screenshot evidence:
+- `screenshots/w4-m1-dark-refrasa-main.png`
+- `screenshots/w4-m1-dark-refrasa-issues.png`
+- `screenshots/w4-m1-dark-refrasa-compare.png`
+- `screenshots/w4-m2-light-refrasa-issues.png`
+- `screenshots/w4-m2-light-refrasa-compare.png`
+- `screenshots/w4-m3-mobile-dark-main.png`
+- `screenshots/w4-m3-mobile-dark-issues.png`
+- `screenshots/w4-m4-mobile-light-main.png`
+- `screenshots/w4-m4-mobile-light-issues.png`
+- Lint check file W4: PASS (0 error, 0 warning) pada 4 file scope.
+- Runtime check: setelah reload, error duplicate key di Refrasa toolbar tidak muncul lagi di console.
+- Penyesuaian keterbacaan: tombol `Terapkan` Refrasa digelapkan dengan token khusus `--ds-refrasa-apply-*` (light: emerald-700/600, dark: emerald-600/500) agar kontras teks lebih kuat.
+- Catatan mobile: pada viewport mobile saat ini, panel artifak/refrasa collapse ke lebar `0px`; verifikasi M3/M4 dilakukan pada state chat + indikator related dan dipastikan tidak crash/regresi fungsional.
 
 ## 9. Aturan Stop
 

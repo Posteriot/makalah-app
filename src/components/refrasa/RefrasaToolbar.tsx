@@ -56,10 +56,10 @@ interface RefrasaToolbarProps {
 }
 
 const iconBtnClass =
-  "flex h-8 w-8 items-center justify-center rounded-action text-slate-600 transition-colors hover:bg-slate-200/80 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-slate-100"
+  "flex h-8 w-8 items-center justify-center rounded-action text-[var(--ds-artifact-icon-fg)] transition-colors hover:bg-[var(--ds-artifact-icon-hover-bg)] hover:text-[var(--ds-artifact-icon-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
 
 const collapsibleTriggerClass =
-  "flex items-center gap-1.5 rounded-sm text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 dark:text-slate-400 dark:hover:text-slate-100"
+  "flex items-center gap-1.5 rounded-sm text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)] hover:text-[var(--ds-artifact-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
 
 export function RefrasaToolbar({
   artifact,
@@ -114,16 +114,16 @@ export function RefrasaToolbar({
   }
 
   return (
-    <div className="shrink-0 border-b border-slate-300/75 bg-inherit px-3 py-2 dark:border-slate-700/80">
+    <div className="shrink-0 border-b border-[var(--ds-artifact-divider-border)] bg-inherit px-3 py-2">
       <div className="flex items-center justify-between gap-2">
         {/* Left: source title + version select */}
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+          <span className="truncate text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)]">
             REFRASA: {sourceTitle}
           </span>
 
           {versions.length > 1 && (
-            <span className="rounded-badge border border-slate-300/80 bg-slate-200/60 px-1.5 py-px text-[10px] font-mono font-semibold text-slate-600 dark:border-slate-700/70 dark:bg-slate-800/60 dark:text-slate-400">
+            <span className="rounded-badge border border-[var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-px text-[10px] font-mono font-semibold text-[var(--ds-artifact-chip-fg)]">
               {versions.length} versi
             </span>
           )}
@@ -135,7 +135,7 @@ export function RefrasaToolbar({
             >
               <SelectTrigger
                 size="sm"
-                className="h-6 w-auto min-w-0 gap-1 border-slate-300/80 bg-slate-200/80 px-1.5 font-mono text-[10px] text-slate-700 hover:bg-slate-300/80 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800/80"
+                className="h-6 w-auto min-w-0 gap-1 border-[var(--ds-artifact-viewer-select-border)] bg-[var(--ds-artifact-viewer-select-bg)] px-1.5 font-mono text-[10px] text-[var(--ds-artifact-viewer-select-fg)] hover:bg-[var(--ds-artifact-chip-hover-bg)]"
               >
                 <SelectValue />
               </SelectTrigger>
@@ -158,7 +158,10 @@ export function RefrasaToolbar({
               <TooltipTrigger asChild>
                 <button
                   onClick={onToggleCompare}
-                  className={cn(iconBtnClass, showCompare && "bg-sky-500/15 text-sky-600 dark:text-sky-400")}
+                  className={cn(
+                    iconBtnClass,
+                    showCompare && "bg-[var(--ds-state-info-bg)] text-[var(--ds-state-info-fg)]"
+                  )}
                   aria-label="Bandingkan"
                 >
                   <ViewColumns2 className="h-4 w-4" />
@@ -212,7 +215,7 @@ export function RefrasaToolbar({
                 onClick={onDelete}
                 className={cn(
                   iconBtnClass,
-                  "hover:bg-rose-100/80 hover:text-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-400"
+                  "hover:bg-[var(--ds-state-danger-bg)] hover:text-[var(--ds-state-danger-fg)]"
                 )}
                 aria-label="Hapus"
               >
@@ -232,8 +235,8 @@ export function RefrasaToolbar({
                     className={cn(
                       "inline-flex items-center gap-1 rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                       showIssues
-                        ? "border-amber-500/50 bg-amber-500/20 text-amber-600 dark:text-amber-300"
-                        : "border-amber-500/35 bg-amber-500/10 text-amber-700 hover:border-amber-500/50 hover:bg-amber-500/20 dark:text-amber-300 dark:hover:border-amber-500/50 dark:hover:bg-amber-500/20"
+                        ? "border-[var(--ds-state-warning-border)] bg-[var(--ds-state-warning-chip-bg)] text-[var(--ds-state-warning-fg)]"
+                        : "border-[var(--ds-state-warning-border)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-state-warning-fg)] hover:border-[var(--ds-state-warning-border)] hover:bg-[var(--ds-state-warning-chip-bg)]"
                     )}
                     aria-label="Lihat masalah"
                     aria-expanded={showIssues}
@@ -250,7 +253,7 @@ export function RefrasaToolbar({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
-                    className="flex h-8 w-8 cursor-default items-center justify-center rounded-action text-slate-400 dark:text-slate-600"
+                    className="flex h-8 w-8 cursor-default items-center justify-center rounded-action text-[var(--ds-artifact-text-subtle)]"
                     aria-label="Tidak ada masalah"
                   >
                     <DocMagnifyingGlass className="h-4 w-4" />
@@ -264,7 +267,7 @@ export function RefrasaToolbar({
 
             {/* Issues floating panel */}
             {showIssues && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-[320px] overflow-hidden rounded-action border border-slate-300/85 bg-slate-100 shadow-lg dark:border-slate-700/70 dark:bg-slate-800">
+              <div className="absolute right-0 top-full z-50 mt-2 w-[320px] overflow-hidden rounded-action border border-[var(--ds-artifact-panel-border)] bg-[var(--ds-artifact-panel-bg)] shadow-lg">
                 <div className="max-h-[300px] overflow-y-auto p-3 scrollbar-thin">
                   <div className="space-y-3">
                     {naturalnessIssues.length > 0 && (
@@ -278,9 +281,9 @@ export function RefrasaToolbar({
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="mt-2 space-y-2">
-                            {naturalnessIssues.map((issue) => (
+                            {naturalnessIssues.map((issue, index) => (
                               <RefrasaIssueItem
-                                key={`nat-${issue.type}-${issue.severity}-${issue.message.slice(0, 30)}`}
+                                key={`nat-${issue.type}-${issue.severity}-${issue.message.slice(0, 30)}-${index}`}
                                 issue={issue}
                               />
                             ))}
@@ -300,9 +303,9 @@ export function RefrasaToolbar({
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="mt-2 space-y-2">
-                            {styleIssues.map((issue) => (
+                            {styleIssues.map((issue, index) => (
                               <RefrasaIssueItem
-                                key={`sty-${issue.type}-${issue.severity}-${issue.message.slice(0, 30)}`}
+                                key={`sty-${issue.type}-${issue.severity}-${issue.message.slice(0, 30)}-${index}`}
                                 issue={issue}
                               />
                             ))}
@@ -338,10 +341,10 @@ export function RefrasaToolbar({
             onClick={onApply}
             disabled={isApplying || isApplied}
             className={cn(
-              "h-7 px-2.5 font-mono text-[11px] text-white",
+              "h-7 px-2.5 font-mono text-[11px] text-[var(--ds-refrasa-apply-fg)]",
               isApplied
-                ? "bg-slate-500 hover:bg-slate-500 dark:bg-slate-600 dark:hover:bg-slate-600"
-                : "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                ? "bg-[var(--ds-artifact-action-copied-bg)] hover:bg-[var(--ds-artifact-action-copied-bg)]"
+                : "bg-[var(--ds-refrasa-apply-bg)] hover:bg-[var(--ds-refrasa-apply-bg-hover)]"
             )}
           >
             {isApplying ? (

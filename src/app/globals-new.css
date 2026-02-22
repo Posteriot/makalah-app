@@ -102,6 +102,9 @@
   --ds-status-border: color-mix(in oklch, var(--ds-ref-slate-400) 45%, transparent);
   --ds-status-track-bg: var(--ds-ref-slate-200);
   --ds-status-progress-success: var(--ds-ref-emerald-600);
+  --ds-refrasa-apply-bg: var(--ds-ref-emerald-700);
+  --ds-refrasa-apply-bg-hover: var(--ds-ref-emerald-600);
+  --ds-refrasa-apply-fg: var(--ds-ref-slate-50);
   --ds-status-progress-error: var(--ds-ref-rose-500);
   --ds-paper-session-badge-bg: var(--ds-ref-emerald-700);
   --ds-paper-session-badge-border: color-mix(in oklch, var(--ds-ref-emerald-700) 58%, transparent);
@@ -265,6 +268,9 @@
   --ds-status-border: color-mix(in oklch, var(--ds-ref-slate-700) 55%, transparent);
   --ds-status-track-bg: var(--ds-ref-slate-700);
   --ds-status-progress-success: var(--ds-ref-emerald-400);
+  --ds-refrasa-apply-bg: var(--ds-ref-emerald-600);
+  --ds-refrasa-apply-bg-hover: var(--ds-ref-emerald-500);
+  --ds-refrasa-apply-fg: var(--ds-ref-slate-50);
   --ds-status-progress-error: var(--ds-ref-rose-400);
   --ds-paper-session-badge-bg: var(--ds-ref-emerald-600);
   --ds-paper-session-badge-border: color-mix(in oklch, var(--ds-ref-emerald-500) 62%, transparent);
