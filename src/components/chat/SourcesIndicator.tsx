@@ -48,12 +48,12 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                 className={cn(
                     "flex items-center gap-2.5 px-3 py-2",
                     // Mechanical Grace: .rounded-badge (6px) + Emerald border
-                    "rounded-badge bg-emerald-500/10 border-l-4 border-l-emerald-500",
+                    "rounded-badge border-l-4 border-l-[var(--ds-sources-header-border)] bg-[var(--ds-sources-header-bg)]",
                     "text-sm"
                 )}
             >
-                <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                <span className="text-emerald-500 font-medium font-mono uppercase text-xs tracking-wide">
+                <CheckCircle className="h-4 w-4 flex-shrink-0 text-[var(--ds-sources-header-fg)]" />
+                <span className="font-mono text-xs font-medium uppercase tracking-wide text-[var(--ds-sources-header-fg)]">
                     Menemukan {sources.length} {sources.length === 1 ? "rujukan" : "rujukan"}
                 </span>
             </div>
@@ -128,7 +128,7 @@ function SourceItem({ parts }: { parts: ReturnType<typeof getWebCitationDisplayP
             className={cn(
                 "group flex flex-col gap-0.5 py-2",
                 "-mx-1 px-1 rounded transition-colors",
-                "hover:bg-slate-200/80 dark:hover:bg-slate-800/70"
+                "hover:bg-[var(--ds-sources-item-hover-bg)]"
             )}
         >
             {/* Title */}
@@ -139,7 +139,7 @@ function SourceItem({ parts }: { parts: ReturnType<typeof getWebCitationDisplayP
             </span>
 
             {/* URL - Mechanical Grace: Mono typography */}
-            <span className="text-xs font-mono text-muted-foreground truncate hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
+            <span className="truncate font-mono text-xs text-muted-foreground transition-colors hover:text-[var(--ds-sources-link-hover-fg)]">
                 {parts.url}
             </span>
         </a>

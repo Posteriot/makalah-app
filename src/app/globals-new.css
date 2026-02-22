@@ -103,6 +103,11 @@
   --ds-citation-chip-border: color-mix(in oklch, var(--ds-ref-slate-400) 55%, transparent);
   --ds-citation-chip-fg: var(--ds-ref-slate-900);
   --ds-citation-chip-shadow: color-mix(in oklch, var(--ds-ref-neutral-0) 45%, transparent);
+  --ds-sources-header-bg: color-mix(in oklch, var(--emerald-500) 10%, transparent);
+  --ds-sources-header-border: var(--emerald-500);
+  --ds-sources-header-fg: var(--emerald-500);
+  --ds-sources-item-hover-bg: color-mix(in oklch, var(--ds-ref-slate-200) 80%, transparent);
+  --ds-sources-link-hover-fg: var(--sky-500);
   --ds-thinking-dot: var(--ds-ref-slate-500);
   --ds-resizer-base: var(--ds-ref-slate-50);
   --ds-resizer-active: var(--sky-300);
@@ -242,6 +247,11 @@
   --ds-citation-chip-border: color-mix(in oklch, var(--ds-ref-slate-600) 75%, transparent);
   --ds-citation-chip-fg: var(--ds-ref-slate-100);
   --ds-citation-chip-shadow: transparent;
+  --ds-sources-header-bg: color-mix(in oklch, var(--emerald-500) 10%, transparent);
+  --ds-sources-header-border: var(--emerald-500);
+  --ds-sources-header-fg: var(--emerald-500);
+  --ds-sources-item-hover-bg: color-mix(in oklch, var(--ds-ref-slate-800) 70%, transparent);
+  --ds-sources-link-hover-fg: var(--sky-400);
   --ds-thinking-dot: var(--ds-ref-slate-300);
   --ds-resizer-base: var(--ds-ref-slate-900);
   --ds-resizer-active: var(--sky-700);
