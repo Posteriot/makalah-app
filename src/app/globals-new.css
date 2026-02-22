@@ -7,9 +7,15 @@
 :root {
   --ds-ref-slate-50: var(--slate-50);
   --ds-ref-slate-100: var(--slate-100);
+  --ds-ref-slate-200: var(--slate-200);
+  --ds-ref-slate-300: var(--slate-300);
+  --ds-ref-slate-400: var(--slate-400);
+  --ds-ref-slate-600: var(--slate-600);
+  --ds-ref-slate-700: var(--slate-700);
   --ds-ref-slate-800: var(--slate-800);
   --ds-ref-slate-900: var(--slate-900);
   --ds-ref-slate-400-a: var(--neutral-400-a25);
+  --ds-ref-slate-500-a: var(--neutral-500-a50);
   --ds-ref-slate-600-a: var(--neutral-600-a50);
 }
 
@@ -25,6 +31,16 @@
   --ds-text-toolbar-disabled: var(--slate-400);
   --ds-badge-artifact-bg: var(--emerald-600);
   --ds-badge-artifact-fg: var(--slate-100);
+  --ds-surface-activitybar: var(--ds-ref-slate-300);
+  --ds-surface-activitybar-hover: var(--ds-ref-slate-200);
+  --ds-border-activitybar: var(--ds-ref-slate-400-a);
+  --ds-border-activitybar-strong: var(--ds-ref-slate-400-a);
+  --ds-activity-item-fg: var(--ds-ref-slate-600);
+  --ds-activity-item-hover-bg: var(--ds-surface-activitybar-hover);
+  --ds-activity-item-hover-fg: var(--ds-ref-slate-700);
+  --ds-activity-item-active-bg: var(--ds-ref-slate-200);
+  --ds-activity-item-active-fg: var(--ds-ref-slate-700);
+  --ds-activity-item-active-border: var(--ds-ref-slate-500-a);
 }
 
 .dark [data-ds-scope="chat-v1"] {
@@ -39,4 +55,14 @@
   --ds-text-toolbar-disabled: var(--slate-500);
   --ds-badge-artifact-bg: var(--emerald-600);
   --ds-badge-artifact-fg: var(--slate-100);
+  --ds-surface-activitybar: var(--ds-ref-slate-900);
+  --ds-surface-activitybar-hover: var(--ds-ref-slate-800);
+  --ds-border-activitybar: var(--ds-ref-slate-600-a);
+  --ds-border-activitybar-strong: var(--ds-ref-slate-600-a);
+  --ds-activity-item-fg: var(--ds-ref-slate-400);
+  --ds-activity-item-hover-bg: var(--ds-surface-activitybar-hover);
+  --ds-activity-item-hover-fg: var(--ds-ref-slate-100);
+  --ds-activity-item-active-bg: var(--ds-ref-slate-800);
+  --ds-activity-item-active-fg: var(--ds-ref-slate-100);
+  --ds-activity-item-active-border: var(--ds-ref-slate-600);
 }

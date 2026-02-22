@@ -56,9 +56,10 @@ function ActivityBarItem({
           size="icon"
           className={cn(
             "h-10 w-10 rounded-action border border-transparent transition-all duration-150",
-            "text-slate-600 hover:bg-slate-200/80 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-            "focus-visible:ring-2 focus-visible:ring-muted-foreground/40 focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--section-bg-alt)]",
-            isActive && "border-slate-400/50 bg-slate-200 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            "text-[var(--ds-activity-item-fg)] hover:bg-[var(--ds-activity-item-hover-bg)] hover:text-[var(--ds-activity-item-hover-fg)]",
+            "focus-visible:ring-2 focus-visible:ring-muted-foreground/40 focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--ds-surface-activitybar)]",
+            isActive &&
+              "border-[color:var(--ds-activity-item-active-border)] bg-[var(--ds-activity-item-active-bg)] text-[var(--ds-activity-item-active-fg)]"
           )}
           onClick={onClick}
           aria-label={`${label} panel`}
@@ -189,7 +190,7 @@ export function ActivityBar({
         className={cn(
           "flex flex-col items-center gap-0 py-0",
           "w-[var(--activity-bar-width)] min-w-[48px]",
-          "border-r border-slate-400/20 bg-slate-300 dark:border-slate-700/90 dark:bg-slate-900"
+          "border-r border-[color:var(--ds-border-activitybar)] bg-[var(--ds-surface-activitybar)]"
         )}
         data-testid="activity-bar"
         onKeyDown={handleKeyDown}
@@ -199,8 +200,8 @@ export function ActivityBar({
           href="/"
           className={cn(
             "flex items-center justify-center",
-            "h-11 w-full rounded-none border-b border-slate-400/40 dark:border-slate-700/80",
-            "hover:bg-slate-200/80 transition-colors dark:hover:bg-slate-800"
+            "h-11 w-full rounded-none border-b border-[color:var(--ds-border-activitybar-strong)]",
+            "hover:bg-[var(--ds-surface-activitybar-hover)] transition-colors"
           )}
           aria-label="Home"
         >
