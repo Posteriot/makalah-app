@@ -25,8 +25,8 @@ export function RefrasaFeatureCMS({ content }: RefrasaFeatureCMSProps) {
       id="fitur-refrasa"
       className="relative isolate min-h-[100svh] overflow-hidden bg-[var(--section-bg-alt)]"
     >
-      <DiagonalStripes className="opacity-40" />
-      <DottedPattern spacing={24} withRadialMask={true} />
+      {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
+      {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-7xl items-center px-4 py-6 sm:py-8 md:px-8 md:py-20">
         <div className="grid w-full grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-16">

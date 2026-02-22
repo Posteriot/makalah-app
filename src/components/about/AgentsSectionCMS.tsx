@@ -183,7 +183,7 @@ export function AgentsSectionCMS({ content }: AgentsSectionCMSProps) {
       className="relative flex flex-col overflow-hidden bg-background md:h-[100svh] md:justify-center"
       id="agents"
     >
-      <GridPattern className="z-0" />
+      {content.showGridPattern !== false && <GridPattern className="z-0" />}
       <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">

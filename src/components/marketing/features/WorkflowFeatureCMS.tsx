@@ -25,8 +25,8 @@ export function WorkflowFeatureCMS({ content }: WorkflowFeatureCMSProps) {
       id="fitur-workflow"
       className="relative isolate min-h-[100svh] overflow-hidden bg-background"
     >
-      <GridPattern className="z-0 opacity-80" />
-      <DiagonalStripes className="opacity-70" />
+      {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
+      {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-70" />}
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-7xl items-center px-4 py-6 sm:py-8 md:px-8 md:py-20">
         <div className="grid w-full grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-16">

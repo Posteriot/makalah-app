@@ -84,6 +84,7 @@ export const upsertConfig = mutation({
     logoLightId: v.optional(v.id("_storage")),
     brandTextDarkId: v.optional(v.id("_storage")),
     brandTextLightId: v.optional(v.id("_storage")),
+    showDiagonalStripes: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorId, "admin")

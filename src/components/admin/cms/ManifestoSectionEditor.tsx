@@ -29,6 +29,9 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
   const [paragraphs, setParagraphs] = useState<string[]>([])
   const [terminalDarkId, setTerminalDarkId] = useState<Id<"_storage"> | null>(null)
   const [terminalLightId, setTerminalLightId] = useState<Id<"_storage"> | null>(null)
+  const [showGridPattern, setShowGridPattern] = useState(true)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
@@ -45,6 +48,9 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
       setParagraphs(paras)
       setTerminalDarkId((section.primaryImageId as Id<"_storage"> | undefined) ?? null)
       setTerminalLightId((section.secondaryImageId as Id<"_storage"> | undefined) ?? null)
+      setShowGridPattern(section.showGridPattern !== false)
+      setShowDiagonalStripes(section.showDiagonalStripes !== false)
+      setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
@@ -84,6 +90,9 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
         badgeText,
         primaryImageId: terminalDarkId ?? undefined,
         secondaryImageId: terminalLightId ?? undefined,
+        showGridPattern,
+        showDiagonalStripes,
+        showDottedPattern,
         isPublished,
         sortOrder: 1,
       })
@@ -226,6 +235,31 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
               aspectRatio="16/9"
               fallbackPreviewUrl="/images/manifesto-terminal-light.png"
             />
+          </div>
+        </div>
+
+        {/* Background Pattern toggles */}
+        <div className="space-y-2">
+          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Background Patterns
+          </span>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Grid Pattern
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Diagonal Stripes
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Dotted Pattern
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
           </div>
         </div>
 

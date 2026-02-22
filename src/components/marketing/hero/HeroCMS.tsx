@@ -39,8 +39,8 @@ export function HeroCMS({ content }: HeroCMSProps) {
 
   return (
     <section className="relative isolate min-h-[100svh] overflow-hidden bg-background">
-      <GridPattern className="z-0 opacity-80" />
-      <DiagonalStripes className="opacity-80" />
+      {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
+      {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-80" />}
 
       <div className="relative z-[1] mx-auto flex min-h-[100svh] max-w-7xl items-center px-4 py-10 md:px-8 md:py-24">
         <div className="grid grid-cols-1 gap-comfort lg:grid-cols-16 lg:gap-16">

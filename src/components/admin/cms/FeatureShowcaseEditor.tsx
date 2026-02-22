@@ -75,6 +75,9 @@ export function FeatureShowcaseEditor({
     null
   )
   const [primaryImageAlt, setPrimaryImageAlt] = useState("")
+  const [showGridPattern, setShowGridPattern] = useState(true)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
@@ -89,6 +92,9 @@ export function FeatureShowcaseEditor({
       setPrimaryImageId(section.primaryImageId ?? null)
       setSecondaryImageId(section.secondaryImageId ?? null)
       setPrimaryImageAlt(section.primaryImageAlt ?? "")
+      setShowGridPattern(section.showGridPattern !== false)
+      setShowDiagonalStripes(section.showDiagonalStripes !== false)
+      setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
 
       if (section.items && Array.isArray(section.items)) {
@@ -146,6 +152,9 @@ export function FeatureShowcaseEditor({
         primaryImageId: primaryImageId ?? undefined,
         secondaryImageId: secondaryImageId ?? undefined,
         primaryImageAlt,
+        showGridPattern,
+        showDiagonalStripes,
+        showDottedPattern,
         isPublished,
         sortOrder: SORT_ORDER_MAP[sectionSlug] ?? 3,
       })
@@ -339,6 +348,35 @@ export function FeatureShowcaseEditor({
             onChange={(e) => setPrimaryImageAlt(e.target.value)}
             placeholder="Deskripsi gambar untuk aksesibilitas"
           />
+        </div>
+
+        {/* Background Pattern toggles */}
+        <div className="space-y-2">
+          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Background Patterns
+          </span>
+          {sectionSlug === "features-workflow" && (
+            <div className="flex items-center gap-3">
+              <label className="text-interface text-xs font-medium text-muted-foreground">
+                Grid Pattern
+              </label>
+              <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+            </div>
+          )}
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Diagonal Stripes
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+          </div>
+          {sectionSlug === "features-refrasa" && (
+            <div className="flex items-center gap-3">
+              <label className="text-interface text-xs font-medium text-muted-foreground">
+                Dotted Pattern
+              </label>
+              <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
+            </div>
+          )}
         </div>
 
         {/* Published toggle */}

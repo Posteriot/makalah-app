@@ -22,8 +22,8 @@ export function ProblemsSectionCMS({ content }: ProblemsSectionCMSProps) {
 
   return (
     <section className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)]" id="problems">
-      <DiagonalStripes className="opacity-40" />
-      <DottedPattern spacing={24} withRadialMask={true} />
+      {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
+      {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
         <div className="grid grid-cols-1 gap-comfort md:grid-cols-16">

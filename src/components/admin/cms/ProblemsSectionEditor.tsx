@@ -30,6 +30,8 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
   const [badgeText, setBadgeText] = useState("")
   const [title, setTitle] = useState("")
   const [items, setItems] = useState<ProblemItem[]>([])
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
@@ -47,6 +49,8 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
         }))
         setItems(loaded)
       }
+      setShowDiagonalStripes(section.showDiagonalStripes !== false)
+      setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
@@ -82,6 +86,8 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
           title: item.title,
           description: item.description,
         })),
+        showDiagonalStripes,
+        showDottedPattern,
         isPublished,
         sortOrder: 2,
       })
@@ -206,6 +212,25 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
           >
             Tambah Item
           </Button>
+        </div>
+
+        {/* Background Pattern toggles */}
+        <div className="space-y-2">
+          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Background Patterns
+          </span>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Diagonal Stripes
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Dotted Pattern
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
+          </div>
         </div>
 
         {/* Published toggle */}

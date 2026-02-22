@@ -33,6 +33,8 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
   const [primaryImageAlt, setPrimaryImageAlt] = useState("")
   const [headingImageDarkId, setHeadingImageDarkId] = useState<Id<"_storage"> | null>(null)
   const [headingImageLightId, setHeadingImageLightId] = useState<Id<"_storage"> | null>(null)
+  const [showGridPattern, setShowGridPattern] = useState(true)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
@@ -50,6 +52,8 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
       setPrimaryImageAlt(section.primaryImageAlt ?? "")
       setHeadingImageDarkId(section.headingImageDarkId ?? null)
       setHeadingImageLightId(section.headingImageLightId ?? null)
+      setShowGridPattern(section.showGridPattern !== false)
+      setShowDiagonalStripes(section.showDiagonalStripes !== false)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
@@ -72,6 +76,8 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
         primaryImageAlt,
         headingImageDarkId: headingImageDarkId ?? undefined,
         headingImageLightId: headingImageLightId ?? undefined,
+        showGridPattern,
+        showDiagonalStripes,
         isPublished,
         sortOrder: 1,
       })
@@ -223,6 +229,25 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
             onChange={(e) => setPrimaryImageAlt(e.target.value)}
             placeholder="Deskripsi gambar untuk aksesibilitas"
           />
+        </div>
+
+        {/* Background Pattern toggles */}
+        <div className="space-y-2">
+          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Background Patterns
+          </span>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Grid Pattern
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Diagonal Stripes
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+          </div>
         </div>
 
         {/* Published toggle */}

@@ -27,6 +27,8 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
   const [company, setCompany] = useState("")
   const [address, setAddress] = useState("")
   const [email, setEmail] = useState("")
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
@@ -45,6 +47,8 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
       setCompany(contact?.company ?? "")
       setAddress(contact?.address?.[0] ?? "")
       setEmail(contact?.email ?? "")
+      setShowDiagonalStripes(section.showDiagonalStripes !== false)
+      setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
@@ -62,6 +66,8 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
         badgeText,
         items: [{ title: "Karier", description: careerText }],
         contactInfo: { company, address: [address], email },
+        showDiagonalStripes,
+        showDottedPattern,
         isPublished,
         sortOrder: 4,
       })
@@ -179,6 +185,25 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
                 placeholder="Email kontak"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Background Pattern toggles */}
+        <div className="space-y-2">
+          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Background Patterns
+          </span>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Diagonal Stripes
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Dotted Pattern
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
           </div>
         </div>
 

@@ -148,6 +148,7 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   const [companyDescription, setCompanyDescription] = useState("")
   const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(null)
   const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(null)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saveLabel, setSaveLabel] = useState("Simpan")
 
@@ -164,6 +165,7 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
       setCompanyDescription((config.companyDescription as string | undefined) ?? "")
       setLogoDarkId((config.logoDarkId as Id<"_storage"> | undefined) ?? null)
       setLogoLightId((config.logoLightId as Id<"_storage"> | undefined) ?? null)
+      setShowDiagonalStripes(config.showDiagonalStripes !== false)
     } else if (config === null) {
       setFooterSections(DEFAULT_SECTIONS)
       setSocialLinks(DEFAULT_SOCIALS)
@@ -281,6 +283,7 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
         companyDescription,
         logoDarkId: logoDarkId ?? undefined,
         logoLightId: logoLightId ?? undefined,
+        showDiagonalStripes,
       })
       setSaveLabel("Tersimpan!")
       setTimeout(() => setSaveLabel("Simpan"), 2000)
@@ -542,6 +545,19 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
               />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Background Pattern toggles */}
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Background Patterns
+        </span>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Diagonal Stripes
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
         </div>
       </div>
 

@@ -31,6 +31,7 @@ export function AgentsSectionEditor({ userId }: AgentsSectionEditorProps) {
   const [badgeText, setBadgeText] = useState("")
   const [title, setTitle] = useState("")
   const [items, setItems] = useState<AgentItem[]>([])
+  const [showGridPattern, setShowGridPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
@@ -49,6 +50,7 @@ export function AgentsSectionEditor({ userId }: AgentsSectionEditorProps) {
         }))
         setItems(loaded)
       }
+      setShowGridPattern(section.showGridPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
@@ -85,6 +87,7 @@ export function AgentsSectionEditor({ userId }: AgentsSectionEditorProps) {
           description: item.description,
           icon: item.icon,
         })),
+        showGridPattern,
         isPublished,
         sortOrder: 3,
       })
@@ -225,6 +228,19 @@ export function AgentsSectionEditor({ userId }: AgentsSectionEditorProps) {
           >
             Tambah Agent
           </Button>
+        </div>
+
+        {/* Background Pattern toggles */}
+        <div className="space-y-2">
+          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Background Patterns
+          </span>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Grid Pattern
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+          </div>
         </div>
 
         {/* Published toggle */}

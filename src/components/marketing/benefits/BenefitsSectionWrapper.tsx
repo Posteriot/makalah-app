@@ -33,5 +33,11 @@ export function BenefitsSectionWrapper() {
     icon: item.icon,
   }))
 
-  return <BenefitsSection items={items} />
+  return (
+    <BenefitsSection
+      items={items}
+      showDiagonalStripes={section.showDiagonalStripes}
+      showDottedPattern={section.showDottedPattern}
+    />
+  )
 }

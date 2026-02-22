@@ -967,6 +967,9 @@ export default defineSchema({
       address: v.array(v.string()),
       email: v.string(),
     })),
+    showGridPattern: v.optional(v.boolean()),
+    showDiagonalStripes: v.optional(v.boolean()),
+    showDottedPattern: v.optional(v.boolean()),
     isPublished: v.boolean(),
     sortOrder: v.number(),
     updatedAt: v.number(),
@@ -1013,6 +1016,7 @@ export default defineSchema({
     logoLightId: v.optional(v.id("_storage")),
     brandTextDarkId: v.optional(v.id("_storage")),
     brandTextLightId: v.optional(v.id("_storage")),
+    showDiagonalStripes: v.optional(v.boolean()),
     updatedAt: v.number(),
     updatedBy: v.optional(v.id("users")),
   })
