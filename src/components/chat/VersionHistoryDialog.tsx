@@ -80,7 +80,7 @@ export function VersionHistoryDialog({
                     Riwayat ({versionHistory?.length ?? 0})
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[80vh] max-w-lg border-border/60 bg-card">
+            <DialogContent className="max-h-[80vh] max-w-lg border-[var(--ds-artifact-panel-border)] bg-[var(--ds-artifact-panel-bg)]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Clock className="h-5 w-5" />
@@ -95,7 +95,7 @@ export function VersionHistoryDialog({
                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
                     {versionHistory === undefined ? (
                         <div className="flex items-center justify-center py-8">
-                            <span className="h-6 w-6 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                            <span className="h-6 w-6 border-2 border-[var(--ds-artifact-text-muted)] border-t-transparent rounded-full animate-spin" />
                         </div>
                     ) : (
                         <div className="space-y-3 pr-1">
@@ -108,14 +108,16 @@ export function VersionHistoryDialog({
                                     <div key={version._id} className="relative pl-7">
                                         {!isLastItem && (
                                             <span
-                                                className="absolute left-2.5 top-4 h-[calc(100%+8px)] w-px bg-border/70"
+                                                className="absolute left-2.5 top-4 h-[calc(100%+8px)] w-px bg-[var(--ds-artifact-divider-border)]"
                                                 aria-hidden="true"
                                             />
                                         )}
                                         <span
                                             className={cn(
-                                                "absolute left-[5px] top-3 h-3 w-3 rounded-full border-2 border-card",
-                                                isCurrentVersion ? "bg-primary" : "bg-muted-foreground/60"
+                                                "absolute left-[5px] top-3 h-3 w-3 rounded-full border-2 border-[var(--ds-artifact-panel-bg)]",
+                                                isCurrentVersion
+                                                    ? "bg-[var(--ds-state-info-fg)]"
+                                                    : "bg-[var(--ds-artifact-text-subtle)]"
                                             )}
                                             aria-hidden="true"
                                         />
@@ -127,9 +129,10 @@ export function VersionHistoryDialog({
                                             }}
                                             className={cn(
                                                 "w-full rounded-action border p-3 text-left transition-colors",
-                                                "border-border/55 hover:border-border hover:bg-accent/50",
+                                                "border-[var(--ds-artifact-chip-border)] hover:border-[var(--ds-artifact-tab-active-border)] hover:bg-[var(--ds-artifact-chip-hover-bg)]",
                                                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2",
-                                                isCurrentVersion && "border-primary/50 bg-primary/10"
+                                                isCurrentVersion &&
+                                                    "border-[var(--ds-state-info-border)] bg-[var(--ds-state-info-bg)]"
                                             )}
                                         >
                                             <div className="flex items-start justify-between gap-2">
@@ -137,12 +140,18 @@ export function VersionHistoryDialog({
                                                     <div className="flex flex-wrap items-center gap-1.5">
                                                         <span className="font-mono font-medium">v{version.version}</span>
                                                         {isLatest && (
-                                                            <Badge variant="secondary" className="rounded-badge border border-border/60 bg-muted/70 px-1 py-0 text-[10px] font-mono">
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="rounded-badge border border-[var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1 py-0 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]"
+                                                            >
                                                                 Terbaru
                                                             </Badge>
                                                         )}
                                                         {isCurrentVersion && (
-                                                            <Badge variant="default" className="rounded-badge border border-primary/40 bg-primary/15 px-1 py-0 text-[10px] font-mono text-primary dark:text-primary">
+                                                            <Badge
+                                                                variant="default"
+                                                                className="rounded-badge border border-[var(--ds-state-info-border)] bg-[var(--ds-state-info-bg)] px-1 py-0 text-[10px] font-mono text-[var(--ds-state-info-fg)]"
+                                                            >
                                                                 Dilihat
                                                             </Badge>
                                                         )}
@@ -151,7 +160,12 @@ export function VersionHistoryDialog({
                                                         {formatDate(version.createdAt)}
                                                     </p>
                                                 </div>
-                                                <NavArrowRight className={cn("h-4 w-4 shrink-0 text-muted-foreground", isCurrentVersion && "text-primary")} />
+                                                <NavArrowRight
+                                                    className={cn(
+                                                        "h-4 w-4 shrink-0 text-[var(--ds-artifact-text-muted)]",
+                                                        isCurrentVersion && "text-[var(--ds-state-info-fg)]"
+                                                    )}
+                                                />
                                             </div>
 
                                             <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
@@ -166,7 +180,7 @@ export function VersionHistoryDialog({
                 </div>
 
                 {/* Footer info - Mechanical Grace: .border-hairline + Mono */}
-                <div className="border-t border-border/50 pt-4 text-xs font-mono text-muted-foreground">
+                <div className="border-t border-[var(--ds-artifact-divider-border)] pt-4 text-xs font-mono text-muted-foreground">
                     <div className="flex items-center justify-between">
                         <span>Total {versionHistory?.length ?? 0} versi</span>
                         <span>

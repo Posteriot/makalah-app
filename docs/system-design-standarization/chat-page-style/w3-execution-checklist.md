@@ -85,13 +85,13 @@ Referensi gate:
 
 | File | Migrasi Token | Validasi A/B/C | Visual M1-M4 | Status |
 |---|---|---|---|---|
-| `src/components/chat/sidebar/SidebarProgress.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/chat/sidebar/SidebarPaperSessions.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/paper/PaperValidationPanel.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/paper/RewindConfirmationDialog.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/paper/PaperSessionBadge.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/paper/PaperStageProgress.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/chat/VersionHistoryDialog.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/chat/sidebar/SidebarProgress.tsx` | [x] | [x] | [x] | [x] |
+| `src/components/chat/sidebar/SidebarPaperSessions.tsx` | [x] | [x] | [x] | [x] |
+| `src/components/paper/PaperValidationPanel.tsx` | [x] | [x] | [~] | [x] |
+| `src/components/paper/RewindConfirmationDialog.tsx` | [x] | [x] | [x] | [x] |
+| `src/components/paper/PaperSessionBadge.tsx` | [x] | [x] | [x] | [x] |
+| `src/components/paper/PaperStageProgress.tsx` | [x] | [x] | [x] | [x] |
+| `src/components/chat/VersionHistoryDialog.tsx` | [x] | [x] | [~] | [x] |
 
 ## 8. Evidence Template (Wajib Diisi)
 
@@ -113,8 +113,8 @@ Referensi gate:
 
 ### W3 Execution Evidence (Current)
 
-- Date: 2026-02-23 03:20:03 WIB
-- Scope: W3-A + W3-B + W3-C (`SidebarProgress.tsx`, `SidebarPaperSessions.tsx`, `PaperValidationPanel.tsx`, `RewindConfirmationDialog.tsx`, `PaperSessionBadge.tsx`, `PaperStageProgress.tsx`)
+- Date: 2026-02-23 03:56:40 WIB
+- Scope: W3-A + W3-B + W3-C + W3-D (`SidebarProgress.tsx`, `SidebarPaperSessions.tsx`, `PaperValidationPanel.tsx`, `RewindConfirmationDialog.tsx`, `PaperSessionBadge.tsx`, `PaperStageProgress.tsx`, `VersionHistoryDialog.tsx`)
 - Result summary:
 - `src/components/chat/sidebar/SidebarProgress.tsx`: A=0, B=0, C=11
 - `src/components/chat/sidebar/SidebarPaperSessions.tsx`: A=0, B=0, C=11
@@ -122,7 +122,23 @@ Referensi gate:
 - `src/components/paper/RewindConfirmationDialog.tsx`: A=0, B=0, C=5
 - `src/components/paper/PaperSessionBadge.tsx`: A=0, B=0, C=1
 - `src/components/paper/PaperStageProgress.tsx`: A=0, B=0, C=12
-- Visual gate M1-M4 untuk W3: belum dijalankan (pending setelah semua file W3 selesai).
+- `src/components/chat/VersionHistoryDialog.tsx`: A=0, B=0, C=13
+- Visual gate M1-M4 W3: PASS untuk `SidebarProgress`, `SidebarPaperSessions`, `RewindConfirmationDialog`, `PaperSessionBadge`, `PaperStageProgress`.
+- Visual gate M1-M4 W3: `PaperValidationPanel` belum muncul pada session uji ini (state validasi tidak aktif), sehingga ditandai `[~]`.
+- Visual gate M1-M4 W3: `VersionHistoryDialog` belum ter-mount di runtime chat saat ini (belum ada usage/import aktif), sehingga ditandai `[~]`.
+- Evidence screenshot:
+- `screenshots/w3-m1-dark-paper-sessions-sidebar.png`
+- `screenshots/w3-m1-dark-progress-sidebar.png`
+- `screenshots/w3-m1-dark-rewind-dialog.png`
+- `screenshots/w3-m2-light-paper-sessions-sidebar.png`
+- `screenshots/w3-m2-light-progress-sidebar.png`
+- `screenshots/w3-m2-light-rewind-dialog.png`
+- `screenshots/w3-m3-mobile-dark-main.png`
+- `screenshots/w3-m3-mobile-dark-progress-menu.png`
+- `screenshots/w3-m3-mobile-dark-rewind-dialog.png`
+- `screenshots/w3-m4-mobile-light-main.png`
+- `screenshots/w3-m4-mobile-light-progress-menu.png`
+- `screenshots/w3-m4-mobile-light-rewind-dialog.png`
 
 ## 9. Aturan Stop
 
