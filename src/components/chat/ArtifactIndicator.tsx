@@ -40,8 +40,8 @@ export function ArtifactIndicator({
           className={cn(
             "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-action border",
             isUpdated
-              ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-              : "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+              ? "border-[color:var(--ds-state-warning-border-soft)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-state-warning-fg)]"
+              : "border-[color:var(--ds-state-info-border)] bg-[var(--ds-state-info-bg)] text-[var(--ds-state-info-fg)]"
           )}
           aria-hidden="true"
         >
@@ -57,8 +57,8 @@ export function ArtifactIndicator({
               className={cn(
                 "rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
                 isUpdated
-                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  ? "border-[color:var(--ds-state-warning-border-soft)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-state-warning-fg)]"
+                  : "border-[color:var(--ds-state-success-border-soft)] bg-[var(--ds-state-success-bg)] text-[var(--ds-state-success-fg)]"
               )}
             >
               {isUpdated ? "Revisi" : "Baru"}

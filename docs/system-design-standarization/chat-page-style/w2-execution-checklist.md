@@ -93,10 +93,10 @@ Referensi gate:
 | `src/components/chat/ArtifactToolbar.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/ArtifactViewer.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/FullsizeArtifactModal.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/chat/ArtifactEditor.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ArtifactIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ArtifactList.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/MarkdownRenderer.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/chat/ArtifactEditor.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ArtifactIndicator.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ArtifactList.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/MarkdownRenderer.tsx` | [x] | [x] | [ ] | [x] |
 
 ## 8. Evidence Template (Wajib Diisi)
 

@@ -169,11 +169,11 @@ export function ArtifactList({
                           {typeLabels[artifact.type]}
                         </Badge>
                         {isFinal ? (
-                          <Badge className="rounded-badge border border-emerald-500/35 bg-emerald-500/15 px-1 py-0 text-[10px] font-mono uppercase text-emerald-700 dark:text-emerald-300">
+                          <Badge className="rounded-badge border border-[color:var(--ds-state-success-border)] bg-[var(--ds-state-success-chip-bg)] px-1 py-0 text-[10px] font-mono uppercase text-[var(--ds-state-success-fg)]">
                             Final
                           </Badge>
                         ) : (
-                          <Badge className="rounded-badge border border-amber-500/35 bg-amber-500/15 px-1 py-0 text-[10px] font-mono uppercase text-amber-700 dark:text-amber-300">
+                          <Badge className="rounded-badge border border-[color:var(--ds-state-warning-border)] bg-[var(--ds-state-warning-chip-bg)] px-1 py-0 text-[10px] font-mono uppercase text-[var(--ds-state-warning-fg)]">
                             Revisi
                           </Badge>
                         )}

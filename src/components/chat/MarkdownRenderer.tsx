@@ -415,7 +415,7 @@ function BareUrlCopyBadge({ url }: { url: string }) {
         <button
           type="button"
           onClick={handleCopy}
-          className="mx-0.5 inline-flex items-center rounded-badge border border-slate-300 bg-slate-200 px-2 py-0.5 font-mono text-xs font-normal text-slate-900 transition-colors hover:bg-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+          className="mx-0.5 inline-flex items-center rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-2 py-0.5 font-mono text-xs font-normal text-[var(--ds-artifact-chip-fg)] transition-colors hover:bg-[var(--ds-artifact-chip-hover-bg)]"
         >
           URL Referensi
         </button>
@@ -541,7 +541,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       nodes.push(
         <code
           key={`${keyPrefix}-code-${partIndex++}`}
-          className="inline-flex items-center rounded-badge border border-slate-500 bg-slate-300 px-2 py-0.5 font-mono text-[0.85em] font-medium text-slate-950 shadow-sm dark:border-slate-500 dark:bg-slate-700 dark:text-slate-100 dark:shadow-none"
+          className="inline-flex items-center rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-2 py-0.5 font-mono text-[0.85em] font-medium text-[var(--ds-artifact-text-primary)] shadow-sm"
         >
           {inner}
         </code>,

@@ -28,6 +28,9 @@
   --ds-ref-amber-100: var(--amber-100);
   --ds-ref-rose-400: var(--rose-400);
   --ds-ref-rose-500: var(--rose-500);
+  --ds-ref-sky-300: var(--sky-300);
+  --ds-ref-sky-500: var(--sky-500);
+  --ds-ref-sky-700: var(--sky-700);
   --ds-ref-neutral-0: var(--neutral-0);
   --ds-ref-slate-400-a: var(--neutral-400-a25);
   --ds-ref-slate-300-a: var(--neutral-400-a15);
@@ -88,6 +91,9 @@
   --ds-state-warning-border-soft: color-mix(in oklch, var(--ds-ref-amber-500) 30%, transparent);
   --ds-state-warning-chip-bg: color-mix(in oklch, var(--ds-ref-amber-500) 15%, transparent);
   --ds-state-warning-fg: var(--ds-ref-amber-700);
+  --ds-state-info-bg: color-mix(in oklch, var(--ds-ref-sky-500) 12%, transparent);
+  --ds-state-info-border: color-mix(in oklch, var(--ds-ref-sky-500) 35%, transparent);
+  --ds-state-info-fg: var(--ds-ref-sky-700);
   --ds-status-surface: color-mix(in oklch, var(--ds-ref-slate-100) 85%, transparent);
   --ds-status-border: color-mix(in oklch, var(--ds-ref-slate-400) 45%, transparent);
   --ds-status-track-bg: var(--ds-ref-slate-200);
@@ -108,6 +114,7 @@
   --ds-artifact-text-subtle: var(--ds-ref-slate-500);
   --ds-artifact-empty-icon: var(--ds-ref-slate-500);
   --ds-artifact-chip-bg: color-mix(in oklch, var(--ds-ref-slate-200) 85%, transparent);
+  --ds-artifact-chip-hover-bg: color-mix(in oklch, var(--ds-ref-slate-300) 75%, transparent);
   --ds-artifact-chip-border: color-mix(in oklch, var(--ds-ref-slate-400) 62%, transparent);
   --ds-artifact-chip-fg: var(--ds-ref-slate-700);
   --ds-artifact-icon-fg: var(--ds-ref-slate-600);
@@ -219,6 +226,9 @@
   --ds-state-warning-border-soft: color-mix(in oklch, var(--ds-ref-amber-500) 30%, transparent);
   --ds-state-warning-chip-bg: color-mix(in oklch, var(--ds-ref-amber-500) 20%, transparent);
   --ds-state-warning-fg: var(--ds-ref-amber-300);
+  --ds-state-info-bg: color-mix(in oklch, var(--ds-ref-sky-500) 20%, transparent);
+  --ds-state-info-border: color-mix(in oklch, var(--ds-ref-sky-500) 35%, transparent);
+  --ds-state-info-fg: var(--ds-ref-sky-300);
   --ds-status-surface: color-mix(in oklch, var(--ds-ref-slate-800) 82%, transparent);
   --ds-status-border: color-mix(in oklch, var(--ds-ref-slate-700) 55%, transparent);
   --ds-status-track-bg: var(--ds-ref-slate-700);
@@ -239,6 +249,7 @@
   --ds-artifact-text-subtle: var(--ds-ref-slate-400);
   --ds-artifact-empty-icon: color-mix(in oklch, var(--ds-ref-slate-400) 70%, transparent);
   --ds-artifact-chip-bg: color-mix(in oklch, var(--ds-ref-slate-900) 72%, transparent);
+  --ds-artifact-chip-hover-bg: color-mix(in oklch, var(--ds-ref-slate-800) 80%, transparent);
   --ds-artifact-chip-border: color-mix(in oklch, var(--ds-ref-slate-700) 70%, transparent);
   --ds-artifact-chip-fg: var(--ds-ref-slate-100);
   --ds-artifact-icon-fg: var(--ds-ref-slate-400);
