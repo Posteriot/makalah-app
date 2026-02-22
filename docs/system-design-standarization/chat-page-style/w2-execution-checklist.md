@@ -100,21 +100,35 @@ Referensi gate:
 
 ## 8. Evidence Template (Wajib Diisi)
 
-```md
 ## W2 Execution Evidence
 
-- Date:
-- Commit/Branch:
+- Date: 22 Feb 2026
+- Commit/Branch: `main` (working tree lokal)
 - Scope: W2
+- Conversation sample: `http://localhost:3000/chat/j570n080wx4t4187p1gxssdp2x81mmdw`
+- Screenshot evidence:
+- `/tmp/chat-w2-dark-desktop.png`
+- `/tmp/chat-w2-light-desktop.png`
 
 | File | A (`dark:`) | B (hardcoded) | C (`var(--ds-)`) | Visual M1-M4 | Result |
 |---|---|---|---|---|---|
-| src/components/chat/ArtifactPanel.tsx | 0 | 0 | 8 | PASS | PASS |
+| `src/components/chat/ArtifactPanel.tsx` | 0 | 0 | 7 | M1 PASS, M2 PASS, M3-M4 pending | PASS |
+| `src/components/chat/ArtifactTabs.tsx` | 0 | 0 | 18 | M1 PASS, M2 PASS, M3-M4 pending | PASS |
+| `src/components/chat/ArtifactToolbar.tsx` | 0 | 0 | 20 | M1 PASS, M2 PASS, M3-M4 pending | PASS |
+| `src/components/chat/ArtifactViewer.tsx` | 0 | 0 | 13 | M1 PASS, M2 PASS, M3-M4 pending | PASS |
+| `src/components/chat/FullsizeArtifactModal.tsx` | 0 | 0 | 41 | M1 PASS, M2 PASS, M3-M4 pending | PASS |
+| `src/components/chat/ArtifactEditor.tsx` | 0 | 0 | 2 | M1 PASS, M2 PASS, M3-M4 pending | PASS |
+| `src/components/chat/ArtifactIndicator.tsx` | 0 | 0 | 4 | M1 PASS, M2 PASS, M3-M4 pending | PASS |
+| `src/components/chat/ArtifactList.tsx` | 0 | 0 | 2 | M1 PASS, M2 PASS, M3-M4 pending | PASS |
+| `src/components/chat/MarkdownRenderer.tsx` | 0 | 0 | 2 | M1 PASS, M2 PASS, M3-M4 pending | PASS |
 
 ### Notes
-- mismatch kecil:
-- keputusan:
-```
+- Keputusan aktif saat ini: mobile gate (M3-M4) ditunda dulu sampai token/struktur mobile chat dirapikan.
+- Desktop gate yang diuji:
+- artifact panel open/close stabil
+- artifact toolbar action menu stabil
+- fullscreen modal open/close stabil
+- reader/viewer tetap terbaca di dark/light
 
 ## 9. Aturan Stop
 
