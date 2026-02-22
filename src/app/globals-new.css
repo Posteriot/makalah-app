@@ -151,8 +151,20 @@
   --ds-artifact-viewer-canvas-bg: var(--ds-ref-slate-50);
   --ds-artifact-viewer-canvas-border: color-mix(in oklch, var(--ds-ref-slate-400) 62%, transparent);
   --ds-artifact-viewer-overlay-bg: color-mix(in oklch, var(--ds-ref-slate-100) 95%, transparent);
+  --ds-artifact-backdrop: color-mix(in oklch, var(--ds-ref-slate-900) 55%, transparent);
   --ds-artifact-warning-text-strong: var(--ds-ref-amber-900);
   --ds-artifact-warning-text-muted: color-mix(in oklch, var(--ds-ref-amber-800) 85%, transparent);
+  --ds-artifact-meta-card-bg: color-mix(in oklch, var(--ds-ref-slate-200) 60%, transparent);
+  --ds-artifact-meta-card-border: color-mix(in oklch, var(--ds-ref-slate-400) 60%, transparent);
+  --ds-artifact-mode-badge-bg: color-mix(in oklch, var(--sky-500) 12%, transparent);
+  --ds-artifact-mode-badge-border: color-mix(in oklch, var(--sky-500) 35%, transparent);
+  --ds-artifact-mode-badge-fg: var(--sky-700);
+  --ds-artifact-copy-badge-bg: color-mix(in oklch, var(--sky-500) 12%, transparent);
+  --ds-artifact-copy-badge-border: color-mix(in oklch, var(--sky-500) 40%, transparent);
+  --ds-artifact-copy-badge-fg: var(--sky-700);
+  --ds-artifact-danger-bg: var(--ds-ref-amber-700);
+  --ds-artifact-danger-fg: var(--ds-ref-slate-50);
+  --ds-artifact-danger-hover-bg: var(--ds-ref-amber-500);
 }
 
 .dark [data-ds-scope="chat-v1"] {
@@ -270,6 +282,18 @@
   --ds-artifact-viewer-canvas-bg: var(--ds-ref-slate-900);
   --ds-artifact-viewer-canvas-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
   --ds-artifact-viewer-overlay-bg: color-mix(in oklch, var(--ds-ref-slate-900) 95%, transparent);
+  --ds-artifact-backdrop: color-mix(in oklch, var(--ds-ref-slate-950) 70%, transparent);
   --ds-artifact-warning-text-strong: var(--ds-ref-amber-100);
   --ds-artifact-warning-text-muted: color-mix(in oklch, var(--ds-ref-amber-300) 85%, transparent);
+  --ds-artifact-meta-card-bg: color-mix(in oklch, var(--ds-ref-slate-900) 70%, transparent);
+  --ds-artifact-meta-card-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
+  --ds-artifact-mode-badge-bg: color-mix(in oklch, var(--sky-500) 22%, transparent);
+  --ds-artifact-mode-badge-border: color-mix(in oklch, var(--sky-500) 40%, transparent);
+  --ds-artifact-mode-badge-fg: var(--sky-300);
+  --ds-artifact-copy-badge-bg: color-mix(in oklch, var(--sky-500) 20%, transparent);
+  --ds-artifact-copy-badge-border: color-mix(in oklch, var(--sky-500) 42%, transparent);
+  --ds-artifact-copy-badge-fg: var(--sky-300);
+  --ds-artifact-danger-bg: var(--ds-ref-amber-700);
+  --ds-artifact-danger-fg: var(--ds-ref-slate-100);
+  --ds-artifact-danger-hover-bg: var(--ds-ref-amber-500);
 }

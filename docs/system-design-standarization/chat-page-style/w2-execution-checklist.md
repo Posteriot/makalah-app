@@ -92,7 +92,7 @@ Referensi gate:
 | `src/components/chat/ArtifactTabs.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/ArtifactToolbar.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/ArtifactViewer.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/chat/FullsizeArtifactModal.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/chat/FullsizeArtifactModal.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/ArtifactEditor.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/chat/ArtifactIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/chat/ArtifactList.tsx` | [ ] | [ ] | [ ] | [ ] |
