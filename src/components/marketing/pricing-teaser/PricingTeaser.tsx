@@ -8,7 +8,7 @@ import { TeaserCard } from "./TeaserCard"
 import { TeaserCarousel } from "./TeaserCarousel"
 import { TeaserSkeleton } from "./TeaserSkeleton"
 import { TeaserCTA } from "./TeaserCTA"
-import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 
 // Static fallback values
 const FALLBACK_BADGE = "Pemakaian & Harga"
@@ -25,13 +25,28 @@ export function PricingTeaser() {
     sectionSlug: "pricing-teaser",
   })
 
+  // Loading state — both queries must resolve
+  if (plansData === undefined || headerSection === undefined) {
+    return <TeaserSkeleton />
+  }
+
+  // Unpublished — hide section entirely
+  if (headerSection !== null && !headerSection.isPublished) {
+    return null
+  }
+
+  // Empty plans — unlikely but handle gracefully
+  if (plansData.length === 0) {
+    return null
+  }
+
   // Use CMS data if published, otherwise static fallback
   const useCms = headerSection?.isPublished === true
   const badgeText = useCms ? (headerSection.badgeText || FALLBACK_BADGE) : FALLBACK_BADGE
   const titleText = useCms ? (headerSection.title || FALLBACK_TITLE) : FALLBACK_TITLE
 
   // Transform to teaser format using database fields
-  const teaserPlans: TeaserPlan[] = (plansData || []).map((plan) => ({
+  const teaserPlans: TeaserPlan[] = plansData.map((plan) => ({
     _id: plan._id,
     name: plan.name,
     price: plan.price,
@@ -42,16 +57,6 @@ export function PricingTeaser() {
     creditNote: plan.teaserCreditNote || "",
   }))
 
-  // Loading state
-  if (!plansData) {
-    return <TeaserSkeleton />
-  }
-
-  // Empty state - unlikely but handle gracefully
-  if (plansData.length === 0) {
-    return null
-  }
-
   return (
     <section
       className="relative h-[100svh] flex flex-col justify-center overflow-hidden bg-background"
@@ -59,6 +64,7 @@ export function PricingTeaser() {
     >
       {/* Background patterns — conditional via CMS when published */}
       {(!useCms || headerSection.showGridPattern !== false) && <GridPattern className="z-0" />}
+      {(!useCms || headerSection.showDiagonalStripes !== false) && <DiagonalStripes className="opacity-70" />}
       {(!useCms || headerSection.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-6 md:px-8 md:py-10">

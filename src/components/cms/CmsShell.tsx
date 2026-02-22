@@ -26,6 +26,8 @@ import { BlogPostListEditor } from "@/components/admin/cms/BlogPostListEditor"
 import { BlogPostEditor } from "@/components/admin/cms/BlogPostEditor"
 import { PricingPlanEditor } from "@/components/admin/cms/PricingPlanEditor"
 import { PricingHeaderEditor } from "@/components/admin/cms/PricingHeaderEditor"
+import { CmsPageOverview } from "./CmsPageOverview"
+import { HOME_SECTIONS, ABOUT_SECTIONS } from "./CmsSidebar"
 
 /**
  * CmsShell - 4-column CSS Grid orchestrator for CMS layout
@@ -120,7 +122,7 @@ export function CmsShell({ userId }: CmsShellProps) {
     if (activePage === "home" && activeSection === "benefits") return <BenefitsSectionEditor userId={userId} />
     if (activePage === "home" && activeSection === "features-workflow") return <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-workflow" userId={userId} />
     if (activePage === "home" && activeSection === "features-refrasa") return <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-refrasa" userId={userId} />
-    if (activePage === "home" && activeSection === "pricing-teaser") return <PricingHeaderEditor pageSlug="home" sectionSlug="pricing-teaser" userId={userId} />
+    if (activePage === "home" && activeSection === "pricing-teaser") return <PricingHeaderEditor pageSlug="home" sectionSlug="pricing-teaser" userId={userId} onNavigateToPricing={() => { setActivePage("pricing"); setActiveSection(null) }} />
 
     // About sections
     if (activePage === "about" && activeSection === "manifesto") return <ManifestoSectionEditor userId={userId} />
@@ -200,20 +202,24 @@ export function CmsShell({ userId }: CmsShellProps) {
     // Empty states for pages that need child selection
     if (activePage === "home" && !activeSection) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih section dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsPageOverview
+          pageTitle="Home"
+          pageSlug="home"
+          sections={HOME_SECTIONS}
+          userId={userId}
+          onSectionClick={(id) => setActiveSection(id)}
+        />
       )
     }
     if (activePage === "about" && !activeSection) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih section dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsPageOverview
+          pageTitle="About"
+          pageSlug="about"
+          sections={ABOUT_SECTIONS}
+          userId={userId}
+          onSectionClick={(id) => setActiveSection(id)}
+        />
       )
     }
     if (activePage === "pricing" && !activeSection) {

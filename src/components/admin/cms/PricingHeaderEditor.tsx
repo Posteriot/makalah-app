@@ -14,6 +14,7 @@ type PricingHeaderEditorProps = {
   pageSlug: string
   sectionSlug: string
   userId: Id<"users">
+  onNavigateToPricing?: () => void
 }
 
 // Current hardcoded values — shown as defaults when no DB record exists yet
@@ -30,7 +31,7 @@ const DEFAULTS: Record<string, { badge: string; title: string; subtitle: string 
   },
 }
 
-export function PricingHeaderEditor({ pageSlug, sectionSlug, userId }: PricingHeaderEditorProps) {
+export function PricingHeaderEditor({ pageSlug, sectionSlug, userId, onNavigateToPricing }: PricingHeaderEditorProps) {
   const section = useQuery(api.pageContent.getSection, {
     pageSlug,
     sectionSlug,
@@ -44,6 +45,7 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId }: PricingHe
   const [title, setTitle] = useState(defaults.title)
   const [subtitle, setSubtitle] = useState(defaults.subtitle)
   const [showGridPattern, setShowGridPattern] = useState(true)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
   const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
@@ -55,6 +57,7 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId }: PricingHe
       setTitle(section.title ?? defaults.title)
       setSubtitle(section.subtitle ?? defaults.subtitle)
       setShowGridPattern(section.showGridPattern !== false)
+      setShowDiagonalStripes(section.showDiagonalStripes !== false)
       setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
@@ -71,6 +74,7 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId }: PricingHe
       title,
       subtitle,
       showGridPattern,
+      showDiagonalStripes,
       showDottedPattern,
       isPublished,
       sortOrder: pageSlug === "home" ? 5 : 0,
@@ -150,6 +154,30 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId }: PricingHe
         )}
       </div>
 
+      {/* ── Info: Pricing Cards ── */}
+      {pageSlug === "home" && (
+        <>
+          <div className="border-t border-border" />
+          <div className="rounded-action border border-border bg-muted/50 px-4 py-3">
+            <p className="text-interface text-xs leading-relaxed text-muted-foreground">
+              Pengaturan cards harga/tier dikelola di{" "}
+              {onNavigateToPricing ? (
+                <button
+                  type="button"
+                  onClick={onNavigateToPricing}
+                  className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+                >
+                  Halaman Pricing
+                </button>
+              ) : (
+                <span className="font-medium text-foreground">Halaman Pricing</span>
+              )}
+              {" "}(Pricing → Gratis / BPP / Pro).
+            </p>
+          </div>
+        </>
+      )}
+
       {/* ── Cluster 2: Background Patterns ── */}
       <div className="border-t border-border" />
       <div className="space-y-2">
@@ -161,6 +189,12 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId }: PricingHe
             Grid Pattern
           </label>
           <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Diagonal Stripes
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
         </div>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">

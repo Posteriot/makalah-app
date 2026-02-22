@@ -53,7 +53,7 @@ export type BlogCategoryId =
 
 // -- Navigation data --
 
-const HOME_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
+export const HOME_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
   { id: "hero", label: "Hero" },
   { id: "benefits", label: "Benefits" },
   { id: "features-workflow", label: "Fitur: Workflow" },
@@ -61,14 +61,14 @@ const HOME_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
   { id: "pricing-teaser", label: "Pricing Teaser" },
 ]
 
-const ABOUT_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
+export const ABOUT_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
   { id: "manifesto", label: "Manifesto" },
   { id: "problems", label: "Problems" },
   { id: "agents", label: "Agents" },
   { id: "career-contact", label: "Karier & Kontak" },
 ]
 
-const PRICING_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
+export const PRICING_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
   { id: "pricing-header", label: "Header" },
   { id: "pricing-gratis", label: "Gratis" },
   { id: "pricing-bpp", label: "Bayar Per Paper" },
