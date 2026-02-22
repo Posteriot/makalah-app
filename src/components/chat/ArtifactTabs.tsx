@@ -18,7 +18,7 @@ import { Id } from "../../../convex/_generated/dataModel"
 
 function RefrasaBadge() {
   return (
-    <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-amber-500/20 text-[9px] font-mono font-bold text-amber-700 dark:text-amber-300">
+    <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-[var(--ds-state-warning-chip-bg)] text-[9px] font-mono font-bold text-[var(--ds-state-warning-fg)]">
       R
     </span>
   )
@@ -221,14 +221,14 @@ export function ArtifactTabs({
       <div className="relative min-w-0 flex-1 overflow-hidden">
         <div
           className={cn(
-            "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-slate-100/95 dark:from-slate-800 to-transparent transition-opacity",
+            "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-[var(--ds-artifact-tab-gradient)] to-transparent transition-opacity",
             hasOverflowLeft ? "opacity-100" : "opacity-0"
           )}
           aria-hidden="true"
         />
         <div
           className={cn(
-            "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-slate-100/95 dark:from-slate-800 to-transparent transition-opacity",
+            "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-[var(--ds-artifact-tab-gradient)] to-transparent transition-opacity",
             hasOverflowRight ? "opacity-100" : "opacity-0"
           )}
           aria-hidden="true"
@@ -266,18 +266,18 @@ export function ArtifactTabs({
                 className={cn(
                   "group relative -mb-px flex min-w-[160px] max-w-[260px] cursor-pointer items-center gap-2 rounded-t-action rounded-b-none border-x border-t border-b-0 px-2.5 py-1",
                   "transition-colors duration-150",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--ds-artifact-focus-offset)]",
                   isActive
-                    ? "border-slate-300/80 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-slate-700/70 dark:bg-slate-800 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                    : "border-transparent bg-slate-100/35 hover:border-slate-300/80 hover:bg-slate-200/60 dark:bg-transparent dark:hover:border-slate-700/70 dark:hover:bg-slate-700/60"
+                    ? "border-[color:var(--ds-artifact-tab-active-border)] bg-[var(--ds-artifact-tab-active-bg)] shadow-[inset_0_1px_0_var(--ds-artifact-tab-active-shadow)]"
+                    : "border-transparent bg-[var(--ds-artifact-tab-inactive-bg)] hover:border-[color:var(--ds-artifact-tab-inactive-hover-border)] hover:bg-[var(--ds-artifact-tab-inactive-hover-bg)]"
                 )}
               >
                 <span
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center",
                     isActive
-                      ? "text-slate-900 dark:text-slate-100"
-                      : "rounded-badge border border-slate-300/70 bg-slate-100 text-slate-500 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-400"
+                      ? "text-[var(--ds-artifact-tab-text-active)]"
+                      : "rounded-badge border border-[color:var(--ds-artifact-tab-icon-border)] bg-[var(--ds-artifact-tab-icon-bg)] text-[var(--ds-artifact-tab-icon-fg)]"
                   )}
                 >
                   <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
@@ -287,7 +287,7 @@ export function ArtifactTabs({
                   <span
                     className={cn(
                       "block truncate text-[11px] font-medium leading-tight",
-                      isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"
+                      isActive ? "text-[var(--ds-artifact-tab-text-active)]" : "text-[var(--ds-artifact-tab-text-inactive)]"
                     )}
                   >
                     {tab.title}
@@ -301,7 +301,7 @@ export function ArtifactTabs({
                     closeTabWithFallback(tab.id)
                   }}
                   className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-badge text-slate-600 transition-colors dark:text-muted-foreground",
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-badge text-[var(--ds-artifact-tab-close-fg)] transition-colors",
                     "hover:bg-destructive hover:text-destructive-foreground",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
                     isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -317,8 +317,8 @@ export function ArtifactTabs({
         </div>
       </div>
 
-      <div className="flex h-[34px] self-end items-center gap-2 border-l border-slate-300/80 px-3 dark:border-slate-700/80 @[520px]/artifact:gap-0.5 @[520px]/artifact:px-2">
-        <span className="mr-1 text-[10px] font-mono text-slate-600 dark:text-slate-400">
+      <div className="flex h-[34px] self-end items-center gap-2 border-l border-[color:var(--ds-artifact-tab-controls-border)] px-3 @[520px]/artifact:gap-0.5 @[520px]/artifact:px-2">
+        <span className="mr-1 text-[10px] font-mono text-[var(--ds-artifact-tab-controls-fg)]">
           {tabs.length} tab
         </span>
         <button
@@ -326,9 +326,9 @@ export function ArtifactTabs({
           onClick={() => activateAdjacentTab("left")}
           disabled={!hasPrevTab}
           className={cn(
-            "flex h-7 w-7 items-center justify-center text-slate-600 transition-colors dark:text-slate-400",
-            "rounded-none hover:bg-transparent hover:text-slate-900 dark:hover:text-foreground",
-            "@[520px]/artifact:rounded-action @[520px]/artifact:hover:bg-accent @[520px]/artifact:dark:hover:bg-slate-700/70",
+            "flex h-7 w-7 items-center justify-center text-[var(--ds-artifact-tab-controls-fg)] transition-colors",
+            "rounded-none hover:bg-transparent hover:text-[var(--ds-artifact-tab-controls-hover-fg)]",
+            "@[520px]/artifact:rounded-action @[520px]/artifact:hover:bg-[var(--ds-artifact-tab-controls-hover-bg)]",
             "disabled:cursor-not-allowed disabled:opacity-35"
           )}
           aria-label="Tab sebelumnya"
@@ -340,9 +340,9 @@ export function ArtifactTabs({
           onClick={() => activateAdjacentTab("right")}
           disabled={!hasNextTab}
           className={cn(
-            "flex h-7 w-7 items-center justify-center text-slate-600 transition-colors dark:text-slate-400",
-            "rounded-none hover:bg-transparent hover:text-slate-900 dark:hover:text-foreground",
-            "@[520px]/artifact:rounded-action @[520px]/artifact:hover:bg-accent @[520px]/artifact:dark:hover:bg-slate-700/70",
+            "flex h-7 w-7 items-center justify-center text-[var(--ds-artifact-tab-controls-fg)] transition-colors",
+            "rounded-none hover:bg-transparent hover:text-[var(--ds-artifact-tab-controls-hover-fg)]",
+            "@[520px]/artifact:rounded-action @[520px]/artifact:hover:bg-[var(--ds-artifact-tab-controls-hover-bg)]",
             "disabled:cursor-not-allowed disabled:opacity-35"
           )}
           aria-label="Tab berikutnya"

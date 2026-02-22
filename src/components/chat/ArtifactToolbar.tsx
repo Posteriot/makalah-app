@@ -77,44 +77,43 @@ export function ArtifactToolbar({
   const isRefrasaReady = artifact.contentLength >= 50
 
   const iconActionClass =
-    "h-8 w-8 rounded-action text-slate-600 dark:text-slate-400 transition-colors hover:bg-slate-200/80 hover:text-slate-900 dark:hover:bg-slate-700/70 dark:hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-100 dark:focus-visible:ring-offset-slate-800"
+    "h-8 w-8 rounded-action text-[var(--ds-artifact-icon-fg)] transition-colors hover:bg-[var(--ds-artifact-icon-hover-bg)] hover:text-[var(--ds-artifact-icon-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-artifact-focus-offset)]"
   const sidebarButtonSurfaceClass =
-    "border-slate-500/60 bg-slate-600 text-slate-100 hover:border-slate-500/70 hover:bg-slate-700 hover:text-slate-100 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-600 dark:hover:text-slate-100"
+    "border-[color:var(--ds-artifact-action-border)] bg-[var(--ds-artifact-action-bg)] text-[var(--ds-artifact-action-fg)] hover:border-[color:var(--ds-artifact-action-hover-border)] hover:bg-[var(--ds-artifact-action-hover-bg)] hover:text-[var(--ds-artifact-action-fg)]"
 
   return (
     <div
       className={cn(
         "@container/toolbar",
-        "shrink-0 border-y border-slate-300/75 bg-inherit dark:border-slate-700/80 px-3 py-2"
+        "shrink-0 border-y border-[color:var(--ds-artifact-divider-border)] bg-inherit px-3 py-2"
       )}
     >
       {/* Layer 1: Active document context */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 hidden @[520px]/toolbar:block">
-          <p className="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <p className="truncate text-lg font-semibold text-[var(--ds-artifact-text-primary)]">
             {artifact.title}
           </p>
         </div>
 
         <div className="min-w-0 @[520px]/toolbar:hidden">
-          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)]">
             Artifak Aktif
           </p>
-          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+          <p className="truncate text-sm font-medium text-[var(--ds-artifact-text-primary)]">
             {artifact.title}
           </p>
           <div className="mt-1 flex items-center gap-1.5">
-            
             <Badge
               variant="secondary"
-              className="h-5 rounded-badge bg-slate-200/85 px-1.5 py-0 text-[10px] font-mono text-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
+              className="h-5 rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]"
             >
               v{artifact.version}
             </Badge>
-            <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">
+            <span className="text-[10px] font-mono text-[var(--ds-artifact-text-muted)]">
               {formatDate(artifact.createdAt)}
             </span>
-            <span className="hidden @[460px]/toolbar:inline text-[10px] font-mono text-slate-500 dark:text-slate-500">
+            <span className="hidden @[460px]/toolbar:inline text-[10px] font-mono text-[var(--ds-artifact-text-subtle)]">
               • {openTabCount} tab
             </span>
           </div>
@@ -129,7 +128,7 @@ export function ArtifactToolbar({
                   size="icon"
                   className={cn(
                     iconActionClass,
-                    "border border-slate-400/70 bg-slate-200/90 text-slate-700 hover:border-slate-500 hover:bg-slate-300/80 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                    "border border-[color:var(--ds-artifact-expand-border)] bg-[var(--ds-artifact-expand-bg)] text-[var(--ds-artifact-expand-fg)] hover:border-[color:var(--ds-artifact-expand-hover-border)] hover:bg-[var(--ds-artifact-expand-hover-bg)] hover:text-[var(--ds-artifact-text-primary)]"
                   )}
                   onClick={onExpand}
                   aria-label="Buka fullscreen"
@@ -177,16 +176,16 @@ export function ArtifactToolbar({
       </div>
 
       {/* Layer 2: Prioritized actions */}
-      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-300/80 pt-2 dark:border-slate-700/70">
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-[color:var(--ds-artifact-divider-border)] pt-2">
         {/* Wide layout */}
         <div className="hidden @[520px]/toolbar:flex min-w-0 items-center gap-1.5">
-          <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
+          <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]">
             {artifact.contentTypeLabel}
           </span>
-          <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
+          <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]">
             {artifact.wordCount} kata
           </span>
-          <span className="rounded-badge border border-slate-300/80 bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100">
+          <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]">
             {artifact.contentLength} karakter
           </span>
         </div>
@@ -219,7 +218,7 @@ export function ArtifactToolbar({
                 className={cn(
                   "h-8 w-8 rounded-action border transition-all duration-150",
                   sidebarButtonSurfaceClass,
-                  copied && "border-slate-500/80 bg-slate-700 text-slate-100 dark:border-slate-500 dark:bg-slate-600"
+                  copied && "border-[color:var(--ds-artifact-action-copied-border)] bg-[var(--ds-artifact-action-copied-bg)] text-[var(--ds-artifact-action-fg)]"
                 )}
                 aria-label={copied ? "Disalin" : "Salin"}
               >
@@ -238,7 +237,7 @@ export function ArtifactToolbar({
                 className={cn(
                   "h-8 w-8 rounded-action border transition-all duration-150",
                   sidebarButtonSurfaceClass,
-                  !isRefrasaReady && "text-slate-300 hover:text-slate-200 dark:text-slate-400 dark:hover:text-slate-300"
+                  !isRefrasaReady && "text-[var(--ds-artifact-action-disabled-fg)] hover:text-[var(--ds-artifact-action-disabled-hover-fg)]"
                 )}
                 aria-label="Refrasa"
               >
@@ -279,14 +278,14 @@ export function ArtifactToolbar({
 
         {/* Compact layout */}
         <div className="flex w-full items-center justify-between gap-2 @[520px]/toolbar:hidden">
-          <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-slate-700 dark:text-slate-100">
-            <span className="truncate rounded-badge border border-slate-300/85 bg-slate-200/80 px-1.5 py-0.5 dark:border-slate-700/70 dark:bg-slate-900/70">
+          <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-[var(--ds-artifact-text-secondary)]">
+            <span className="truncate rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5">
               {artifact.contentTypeLabel}
             </span>
-            <span className="rounded-badge border border-slate-300/85 bg-slate-200/80 px-1.5 py-0.5 dark:border-slate-700/70 dark:bg-slate-900/70">
+            <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5">
               {artifact.wordCount} kata
             </span>
-            <span className="rounded-badge border border-slate-300/85 bg-slate-200/80 px-1.5 py-0.5 dark:border-slate-700/70 dark:bg-slate-900/70">
+            <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5">
               {artifact.contentLength} karakter
             </span>
           </div>

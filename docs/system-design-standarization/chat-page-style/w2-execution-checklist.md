@@ -88,10 +88,10 @@ Referensi gate:
 
 | File | Migrasi Token | Validasi A/B/C | Visual M1-M4 | Status |
 |---|---|---|---|---|
-| `src/components/chat/ArtifactPanel.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ArtifactTabs.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ArtifactToolbar.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/ArtifactViewer.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/chat/ArtifactPanel.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ArtifactTabs.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ArtifactToolbar.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/ArtifactViewer.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/FullsizeArtifactModal.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/chat/ArtifactEditor.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/chat/ArtifactIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |

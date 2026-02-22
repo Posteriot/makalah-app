@@ -297,8 +297,8 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     return (
       <div className="flex h-full flex-col">
         {hasHeaderMeta ? (
-          <div className="border-b border-slate-300/80 bg-inherit px-4 py-3 dark:border-slate-700/80">
-            <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono text-slate-700 dark:text-slate-400">
+          <div className="border-b border-[color:var(--ds-artifact-divider-border)] bg-inherit px-4 py-3">
+            <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono text-[var(--ds-artifact-text-muted)]">
               {hasMultipleVersions ? (
                 <Select
                   value={viewingVersionId ?? undefined}
@@ -306,7 +306,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 >
                   <SelectTrigger
                     size="sm"
-                    className="h-6 w-auto min-w-[130px] rounded-action border-slate-300/85 bg-slate-200/80 px-2 py-0 text-[11px] font-mono font-medium text-slate-800 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-100"
+                    className="h-6 w-auto min-w-[130px] rounded-action border-[color:var(--ds-artifact-viewer-select-border)] bg-[var(--ds-artifact-viewer-select-bg)] px-2 py-0 text-[11px] font-mono font-medium text-[var(--ds-artifact-viewer-select-fg)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
                   >
                     <SelectValue placeholder={`v${artifact.version}`} />
                   </SelectTrigger>
@@ -324,7 +324,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span
-                      className="cursor-help rounded-badge border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[11px] font-mono text-amber-700 dark:text-amber-300"
+                      className="cursor-help rounded-badge border border-[color:var(--ds-state-warning-border)] bg-[var(--ds-state-warning-bg)] px-2 py-0.5 text-[11px] font-mono text-[var(--ds-state-warning-fg)]"
                       data-testid="artifact-type-badge"
                     >
                       <WarningTriangle className="mr-1 inline-block h-3 w-3" data-testid="invalidation-indicator" />
@@ -350,7 +350,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         {isInvalidated && (
           <Alert
             variant="warning"
-            className="mx-4 mt-2 border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100"
+            className="mx-4 mt-2 border-[color:var(--ds-state-warning-border-soft)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-artifact-warning-text-strong)]"
             data-testid="invalidation-warning"
           >
             <WarningTriangle className="h-4 w-4" data-testid="invalidation-warning-icon" />
@@ -359,7 +359,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
               {invalidatedStageLabel && (
                 <span> karena rewind ke tahap <strong>{invalidatedStageLabel}</strong></span>
               )}
-              <span className="mt-1 block text-xs text-amber-800/85 dark:text-amber-200/85">
+              <span className="mt-1 block text-xs text-[var(--ds-artifact-warning-text-muted)]">
                 Gunakan chat untuk meminta AI memperbarui artifak ini.
               </span>
             </AlertDescription>
@@ -376,10 +376,10 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         ) : (
           <>
             <div className="flex-1 overflow-hidden px-4 py-3">
-              <div className="flex h-full flex-col overflow-hidden rounded-sm border border-slate-300/85 bg-slate-50 dark:border-slate-700/70 dark:bg-slate-900">
+              <div className="flex h-full flex-col overflow-hidden rounded-sm border border-[color:var(--ds-artifact-viewer-canvas-border)] bg-[var(--ds-artifact-viewer-canvas-bg)]">
                 <div className="relative flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
                   {isRefrasaLoading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-slate-100/95 backdrop-blur-md dark:bg-slate-900/95">
+                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-[var(--ds-artifact-viewer-overlay-bg)] backdrop-blur-md">
                       <RefrasaLoadingIndicator />
                     </div>
                   )}
@@ -407,12 +407,12 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                   ) : shouldRenderMarkdown ? (
                     <MarkdownRenderer
                       markdown={artifact.content}
-                      className="space-y-3 text-sm leading-relaxed text-slate-900 dark:text-slate-100"
+                      className="space-y-3 text-sm leading-relaxed text-[var(--ds-artifact-text-primary)]"
                       sources={artifact.sources}
                       context="artifact"
                     />
                   ) : (
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-900 dark:text-slate-100">
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[var(--ds-artifact-text-primary)]">
                       {artifact.content}
                     </pre>
                   )}
@@ -420,16 +420,16 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
               </div>
             </div>
 
-            <div className="border-t border-slate-300/80 bg-inherit px-4 py-2 dark:border-slate-700/70">
+            <div className="border-t border-[color:var(--ds-artifact-divider-border)] bg-inherit px-4 py-2">
               {artifact.sources && artifact.sources.length > 0 ? (
                 <div>
-                  <p className="mb-1 text-[10px] font-mono font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                  <p className="mb-1 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)]">
                     Sumber Terkait
                   </p>
                   <SourcesIndicator sources={artifact.sources} />
                 </div>
               ) : (
-                <p className="text-[11px] font-mono text-slate-600 dark:text-slate-100">
+                <p className="text-[11px] font-mono text-[var(--ds-artifact-text-secondary)]">
                   Tidak ada rujukan eksternal.
                 </p>
               )}
