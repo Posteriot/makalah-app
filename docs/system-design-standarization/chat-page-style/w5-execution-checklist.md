@@ -82,29 +82,40 @@ Referensi gate:
 
 | File | Migrasi Token | Validasi A/B/C | Visual M1-M4 | Status |
 |---|---|---|---|---|
-| `src/components/chat/InlineCitationChip.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/chat/QuotaWarningBanner.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/chat/SearchStatusIndicator.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/chat/SourcesIndicator.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/chat/ToolStateIndicator.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/InlineCitationChip.tsx` | [x] | [x] | M1-M4 [x] | [x] |
+| `src/components/chat/QuotaWarningBanner.tsx` | [x] | [x] | M1-M4 [x] | [x] |
+| `src/components/chat/SearchStatusIndicator.tsx` | [x] | [x] | M1-M4 [x] | [x] |
+| `src/components/chat/SourcesIndicator.tsx` | [x] | [x] | M1-M4 [x] | [x] |
+| `src/components/chat/ToolStateIndicator.tsx` | [x] | [x] | M1-M4 [x] | [x] |
 
 ## 8. Evidence Template (Wajib Diisi)
 
-```md
 ## W5 Execution Evidence
 
-- Date:
-- Commit/Branch:
+- Date: 2026-02-23 02:56:41 WIB
+- Commit/Branch: `499468e` / `main`
 - Scope: W5
 
 | File | A (`dark:`) | B (hardcoded) | C (`var(--ds-)`) | Visual M1-M4 | Result |
 |---|---|---|---|---|---|
-| src/components/chat/InlineCitationChip.tsx | 0 | 0 | 4 | PASS | PASS |
+| `src/components/chat/InlineCitationChip.tsx` | 0 | 0 | 1 | M1-M4 PASS | PASS |
+| `src/components/chat/QuotaWarningBanner.tsx` | 0 | 0 | 10 | M1-M4 PASS | PASS |
+| `src/components/chat/SearchStatusIndicator.tsx` | 0 | 0 | 8 | M1-M4 PASS | PASS |
+| `src/components/chat/SourcesIndicator.tsx` | 0 | 0 | 5 | M1-M4 PASS | PASS |
+| `src/components/chat/ToolStateIndicator.tsx` | 0 | 0 | 2 | M1-M4 PASS | PASS |
 
 ### Notes
-- mismatch kecil:
-- keputusan:
-```
+- Screenshot evidence:
+- `screenshots/w5-m1-dark-static.png`
+- `screenshots/w5-m1-dark-generating.png`
+- `screenshots/w5-m2-light-static.png`
+- `screenshots/w5-m2-light-generating.png`
+- `screenshots/w5-m3-mobile-dark-static.png`
+- `screenshots/w5-m3-mobile-dark-generating.png`
+- `screenshots/w5-m4-mobile-light-static.png`
+- `screenshots/w5-m4-mobile-light-generating.png`
+- Runtime check: tidak terdeteksi string error `Galat: tidak diketahui` pada sesi verifikasi ini.
+- Catatan viewport mobile: verifikasi dilakukan pada viewport aktif browser dengan `window.innerWidth=500` dan `window.innerHeight=736`.
 
 ## 9. Aturan Stop
 
