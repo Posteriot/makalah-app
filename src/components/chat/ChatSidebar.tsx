@@ -119,14 +119,14 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "h-full w-full overflow-hidden border-r border-slate-300/50 bg-slate-200 dark:border-slate-700/80 dark:bg-slate-800",
+        "h-full w-full overflow-hidden border-r border-[color:var(--ds-sidebar-border)] bg-[var(--ds-sidebar-surface)]",
         "flex flex-col",
         className
       )}
     >
       {/* Sidebar Header — Collapse toggle */}
       {onCollapseSidebar && (
-        <div className="flex h-11 shrink-0 items-center justify-end border-b border-slate-300/90 px-3 dark:border-slate-700/80">
+        <div className="flex h-11 shrink-0 items-center justify-end border-b border-[color:var(--ds-sidebar-border-strong)] px-3">
           <button
             onClick={onCollapseSidebar}
             className={cn(
@@ -144,15 +144,15 @@ export function ChatSidebar({
 
       {/* Header - Only show New Chat for chat-history panel */}
       {activePanel === "chat-history" && (
-        <div className="shrink-0 px-3 pb-3 pt-3 dark:border-slate-600/90">
+        <div className="shrink-0 px-3 pb-3 pt-3">
           <Button
             onClick={() => {
               onNewChat()
               onCloseMobile?.()
             }}
             className={cn(
-              "h-10 w-full items-center justify-center gap-2 rounded-action border border-slate-500/60 bg-slate-600 px-4 py-0 text-sm font-medium leading-none text-slate-100",
-              "hover:bg-slate-700 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-600"
+              "h-10 w-full items-center justify-center gap-2 rounded-action border border-[color:var(--ds-sidebar-cta-border)] bg-[var(--ds-sidebar-cta-bg)] px-4 py-0 text-sm font-medium leading-none text-[var(--ds-sidebar-cta-fg)]",
+              "hover:bg-[var(--ds-sidebar-cta-bg-hover)]"
             )}
             aria-label="Start new chat"
             aria-busy={isCreating}

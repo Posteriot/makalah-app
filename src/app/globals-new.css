@@ -41,6 +41,13 @@
   --ds-activity-item-active-bg: var(--ds-ref-slate-200);
   --ds-activity-item-active-fg: var(--ds-ref-slate-700);
   --ds-activity-item-active-border: var(--ds-ref-slate-500-a);
+  --ds-sidebar-surface: var(--ds-ref-slate-200);
+  --ds-sidebar-border: var(--ds-ref-slate-500-a);
+  --ds-sidebar-border-strong: var(--ds-ref-slate-500-a);
+  --ds-sidebar-cta-border: var(--ds-ref-slate-600-a);
+  --ds-sidebar-cta-bg: var(--ds-ref-slate-600);
+  --ds-sidebar-cta-bg-hover: var(--ds-ref-slate-700);
+  --ds-sidebar-cta-fg: var(--ds-ref-slate-100);
 }
 
 .dark [data-ds-scope="chat-v1"] {
@@ -65,4 +72,11 @@
   --ds-activity-item-active-bg: var(--ds-ref-slate-800);
   --ds-activity-item-active-fg: var(--ds-ref-slate-100);
   --ds-activity-item-active-border: var(--ds-ref-slate-600);
+  --ds-sidebar-surface: var(--ds-ref-slate-800);
+  --ds-sidebar-border: var(--ds-ref-slate-600-a);
+  --ds-sidebar-border-strong: var(--ds-ref-slate-600-a);
+  --ds-sidebar-cta-border: var(--ds-ref-slate-700);
+  --ds-sidebar-cta-bg: var(--ds-ref-slate-900);
+  --ds-sidebar-cta-bg-hover: var(--ds-ref-slate-600);
+  --ds-sidebar-cta-fg: var(--ds-ref-slate-100);
 }
