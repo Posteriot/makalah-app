@@ -127,13 +127,15 @@ function MilestoneItem({
     <div
       className={cn(
         "w-3 h-3 rounded-full border-2 shrink-0 z-10 transition-all",
-        state === "completed" && "bg-emerald-500 border-emerald-500 dark:bg-emerald-400 dark:border-emerald-400",
+        state === "completed" &&
+          "bg-[var(--ds-status-progress-success)] border-[var(--ds-status-progress-success)]",
         // Current state: solid fill + ring outline
-        state === "current" && "bg-amber-500 border-amber-500 ring-2 ring-amber-500/35 ring-offset-1 ring-offset-sidebar dark:bg-amber-400 dark:border-amber-400 dark:ring-amber-400/40",
+        state === "current" &&
+          "bg-[var(--ds-state-warning-fg)] border-[var(--ds-state-warning-fg)] ring-2 ring-[var(--ds-state-warning-border)] ring-offset-1 ring-offset-sidebar",
         state === "pending" && "bg-transparent border-muted-foreground/50",
         // Rewind styles
         canRewind &&
-          "cursor-pointer hover:scale-125 hover:ring-2 hover:ring-emerald-500/50 dark:hover:ring-emerald-400/50"
+          "cursor-pointer hover:scale-125 hover:ring-2 hover:ring-[var(--ds-state-success-border)]"
       )}
       onClick={canRewind ? onRewindClick : undefined}
       role={canRewind ? "button" : undefined}
@@ -181,8 +183,10 @@ function MilestoneItem({
           <div
             className={cn(
               "w-0.5 flex-1 min-h-[24px]",
-              state === "completed" && "bg-gradient-to-b from-emerald-500 via-emerald-500/90 to-amber-400 dark:from-emerald-400 dark:via-emerald-400/90 dark:to-amber-400",
-              state === "current" && "bg-gradient-to-b from-amber-400/70 to-border dark:from-amber-400/50 dark:to-border",
+              state === "completed" &&
+                "bg-gradient-to-b from-[var(--ds-status-progress-success)] via-[color-mix(in_oklch,var(--ds-status-progress-success)_90%,transparent)] to-[var(--ds-state-warning-fg)]",
+              state === "current" &&
+                "bg-gradient-to-b from-[var(--ds-state-warning-border-soft)] to-border",
               state === "pending" && "bg-border"
             )}
           />
@@ -194,9 +198,9 @@ function MilestoneItem({
         <div
           className={cn(
             "text-sm font-mono font-medium transition-colors",
-            state === "current" && "text-amber-700 dark:text-amber-300",
+            state === "current" && "text-[var(--ds-state-warning-fg)]",
             state === "pending" && "text-muted-foreground",
-            canRewind && "group-hover:text-amber-600 dark:group-hover:text-amber-300"
+            canRewind && "group-hover:text-[var(--ds-state-warning-fg)]"
           )}
         >
           {index + 1}. {label}
@@ -206,8 +210,8 @@ function MilestoneItem({
             className={cn(
               "text-xs font-mono transition-colors",
               // Mechanical Grace: Emerald completed, Amber in progress
-              state === "completed" && "text-emerald-700 dark:text-emerald-400",
-              state === "current" && "text-amber-700 dark:text-amber-300"
+              state === "completed" && "text-[var(--ds-state-success-fg)]",
+              state === "current" && "text-[var(--ds-state-warning-fg)]"
             )}
           >
             {statusText}
@@ -401,9 +405,9 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
 
           {/* Progress Bar - Mechanical Grace: .rounded-full, Emerald fill */}
           <div className="space-y-1">
-            <div className="h-2 rounded-full overflow-hidden bg-slate-400/80 dark:bg-slate-700/80 ring-1 ring-slate-500/40 dark:ring-slate-600/80">
+            <div className="h-2 rounded-full overflow-hidden bg-[var(--ds-status-track-bg)] ring-1 ring-[var(--ds-status-border)]">
               <div
-                className="h-full bg-emerald-600 dark:bg-emerald-400 rounded-full transition-all duration-300"
+                className="h-full bg-[var(--ds-status-progress-success)] rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>

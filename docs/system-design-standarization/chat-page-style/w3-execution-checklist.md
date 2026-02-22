@@ -85,8 +85,8 @@ Referensi gate:
 
 | File | Migrasi Token | Validasi A/B/C | Visual M1-M4 | Status |
 |---|---|---|---|---|
-| `src/components/chat/sidebar/SidebarProgress.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/sidebar/SidebarPaperSessions.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/chat/sidebar/SidebarProgress.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/chat/sidebar/SidebarPaperSessions.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/paper/PaperValidationPanel.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/paper/RewindConfirmationDialog.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/paper/PaperSessionBadge.tsx` | [ ] | [ ] | [ ] | [ ] |
@@ -110,6 +110,15 @@ Referensi gate:
 - mismatch kecil:
 - keputusan:
 ```
+
+### W3 Execution Evidence (Current)
+
+- Date: 2026-02-23 03:01:54 WIB
+- Scope: W3-A (`SidebarProgress.tsx`, `SidebarPaperSessions.tsx`)
+- Result summary:
+- `src/components/chat/sidebar/SidebarProgress.tsx`: A=0, B=0, C=11
+- `src/components/chat/sidebar/SidebarPaperSessions.tsx`: A=0, B=0, C=11
+- Visual gate M1-M4 untuk W3-A: belum dijalankan (pending setelah semua file W3 selesai).
 
 ## 9. Aturan Stop
 

@@ -311,7 +311,9 @@ function PaperFolderItem({
 
   // Status color - Mechanical Grace: Sky for in-progress, Emerald for completed
   const isCompleted = session.currentStage === "completed"
-  const statusColorClass = isCompleted ? "bg-emerald-500" : "bg-sky-500"
+  const statusColorClass = isCompleted
+    ? "bg-[var(--ds-status-progress-success)]"
+    : "bg-[var(--ds-state-info-fg)]"
 
   // Group artifacts by type and get latest version of each
   const latestArtifacts = artifacts
@@ -346,7 +348,7 @@ function PaperFolderItem({
         />
 
         {/* Folder Icon - Solid sky style */}
-        <Folder className="h-[18px] w-[18px] shrink-0 text-sky-600 dark:text-sky-400 [&_path]:fill-current [&_path]:stroke-current" />
+        <Folder className="h-[18px] w-[18px] shrink-0 text-[var(--ds-state-info-fg)] [&_path]:fill-current [&_path]:stroke-current" />
 
         <div
           className="flex flex-1 min-w-0 items-center gap-1.5"
@@ -494,21 +496,24 @@ function ArtifactTreeItem({
           onClick={handleClick}
           className={cn(
             "my-1 mr-3 flex cursor-pointer items-center gap-2 rounded-action border px-3.5 py-2 transition-colors",
-            "border-transparent hover:bg-slate-300 dark:hover:bg-slate-600/60",
-            isSelected && "border-slate-300/90 bg-slate-50 shadow-[inset_0_1px_0_var(--border-hairline-soft)] dark:border-slate-700 dark:bg-slate-900/60"
+            "border-transparent hover:bg-[var(--ds-chat-history-item-hover-bg)]",
+            isSelected &&
+              "border-[var(--ds-chat-history-item-active-border)] bg-[var(--ds-chat-history-item-active-bg)] shadow-[inset_0_1px_0_var(--ds-citation-chip-shadow)]"
           )}
           aria-current={isSelected ? "page" : undefined}
         >
           {/* Document Icon / Refrasa Badge */}
           {artifact.type === "refrasa" ? (
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-amber-500/20 text-[9px] font-mono font-bold text-amber-700 dark:text-amber-300">
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--ds-state-warning-chip-bg)] text-[9px] font-mono font-bold text-[var(--ds-state-warning-fg)]">
               R
             </span>
           ) : (
             <Page
               className={cn(
                 "h-4 w-4 shrink-0",
-                isFinal ? "text-slate-500 dark:text-slate-200" : "text-amber-600 dark:text-amber-300"
+                isFinal
+                  ? "text-[var(--ds-artifact-icon-fg)]"
+                  : "text-[var(--ds-state-warning-fg)]"
               )}
             />
           )}
@@ -517,18 +522,18 @@ function ArtifactTreeItem({
           <span className="flex-1 truncate text-[13px]">{artifact.title}</span>
 
           {/* Version Badge */}
-          <span className="shrink-0 rounded-badge border border-border/60 bg-sky-500/90 px-1.5 py-0.5 text-[9px] font-mono font-medium text-slate-50">
+          <span className="shrink-0 rounded-badge border border-border/60 bg-[var(--ds-state-info-fg)] px-1.5 py-0.5 text-[9px] font-mono font-medium text-[var(--ds-sidebar-cta-fg)]">
             v{artifact.version}
           </span>
 
           {/* Status Badge */}
           {isFinal && (
-            <span className="ml-1 shrink-0 rounded-badge border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-slate-600 dark:text-slate-50 dark:bg-emerald-500/80">
+            <span className="ml-1 shrink-0 rounded-badge border border-[var(--ds-state-success-border)] bg-[var(--ds-state-success-chip-bg)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--ds-state-success-fg)]">
               FINAL
             </span>
           )}
           {!isFinal && (
-            <span className="ml-1 shrink-0 rounded-badge border border-amber-500/35 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-amber-700 dark:text-amber-300">
+            <span className="ml-1 shrink-0 rounded-badge border border-[var(--ds-state-warning-border)] bg-[var(--ds-state-warning-chip-bg)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--ds-state-warning-fg)]">
               REVISI
             </span>
           )}
