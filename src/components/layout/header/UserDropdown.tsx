@@ -12,7 +12,6 @@ import {
   RefreshDouble,
   User,
   CreditCard,
-  UserPlus,
   Journal,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
@@ -224,14 +223,6 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
               >
                 <Activity className="icon-interface" />
                 <span>AI Ops</span>
-              </Link>
-              <Link
-                href="/dashboard/waitlist"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
-              >
-                <UserPlus className="icon-interface" />
-                <span>Waiting List</span>
               </Link>
             </>
           )}

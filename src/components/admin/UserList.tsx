@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useMutation } from "convex/react"
+import { useMutation, usePaginatedQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -16,7 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowUp, ArrowDown, Trash, NavArrowLeft, NavArrowRight, EditPencil } from "iconoir-react"
+import { ArrowUp, ArrowDown, Trash, NavArrowLeft, NavArrowRight, EditPencil, Expand } from "iconoir-react"
+import { UserListFullscreen } from "./UserListFullscreen"
 import type { Id } from "@convex/_generated/dataModel"
 
 export interface User {
@@ -30,9 +31,11 @@ export interface User {
 }
 
 interface UserListProps {
-  users: User[]
+  userId: Id<"users">
   currentUserRole: "superadmin" | "admin" | "user"
 }
+
+const PAGE_SIZE = 20
 
 type SubscriptionTier = "free" | "bpp" | "pro"
 type DialogAction = "promote" | "demote" | "delete" | "changeTier"
@@ -75,11 +78,17 @@ function NoAccessIcon({ className }: { className?: string }) {
   )
 }
 
-export function UserList({ users, currentUserRole }: UserListProps) {
+export function UserList({ userId, currentUserRole }: UserListProps) {
+  const { results: users, status: paginationStatus, loadMore } = usePaginatedQuery(
+    api.users.listUsersPaginated,
+    { requestorUserId: userId },
+    { initialNumItems: PAGE_SIZE }
+  )
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [dialogAction, setDialogAction] = useState<DialogAction | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [dynamicColumnStart, setDynamicColumnStart] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const [pendingTier, setPendingTier] = useState<SubscriptionTier | null>(null)
 
@@ -399,8 +408,43 @@ export function UserList({ users, currentUserRole }: UserListProps) {
     )
   }
 
+  if (paginationStatus === "LoadingFirstPage") {
+    return (
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 w-1/3 rounded-action bg-muted" />
+        <div className="h-56 rounded-shell bg-muted" />
+      </div>
+    )
+  }
+
   return (
     <>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs font-mono text-muted-foreground">
+          {users.length} pengguna
+        </p>
+        <button
+          type="button"
+          onClick={() => setIsFullscreen(true)}
+          aria-label="Fullscreen tabel"
+          className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-action border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Expand className="h-4 w-4" />
+        </button>
+      </div>
+
+      <UserListFullscreen
+        isOpen={isFullscreen}
+        onClose={() => setIsFullscreen(false)}
+        users={users}
+        paginationStatus={paginationStatus}
+        loadMore={loadMore}
+        getFullName={getFullName}
+        renderDynamicCell={renderDynamicCell}
+        isCannotModifyRow={isCannotModifyRow}
+        isLoading={isLoading}
+      />
+
       <div className="hidden overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 md:block">
         <table className="text-interface w-full table-fixed border-collapse text-left text-sm">
           <thead className="border-b border-border bg-slate-300/70 dark:bg-slate-800/95">
@@ -559,6 +603,24 @@ export function UserList({ users, currentUserRole }: UserListProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {paginationStatus === "CanLoadMore" && (
+        <div className="flex justify-center pt-4">
+          <button
+            type="button"
+            onClick={() => loadMore(PAGE_SIZE)}
+            className="focus-ring inline-flex items-center gap-1.5 rounded-action border border-border px-4 py-2 text-xs font-mono text-foreground transition-colors hover:bg-muted"
+          >
+            Muat Lebih Banyak
+          </button>
+        </div>
+      )}
+      {paginationStatus === "Exhausted" && users.length > PAGE_SIZE && (
+        <p className="pt-4 text-center text-xs font-mono text-muted-foreground">
+          Semua data ditampilkan
+        </p>
+      )}
 
       <AlertDialog
         open={dialogAction !== null}
