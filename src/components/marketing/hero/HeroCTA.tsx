@@ -23,7 +23,7 @@ export function HeroCTA() {
   return (
     <div className="flex flex-col items-center lg:items-start w-full mt-4 gap-3">
       {isWaitlistMode && (
-        <p className="text-interface text-base text-slate-50 text-center lg:text-left max-w-md">
+        <p className="text-interface text-base text-foreground text-center lg:text-left max-w-md">
           Jadilah 100 orang pertama pengguna Makalah AI. Daftarkan email, lalu tunggu undangan kami
         </p>
       )}
