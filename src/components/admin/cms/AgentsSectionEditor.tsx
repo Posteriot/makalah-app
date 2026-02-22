@@ -33,6 +33,7 @@ export function AgentsSectionEditor({ userId }: AgentsSectionEditorProps) {
   const [title, setTitle] = useState("")
   const [items, setItems] = useState<AgentItem[]>([])
   const [showGridPattern, setShowGridPattern] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
   // Sync form state when section data loads
@@ -49,6 +50,7 @@ export function AgentsSectionEditor({ userId }: AgentsSectionEditorProps) {
         setItems(loaded)
       }
       setShowGridPattern(section.showGridPattern !== false)
+      setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
@@ -84,6 +86,7 @@ export function AgentsSectionEditor({ userId }: AgentsSectionEditorProps) {
         icon: item.icon,
       })),
       showGridPattern,
+      showDottedPattern,
       isPublished,
       sortOrder: 3,
     })
@@ -231,6 +234,12 @@ export function AgentsSectionEditor({ userId }: AgentsSectionEditorProps) {
               Grid Pattern
             </label>
             <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Dotted Pattern
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
           </div>
         </div>
 

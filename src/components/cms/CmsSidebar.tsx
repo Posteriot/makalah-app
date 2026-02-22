@@ -13,10 +13,12 @@ export type CmsSectionId =
   | "benefits"
   | "features-workflow"
   | "features-refrasa"
+  | "pricing-teaser"
   | "manifesto"
   | "problems"
   | "agents"
   | "career-contact"
+  | "pricing-header"
   | "pricing-gratis"
   | "pricing-bpp"
   | "pricing-pro"
@@ -56,6 +58,7 @@ const HOME_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
   { id: "benefits", label: "Benefits" },
   { id: "features-workflow", label: "Fitur: Workflow" },
   { id: "features-refrasa", label: "Fitur: Refrasa" },
+  { id: "pricing-teaser", label: "Pricing Teaser" },
 ]
 
 const ABOUT_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
@@ -66,6 +69,7 @@ const ABOUT_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
 ]
 
 const PRICING_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
+  { id: "pricing-header", label: "Header" },
   { id: "pricing-gratis", label: "Gratis" },
   { id: "pricing-bpp", label: "Bayar Per Paper" },
   { id: "pricing-pro", label: "Pro" },

@@ -184,7 +184,7 @@ export function AgentsSectionCMS({ content }: AgentsSectionCMSProps) {
       id="agents"
     >
       {content.showGridPattern !== false && <GridPattern className="z-0" />}
-      <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+      {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
         <div className="grid grid-cols-16 content-center gap-comfort">

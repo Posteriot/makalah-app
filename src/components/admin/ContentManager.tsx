@@ -18,13 +18,14 @@ import { DocSectionEditor } from "./cms/DocSectionEditor"
 import { BlogPostListEditor } from "./cms/BlogPostListEditor"
 import { BlogPostEditor } from "./cms/BlogPostEditor"
 import { PricingPlanEditor } from "./cms/PricingPlanEditor"
+import { PricingHeaderEditor } from "./cms/PricingHeaderEditor"
 
 type PageId = "home" | "pricing" | "about" | "privacy" | "security" | "terms" | "header" | "footer" | "documentation" | "blog"
-type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa"
+type SectionId = "hero" | "benefits" | "features-workflow" | "features-refrasa" | "pricing-teaser"
   | "manifesto" | "problems" | "agents" | "career-contact"
   | "doc-mulai" | "doc-fitur-utama" | "doc-subskripsi" | "doc-panduan-lanjutan"
   | "blog-update" | "blog-tutorial" | "blog-opini" | "blog-event"
-  | "pricing-gratis" | "pricing-bpp" | "pricing-pro"
+  | "pricing-header" | "pricing-gratis" | "pricing-bpp" | "pricing-pro"
 
 type NavSection = {
   id: SectionId
@@ -47,12 +48,14 @@ const PAGES_NAV: { pages: NavPage[]; global: NavPage[] } = {
         { id: "benefits", label: "Benefits" },
         { id: "features-workflow", label: "Fitur: Workflow" },
         { id: "features-refrasa", label: "Fitur: Refrasa" },
+        { id: "pricing-teaser", label: "Pricing Teaser" },
       ],
     },
     {
       id: "pricing",
       label: "Pricing",
       sections: [
+        { id: "pricing-header", label: "Header" },
         { id: "pricing-gratis", label: "Gratis" },
         { id: "pricing-bpp", label: "Bayar Per Paper" },
         { id: "pricing-pro", label: "Pro" },
@@ -278,6 +281,8 @@ export function ContentManager({ userId }: ContentManagerProps) {
             <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-workflow" userId={userId} />
           ) : selectedPage === "home" && selectedSection === "features-refrasa" ? (
             <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-refrasa" userId={userId} />
+          ) : selectedPage === "home" && selectedSection === "pricing-teaser" ? (
+            <PricingHeaderEditor pageSlug="home" sectionSlug="pricing-teaser" userId={userId} />
           ) : selectedPage === "header" ? (
             <HeaderConfigEditor userId={userId} />
           ) : selectedPage === "footer" ? (
@@ -322,6 +327,8 @@ export function ContentManager({ userId }: ContentManagerProps) {
               userId={userId}
               onBack={() => setSelectedBlogSlug(null)}
             />
+          ) : selectedPage === "pricing" && selectedSection === "pricing-header" ? (
+            <PricingHeaderEditor pageSlug="pricing" sectionSlug="pricing-page-header" userId={userId} />
           ) : selectedPage === "pricing" && selectedSection && PRICING_SLUG_MAP[selectedSection] ? (
             <PricingPlanEditor
               slug={PRICING_SLUG_MAP[selectedSection]}

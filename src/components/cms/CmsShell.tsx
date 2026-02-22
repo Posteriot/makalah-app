@@ -25,6 +25,7 @@ import { DocSectionEditor } from "@/components/admin/cms/DocSectionEditor"
 import { BlogPostListEditor } from "@/components/admin/cms/BlogPostListEditor"
 import { BlogPostEditor } from "@/components/admin/cms/BlogPostEditor"
 import { PricingPlanEditor } from "@/components/admin/cms/PricingPlanEditor"
+import { PricingHeaderEditor } from "@/components/admin/cms/PricingHeaderEditor"
 
 /**
  * CmsShell - 4-column CSS Grid orchestrator for CMS layout
@@ -119,6 +120,7 @@ export function CmsShell({ userId }: CmsShellProps) {
     if (activePage === "home" && activeSection === "benefits") return <BenefitsSectionEditor userId={userId} />
     if (activePage === "home" && activeSection === "features-workflow") return <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-workflow" userId={userId} />
     if (activePage === "home" && activeSection === "features-refrasa") return <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-refrasa" userId={userId} />
+    if (activePage === "home" && activeSection === "pricing-teaser") return <PricingHeaderEditor pageSlug="home" sectionSlug="pricing-teaser" userId={userId} />
 
     // About sections
     if (activePage === "about" && activeSection === "manifesto") return <ManifestoSectionEditor userId={userId} />
@@ -127,6 +129,7 @@ export function CmsShell({ userId }: CmsShellProps) {
     if (activePage === "about" && activeSection === "career-contact") return <CareerContactEditor userId={userId} />
 
     // Pricing sections
+    if (activePage === "pricing" && activeSection === "pricing-header") return <PricingHeaderEditor pageSlug="pricing" sectionSlug="pricing-page-header" userId={userId} />
     if (activePage === "pricing" && activeSection === "pricing-gratis") return <PricingPlanEditor slug="gratis" userId={userId} />
     if (activePage === "pricing" && activeSection === "pricing-bpp") return <PricingPlanEditor slug="bpp" userId={userId} />
     if (activePage === "pricing" && activeSection === "pricing-pro") return <PricingPlanEditor slug="pro" userId={userId} />
