@@ -39,6 +39,7 @@ import {
     createQuotaExceededResponse,
     type OperationType,
 } from "@/lib/billing/enforcement"
+import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 
 export async function POST(req: Request) {
     try {
@@ -1088,6 +1089,8 @@ Aturan:
         // Hoist enableWebSearch so it's accessible in catch block for fallback
         let enableWebSearch = false
 
+        const telemetryStartTime = Date.now()
+
         try {
             const model = await getGatewayModel()
 
@@ -1336,6 +1339,23 @@ TIPS PENCARIAN:
                                 }).catch(err => console.error("[Billing] Failed to record usage:", err))
                             }
                             // ═══════════════════════════════════
+
+                            // ═══ TELEMETRY: Primary non-websearch success ═══
+                            logAiTelemetry({
+                                token: convexToken,
+                                userId: userId as Id<"users">,
+                                conversationId: currentConversationId as Id<"conversations">,
+                                provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
+                                model: modelNames.primary.model,
+                                isPrimaryProvider: true,
+                                failoverUsed: false,
+                                mode: isPaperMode ? "paper" : "normal",
+                                success: true,
+                                latencyMs: Date.now() - telemetryStartTime,
+                                inputTokens: usage?.inputTokens,
+                                outputTokens: usage?.outputTokens,
+                            })
+                            // ═════════════════════════════════════════════════
 
                             const minPairsForFinalTitle = Number.parseInt(
                                 process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
@@ -1790,6 +1810,24 @@ TIPS PENCARIAN:
                                         }).catch(err => console.error("[Billing] Failed to record usage:", err))
                                     }
                                     // ═══════════════════════════════════════════════════════════
+
+                                    // ═══ TELEMETRY: Primary websearch success ═══
+                                    logAiTelemetry({
+                                        token: convexToken,
+                                        userId: userId as Id<"users">,
+                                        conversationId: currentConversationId as Id<"conversations">,
+                                        provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
+                                        model: modelNames.primary.model,
+                                        isPrimaryProvider: true,
+                                        failoverUsed: false,
+                                        toolUsed: "google_search",
+                                        mode: "websearch",
+                                        success: true,
+                                        latencyMs: Date.now() - telemetryStartTime,
+                                        inputTokens: finishUsage?.inputTokens,
+                                        outputTokens: finishUsage?.outputTokens,
+                                    })
+                                    // ═════════════════════════════════════════════
                                 } catch (err) {
                                     console.error("[Chat API] Failed to compute inline citations:", err)
                                 }
@@ -1832,6 +1870,25 @@ TIPS PENCARIAN:
             return result.toUIMessageStreamResponse()
         } catch (error) {
             console.error("Gateway stream failed, trying fallback:", error)
+
+            // ═══ TELEMETRY: Primary provider failure ═══
+            const primaryErrorInfo = classifyError(error)
+            logAiTelemetry({
+                token: convexToken,
+                userId: userId as Id<"users">,
+                conversationId: currentConversationId as Id<"conversations">,
+                provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
+                model: modelNames.primary.model,
+                isPrimaryProvider: true,
+                failoverUsed: false,
+                toolUsed: enableWebSearch ? "google_search" : undefined,
+                mode: enableWebSearch ? "websearch" : (isPaperMode ? "paper" : "normal"),
+                success: false,
+                errorType: primaryErrorInfo.errorType,
+                errorMessage: primaryErrorInfo.errorMessage,
+                latencyMs: Date.now() - telemetryStartTime,
+            })
+            // ════════════════════════════════════════════
 
             // ════════════════════════════════════════════════════════════════
             // FALLBACK: OpenRouter with optional web search
@@ -1886,6 +1943,23 @@ TIPS PENCARIAN:
                                 }).catch(err => console.error("[Billing] Failed to record usage:", err))
                             }
                             // ═══════════════════════════════════════════════
+
+                            // ═══ TELEMETRY: Fallback non-websearch success ═══
+                            logAiTelemetry({
+                                token: convexToken,
+                                userId: userId as Id<"users">,
+                                conversationId: currentConversationId as Id<"conversations">,
+                                provider: modelNames.fallback.provider as "vercel-gateway" | "openrouter",
+                                model: modelNames.fallback.model,
+                                isPrimaryProvider: false,
+                                failoverUsed: true,
+                                mode: isPaperMode ? "paper" : "normal",
+                                success: true,
+                                latencyMs: Date.now() - telemetryStartTime,
+                                inputTokens: usage?.inputTokens,
+                                outputTokens: usage?.outputTokens,
+                            })
+                            // ═════════════════════════════════════════════════
                         }
                     },
                 })
@@ -2109,6 +2183,24 @@ TIPS PENCARIAN:
                                     }).catch(err => console.error("[Billing] Failed to record usage:", err))
                                 }
                                 // ═══════════════════════════════════════════════════════════
+
+                                // ═══ TELEMETRY: Fallback websearch success ═══
+                                logAiTelemetry({
+                                    token: convexToken,
+                                    userId: userId as Id<"users">,
+                                    conversationId: currentConversationId as Id<"conversations">,
+                                    provider: modelNames.fallback.provider as "vercel-gateway" | "openrouter",
+                                    model: modelNames.fallback.model,
+                                    isPrimaryProvider: false,
+                                    failoverUsed: true,
+                                    toolUsed: "google_search",
+                                    mode: "websearch",
+                                    success: true,
+                                    latencyMs: Date.now() - telemetryStartTime,
+                                    inputTokens: finishUsage?.inputTokens,
+                                    outputTokens: finishUsage?.outputTokens,
+                                })
+                                // ═════════════════════════════════════════════
 
                                 writer.write(chunk)
                                 break
