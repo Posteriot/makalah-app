@@ -4,65 +4,63 @@ import { useState, useEffect } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import type { CmsSectionId } from "./CmsSidebar"
-import { NavArrowRight } from "iconoir-react"
+import type { BlogCategoryId } from "./CmsSidebar"
+import { BLOG_CATEGORIES } from "./CmsSidebar"
+import { NavArrowRight, Plus } from "iconoir-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { CmsSaveButton } from "@/components/admin/cms/CmsSaveButton"
+import { normalizeCategory } from "@/components/marketing/blog/utils"
 
-type CmsPricingOverviewProps = {
+type CmsBlogOverviewProps = {
   userId: Id<"users">
-  onSectionClick: (sectionId: CmsSectionId) => void
+  onCategoryClick: (categoryId: BlogCategoryId) => void
+  onCreateNewPost: () => void
   onNavigateToHeader: () => void
 }
 
-export function CmsPricingOverview({
-  userId,
-  onSectionClick,
-  onNavigateToHeader,
-}: CmsPricingOverviewProps) {
-  const allSections = useQuery(api.pageContent.listAllSections, {
+export function CmsBlogOverview({ userId, onCategoryClick, onCreateNewPost, onNavigateToHeader }: CmsBlogOverviewProps) {
+  const allPosts = useQuery(api.blog.listAllPosts, {
     requestorId: userId,
   })
-  const plans = useQuery(api.pricingPlans.getActivePlans)
-  const headerSection = useQuery(api.pageContent.getSection, {
-    pageSlug: "pricing",
-    sectionSlug: "pricing-page-header",
+  const pageSettings = useQuery(api.pageContent.getSection, {
+    pageSlug: "blog",
+    sectionSlug: "blog-page-settings",
   })
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
-  // Pattern toggle state
-  const [showGridPattern, setShowGridPattern] = useState(true)
+  // Pattern toggle state — blog page default: only Dotted active
+  const [showGridPattern, setShowGridPattern] = useState(false)
   const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(false)
 
   // Sync from DB
   useEffect(() => {
-    if (headerSection) {
-      setShowGridPattern(headerSection.showGridPattern !== false)
-      setShowDottedPattern(headerSection.showDottedPattern !== false)
-      setShowDiagonalStripes(headerSection.showDiagonalStripes !== false)
+    if (pageSettings) {
+      setShowGridPattern(pageSettings.showGridPattern === true)
+      setShowDottedPattern(pageSettings.showDottedPattern !== false)
+      setShowDiagonalStripes(pageSettings.showDiagonalStripes === true)
     }
-  }, [headerSection])
+  }, [pageSettings])
 
   async function handleSavePatterns() {
     await upsertSection({
       requestorId: userId,
-      id: headerSection?._id,
-      pageSlug: "pricing",
-      sectionSlug: "pricing-page-header",
-      sectionType: "pricing-header",
-      title: headerSection?.title ?? "",
+      id: pageSettings?._id,
+      pageSlug: "blog",
+      sectionSlug: "blog-page-settings",
+      sectionType: "page-settings",
+      title: "",
       showGridPattern,
       showDottedPattern,
       showDiagonalStripes,
-      isPublished: headerSection?.isPublished ?? false,
-      sortOrder: headerSection?.sortOrder ?? 0,
+      isPublished: true,
+      sortOrder: 0,
     })
   }
 
   // Loading
-  if (allSections === undefined || plans === undefined) {
+  if (allPosts === undefined) {
     return (
       <div className="mx-auto w-full max-w-2xl p-comfort pt-8">
         <Skeleton className="mb-6 h-7 w-32" />
@@ -74,93 +72,64 @@ export function CmsPricingOverview({
     )
   }
 
-  // Header section from pageContent
-  const headerRecord = allSections.find(
-    (s) => s.pageSlug === "pricing" && s.sectionSlug === "pricing-page-header"
-  )
+  // Aggregate per category (using normalizeCategory for consistency)
+  const rows = BLOG_CATEGORIES.map((c) => {
+    const posts = allPosts.filter(
+      (p) => normalizeCategory(p.category, p.title, p.excerpt ?? "") === c.category
+    )
+    const publishedCount = posts.filter((p) => p.isPublished).length
+    return {
+      ...c,
+      total: posts.length,
+      published: publishedCount,
+      draft: posts.length - publishedCount,
+    }
+  })
 
-  // Build rows
-  const rows: Array<{
-    id: CmsSectionId
-    label: string
-    status: "published" | "draft" | "no-record"
-    statusLabel: string
-  }> = [
-    {
-      id: "pricing-header",
-      label: "Header",
-      status: headerRecord
-        ? headerRecord.isPublished
-          ? "published"
-          : "draft"
-        : "no-record",
-      statusLabel: headerRecord
-        ? headerRecord.isPublished
-          ? "Published"
-          : "Draft"
-        : "Belum dibuat",
-    },
-    ...plans.map((plan) => ({
-      id: `pricing-${plan.slug}` as CmsSectionId,
-      label: plan.name,
-      status: (plan.isDisabled ? "draft" : "published") as "published" | "draft",
-      statusLabel: plan.isDisabled ? "Disabled" : "Active",
-    })),
-  ]
-
-  const activeCount = rows.filter((r) => r.status === "published").length
+  const totalPosts = allPosts.length
+  const totalPublished = allPosts.filter((p) => p.isPublished).length
 
   return (
     <div className="mx-auto w-full max-w-2xl p-comfort pt-8">
       {/* Page title */}
       <h2 className="text-narrative text-xl font-medium tracking-tight text-foreground">
-        Pricing
+        Blog
       </h2>
       <div className="mt-2 border-t border-border" />
 
       {/* Summary */}
       <p className="mt-4 text-interface text-xs text-muted-foreground">
-        {rows.length} sections{" "}
+        {totalPosts} post{" "}
         <span className="mx-1 text-border">·</span>{" "}
-        <span className="text-emerald-600">{activeCount} active</span>{" "}
+        <span className="text-emerald-600">{totalPublished} published</span>{" "}
         <span className="mx-1 text-border">·</span>{" "}
-        <span>{rows.length - activeCount} draft/disabled</span>
+        <span>{totalPosts - totalPublished} draft</span>
       </p>
 
-      {/* Section list */}
+      {/* Category list */}
       <div className="mt-4 overflow-hidden rounded-action border border-border">
         {rows.map((row, i) => (
           <button
             key={row.id}
             type="button"
-            onClick={() => onSectionClick(row.id)}
+            onClick={() => onCategoryClick(row.id)}
             className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 ${
               i > 0 ? "border-t border-border" : ""
             }`}
           >
-            {/* Status dot */}
-            <span
-              className={`h-2 w-2 min-w-2 rounded-full ${
-                row.status === "published"
-                  ? "bg-emerald-500 shadow-[0_0_6px] shadow-emerald-500/40"
-                  : "bg-slate-400 dark:bg-slate-600"
-              }`}
-            />
-
-            {/* Section name */}
+            {/* Category name */}
             <span className="text-interface flex-1 text-sm font-medium text-foreground">
               {row.label}
             </span>
 
-            {/* Status badge */}
-            <span
-              className={`text-signal text-[10px] font-bold uppercase tracking-widest ${
-                row.status === "published"
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {row.statusLabel}
+            {/* Post count */}
+            <span className="text-interface text-xs text-muted-foreground">
+              {row.total} post
+              {row.published > 0 && (
+                <span className="ml-1 text-emerald-600">
+                  ({row.published} published)
+                </span>
+              )}
             </span>
 
             {/* Arrow */}
@@ -169,20 +138,18 @@ export function CmsPricingOverview({
         ))}
       </div>
 
-      {/* Info: no published toggle */}
+      {/* Info box */}
       <div className="mt-4 rounded-action border border-border bg-muted/50 px-4 py-3">
         <p className="text-interface text-xs leading-relaxed text-muted-foreground">
-          Pricing plans tidak memiliki toggle published/unpublished karena terhubung langsung
-          ke sistem billing. Gunakan toggle{" "}
-          <span className="font-medium text-foreground">Disabled</span>{" "}
-          pada masing-masing plan untuk menonaktifkan pembelian.
+          Pilih kategori untuk melihat dan mengelola post di dalamnya.
+          Post berstatus Draft (unpublished) tidak akan tampil di halaman blog frontend.
         </p>
       </div>
 
-      {/* Info: hide pricing page */}
+      {/* Navigation hint */}
       <div className="mt-2 rounded-action border border-border bg-muted/50 px-4 py-3">
         <p className="text-interface text-xs leading-relaxed text-muted-foreground">
-          Untuk menyembunyikan halaman Pricing dari navigasi, hapus atau sembunyikan link-nya
+          Untuk menyembunyikan halaman Blog dari navigasi, hapus atau sembunyikan link-nya
           di{" "}
           <button
             type="button"
@@ -194,6 +161,16 @@ export function CmsPricingOverview({
           .
         </p>
       </div>
+
+      {/* Global create button */}
+      <button
+        type="button"
+        onClick={onCreateNewPost}
+        className="mt-6 flex w-full items-center justify-center gap-1.5 rounded-action border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+      >
+        <Plus className="h-4 w-4" strokeWidth={1.5} />
+        Buat Post Baru
+      </button>
 
       {/* ── Background Patterns ── */}
       <div className="mt-6 border-t border-border" />

@@ -111,6 +111,7 @@ type BlockData = {
   paragraphs?: string[]
   items?: string[]
   list?: { variant: string; items: Array<{ text: string; subItems?: string[] }> }
+  richContent?: string
 }
 
 /**
@@ -122,6 +123,23 @@ function blocksToTipTapJson(blocks: BlockData[]): string {
   const nodes: any[] = []
 
   for (const block of blocks) {
+    // If block has richContent (TipTap JSON), merge its nodes directly
+    if (block.richContent) {
+      try {
+        const parsed = JSON.parse(block.richContent)
+        if (parsed.content && Array.isArray(parsed.content)) {
+          nodes.push(...parsed.content)
+        }
+      } catch {
+        // Fallback: treat richContent as plain text
+        nodes.push({
+          type: "paragraph",
+          content: [{ type: "text", text: block.richContent }],
+        })
+      }
+      continue
+    }
+
     if (block.title) {
       nodes.push({
         type: "heading",
@@ -145,10 +163,12 @@ function blocksToTipTapJson(blocks: BlockData[]): string {
     }
     if (block.items) {
       for (const item of block.items) {
-        nodes.push({
-          type: "paragraph",
-          content: [{ type: "text", text: item }],
-        })
+        if (typeof item === "string") {
+          nodes.push({
+            type: "paragraph",
+            content: [{ type: "text", text: item }],
+          })
+        }
       }
     }
     if (block.list) {
@@ -170,6 +190,24 @@ function blocksToTipTapJson(blocks: BlockData[]): string {
 
   if (nodes.length === 0) return ""
   return JSON.stringify({ type: "doc", content: nodes })
+}
+
+/**
+ * Build minimal TipTap JSON from excerpt text.
+ * Used as final fallback when neither `content` nor `blocks` have data,
+ * matching what the frontend displays.
+ */
+function excerptToTipTapJson(excerpt: string): string {
+  if (!excerpt) return ""
+  return JSON.stringify({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: excerpt }],
+      },
+    ],
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -233,6 +271,8 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
         setBodyContent(existingPost.content)
       } else if (existingPost.blocks && (existingPost.blocks as BlockData[]).length > 0) {
         setBodyContent(blocksToTipTapJson(existingPost.blocks as BlockData[]))
+      } else if (existingPost.excerpt) {
+        setBodyContent(excerptToTipTapJson(existingPost.excerpt))
       } else {
         setBodyContent("")
       }
@@ -253,12 +293,14 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
     setSlugManuallyEdited(true)
   }
 
-  // TipTap editor — prefer `content` (TipTap JSON), fallback to `blocks` conversion
+  // TipTap editor — prefer `content` → fallback `blocks` → fallback `excerpt`
   const initialContent = existingPost?.content
     ? existingPost.content
     : existingPost?.blocks && existingPost.blocks.length > 0
       ? blocksToTipTapJson(existingPost.blocks as BlockData[])
-      : undefined
+      : existingPost?.excerpt
+        ? excerptToTipTapJson(existingPost.excerpt)
+        : undefined
 
   const editor = useEditor(
     {

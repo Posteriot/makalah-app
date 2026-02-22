@@ -84,6 +84,8 @@ export const upsertConfig = mutation({
     logoLightId: v.optional(v.id("_storage")),
     brandTextDarkId: v.optional(v.id("_storage")),
     brandTextLightId: v.optional(v.id("_storage")),
+    showGridPattern: v.optional(v.boolean()),
+    showDottedPattern: v.optional(v.boolean()),
     showDiagonalStripes: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {

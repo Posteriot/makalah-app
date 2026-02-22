@@ -149,6 +149,8 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   const [companyDescription, setCompanyDescription] = useState("")
   const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(null)
   const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(null)
+  const [showGridPattern, setShowGridPattern] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
 
   // Sync form state when config data loads
@@ -164,6 +166,8 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
       setCompanyDescription((config.companyDescription as string | undefined) ?? "")
       setLogoDarkId((config.logoDarkId as Id<"_storage"> | undefined) ?? null)
       setLogoLightId((config.logoLightId as Id<"_storage"> | undefined) ?? null)
+      setShowGridPattern(config.showGridPattern !== false)
+      setShowDottedPattern(config.showDottedPattern !== false)
       setShowDiagonalStripes(config.showDiagonalStripes !== false)
     } else if (config === null) {
       setFooterSections(DEFAULT_SECTIONS)
@@ -280,6 +284,8 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
       companyDescription,
       logoDarkId: logoDarkId ?? undefined,
       logoLightId: logoLightId ?? undefined,
+      showGridPattern,
+      showDottedPattern,
       showDiagonalStripes,
     })
   }
@@ -539,9 +545,6 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
               />
             </div>
           </div>
-          <p className="text-interface text-[10px] text-muted-foreground">
-            Optimal: 96 × 96 px (1:1, SVG/PNG). Ditampilkan 96px di footer.
-          </p>
         </div>
       </div>
 
@@ -551,6 +554,18 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Background Patterns
         </span>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Grid Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Dotted Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
+        </div>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
             Diagonal Stripes

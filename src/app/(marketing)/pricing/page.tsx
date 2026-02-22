@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { SectionBadge } from "@/components/ui/section-badge"
-import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DottedPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
 import { PricingCard, PricingCarousel, PricingSkeleton } from "@/components/marketing/pricing"
 
 // Static fallback values
@@ -32,6 +32,7 @@ export default function PricingPage() {
       {/* Background patterns — conditional via CMS when published */}
       {(!useCms || headerSection.showGridPattern !== false) && <GridPattern className="z-0" />}
       {(!useCms || headerSection.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
+      {(!useCms || headerSection.showDiagonalStripes !== false) && <DiagonalStripes className="z-0" />}
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8">
         <div className="grid grid-cols-16 gap-comfort content-center">

@@ -78,6 +78,8 @@ export const upsertSection = mutation({
       v.literal("agents"),
       v.literal("career-contact"),
       v.literal("pricing-header"),
+      v.literal("page-header"),
+      v.literal("page-settings"),
     ),
     title: v.optional(v.string()),
     subtitle: v.optional(v.string()),

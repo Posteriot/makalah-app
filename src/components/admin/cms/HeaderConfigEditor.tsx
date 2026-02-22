@@ -156,9 +156,6 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
         <p className="text-interface text-xs text-muted-foreground">
           Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang.
         </p>
-        <p className="text-interface text-[10px] text-muted-foreground">
-          Logo Icon: optimal 32 × 32 px (1:1). Brand Text: optimal 120 × 30 px (4:1, SVG/PNG).
-        </p>
       </div>
 
       {/* ── Cluster 2: Nav Links ── */}

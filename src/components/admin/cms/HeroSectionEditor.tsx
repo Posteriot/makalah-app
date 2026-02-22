@@ -207,9 +207,6 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
         <p className="text-interface text-xs text-muted-foreground">
           Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang.
         </p>
-        <p className="text-interface text-[10px] text-muted-foreground">
-          Optimal: 520 × 246 px (SVG/PNG). Kontainer: max-width 520px, auto height.
-        </p>
       </div>
 
       {/* ── Cluster 3: Hero Image ── */}
@@ -223,9 +220,6 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
           aspectRatio="16/9"
           fallbackPreviewUrl="/images/hero-paper-session-mock.png"
         />
-        <p className="text-interface -mt-3 text-[10px] text-muted-foreground">
-          Optimal: 769 × 768 px (~1:1). Kontainer: max-width 560px, height 480px (di-scale 88%).
-        </p>
 
         {/* Image Alt Text */}
         <div>

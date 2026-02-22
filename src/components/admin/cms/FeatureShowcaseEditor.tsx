@@ -330,9 +330,6 @@ export function FeatureShowcaseEditor({
         <p className="text-interface text-xs text-muted-foreground">
           Light mode = tampil saat tema terang. Dark mode = tampil saat tema gelap.
         </p>
-        <p className="text-interface text-[10px] text-muted-foreground">
-          Optimal: 1200 × 1344 px (~9:10). Kontainer: max-width 452px, auto height.
-        </p>
       </div>
 
       {/* Image Alt Text */}

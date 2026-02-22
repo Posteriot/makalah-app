@@ -28,6 +28,10 @@ import { PricingPlanEditor } from "@/components/admin/cms/PricingPlanEditor"
 import { PricingHeaderEditor } from "@/components/admin/cms/PricingHeaderEditor"
 import { CmsPageOverview } from "./CmsPageOverview"
 import { CmsPricingOverview } from "./CmsPricingOverview"
+import { CmsDocOverview } from "./CmsDocOverview"
+import { CmsBlogOverview } from "./CmsBlogOverview"
+import { CmsLegalOverview } from "./CmsLegalOverview"
+import { CmsGlobalLayoutOverview } from "./CmsGlobalLayoutOverview"
 import { HOME_SECTIONS, ABOUT_SECTIONS } from "./CmsSidebar"
 
 /**
@@ -237,38 +241,43 @@ export function CmsShell({ userId }: CmsShellProps) {
     }
     if (activePage === "legal" && !activeLegalPage) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih halaman dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsLegalOverview
+          userId={userId}
+          onPageClick={(id) => setActiveLegalPage(id)}
+        />
       )
     }
     if (activePage === "global-layout" && !activeGlobalLayoutPage) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih komponen dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsGlobalLayoutOverview
+          userId={userId}
+          onPageClick={(id) => setActiveGlobalLayoutPage(id)}
+        />
       )
     }
     if (activePage === "documentation" && !activeDocGroup) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih grup dokumentasi dari sidebar
-          </p>
-        </div>
+        <CmsDocOverview
+          userId={userId}
+          onGroupClick={(id) => setActiveDocGroup(id)}
+          onNavigateToHeader={() => {
+            setActivePage("global-layout")
+            setActiveGlobalLayoutPage("header")
+          }}
+        />
       )
     }
     if (activePage === "blog" && !activeBlogCategory) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih kategori blog dari sidebar
-          </p>
-        </div>
+        <CmsBlogOverview
+          userId={userId}
+          onCategoryClick={(id) => setActiveBlogCategory(id)}
+          onCreateNewPost={() => setSelectedBlogSlug("__new__")}
+          onNavigateToHeader={() => {
+            setActivePage("global-layout")
+            setActiveGlobalLayoutPage("header")
+          }}
+        />
       )
     }
 
@@ -311,6 +320,7 @@ export function CmsShell({ userId }: CmsShellProps) {
         )}
       >
         <CmsSidebar
+          userId={userId}
           activePage={activePage}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
@@ -320,8 +330,12 @@ export function CmsShell({ userId }: CmsShellProps) {
           onGlobalLayoutPageChange={setActiveGlobalLayoutPage}
           activeDocGroup={activeDocGroup}
           onDocGroupChange={setActiveDocGroup}
+          selectedDocSlug={selectedDocSlug}
+          onDocSlugChange={setSelectedDocSlug}
           activeBlogCategory={activeBlogCategory}
           onBlogCategoryChange={setActiveBlogCategory}
+          selectedBlogSlug={selectedBlogSlug}
+          onBlogSlugChange={setSelectedBlogSlug}
           onCollapseSidebar={handleToggleSidebar}
         />
       </aside>
