@@ -20,6 +20,7 @@
   --ds-ref-emerald-400: var(--emerald-400);
   --ds-ref-emerald-500: var(--emerald-500);
   --ds-ref-emerald-600: var(--emerald-600);
+  --ds-ref-emerald-700: var(--emerald-700);
   --ds-ref-amber-300: var(--amber-300);
   --ds-ref-amber-500: var(--amber-500);
   --ds-ref-amber-700: var(--amber-700);
@@ -102,6 +103,9 @@
   --ds-status-track-bg: var(--ds-ref-slate-200);
   --ds-status-progress-success: var(--ds-ref-emerald-600);
   --ds-status-progress-error: var(--ds-ref-rose-500);
+  --ds-paper-session-badge-bg: var(--ds-ref-emerald-700);
+  --ds-paper-session-badge-border: color-mix(in oklch, var(--ds-ref-emerald-700) 58%, transparent);
+  --ds-paper-session-badge-fg: var(--ds-ref-slate-50);
   --ds-quota-warning-bg: var(--ds-ref-slate-900);
   --ds-quota-warning-border: color-mix(in oklch, var(--ds-ref-amber-500) 50%, transparent);
   --ds-quota-warning-fg: var(--ds-ref-amber-200);
@@ -262,6 +266,9 @@
   --ds-status-track-bg: var(--ds-ref-slate-700);
   --ds-status-progress-success: var(--ds-ref-emerald-400);
   --ds-status-progress-error: var(--ds-ref-rose-400);
+  --ds-paper-session-badge-bg: var(--ds-ref-emerald-600);
+  --ds-paper-session-badge-border: color-mix(in oklch, var(--ds-ref-emerald-500) 62%, transparent);
+  --ds-paper-session-badge-fg: var(--ds-ref-slate-50);
   --ds-quota-warning-bg: var(--ds-ref-slate-900);
   --ds-quota-warning-border: color-mix(in oklch, var(--ds-ref-amber-500) 50%, transparent);
   --ds-quota-warning-fg: var(--ds-ref-amber-200);
