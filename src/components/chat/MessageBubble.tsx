@@ -375,9 +375,38 @@ export function MessageBubble({
         return firstIndex === index
     })
 
-    const searchTools = dedupedInProgressTools.filter((t) => t.toolName === "google_search")
-    const nonSearchTools = dedupedInProgressTools.filter((t) => t.toolName !== "google_search")
-    const hasProcessError = dedupedInProgressTools.some((tool) => tool.state === "output-error" || tool.state === "error")
+    // Permanent guard: suppress low-signal transient tool errors in completed messages.
+    // This prevents noisy "unknown error" badges caused by stream abort/reload races.
+    const hasAssistantRenderableContent = isAssistant && (
+        content.trim().length > 0 ||
+        citedText?.trim().length ||
+        artifactSignals.length > 0
+    )
+
+    const visibleProcessTools = dedupedInProgressTools.filter((tool) => {
+        const isErrorState = tool.state === "output-error" || tool.state === "error"
+        if (!isErrorState) return true
+        if (persistProcessIndicators) return true
+
+        const normalizedError = (tool.errorText ?? "").trim().toLowerCase()
+        const isLowSignalError =
+            normalizedError.length === 0 ||
+            normalizedError === "unknown" ||
+            normalizedError === "tidak diketahui" ||
+            normalizedError === "undefined" ||
+            normalizedError === "null" ||
+            normalizedError === "[object object]"
+
+        if (isLowSignalError && hasAssistantRenderableContent) {
+            return false
+        }
+
+        return true
+    })
+
+    const searchTools = visibleProcessTools.filter((t) => t.toolName === "google_search")
+    const nonSearchTools = visibleProcessTools.filter((t) => t.toolName !== "google_search")
+    const hasProcessError = visibleProcessTools.some((tool) => tool.state === "output-error" || tool.state === "error")
     const shouldShowProcessIndicators = !isEditing && isAssistant && (persistProcessIndicators || hasProcessError)
     const showFallbackProcessIndicator =
         persistProcessIndicators &&
