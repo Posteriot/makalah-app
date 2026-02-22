@@ -35,5 +35,5 @@ export default function AiOpsPage() {
     )
   }
 
-  return <AiOpsContainer />
+  return <AiOpsContainer userId={user._id} />
 }

@@ -1,69 +1,65 @@
 "use client"
 
-import { useQuery } from "convex/react"
-import { api } from "@convex/_generated/api"
-import { ArrowLeft, Activity } from "iconoir-react"
-import Link from "next/link"
-import { MemoryHealthPanel } from "./panels/MemoryHealthPanel"
-import { WorkflowProgressPanel } from "./panels/WorkflowProgressPanel"
-import { ArtifactSyncPanel } from "./panels/ArtifactSyncPanel"
-import { SessionListPanel } from "./panels/SessionListPanel"
-import { InsightBanner } from "./panels/InsightBanner"
-import { DroppedKeysPanel } from "./panels/DroppedKeysPanel"
-import { ModelHealthSection } from "./ModelHealthSection"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
+import { SidebarExpand, SidebarCollapse } from "iconoir-react"
+import type { Id } from "@convex/_generated/dataModel"
+import { DottedPattern } from "@/components/marketing/SectionBackground"
+import { AiOpsContentSection } from "./AiOpsContentSection"
+import { AiOpsSidebar, AiOpsMobileSidebar } from "./AiOpsSidebar"
+import { type AiOpsTabId, resolveAiOpsTabId } from "./aiOpsConfig"
 
-export function AiOpsContainer() {
-  const memoryHealth = useQuery(api.aiOps.getMemoryHealthStats)
-  const workflowProgress = useQuery(api.aiOps.getWorkflowProgressStats)
-  const artifactSync = useQuery(api.aiOps.getArtifactSyncStats)
-  const sessions = useQuery(api.aiOps.getSessionList, { limit: 20 })
-  const droppedKeys = useQuery(api.aiOps.getDroppedKeysAggregation)
+interface AiOpsContainerProps {
+  userId: Id<"users">
+}
+
+export function AiOpsContainer({ userId }: AiOpsContainerProps) {
+  const searchParams = useSearchParams()
+  const tabParam = resolveAiOpsTabId(searchParams.get("tab") ?? "overview")
+  const [activeTab, setActiveTab] = useState<AiOpsTabId>(tabParam)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    setActiveTab(tabParam)
+  }, [tabParam])
+
+  const handleTabChange = (tab: AiOpsTabId) => {
+    setActiveTab(tab)
+    const url = tab === "overview" ? "/ai-ops" : `/ai-ops?tab=${tab}`
+    window.history.replaceState(null, "", url)
+  }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-8">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-4 font-mono transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Admin Panel
-        </Link>
-        <div className="flex items-center gap-3">
-          <Activity className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold tracking-tight">AI OPS DASHBOARD</h1>
+    <div className="relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[color:var(--section-bg-alt)]">
+      <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-6 lg:px-8">
+        <div className="flex justify-end py-3 md:hidden">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((open) => !open)}
+            aria-label={sidebarOpen ? "Tutup menu" : "Buka menu"}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] p-1 text-foreground transition-colors hover:text-foreground/70"
+          >
+            {sidebarOpen ? (
+              <SidebarCollapse className="h-7 w-7" strokeWidth={1.5} />
+            ) : (
+              <SidebarExpand className="h-7 w-7" strokeWidth={1.5} />
+            )}
+          </button>
         </div>
-        <p className="text-xs text-muted-foreground mt-1 font-mono">
-          Paper workflow observability &amp; memory health monitoring
-        </p>
+
+        <div className="grid grid-cols-1 gap-[16px] pb-2 md:grid-cols-16">
+          <AiOpsSidebar activeTab={activeTab} onTabChange={handleTabChange} />
+          <AiOpsContentSection activeTab={activeTab} userId={userId} />
+        </div>
       </div>
 
-      {/* Overview Panels */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <MemoryHealthPanel data={memoryHealth} />
-        <WorkflowProgressPanel data={workflowProgress} />
-        <ArtifactSyncPanel data={artifactSync} />
-      </div>
-
-      {/* Insights */}
-      <InsightBanner
-        memoryHealth={memoryHealth}
-        workflowProgress={workflowProgress}
-        artifactSync={artifactSync}
+      <AiOpsMobileSidebar
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
       />
-
-      {/* Dropped Keys */}
-      <DroppedKeysPanel data={droppedKeys} />
-
-      {/* Session List */}
-      <SessionListPanel sessions={sessions} />
-
-      {/* Section Divider */}
-      <div className="my-10 border-t border-border/30" />
-
-      {/* Model & Tool Health */}
-      <ModelHealthSection />
     </div>
   )
 }
