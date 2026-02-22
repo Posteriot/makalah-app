@@ -72,8 +72,8 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
                 icon: <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />,
                 text: customMessage || "Pencarian",
                 containerClass: "",
-                iconClass: "text-slate-600 dark:text-slate-300",
-                textClass: "text-slate-600 dark:text-slate-300",
+                iconClass: "text-[var(--ds-text-muted)]",
+                textClass: "text-[var(--ds-text-muted)]",
             }
 
         case "done":
@@ -81,8 +81,8 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
                 icon: <CheckCircle className="h-4 w-4" />,
                 text: customMessage || "Pencarian selesai",
                 containerClass: "",
-                iconClass: "text-emerald-600 dark:text-emerald-400",
-                textClass: "text-emerald-600 dark:text-emerald-400",
+                iconClass: "text-[var(--ds-state-success-fg)]",
+                textClass: "text-[var(--ds-state-success-fg)]",
             }
 
         case "error":
@@ -90,8 +90,8 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
                 icon: <XmarkCircle className="h-4 w-4" />,
                 text: customMessage || "Pencarian gagal",
                 containerClass: "",
-                iconClass: "text-rose-600 dark:text-rose-400",
-                textClass: "text-rose-600 dark:text-rose-400",
+                iconClass: "text-[var(--ds-state-danger-fg)]",
+                textClass: "text-[var(--ds-state-danger-fg)]",
             }
 
         default:
@@ -99,8 +99,8 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
                 icon: <Search className="h-4 w-4" />,
                 text: "Pencarian",
                 containerClass: "",
-                iconClass: "text-muted-foreground",
-                textClass: "text-muted-foreground",
+                iconClass: "text-[var(--ds-text-muted)]",
+                textClass: "text-[var(--ds-text-muted)]",
             }
     }
 }

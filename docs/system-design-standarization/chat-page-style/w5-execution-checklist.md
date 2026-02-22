@@ -84,7 +84,7 @@ Referensi gate:
 |---|---|---|---|---|
 | `src/components/chat/InlineCitationChip.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/QuotaWarningBanner.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/chat/SearchStatusIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/chat/SearchStatusIndicator.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/SourcesIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/chat/ToolStateIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |
 
