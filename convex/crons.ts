@@ -10,4 +10,12 @@ crons.daily(
   internal.billing.subscriptionCron.checkExpiredSubscriptions
 )
 
+
+// Cleanup old AI telemetry records (older than 30 days) daily at 03:00 WIB (20:00 UTC)
+crons.daily(
+  "cleanup-old-ai-telemetry",
+  { hourUTC: 20, minuteUTC: 0 },
+  internal.aiTelemetry.cleanupOldTelemetry
+)
+
 export default crons
