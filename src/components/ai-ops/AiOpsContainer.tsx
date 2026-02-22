@@ -10,6 +10,7 @@ import { ArtifactSyncPanel } from "./panels/ArtifactSyncPanel"
 import { SessionListPanel } from "./panels/SessionListPanel"
 import { InsightBanner } from "./panels/InsightBanner"
 import { DroppedKeysPanel } from "./panels/DroppedKeysPanel"
+import { ModelHealthSection } from "./ModelHealthSection"
 
 export function AiOpsContainer() {
   const memoryHealth = useQuery(api.aiOps.getMemoryHealthStats)
@@ -57,6 +58,12 @@ export function AiOpsContainer() {
 
       {/* Session List */}
       <SessionListPanel sessions={sessions} />
+
+      {/* Section Divider */}
+      <div className="my-10 border-t border-border/30" />
+
+      {/* Model & Tool Health */}
+      <ModelHealthSection />
     </div>
   )
 }
