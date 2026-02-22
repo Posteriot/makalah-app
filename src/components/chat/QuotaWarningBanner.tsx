@@ -109,15 +109,21 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
 
   // Mechanical Grace: Slate background, Signal Theory borders
   const bannerStyles = {
-    warning: "bg-slate-900 border-amber-500/50 text-amber-200",
-    critical: "bg-slate-900 border-orange-500/50 text-orange-200",
-    depleted: "bg-slate-900 border-rose-500/50 text-rose-200",
+    warning: "bg-[var(--ds-quota-warning-bg)] border-[color:var(--ds-quota-warning-border)] text-[var(--ds-quota-warning-fg)]",
+    critical: "bg-[var(--ds-quota-critical-bg)] border-[color:var(--ds-quota-critical-border)] text-[var(--ds-quota-critical-fg)]",
+    depleted: "bg-[var(--ds-quota-depleted-bg)] border-[color:var(--ds-quota-depleted-border)] text-[var(--ds-quota-depleted-fg)]",
   }
 
   const iconStyles = {
-    warning: "text-amber-500",
-    critical: "text-orange-500",
-    depleted: "text-rose-500",
+    warning: "text-[var(--ds-quota-warning-icon)]",
+    critical: "text-[var(--ds-quota-critical-icon)]",
+    depleted: "text-[var(--ds-quota-depleted-icon)]",
+  }
+
+  const linkStyles = {
+    warning: "text-[var(--ds-quota-warning-link)]",
+    critical: "text-[var(--ds-quota-critical-link)]",
+    depleted: "text-[var(--ds-quota-depleted-link)]",
   }
 
   const Icon = bannerType === "depleted" ? WarningTriangle :
@@ -139,9 +145,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
         href={actionHref}
         className={cn(
           "font-mono text-xs font-medium underline underline-offset-2 hover:no-underline whitespace-nowrap",
-          bannerType === "depleted" && "text-rose-300",
-          bannerType === "critical" && "text-orange-300",
-          bannerType === "warning" && "text-amber-300"
+          linkStyles[bannerType]
         )}
       >
         {actionText}
@@ -150,7 +154,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
       {bannerType !== "depleted" && (
         <button
           onClick={handleDismiss}
-          className="p-1 rounded-action hover:bg-black/5 dark:hover:bg-white/5 flex-shrink-0"
+          className="p-1 rounded-action hover:bg-[var(--ds-quota-dismiss-hover-bg)] flex-shrink-0"
           aria-label="Tutup"
         >
           <Xmark className="h-4 w-4" />
