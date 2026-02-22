@@ -25,7 +25,7 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
   const [badgeText, setBadgeText] = useState("")
-  const [headingLines, setHeadingLines] = useState<[string, string, string]>(["", "", ""])
+  const [headingText, setHeadingText] = useState("")
   const [subheading, setSubheading] = useState("")
   const [paragraphs, setParagraphs] = useState<string[]>([])
   const [terminalDarkId, setTerminalDarkId] = useState<Id<"_storage"> | null>(null)
@@ -39,8 +39,8 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
   useEffect(() => {
     if (section) {
       setBadgeText(section.badgeText ?? "")
-      const lines = (section.headingLines as string[] | undefined) ?? ["", "", ""]
-      setHeadingLines([lines[0] ?? "", lines[1] ?? "", lines[2] ?? ""])
+      const lines = (section.headingLines as string[] | undefined) ?? []
+      setHeadingText(lines.join("\n"))
       setSubheading(section.subheading ?? "")
       const paras = (section.paragraphs as string[] | undefined) ?? []
       setParagraphs(paras)
@@ -52,14 +52,6 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
-
-  function updateHeadingLine(index: number, value: string) {
-    setHeadingLines((prev) => {
-      const next: [string, string, string] = [...prev]
-      next[index] = value
-      return next
-    })
-  }
 
   function updateParagraph(index: number, value: string) {
     setParagraphs((prev) => prev.map((p, i) => (i === index ? value : p)))
@@ -80,7 +72,7 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
       pageSlug: "about",
       sectionSlug: "manifesto",
       sectionType: "manifesto",
-      headingLines,
+      headingLines: headingText.split("\n").filter((l) => l.trim() !== ""),
       subheading,
       paragraphs,
       badgeText,
@@ -135,21 +127,20 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
           />
         </div>
 
-        {/* Heading Lines */}
+        {/* Heading */}
         <div>
           <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-            Heading Lines
+            Heading
           </label>
-          <div className="space-y-2">
-            {headingLines.map((line, index) => (
-              <Input
-                key={index}
-                value={line}
-                onChange={(e) => updateHeadingLine(index, e.target.value)}
-                placeholder={`Baris heading ${index + 1}`}
-              />
-            ))}
-          </div>
+          <Textarea
+            value={headingText}
+            onChange={(e) => setHeadingText(e.target.value)}
+            placeholder="Judul manifesto (tekan Enter untuk baris baru)"
+            rows={3}
+          />
+          <p className="text-interface mt-1 text-[10px] text-muted-foreground">
+            Tekan Enter untuk baris baru. Setiap baris ditampilkan sebagai line terpisah di frontend.
+          </p>
         </div>
 
         {/* Subheading */}
@@ -230,9 +221,6 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
             fallbackPreviewUrl="/images/manifesto-terminal-light.png"
           />
         </div>
-        <p className="text-interface text-[10px] text-muted-foreground">
-          Optimal: 16:9. Kontainer: max-width 720px, auto height.
-        </p>
       </div>
 
       {/* ── Cluster 4: Background Patterns ── */}

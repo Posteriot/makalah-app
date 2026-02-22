@@ -2,7 +2,7 @@
 
 import type { Doc } from "@convex/_generated/dataModel"
 import { SectionBadge } from "@/components/ui/section-badge"
-import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 import { AccordionAbout } from "./AccordionAbout"
 
 type ProblemsSectionCMSProps = {
@@ -22,6 +22,7 @@ export function ProblemsSectionCMS({ content }: ProblemsSectionCMSProps) {
 
   return (
     <section className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)]" id="problems">
+      {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
       {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 

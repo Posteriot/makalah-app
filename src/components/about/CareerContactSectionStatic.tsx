@@ -31,6 +31,8 @@ function renderContent(content: string | ContactContent) {
         <p>
           <a
             href={`mailto:${content.email}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-interface text-sm text-[color:var(--slate-700)] dark:text-[color:var(--slate-50)] hover:underline"
           >
             {content.email}

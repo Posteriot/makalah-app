@@ -2,7 +2,7 @@
 
 import type { Doc } from "@convex/_generated/dataModel"
 import { SectionBadge } from "@/components/ui/section-badge"
-import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 import { AccordionAbout } from "./AccordionAbout"
 import { getIcon } from "./icons"
 import { cn } from "@/lib/utils"
@@ -55,6 +55,8 @@ export function CareerContactSectionCMS({ content }: CareerContactSectionCMSProp
           <p>
             <a
               href={`mailto:${contactInfo.email}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-interface text-sm text-[color:var(--slate-700)] dark:text-[color:var(--slate-50)] hover:underline"
             >
               {contactInfo.email}
@@ -75,6 +77,7 @@ export function CareerContactSectionCMS({ content }: CareerContactSectionCMSProp
 
   return (
     <section className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)]" id="karier-kontak">
+      {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
       {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 

@@ -28,6 +28,7 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
   const [company, setCompany] = useState("")
   const [address, setAddress] = useState("")
   const [email, setEmail] = useState("")
+  const [showGridPattern, setShowGridPattern] = useState(true)
   const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
   const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
@@ -45,6 +46,7 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
       setCompany(contact?.company ?? "")
       setAddress(contact?.address?.[0] ?? "")
       setEmail(contact?.email ?? "")
+      setShowGridPattern(section.showGridPattern !== false)
       setShowDiagonalStripes(section.showDiagonalStripes !== false)
       setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
@@ -62,6 +64,7 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
       badgeText,
       items: [{ title: "Karier", description: careerText }],
       contactInfo: { company, address: [address], email },
+      showGridPattern,
       showDiagonalStripes,
       showDottedPattern,
       isPublished,
@@ -188,6 +191,12 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Background Patterns
         </span>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Grid Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+        </div>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
             Diagonal Stripes

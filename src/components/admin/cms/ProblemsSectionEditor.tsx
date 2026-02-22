@@ -31,6 +31,7 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
   const [badgeText, setBadgeText] = useState("")
   const [title, setTitle] = useState("")
   const [items, setItems] = useState<ProblemItem[]>([])
+  const [showGridPattern, setShowGridPattern] = useState(true)
   const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
   const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
@@ -47,6 +48,7 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
         }))
         setItems(loaded)
       }
+      setShowGridPattern(section.showGridPattern !== false)
       setShowDiagonalStripes(section.showDiagonalStripes !== false)
       setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
@@ -82,6 +84,7 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
         title: item.title,
         description: item.description,
       })),
+      showGridPattern,
       showDiagonalStripes,
       showDottedPattern,
       isPublished,
@@ -213,6 +216,12 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Background Patterns
         </span>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Grid Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+        </div>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
             Diagonal Stripes
