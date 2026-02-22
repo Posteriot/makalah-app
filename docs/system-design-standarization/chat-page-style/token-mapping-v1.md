@@ -150,6 +150,10 @@ Mapping berikut dipakai sebagai pola implementasi di komponen.
 
 Prioritas ini dipakai saat mulai eksekusi migrasi kode.
 
+DQ-02 (LOCKED): Prioritas wave migrasi token chat v1 bersifat tetap:
+`W1 (P0)`, `W2 (P0)`, `W3 (P1)`, `W4 (P1)`, `W5 (P2)`.
+Khusus `W5` dikunci sebagai `P2` (indikator pendukung), tidak boleh dinaikkan ke `P1` tanpa revisi eksplisit pada `context-rules.md` dan dokumen ini.
+
 | Wave | Fokus | File Utama |
 |---|---|---|
 | W1 (P0) | Shell + entry interaction | `ChatLayout.tsx`, `TopBar.tsx`, `ActivityBar.tsx`, `ChatSidebar.tsx`, `ChatWindow.tsx`, `ChatInput.tsx`, `MessageBubble.tsx`, `PanelResizer.tsx`, `SidebarChatHistory.tsx`, `TemplateGrid.tsx`, `ChatProcessStatusBar.tsx`, `ThinkingIndicator.tsx`, `QuickActions.tsx` |

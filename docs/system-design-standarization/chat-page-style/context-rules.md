@@ -92,3 +92,10 @@ Tujuan utamanya menjaga konsistensi keputusan saat sesi chat panjang, compact co
 - Untuk intent core lintas halaman (`surface-*`, `text-*`, `border-*`), canonical neutral family adalah `slate` melalui semantic token core `--ds-*`.
 - `stone` tidak dipakai pada token core. Jika dibutuhkan untuk visual showcase/ilustratif, wajib lewat semantic token showcase terpisah, bukan hardcoded class.
 - Komponen shared shell dan shared interaction lintas chat-home wajib pakai token core yang sama untuk intent yang sama.
+
+## 10. Keputusan Terkunci Prioritas Wave
+
+- DQ-02 (LOCKED):
+- Prioritas wave migrasi token chat v1 bersifat tetap dan dipakai lintas dokumen eksekusi:
+- `W1 (P0)`, `W2 (P0)`, `W3 (P1)`, `W4 (P1)`, `W5 (P2)`.
+- Khusus `W5` dikunci sebagai `P2` (indikator pendukung), tidak boleh dinaikkan ke `P1` tanpa revisi eksplisit pada dokumen ini dan `token-mapping-v1.md`.
