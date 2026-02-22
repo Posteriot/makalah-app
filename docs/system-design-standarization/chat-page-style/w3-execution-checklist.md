@@ -89,8 +89,8 @@ Referensi gate:
 | `src/components/chat/sidebar/SidebarPaperSessions.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/paper/PaperValidationPanel.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/paper/RewindConfirmationDialog.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/paper/PaperSessionBadge.tsx` | [ ] | [ ] | [ ] | [ ] |
-| `src/components/paper/PaperStageProgress.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/paper/PaperSessionBadge.tsx` | [x] | [x] | [ ] | [x] |
+| `src/components/paper/PaperStageProgress.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/VersionHistoryDialog.tsx` | [ ] | [ ] | [ ] | [ ] |
 
 ## 8. Evidence Template (Wajib Diisi)
@@ -113,13 +113,15 @@ Referensi gate:
 
 ### W3 Execution Evidence (Current)
 
-- Date: 2026-02-23 03:05:09 WIB
-- Scope: W3-A + W3-B (`SidebarProgress.tsx`, `SidebarPaperSessions.tsx`, `PaperValidationPanel.tsx`, `RewindConfirmationDialog.tsx`)
+- Date: 2026-02-23 03:20:03 WIB
+- Scope: W3-A + W3-B + W3-C (`SidebarProgress.tsx`, `SidebarPaperSessions.tsx`, `PaperValidationPanel.tsx`, `RewindConfirmationDialog.tsx`, `PaperSessionBadge.tsx`, `PaperStageProgress.tsx`)
 - Result summary:
 - `src/components/chat/sidebar/SidebarProgress.tsx`: A=0, B=0, C=11
 - `src/components/chat/sidebar/SidebarPaperSessions.tsx`: A=0, B=0, C=11
 - `src/components/paper/PaperValidationPanel.tsx`: A=0, B=0, C=6
 - `src/components/paper/RewindConfirmationDialog.tsx`: A=0, B=0, C=5
+- `src/components/paper/PaperSessionBadge.tsx`: A=0, B=0, C=1
+- `src/components/paper/PaperStageProgress.tsx`: A=0, B=0, C=12
 - Visual gate M1-M4 untuk W3: belum dijalankan (pending setelah semua file W3 selesai).
 
 ## 9. Aturan Stop
