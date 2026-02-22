@@ -55,6 +55,51 @@ export const log = mutation({
       ...args,
       createdAt: Date.now(),
     })
+
+    // ── Health check: sample every ~50 records ──
+    const oneHourAgo = Date.now() - 60 * 60 * 1000
+    const recentRecords = await db
+      .query("aiTelemetry")
+      .withIndex("by_created", (q) => q.gte("createdAt", oneHourAgo))
+      .collect()
+
+    // Only check if we have enough data AND roughly every 50th record
+    if (recentRecords.length >= 10 && recentRecords.length % 50 < 1) {
+      const failures = recentRecords.filter((r) => !r.success).length
+      const successRate =
+        ((recentRecords.length - failures) / recentRecords.length) * 100
+
+      if (successRate < 70) {
+        await db.insert("systemAlerts", {
+          alertType: "ai_health_critical",
+          severity: "critical",
+          message: `Tingkat keberhasilan AI hanya ${Math.round(successRate)}% dalam 1 jam terakhir (${failures} gagal dari ${recentRecords.length} permintaan)`,
+          source: "ai-telemetry",
+          resolved: false,
+          metadata: {
+            successRate: Math.round(successRate),
+            failures,
+            total: recentRecords.length,
+          },
+          createdAt: Date.now(),
+        })
+      } else if (successRate < 90) {
+        await db.insert("systemAlerts", {
+          alertType: "ai_health_degraded",
+          severity: "warning",
+          message: `Tingkat keberhasilan AI turun ke ${Math.round(successRate)}% dalam 1 jam terakhir (${failures} gagal dari ${recentRecords.length} permintaan)`,
+          source: "ai-telemetry",
+          resolved: false,
+          metadata: {
+            successRate: Math.round(successRate),
+            failures,
+            total: recentRecords.length,
+          },
+          createdAt: Date.now(),
+        })
+      }
+    }
+
     return { id }
   },
 })
