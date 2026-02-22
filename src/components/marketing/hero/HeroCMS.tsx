@@ -52,9 +52,9 @@ export function HeroCMS({ content }: HeroCMSProps) {
               </SectionBadge>
             )}
 
-            {hasCmsHeading ? (
-              <h1 className="text-[0px] mt-4 leading-[0] w-full">
-                <span className="sr-only">{content.title ?? "Makalah AI"}</span>
+            <h1 className="text-[0px] mt-4 leading-[0] w-full">
+              <span className="sr-only">{content.title ?? "Makalah AI"}</span>
+              {hasCmsHeading ? (
                 <span className="block w-full max-w-[520px] h-auto" aria-hidden="true">
                   {headingDarkUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -73,17 +73,10 @@ export function HeroCMS({ content }: HeroCMSProps) {
                     />
                   )}
                 </span>
-              </h1>
-            ) : content.title ? (
-              <h1 className="text-narrative text-3xl md:text-5xl font-semibold tracking-tight mt-4 max-w-[520px]">
-                {content.title}
-              </h1>
-            ) : (
-              <h1 className="text-[0px] mt-4 leading-[0] w-full">
-                <span className="sr-only">Makalah AI</span>
+              ) : (
                 <HeroHeadingSvg />
-              </h1>
-            )}
+              )}
+            </h1>
 
             {content.subtitle && (
               <p className="text-narrative text-base md:text-2xl font-normal text-slate-600 dark:text-slate-200 max-w-[520px] mt-4 mb-0">

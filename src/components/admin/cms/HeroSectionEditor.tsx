@@ -120,16 +120,19 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
 
       {/* Form fields */}
       <div className="space-y-4">
-        {/* Title */}
+        {/* Title (SEO only) */}
         <div>
           <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-            Title
+            Title (SEO / Accessibility)
           </label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Judul hero section"
+            placeholder="Teks heading untuk SEO dan screen reader"
           />
+          <p className="text-interface mt-1 text-[10px] text-muted-foreground">
+            Tidak tampil di halaman — visual heading menggunakan Heading SVG di bawah
+          </p>
         </div>
 
         {/* Subtitle */}
