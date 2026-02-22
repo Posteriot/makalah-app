@@ -109,6 +109,8 @@
   --ds-paper-session-badge-bg: var(--ds-ref-emerald-700);
   --ds-paper-session-badge-border: color-mix(in oklch, var(--ds-ref-emerald-700) 58%, transparent);
   --ds-paper-session-badge-fg: var(--ds-ref-slate-50);
+  --ds-paper-session-version-badge-bg: var(--ds-ref-sky-600);
+  --ds-paper-session-version-badge-fg: var(--ds-ref-slate-50);
   --ds-quota-warning-bg: var(--ds-ref-slate-900);
   --ds-quota-warning-border: color-mix(in oklch, var(--ds-ref-amber-500) 50%, transparent);
   --ds-quota-warning-fg: var(--ds-ref-amber-200);
@@ -275,6 +277,8 @@
   --ds-paper-session-badge-bg: var(--ds-ref-emerald-600);
   --ds-paper-session-badge-border: color-mix(in oklch, var(--ds-ref-emerald-500) 62%, transparent);
   --ds-paper-session-badge-fg: var(--ds-ref-slate-50);
+  --ds-paper-session-version-badge-bg: var(--ds-ref-sky-700);
+  --ds-paper-session-version-badge-fg: var(--ds-ref-slate-50);
   --ds-quota-warning-bg: var(--ds-ref-slate-900);
   --ds-quota-warning-border: color-mix(in oklch, var(--ds-ref-amber-500) 50%, transparent);
   --ds-quota-warning-fg: var(--ds-ref-amber-200);

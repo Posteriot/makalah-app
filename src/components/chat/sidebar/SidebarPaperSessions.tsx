@@ -522,7 +522,7 @@ function ArtifactTreeItem({
           <span className="flex-1 truncate text-[13px]">{artifact.title}</span>
 
           {/* Version Badge */}
-          <span className="shrink-0 rounded-badge border border-border/60 bg-[var(--ds-state-info-fg)] px-1.5 py-0.5 text-[9px] font-mono font-medium text-[var(--ds-sidebar-cta-fg)]">
+          <span className="shrink-0 rounded-badge border border-border/60 bg-[var(--ds-paper-session-version-badge-bg)] px-1.5 py-0.5 text-[9px] font-mono font-medium text-[var(--ds-paper-session-version-badge-fg)]">
             v{artifact.version}
           </span>
 
