@@ -14,8 +14,8 @@ export function ManifestoSection() {
   // Loading
   if (section === undefined) return null
 
-  // No CMS data or unpublished → static fallback
-  if (section === null || !section.isPublished) return <ManifestoSectionStatic />
+  // No CMS data or unpublished → hidden
+  if (section === null || !section.isPublished) return null
 
   // CMS published
   return <ManifestoSectionCMS content={section} />

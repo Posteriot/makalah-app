@@ -112,7 +112,7 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
         <div className="mt-2 border-t border-border" />
       </div>
 
-      {/* Logo & Brand Images */}
+      {/* ── Cluster 1: Logo & Brand Images ── */}
       <div className="space-y-4">
         <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Logo & Brand
@@ -156,9 +156,13 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
         <p className="text-interface text-xs text-muted-foreground">
           Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang.
         </p>
+        <p className="text-interface text-[10px] text-muted-foreground">
+          Logo Icon: optimal 32 × 32 px (1:1). Brand Text: optimal 120 × 30 px (4:1, SVG/PNG).
+        </p>
       </div>
 
-      {/* Nav Links */}
+      {/* ── Cluster 2: Nav Links ── */}
+      <div className="border-t border-border" />
       <div className="space-y-4">
         <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Nav Links

@@ -96,7 +96,7 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
         <div className="mt-2 border-t border-border" />
       </div>
 
-      {/* Form fields */}
+      {/* ── Cluster 1: Text Content ── */}
       <div className="space-y-4">
         {/* Badge Text */}
         <div>
@@ -121,90 +121,94 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
             placeholder="Judul section"
           />
         </div>
+      </div>
 
-        {/* Karier group */}
+      {/* ── Cluster 2: Karier ── */}
+      <div className="border-t border-border" />
+      <div>
+        <h4 className="text-interface mb-3 text-sm font-semibold text-foreground">
+          Karier
+        </h4>
         <div>
-          <h4 className="text-interface mb-3 text-sm font-semibold text-foreground">
-            Karier
-          </h4>
+          <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+            Teks Karier
+          </label>
+          <Textarea
+            value={careerText}
+            onChange={(e) => setCareerText(e.target.value)}
+            placeholder="Teks tentang karier"
+            rows={2}
+          />
+        </div>
+      </div>
+
+      {/* ── Cluster 3: Kontak ── */}
+      <div className="border-t border-border" />
+      <div>
+        <h4 className="text-interface mb-3 text-sm font-semibold text-foreground">
+          Kontak
+        </h4>
+        <div className="space-y-3">
           <div>
             <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-              Teks Karier
+              Nama Perusahaan
             </label>
-            <Textarea
-              value={careerText}
-              onChange={(e) => setCareerText(e.target.value)}
-              placeholder="Teks tentang karier"
-              rows={2}
+            <Input
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="Nama perusahaan"
+            />
+          </div>
+          <div>
+            <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+              Alamat
+            </label>
+            <Input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Alamat perusahaan"
+            />
+          </div>
+          <div>
+            <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+              Email
+            </label>
+            <Input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email kontak"
             />
           </div>
         </div>
+      </div>
 
-        {/* Kontak group */}
-        <div>
-          <h4 className="text-interface mb-3 text-sm font-semibold text-foreground">
-            Kontak
-          </h4>
-          <div className="space-y-3">
-            <div>
-              <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-                Nama Perusahaan
-              </label>
-              <Input
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                placeholder="Nama perusahaan"
-              />
-            </div>
-            <div>
-              <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-                Alamat
-              </label>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Alamat perusahaan"
-              />
-            </div>
-            <div>
-              <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-                Email
-              </label>
-              <Input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email kontak"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Background Pattern toggles */}
-        <div className="space-y-2">
-          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Background Patterns
-          </span>
-          <div className="flex items-center gap-3">
-            <label className="text-interface text-xs font-medium text-muted-foreground">
-              Diagonal Stripes
-            </label>
-            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="text-interface text-xs font-medium text-muted-foreground">
-              Dotted Pattern
-            </label>
-            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
-          </div>
-        </div>
-
-        {/* Published toggle */}
+      {/* ── Cluster 4: Background Patterns ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Background Patterns
+        </span>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
-            Published
+            Diagonal Stripes
           </label>
-          <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
         </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Dotted Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
+        </div>
+      </div>
+
+      {/* ── Cluster 5: Published ── */}
+      <div className="border-t border-border" />
+      <div className="flex items-center gap-3">
+        <label className="text-interface text-xs font-medium text-muted-foreground">
+          Published
+        </label>
+        <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
       </div>
       <CmsSaveButton onSave={handleSave} />
     </div>

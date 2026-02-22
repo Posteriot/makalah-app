@@ -5,7 +5,7 @@ import { api } from "@convex/_generated/api"
 import type { Doc } from "@convex/_generated/dataModel"
 import { SectionBadge } from "@/components/ui/section-badge"
 import { SectionCTA } from "@/components/ui/section-cta"
-import { GridPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 import { HeroHeadingSvg } from "./HeroHeadingSvg"
 import { HeroResearchMock } from "./HeroResearchMock"
 import { ChatInputHeroMock } from "./ChatInputHeroMock"
@@ -41,6 +41,7 @@ export function HeroCMS({ content }: HeroCMSProps) {
     <section className="relative isolate min-h-[100svh] overflow-hidden bg-background">
       {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-80" />}
+      {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-80" />}
 
       <div className="relative z-[1] mx-auto flex min-h-[100svh] max-w-7xl items-center px-4 py-10 md:px-8 md:py-24">
         <div className="grid grid-cols-1 gap-comfort lg:grid-cols-16 lg:gap-16">

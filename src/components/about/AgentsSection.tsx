@@ -14,8 +14,8 @@ export function AgentsSection() {
   // Loading
   if (section === undefined) return null
 
-  // No CMS data or unpublished → static fallback
-  if (section === null || !section.isPublished) return <AgentsSectionStatic />
+  // No CMS data or unpublished → hidden
+  if (section === null || !section.isPublished) return null
 
   // CMS published
   return <AgentsSectionCMS content={section} />

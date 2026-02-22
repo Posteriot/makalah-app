@@ -118,7 +118,7 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
         <div className="mt-2 border-t border-border" />
       </div>
 
-      {/* Form fields */}
+      {/* ── Cluster 1: Text Content ── */}
       <div className="space-y-4">
         {/* Badge Text */}
         <div>
@@ -143,94 +143,97 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
             placeholder="Judul section"
           />
         </div>
+      </div>
 
-        {/* Problem items */}
-        <div>
-          <label className="text-interface mb-2 block text-xs font-medium text-muted-foreground">
-            Items
-          </label>
-          <div className="space-y-4">
-            {items.map((item, index) => (
-              <div
-                key={index}
-                className="rounded-action border border-border p-4 space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-interface text-sm font-medium text-foreground">
-                    Item {index + 1}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(index)}
-                    className="text-interface text-xs text-destructive hover:underline"
-                  >
-                    Hapus
-                  </button>
-                </div>
-
-                {/* Title */}
-                <div>
-                  <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-                    Judul
-                  </label>
-                  <Input
-                    value={item.title}
-                    onChange={(e) => updateItem(index, "title", e.target.value)}
-                    placeholder="Judul problem"
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-                    Deskripsi
-                  </label>
-                  <Textarea
-                    value={item.description}
-                    onChange={(e) => updateItem(index, "description", e.target.value)}
-                    placeholder="Deskripsi problem"
-                    rows={3}
-                  />
-                </div>
+      {/* ── Cluster 2: Items ── */}
+      <div className="border-t border-border" />
+      <div>
+        <label className="text-interface mb-2 block text-xs font-medium text-muted-foreground">
+          Items
+        </label>
+        <div className="space-y-4">
+          {items.map((item, index) => (
+            <div
+              key={index}
+              className="rounded-action border border-border p-4 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-interface text-sm font-medium text-foreground">
+                  Item {index + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeItem(index)}
+                  className="text-interface text-xs text-destructive hover:underline"
+                >
+                  Hapus
+                </button>
               </div>
-            ))}
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addItem}
-            className="mt-3 rounded-action text-xs"
-          >
-            Tambah Item
-          </Button>
-        </div>
 
-        {/* Background Pattern toggles */}
-        <div className="space-y-2">
-          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Background Patterns
-          </span>
-          <div className="flex items-center gap-3">
-            <label className="text-interface text-xs font-medium text-muted-foreground">
-              Diagonal Stripes
-            </label>
-            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="text-interface text-xs font-medium text-muted-foreground">
-              Dotted Pattern
-            </label>
-            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
-          </div>
-        </div>
+              {/* Title */}
+              <div>
+                <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+                  Judul
+                </label>
+                <Input
+                  value={item.title}
+                  onChange={(e) => updateItem(index, "title", e.target.value)}
+                  placeholder="Judul problem"
+                />
+              </div>
 
-        {/* Published toggle */}
+              {/* Description */}
+              <div>
+                <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+                  Deskripsi
+                </label>
+                <Textarea
+                  value={item.description}
+                  onChange={(e) => updateItem(index, "description", e.target.value)}
+                  placeholder="Deskripsi problem"
+                  rows={3}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addItem}
+          className="mt-3 rounded-action text-xs"
+        >
+          Tambah Item
+        </Button>
+      </div>
+
+      {/* ── Cluster 3: Background Patterns ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Background Patterns
+        </span>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
-            Published
+            Diagonal Stripes
           </label>
-          <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
         </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Dotted Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
+        </div>
+      </div>
+
+      {/* ── Cluster 4: Published ── */}
+      <div className="border-t border-border" />
+      <div className="flex items-center gap-3">
+        <label className="text-interface text-xs font-medium text-muted-foreground">
+          Published
+        </label>
+        <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
       </div>
       <CmsSaveButton onSave={handleSave} />
     </div>

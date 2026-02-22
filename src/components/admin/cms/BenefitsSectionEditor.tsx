@@ -117,7 +117,7 @@ export function BenefitsSectionEditor({ userId }: BenefitsSectionEditorProps) {
         <div className="mt-2 border-t border-border" />
       </div>
 
-      {/* Benefit item cards */}
+      {/* ── Cluster 1: Benefit Items ── */}
       <div className="space-y-4">
         {items.map((item, index) => (
           <div
@@ -171,7 +171,8 @@ export function BenefitsSectionEditor({ userId }: BenefitsSectionEditorProps) {
         ))}
       </div>
 
-      {/* Background Pattern toggles */}
+      {/* ── Cluster 2: Background Patterns ── */}
+      <div className="border-t border-border" />
       <div className="space-y-2">
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Background Patterns
@@ -190,7 +191,8 @@ export function BenefitsSectionEditor({ userId }: BenefitsSectionEditorProps) {
         </div>
       </div>
 
-      {/* Published toggle */}
+      {/* ── Cluster 3: Published ── */}
+      <div className="border-t border-border" />
       <div className="flex items-center gap-3">
         <label className="text-interface text-xs font-medium text-muted-foreground">
           Published

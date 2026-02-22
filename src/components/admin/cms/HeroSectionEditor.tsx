@@ -36,6 +36,7 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
   const [headingImageLightId, setHeadingImageLightId] = useState<Id<"_storage"> | null>(null)
   const [showGridPattern, setShowGridPattern] = useState(true)
   const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
 
@@ -53,6 +54,7 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
       setHeadingImageLightId(section.headingImageLightId ?? null)
       setShowGridPattern(section.showGridPattern !== false)
       setShowDiagonalStripes(section.showDiagonalStripes !== false)
+      setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
@@ -75,6 +77,7 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
       headingImageLightId: headingImageLightId ?? undefined,
       showGridPattern,
       showDiagonalStripes,
+      showDottedPattern,
       isPublished,
       sortOrder: 1,
     })
@@ -110,7 +113,7 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
         <div className="mt-2 border-t border-border" />
       </div>
 
-      {/* Form fields */}
+      {/* ── Cluster 1: Text Content ── */}
       <div className="space-y-4">
         {/* Title (SEO only) */}
         <div>
@@ -123,7 +126,7 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
             placeholder="Teks heading untuk SEO dan screen reader"
           />
           <p className="text-interface mt-1 text-[10px] text-muted-foreground">
-            Tidak tampil di halaman — visual heading menggunakan Heading SVG di bawah
+            Tidak tampil di halaman — visual heading menggunakan Heading Image di bawah
           </p>
         </div>
 
@@ -175,36 +178,43 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
             />
           </div>
         </div>
+      </div>
 
-        {/* Heading SVG */}
-        <div className="space-y-2">
-          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Heading SVG
-          </span>
-          <div className="grid grid-cols-2 gap-4">
-            <CmsImageUpload
-              currentImageId={headingImageDarkId}
-              onUpload={(storageId) => setHeadingImageDarkId(storageId)}
-              userId={userId}
-              label="Dark Mode"
-              aspectRatio="4/1"
-              fallbackPreviewUrl="/heading-light-color.svg"
-            />
-            <CmsImageUpload
-              currentImageId={headingImageLightId}
-              onUpload={(storageId) => setHeadingImageLightId(storageId)}
-              userId={userId}
-              label="Light Mode"
-              aspectRatio="4/1"
-              fallbackPreviewUrl="/heading-dark-color.svg"
-            />
-          </div>
-          <p className="text-interface text-xs text-muted-foreground">
-            Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang.
-          </p>
+      {/* ── Cluster 2: Heading Image ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Heading Image
+        </span>
+        <div className="grid grid-cols-2 gap-4">
+          <CmsImageUpload
+            currentImageId={headingImageDarkId}
+            onUpload={(storageId) => setHeadingImageDarkId(storageId)}
+            userId={userId}
+            label="Dark Mode"
+            aspectRatio="4/1"
+            fallbackPreviewUrl="/heading-light-color.svg"
+          />
+          <CmsImageUpload
+            currentImageId={headingImageLightId}
+            onUpload={(storageId) => setHeadingImageLightId(storageId)}
+            userId={userId}
+            label="Light Mode"
+            aspectRatio="4/1"
+            fallbackPreviewUrl="/heading-dark-color.svg"
+          />
         </div>
+        <p className="text-interface text-xs text-muted-foreground">
+          Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang.
+        </p>
+        <p className="text-interface text-[10px] text-muted-foreground">
+          Optimal: 520 × 246 px (SVG/PNG). Kontainer: max-width 520px, auto height.
+        </p>
+      </div>
 
-        {/* Hero Image */}
+      {/* ── Cluster 3: Hero Image ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-4">
         <CmsImageUpload
           currentImageId={primaryImageId}
           onUpload={(storageId) => setPrimaryImageId(storageId)}
@@ -213,6 +223,9 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
           aspectRatio="16/9"
           fallbackPreviewUrl="/images/hero-paper-session-mock.png"
         />
+        <p className="text-interface -mt-3 text-[10px] text-muted-foreground">
+          Optimal: 769 × 768 px (~1:1). Kontainer: max-width 560px, height 480px (di-scale 88%).
+        </p>
 
         {/* Image Alt Text */}
         <div>
@@ -225,33 +238,55 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
             placeholder="Deskripsi gambar untuk aksesibilitas"
           />
         </div>
+      </div>
 
-        {/* Background Pattern toggles */}
-        <div className="space-y-2">
-          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Background Patterns
-          </span>
-          <div className="flex items-center gap-3">
-            <label className="text-interface text-xs font-medium text-muted-foreground">
-              Grid Pattern
-            </label>
-            <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="text-interface text-xs font-medium text-muted-foreground">
-              Diagonal Stripes
-            </label>
-            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
-          </div>
-        </div>
+      {/* ── Cluster 4: Animation Info ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-1 rounded-action border border-border bg-muted/30 p-3">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Animasi Hero
+        </span>
+        <p className="text-interface text-xs text-muted-foreground">
+          Chat input mockup dengan animasi typing otomatis. Komponen ini hardcoded dan tidak dikelola melalui CMS.
+        </p>
+        <p className="text-interface text-[10px] font-medium text-muted-foreground/80">
+          Path: <code className="rounded bg-muted px-1 py-0.5 text-[10px]">src/components/marketing/hero/ChatInputHeroMock.tsx</code>
+        </p>
+      </div>
 
-        {/* Published toggle */}
+      {/* ── Cluster 5: Background Patterns ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Background Patterns
+        </span>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
-            Published
+            Grid Pattern
           </label>
-          <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
         </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Diagonal Stripes
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Dotted Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
+        </div>
+      </div>
+
+      {/* ── Cluster 6: Published ── */}
+      <div className="border-t border-border" />
+      <div className="flex items-center gap-3">
+        <label className="text-interface text-xs font-medium text-muted-foreground">
+          Published
+        </label>
+        <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
       </div>
 
       <CmsSaveButton onSave={handleSave} />

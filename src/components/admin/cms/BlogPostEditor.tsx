@@ -513,6 +513,9 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
           height: 675,
         })}
       />
+      <p className="text-interface -mt-3 text-[10px] text-muted-foreground">
+        Optimal: 1200 × 675 px (16:9). Kontainer: full-width dengan aspect-ratio 16:9.
+      </p>
 
       {/* Divider */}
       <div className="border-t border-border" />

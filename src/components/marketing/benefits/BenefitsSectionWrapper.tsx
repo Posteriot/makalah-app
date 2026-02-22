@@ -21,10 +21,8 @@ export function BenefitsSectionWrapper() {
   // Loading — return null (section will pop in, acceptable for marketing page)
   if (section === undefined) return null
 
-  // No CMS data or unpublished → static fallback
-  if (section === null || !section.isPublished) {
-    return <BenefitsSection />
-  }
+  // No CMS data or unpublished → hidden
+  if (section === null || !section.isPublished) return null
 
   // CMS data with items → pass to BenefitsSection
   const items = section.items?.map((item) => ({

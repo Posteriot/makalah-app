@@ -104,7 +104,7 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId }: PricingHe
         <div className="mt-2 border-t border-border" />
       </div>
 
-      {/* Form fields */}
+      {/* ── Cluster 1: Text Content ── */}
       <div className="space-y-4">
         {/* Badge Text */}
         <div>
@@ -150,7 +150,8 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId }: PricingHe
         )}
       </div>
 
-      {/* Background Pattern toggles */}
+      {/* ── Cluster 2: Background Patterns ── */}
+      <div className="border-t border-border" />
       <div className="space-y-2">
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Background Patterns
@@ -169,7 +170,8 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId }: PricingHe
         </div>
       </div>
 
-      {/* Published toggle */}
+      {/* ── Cluster 3: Published ── */}
+      <div className="border-t border-border" />
       <div className="flex items-center gap-3">
         <label className="text-interface text-xs font-medium text-muted-foreground">
           Published

@@ -192,7 +192,7 @@ export function FeatureShowcaseEditor({
         <div className="mt-2 border-t border-border" />
       </div>
 
-      {/* Form fields */}
+      {/* ── Cluster 1: Text Content ── */}
       <div className="space-y-4">
         {/* Title */}
         <div>
@@ -230,153 +230,160 @@ export function FeatureShowcaseEditor({
             placeholder='Label badge, mis. "Workflow" atau "Refrasa"'
           />
         </div>
+      </div>
 
-        {/* Items */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-interface text-xs font-medium text-muted-foreground">
-              Items
-            </label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addItem}
-              className="rounded-action text-xs"
-            >
-              + Tambah Item
-            </Button>
-          </div>
-
-          {items.map((item, index) => (
-            <div
-              key={index}
-              className="rounded-action border border-border p-4 space-y-3"
-            >
-              {/* Card header */}
-              <div className="flex items-center justify-between">
-                <span className="text-interface text-sm font-medium text-foreground">
-                  Item {index + 1}
-                </span>
-                {items.length > 0 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeItem(index)}
-                    className="rounded-action text-xs text-destructive hover:text-destructive"
-                  >
-                    Hapus
-                  </Button>
-                )}
-              </div>
-
-              {/* Title */}
-              <div>
-                <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-                  Title
-                </label>
-                <Input
-                  value={item.title}
-                  onChange={(e) => updateItem(index, "title", e.target.value)}
-                  placeholder="Judul item"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-                  Description
-                </label>
-                <Textarea
-                  value={item.description}
-                  onChange={(e) =>
-                    updateItem(index, "description", e.target.value)
-                  }
-                  placeholder="Deskripsi item"
-                  rows={3}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Section Images (Light + Dark) */}
-        <div className="space-y-2">
-          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Section Image
-          </span>
-          <div className="grid grid-cols-2 gap-4">
-            <CmsImageUpload
-              currentImageId={primaryImageId}
-              onUpload={(storageId) => setPrimaryImageId(storageId)}
-              userId={userId}
-              label="Light Mode"
-              aspectRatio="16/9"
-              fallbackPreviewUrl={FALLBACK_LIGHT_IMAGE_MAP[sectionSlug]}
-            />
-            <CmsImageUpload
-              currentImageId={secondaryImageId}
-              onUpload={(storageId) => setSecondaryImageId(storageId)}
-              userId={userId}
-              label="Dark Mode"
-              aspectRatio="16/9"
-              fallbackPreviewUrl={FALLBACK_DARK_IMAGE_MAP[sectionSlug]}
-            />
-          </div>
-          <p className="text-interface text-xs text-muted-foreground">
-            Light mode = tampil saat tema terang. Dark mode = tampil saat tema gelap.
-          </p>
-        </div>
-
-        {/* Image Alt Text */}
-        <div>
-          <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-            Image Alt Text
+      {/* ── Cluster 2: Items ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Items
           </label>
-          <Input
-            value={primaryImageAlt}
-            onChange={(e) => setPrimaryImageAlt(e.target.value)}
-            placeholder="Deskripsi gambar untuk aksesibilitas"
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addItem}
+            className="rounded-action text-xs"
+          >
+            + Tambah Item
+          </Button>
+        </div>
+
+        {items.map((item, index) => (
+          <div
+            key={index}
+            className="rounded-action border border-border p-4 space-y-3"
+          >
+            {/* Card header */}
+            <div className="flex items-center justify-between">
+              <span className="text-interface text-sm font-medium text-foreground">
+                Item {index + 1}
+              </span>
+              {items.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeItem(index)}
+                  className="rounded-action text-xs text-destructive hover:text-destructive"
+                >
+                  Hapus
+                </Button>
+              )}
+            </div>
+
+            {/* Title */}
+            <div>
+              <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+                Title
+              </label>
+              <Input
+                value={item.title}
+                onChange={(e) => updateItem(index, "title", e.target.value)}
+                placeholder="Judul item"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+                Description
+              </label>
+              <Textarea
+                value={item.description}
+                onChange={(e) =>
+                  updateItem(index, "description", e.target.value)
+                }
+                placeholder="Deskripsi item"
+                rows={3}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Cluster 3: Section Images ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Section Image
+        </span>
+        <div className="grid grid-cols-2 gap-4">
+          <CmsImageUpload
+            currentImageId={primaryImageId}
+            onUpload={(storageId) => setPrimaryImageId(storageId)}
+            userId={userId}
+            label="Light Mode"
+            aspectRatio="16/9"
+            fallbackPreviewUrl={FALLBACK_LIGHT_IMAGE_MAP[sectionSlug]}
+          />
+          <CmsImageUpload
+            currentImageId={secondaryImageId}
+            onUpload={(storageId) => setSecondaryImageId(storageId)}
+            userId={userId}
+            label="Dark Mode"
+            aspectRatio="16/9"
+            fallbackPreviewUrl={FALLBACK_DARK_IMAGE_MAP[sectionSlug]}
           />
         </div>
+        <p className="text-interface text-xs text-muted-foreground">
+          Light mode = tampil saat tema terang. Dark mode = tampil saat tema gelap.
+        </p>
+        <p className="text-interface text-[10px] text-muted-foreground">
+          Optimal: 1200 × 1344 px (~9:10). Kontainer: max-width 452px, auto height.
+        </p>
+      </div>
 
-        {/* Background Pattern toggles */}
-        <div className="space-y-2">
-          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Background Patterns
-          </span>
-          {sectionSlug === "features-workflow" && (
-            <div className="flex items-center gap-3">
-              <label className="text-interface text-xs font-medium text-muted-foreground">
-                Grid Pattern
-              </label>
-              <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
-            </div>
-          )}
+      {/* Image Alt Text */}
+      <div>
+        <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+          Image Alt Text
+        </label>
+        <Input
+          value={primaryImageAlt}
+          onChange={(e) => setPrimaryImageAlt(e.target.value)}
+          placeholder="Deskripsi gambar untuk aksesibilitas"
+        />
+      </div>
+
+      {/* ── Cluster 4: Background Patterns ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Background Patterns
+        </span>
+        {sectionSlug === "features-workflow" && (
           <div className="flex items-center gap-3">
             <label className="text-interface text-xs font-medium text-muted-foreground">
-              Diagonal Stripes
+              Grid Pattern
             </label>
-            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
           </div>
-          {sectionSlug === "features-refrasa" && (
-            <div className="flex items-center gap-3">
-              <label className="text-interface text-xs font-medium text-muted-foreground">
-                Dotted Pattern
-              </label>
-              <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
-            </div>
-          )}
-        </div>
-
-        {/* Published toggle */}
+        )}
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
-            Published
+            Diagonal Stripes
           </label>
-          <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
         </div>
+        {sectionSlug === "features-refrasa" && (
+          <div className="flex items-center gap-3">
+            <label className="text-interface text-xs font-medium text-muted-foreground">
+              Dotted Pattern
+            </label>
+            <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Cluster 5: Published ── */}
+      <div className="border-t border-border" />
+      <div className="flex items-center gap-3">
+        <label className="text-interface text-xs font-medium text-muted-foreground">
+          Published
+        </label>
+        <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
       </div>
       <CmsSaveButton onSave={handleSave} />
     </div>

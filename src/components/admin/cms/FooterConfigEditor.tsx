@@ -404,7 +404,8 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
         </div>
       </div>
 
-      {/* Group 2: Social Links */}
+      {/* ── Cluster 2: Social Links ── */}
+      <div className="border-t border-border" />
       <div className="space-y-4">
         <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Social Links
@@ -476,7 +477,8 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
         </div>
       </div>
 
-      {/* Group 3: Bottom Bar + Footer Logo — side by side, each 50% */}
+      {/* ── Cluster 3: Bottom Bar + Footer Logo ── */}
+      <div className="border-t border-border" />
       <div className="grid grid-cols-2 items-stretch gap-4">
         {/* Bottom Bar — 50% */}
         <div className="space-y-3">
@@ -537,10 +539,14 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
               />
             </div>
           </div>
+          <p className="text-interface text-[10px] text-muted-foreground">
+            Optimal: 96 × 96 px (1:1, SVG/PNG). Ditampilkan 96px di footer.
+          </p>
         </div>
       </div>
 
-      {/* Background Pattern toggles */}
+      {/* ── Cluster 4: Background Patterns ── */}
+      <div className="border-t border-border" />
       <div className="space-y-2">
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Background Patterns
