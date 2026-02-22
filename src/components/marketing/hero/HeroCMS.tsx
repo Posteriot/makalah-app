@@ -3,9 +3,11 @@
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Doc } from "@convex/_generated/dataModel"
+import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 import { SectionBadge } from "@/components/ui/section-badge"
 import { SectionCTA } from "@/components/ui/section-cta"
 import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
+import { HeroCTA } from "./HeroCTA"
 import { HeroHeadingSvg } from "./HeroHeadingSvg"
 import { HeroResearchMock } from "./HeroResearchMock"
 import { ChatInputHeroMock } from "./ChatInputHeroMock"
@@ -21,6 +23,8 @@ type HeroCMSProps = {
  * Layout dan background patterns tetap sama dengan versi static.
  */
 export function HeroCMS({ content }: HeroCMSProps) {
+  const { isWaitlistMode } = useWaitlistMode()
+
   const imageUrl = useQuery(
     api.pageContent.getImageUrl,
     content.primaryImageId ? { storageId: content.primaryImageId } : "skip"
@@ -85,17 +89,21 @@ export function HeroCMS({ content }: HeroCMSProps) {
               </p>
             )}
 
-            {content.ctaText && content.ctaHref && (
-              <div className="mt-4 w-full">
-                <div className="flex flex-col items-center lg:items-start w-full mt-4 gap-3">
-                  <div className="flex w-full justify-center lg:justify-start">
-                    <SectionCTA href={content.ctaHref}>
-                      {content.ctaText}
-                    </SectionCTA>
+            <div className="mt-4 w-full">
+              {isWaitlistMode ? (
+                <HeroCTA />
+              ) : (
+                content.ctaText && content.ctaHref && (
+                  <div className="flex flex-col items-center lg:items-start w-full mt-4 gap-3">
+                    <div className="flex w-full justify-center lg:justify-start">
+                      <SectionCTA href={content.ctaHref}>
+                        {content.ctaText}
+                      </SectionCTA>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )
+              )}
+            </div>
           </div>
 
           {/* Right - Mockup or CMS image */}

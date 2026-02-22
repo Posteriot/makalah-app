@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 import { CmsImageUpload } from "./CmsImageUpload"
 import { CmsSaveButton } from "./CmsSaveButton"
 
@@ -22,6 +23,7 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
   })
 
   const upsertSection = useMutation(api.pageContent.upsertSection)
+  const { isWaitlistMode } = useWaitlistMode()
 
   const [title, setTitle] = useState("")
   const [subtitle, setSubtitle] = useState("")
@@ -156,26 +158,39 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
         </div>
 
         {/* CTA Text + CTA Link side by side */}
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-              CTA Text
-            </label>
-            <Input
-              value={ctaText}
-              onChange={(e) => setCtaText(e.target.value)}
-              placeholder="Teks tombol CTA"
-            />
+        {isWaitlistMode && (
+          <div className="rounded-action border border-sky-500/30 bg-sky-500/5 p-3">
+            <p className="text-interface text-xs text-sky-700 dark:text-sky-300">
+              <span className="font-bold uppercase tracking-widest">Daftar Tunggu Aktif</span>
+              {" — "}CTA hero sedang di-override menjadi &quot;IKUT DAFTAR TUNGGU&quot; menuju /waitinglist.
+              Nonaktifkan daftar tunggu di Dashboard &gt; Waitlist untuk menggunakan CTA custom di bawah.
+            </p>
           </div>
-          <div className="flex-1">
-            <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-              CTA Link
-            </label>
-            <Input
-              value={ctaHref}
-              onChange={(e) => setCtaHref(e.target.value)}
-              placeholder="/chat atau URL lain"
-            />
+        )}
+        <div className={isWaitlistMode ? "opacity-40 pointer-events-none" : ""}>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+                CTA Text
+              </label>
+              <Input
+                value={ctaText}
+                onChange={(e) => setCtaText(e.target.value)}
+                placeholder="Teks tombol CTA"
+                disabled={isWaitlistMode}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+                CTA Link
+              </label>
+              <Input
+                value={ctaHref}
+                onChange={(e) => setCtaHref(e.target.value)}
+                placeholder="/chat atau URL lain"
+                disabled={isWaitlistMode}
+              />
+            </div>
           </div>
         </div>
       </div>
