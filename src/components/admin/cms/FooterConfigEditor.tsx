@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
 import { X as XIcon, Linkedin, Instagram, Upload, Globe } from "iconoir-react"
 import type { ComponentType, SVGProps } from "react"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 // Map platform names to iconoir icons (same as frontend Footer)
 const PLATFORM_ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
@@ -149,8 +150,6 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(null)
   const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(null)
   const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
 
   // Sync form state when config data loads
   useEffect(() => {
@@ -261,35 +260,28 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   // --- Save ---
 
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertConfig({
-        requestorId: userId,
-        key: "footer",
-        footerSections: footerSections.map((section) => ({
-          title: section.title,
-          links: section.links.map((link) => ({
-            label: link.label,
-            href: link.href,
-          })),
+    await upsertConfig({
+      requestorId: userId,
+      key: "footer",
+      footerSections: footerSections.map((section) => ({
+        title: section.title,
+        links: section.links.map((link) => ({
+          label: link.label,
+          href: link.href,
         })),
-        socialLinks: socialLinks.map((s) => ({
-          platform: s.platform,
-          url: s.url,
-          isVisible: s.isVisible,
-          iconId: s.iconId ?? undefined,
-        })),
-        copyrightText,
-        companyDescription,
-        logoDarkId: logoDarkId ?? undefined,
-        logoLightId: logoLightId ?? undefined,
-        showDiagonalStripes,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+      })),
+      socialLinks: socialLinks.map((s) => ({
+        platform: s.platform,
+        url: s.url,
+        isVisible: s.isVisible,
+        iconId: s.iconId ?? undefined,
+      })),
+      copyrightText,
+      companyDescription,
+      logoDarkId: logoDarkId ?? undefined,
+      logoLightId: logoLightId ?? undefined,
+      showDiagonalStripes,
+    })
   }
 
   // Loading skeleton
@@ -560,18 +552,7 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
           <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
         </div>
       </div>
-
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 type FeatureItem = {
   title: string
@@ -80,9 +81,6 @@ export function FeatureShowcaseEditor({
   const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
-
   // Sync form state when section data loads
   useEffect(() => {
     if (section) {
@@ -133,36 +131,29 @@ export function FeatureShowcaseEditor({
   }
 
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertSection({
-        requestorId: userId,
-        id: section?._id,
-        pageSlug,
-        sectionSlug,
-        sectionType: "feature-showcase",
-        title,
-        description,
-        badgeText,
-        items: items.map((item) => ({
-          title: item.title,
-          description: item.description,
-          icon: undefined,
-        })),
-        primaryImageId: primaryImageId ?? undefined,
-        secondaryImageId: secondaryImageId ?? undefined,
-        primaryImageAlt,
-        showGridPattern,
-        showDiagonalStripes,
-        showDottedPattern,
-        isPublished,
-        sortOrder: SORT_ORDER_MAP[sectionSlug] ?? 3,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertSection({
+      requestorId: userId,
+      id: section?._id,
+      pageSlug,
+      sectionSlug,
+      sectionType: "feature-showcase",
+      title,
+      description,
+      badgeText,
+      items: items.map((item) => ({
+        title: item.title,
+        description: item.description,
+        icon: undefined,
+      })),
+      primaryImageId: primaryImageId ?? undefined,
+      secondaryImageId: secondaryImageId ?? undefined,
+      primaryImageAlt,
+      showGridPattern,
+      showDiagonalStripes,
+      showDottedPattern,
+      isPublished,
+      sortOrder: SORT_ORDER_MAP[sectionSlug] ?? 3,
+    })
   }
 
   // Loading skeleton
@@ -387,18 +378,7 @@ export function FeatureShowcaseEditor({
           <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
         </div>
       </div>
-
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

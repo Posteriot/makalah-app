@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 type NavLink = {
   label: string
@@ -29,8 +30,6 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
   const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(null)
   const [brandTextDarkId, setBrandTextDarkId] = useState<Id<"_storage"> | null>(null)
   const [brandTextLightId, setBrandTextLightId] = useState<Id<"_storage"> | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
 
   // Sync form state when config data loads
   useEffect(() => {
@@ -77,22 +76,15 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
   }
 
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertConfig({
-        requestorId: userId,
-        key: "header",
-        navLinks: navLinks,
-        logoDarkId: logoDarkId ?? undefined,
-        logoLightId: logoLightId ?? undefined,
-        brandTextDarkId: brandTextDarkId ?? undefined,
-        brandTextLightId: brandTextLightId ?? undefined,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertConfig({
+      requestorId: userId,
+      key: "header",
+      navLinks: navLinks,
+      logoDarkId: logoDarkId ?? undefined,
+      logoLightId: logoLightId ?? undefined,
+      brandTextDarkId: brandTextDarkId ?? undefined,
+      brandTextLightId: brandTextLightId ?? undefined,
+    })
   }
 
   // Loading skeleton
@@ -245,18 +237,7 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
           ))}
         </div>
       </div>
-
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import TipTapEditor from "./TipTapEditor"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 type RichTextPageEditorProps = {
   slug: string
@@ -34,9 +35,6 @@ export function RichTextPageEditor({ slug, userId }: RichTextPageEditorProps) {
   const [lastUpdatedLabel, setLastUpdatedLabel] = useState("")
   const [isPublished, setIsPublished] = useState(false)
 
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
-
   // Sync form state when page data loads
   useEffect(() => {
     if (page) {
@@ -48,22 +46,15 @@ export function RichTextPageEditor({ slug, userId }: RichTextPageEditorProps) {
   }, [page])
 
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertPage({
-        requestorId: userId,
-        id: page?._id,
-        slug,
-        title,
-        content,
-        lastUpdatedLabel: lastUpdatedLabel || undefined,
-        isPublished,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertPage({
+      requestorId: userId,
+      id: page?._id,
+      slug,
+      title,
+      content,
+      lastUpdatedLabel: lastUpdatedLabel || undefined,
+      isPublished,
+    })
   }
 
   // Loading skeleton
@@ -140,18 +131,7 @@ export function RichTextPageEditor({ slug, userId }: RichTextPageEditorProps) {
           <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
         </div>
       </div>
-
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 type ProblemItem = {
   title: string
@@ -33,9 +34,6 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
   const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
   const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
-
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
 
   // Sync form state when section data loads
   useEffect(() => {
@@ -72,30 +70,23 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
   }
 
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertSection({
-        requestorId: userId,
-        id: section?._id,
-        pageSlug: "about",
-        sectionSlug: "problems",
-        sectionType: "problems",
-        title,
-        badgeText,
-        items: items.map((item) => ({
-          title: item.title,
-          description: item.description,
-        })),
-        showDiagonalStripes,
-        showDottedPattern,
-        isPublished,
-        sortOrder: 2,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertSection({
+      requestorId: userId,
+      id: section?._id,
+      pageSlug: "about",
+      sectionSlug: "problems",
+      sectionType: "problems",
+      title,
+      badgeText,
+      items: items.map((item) => ({
+        title: item.title,
+        description: item.description,
+      })),
+      showDiagonalStripes,
+      showDottedPattern,
+      isPublished,
+      sortOrder: 2,
+    })
   }
 
   // Loading skeleton
@@ -241,18 +232,7 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
           <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
         </div>
       </div>
-
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

@@ -11,6 +11,7 @@ import type { Id } from "@convex/_generated/dataModel"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
+import { CmsSaveButton } from "./CmsSaveButton"
 import {
   NavArrowLeft,
   Bold,
@@ -211,8 +212,6 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
   const [bodyContent, setBodyContent] = useState("")
 
   // UI state
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -321,28 +320,21 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
 
   // Save handler
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertPost({
-        requestorId: userId,
-        id: existingPost?._id as Id<"blogSections"> | undefined,
-        slug: slugValue,
-        title,
-        excerpt,
-        author,
-        category,
-        readTime,
-        featured,
-        isPublished,
-        publishedAt: dateStringToTimestamp(publishedAt),
-        content: bodyContent || undefined,
-        coverImageId: coverImageId ?? undefined,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertPost({
+      requestorId: userId,
+      id: existingPost?._id as Id<"blogSections"> | undefined,
+      slug: slugValue,
+      title,
+      excerpt,
+      author,
+      category,
+      readTime,
+      featured,
+      isPublished,
+      publishedAt: dateStringToTimestamp(publishedAt),
+      content: bodyContent || undefined,
+      coverImageId: coverImageId ?? undefined,
+    })
   }
 
   // Loading skeleton for edit mode
@@ -670,18 +662,7 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
           />
         </div>
       </div>
-
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

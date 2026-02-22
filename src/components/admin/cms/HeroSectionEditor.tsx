@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 type HeroSectionEditorProps = {
   userId: Id<"users">
@@ -37,8 +38,6 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
   const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
 
   // Sync form state when section data loads
   useEffect(() => {
@@ -59,33 +58,26 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
   }, [section])
 
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertSection({
-        requestorId: userId,
-        id: section?._id,
-        pageSlug: "home",
-        sectionSlug: "hero",
-        sectionType: "hero",
-        title,
-        subtitle,
-        badgeText,
-        ctaText,
-        ctaHref,
-        primaryImageId: primaryImageId ?? undefined,
-        primaryImageAlt,
-        headingImageDarkId: headingImageDarkId ?? undefined,
-        headingImageLightId: headingImageLightId ?? undefined,
-        showGridPattern,
-        showDiagonalStripes,
-        isPublished,
-        sortOrder: 1,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertSection({
+      requestorId: userId,
+      id: section?._id,
+      pageSlug: "home",
+      sectionSlug: "hero",
+      sectionType: "hero",
+      title,
+      subtitle,
+      badgeText,
+      ctaText,
+      ctaHref,
+      primaryImageId: primaryImageId ?? undefined,
+      primaryImageAlt,
+      headingImageDarkId: headingImageDarkId ?? undefined,
+      headingImageLightId: headingImageLightId ?? undefined,
+      showGridPattern,
+      showDiagonalStripes,
+      isPublished,
+      sortOrder: 1,
+    })
   }
 
   // Loading skeleton
@@ -262,17 +254,7 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
         </div>
       </div>
 
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }
