@@ -1,5 +1,9 @@
 const DEFAULT_PAPER_TITLE = "Paper Tanpa Judul"
 const PLACEHOLDER_CONVERSATION_TITLES = new Set(["Percakapan baru", "New Chat"])
+const PLACEHOLDER_WORKING_TITLES = new Set([
+  DEFAULT_PAPER_TITLE,
+  ...PLACEHOLDER_CONVERSATION_TITLES,
+])
 
 export type PaperTitleSource =
   | "paperTitle"
@@ -32,7 +36,10 @@ export function resolvePaperDisplayTitle(
   }
 
   const normalizedWorkingTitle = normalizeTitle(input.workingTitle)
-  if (normalizedWorkingTitle) {
+  if (
+    normalizedWorkingTitle &&
+    !PLACEHOLDER_WORKING_TITLES.has(normalizedWorkingTitle)
+  ) {
     return { displayTitle: normalizedWorkingTitle, source: "workingTitle" }
   }
 

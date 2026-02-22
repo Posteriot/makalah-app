@@ -1,6 +1,65 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import type { MutationCtx } from "./_generated/server"
 import { requireAuthUserId, verifyAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
+import { Id } from "./_generated/dataModel"
+
+const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul"
+const PLACEHOLDER_CONVERSATION_TITLES = new Set(["Percakapan baru", "New Chat"])
+const PLACEHOLDER_WORKING_TITLES = new Set([
+    ...PLACEHOLDER_CONVERSATION_TITLES,
+    DEFAULT_WORKING_TITLE,
+])
+const MAX_CONVERSATION_TITLE_LENGTH = 50
+
+function normalizeTitle(title?: string | null): string {
+    if (!title) return ""
+    return title.trim().replace(/\s+/g, " ")
+}
+
+function isMeaningfulConversationTitle(title: string): boolean {
+    return !!title && !PLACEHOLDER_CONVERSATION_TITLES.has(title)
+}
+
+async function syncPaperSessionWorkingTitleIfEligible(
+    ctx: MutationCtx,
+    params: {
+        conversationId: Id<"conversations">
+        previousConversationTitle: string
+        nextConversationTitle: string
+        now: number
+    }
+) {
+    const session = await ctx.db
+        .query("paperSessions")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", params.conversationId))
+        .unique()
+
+    if (!session) return
+
+    // Final title is authoritative and must not be changed by conversation rename.
+    const normalizedPaperTitle = normalizeTitle(session.paperTitle)
+    if (normalizedPaperTitle) return
+
+    const nextTitle = normalizeTitle(params.nextConversationTitle)
+    if (!isMeaningfulConversationTitle(nextTitle)) return
+
+    const previousTitle = normalizeTitle(params.previousConversationTitle)
+    const workingTitle = normalizeTitle(session.workingTitle)
+
+    // Sync only if working title is still placeholder/default, empty, or mirroring old conversation title.
+    const canSync =
+        !workingTitle ||
+        PLACEHOLDER_WORKING_TITLES.has(workingTitle) ||
+        (!!previousTitle && workingTitle === previousTitle)
+
+    if (!canSync) return
+
+    await ctx.db.patch(session._id, {
+        workingTitle: nextTitle,
+        updatedAt: params.now,
+    })
+}
 
 // List conversations for user
 export const listConversations = query({
@@ -66,16 +125,31 @@ export const updateConversation = mutation({
         title: v.optional(v.string()),
     },
     handler: async (ctx, { conversationId, title }) => {
-        await requireConversationOwner(ctx, conversationId)
+        const { conversation } = await requireConversationOwner(ctx, conversationId)
         const now = Date.now()
         const updates: { updatedAt: number; lastMessageAt: number; title?: string } = {
             updatedAt: now,
             lastMessageAt: now,
         }
-        if (title) {
-            updates.title = title
+        const normalizedTitle = title
+            ? normalizeTitle(title).slice(0, MAX_CONVERSATION_TITLE_LENGTH)
+            : ""
+        if (normalizedTitle && conversation.titleLocked) {
+            return
+        }
+        if (normalizedTitle) {
+            updates.title = normalizedTitle
         }
         await ctx.db.patch(conversationId, updates)
+
+        if (normalizedTitle) {
+            await syncPaperSessionWorkingTitleIfEligible(ctx, {
+                conversationId,
+                previousConversationTitle: conversation.title,
+                nextConversationTitle: normalizedTitle,
+                now,
+            })
+        }
     },
 })
 
@@ -100,12 +174,24 @@ export const updateConversationTitleFromAI = mutation({
             return { success: false, reason: "locked" as const }
         }
 
+        const normalizedTitle = normalizeTitle(title).slice(0, MAX_CONVERSATION_TITLE_LENGTH)
+        if (!normalizedTitle) {
+            return { success: false, reason: "empty_title" as const }
+        }
+
         const now = Date.now()
         await ctx.db.patch(conversationId, {
-            title: title.trim().slice(0, 50),
+            title: normalizedTitle,
             titleUpdateCount: nextTitleUpdateCount,
             updatedAt: now,
             lastMessageAt: now,
+        })
+
+        await syncPaperSessionWorkingTitleIfEligible(ctx, {
+            conversationId,
+            previousConversationTitle: conversation.title,
+            nextConversationTitle: normalizedTitle,
+            now,
         })
 
         return { success: true }
@@ -129,12 +215,24 @@ export const updateConversationTitleFromUser = mutation({
             throw new Error("Tidak memiliki akses ke conversation ini")
         }
 
+        const normalizedTitle = normalizeTitle(title).slice(0, MAX_CONVERSATION_TITLE_LENGTH)
+        if (!normalizedTitle) {
+            throw new Error("Judul percakapan tidak boleh kosong")
+        }
+
         const now = Date.now()
         await ctx.db.patch(conversationId, {
-            title: title.trim().slice(0, 50),
+            title: normalizedTitle,
             titleLocked: true,
             updatedAt: now,
             lastMessageAt: now,
+        })
+
+        await syncPaperSessionWorkingTitleIfEligible(ctx, {
+            conversationId,
+            previousConversationTitle: conversation.title,
+            nextConversationTitle: normalizedTitle,
+            now,
         })
 
         return { success: true }

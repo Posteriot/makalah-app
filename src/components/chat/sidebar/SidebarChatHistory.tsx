@@ -206,7 +206,6 @@ export function SidebarChatHistory({
           {conversations.map((conv) => {
             const paperSession = paperSessionMap.get(conv._id)
             const isEditing = editingId === conv._id
-            const hasPaperSession = !!paperSession
             const isExceedingMaxLength = isEditing && editValue.length > 50
 
             // Shared classes for both Link and div
@@ -222,7 +221,14 @@ export function SidebarChatHistory({
             const renderContent = () => (
               <>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 pb-0.5">
+                  <div
+                    className={cn(
+                      "pb-0.5",
+                      isEditing
+                        ? "flex items-center gap-2"
+                        : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
+                    )}
+                  >
                     {isEditing ? (
                       <Input
                         ref={editInputRef}
@@ -242,7 +248,7 @@ export function SidebarChatHistory({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span
-                            className="font-sans font-medium text-sm truncate"
+                            className="block min-w-0 font-sans font-medium text-sm truncate"
                           >
                             {conv.title}
                           </span>
@@ -262,6 +268,7 @@ export function SidebarChatHistory({
                         stageNumber={getStageNumber(
                           paperSession.currentStage as PaperStageId | "completed"
                         )}
+                        className="justify-self-end shrink-0"
                       />
                     )}
                   </div>
@@ -299,7 +306,6 @@ export function SidebarChatHistory({
                 <ContextMenuContent>
                   <ContextMenuItem
                     onClick={() => handleStartEdit(conv._id, conv.title)}
-                    disabled={hasPaperSession}
                   >
                     <EditPencil className="h-4 w-4 mr-2" />
                     Edit Judul
