@@ -928,6 +928,31 @@ export default defineSchema({
   })
     .index("by_key", ["key"]),
 
+
+  // ════════════════════════════════════════════════════════════════
+  // AI Telemetry - Provider and tool health monitoring
+  // ════════════════════════════════════════════════════════════════
+  aiTelemetry: defineTable({
+    userId: v.id("users"),
+    conversationId: v.optional(v.id("conversations")),
+    provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter")),
+    model: v.string(),
+    isPrimaryProvider: v.boolean(),
+    failoverUsed: v.boolean(),
+    toolUsed: v.optional(v.string()),
+    mode: v.union(v.literal("normal"), v.literal("websearch"), v.literal("paper")),
+    success: v.boolean(),
+    errorType: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    latencyMs: v.number(),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_created", ["createdAt"])
+    .index("by_provider", ["provider", "createdAt"])
+    .index("by_tool", ["toolUsed", "createdAt"])
+    .index("by_success", ["success", "createdAt"]),
   // ── CMS Tables ──────────────────────────────────────────
 
   pageContent: defineTable({
