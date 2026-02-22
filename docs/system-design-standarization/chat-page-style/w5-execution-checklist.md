@@ -82,7 +82,7 @@ Referensi gate:
 
 | File | Migrasi Token | Validasi A/B/C | Visual M1-M4 | Status |
 |---|---|---|---|---|
-| `src/components/chat/InlineCitationChip.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/chat/InlineCitationChip.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/QuotaWarningBanner.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/chat/SearchStatusIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/chat/SourcesIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |

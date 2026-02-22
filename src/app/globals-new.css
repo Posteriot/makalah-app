@@ -99,6 +99,10 @@
   --ds-status-track-bg: var(--ds-ref-slate-200);
   --ds-status-progress-success: var(--ds-ref-emerald-600);
   --ds-status-progress-error: var(--ds-ref-rose-500);
+  --ds-citation-chip-bg: var(--ds-ref-slate-200);
+  --ds-citation-chip-border: color-mix(in oklch, var(--ds-ref-slate-400) 55%, transparent);
+  --ds-citation-chip-fg: var(--ds-ref-slate-900);
+  --ds-citation-chip-shadow: color-mix(in oklch, var(--ds-ref-neutral-0) 45%, transparent);
   --ds-thinking-dot: var(--ds-ref-slate-500);
   --ds-resizer-base: var(--ds-ref-slate-50);
   --ds-resizer-active: var(--sky-300);
@@ -234,6 +238,10 @@
   --ds-status-track-bg: var(--ds-ref-slate-700);
   --ds-status-progress-success: var(--ds-ref-emerald-400);
   --ds-status-progress-error: var(--ds-ref-rose-400);
+  --ds-citation-chip-bg: var(--ds-ref-slate-800);
+  --ds-citation-chip-border: color-mix(in oklch, var(--ds-ref-slate-600) 75%, transparent);
+  --ds-citation-chip-fg: var(--ds-ref-slate-100);
+  --ds-citation-chip-shadow: transparent;
   --ds-thinking-dot: var(--ds-ref-slate-300);
   --ds-resizer-base: var(--ds-ref-slate-900);
   --ds-resizer-active: var(--sky-700);

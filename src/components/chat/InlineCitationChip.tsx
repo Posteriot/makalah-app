@@ -69,6 +69,8 @@ const useIsMobile = () => {
 export function InlineCitationChip({ sources }: { sources: CitationSource[] }) {
   const safeSources = sources ?? []
   const isMobile = useIsMobile()
+  const citationChipClassName =
+    "ml-1 cursor-pointer rounded-badge border border-[color:var(--ds-citation-chip-border)] bg-[var(--ds-citation-chip-bg)] px-2.5 py-0.5 font-mono text-xs font-semibold text-[var(--ds-citation-chip-fg)] shadow-[inset_0_1px_0_var(--ds-citation-chip-shadow)]"
 
   const hostname = safeSources.length > 0 ? formatHostname(safeSources[0].url) : "sumber"
   const chipLabel = `${hostname}${safeSources.length > 1 ? ` +${safeSources.length - 1}` : ""}`
@@ -101,10 +103,7 @@ export function InlineCitationChip({ sources }: { sources: CitationSource[] }) {
       <InlineCitation className="align-baseline">
         <Sheet>
           <SheetTrigger asChild>
-            <Badge
-              className="ml-1 cursor-pointer rounded-badge border border-slate-300 bg-slate-200 px-2.5 py-0.5 font-mono text-xs font-semibold text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:shadow-none"
-              variant="secondary"
-            >
+            <Badge className={citationChipClassName} variant="secondary">
               {chipLabel}
             </Badge>
           </SheetTrigger>
@@ -122,7 +121,10 @@ export function InlineCitationChip({ sources }: { sources: CitationSource[] }) {
   return (
     <InlineCitation className="align-baseline">
       <InlineCitationCard>
-        <InlineCitationCardTrigger sources={safeSources.map((source) => source.url)} />
+        <InlineCitationCardTrigger
+          className={citationChipClassName}
+          sources={safeSources.map((source) => source.url)}
+        />
         <InlineCitationCardBody>
           {cardContent}
         </InlineCitationCardBody>
