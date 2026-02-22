@@ -27,6 +27,7 @@ import { BlogPostEditor } from "@/components/admin/cms/BlogPostEditor"
 import { PricingPlanEditor } from "@/components/admin/cms/PricingPlanEditor"
 import { PricingHeaderEditor } from "@/components/admin/cms/PricingHeaderEditor"
 import { CmsPageOverview } from "./CmsPageOverview"
+import { CmsPricingOverview } from "./CmsPricingOverview"
 import { HOME_SECTIONS, ABOUT_SECTIONS } from "./CmsSidebar"
 
 /**
@@ -224,11 +225,14 @@ export function CmsShell({ userId }: CmsShellProps) {
     }
     if (activePage === "pricing" && !activeSection) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih paket dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsPricingOverview
+          userId={userId}
+          onSectionClick={(id) => setActiveSection(id)}
+          onNavigateToHeader={() => {
+            setActivePage("global-layout")
+            setActiveGlobalLayoutPage("header")
+          }}
+        />
       )
     }
     if (activePage === "legal" && !activeLegalPage) {
