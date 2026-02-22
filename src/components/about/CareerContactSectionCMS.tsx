@@ -54,7 +54,7 @@ export function CareerContactSectionCMS({ content }: CareerContactSectionCMSProp
           </div>
           <p>
             <a
-              href={`mailto:${contactInfo.email}`}
+              href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(contactInfo.email)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-interface text-sm text-[color:var(--slate-700)] dark:text-[color:var(--slate-50)] hover:underline"
