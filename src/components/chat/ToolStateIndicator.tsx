@@ -38,6 +38,24 @@ const getToolLabel = (toolName: string) => TOOL_LABEL_MAP[toolName] ?? toFallbac
 
 const getStateLabel = (state: string) => STATE_LABEL_MAP[state] ?? toFallbackLabel(state)
 
+const normalizeErrorText = (errorText?: string): string | null => {
+    const raw = (errorText ?? "").trim()
+    if (!raw) return null
+
+    const normalized = raw.toLowerCase()
+    if (
+        normalized === "unknown" ||
+        normalized === "tidak diketahui" ||
+        normalized === "undefined" ||
+        normalized === "null" ||
+        normalized === "[object object]"
+    ) {
+        return null
+    }
+
+    return raw
+}
+
 export function ToolStateIndicator({ toolName, state, errorText, persistUntilDone = false }: ToolStateIndicatorProps) {
     // Skip if state implies success (handled by ArtifactIndicator) or if state is result
     const isCompletedState = state === "output-available" || state === "result"
@@ -51,6 +69,8 @@ export function ToolStateIndicator({ toolName, state, errorText, persistUntilDon
     const isGoogleSearch = toolName === 'google_search'
     const toolLabel = getToolLabel(toolName)
     const stateLabel = getStateLabel(normalizedState)
+    const normalizedErrorText = normalizeErrorText(errorText)
+    const toolContextLabel = toolLabel.toLowerCase()
 
     let text = ""
     if (normalizedState === 'input-streaming') {
@@ -59,7 +79,11 @@ export function ToolStateIndicator({ toolName, state, errorText, persistUntilDon
     else if (normalizedState === 'input-available') {
         text = isGoogleSearch ? "Pencarian web" : `Memproses ${toolLabel}`
     }
-    else if (isError) text = `Galat: ${errorText || "tidak diketahui"}`
+    else if (isError) {
+        text = normalizedErrorText
+            ? `Galat: ${normalizedErrorText}`
+            : `Galat pada ${toolContextLabel}`
+    }
     else text = `Status ${toolLabel}: ${stateLabel}`
 
     return (

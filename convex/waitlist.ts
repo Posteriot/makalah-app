@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 import { mutation, query, internalMutation, internalAction, action } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
@@ -116,6 +117,32 @@ export const getAll = query({
           .collect()
 
     return entries
+  },
+})
+
+/**
+ * Get paginated waitlist entries (admin only).
+ * Uses Convex cursor-based pagination with optional status filter.
+ */
+export const getPaginated = query({
+  args: {
+    adminUserId: v.id("users"),
+    statusFilter: v.optional(
+      v.union(v.literal("pending"), v.literal("invited"), v.literal("registered"))
+    ),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx.db, args.adminUserId, "admin")
+
+    const baseQuery = args.statusFilter
+      ? ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_status", (q) => q.eq("status", args.statusFilter!))
+          .order("desc")
+      : ctx.db.query("waitlistEntries").order("desc")
+
+    return await baseQuery.paginate(args.paginationOpts)
   },
 })
 

@@ -922,7 +922,7 @@ export default defineSchema({
 
   appConfig: defineTable({
     key: v.string(),
-    value: v.boolean(),
+    value: v.union(v.boolean(), v.string()),
     updatedAt: v.number(),
     updatedBy: v.id("users"),
   })

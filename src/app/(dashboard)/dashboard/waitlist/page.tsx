@@ -1,28 +1,22 @@
 "use client"
 
-import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { WaitlistDashboard } from "@/components/admin/WaitlistDashboard"
+import { useRouter } from "next/navigation"
 
-export default function WaitlistDashboardPage() {
-  const { user, isLoading } = useCurrentUser()
+/**
+ * Backward-compat redirect: /dashboard/waitlist → /dashboard?tab=waitlist
+ * Waitlist is now embedded as a tab in the admin panel.
+ */
+export default function WaitlistRedirectPage() {
   const router = useRouter()
-  const isAdmin = user?.role === "admin" || user?.role === "superadmin"
 
   useEffect(() => {
-    if (!isLoading && user && !isAdmin) {
-      router.replace("/")
-    }
-  }, [isLoading, user, isAdmin, router])
+    router.replace("/dashboard?tab=waitlist")
+  }, [router])
 
-  if (isLoading || !user || !isAdmin) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-interface text-sm text-muted-foreground">Loading...</p>
-      </div>
-    )
-  }
-
-  return <WaitlistDashboard userId={user._id} />
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <p className="text-interface text-sm text-muted-foreground">Memuat...</p>
+    </div>
+  )
 }

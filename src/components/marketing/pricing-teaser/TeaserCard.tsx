@@ -32,12 +32,11 @@ export function TeaserCard({ plan, isWaitlistMode }: { plan: TeaserPlan; isWaitl
       <div
         className={cn(
           "relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
-          "bg-card/88 backdrop-blur-[1px] dark:bg-slate-900/88",
+          "bg-slate-50 dark:bg-slate-900",
           "border-1 border-[color:var(--slate-400)]",
           "group-hover:bg-slate-100 group-hover:border-[color:var(--slate-500)] dark:group-hover:bg-slate-800 dark:group-hover:border-[color:var(--slate-600)]",
           "group-hover:-translate-y-1 transition-all duration-300",
-          plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]",
-          effectiveDisabled && "opacity-60"
+          plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
         )}
       >
         {/* Plan name */}

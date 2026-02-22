@@ -7,10 +7,22 @@ import {
   EditPencil,
   StatsReport,
   DesignNib,
+  Clock,
+  List,
+  Settings,
 } from "iconoir-react"
 import type { ComponentType, SVGProps } from "react"
 
 type IconoirIcon = ComponentType<SVGProps<SVGSVGElement>>
+
+export interface AdminSidebarChild {
+  id: string
+  label: string
+  icon: IconoirIcon
+  headerTitle: string
+  headerDescription: string
+  headerIcon: IconoirIcon
+}
 
 export interface AdminSidebarItem {
   id: string
@@ -21,6 +33,10 @@ export interface AdminSidebarItem {
   headerIcon: IconoirIcon
   /** External route link — renders as <Link> instead of tab button */
   href?: string
+  /** Sub-items rendered under parent when active */
+  children?: AdminSidebarChild[]
+  /** Default child to navigate to when parent is clicked */
+  defaultChildId?: string
 }
 
 export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
@@ -65,6 +81,33 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
     headerIcon: EditPencil,
   },
   {
+    id: "waitlist",
+    label: "Waitlist",
+    icon: Clock,
+    headerTitle: "Waiting List",
+    headerDescription: "Kelola pendaftar waiting list dan kirim undangan",
+    headerIcon: Clock,
+    defaultChildId: "waitlist.entries",
+    children: [
+      {
+        id: "waitlist.entries",
+        label: "Daftar Tunggu",
+        icon: List,
+        headerTitle: "Daftar Tunggu",
+        headerDescription: "Kelola pendaftar waiting list dan kirim undangan",
+        headerIcon: List,
+      },
+      {
+        id: "waitlist.settings",
+        label: "Pengaturan",
+        icon: Settings,
+        headerTitle: "Pengaturan Waitlist",
+        headerDescription: "Konfigurasi mode waitlist dan teks tampilan",
+        headerIcon: Settings,
+      },
+    ],
+  },
+  {
     id: "stats",
     label: "Statistik",
     icon: StatsReport,
@@ -83,4 +126,44 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
   },
 ]
 
-export type AdminTabId = (typeof ADMIN_SIDEBAR_ITEMS)[number]["id"]
+/** All valid tab IDs including child IDs */
+export type AdminTabId =
+  | "overview"
+  | "users"
+  | "prompts"
+  | "providers"
+  | "refrasa"
+  | "waitlist"
+  | "waitlist.entries"
+  | "waitlist.settings"
+  | "stats"
+  | "cms"
+
+/**
+ * Find tab config by ID — searches both top-level items and children.
+ * Returns the matching item/child config or undefined.
+ */
+export function findTabConfig(
+  tabId: string
+): AdminSidebarItem | AdminSidebarChild | undefined {
+  for (const item of ADMIN_SIDEBAR_ITEMS) {
+    if (item.id === tabId) return item
+    if (item.children) {
+      const child = item.children.find((c) => c.id === tabId)
+      if (child) return child
+    }
+  }
+  return undefined
+}
+
+/**
+ * Resolve parent tab IDs to their default child.
+ * e.g. "waitlist" → "waitlist.entries" (backward compat)
+ */
+export function resolveTabId(tabId: string): AdminTabId {
+  const item = ADMIN_SIDEBAR_ITEMS.find((i) => i.id === tabId)
+  if (item?.defaultChildId) {
+    return item.defaultChildId as AdminTabId
+  }
+  return tabId as AdminTabId
+}

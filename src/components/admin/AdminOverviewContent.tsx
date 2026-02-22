@@ -1,3 +1,5 @@
+"use client"
+
 import {
   Activity,
   CheckCircle,
@@ -8,32 +10,42 @@ import {
   StatsReport,
 } from "iconoir-react"
 import Link from "next/link"
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
 import type { AdminTabId } from "./adminPanelConfig"
-import type { User } from "./UserList"
 
 type AdminOverviewContentProps = {
-  users: User[]
+  userId: Id<"users">
   onNavigate: (tab: AdminTabId) => void
 }
 
 export function AdminOverviewContent({
-  users,
+  userId,
   onNavigate,
 }: AdminOverviewContentProps) {
-  const totalUsers = users.length
-  const superadminCount = users.filter((user) => user.role === "superadmin").length
-  const adminCount = users.filter((user) => user.role === "admin").length
-  const userCount = users.filter((user) => user.role === "user").length
+  const stats = useQuery(api.users.getUserStats, { requestorUserId: userId })
 
-  const gratisCount = users.filter(
-    (user) =>
-      !user.subscriptionStatus ||
-      user.subscriptionStatus === "free" ||
-      user.subscriptionStatus === "gratis"
-  ).length
-  const bppCount = users.filter((user) => user.subscriptionStatus === "bpp").length
-  const proCount = users.filter((user) => user.subscriptionStatus === "pro").length
-  const unlimitedCount = users.filter((user) => user.subscriptionStatus === "unlimited").length
+  if (stats === undefined) {
+    return (
+      <div className="animate-pulse space-y-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="h-32 rounded-shell bg-muted" />
+          <div className="h-32 rounded-shell bg-muted" />
+        </div>
+        <div className="h-40 rounded-shell bg-muted" />
+      </div>
+    )
+  }
+
+  const totalUsers = stats.total
+  const superadminCount = stats.superadmin
+  const adminCount = stats.admin
+  const userCount = stats.user
+  const gratisCount = stats.gratis
+  const bppCount = stats.bpp
+  const proCount = stats.pro
+  const unlimitedCount = stats.unlimited
 
   return (
     <div className="space-y-4">

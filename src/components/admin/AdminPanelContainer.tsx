@@ -3,13 +3,11 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { SidebarExpand, SidebarCollapse } from "iconoir-react"
-import { useQuery } from "convex/react"
-import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
 import { AdminContentSection } from "./AdminContentSection"
 import { AdminSidebar, AdminMobileSidebar } from "./AdminSidebar"
-import { type AdminTabId } from "./adminPanelConfig"
+import { type AdminTabId, resolveTabId } from "./adminPanelConfig"
 
 interface AdminPanelContainerProps {
   userId: Id<"users">
@@ -21,7 +19,7 @@ export function AdminPanelContainer({
   userRole,
 }: AdminPanelContainerProps) {
   const searchParams = useSearchParams()
-  const tabParam = (searchParams.get("tab") as AdminTabId) || "overview"
+  const tabParam = resolveTabId(searchParams.get("tab") ?? "overview")
   const [activeTab, setActiveTab] = useState<AdminTabId>(tabParam)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -29,18 +27,6 @@ export function AdminPanelContainer({
   useEffect(() => {
     setActiveTab(tabParam)
   }, [tabParam])
-  const users = useQuery(api.users.listAllUsers, { requestorUserId: userId })
-
-  if (users === undefined) {
-    return (
-      <div className="admin-container relative left-1/2 right-1/2 w-screen -translate-x-1/2 bg-[color:var(--section-bg-alt)]">
-        <div className="animate-pulse space-y-4 p-6">
-          <div className="h-8 w-1/3 rounded bg-muted" />
-          <div className="h-64 rounded bg-muted" />
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="admin-container relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[color:var(--section-bg-alt)]">
@@ -65,7 +51,6 @@ export function AdminPanelContainer({
           <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
           <AdminContentSection
             activeTab={activeTab}
-            users={users}
             userId={userId}
             userRole={userRole}
             onNavigate={setActiveTab}

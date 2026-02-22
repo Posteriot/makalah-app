@@ -97,9 +97,9 @@ export function CareerContactSectionStatic() {
                   id={item.anchorId}
                   data-anchor-id={item.anchorId}
                   className={cn(
-                    "group relative col-span-8 flex h-full min-h-[180px] flex-col overflow-hidden rounded-shell border-hairline bg-transparent p-airy",
+                    "group relative col-span-8 flex h-full min-h-[180px] flex-col overflow-hidden rounded-shell border-hairline bg-slate-50 dark:bg-slate-900 p-airy",
                     "transition-colors duration-200",
-                    "hover:bg-slate-50 dark:hover:bg-slate-900"
+                    "hover:bg-slate-100 dark:hover:bg-slate-800",
                   )}
                 >
                   {/* Icon + Title row */}

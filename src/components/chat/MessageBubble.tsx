@@ -362,9 +362,22 @@ export function MessageBubble({
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     const artifactSignals = extractArtifactSignals(message)
     const inProgressTools = extractInProgressTools(message)
-    const searchTools = inProgressTools.filter((t) => t.toolName === "google_search")
-    const nonSearchTools = inProgressTools.filter((t) => t.toolName !== "google_search")
-    const hasProcessError = inProgressTools.some((tool) => tool.state === "output-error" || tool.state === "error")
+    const dedupedInProgressTools = inProgressTools.filter((tool, index, allTools) => {
+        const normalizedErrorText = (tool.errorText ?? "").trim().toLowerCase() || "__no_error__"
+        const firstIndex = allTools.findIndex((candidate) => {
+            const candidateErrorText = (candidate.errorText ?? "").trim().toLowerCase() || "__no_error__"
+            return (
+                candidate.toolName === tool.toolName &&
+                candidate.state === tool.state &&
+                candidateErrorText === normalizedErrorText
+            )
+        })
+        return firstIndex === index
+    })
+
+    const searchTools = dedupedInProgressTools.filter((t) => t.toolName === "google_search")
+    const nonSearchTools = dedupedInProgressTools.filter((t) => t.toolName !== "google_search")
+    const hasProcessError = dedupedInProgressTools.some((tool) => tool.state === "output-error" || tool.state === "error")
     const shouldShowProcessIndicators = !isEditing && isAssistant && (persistProcessIndicators || hasProcessError)
     const showFallbackProcessIndicator =
         persistProcessIndicators &&

@@ -59,7 +59,7 @@ export function ProblemsSectionStatic() {
               return (
                 <div
                   key={item.id}
-                  className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-transparent p-comfort transition-colors duration-200 hover:bg-slate-50 dark:hover:bg-slate-900"
+                  className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-slate-50 p-comfort transition-colors duration-200 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
                 >
                   <div className="relative flex flex-1 flex-col">
                     <h3 className="text-narrative font-light text-3xl leading-[1.1] text-foreground m-0 mb-6">

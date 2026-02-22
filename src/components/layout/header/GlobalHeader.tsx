@@ -470,7 +470,7 @@ export function GlobalHeader() {
                           <span>Admin Panel</span>
                         </Link>
                         <Link
-                          href="/dashboard/waitlist"
+                          href="/dashboard?tab=waitlist"
                           className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
                           onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                         >

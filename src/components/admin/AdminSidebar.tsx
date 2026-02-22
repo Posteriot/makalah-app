@@ -29,10 +29,12 @@ function SidebarNav({
           {ADMIN_SIDEBAR_ITEMS.map((item) => {
             const Icon = item.icon
             const isActive = activeTab === item.id
+            const isParentActive =
+              item.children && activeTab.startsWith(item.id + ".")
 
             const itemClasses = cn(
               "text-interface flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition-colors",
-              isActive
+              isActive || isParentActive
                 ? "bg-slate-900/60 text-slate-100 dark:bg-slate-200/10 dark:text-slate-100"
                 : "text-muted-foreground hover:bg-slate-200 hover:text-slate-900 dark:hover:bg-slate-500 dark:hover:text-slate-50"
             )
@@ -54,8 +56,11 @@ function SidebarNav({
                   <button
                     type="button"
                     onClick={() => {
-                      onTabChange(item.id)
-                      closeAfterSelect?.()
+                      const targetId = item.defaultChildId ?? item.id
+                      onTabChange(targetId as AdminTabId)
+                      if (!item.children) {
+                        closeAfterSelect?.()
+                      }
                     }}
                     className={itemClasses}
                   >
@@ -63,8 +68,43 @@ function SidebarNav({
                     <span className="flex-1 truncate text-left">
                       {item.label}
                     </span>
-                    {isActive && <NavArrowRight className="h-4 w-4 shrink-0" />}
+                    {(isActive || isParentActive) && (
+                      <NavArrowRight className="h-4 w-4 shrink-0" />
+                    )}
                   </button>
+                )}
+
+                {/* Render children when parent is active */}
+                {item.children && isParentActive && (
+                  <ul className="ml-7 mt-1 space-y-0.5 border-l border-border pl-3">
+                    {item.children.map((child) => {
+                      const ChildIcon = child.icon
+                      const isChildActive = activeTab === child.id
+
+                      return (
+                        <li key={child.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onTabChange(child.id as AdminTabId)
+                              closeAfterSelect?.()
+                            }}
+                            className={cn(
+                              "text-interface flex w-full items-center gap-2 rounded-action px-2 py-1.5 text-xs transition-colors",
+                              isChildActive
+                                ? "text-foreground font-medium"
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            <ChildIcon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="flex-1 truncate text-left">
+                              {child.label}
+                            </span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
                 )}
               </li>
             )

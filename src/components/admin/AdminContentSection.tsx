@@ -5,12 +5,13 @@ import { AdminOverviewContent } from "./AdminOverviewContent"
 import { StyleConstitutionManager } from "./StyleConstitutionManager"
 import { SystemHealthPanel } from "./SystemHealthPanel"
 import { SystemPromptsManager } from "./SystemPromptsManager"
-import { UserList, type User } from "./UserList"
-import { ADMIN_SIDEBAR_ITEMS, type AdminTabId } from "./adminPanelConfig"
+import { UserList } from "./UserList"
+import { WaitlistEntries } from "./WaitlistEntries"
+import { WaitlistSettings } from "./WaitlistSettings"
+import { ADMIN_SIDEBAR_ITEMS, findTabConfig, type AdminTabId } from "./adminPanelConfig"
 
 type AdminContentSectionProps = {
   activeTab: AdminTabId
-  users: User[]
   userId: Id<"users">
   userRole: "superadmin" | "admin" | "user"
   onNavigate: (tab: AdminTabId) => void
@@ -18,13 +19,12 @@ type AdminContentSectionProps = {
 
 export function AdminContentSection({
   activeTab,
-  users,
   userId,
   userRole,
   onNavigate,
 }: AdminContentSectionProps) {
   const currentTab =
-    ADMIN_SIDEBAR_ITEMS.find((item) => item.id === activeTab) ??
+    findTabConfig(activeTab) ??
     ADMIN_SIDEBAR_ITEMS[0]
   const HeaderIcon = currentTab.headerIcon
 
@@ -42,11 +42,11 @@ export function AdminContentSection({
         </div>
 
         {activeTab === "overview" && (
-          <AdminOverviewContent users={users} onNavigate={onNavigate} />
+          <AdminOverviewContent userId={userId} onNavigate={onNavigate} />
         )}
 
         {activeTab === "users" && (
-          <UserList users={users} currentUserRole={userRole} />
+          <UserList userId={userId} currentUserRole={userRole} />
         )}
 
         {activeTab === "prompts" && (
@@ -66,6 +66,14 @@ export function AdminContentSection({
           <div className="space-y-6">
             <StyleConstitutionManager userId={userId} />
           </div>
+        )}
+
+        {activeTab === "waitlist.entries" && (
+          <WaitlistEntries userId={userId} />
+        )}
+
+        {activeTab === "waitlist.settings" && (
+          <WaitlistSettings userId={userId} />
         )}
 
         {activeTab === "stats" && (

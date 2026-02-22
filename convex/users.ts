@@ -1,4 +1,4 @@
-import { mutationGeneric, queryGeneric, type GenericDatabaseWriter } from "convex/server"
+import { mutationGeneric, queryGeneric, type GenericDatabaseWriter, paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 import type { DataModel } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
@@ -121,6 +121,65 @@ export const listAllUsers = queryGeneric({
       createdAt: u.createdAt,
       lastLoginAt: u.lastLoginAt,
     }))
+  },
+})
+
+// USER-008c: Get user stats for admin overview (counts only)
+export const getUserStats = queryGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+  },
+  handler: async ({ db }, { requestorUserId }) => {
+    await requireRole(db, requestorUserId, "admin")
+
+    const users = await db.query("users").collect()
+
+    return {
+      total: users.length,
+      superadmin: users.filter((u) => u.role === "superadmin").length,
+      admin: users.filter((u) => u.role === "admin").length,
+      user: users.filter((u) => u.role === "user").length,
+      gratis: users.filter(
+        (u) =>
+          !u.subscriptionStatus ||
+          u.subscriptionStatus === "free" ||
+          u.subscriptionStatus === "gratis"
+      ).length,
+      bpp: users.filter((u) => u.subscriptionStatus === "bpp").length,
+      pro: users.filter((u) => u.subscriptionStatus === "pro").length,
+      unlimited: users.filter((u) => u.subscriptionStatus === "unlimited").length,
+    }
+  },
+})
+
+// USER-008d: List users with cursor-based pagination (admin only)
+export const listUsersPaginated = queryGeneric({
+  args: {
+    requestorUserId: v.id("users"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async ({ db }, { requestorUserId, paginationOpts }) => {
+    await requireRole(db, requestorUserId, "admin")
+
+    const result = await db
+      .query("users")
+      .order("desc")
+      .paginate(paginationOpts)
+
+    return {
+      ...result,
+      page: result.page.map((u) => ({
+        _id: u._id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        role: u.role,
+        emailVerified: u.emailVerified,
+        subscriptionStatus: u.subscriptionStatus,
+        createdAt: u.createdAt,
+        lastLoginAt: u.lastLoginAt,
+      })),
+    }
   },
 })
 
