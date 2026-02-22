@@ -11,6 +11,7 @@ import { NavArrowLeft, Plus, Trash, NavArrowUp, NavArrowDown } from "iconoir-rea
 import { SectionBlockEditor } from "./blocks/SectionBlockEditor"
 import { InfoCardBlockEditor } from "./blocks/InfoCardBlockEditor"
 import { CtaCardsBlockEditor } from "./blocks/CtaCardsBlockEditor"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -115,8 +116,6 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
   const [blocks, setBlocks] = useState<DocBlock[]>([])
 
   // UI state
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
   const [addBlockType, setAddBlockType] = useState<"section" | "infoCard" | "ctaCards">("section")
 
@@ -176,26 +175,19 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
 
   // Save handler
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertSection({
-        requestorId: userId,
-        id: existingSection?._id as Id<"documentationSections"> | undefined,
-        slug: slugValue,
-        title,
-        group,
-        order,
-        icon: icon || undefined,
-        headerIcon: headerIcon || undefined,
-        summary: summary || undefined,
-        blocks,
-        isPublished,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertSection({
+      requestorId: userId,
+      id: existingSection?._id as Id<"documentationSections"> | undefined,
+      slug: slugValue,
+      title,
+      group,
+      order,
+      icon: icon || undefined,
+      headerIcon: headerIcon || undefined,
+      summary: summary || undefined,
+      blocks,
+      isPublished,
+    })
   }
 
   // Loading skeleton for edit mode
@@ -454,18 +446,7 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
           </button>
         </div>
       </div>
-
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

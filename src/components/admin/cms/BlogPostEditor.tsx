@@ -11,6 +11,7 @@ import type { Id } from "@convex/_generated/dataModel"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
+import { CmsSaveButton } from "./CmsSaveButton"
 import {
   NavArrowLeft,
   Bold,
@@ -110,6 +111,7 @@ type BlockData = {
   paragraphs?: string[]
   items?: string[]
   list?: { variant: string; items: Array<{ text: string; subItems?: string[] }> }
+  richContent?: string
 }
 
 /**
@@ -121,6 +123,23 @@ function blocksToTipTapJson(blocks: BlockData[]): string {
   const nodes: any[] = []
 
   for (const block of blocks) {
+    // If block has richContent (TipTap JSON), merge its nodes directly
+    if (block.richContent) {
+      try {
+        const parsed = JSON.parse(block.richContent)
+        if (parsed.content && Array.isArray(parsed.content)) {
+          nodes.push(...parsed.content)
+        }
+      } catch {
+        // Fallback: treat richContent as plain text
+        nodes.push({
+          type: "paragraph",
+          content: [{ type: "text", text: block.richContent }],
+        })
+      }
+      continue
+    }
+
     if (block.title) {
       nodes.push({
         type: "heading",
@@ -144,10 +163,12 @@ function blocksToTipTapJson(blocks: BlockData[]): string {
     }
     if (block.items) {
       for (const item of block.items) {
-        nodes.push({
-          type: "paragraph",
-          content: [{ type: "text", text: item }],
-        })
+        if (typeof item === "string") {
+          nodes.push({
+            type: "paragraph",
+            content: [{ type: "text", text: item }],
+          })
+        }
       }
     }
     if (block.list) {
@@ -169,6 +190,24 @@ function blocksToTipTapJson(blocks: BlockData[]): string {
 
   if (nodes.length === 0) return ""
   return JSON.stringify({ type: "doc", content: nodes })
+}
+
+/**
+ * Build minimal TipTap JSON from excerpt text.
+ * Used as final fallback when neither `content` nor `blocks` have data,
+ * matching what the frontend displays.
+ */
+function excerptToTipTapJson(excerpt: string): string {
+  if (!excerpt) return ""
+  return JSON.stringify({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: excerpt }],
+      },
+    ],
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -211,8 +250,6 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
   const [bodyContent, setBodyContent] = useState("")
 
   // UI state
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -234,6 +271,8 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
         setBodyContent(existingPost.content)
       } else if (existingPost.blocks && (existingPost.blocks as BlockData[]).length > 0) {
         setBodyContent(blocksToTipTapJson(existingPost.blocks as BlockData[]))
+      } else if (existingPost.excerpt) {
+        setBodyContent(excerptToTipTapJson(existingPost.excerpt))
       } else {
         setBodyContent("")
       }
@@ -254,12 +293,14 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
     setSlugManuallyEdited(true)
   }
 
-  // TipTap editor — prefer `content` (TipTap JSON), fallback to `blocks` conversion
+  // TipTap editor — prefer `content` → fallback `blocks` → fallback `excerpt`
   const initialContent = existingPost?.content
     ? existingPost.content
     : existingPost?.blocks && existingPost.blocks.length > 0
       ? blocksToTipTapJson(existingPost.blocks as BlockData[])
-      : undefined
+      : existingPost?.excerpt
+        ? excerptToTipTapJson(existingPost.excerpt)
+        : undefined
 
   const editor = useEditor(
     {
@@ -321,28 +362,21 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
 
   // Save handler
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertPost({
-        requestorId: userId,
-        id: existingPost?._id as Id<"blogSections"> | undefined,
-        slug: slugValue,
-        title,
-        excerpt,
-        author,
-        category,
-        readTime,
-        featured,
-        isPublished,
-        publishedAt: dateStringToTimestamp(publishedAt),
-        content: bodyContent || undefined,
-        coverImageId: coverImageId ?? undefined,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertPost({
+      requestorId: userId,
+      id: existingPost?._id as Id<"blogSections"> | undefined,
+      slug: slugValue,
+      title,
+      excerpt,
+      author,
+      category,
+      readTime,
+      featured,
+      isPublished,
+      publishedAt: dateStringToTimestamp(publishedAt),
+      content: bodyContent || undefined,
+      coverImageId: coverImageId ?? undefined,
+    })
   }
 
   // Loading skeleton for edit mode
@@ -521,6 +555,9 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
           height: 675,
         })}
       />
+      <p className="text-interface -mt-3 text-[10px] text-muted-foreground">
+        Optimal: 1200 × 675 px (16:9). Kontainer: full-width dengan aspect-ratio 16:9.
+      </p>
 
       {/* Divider */}
       <div className="border-t border-border" />
@@ -670,18 +707,7 @@ export function BlogPostEditor({ slug, userId, onBack }: BlogPostEditorProps) {
           />
         </div>
       </div>
-
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

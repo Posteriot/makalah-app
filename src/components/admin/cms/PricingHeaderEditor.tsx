@@ -10,80 +10,89 @@ import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CmsSaveButton } from "./CmsSaveButton"
 
-type CareerContactEditorProps = {
+type PricingHeaderEditorProps = {
+  pageSlug: string
+  sectionSlug: string
   userId: Id<"users">
+  onNavigateToPricing?: () => void
 }
 
-export function CareerContactEditor({ userId }: CareerContactEditorProps) {
+// Current hardcoded values — shown as defaults when no DB record exists yet
+const DEFAULTS: Record<string, { badge: string; title: string; subtitle: string }> = {
+  "pricing-teaser": {
+    badge: "Pemakaian & Harga",
+    title: "Investasi untuk\nMasa Depan Akademik.",
+    subtitle: "",
+  },
+  "pricing-page-header": {
+    badge: "Pemakaian & Harga",
+    title: "Tak Perlu Bayar Mahal\nUntuk Karya Yang Masuk Akal",
+    subtitle: "Pilih paket penggunaan sesuai kebutuhan. Mau ujicoba dulu yang gratisan? Boleh! Atau langsung bayar per paper? Aman!",
+  },
+}
+
+export function PricingHeaderEditor({ pageSlug, sectionSlug, userId, onNavigateToPricing }: PricingHeaderEditorProps) {
   const section = useQuery(api.pageContent.getSection, {
-    pageSlug: "about",
-    sectionSlug: "career-contact",
+    pageSlug,
+    sectionSlug,
   })
 
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
-  const [badgeText, setBadgeText] = useState("")
-  const [title, setTitle] = useState("")
-  const [careerText, setCareerText] = useState("")
-  const [company, setCompany] = useState("")
-  const [address, setAddress] = useState("")
-  const [email, setEmail] = useState("")
+  const defaults = DEFAULTS[sectionSlug] ?? { badge: "", title: "", subtitle: "" }
+
+  const [badgeText, setBadgeText] = useState(defaults.badge)
+  const [title, setTitle] = useState(defaults.title)
+  const [subtitle, setSubtitle] = useState(defaults.subtitle)
   const [showGridPattern, setShowGridPattern] = useState(true)
   const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
   const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
-  // Sync form state when section data loads
+  // Sync form state when section data loads (DB record exists)
+  // When section is null (no record yet), keep the defaults
   useEffect(() => {
     if (section) {
-      setBadgeText(section.badgeText ?? "")
-      setTitle(section.title ?? "")
-      // Map items[0].description -> careerText
-      const sectionItems = section.items as Array<{ title?: string; description?: string }> | undefined
-      setCareerText(sectionItems?.[0]?.description ?? "")
-      // Map contactInfo -> company/address/email
-      const contact = section.contactInfo as { company?: string; address?: string[]; email?: string } | undefined
-      setCompany(contact?.company ?? "")
-      setAddress(contact?.address?.[0] ?? "")
-      setEmail(contact?.email ?? "")
+      setBadgeText(section.badgeText ?? defaults.badge)
+      setTitle(section.title ?? defaults.title)
+      setSubtitle(section.subtitle ?? defaults.subtitle)
       setShowGridPattern(section.showGridPattern !== false)
       setShowDiagonalStripes(section.showDiagonalStripes !== false)
       setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
-  }, [section])
+  }, [section, defaults.badge, defaults.title, defaults.subtitle])
 
   async function handleSave() {
     await upsertSection({
       requestorId: userId,
       id: section?._id,
-      pageSlug: "about",
-      sectionSlug: "career-contact",
-      sectionType: "career-contact",
-      title,
+      pageSlug,
+      sectionSlug,
+      sectionType: "pricing-header",
       badgeText,
-      items: [{ title: "Karier", description: careerText }],
-      contactInfo: { company, address: [address], email },
+      title,
+      subtitle,
       showGridPattern,
       showDiagonalStripes,
       showDottedPattern,
       isPublished,
-      sortOrder: 4,
+      sortOrder: pageSlug === "home" ? 5 : 0,
     })
   }
+
+  // Friendly label
+  const label = pageSlug === "home" ? "Pricing Teaser Header" : "Pricing Page Header"
 
   // Loading skeleton
   if (section === undefined) {
     return (
       <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-6 w-48" />
         <Skeleton className="h-px w-full" />
         <Skeleton className="h-9 w-full" />
         <Skeleton className="h-9 w-full" />
         <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
         <Skeleton className="h-9 w-32" />
       </div>
     )
@@ -94,7 +103,7 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
       {/* Section header */}
       <div>
         <h3 className="text-narrative text-lg font-medium tracking-tight text-foreground">
-          Karier & Kontak Section
+          {label}
         </h3>
         <div className="mt-2 border-t border-border" />
       </div>
@@ -109,83 +118,67 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
           <Input
             value={badgeText}
             onChange={(e) => setBadgeText(e.target.value)}
-            placeholder="Teks badge section"
+            placeholder="Teks badge, mis. 'Pemakaian & Harga'"
           />
         </div>
 
-        {/* Title */}
+        {/* Title / Heading */}
         <div>
           <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-            Title
-          </label>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Judul section"
-          />
-        </div>
-      </div>
-
-      {/* ── Cluster 2: Karier ── */}
-      <div className="border-t border-border" />
-      <div>
-        <h4 className="text-interface mb-3 text-sm font-semibold text-foreground">
-          Karier
-        </h4>
-        <div>
-          <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-            Teks Karier
+            Heading
           </label>
           <Textarea
-            value={careerText}
-            onChange={(e) => setCareerText(e.target.value)}
-            placeholder="Teks tentang karier"
-            rows={2}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Judul section (tekan Enter untuk baris baru)"
+            rows={3}
           />
+          <p className="text-interface mt-1 text-[10px] text-muted-foreground">
+            Tekan Enter untuk baris baru. Setiap baris ditampilkan sebagai line terpisah di frontend.
+          </p>
         </div>
+
+        {/* Subtitle (only for pricing page — teaser doesn't have subtitle) */}
+        {pageSlug === "pricing" && (
+          <div>
+            <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
+              Subtitle
+            </label>
+            <Textarea
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="Deskripsi pendek di bawah heading"
+              rows={2}
+            />
+          </div>
+        )}
       </div>
 
-      {/* ── Cluster 3: Kontak ── */}
-      <div className="border-t border-border" />
-      <div>
-        <h4 className="text-interface mb-3 text-sm font-semibold text-foreground">
-          Kontak
-        </h4>
-        <div className="space-y-3">
-          <div>
-            <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-              Nama Perusahaan
-            </label>
-            <Input
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="Nama perusahaan"
-            />
+      {/* ── Info: Pricing Cards ── */}
+      {pageSlug === "home" && (
+        <>
+          <div className="border-t border-border" />
+          <div className="rounded-action border border-border bg-muted/50 px-4 py-3">
+            <p className="text-interface text-xs leading-relaxed text-muted-foreground">
+              Pengaturan cards harga/tier dikelola di{" "}
+              {onNavigateToPricing ? (
+                <button
+                  type="button"
+                  onClick={onNavigateToPricing}
+                  className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+                >
+                  Halaman Pricing
+                </button>
+              ) : (
+                <span className="font-medium text-foreground">Halaman Pricing</span>
+              )}
+              {" "}(Pricing → Gratis / BPP / Pro).
+            </p>
           </div>
-          <div>
-            <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-              Alamat
-            </label>
-            <Input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Alamat perusahaan"
-            />
-          </div>
-          <div>
-            <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-              Email
-            </label>
-            <Input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email kontak"
-            />
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
-      {/* ── Cluster 4: Background Patterns ── */}
+      {/* ── Cluster 2: Background Patterns ── */}
       <div className="border-t border-border" />
       <div className="space-y-2">
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -211,7 +204,7 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
         </div>
       </div>
 
-      {/* ── Cluster 5: Published ── */}
+      {/* ── Cluster 3: Published ── */}
       <div className="border-t border-border" />
       <div className="flex items-center gap-3">
         <label className="text-interface text-xs font-medium text-muted-foreground">
@@ -219,6 +212,7 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
         </label>
         <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
       </div>
+
       <CmsSaveButton onSave={handleSave} />
     </div>
   )

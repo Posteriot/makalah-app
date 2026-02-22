@@ -12,8 +12,7 @@ export function RefrasaFeatureSection() {
   })
 
   if (section === undefined) return null
-  if (section === null || !section.isPublished) {
-    return <RefrasaFeatureStatic />
-  }
+  // No CMS data or unpublished → hidden
+  if (section === null || !section.isPublished) return null
   return <RefrasaFeatureCMS content={section} />
 }

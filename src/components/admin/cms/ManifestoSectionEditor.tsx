@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 type ManifestoSectionEditorProps = {
   userId: Id<"users">
@@ -24,38 +25,33 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
   const [badgeText, setBadgeText] = useState("")
-  const [headingLines, setHeadingLines] = useState<[string, string, string]>(["", "", ""])
+  const [headingText, setHeadingText] = useState("")
   const [subheading, setSubheading] = useState("")
   const [paragraphs, setParagraphs] = useState<string[]>([])
   const [terminalDarkId, setTerminalDarkId] = useState<Id<"_storage"> | null>(null)
   const [terminalLightId, setTerminalLightId] = useState<Id<"_storage"> | null>(null)
+  const [showGridPattern, setShowGridPattern] = useState(true)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
-
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
 
   // Sync form state when section data loads
   useEffect(() => {
     if (section) {
       setBadgeText(section.badgeText ?? "")
-      const lines = (section.headingLines as string[] | undefined) ?? ["", "", ""]
-      setHeadingLines([lines[0] ?? "", lines[1] ?? "", lines[2] ?? ""])
+      const lines = (section.headingLines as string[] | undefined) ?? []
+      setHeadingText(lines.join("\n"))
       setSubheading(section.subheading ?? "")
       const paras = (section.paragraphs as string[] | undefined) ?? []
       setParagraphs(paras)
       setTerminalDarkId((section.primaryImageId as Id<"_storage"> | undefined) ?? null)
       setTerminalLightId((section.secondaryImageId as Id<"_storage"> | undefined) ?? null)
+      setShowGridPattern(section.showGridPattern !== false)
+      setShowDiagonalStripes(section.showDiagonalStripes !== false)
+      setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
-
-  function updateHeadingLine(index: number, value: string) {
-    setHeadingLines((prev) => {
-      const next: [string, string, string] = [...prev]
-      next[index] = value
-      return next
-    })
-  }
 
   function updateParagraph(index: number, value: string) {
     setParagraphs((prev) => prev.map((p, i) => (i === index ? value : p)))
@@ -70,28 +66,24 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
   }
 
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertSection({
-        requestorId: userId,
-        id: section?._id,
-        pageSlug: "about",
-        sectionSlug: "manifesto",
-        sectionType: "manifesto",
-        headingLines,
-        subheading,
-        paragraphs,
-        badgeText,
-        primaryImageId: terminalDarkId ?? undefined,
-        secondaryImageId: terminalLightId ?? undefined,
-        isPublished,
-        sortOrder: 1,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertSection({
+      requestorId: userId,
+      id: section?._id,
+      pageSlug: "about",
+      sectionSlug: "manifesto",
+      sectionType: "manifesto",
+      headingLines: headingText.split("\n").filter((l) => l.trim() !== ""),
+      subheading,
+      paragraphs,
+      badgeText,
+      primaryImageId: terminalDarkId ?? undefined,
+      secondaryImageId: terminalLightId ?? undefined,
+      showGridPattern,
+      showDiagonalStripes,
+      showDottedPattern,
+      isPublished,
+      sortOrder: 1,
+    })
   }
 
   // Loading skeleton
@@ -121,7 +113,7 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
         <div className="mt-2 border-t border-border" />
       </div>
 
-      {/* Form fields */}
+      {/* ── Cluster 1: Text Content ── */}
       <div className="space-y-4">
         {/* Badge Text */}
         <div>
@@ -135,21 +127,20 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
           />
         </div>
 
-        {/* Heading Lines */}
+        {/* Heading */}
         <div>
           <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-            Heading Lines
+            Heading
           </label>
-          <div className="space-y-2">
-            {headingLines.map((line, index) => (
-              <Input
-                key={index}
-                value={line}
-                onChange={(e) => updateHeadingLine(index, e.target.value)}
-                placeholder={`Baris heading ${index + 1}`}
-              />
-            ))}
-          </div>
+          <Textarea
+            value={headingText}
+            onChange={(e) => setHeadingText(e.target.value)}
+            placeholder="Judul manifesto (tekan Enter untuk baris baru)"
+            rows={3}
+          />
+          <p className="text-interface mt-1 text-[10px] text-muted-foreground">
+            Tekan Enter untuk baris baru. Setiap baris ditampilkan sebagai line terpisah di frontend.
+          </p>
         </div>
 
         {/* Subheading */}
@@ -164,91 +155,109 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
             rows={2}
           />
         </div>
+      </div>
 
-        {/* Manifesto Paragraphs */}
-        <div>
-          <label className="text-interface mb-2 block text-xs font-medium text-muted-foreground">
-            Manifesto Paragraphs
-          </label>
-          <div className="space-y-3">
-            {paragraphs.map((paragraph, index) => (
-              <div key={index} className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-interface text-xs text-muted-foreground">
-                    Paragraf {index + 1}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeParagraph(index)}
-                    className="text-interface text-xs text-destructive hover:underline"
-                  >
-                    Hapus
-                  </button>
-                </div>
-                <Textarea
-                  value={paragraph}
-                  onChange={(e) => updateParagraph(index, e.target.value)}
-                  placeholder={`Isi paragraf ${index + 1}`}
-                  rows={4}
-                />
-              </div>
-            ))}
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addParagraph}
-            className="mt-3 rounded-action text-xs"
-          >
-            Tambah Paragraf
-          </Button>
-        </div>
-
-        {/* Terminal Panel Image */}
+      {/* ── Cluster 2: Paragraphs ── */}
+      <div className="border-t border-border" />
+      <div>
+        <label className="text-interface mb-2 block text-xs font-medium text-muted-foreground">
+          Manifesto Paragraphs
+        </label>
         <div className="space-y-3">
-          <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Terminal Panel Image
-          </span>
-          <div className="grid grid-cols-2 gap-4">
-            <CmsImageUpload
-              currentImageId={terminalDarkId}
-              onUpload={(storageId) => setTerminalDarkId(storageId)}
-              userId={userId}
-              label="Terminal (Dark)"
-              aspectRatio="16/9"
-              fallbackPreviewUrl="/images/manifesto-terminal-dark.png"
-            />
-            <CmsImageUpload
-              currentImageId={terminalLightId}
-              onUpload={(storageId) => setTerminalLightId(storageId)}
-              userId={userId}
-              label="Terminal (Light)"
-              aspectRatio="16/9"
-              fallbackPreviewUrl="/images/manifesto-terminal-light.png"
-            />
-          </div>
+          {paragraphs.map((paragraph, index) => (
+            <div key={index} className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-interface text-xs text-muted-foreground">
+                  Paragraf {index + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeParagraph(index)}
+                  className="text-interface text-xs text-destructive hover:underline"
+                >
+                  Hapus
+                </button>
+              </div>
+              <Textarea
+                value={paragraph}
+                onChange={(e) => updateParagraph(index, e.target.value)}
+                placeholder={`Isi paragraf ${index + 1}`}
+                rows={4}
+              />
+            </div>
+          ))}
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addParagraph}
+          className="mt-3 rounded-action text-xs"
+        >
+          Tambah Paragraf
+        </Button>
+      </div>
 
-        {/* Published toggle */}
+      {/* ── Cluster 3: Terminal Panel Image ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-3">
+        <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Terminal Panel Image
+        </span>
+        <div className="grid grid-cols-2 gap-4">
+          <CmsImageUpload
+            currentImageId={terminalDarkId}
+            onUpload={(storageId) => setTerminalDarkId(storageId)}
+            userId={userId}
+            label="Terminal (Dark)"
+            aspectRatio="16/9"
+            fallbackPreviewUrl="/images/manifesto-terminal-dark.png"
+          />
+          <CmsImageUpload
+            currentImageId={terminalLightId}
+            onUpload={(storageId) => setTerminalLightId(storageId)}
+            userId={userId}
+            label="Terminal (Light)"
+            aspectRatio="16/9"
+            fallbackPreviewUrl="/images/manifesto-terminal-light.png"
+          />
+        </div>
+      </div>
+
+      {/* ── Cluster 4: Background Patterns ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Background Patterns
+        </span>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
-            Published
+            Grid Pattern
           </label>
-          <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Diagonal Stripes
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Dotted Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
         </div>
       </div>
 
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
+      {/* ── Cluster 5: Published ── */}
+      <div className="border-t border-border" />
+      <div className="flex items-center gap-3">
+        <label className="text-interface text-xs font-medium text-muted-foreground">
+          Published
+        </label>
+        <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
       </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

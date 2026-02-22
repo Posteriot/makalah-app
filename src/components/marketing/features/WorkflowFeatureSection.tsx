@@ -14,10 +14,8 @@ export function WorkflowFeatureSection() {
   // Loading — return null
   if (section === undefined) return null
 
-  // No CMS data or unpublished → static fallback
-  if (section === null || !section.isPublished) {
-    return <WorkflowFeatureStatic />
-  }
+  // No CMS data or unpublished → hidden
+  if (section === null || !section.isPublished) return null
 
   // CMS data → render CMS version
   return <WorkflowFeatureCMS content={section} />

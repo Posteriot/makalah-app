@@ -16,10 +16,11 @@ For developer maintenance, scaling, and onboarding.
 7. [Pricing CMS & DB-Driven Pricing](#pricing-cms--db-driven-pricing)
 8. [Image Storage & Upload](#image-storage--upload)
 9. [TipTap WYSIWYG Integration](#tiptap-wysiwyg-integration)
-10. [Seed & Migration Data](#seed--migration-data)
-11. [File Reference Map](#file-reference-map)
-12. [Adding New CMS Sections](#adding-new-cms-sections)
-13. [Common Patterns & Conventions](#common-patterns--conventions)
+10. [Background Pattern CMS Toggles](#background-pattern-cms-toggles)
+11. [Seed & Migration Data](#seed--migration-data)
+12. [File Reference Map](#file-reference-map)
+13. [Adding New CMS Sections](#adding-new-cms-sections)
+14. [Common Patterns & Conventions](#common-patterns--conventions)
 
 ---
 
@@ -87,8 +88,9 @@ The CMS uses a dedicated 4-column CSS Grid layout, completely separate from the 
 |-----------|------|------|
 | `CmsShell` | `src/components/cms/CmsShell.tsx` | 4-column grid orchestrator. Holds all state. Routes to editors via `renderEditor()`. |
 | `CmsActivityBar` | `src/components/cms/CmsActivityBar.tsx` | Vertical icon sidebar (48px). Defines `CmsPageId` type. Two groups: Content Pages + Global. |
-| `CmsSidebar` | `src/components/cms/CmsSidebar.tsx` | Dynamic section sidebar (280px default, min 180px, collapses at <100px). Defines `CmsSectionId` and sub-page types. |
+| `CmsSidebar` | `src/components/cms/CmsSidebar.tsx` | Dynamic section sidebar (280px default, min 180px, collapses at <100px). Defines `CmsSectionId` and sub-page types. "Content Manager" header is clickable — resets to main overview. |
 | `CmsTopBar` | `src/components/cms/CmsTopBar.tsx` | Top bar above content area. Expand sidebar toggle (when collapsed), theme toggle, Admin Dashboard link, user dropdown. |
+| `CmsMainOverview` | `src/components/cms/CmsMainOverview.tsx` | Main overview dashboard shown when no page is selected. Shows status summary for all 7 pages. Queries all CMS data sources. |
 | `PanelResizer` | `src/components/ui/PanelResizer.tsx` | Draggable 2px divider for sidebar resize. Double-click resets to 280px. |
 
 ### Page & Section Type System
@@ -113,10 +115,12 @@ The CMS uses a dedicated 4-column CSS Grid layout, completely separate from the 
 | `benefits` | home | `BenefitsSectionEditor` |
 | `features-workflow` | home | `FeatureShowcaseEditor` (sectionSlug="features-workflow") |
 | `features-refrasa` | home | `FeatureShowcaseEditor` (sectionSlug="features-refrasa") |
+| `pricing-teaser` | home | `PricingHeaderEditor` (sectionSlug="pricing-teaser") |
 | `manifesto` | about | `ManifestoSectionEditor` |
 | `problems` | about | `ProblemsSectionEditor` |
 | `agents` | about | `AgentsSectionEditor` |
 | `career-contact` | about | `CareerContactEditor` |
+| `pricing-header` | pricing | `PricingHeaderEditor` (sectionSlug="pricing-page-header") |
 | `pricing-gratis` | pricing | `PricingPlanEditor` (slug="gratis") |
 | `pricing-bpp` | pricing | `PricingPlanEditor` (slug="bpp") |
 | `pricing-pro` | pricing | `PricingPlanEditor` (slug="pro") |
@@ -132,57 +136,57 @@ The CMS uses a dedicated 4-column CSS Grid layout, completely separate from the 
 
 ### Sidebar Rendering Patterns
 
-The sidebar uses 3 different rendering functions:
+The sidebar uses 3 rendering functions + 2 specialized drill-down renderers:
 
 | Function | Used By | Behavior |
 |----------|---------|----------|
 | `renderSectionList()` | home, about, pricing | Simple flat list, highlights `activeSection` |
 | `renderSubPageList()` | legal, global-layout | Generic typed list, highlights active sub-page |
-| `renderDrillDownList()` | documentation, blog | Two-level: shows groups initially, then back-button when drilled in |
+| `renderDrillDownList()` | (base for doc/blog) | Two-level: shows groups initially, then back-button when drilled in |
+| `renderDocDrillDown()` | documentation | Three-level: group list → back button + article list (from `listAllSections` query) → article editor |
+| `renderBlogDrillDown()` | blog | Three-level: category list → back button + post list (from `listAllPosts` query, normalized by category) → post editor |
+
+Documentation and blog drill-downs query article/post data when a group/category is selected, displaying child items directly in the sidebar for quick navigation.
 
 ### Navigation Tree (Complete)
 
 ```
 Content Pages
-├── Home
+├── Home                    → CmsPageOverview (section list + pattern toggles)
 │   ├── Hero                → HeroSectionEditor
 │   ├── Benefits            → BenefitsSectionEditor
 │   ├── Fitur: Workflow     → FeatureShowcaseEditor
-│   └── Fitur: Refrasa      → FeatureShowcaseEditor
-├── About
+│   ├── Fitur: Refrasa      → FeatureShowcaseEditor
+│   └── Pricing Teaser      → PricingHeaderEditor (sectionSlug="pricing-teaser")
+├── About                   → CmsPageOverview (section list + pattern toggles)
 │   ├── Manifesto           → ManifestoSectionEditor
 │   ├── Problems            → ProblemsSectionEditor
 │   ├── Agents              → AgentsSectionEditor
 │   └── Karier & Kontak     → CareerContactEditor
-├── Pricing
+├── Pricing                 → CmsPricingOverview (plan list + pattern toggles)
+│   ├── Header              → PricingHeaderEditor (sectionSlug="pricing-page-header")
 │   ├── Gratis              → PricingPlanEditor (slug="gratis")
 │   ├── Bayar Per Paper     → PricingPlanEditor (slug="bpp")
 │   └── Pro                 → PricingPlanEditor (slug="pro")
-├── Dokumentasi (drill-down)
-│   ├── Mulai               → DocSectionListEditor → DocSectionEditor
-│   ├── Fitur Utama         → DocSectionListEditor → DocSectionEditor
-│   ├── Subskripsi          → DocSectionListEditor → DocSectionEditor
-│   └── Panduan Lanjutan    → DocSectionListEditor → DocSectionEditor
-├── Blog (drill-down)
-│   ├── Update              → BlogPostListEditor → BlogPostEditor
-│   ├── Tutorial            → BlogPostListEditor → BlogPostEditor
-│   ├── Opini               → BlogPostListEditor → BlogPostEditor
-│   └── Event               → BlogPostListEditor → BlogPostEditor
-└── Legal
+├── Dokumentasi             → CmsDocOverview (group list + pattern toggles)
+│   ├── Mulai               → [sidebar: article list] → DocSectionEditor
+│   ├── Fitur Utama         → [sidebar: article list] → DocSectionEditor
+│   ├── Subskripsi          → [sidebar: article list] → DocSectionEditor
+│   └── Panduan Lanjutan    → [sidebar: article list] → DocSectionEditor
+├── Blog                    → CmsBlogOverview (category counts + pattern toggles)
+│   ├── Update              → [sidebar: post list] → BlogPostEditor
+│   ├── Tutorial            → [sidebar: post list] → BlogPostEditor
+│   ├── Opini               → [sidebar: post list] → BlogPostEditor
+│   └── Event               → [sidebar: post list] → BlogPostEditor
+└── Legal                   → CmsLegalOverview (page status + pattern toggles)
     ├── Privacy             → RichTextPageEditor (slug="privacy")
     ├── Security            → RichTextPageEditor (slug="security")
     └── Terms               → RichTextPageEditor (slug="terms")
 
-Global Components
+Global Components           → CmsGlobalLayoutOverview (config status)
 ├── Header                  → HeaderConfigEditor
 └── Footer                  → FooterConfigEditor
 ```
-
-### Legacy `ContentManager.tsx`
-
-**File:** `src/components/admin/ContentManager.tsx`
-
-This is the OLD CMS navigation component used in the admin dashboard (`/dashboard` → CMS tab). It is **NOT used** by the current CMS at `/cms`. The new CMS uses `CmsShell` + `CmsActivityBar` + `CmsSidebar`. `ContentManager.tsx` remains in the codebase but is not imported by any route.
 
 ---
 
@@ -192,13 +196,13 @@ Six tables power the CMS. All defined in `convex/schema.ts`.
 
 ### 1. `pageContent` — Structured Sections
 
-**Purpose:** Home page sections (hero, benefits, features) and about page sections (manifesto, problems, agents, career-contact).
+**Purpose:** Home page sections (hero, benefits, features, pricing-teaser), about page sections (manifesto, problems, agents, career-contact), pricing page header, and per-page settings (background patterns for pricing, docs, legal, blog).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `pageSlug` | `string` | Page identifier (`"home"`, `"about"`) |
-| `sectionSlug` | `string` | Section identifier (`"hero"`, `"benefits"`, `"features-workflow"`, `"features-refrasa"`, `"manifesto"`, `"problems"`, `"agents"`, `"career-contact"`) |
-| `sectionType` | `union` | `"hero"` \| `"benefits"` \| `"feature-showcase"` \| `"manifesto"` \| `"problems"` \| `"agents"` \| `"career-contact"` |
+| `pageSlug` | `string` | Page identifier (`"home"`, `"about"`, `"pricing"`, `"docs"`, `"legal"`, `"blog"`) |
+| `sectionSlug` | `string` | Section identifier (`"hero"`, `"benefits"`, `"features-workflow"`, `"features-refrasa"`, `"pricing-teaser"`, `"manifesto"`, `"problems"`, `"agents"`, `"career-contact"`, `"pricing-page-header"`, `"docs-page-settings"`, `"legal-page-settings"`, `"blog-page-settings"`) |
+| `sectionType` | `union` | `"hero"` \| `"benefits"` \| `"feature-showcase"` \| `"manifesto"` \| `"problems"` \| `"agents"` \| `"career-contact"` \| `"pricing-header"` \| `"page-header"` \| `"page-settings"` |
 | `title` | `string?` | Section heading |
 | `subtitle` | `string?` | Sub-heading |
 | `description` | `string?` | Section body text |
@@ -215,6 +219,9 @@ Six tables power the CMS. All defined in `convex/schema.ts`.
 | `subheading` | `string?` | Sub-heading text |
 | `paragraphs[]` | `string[]?` | Multi-paragraph body content |
 | `contactInfo` | `object?` | Career-contact: `{ company, address[], email }` |
+| `showGridPattern` | `boolean?` | Background pattern toggle (Grid) |
+| `showDiagonalStripes` | `boolean?` | Background pattern toggle (Diagonal) |
+| `showDottedPattern` | `boolean?` | Background pattern toggle (Dotted) |
 | `isPublished` | `boolean` | Publish toggle |
 | `sortOrder` | `number` | Section ordering within page |
 | `updatedAt` | `number` | Last update timestamp |
@@ -254,6 +261,9 @@ Six tables power the CMS. All defined in `convex/schema.ts`.
 | `logoLightId` | `Id<"_storage">?` | Logo for light theme |
 | `brandTextDarkId` | `Id<"_storage">?` | Brand text image for dark theme |
 | `brandTextLightId` | `Id<"_storage">?` | Brand text image for light theme |
+| `showGridPattern` | `boolean?` | Footer background pattern toggle (Grid) |
+| `showDottedPattern` | `boolean?` | Footer background pattern toggle (Dotted) |
+| `showDiagonalStripes` | `boolean?` | Footer background pattern toggle (Diagonal) |
 | `updatedAt` | `number` | Last update timestamp |
 | `updatedBy` | `Id<"users">?` | Last editor |
 
@@ -537,6 +547,16 @@ These editors share a common pattern: query existing data → populate form stat
 | `AgentsSectionEditor` | agents | badgeText, title, items[] (name + description + status dropdown) |
 | `CareerContactEditor` | career-contact | badgeText, title, careerText, contactInfo { company, address, email } |
 
+### Pricing Header Editor
+
+**`PricingHeaderEditor`** — Edits the header section for pricing pages (title, badge, description, CTA, background patterns).
+
+**Props:** `{ pageSlug: string; sectionSlug: string; userId: Id<"users">; onNavigateToPricing?: () => void }`
+
+Used in two contexts:
+- **Home page** → `pricing-teaser` section (with "Navigate to Pricing" link)
+- **Pricing page** → `pricing-page-header` section
+
 ### Pricing Plan Editor
 
 **`PricingPlanEditor`** — Edits a single pricing tier.
@@ -558,15 +578,16 @@ These editors share a common pattern: query existing data → populate form stat
 Documentation and Blog use a two-level flow: **List** → **Detail**.
 
 ```
-DocSectionListEditor (filtered by group)
+Sidebar: group/category list → click group → sidebar shows article/post list
+  └── Click article/post → main content loads editor
+
+Main content: DocSectionListEditor / BlogPostListEditor (when drill-down selected)
   ├── Click "Edit" → setSelectedDocSlug(slug) → DocSectionEditor
   └── Click "Buat Section Baru" → setSelectedDocSlug("__new__") → DocSectionEditor (create mode)
-  └── Click "< Kembali ke Daftar" → setSelectedDocSlug(null) → back to list
 
-BlogPostListEditor (filtered by category)
+BlogPostListEditor:
   ├── Click post row → setSelectedBlogSlug(slug) → BlogPostEditor
   └── Click "Buat Post Baru" → setSelectedBlogSlug("__new__") → BlogPostEditor (create mode)
-  └── Click "< Kembali ke Daftar" → setSelectedBlogSlug(null) → back to list
 ```
 
 ### Global Config Editors
@@ -574,7 +595,11 @@ BlogPostListEditor (filtered by category)
 | Editor | Config Key | Key Fields |
 |--------|-----------|------------|
 | `HeaderConfigEditor` | `"header"` | navLinks[] (label, href, isVisible), logoDark/Light (1:1), brandTextDark/Light (4:1) |
-| `FooterConfigEditor` | `"footer"` | footerSections[] (title + links), socialLinks[] (platform, url, isVisible, iconId), copyrightText (`{year}` placeholder), companyDescription, logoDark/Light |
+| `FooterConfigEditor` | `"footer"` | footerSections[] (title + links), socialLinks[] (platform, url, isVisible, iconId), copyrightText (`{year}` placeholder), companyDescription, logoDark/Light, pattern toggles (grid, dotted, diagonal) |
+
+### Shared Components
+
+**`CmsSaveButton`** (`src/components/admin/cms/CmsSaveButton.tsx`) — Reusable save button with three states: idle → saving (spinner) → saved (checkmark, auto-resets 2s). Used by all overview components and editors that save pattern toggles.
 
 ### Rich Text Page Editor
 
@@ -798,13 +823,78 @@ Read-only TipTap instance. Same extensions as editor. Applies prose styling via 
 Blog posts may store content in `blocks[]` (legacy structured format) or `content` (TipTap JSON string). The CMS editor handles this via `blocksToTipTapJson()` in `BlogPostEditor.tsx`:
 
 ```
-Content resolution order:
+CMS Editor content resolution:
 1. existingPost.content (TipTap JSON) → use directly
 2. existingPost.blocks (structured) → convert via blocksToTipTapJson()
 3. Neither → empty editor
+
+Frontend blog post display (BlogPostPage):
+1. post.content (TipTap JSON) → RichTextRenderer
+2. post.blocks (structured) → legacy block renderer
+3. Neither → post.excerpt as fallback text
 ```
 
 The conversion is one-way: once saved from the CMS editor, content is stored as TipTap JSON in the `content` field.
+
+---
+
+## Background Pattern CMS Toggles
+
+Admin can show/hide background patterns (GridPattern, DottedPattern, DiagonalStripes) per page via CMS toggle switches.
+
+### Data Storage
+
+| Page | Storage Location | Section/Key |
+|------|-----------------|-------------|
+| Home sections | `pageContent` | Each section's own record (via CMS variant components) |
+| About sections | `pageContent` | Each section's own record |
+| Pricing | `pageContent` | `pricing-page-header` section |
+| Documentation | `pageContent` | `docs-page-settings` (sectionType: `"page-settings"`) |
+| Blog | `pageContent` | `blog-page-settings` (sectionType: `"page-settings"`) |
+| Legal (Privacy/Security/Terms) | `pageContent` | `legal-page-settings` (sectionType: `"page-settings"`) |
+| Footer | `siteConfig` | key: `"footer"` |
+
+### Default Behavior (Opt-in vs Opt-out)
+
+Two default strategies depending on whether the pattern was previously hardcoded:
+
+| Strategy | Guard | Default | Used When |
+|----------|-------|---------|-----------|
+| **Opt-in** | `=== true` | OFF (hidden) | Pattern didn't exist on that page before |
+| **Opt-out** | `!== false` | ON (visible) | Pattern was hardcoded and always visible |
+
+**Example — Documentation page:**
+- Grid: `=== true` (opt-in, was never shown → default OFF)
+- Diagonal: `=== true` (opt-in, was never shown → default OFF)
+- Dotted: `!== false` (opt-out, was hardcoded → default ON)
+
+This ensures backward compatibility: existing published sections without the new fields show the same patterns as before.
+
+### Per-Page Pattern Defaults
+
+| Page | Grid Default | Dotted Default | Diagonal Default |
+|------|-------------|----------------|-----------------|
+| Documentation | OFF | ON | OFF |
+| Blog | OFF | ON | OFF |
+| Legal | OFF | ON | OFF |
+| Footer | OFF | OFF | ON (was hardcoded) |
+| Pricing | OFF | ON | OFF |
+
+### Overview Components with Pattern Toggles
+
+Each overview component (`CmsPageOverview`, `CmsPricingOverview`, `CmsDocOverview`, `CmsBlogOverview`, `CmsLegalOverview`) includes a "Background Patterns" section at the bottom with Switch toggles + `CmsSaveButton`. Pattern toggle state is synced from DB via `useEffect` and saved via `upsertSection` (pageContent) or `upsertConfig` (siteConfig).
+
+### Frontend Conditional Rendering
+
+CMS variant components and page wrappers query their pattern settings and conditionally render:
+
+```tsx
+{content.showGridPattern !== false && <GridPattern className="z-0" />}
+{content.showDiagonalStripes !== false && <DiagonalStripes className="..." />}
+{content.showDottedPattern !== false && <DottedPattern spacing={24} ... />}
+```
+
+**Static variants are NOT affected** — they always show all their original patterns as fallback.
 
 ---
 
@@ -840,6 +930,13 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `src/components/cms/CmsActivityBar.tsx` | Vertical icon nav, defines `CmsPageId` type |
 | `src/components/cms/CmsSidebar.tsx` | Dynamic sidebar, defines `CmsSectionId` + sub-page types |
 | `src/components/cms/CmsTopBar.tsx` | Top bar (expand toggle, theme, dashboard link, user) |
+| `src/components/cms/CmsMainOverview.tsx` | Main overview dashboard (all pages status summary, shown when no page selected) |
+| `src/components/cms/CmsPageOverview.tsx` | Overview dashboard for Home/About pages (section list + published status + pattern toggles) |
+| `src/components/cms/CmsPricingOverview.tsx` | Overview dashboard for Pricing page (plan list + pattern toggles) |
+| `src/components/cms/CmsDocOverview.tsx` | Overview dashboard for Documentation page (group list + pattern toggles) |
+| `src/components/cms/CmsBlogOverview.tsx` | Overview dashboard for Blog page (category counts + pattern toggles) |
+| `src/components/cms/CmsLegalOverview.tsx` | Overview dashboard for Legal page (page status + pattern toggles) |
+| `src/components/cms/CmsGlobalLayoutOverview.tsx` | Overview dashboard for Global Layout (config status) |
 
 ### Backend (Convex)
 
@@ -869,6 +966,7 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `src/components/admin/cms/AgentsSectionEditor.tsx` | Agents section form |
 | `src/components/admin/cms/CareerContactEditor.tsx` | Career & contact section form |
 | `src/components/admin/cms/PricingPlanEditor.tsx` | Pricing tier editor (gratis/bpp/pro) |
+| `src/components/admin/cms/PricingHeaderEditor.tsx` | Pricing header/teaser editor (title, badge, CTA, patterns) |
 | `src/components/admin/cms/RichTextPageEditor.tsx` | TipTap page editor (privacy/security/terms) |
 | `src/components/admin/cms/HeaderConfigEditor.tsx` | Header nav + logos form |
 | `src/components/admin/cms/FooterConfigEditor.tsx` | Footer sections + social + logos form |
@@ -878,6 +976,7 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `src/components/admin/cms/BlogPostEditor.tsx` | Blog post detail editor |
 | `src/components/admin/cms/TipTapEditor.tsx` | Shared WYSIWYG editor |
 | `src/components/admin/cms/CmsImageUpload.tsx` | Shared image upload component |
+| `src/components/admin/cms/CmsSaveButton.tsx` | Shared save button (idle → saving → saved states) |
 | `src/components/admin/cms/blocks/SectionBlockEditor.tsx` | Documentation section block editor |
 | `src/components/admin/cms/blocks/InfoCardBlockEditor.tsx` | Documentation info card block editor |
 | `src/components/admin/cms/blocks/CtaCardsBlockEditor.tsx` | Documentation CTA cards block editor |
@@ -910,14 +1009,17 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `src/components/about/CareerContactSection.tsx` | Career-Contact wrapper |
 | `src/components/about/CareerContactSectionStatic.tsx` | Career-Contact static fallback |
 | `src/components/about/CareerContactSectionCMS.tsx` | Career-Contact CMS renderer |
-| `src/components/marketing/CmsPageWrapper.tsx` | Rich text page wrapper |
+| `src/components/marketing/CmsPageWrapper.tsx` | Rich text page wrapper (queries legal-page-settings for patterns) |
 | `src/components/marketing/RichTextRenderer.tsx` | TipTap read-only renderer |
-| `src/components/marketing/SimplePolicyPage.tsx` | Static policy page layout |
+| `src/components/marketing/SimplePolicyPage.tsx` | Static policy page layout (queries legal-page-settings for patterns) |
+| `src/components/marketing/blog/BlogLandingPage.tsx` | Blog landing page (queries blog-page-settings for patterns) |
+| `src/components/marketing/documentation/DocumentationPage.tsx` | Documentation page (queries docs-page-settings for patterns) |
+| `src/components/marketing/SectionBackground.tsx` | Background pattern components (GridPattern, DottedPattern, DiagonalStripes) |
 | `src/components/marketing/pricing-teaser/PricingTeaser.tsx` | Home page pricing teaser (reads from DB) |
 | `src/components/marketing/pricing-teaser/TeaserCard.tsx` | Individual teaser card (with price masking) |
 | `src/components/marketing/pricing/PricingCard.tsx` | Full pricing page card (with price masking) |
 | `src/components/layout/header/GlobalHeader.tsx` | Header with inline CMS fallback |
-| `src/components/layout/footer/Footer.tsx` | Footer with inline CMS fallback |
+| `src/components/layout/footer/Footer.tsx` | Footer with inline CMS fallback + pattern toggles from siteConfig |
 
 ### Utilities
 

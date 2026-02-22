@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react"
 import type { Doc } from "@convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 import { SectionBadge } from "@/components/ui/section-badge"
-import { GridPattern, DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 
 type AgentTeaserItem = {
   id: string
@@ -183,8 +183,9 @@ export function AgentsSectionCMS({ content }: AgentsSectionCMSProps) {
       className="relative flex flex-col overflow-hidden bg-background md:h-[100svh] md:justify-center"
       id="agents"
     >
-      <GridPattern className="z-0" />
-      <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+      {content.showGridPattern !== false && <GridPattern className="z-0" />}
+      {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-70" />}
+      {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
         <div className="grid grid-cols-16 content-center gap-comfort">

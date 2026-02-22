@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
 import { X as XIcon, Linkedin, Instagram, Upload, Globe } from "iconoir-react"
 import type { ComponentType, SVGProps } from "react"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 // Map platform names to iconoir icons (same as frontend Footer)
 const PLATFORM_ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
@@ -148,8 +149,9 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   const [companyDescription, setCompanyDescription] = useState("")
   const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(null)
   const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
+  const [showGridPattern, setShowGridPattern] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
 
   // Sync form state when config data loads
   useEffect(() => {
@@ -164,6 +166,9 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
       setCompanyDescription((config.companyDescription as string | undefined) ?? "")
       setLogoDarkId((config.logoDarkId as Id<"_storage"> | undefined) ?? null)
       setLogoLightId((config.logoLightId as Id<"_storage"> | undefined) ?? null)
+      setShowGridPattern(config.showGridPattern !== false)
+      setShowDottedPattern(config.showDottedPattern !== false)
+      setShowDiagonalStripes(config.showDiagonalStripes !== false)
     } else if (config === null) {
       setFooterSections(DEFAULT_SECTIONS)
       setSocialLinks(DEFAULT_SOCIALS)
@@ -259,34 +264,30 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   // --- Save ---
 
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertConfig({
-        requestorId: userId,
-        key: "footer",
-        footerSections: footerSections.map((section) => ({
-          title: section.title,
-          links: section.links.map((link) => ({
-            label: link.label,
-            href: link.href,
-          })),
+    await upsertConfig({
+      requestorId: userId,
+      key: "footer",
+      footerSections: footerSections.map((section) => ({
+        title: section.title,
+        links: section.links.map((link) => ({
+          label: link.label,
+          href: link.href,
         })),
-        socialLinks: socialLinks.map((s) => ({
-          platform: s.platform,
-          url: s.url,
-          isVisible: s.isVisible,
-          iconId: s.iconId ?? undefined,
-        })),
-        copyrightText,
-        companyDescription,
-        logoDarkId: logoDarkId ?? undefined,
-        logoLightId: logoLightId ?? undefined,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+      })),
+      socialLinks: socialLinks.map((s) => ({
+        platform: s.platform,
+        url: s.url,
+        isVisible: s.isVisible,
+        iconId: s.iconId ?? undefined,
+      })),
+      copyrightText,
+      companyDescription,
+      logoDarkId: logoDarkId ?? undefined,
+      logoLightId: logoLightId ?? undefined,
+      showGridPattern,
+      showDottedPattern,
+      showDiagonalStripes,
+    })
   }
 
   // Loading skeleton
@@ -409,7 +410,8 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
         </div>
       </div>
 
-      {/* Group 2: Social Links */}
+      {/* ── Cluster 2: Social Links ── */}
+      <div className="border-t border-border" />
       <div className="space-y-4">
         <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Social Links
@@ -481,7 +483,8 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
         </div>
       </div>
 
-      {/* Group 3: Bottom Bar + Footer Logo — side by side, each 50% */}
+      {/* ── Cluster 3: Bottom Bar + Footer Logo ── */}
+      <div className="border-t border-border" />
       <div className="grid grid-cols-2 items-stretch gap-4">
         {/* Bottom Bar — 50% */}
         <div className="space-y-3">
@@ -545,17 +548,32 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
         </div>
       </div>
 
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
+      {/* ── Cluster 4: Background Patterns ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Background Patterns
+        </span>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Grid Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Dotted Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Diagonal Stripes
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+        </div>
       </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

@@ -7,7 +7,7 @@ import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { DocumentationSection, NavigationGroup, SearchRecord } from "./types"
 import { tokensFromText, scoreDoc, baseNorm, tokenize, stemToken } from "./utils"
-import { DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DottedPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
 import { DocSidebar } from "./DocSidebar"
 import { DocArticle } from "./DocArticle"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -19,6 +19,10 @@ function DocumentationContent() {
   const sections = useQuery(api.documentationSections.getPublishedSections) as
     | DocumentationSection[]
     | undefined
+  const pageSettings = useQuery(api.pageContent.getSection, {
+    pageSlug: "docs",
+    sectionSlug: "docs-page-settings",
+  })
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -181,7 +185,10 @@ function DocumentationContent() {
 
   return (
     <div className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)] pt-[var(--header-h)]">
-      <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
+      {/* Background patterns — conditional via CMS when page-settings published */}
+      {pageSettings?.isPublished && pageSettings.showGridPattern === true && <GridPattern className="z-0" />}
+      {(!pageSettings?.isPublished || pageSettings.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
+      {pageSettings?.isPublished && pageSettings.showDiagonalStripes === true && <DiagonalStripes className="z-0" />}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 lg:px-8">
         <div className="grid grid-cols-1 gap-comfort pb-6 md:grid-cols-16">
           <aside className="hidden md:col-span-4 md:block">

@@ -5,7 +5,7 @@ import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { FilterList } from "iconoir-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DottedPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
 import { BlogFeedSection } from "./BlogFeedSection"
 import { BlogFiltersPanel } from "./BlogFiltersPanel"
 import { BlogHeadlineSection } from "./BlogHeadlineSection"
@@ -29,6 +29,10 @@ export function BlogLandingPage() {
 
   const posts = useQuery(api.blog.getPublishedPosts, { category: undefined, limit: 200 })
   const featuredPost = useQuery(api.blog.getFeaturedPost)
+  const pageSettings = useQuery(api.pageContent.getSection, {
+    pageSlug: "blog",
+    sectionSlug: "blog-page-settings",
+  })
 
   const allPosts = useMemo(() => (posts ?? []) as BlogPost[], [posts])
 
@@ -101,7 +105,10 @@ export function BlogLandingPage() {
   return (
     <div className="bg-background text-foreground">
       <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
-        <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
+        {/* Background patterns — conditional via CMS page-settings */}
+        {pageSettings?.isPublished && pageSettings.showGridPattern === true && <GridPattern className="z-0" />}
+        {(!pageSettings?.isPublished || pageSettings.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
+        {pageSettings?.isPublished && pageSettings.showDiagonalStripes === true && <DiagonalStripes className="z-0" />}
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(var(--header-h)+16px)] md:px-8 md:pb-10 md:pt-[calc(var(--header-h)+20px)]">
           <div className="grid grid-cols-1 gap-comfort md:grid-cols-16">

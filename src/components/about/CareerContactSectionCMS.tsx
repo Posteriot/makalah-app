@@ -2,7 +2,7 @@
 
 import type { Doc } from "@convex/_generated/dataModel"
 import { SectionBadge } from "@/components/ui/section-badge"
-import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 import { AccordionAbout } from "./AccordionAbout"
 import { getIcon } from "./icons"
 import { cn } from "@/lib/utils"
@@ -54,7 +54,9 @@ export function CareerContactSectionCMS({ content }: CareerContactSectionCMSProp
           </div>
           <p>
             <a
-              href={`mailto:${contactInfo.email}`}
+              href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(contactInfo.email)}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-interface text-sm text-[color:var(--slate-700)] dark:text-[color:var(--slate-50)] hover:underline"
             >
               {contactInfo.email}
@@ -75,8 +77,9 @@ export function CareerContactSectionCMS({ content }: CareerContactSectionCMSProp
 
   return (
     <section className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)]" id="karier-kontak">
-      <DiagonalStripes className="opacity-40" />
-      <DottedPattern spacing={24} withRadialMask={true} />
+      {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
+      {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
+      {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
         <div className="grid grid-cols-1 gap-comfort md:grid-cols-16">

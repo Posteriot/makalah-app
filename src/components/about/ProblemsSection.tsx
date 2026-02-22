@@ -12,6 +12,7 @@ export function ProblemsSection() {
   })
 
   if (section === undefined) return null
-  if (section === null || !section.isPublished) return <ProblemsSectionStatic />
+  // No CMS data or unpublished → hidden
+  if (section === null || !section.isPublished) return null
   return <ProblemsSectionCMS content={section} />
 }

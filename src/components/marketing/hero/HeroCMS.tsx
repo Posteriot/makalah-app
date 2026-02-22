@@ -5,7 +5,7 @@ import { api } from "@convex/_generated/api"
 import type { Doc } from "@convex/_generated/dataModel"
 import { SectionBadge } from "@/components/ui/section-badge"
 import { SectionCTA } from "@/components/ui/section-cta"
-import { GridPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 import { HeroHeadingSvg } from "./HeroHeadingSvg"
 import { HeroResearchMock } from "./HeroResearchMock"
 import { ChatInputHeroMock } from "./ChatInputHeroMock"
@@ -39,8 +39,9 @@ export function HeroCMS({ content }: HeroCMSProps) {
 
   return (
     <section className="relative isolate min-h-[100svh] overflow-hidden bg-background">
-      <GridPattern className="z-0 opacity-80" />
-      <DiagonalStripes className="opacity-80" />
+      {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
+      {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-80" />}
+      {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-80" />}
 
       <div className="relative z-[1] mx-auto flex min-h-[100svh] max-w-7xl items-center px-4 py-10 md:px-8 md:py-24">
         <div className="grid grid-cols-1 gap-comfort lg:grid-cols-16 lg:gap-16">
@@ -52,9 +53,9 @@ export function HeroCMS({ content }: HeroCMSProps) {
               </SectionBadge>
             )}
 
-            {hasCmsHeading ? (
-              <h1 className="text-[0px] mt-4 leading-[0] w-full">
-                <span className="sr-only">{content.title ?? "Makalah AI"}</span>
+            <h1 className="text-[0px] mt-4 leading-[0] w-full">
+              <span className="sr-only">{content.title ?? "Makalah AI"}</span>
+              {hasCmsHeading ? (
                 <span className="block w-full max-w-[520px] h-auto" aria-hidden="true">
                   {headingDarkUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -73,17 +74,10 @@ export function HeroCMS({ content }: HeroCMSProps) {
                     />
                   )}
                 </span>
-              </h1>
-            ) : content.title ? (
-              <h1 className="text-narrative text-3xl md:text-5xl font-semibold tracking-tight mt-4 max-w-[520px]">
-                {content.title}
-              </h1>
-            ) : (
-              <h1 className="text-[0px] mt-4 leading-[0] w-full">
-                <span className="sr-only">Makalah AI</span>
+              ) : (
                 <HeroHeadingSvg />
-              </h1>
-            )}
+              )}
+            </h1>
 
             {content.subtitle && (
               <p className="text-narrative text-base md:text-2xl font-normal text-slate-600 dark:text-slate-200 max-w-[520px] mt-4 mb-0">

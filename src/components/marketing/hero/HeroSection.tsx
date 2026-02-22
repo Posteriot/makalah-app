@@ -21,10 +21,8 @@ export function HeroSection() {
   // Loading — return null (hero will pop in, acceptable for marketing page)
   if (section === undefined) return null
 
-  // No CMS data or unpublished → static fallback
-  if (section === null || !section.isPublished) {
-    return <HeroStatic />
-  }
+  // No CMS data or unpublished → hidden
+  if (section === null || !section.isPublished) return null
 
   // CMS data → render CMS version
   return <HeroCMS content={section} />

@@ -25,6 +25,15 @@ import { DocSectionEditor } from "@/components/admin/cms/DocSectionEditor"
 import { BlogPostListEditor } from "@/components/admin/cms/BlogPostListEditor"
 import { BlogPostEditor } from "@/components/admin/cms/BlogPostEditor"
 import { PricingPlanEditor } from "@/components/admin/cms/PricingPlanEditor"
+import { PricingHeaderEditor } from "@/components/admin/cms/PricingHeaderEditor"
+import { CmsPageOverview } from "./CmsPageOverview"
+import { CmsPricingOverview } from "./CmsPricingOverview"
+import { CmsDocOverview } from "./CmsDocOverview"
+import { CmsBlogOverview } from "./CmsBlogOverview"
+import { CmsLegalOverview } from "./CmsLegalOverview"
+import { CmsGlobalLayoutOverview } from "./CmsGlobalLayoutOverview"
+import { CmsMainOverview } from "./CmsMainOverview"
+import { HOME_SECTIONS, ABOUT_SECTIONS } from "./CmsSidebar"
 
 /**
  * CmsShell - 4-column CSS Grid orchestrator for CMS layout
@@ -55,7 +64,7 @@ export function CmsShell({ userId }: CmsShellProps) {
   const [selectedDocSlug, setSelectedDocSlug] = useState<string | null>(null)
   const [activeBlogCategory, setActiveBlogCategory] = useState<BlogCategoryId | null>(null)
   const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(null)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
 
   // Reset all drill-down state when page changes
@@ -68,6 +77,8 @@ export function CmsShell({ userId }: CmsShellProps) {
     setSelectedDocSlug(null)
     setActiveBlogCategory(null)
     setSelectedBlogSlug(null)
+    // Auto-expand sidebar when navigating to a page
+    setIsSidebarCollapsed(false)
   }, [])
 
   // Calculate max width (50% of viewport)
@@ -107,6 +118,18 @@ export function CmsShell({ userId }: CmsShellProps) {
     setIsSidebarCollapsed(false)
   }, [])
 
+  // Reset to main overview (no page selected)
+  const handleResetToOverview = useCallback(() => {
+    setActivePage(null)
+    setActiveSection(null)
+    setActiveLegalPage(null)
+    setActiveGlobalLayoutPage(null)
+    setActiveDocGroup(null)
+    setSelectedDocSlug(null)
+    setActiveBlogCategory(null)
+    setSelectedBlogSlug(null)
+  }, [])
+
   // Sidebar toggle handler
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarCollapsed((prev) => !prev)
@@ -119,6 +142,7 @@ export function CmsShell({ userId }: CmsShellProps) {
     if (activePage === "home" && activeSection === "benefits") return <BenefitsSectionEditor userId={userId} />
     if (activePage === "home" && activeSection === "features-workflow") return <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-workflow" userId={userId} />
     if (activePage === "home" && activeSection === "features-refrasa") return <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-refrasa" userId={userId} />
+    if (activePage === "home" && activeSection === "pricing-teaser") return <PricingHeaderEditor pageSlug="home" sectionSlug="pricing-teaser" userId={userId} onNavigateToPricing={() => { setActivePage("pricing"); setActiveSection(null) }} />
 
     // About sections
     if (activePage === "about" && activeSection === "manifesto") return <ManifestoSectionEditor userId={userId} />
@@ -127,6 +151,7 @@ export function CmsShell({ userId }: CmsShellProps) {
     if (activePage === "about" && activeSection === "career-contact") return <CareerContactEditor userId={userId} />
 
     // Pricing sections
+    if (activePage === "pricing" && activeSection === "pricing-header") return <PricingHeaderEditor pageSlug="pricing" sectionSlug="pricing-page-header" userId={userId} />
     if (activePage === "pricing" && activeSection === "pricing-gratis") return <PricingPlanEditor slug="gratis" userId={userId} />
     if (activePage === "pricing" && activeSection === "pricing-bpp") return <PricingPlanEditor slug="bpp" userId={userId} />
     if (activePage === "pricing" && activeSection === "pricing-pro") return <PricingPlanEditor slug="pro" userId={userId} />
@@ -197,75 +222,86 @@ export function CmsShell({ userId }: CmsShellProps) {
     // Empty states for pages that need child selection
     if (activePage === "home" && !activeSection) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih section dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsPageOverview
+          pageTitle="Home"
+          pageSlug="home"
+          sections={HOME_SECTIONS}
+          userId={userId}
+          onSectionClick={(id) => setActiveSection(id)}
+        />
       )
     }
     if (activePage === "about" && !activeSection) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih section dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsPageOverview
+          pageTitle="About"
+          pageSlug="about"
+          sections={ABOUT_SECTIONS}
+          userId={userId}
+          onSectionClick={(id) => setActiveSection(id)}
+        />
       )
     }
     if (activePage === "pricing" && !activeSection) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih paket dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsPricingOverview
+          userId={userId}
+          onSectionClick={(id) => setActiveSection(id)}
+          onNavigateToHeader={() => {
+            setActivePage("global-layout")
+            setActiveGlobalLayoutPage("header")
+          }}
+        />
       )
     }
     if (activePage === "legal" && !activeLegalPage) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih halaman dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsLegalOverview
+          userId={userId}
+          onPageClick={(id) => setActiveLegalPage(id)}
+        />
       )
     }
     if (activePage === "global-layout" && !activeGlobalLayoutPage) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih komponen dari sidebar untuk mulai editing
-          </p>
-        </div>
+        <CmsGlobalLayoutOverview
+          userId={userId}
+          onPageClick={(id) => setActiveGlobalLayoutPage(id)}
+        />
       )
     }
     if (activePage === "documentation" && !activeDocGroup) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih grup dokumentasi dari sidebar
-          </p>
-        </div>
+        <CmsDocOverview
+          userId={userId}
+          onGroupClick={(id) => setActiveDocGroup(id)}
+          onNavigateToHeader={() => {
+            setActivePage("global-layout")
+            setActiveGlobalLayoutPage("header")
+          }}
+        />
       )
     }
     if (activePage === "blog" && !activeBlogCategory) {
       return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-interface text-sm text-muted-foreground">
-            Pilih kategori blog dari sidebar
-          </p>
-        </div>
+        <CmsBlogOverview
+          userId={userId}
+          onCategoryClick={(id) => setActiveBlogCategory(id)}
+          onCreateNewPost={() => setSelectedBlogSlug("__new__")}
+          onNavigateToHeader={() => {
+            setActivePage("global-layout")
+            setActiveGlobalLayoutPage("header")
+          }}
+        />
       )
     }
 
-    // Default empty state
+    // Default: main overview
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-interface text-sm text-muted-foreground">
-          Pilih halaman untuk mulai editing
-        </p>
-      </div>
+      <CmsMainOverview
+        userId={userId}
+        onPageClick={handlePageChange}
+      />
     )
   }
 
@@ -298,6 +334,7 @@ export function CmsShell({ userId }: CmsShellProps) {
         )}
       >
         <CmsSidebar
+          userId={userId}
           activePage={activePage}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
@@ -307,9 +344,14 @@ export function CmsShell({ userId }: CmsShellProps) {
           onGlobalLayoutPageChange={setActiveGlobalLayoutPage}
           activeDocGroup={activeDocGroup}
           onDocGroupChange={setActiveDocGroup}
+          selectedDocSlug={selectedDocSlug}
+          onDocSlugChange={setSelectedDocSlug}
           activeBlogCategory={activeBlogCategory}
           onBlogCategoryChange={setActiveBlogCategory}
+          selectedBlogSlug={selectedBlogSlug}
+          onBlogSlugChange={setSelectedBlogSlug}
           onCollapseSidebar={handleToggleSidebar}
+          onResetToOverview={handleResetToOverview}
         />
       </aside>
 

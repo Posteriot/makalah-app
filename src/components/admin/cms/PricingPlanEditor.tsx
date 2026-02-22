@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 type CreditPackage = {
   type: "paper" | "extension_s" | "extension_m"
@@ -49,8 +50,6 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
   const [creditPackages, setCreditPackages] = useState<CreditPackage[]>([])
 
   // UI state
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
 
   // Sync from DB
   useEffect(() => {
@@ -91,37 +90,30 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
 
   async function handleSave() {
     if (!plan) return
-    setIsSaving(true)
-    try {
-      await updatePlan({
+    await updatePlan({
+      requestorId: userId,
+      id: plan._id as Id<"pricingPlans">,
+      name,
+      ...(!isGratis && { price, priceValue, isDisabled }),
+      unit,
+      tagline,
+      teaserDescription,
+      teaserCreditNote,
+      features,
+      ctaText,
+      ctaHref,
+      isHighlighted,
+    })
+
+    // Save credit packages separately for BPP
+    if (isBpp && creditPackages.length > 0) {
+      await updatePackages({
         requestorId: userId,
         id: plan._id as Id<"pricingPlans">,
-        name,
-        ...(!isGratis && { price, priceValue, isDisabled }),
-        unit,
-        tagline,
-        teaserDescription,
-        teaserCreditNote,
-        features,
-        ctaText,
-        ctaHref,
-        isHighlighted,
+        creditPackages,
       })
-
-      // Save credit packages separately for BPP
-      if (isBpp && creditPackages.length > 0) {
-        await updatePackages({
-          requestorId: userId,
-          id: plan._id as Id<"pricingPlans">,
-          creditPackages,
-        })
-      }
-
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
     }
+
   }
 
   // Loading skeleton
@@ -388,18 +380,7 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
           ))}
         </div>
       )}
-
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
-      </div>
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

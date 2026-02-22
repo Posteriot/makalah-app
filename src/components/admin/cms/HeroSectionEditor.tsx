@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CmsImageUpload } from "./CmsImageUpload"
+import { CmsSaveButton } from "./CmsSaveButton"
 
 type HeroSectionEditorProps = {
   userId: Id<"users">
@@ -33,10 +34,11 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
   const [primaryImageAlt, setPrimaryImageAlt] = useState("")
   const [headingImageDarkId, setHeadingImageDarkId] = useState<Id<"_storage"> | null>(null)
   const [headingImageLightId, setHeadingImageLightId] = useState<Id<"_storage"> | null>(null)
+  const [showGridPattern, setShowGridPattern] = useState(true)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
+  const [showDottedPattern, setShowDottedPattern] = useState(true)
   const [isPublished, setIsPublished] = useState(false)
 
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState("Simpan")
 
   // Sync form state when section data loads
   useEffect(() => {
@@ -50,36 +52,35 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
       setPrimaryImageAlt(section.primaryImageAlt ?? "")
       setHeadingImageDarkId(section.headingImageDarkId ?? null)
       setHeadingImageLightId(section.headingImageLightId ?? null)
+      setShowGridPattern(section.showGridPattern !== false)
+      setShowDiagonalStripes(section.showDiagonalStripes !== false)
+      setShowDottedPattern(section.showDottedPattern !== false)
       setIsPublished(section.isPublished ?? false)
     }
   }, [section])
 
   async function handleSave() {
-    setIsSaving(true)
-    try {
-      await upsertSection({
-        requestorId: userId,
-        id: section?._id,
-        pageSlug: "home",
-        sectionSlug: "hero",
-        sectionType: "hero",
-        title,
-        subtitle,
-        badgeText,
-        ctaText,
-        ctaHref,
-        primaryImageId: primaryImageId ?? undefined,
-        primaryImageAlt,
-        headingImageDarkId: headingImageDarkId ?? undefined,
-        headingImageLightId: headingImageLightId ?? undefined,
-        isPublished,
-        sortOrder: 1,
-      })
-      setSaveLabel("Tersimpan!")
-      setTimeout(() => setSaveLabel("Simpan"), 2000)
-    } finally {
-      setIsSaving(false)
-    }
+    await upsertSection({
+      requestorId: userId,
+      id: section?._id,
+      pageSlug: "home",
+      sectionSlug: "hero",
+      sectionType: "hero",
+      title,
+      subtitle,
+      badgeText,
+      ctaText,
+      ctaHref,
+      primaryImageId: primaryImageId ?? undefined,
+      primaryImageAlt,
+      headingImageDarkId: headingImageDarkId ?? undefined,
+      headingImageLightId: headingImageLightId ?? undefined,
+      showGridPattern,
+      showDiagonalStripes,
+      showDottedPattern,
+      isPublished,
+      sortOrder: 1,
+    })
   }
 
   // Loading skeleton
@@ -112,18 +113,21 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
         <div className="mt-2 border-t border-border" />
       </div>
 
-      {/* Form fields */}
+      {/* ── Cluster 1: Text Content ── */}
       <div className="space-y-4">
-        {/* Title */}
+        {/* Title (SEO only) */}
         <div>
           <label className="text-interface mb-1 block text-xs font-medium text-muted-foreground">
-            Title
+            Title (SEO / Accessibility)
           </label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Judul hero section"
+            placeholder="Teks heading untuk SEO dan screen reader"
           />
+          <p className="text-interface mt-1 text-[10px] text-muted-foreground">
+            Tidak tampil di halaman — visual heading menggunakan Heading Image di bawah
+          </p>
         </div>
 
         {/* Subtitle */}
@@ -174,36 +178,40 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
             />
           </div>
         </div>
+      </div>
 
-        {/* Heading SVG */}
-        <div className="space-y-2">
-          <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Heading SVG
-          </span>
-          <div className="grid grid-cols-2 gap-4">
-            <CmsImageUpload
-              currentImageId={headingImageDarkId}
-              onUpload={(storageId) => setHeadingImageDarkId(storageId)}
-              userId={userId}
-              label="Dark Mode"
-              aspectRatio="4/1"
-              fallbackPreviewUrl="/heading-light-color.svg"
-            />
-            <CmsImageUpload
-              currentImageId={headingImageLightId}
-              onUpload={(storageId) => setHeadingImageLightId(storageId)}
-              userId={userId}
-              label="Light Mode"
-              aspectRatio="4/1"
-              fallbackPreviewUrl="/heading-dark-color.svg"
-            />
-          </div>
-          <p className="text-interface text-xs text-muted-foreground">
-            Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang.
-          </p>
+      {/* ── Cluster 2: Heading Image ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Heading Image
+        </span>
+        <div className="grid grid-cols-2 gap-4">
+          <CmsImageUpload
+            currentImageId={headingImageDarkId}
+            onUpload={(storageId) => setHeadingImageDarkId(storageId)}
+            userId={userId}
+            label="Dark Mode"
+            aspectRatio="4/1"
+            fallbackPreviewUrl="/heading-light-color.svg"
+          />
+          <CmsImageUpload
+            currentImageId={headingImageLightId}
+            onUpload={(storageId) => setHeadingImageLightId(storageId)}
+            userId={userId}
+            label="Light Mode"
+            aspectRatio="4/1"
+            fallbackPreviewUrl="/heading-dark-color.svg"
+          />
         </div>
+        <p className="text-interface text-xs text-muted-foreground">
+          Dark mode = tampil saat tema gelap. Light mode = tampil saat tema terang.
+        </p>
+      </div>
 
-        {/* Hero Image */}
+      {/* ── Cluster 3: Hero Image ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-4">
         <CmsImageUpload
           currentImageId={primaryImageId}
           onUpload={(storageId) => setPrimaryImageId(storageId)}
@@ -224,27 +232,58 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
             placeholder="Deskripsi gambar untuk aksesibilitas"
           />
         </div>
+      </div>
 
-        {/* Published toggle */}
+      {/* ── Cluster 4: Animation Info ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-1 rounded-action border border-border bg-muted/30 p-3">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Animasi Hero
+        </span>
+        <p className="text-interface text-xs text-muted-foreground">
+          Chat input mockup dengan animasi typing otomatis. Komponen ini hardcoded dan tidak dikelola melalui CMS.
+        </p>
+        <p className="text-interface text-[10px] font-medium text-muted-foreground/80">
+          Path: <code className="rounded bg-muted px-1 py-0.5 text-[10px]">src/components/marketing/hero/ChatInputHeroMock.tsx</code>
+        </p>
+      </div>
+
+      {/* ── Cluster 5: Background Patterns ── */}
+      <div className="border-t border-border" />
+      <div className="space-y-2">
+        <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Background Patterns
+        </span>
         <div className="flex items-center gap-3">
           <label className="text-interface text-xs font-medium text-muted-foreground">
-            Published
+            Grid Pattern
           </label>
-          <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showGridPattern} onCheckedChange={setShowGridPattern} />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Diagonal Stripes
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDiagonalStripes} onCheckedChange={setShowDiagonalStripes} />
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-interface text-xs font-medium text-muted-foreground">
+            Dotted Pattern
+          </label>
+          <Switch className="data-[state=checked]:bg-emerald-600" checked={showDottedPattern} onCheckedChange={setShowDottedPattern} />
         </div>
       </div>
 
-      {/* Save button */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-action bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSaving ? "Menyimpan..." : saveLabel}
-        </button>
+      {/* ── Cluster 6: Published ── */}
+      <div className="border-t border-border" />
+      <div className="flex items-center gap-3">
+        <label className="text-interface text-xs font-medium text-muted-foreground">
+          Published
+        </label>
+        <Switch className="data-[state=checked]:bg-emerald-600" checked={isPublished} onCheckedChange={setIsPublished} />
       </div>
+
+      <CmsSaveButton onSave={handleSave} />
     </div>
   )
 }

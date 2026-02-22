@@ -1,7 +1,9 @@
 "use client"
 
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
 import { SectionBadge } from "@/components/ui/section-badge"
-import { DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DottedPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
 import { motion } from "framer-motion"
 
 type SimplePolicyPageProps = {
@@ -11,6 +13,10 @@ type SimplePolicyPageProps = {
 }
 
 export function SimplePolicyPage({ badge, title, children }: SimplePolicyPageProps) {
+    const pageSettings = useQuery(api.pageContent.getSection, {
+        pageSlug: "legal",
+        sectionSlug: "legal-page-settings",
+    })
     const lastUpdatedLabel = new Intl.DateTimeFormat("id-ID", {
         year: "numeric",
         month: "long",
@@ -21,7 +27,10 @@ export function SimplePolicyPage({ badge, title, children }: SimplePolicyPagePro
 
     return (
         <div className="relative isolate min-h-screen overflow-hidden bg-[color:var(--section-bg-alt)] pt-[var(--header-h)] pb-24">
-            <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
+            {/* Background patterns — conditional via CMS page-settings */}
+            {pageSettings?.isPublished && pageSettings.showGridPattern === true && <GridPattern className="z-0" />}
+            {(!pageSettings?.isPublished || pageSettings.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
+            {pageSettings?.isPublished && pageSettings.showDiagonalStripes === true && <DiagonalStripes className="z-0" />}
 
             <div className="relative z-10 mx-auto w-full max-w-7xl px-4 lg:px-8">
                 <div className="mx-auto mt-4 w-full max-w-4xl rounded-shell bg-card/90 px-5 py-8 backdrop-blur-[1px] dark:bg-slate-900 md:px-9 md:py-10">
