@@ -86,7 +86,7 @@ Referensi gate:
 | `src/components/chat/QuotaWarningBanner.tsx` | [ ] | [ ] | [ ] | [ ] |
 | `src/components/chat/SearchStatusIndicator.tsx` | [x] | [x] | [ ] | [x] |
 | `src/components/chat/SourcesIndicator.tsx` | [x] | [x] | [ ] | [x] |
-| `src/components/chat/ToolStateIndicator.tsx` | [ ] | [ ] | [ ] | [ ] |
+| `src/components/chat/ToolStateIndicator.tsx` | [x] | [x] | [ ] | [x] |
 
 ## 8. Evidence Template (Wajib Diisi)
 
