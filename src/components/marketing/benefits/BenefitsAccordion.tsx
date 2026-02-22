@@ -24,7 +24,6 @@ import {
 type BenefitItem = {
   title: string
   description: string
-  icon?: string
 }
 
 type BenefitsAccordionProps = {

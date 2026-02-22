@@ -28,12 +28,12 @@ export function BenefitsSectionWrapper() {
   const items = section.items?.map((item) => ({
     title: item.title,
     description: item.description,
-    icon: item.icon,
   }))
 
   return (
     <BenefitsSection
       items={items}
+      showGridPattern={section.showGridPattern}
       showDiagonalStripes={section.showDiagonalStripes}
       showDottedPattern={section.showDottedPattern}
     />

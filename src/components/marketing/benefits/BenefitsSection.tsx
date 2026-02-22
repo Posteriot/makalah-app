@@ -3,7 +3,7 @@ import { BenefitsTitle } from "./BenefitsTitle"
 import { BentoBenefitsGrid } from "./BentoBenefitsGrid"
 import { BenefitsAccordion } from "./BenefitsAccordion"
 import { DocsCTA } from "./DocsCTA"
-import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
+import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 
 /**
  * BenefitsSection - "Kenapa Makalah AI?" section
@@ -20,22 +20,23 @@ import { DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBa
 type BenefitItem = {
   title: string
   description: string
-  icon?: string
 }
 
 type BenefitsSectionProps = {
   items?: BenefitItem[]
+  showGridPattern?: boolean
   showDiagonalStripes?: boolean
   showDottedPattern?: boolean
 }
 
-export function BenefitsSection({ items, showDiagonalStripes, showDottedPattern }: BenefitsSectionProps) {
+export function BenefitsSection({ items, showGridPattern, showDiagonalStripes, showDottedPattern }: BenefitsSectionProps) {
   return (
     <section
       className="relative isolate h-[100svh] min-h-[100svh] overflow-hidden bg-[var(--section-bg-alt)]"
       id="kenapa-makalah-ai"
     >
-      {/* Background patterns - using memoized React components */}
+      {/* Background patterns */}
+      {showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
       {showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 
