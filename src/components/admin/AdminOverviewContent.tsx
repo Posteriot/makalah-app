@@ -14,6 +14,7 @@ import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import type { AdminTabId } from "./adminPanelConfig"
+import { AiPerformanceReport } from "./AiPerformanceReport"
 
 type AdminOverviewContentProps = {
   userId: Id<"users">
@@ -123,6 +124,8 @@ export function AdminOverviewContent({
           Buka AI Ops
         </Link>
       </div>
+
+      <AiPerformanceReport userId={userId} />
 
       <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
         <div className="border-b border-border bg-slate-200/45 px-4 py-3 dark:bg-slate-900/50">
