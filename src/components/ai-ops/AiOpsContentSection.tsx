@@ -112,7 +112,7 @@ export function AiOpsContentSection({
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
           <div className="space-y-2">
-            <h1 className="flex items-center gap-2 text-2xl font-medium tracking-tight text-foreground">
+            <h1 className="flex items-center gap-2 text-2xl font-medium tracking-tight text-foreground md:text-3xl">
               <HeaderIcon className="h-6 w-6 text-foreground" />
               {currentTab.headerTitle}
             </h1>

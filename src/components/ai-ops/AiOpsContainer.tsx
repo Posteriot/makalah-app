@@ -38,7 +38,7 @@ export function AiOpsContainer({ userId }: AiOpsContainerProps) {
             type="button"
             onClick={() => setSidebarOpen((open) => !open)}
             aria-label={sidebarOpen ? "Tutup menu" : "Buka menu"}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] p-1 text-foreground transition-colors hover:text-foreground/70"
+            className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-[8px] p-1 text-foreground transition-colors hover:text-foreground/70"
           >
             {sidebarOpen ? (
               <SidebarCollapse className="h-7 w-7" strokeWidth={1.5} />
