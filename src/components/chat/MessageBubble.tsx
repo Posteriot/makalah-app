@@ -571,38 +571,38 @@ export function MessageBubble({
                         </div>
                     ) : autoUserAction ? (
                         autoUserAction.kind === "approved" ? (
-                            <div className="rounded-action border border-[color:var(--chat-success)] bg-[var(--chat-card)] px-3 py-2.5">
-                                <div className="flex flex-wrap items-center gap-2 text-[var(--chat-success)]">
-                                    <CheckCircle className="h-4 w-4" />
-                                    <span className="rounded-badge border border-[color:var(--chat-success)] bg-[var(--chat-card)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
+                            <div className="rounded-action bg-[var(--chat-muted)] px-3 py-2.5">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4 text-[var(--chat-muted-foreground)]" />
+                                    <span className="text-[11px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-foreground)]">
                                         Tahap disetujui
                                     </span>
-                                    <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
-                                        Lifecycle artifak: terkunci
-                                    </span>
                                 </div>
-                                <div className="mt-1 text-sm font-medium text-[var(--chat-foreground)]">
+                                <div className="mt-1 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
+                                    Lifecycle artifak: terkunci
+                                </div>
+                                <div className="mt-1.5 text-sm font-semibold text-[var(--chat-foreground)]">
                                     {autoUserAction.stageLabel}
                                 </div>
-                                <div className="mt-1 text-xs font-mono text-[var(--chat-muted-foreground)]">
-                                    {autoUserAction.followupText || "Agen lanjut ke tahap berikutnya, artifak tahap ini jadi baseline referensi."}
+                                <div className="mt-0.5 text-xs font-mono text-[var(--chat-foreground)]">
+                                    {autoUserAction.followupText || "Lanjut ke tahap berikutnya."}
                                 </div>
                             </div>
                         ) : (
-                            <div className="rounded-action border border-[color:var(--chat-warning)] bg-[var(--chat-card)] px-3 py-2.5">
-                                <div className="flex flex-wrap items-center gap-2 text-[var(--chat-warning)]">
-                                    <EditPencil className="h-4 w-4" />
-                                    <span className="rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-card)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
+                            <div className="rounded-action bg-[var(--chat-muted)] px-3 py-2.5">
+                                <div className="flex items-center gap-2">
+                                    <EditPencil className="h-4 w-4 text-[var(--chat-muted-foreground)]" />
+                                    <span className="text-[11px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-foreground)]">
                                         Permintaan revisi
                                     </span>
-                                    <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
-                                        Lifecycle artifak: perlu update
-                                    </span>
                                 </div>
-                                <div className="mt-1 text-sm font-medium text-[var(--chat-foreground)]">
+                                <div className="mt-1 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
+                                    Lifecycle artifak: perlu update
+                                </div>
+                                <div className="mt-1.5 text-sm font-semibold text-[var(--chat-foreground)]">
                                     {autoUserAction.stageLabel}
                                 </div>
-                                <div className="mt-1 whitespace-pre-wrap text-xs font-mono leading-relaxed text-[var(--chat-muted-foreground)]">
+                                <div className="mt-0.5 whitespace-pre-wrap text-xs font-mono leading-relaxed text-[var(--chat-foreground)]">
                                     {autoUserAction.feedback || "Feedback revisi telah dikirim. Agen akan memperbarui artifak pada tahap ini."}
                                 </div>
                             </div>
