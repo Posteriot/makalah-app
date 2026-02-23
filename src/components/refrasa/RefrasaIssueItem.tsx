@@ -12,12 +12,12 @@ export function RefrasaIssueItem({ issue }: RefrasaIssueItemProps) {
   const getSeverityClassName = function(): string {
     switch (severity) {
       case "critical":
-        return "rounded-badge border border-[var(--ds-state-danger-border)] bg-[var(--ds-state-danger-bg)] text-[var(--ds-state-danger-fg)]"
+        return "rounded-badge border border-[color:var(--chat-destructive)] bg-[var(--chat-destructive)] text-[var(--chat-destructive-foreground)]"
       case "warning":
-        return "rounded-badge border border-[var(--ds-state-warning-border)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-state-warning-fg)]"
+        return "rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
       case "info":
       default:
-        return "rounded-badge border border-[var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] text-[var(--ds-artifact-chip-fg)]"
+        return "rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] text-[var(--chat-secondary-foreground)]"
     }
   }
 
@@ -46,22 +46,22 @@ export function RefrasaIssueItem({ issue }: RefrasaIssueItemProps) {
   }
 
   return (
-    <div className="rounded-action border border-[var(--ds-artifact-chip-border)] p-2.5 space-y-1.5">
+    <div className="rounded-action border border-[color:var(--chat-border)] p-2.5 space-y-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className={`${getSeverityClassName()} px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide`}>
           {getSeverityLabel()}
         </span>
-        <span className="text-[10px] font-mono text-[var(--ds-artifact-text-muted)]">
+        <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)]">
           {getTypeLabel()}
         </span>
       </div>
 
-      <p className="text-xs leading-relaxed text-[var(--ds-artifact-text-primary)]">
+      <p className="text-xs leading-relaxed text-[var(--chat-foreground)]">
         {message}
       </p>
 
       {suggestion && (
-        <p className="text-xs font-mono text-[var(--ds-artifact-text-muted)]">
+        <p className="text-xs font-mono text-[var(--chat-muted-foreground)]">
           → {suggestion}
         </p>
       )}

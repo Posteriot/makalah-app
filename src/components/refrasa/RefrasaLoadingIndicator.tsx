@@ -34,8 +34,8 @@ export function RefrasaLoadingIndicator({
     <div
       className={`flex flex-col items-center justify-center gap-3 py-8 ${className}`}
     >
-      <span className="h-6 w-6 border-2 border-[var(--ds-thinking-dot)] border-t-transparent rounded-full animate-spin" />
-      <p className="text-[11px] font-mono text-[var(--ds-artifact-text-muted)] animate-pulse">
+      <span className="h-6 w-6 border-2 border-[color:var(--chat-muted-foreground)] border-t-transparent rounded-full animate-spin" />
+      <p className="text-[11px] font-mono text-[var(--chat-muted-foreground)] animate-pulse">
         {LOADING_MESSAGES[currentIndex]}
       </p>
     </div>

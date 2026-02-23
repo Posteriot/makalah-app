@@ -177,7 +177,7 @@ export function RefrasaTabContent({
   if (artifact === null) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2">
-        <p className="text-xs font-mono text-[var(--ds-artifact-text-muted)]">
+        <p className="text-xs font-mono text-[var(--chat-muted-foreground)]">
           Artifact tidak ditemukan
         </p>
       </div>
@@ -209,26 +209,26 @@ export function RefrasaTabContent({
           {/* Desktop: side-by-side */}
           <div className="hidden flex-1 overflow-hidden md:grid md:grid-cols-2 md:gap-0">
             {/* Left: Original */}
-            <div className="overflow-y-auto border-r border-[var(--ds-artifact-divider-border)] p-4 scrollbar-thin">
-              <span className="mb-3 inline-block rounded-badge border border-[var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--ds-artifact-chip-fg)]">
+            <div className="overflow-y-auto border-r border-[color:var(--chat-border)] p-4 scrollbar-thin">
+              <span className="mb-3 inline-block rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-secondary-foreground)]">
                 Asli
               </span>
               {sourceArtifact?.content && (
                 <MarkdownRenderer
                   markdown={sourceArtifact.content}
-                  className="text-sm leading-relaxed text-[var(--ds-artifact-text-secondary)]"
+                  className="text-sm leading-relaxed text-[var(--chat-muted-foreground)]"
                   context="artifact"
                 />
               )}
             </div>
             {/* Right: Refrasa */}
             <div className="overflow-y-auto p-4 scrollbar-thin">
-              <span className="mb-3 inline-block rounded-badge border border-[var(--ds-artifact-mode-badge-border)] bg-[var(--ds-artifact-mode-badge-bg)] px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--ds-artifact-mode-badge-fg)]">
+              <span className="mb-3 inline-block rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-info)] px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-info-foreground)]">
                 Refrasa
               </span>
               <MarkdownRenderer
                 markdown={artifact.content}
-                className="text-sm leading-relaxed text-[var(--ds-artifact-text-primary)]"
+                className="text-sm leading-relaxed text-[var(--chat-foreground)]"
                 context="artifact"
               />
             </div>
@@ -236,13 +236,13 @@ export function RefrasaTabContent({
 
           {/* Mobile: toggle tabs */}
           <div className="flex flex-1 flex-col overflow-hidden md:hidden">
-            <div className="flex shrink-0 gap-2 border-b border-[var(--ds-artifact-divider-border)] px-4 py-2">
+            <div className="flex shrink-0 gap-2 border-b border-[color:var(--chat-border)] px-4 py-2">
               <button
                 onClick={() => setMobileCompareTab("asli")}
                 className={`rounded-badge border px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-widest transition-colors ${
                   mobileCompareTab === "asli"
-                    ? "border-[var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] text-[var(--ds-artifact-chip-fg)]"
-                    : "border-[var(--ds-artifact-chip-border)] bg-transparent text-[var(--ds-artifact-text-muted)] hover:bg-[var(--ds-artifact-chip-hover-bg)]"
+                    ? "border-[color:var(--chat-border)] bg-[var(--chat-secondary)] text-[var(--chat-secondary-foreground)]"
+                    : "border-[color:var(--chat-border)] bg-transparent text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)]"
                 }`}
               >
                 Asli
@@ -251,8 +251,8 @@ export function RefrasaTabContent({
                 onClick={() => setMobileCompareTab("refrasa")}
                 className={`rounded-badge border px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-widest transition-colors ${
                   mobileCompareTab === "refrasa"
-                    ? "border-[var(--ds-artifact-mode-badge-border)] bg-[var(--ds-artifact-mode-badge-bg)] text-[var(--ds-artifact-mode-badge-fg)]"
-                    : "border-[var(--ds-artifact-chip-border)] bg-transparent text-[var(--ds-artifact-text-muted)] hover:bg-[var(--ds-artifact-chip-hover-bg)]"
+                    ? "border-[color:var(--chat-info)] bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
+                    : "border-[color:var(--chat-border)] bg-transparent text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)]"
                 }`}
               >
                 Refrasa
@@ -261,7 +261,7 @@ export function RefrasaTabContent({
             <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
               <MarkdownRenderer
                 markdown={(mobileCompareTab === "asli" ? sourceArtifact?.content : artifact.content) ?? ""}
-                className="text-sm leading-relaxed text-[var(--ds-artifact-text-primary)]"
+                className="text-sm leading-relaxed text-[var(--chat-foreground)]"
                 context="artifact"
               />
             </div>
@@ -271,7 +271,7 @@ export function RefrasaTabContent({
         <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
           <MarkdownRenderer
             markdown={artifact.content}
-            className="text-sm leading-relaxed text-[var(--ds-artifact-text-primary)]"
+            className="text-sm leading-relaxed text-[var(--chat-foreground)]"
             context="artifact"
           />
         </div>

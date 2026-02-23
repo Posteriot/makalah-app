@@ -56,10 +56,10 @@ interface RefrasaToolbarProps {
 }
 
 const iconBtnClass =
-  "flex h-8 w-8 items-center justify-center rounded-action text-[var(--ds-artifact-icon-fg)] transition-colors hover:bg-[var(--ds-artifact-icon-hover-bg)] hover:text-[var(--ds-artifact-icon-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+  "flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring"
 
 const collapsibleTriggerClass =
-  "flex items-center gap-1.5 rounded-sm text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)] hover:text-[var(--ds-artifact-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+  "flex items-center gap-1.5 rounded-sm text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring"
 
 export function RefrasaToolbar({
   artifact,
@@ -114,16 +114,16 @@ export function RefrasaToolbar({
   }
 
   return (
-    <div className="shrink-0 border-b border-[var(--ds-artifact-divider-border)] bg-inherit px-3 py-2">
+    <div className="shrink-0 border-b border-[color:var(--chat-border)] bg-inherit px-3 py-2">
       <div className="flex items-center justify-between gap-2">
         {/* Left: source title + version select */}
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)]">
+          <span className="truncate text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
             REFRASA: {sourceTitle}
           </span>
 
           {versions.length > 1 && (
-            <span className="rounded-badge border border-[var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-px text-[10px] font-mono font-semibold text-[var(--ds-artifact-chip-fg)]">
+            <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-px text-[10px] font-mono font-semibold text-[var(--chat-secondary-foreground)]">
               {versions.length} versi
             </span>
           )}
@@ -135,7 +135,7 @@ export function RefrasaToolbar({
             >
               <SelectTrigger
                 size="sm"
-                className="h-6 w-auto min-w-0 gap-1 border-[var(--ds-artifact-viewer-select-border)] bg-[var(--ds-artifact-viewer-select-bg)] px-1.5 font-mono text-[10px] text-[var(--ds-artifact-viewer-select-fg)] hover:bg-[var(--ds-artifact-chip-hover-bg)]"
+                className="h-6 w-auto min-w-0 gap-1 border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 font-mono text-[10px] text-[var(--chat-secondary-foreground)] hover:bg-[var(--chat-accent)]"
               >
                 <SelectValue />
               </SelectTrigger>
@@ -160,7 +160,7 @@ export function RefrasaToolbar({
                   onClick={onToggleCompare}
                   className={cn(
                     iconBtnClass,
-                    showCompare && "bg-[var(--ds-state-info-bg)] text-[var(--ds-state-info-fg)]"
+                    showCompare && "bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
                   )}
                   aria-label="Bandingkan"
                 >
@@ -215,7 +215,7 @@ export function RefrasaToolbar({
                 onClick={onDelete}
                 className={cn(
                   iconBtnClass,
-                  "hover:bg-[var(--ds-state-danger-bg)] hover:text-[var(--ds-state-danger-fg)]"
+                  "hover:bg-[var(--chat-destructive)] hover:text-[var(--chat-destructive-foreground)]"
                 )}
                 aria-label="Hapus"
               >
@@ -233,10 +233,10 @@ export function RefrasaToolbar({
                   <button
                     onClick={() => setShowIssues((v) => !v)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                      "inline-flex items-center gap-1 rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring",
                       showIssues
-                        ? "border-[var(--ds-state-warning-border)] bg-[var(--ds-state-warning-chip-bg)] text-[var(--ds-state-warning-fg)]"
-                        : "border-[var(--ds-state-warning-border)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-state-warning-fg)] hover:border-[var(--ds-state-warning-border)] hover:bg-[var(--ds-state-warning-chip-bg)]"
+                        ? "border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
+                        : "border-[color:var(--chat-warning)] bg-[var(--chat-accent)] text-[var(--chat-warning)] hover:border-[color:var(--chat-warning)] hover:bg-[var(--chat-warning)]"
                     )}
                     aria-label="Lihat masalah"
                     aria-expanded={showIssues}
@@ -253,7 +253,7 @@ export function RefrasaToolbar({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
-                    className="flex h-8 w-8 cursor-default items-center justify-center rounded-action text-[var(--ds-artifact-text-subtle)]"
+                    className="flex h-8 w-8 cursor-default items-center justify-center rounded-action text-[var(--chat-muted-foreground)]"
                     aria-label="Tidak ada masalah"
                   >
                     <DocMagnifyingGlass className="h-4 w-4" />
@@ -267,7 +267,7 @@ export function RefrasaToolbar({
 
             {/* Issues floating panel */}
             {showIssues && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-[320px] overflow-hidden rounded-action border border-[var(--ds-artifact-panel-border)] bg-[var(--ds-artifact-panel-bg)] shadow-lg">
+              <div className="absolute right-0 top-full z-50 mt-2 w-[320px] overflow-hidden rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-card)] shadow-lg">
                 <div className="max-h-[300px] overflow-y-auto p-3 scrollbar-thin">
                   <div className="space-y-3">
                     {naturalnessIssues.length > 0 && (
@@ -341,10 +341,10 @@ export function RefrasaToolbar({
             onClick={onApply}
             disabled={isApplying || isApplied}
             className={cn(
-              "h-7 px-2.5 font-mono text-[11px] text-[var(--ds-refrasa-apply-fg)]",
+              "h-7 px-2.5 font-mono text-[11px] text-[var(--chat-primary-foreground)]",
               isApplied
-                ? "bg-[var(--ds-artifact-action-copied-bg)] hover:bg-[var(--ds-artifact-action-copied-bg)]"
-                : "bg-[var(--ds-refrasa-apply-bg)] hover:bg-[var(--ds-refrasa-apply-bg-hover)]"
+                ? "bg-[var(--chat-success)] hover:bg-[var(--chat-success)]"
+                : "bg-[var(--chat-primary)] hover:bg-[var(--chat-primary)]"
             )}
           >
             {isApplying ? (
