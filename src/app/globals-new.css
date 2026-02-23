@@ -1,380 +1,130 @@
 /* ==========================================================================
- * DS Chat V1 Staging Tokens
- * Scoped to chat only via [data-ds-scope="chat-v1"]
+ * Chat Token System (Staging)
+ * Scoped to [data-chat-scope] — will be promoted to globals.css when stable
+ * Palette: Makalah OKLCH (true neutral, hue 0)
+ * Rules: No transparency (except shadow/backdrop), min 4-step contrast gap
  * ========================================================================== */
 
-/* Reference aliases (all values must point to existing globals.css palette) */
-:root {
-  --ds-ref-slate-50: var(--slate-50);
-  --ds-ref-slate-100: var(--slate-100);
-  --ds-ref-slate-200: var(--slate-200);
-  --ds-ref-slate-300: var(--slate-300);
-  --ds-ref-slate-400: var(--slate-400);
-  --ds-ref-slate-500: var(--slate-500);
-  --ds-ref-slate-600: var(--slate-600);
-  --ds-ref-slate-700: var(--slate-700);
-  --ds-ref-slate-800: var(--slate-800);
-  --ds-ref-slate-900: var(--slate-900);
-  --ds-ref-slate-950: var(--slate-950);
-  --ds-ref-emerald-300: var(--emerald-300);
-  --ds-ref-emerald-400: var(--emerald-400);
-  --ds-ref-emerald-500: var(--emerald-500);
-  --ds-ref-emerald-600: var(--emerald-600);
-  --ds-ref-emerald-700: var(--emerald-700);
-  --ds-ref-amber-300: var(--amber-300);
-  --ds-ref-amber-500: var(--amber-500);
-  --ds-ref-amber-700: var(--amber-700);
-  --ds-ref-amber-800: var(--amber-800);
-  --ds-ref-amber-900: var(--amber-900);
-  --ds-ref-amber-100: var(--amber-100);
-  --ds-ref-amber-200: var(--amber-200);
-  --ds-ref-rose-400: var(--rose-400);
-  --ds-ref-rose-500: var(--rose-500);
-  --ds-ref-rose-200: var(--rose-200);
-  --ds-ref-rose-300: var(--rose-300);
-  --ds-ref-sky-300: var(--sky-300);
-  --ds-ref-sky-500: var(--sky-500);
-  --ds-ref-sky-700: var(--sky-700);
-  --ds-ref-neutral-0: var(--neutral-0);
-  --ds-ref-slate-400-a: var(--neutral-400-a25);
-  --ds-ref-slate-300-a: var(--neutral-400-a15);
-  --ds-ref-slate-500-a: var(--neutral-500-a50);
-  --ds-ref-slate-600-a: var(--neutral-600-a50);
-  --ds-ref-slate-700-a: var(--neutral-800-a40);
+@theme inline {
+  --color-chat-background: var(--chat-background);
+  --color-chat-foreground: var(--chat-foreground);
+  --color-chat-card: var(--chat-card);
+  --color-chat-card-foreground: var(--chat-card-foreground);
+  --color-chat-popover: var(--chat-popover);
+  --color-chat-popover-foreground: var(--chat-popover-foreground);
+  --color-chat-primary: var(--chat-primary);
+  --color-chat-primary-foreground: var(--chat-primary-foreground);
+  --color-chat-secondary: var(--chat-secondary);
+  --color-chat-secondary-foreground: var(--chat-secondary-foreground);
+  --color-chat-muted: var(--chat-muted);
+  --color-chat-muted-foreground: var(--chat-muted-foreground);
+  --color-chat-accent: var(--chat-accent);
+  --color-chat-accent-foreground: var(--chat-accent-foreground);
+  --color-chat-destructive: var(--chat-destructive);
+  --color-chat-destructive-foreground: var(--chat-destructive-foreground);
+  --color-chat-success: var(--chat-success);
+  --color-chat-success-foreground: var(--chat-success-foreground);
+  --color-chat-warning: var(--chat-warning);
+  --color-chat-warning-foreground: var(--chat-warning-foreground);
+  --color-chat-info: var(--chat-info);
+  --color-chat-info-foreground: var(--chat-info-foreground);
+  --color-chat-border: var(--chat-border);
+  --color-chat-input: var(--chat-input);
+  --color-chat-ring: var(--chat-ring);
+  --color-chat-sidebar: var(--chat-sidebar);
+  --color-chat-sidebar-foreground: var(--chat-sidebar-foreground);
+  --color-chat-sidebar-primary: var(--chat-sidebar-primary);
+  --color-chat-sidebar-primary-foreground: var(--chat-sidebar-primary-foreground);
+  --color-chat-sidebar-accent: var(--chat-sidebar-accent);
+  --color-chat-sidebar-accent-foreground: var(--chat-sidebar-accent-foreground);
+  --color-chat-sidebar-border: var(--chat-sidebar-border);
+  --color-chat-sidebar-ring: var(--chat-sidebar-ring);
 }
 
-[data-ds-scope="chat-v1"] {
-  --ds-surface-base: var(--ds-ref-slate-50);
-  --ds-surface-subtle: var(--ds-ref-slate-100);
-  --ds-surface-panel: var(--ds-ref-slate-100);
-  --ds-surface-elevated: var(--ds-ref-slate-200);
-  --ds-border-subtle: var(--ds-ref-slate-400-a);
-  --ds-border-strong: var(--ds-ref-slate-500-a);
-  --ds-text-toolbar-muted: var(--slate-600);
-  --ds-text-toolbar-hover: var(--slate-800);
-  --ds-text-toolbar-active: var(--slate-800);
-  --ds-text-toolbar-hover-active: var(--slate-950);
-  --ds-text-toolbar-disabled: var(--slate-400);
-  --ds-text-muted: var(--ds-ref-slate-600);
-  --ds-text-muted-strong: var(--ds-ref-slate-700);
-  --ds-text-primary-strong: var(--ds-ref-slate-950);
-  --ds-badge-artifact-bg: var(--emerald-600);
-  --ds-badge-artifact-fg: var(--slate-100);
-  --ds-surface-activitybar: var(--ds-ref-slate-300);
-  --ds-surface-activitybar-hover: var(--ds-ref-slate-200);
-  --ds-border-activitybar: var(--ds-ref-slate-400-a);
-  --ds-border-activitybar-strong: var(--ds-ref-slate-400-a);
-  --ds-activity-item-fg: var(--ds-ref-slate-600);
-  --ds-activity-item-hover-bg: var(--ds-surface-activitybar-hover);
-  --ds-activity-item-hover-fg: var(--ds-ref-slate-700);
-  --ds-activity-item-active-bg: var(--ds-ref-slate-200);
-  --ds-activity-item-active-fg: var(--ds-ref-slate-700);
-  --ds-activity-item-active-border: var(--ds-ref-slate-500-a);
-  --ds-sidebar-surface: var(--ds-ref-slate-200);
-  --ds-sidebar-border: var(--ds-ref-slate-500-a);
-  --ds-sidebar-border-strong: var(--ds-ref-slate-500-a);
-  --ds-sidebar-cta-border: var(--ds-ref-slate-600-a);
-  --ds-sidebar-cta-bg: var(--ds-ref-slate-600);
-  --ds-sidebar-cta-bg-hover: var(--ds-ref-slate-700);
-  --ds-sidebar-cta-fg: var(--ds-ref-slate-100);
-  --ds-user-message-bg: var(--ds-ref-slate-200);
-  --ds-template-button-bg: var(--ds-ref-slate-200);
-  --ds-template-button-bg-hover: var(--ds-ref-slate-300);
-  --ds-state-danger-bg: color-mix(in oklch, var(--ds-ref-rose-500) 12%, transparent);
-  --ds-state-danger-border: color-mix(in oklch, var(--ds-ref-rose-500) 35%, transparent);
-  --ds-state-danger-border-strong: color-mix(in oklch, var(--ds-ref-rose-500) 50%, transparent);
-  --ds-state-danger-fg: var(--ds-ref-rose-500);
-  --ds-state-danger-fg-muted: color-mix(in oklch, var(--ds-ref-rose-500) 60%, transparent);
-  --ds-state-success-bg: color-mix(in oklch, var(--ds-ref-emerald-500) 12%, transparent);
-  --ds-state-success-border: color-mix(in oklch, var(--ds-ref-emerald-500) 35%, transparent);
-  --ds-state-success-border-soft: color-mix(in oklch, var(--ds-ref-emerald-500) 30%, transparent);
-  --ds-state-success-chip-bg: color-mix(in oklch, var(--ds-ref-emerald-500) 15%, transparent);
-  --ds-state-success-fg: var(--ds-ref-emerald-600);
-  --ds-state-warning-bg: color-mix(in oklch, var(--ds-ref-amber-500) 12%, transparent);
-  --ds-state-warning-border: color-mix(in oklch, var(--ds-ref-amber-500) 35%, transparent);
-  --ds-state-warning-border-soft: color-mix(in oklch, var(--ds-ref-amber-500) 30%, transparent);
-  --ds-state-warning-chip-bg: color-mix(in oklch, var(--ds-ref-amber-500) 15%, transparent);
-  --ds-state-warning-fg: var(--ds-ref-amber-700);
-  --ds-state-info-bg: color-mix(in oklch, var(--ds-ref-sky-500) 12%, transparent);
-  --ds-state-info-border: color-mix(in oklch, var(--ds-ref-sky-500) 35%, transparent);
-  --ds-state-info-fg: var(--ds-ref-sky-700);
-  --ds-status-surface: color-mix(in oklch, var(--ds-ref-slate-100) 85%, transparent);
-  --ds-status-border: color-mix(in oklch, var(--ds-ref-slate-400) 45%, transparent);
-  --ds-status-track-bg: var(--ds-ref-slate-200);
-  --ds-status-progress-success: var(--ds-ref-emerald-600);
-  --ds-refrasa-apply-bg: var(--ds-ref-emerald-700);
-  --ds-refrasa-apply-bg-hover: var(--ds-ref-emerald-600);
-  --ds-refrasa-apply-fg: var(--ds-ref-slate-50);
-  --ds-status-progress-error: var(--ds-ref-rose-500);
-  --ds-paper-session-badge-bg: var(--ds-ref-emerald-700);
-  --ds-paper-session-badge-border: color-mix(in oklch, var(--ds-ref-emerald-700) 58%, transparent);
-  --ds-paper-session-badge-fg: var(--ds-ref-slate-50);
-  --ds-paper-session-version-badge-bg: var(--ds-ref-sky-600);
-  --ds-paper-session-version-badge-fg: var(--ds-ref-slate-50);
-  --ds-quota-warning-bg: var(--ds-ref-slate-900);
-  --ds-quota-warning-border: color-mix(in oklch, var(--ds-ref-amber-500) 50%, transparent);
-  --ds-quota-warning-fg: var(--ds-ref-amber-200);
-  --ds-quota-warning-icon: var(--ds-ref-amber-500);
-  --ds-quota-warning-link: var(--ds-ref-amber-300);
-  --ds-quota-critical-bg: var(--ds-ref-slate-900);
-  --ds-quota-critical-border: color-mix(in oklch, var(--ds-ref-amber-500) 60%, transparent);
-  --ds-quota-critical-fg: var(--ds-ref-amber-100);
-  --ds-quota-critical-icon: var(--ds-ref-amber-500);
-  --ds-quota-critical-link: var(--ds-ref-amber-200);
-  --ds-quota-depleted-bg: var(--ds-ref-slate-900);
-  --ds-quota-depleted-border: color-mix(in oklch, var(--ds-ref-rose-500) 50%, transparent);
-  --ds-quota-depleted-fg: var(--ds-ref-rose-200);
-  --ds-quota-depleted-icon: var(--ds-ref-rose-500);
-  --ds-quota-depleted-link: var(--ds-ref-rose-300);
-  --ds-quota-dismiss-hover-bg: var(--neutral-1000-a40);
-  --ds-citation-chip-bg: var(--ds-ref-slate-200);
-  --ds-citation-chip-border: color-mix(in oklch, var(--ds-ref-slate-400) 55%, transparent);
-  --ds-citation-chip-fg: var(--ds-ref-slate-900);
-  --ds-citation-chip-shadow: color-mix(in oklch, var(--ds-ref-neutral-0) 45%, transparent);
-  --ds-sources-header-bg: color-mix(in oklch, var(--emerald-500) 10%, transparent);
-  --ds-sources-header-border: var(--emerald-500);
-  --ds-sources-header-fg: var(--emerald-500);
-  --ds-sources-item-hover-bg: color-mix(in oklch, var(--ds-ref-slate-200) 80%, transparent);
-  --ds-sources-link-hover-fg: var(--sky-500);
-  --ds-thinking-dot: var(--ds-ref-slate-500);
-  --ds-resizer-base: var(--ds-ref-slate-50);
-  --ds-resizer-active: var(--sky-300);
-  --ds-chat-history-item-active-bg: var(--ds-ref-slate-50);
-  --ds-chat-history-item-active-border: color-mix(in oklch, var(--ds-ref-slate-400) 45%, transparent);
-  --ds-chat-history-item-hover-bg: var(--ds-ref-slate-300);
-  --ds-artifact-panel-bg: var(--ds-ref-slate-100);
-  --ds-artifact-panel-border: color-mix(in oklch, var(--ds-ref-slate-400) 62%, transparent);
-  --ds-artifact-divider-border: color-mix(in oklch, var(--ds-ref-slate-400) 65%, transparent);
-  --ds-artifact-text-primary: var(--ds-ref-slate-900);
-  --ds-artifact-text-secondary: var(--ds-ref-slate-700);
-  --ds-artifact-text-muted: var(--ds-ref-slate-600);
-  --ds-artifact-text-subtle: var(--ds-ref-slate-500);
-  --ds-artifact-empty-icon: var(--ds-ref-slate-500);
-  --ds-artifact-chip-bg: color-mix(in oklch, var(--ds-ref-slate-200) 85%, transparent);
-  --ds-artifact-chip-hover-bg: color-mix(in oklch, var(--ds-ref-slate-300) 75%, transparent);
-  --ds-artifact-chip-border: color-mix(in oklch, var(--ds-ref-slate-400) 62%, transparent);
-  --ds-artifact-chip-fg: var(--ds-ref-slate-700);
-  --ds-artifact-icon-fg: var(--ds-ref-slate-600);
-  --ds-artifact-icon-hover-bg: color-mix(in oklch, var(--ds-ref-slate-200) 80%, transparent);
-  --ds-artifact-icon-hover-fg: var(--ds-ref-slate-900);
-  --ds-artifact-focus-offset: var(--ds-ref-slate-100);
-  --ds-artifact-action-bg: var(--ds-ref-slate-600);
-  --ds-artifact-action-border: color-mix(in oklch, var(--ds-ref-slate-500) 65%, transparent);
-  --ds-artifact-action-fg: var(--ds-ref-slate-100);
-  --ds-artifact-action-hover-bg: var(--ds-ref-slate-700);
-  --ds-artifact-action-hover-border: color-mix(in oklch, var(--ds-ref-slate-500) 72%, transparent);
-  --ds-artifact-action-copied-bg: var(--ds-ref-slate-700);
-  --ds-artifact-action-copied-border: color-mix(in oklch, var(--ds-ref-slate-500) 80%, transparent);
-  --ds-artifact-action-disabled-fg: var(--ds-ref-slate-300);
-  --ds-artifact-action-disabled-hover-fg: var(--ds-ref-slate-200);
-  --ds-artifact-expand-bg: color-mix(in oklch, var(--ds-ref-slate-200) 90%, transparent);
-  --ds-artifact-expand-border: color-mix(in oklch, var(--ds-ref-slate-400) 70%, transparent);
-  --ds-artifact-expand-fg: var(--ds-ref-slate-700);
-  --ds-artifact-expand-hover-bg: color-mix(in oklch, var(--ds-ref-slate-300) 80%, transparent);
-  --ds-artifact-expand-hover-border: color-mix(in oklch, var(--ds-ref-slate-500) 78%, transparent);
-  --ds-artifact-tab-gradient: color-mix(in oklch, var(--ds-ref-slate-100) 95%, transparent);
-  --ds-artifact-tab-active-bg: var(--ds-ref-neutral-0);
-  --ds-artifact-tab-active-border: color-mix(in oklch, var(--ds-ref-slate-400) 65%, transparent);
-  --ds-artifact-tab-active-shadow: var(--neutral-0-a15);
-  --ds-artifact-tab-inactive-bg: color-mix(in oklch, var(--ds-ref-slate-100) 35%, transparent);
-  --ds-artifact-tab-inactive-hover-bg: color-mix(in oklch, var(--ds-ref-slate-200) 60%, transparent);
-  --ds-artifact-tab-inactive-hover-border: color-mix(in oklch, var(--ds-ref-slate-400) 65%, transparent);
-  --ds-artifact-tab-icon-bg: var(--ds-ref-slate-100);
-  --ds-artifact-tab-icon-border: color-mix(in oklch, var(--ds-ref-slate-400) 55%, transparent);
-  --ds-artifact-tab-icon-fg: var(--ds-ref-slate-500);
-  --ds-artifact-tab-text-active: var(--ds-ref-slate-900);
-  --ds-artifact-tab-text-inactive: var(--ds-ref-slate-500);
-  --ds-artifact-tab-close-fg: var(--ds-ref-slate-600);
-  --ds-artifact-tab-controls-border: color-mix(in oklch, var(--ds-ref-slate-400) 65%, transparent);
-  --ds-artifact-tab-controls-fg: var(--ds-ref-slate-600);
-  --ds-artifact-tab-controls-hover-fg: var(--ds-ref-slate-900);
-  --ds-artifact-tab-controls-hover-bg: var(--accent);
-  --ds-artifact-viewer-select-bg: color-mix(in oklch, var(--ds-ref-slate-200) 80%, transparent);
-  --ds-artifact-viewer-select-border: color-mix(in oklch, var(--ds-ref-slate-400) 62%, transparent);
-  --ds-artifact-viewer-select-fg: var(--ds-ref-slate-800);
-  --ds-artifact-viewer-canvas-bg: var(--ds-ref-slate-50);
-  --ds-artifact-viewer-canvas-border: color-mix(in oklch, var(--ds-ref-slate-400) 62%, transparent);
-  --ds-artifact-viewer-overlay-bg: color-mix(in oklch, var(--ds-ref-slate-100) 95%, transparent);
-  --ds-artifact-backdrop: color-mix(in oklch, var(--ds-ref-slate-900) 55%, transparent);
-  --ds-artifact-warning-text-strong: var(--ds-ref-amber-900);
-  --ds-artifact-warning-text-muted: color-mix(in oklch, var(--ds-ref-amber-800) 85%, transparent);
-  --ds-artifact-meta-card-bg: color-mix(in oklch, var(--ds-ref-slate-200) 60%, transparent);
-  --ds-artifact-meta-card-border: color-mix(in oklch, var(--ds-ref-slate-400) 60%, transparent);
-  --ds-artifact-mode-badge-bg: color-mix(in oklch, var(--sky-500) 12%, transparent);
-  --ds-artifact-mode-badge-border: color-mix(in oklch, var(--sky-500) 35%, transparent);
-  --ds-artifact-mode-badge-fg: var(--sky-700);
-  --ds-artifact-copy-badge-bg: color-mix(in oklch, var(--sky-500) 12%, transparent);
-  --ds-artifact-copy-badge-border: color-mix(in oklch, var(--sky-500) 40%, transparent);
-  --ds-artifact-copy-badge-fg: var(--sky-700);
-  --ds-artifact-danger-bg: var(--ds-ref-amber-700);
-  --ds-artifact-danger-fg: var(--ds-ref-slate-50);
-  --ds-artifact-danger-hover-bg: var(--ds-ref-amber-500);
+/* ── Light Mode ── */
+[data-chat-scope] {
+  /* Surface & Text */
+  --chat-background: oklch(0.984 0 0);           /* slate-50 */
+  --chat-foreground: oklch(0.129 0 0);           /* slate-950 */
+  --chat-card: oklch(1 0 0);                     /* white */
+  --chat-card-foreground: oklch(0.129 0 0);      /* slate-950 */
+  --chat-popover: oklch(1 0 0);                  /* white */
+  --chat-popover-foreground: oklch(0.129 0 0);   /* slate-950 */
+  --chat-muted: oklch(0.929 0 0);               /* slate-200 */
+  --chat-muted-foreground: oklch(0.554 0 0);    /* slate-500 */
+  --chat-accent: oklch(0.968 0 0);              /* slate-100 */
+  --chat-accent-foreground: oklch(0.129 0 0);   /* slate-950 */
+  --chat-secondary: oklch(0.929 0 0);           /* slate-200 */
+  --chat-secondary-foreground: oklch(0.208 0 0); /* slate-900 */
+
+  /* Brand & States */
+  --chat-primary: oklch(0.769 0.188 70.08);      /* amber-500 */
+  --chat-primary-foreground: oklch(1 0 0);       /* white */
+  --chat-destructive: oklch(0.586 0.253 17.585); /* rose-600 */
+  --chat-destructive-foreground: oklch(1 0 0);   /* white */
+  --chat-success: oklch(0.6 0.118 184.704);      /* teal-600 */
+  --chat-success-foreground: oklch(1 0 0);       /* white */
+  --chat-warning: oklch(0.666 0.179 58.318);     /* amber-600 */
+  --chat-warning-foreground: oklch(1 0 0);       /* white */
+  --chat-info: oklch(0.588 0.158 241.966);       /* sky-600 */
+  --chat-info-foreground: oklch(1 0 0);          /* white */
+
+  /* Border & Focus */
+  --chat-border: oklch(0.929 0 0);              /* slate-200 */
+  --chat-input: oklch(0.929 0 0);               /* slate-200 */
+  --chat-ring: oklch(0.769 0.188 70.08);        /* amber-500 */
+
+  /* Sidebar */
+  --chat-sidebar: oklch(0.968 0 0);             /* slate-100 */
+  --chat-sidebar-foreground: oklch(0.129 0 0);  /* slate-950 */
+  --chat-sidebar-primary: oklch(0.446 0 0);     /* slate-600 */
+  --chat-sidebar-primary-foreground: oklch(1 0 0); /* white */
+  --chat-sidebar-accent: oklch(0.929 0 0);      /* slate-200 */
+  --chat-sidebar-accent-foreground: oklch(0.129 0 0); /* slate-950 */
+  --chat-sidebar-border: oklch(0.929 0 0);      /* slate-200 */
+  --chat-sidebar-ring: oklch(0.769 0.188 70.08); /* amber-500 */
 }
 
-.dark [data-ds-scope="chat-v1"] {
-  --ds-surface-base: var(--ds-ref-slate-900);
-  --ds-surface-subtle: var(--ds-ref-slate-800);
-  --ds-surface-panel: var(--ds-ref-slate-800);
-  --ds-surface-elevated: var(--ds-ref-slate-800);
-  --ds-border-subtle: var(--ds-ref-slate-600-a);
-  --ds-border-strong: var(--ds-ref-slate-700-a);
-  --ds-text-toolbar-muted: var(--slate-200);
-  --ds-text-toolbar-hover: var(--slate-50);
-  --ds-text-toolbar-active: var(--slate-100);
-  --ds-text-toolbar-hover-active: var(--slate-50);
-  --ds-text-toolbar-disabled: var(--slate-500);
-  --ds-text-muted: var(--ds-ref-slate-300);
-  --ds-text-muted-strong: var(--ds-ref-slate-200);
-  --ds-text-primary-strong: var(--ds-ref-slate-100);
-  --ds-badge-artifact-bg: var(--emerald-600);
-  --ds-badge-artifact-fg: var(--slate-100);
-  --ds-surface-activitybar: var(--ds-ref-slate-900);
-  --ds-surface-activitybar-hover: var(--ds-ref-slate-800);
-  --ds-border-activitybar: var(--ds-ref-slate-600-a);
-  --ds-border-activitybar-strong: var(--ds-ref-slate-600-a);
-  --ds-activity-item-fg: var(--ds-ref-slate-400);
-  --ds-activity-item-hover-bg: var(--ds-surface-activitybar-hover);
-  --ds-activity-item-hover-fg: var(--ds-ref-slate-100);
-  --ds-activity-item-active-bg: var(--ds-ref-slate-800);
-  --ds-activity-item-active-fg: var(--ds-ref-slate-100);
-  --ds-activity-item-active-border: var(--ds-ref-slate-600);
-  --ds-sidebar-surface: var(--ds-ref-slate-800);
-  --ds-sidebar-border: var(--ds-ref-slate-600-a);
-  --ds-sidebar-border-strong: var(--ds-ref-slate-600-a);
-  --ds-sidebar-cta-border: var(--ds-ref-slate-700);
-  --ds-sidebar-cta-bg: var(--ds-ref-slate-900);
-  --ds-sidebar-cta-bg-hover: var(--ds-ref-slate-600);
-  --ds-sidebar-cta-fg: var(--ds-ref-slate-100);
-  --ds-user-message-bg: var(--card);
-  --ds-template-button-bg: var(--card);
-  --ds-template-button-bg-hover: var(--ds-ref-slate-800);
-  --ds-state-danger-bg: color-mix(in oklch, var(--ds-ref-rose-400) 18%, transparent);
-  --ds-state-danger-border: color-mix(in oklch, var(--ds-ref-rose-500) 35%, transparent);
-  --ds-state-danger-border-strong: color-mix(in oklch, var(--ds-ref-rose-500) 50%, transparent);
-  --ds-state-danger-fg: var(--ds-ref-rose-400);
-  --ds-state-danger-fg-muted: color-mix(in oklch, var(--ds-ref-rose-400) 60%, transparent);
-  --ds-state-success-bg: color-mix(in oklch, var(--ds-ref-emerald-500) 18%, transparent);
-  --ds-state-success-border: color-mix(in oklch, var(--ds-ref-emerald-500) 35%, transparent);
-  --ds-state-success-border-soft: color-mix(in oklch, var(--ds-ref-emerald-500) 30%, transparent);
-  --ds-state-success-chip-bg: color-mix(in oklch, var(--ds-ref-emerald-500) 20%, transparent);
-  --ds-state-success-fg: var(--ds-ref-emerald-300);
-  --ds-state-warning-bg: color-mix(in oklch, var(--ds-ref-amber-500) 20%, transparent);
-  --ds-state-warning-border: color-mix(in oklch, var(--ds-ref-amber-500) 35%, transparent);
-  --ds-state-warning-border-soft: color-mix(in oklch, var(--ds-ref-amber-500) 30%, transparent);
-  --ds-state-warning-chip-bg: color-mix(in oklch, var(--ds-ref-amber-500) 20%, transparent);
-  --ds-state-warning-fg: var(--ds-ref-amber-300);
-  --ds-state-info-bg: color-mix(in oklch, var(--ds-ref-sky-500) 20%, transparent);
-  --ds-state-info-border: color-mix(in oklch, var(--ds-ref-sky-500) 35%, transparent);
-  --ds-state-info-fg: var(--ds-ref-sky-300);
-  --ds-status-surface: color-mix(in oklch, var(--ds-ref-slate-800) 82%, transparent);
-  --ds-status-border: color-mix(in oklch, var(--ds-ref-slate-700) 55%, transparent);
-  --ds-status-track-bg: var(--ds-ref-slate-700);
-  --ds-status-progress-success: var(--ds-ref-emerald-400);
-  --ds-refrasa-apply-bg: var(--ds-ref-emerald-600);
-  --ds-refrasa-apply-bg-hover: var(--ds-ref-emerald-500);
-  --ds-refrasa-apply-fg: var(--ds-ref-slate-50);
-  --ds-status-progress-error: var(--ds-ref-rose-400);
-  --ds-paper-session-badge-bg: var(--ds-ref-emerald-600);
-  --ds-paper-session-badge-border: color-mix(in oklch, var(--ds-ref-emerald-500) 62%, transparent);
-  --ds-paper-session-badge-fg: var(--ds-ref-slate-50);
-  --ds-paper-session-version-badge-bg: var(--ds-ref-sky-700);
-  --ds-paper-session-version-badge-fg: var(--ds-ref-slate-50);
-  --ds-quota-warning-bg: var(--ds-ref-slate-900);
-  --ds-quota-warning-border: color-mix(in oklch, var(--ds-ref-amber-500) 50%, transparent);
-  --ds-quota-warning-fg: var(--ds-ref-amber-200);
-  --ds-quota-warning-icon: var(--ds-ref-amber-500);
-  --ds-quota-warning-link: var(--ds-ref-amber-300);
-  --ds-quota-critical-bg: var(--ds-ref-slate-900);
-  --ds-quota-critical-border: color-mix(in oklch, var(--ds-ref-amber-500) 60%, transparent);
-  --ds-quota-critical-fg: var(--ds-ref-amber-100);
-  --ds-quota-critical-icon: var(--ds-ref-amber-500);
-  --ds-quota-critical-link: var(--ds-ref-amber-200);
-  --ds-quota-depleted-bg: var(--ds-ref-slate-900);
-  --ds-quota-depleted-border: color-mix(in oklch, var(--ds-ref-rose-500) 50%, transparent);
-  --ds-quota-depleted-fg: var(--ds-ref-rose-200);
-  --ds-quota-depleted-icon: var(--ds-ref-rose-500);
-  --ds-quota-depleted-link: var(--ds-ref-rose-300);
-  --ds-quota-dismiss-hover-bg: var(--neutral-0-a10);
-  --ds-citation-chip-bg: var(--ds-ref-slate-800);
-  --ds-citation-chip-border: color-mix(in oklch, var(--ds-ref-slate-600) 75%, transparent);
-  --ds-citation-chip-fg: var(--ds-ref-slate-100);
-  --ds-citation-chip-shadow: transparent;
-  --ds-sources-header-bg: color-mix(in oklch, var(--emerald-500) 10%, transparent);
-  --ds-sources-header-border: var(--emerald-500);
-  --ds-sources-header-fg: var(--emerald-500);
-  --ds-sources-item-hover-bg: color-mix(in oklch, var(--ds-ref-slate-800) 70%, transparent);
-  --ds-sources-link-hover-fg: var(--sky-400);
-  --ds-thinking-dot: var(--ds-ref-slate-300);
-  --ds-resizer-base: var(--ds-ref-slate-900);
-  --ds-resizer-active: var(--sky-700);
-  --ds-chat-history-item-active-bg: color-mix(in oklch, var(--ds-ref-slate-900) 60%, transparent);
-  --ds-chat-history-item-active-border: var(--ds-ref-slate-700);
-  --ds-chat-history-item-hover-bg: color-mix(in oklch, var(--ds-ref-slate-600) 60%, transparent);
-  --ds-artifact-panel-bg: var(--ds-ref-slate-800);
-  --ds-artifact-panel-border: color-mix(in oklch, var(--ds-ref-slate-700) 70%, transparent);
-  --ds-artifact-divider-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
-  --ds-artifact-text-primary: var(--ds-ref-slate-100);
-  --ds-artifact-text-secondary: var(--ds-ref-slate-100);
-  --ds-artifact-text-muted: var(--ds-ref-slate-400);
-  --ds-artifact-text-subtle: var(--ds-ref-slate-400);
-  --ds-artifact-empty-icon: color-mix(in oklch, var(--ds-ref-slate-400) 70%, transparent);
-  --ds-artifact-chip-bg: color-mix(in oklch, var(--ds-ref-slate-900) 72%, transparent);
-  --ds-artifact-chip-hover-bg: color-mix(in oklch, var(--ds-ref-slate-800) 80%, transparent);
-  --ds-artifact-chip-border: color-mix(in oklch, var(--ds-ref-slate-700) 70%, transparent);
-  --ds-artifact-chip-fg: var(--ds-ref-slate-100);
-  --ds-artifact-icon-fg: var(--ds-ref-slate-400);
-  --ds-artifact-icon-hover-bg: color-mix(in oklch, var(--ds-ref-slate-700) 70%, transparent);
-  --ds-artifact-icon-hover-fg: var(--ds-ref-slate-100);
-  --ds-artifact-focus-offset: var(--ds-ref-slate-800);
-  --ds-artifact-action-bg: color-mix(in oklch, var(--ds-ref-slate-900) 90%, transparent);
-  --ds-artifact-action-border: color-mix(in oklch, var(--ds-ref-slate-700) 70%, transparent);
-  --ds-artifact-action-fg: var(--ds-ref-slate-100);
-  --ds-artifact-action-hover-bg: var(--ds-ref-slate-600);
-  --ds-artifact-action-hover-border: color-mix(in oklch, var(--ds-ref-slate-700) 80%, transparent);
-  --ds-artifact-action-copied-bg: var(--ds-ref-slate-600);
-  --ds-artifact-action-copied-border: color-mix(in oklch, var(--ds-ref-slate-500) 70%, transparent);
-  --ds-artifact-action-disabled-fg: var(--ds-ref-slate-400);
-  --ds-artifact-action-disabled-hover-fg: var(--ds-ref-slate-300);
-  --ds-artifact-expand-bg: color-mix(in oklch, var(--ds-ref-slate-900) 70%, transparent);
-  --ds-artifact-expand-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
-  --ds-artifact-expand-fg: var(--ds-ref-slate-100);
-  --ds-artifact-expand-hover-bg: var(--ds-ref-slate-900);
-  --ds-artifact-expand-hover-border: color-mix(in oklch, var(--ds-ref-slate-700) 82%, transparent);
-  --ds-artifact-tab-gradient: color-mix(in oklch, var(--ds-ref-slate-800) 95%, transparent);
-  --ds-artifact-tab-active-bg: var(--ds-ref-slate-800);
-  --ds-artifact-tab-active-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
-  --ds-artifact-tab-active-shadow: var(--neutral-0-a10);
-  --ds-artifact-tab-inactive-bg: transparent;
-  --ds-artifact-tab-inactive-hover-bg: color-mix(in oklch, var(--ds-ref-slate-700) 60%, transparent);
-  --ds-artifact-tab-inactive-hover-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
-  --ds-artifact-tab-icon-bg: color-mix(in oklch, var(--ds-ref-slate-900) 70%, transparent);
-  --ds-artifact-tab-icon-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
-  --ds-artifact-tab-icon-fg: var(--ds-ref-slate-400);
-  --ds-artifact-tab-text-active: var(--ds-ref-slate-100);
-  --ds-artifact-tab-text-inactive: var(--ds-ref-slate-400);
-  --ds-artifact-tab-close-fg: var(--ds-ref-slate-400);
-  --ds-artifact-tab-controls-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
-  --ds-artifact-tab-controls-fg: var(--ds-ref-slate-400);
-  --ds-artifact-tab-controls-hover-fg: var(--ds-ref-slate-100);
-  --ds-artifact-tab-controls-hover-bg: color-mix(in oklch, var(--ds-ref-slate-700) 70%, transparent);
-  --ds-artifact-viewer-select-bg: color-mix(in oklch, var(--ds-ref-slate-900) 70%, transparent);
-  --ds-artifact-viewer-select-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
-  --ds-artifact-viewer-select-fg: var(--ds-ref-slate-100);
-  --ds-artifact-viewer-canvas-bg: var(--ds-ref-slate-900);
-  --ds-artifact-viewer-canvas-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
-  --ds-artifact-viewer-overlay-bg: color-mix(in oklch, var(--ds-ref-slate-900) 95%, transparent);
-  --ds-artifact-backdrop: color-mix(in oklch, var(--ds-ref-slate-950) 70%, transparent);
-  --ds-artifact-warning-text-strong: var(--ds-ref-amber-100);
-  --ds-artifact-warning-text-muted: color-mix(in oklch, var(--ds-ref-amber-300) 85%, transparent);
-  --ds-artifact-meta-card-bg: color-mix(in oklch, var(--ds-ref-slate-900) 70%, transparent);
-  --ds-artifact-meta-card-border: color-mix(in oklch, var(--ds-ref-slate-700) 72%, transparent);
-  --ds-artifact-mode-badge-bg: color-mix(in oklch, var(--sky-500) 22%, transparent);
-  --ds-artifact-mode-badge-border: color-mix(in oklch, var(--sky-500) 40%, transparent);
-  --ds-artifact-mode-badge-fg: var(--sky-300);
-  --ds-artifact-copy-badge-bg: color-mix(in oklch, var(--sky-500) 20%, transparent);
-  --ds-artifact-copy-badge-border: color-mix(in oklch, var(--sky-500) 42%, transparent);
-  --ds-artifact-copy-badge-fg: var(--sky-300);
-  --ds-artifact-danger-bg: var(--ds-ref-amber-700);
-  --ds-artifact-danger-fg: var(--ds-ref-slate-100);
-  --ds-artifact-danger-hover-bg: var(--ds-ref-amber-500);
+/* ── Dark Mode ── */
+.dark [data-chat-scope] {
+  /* Surface & Text */
+  --chat-background: oklch(0.208 0 0);           /* slate-900 */
+  --chat-foreground: oklch(0.968 0 0);           /* slate-100 */
+  --chat-card: oklch(0.208 0 0);                 /* slate-900 */
+  --chat-card-foreground: oklch(0.968 0 0);      /* slate-100 */
+  --chat-popover: oklch(0.279 0 0);              /* slate-800 */
+  --chat-popover-foreground: oklch(0.968 0 0);   /* slate-100 */
+  --chat-muted: oklch(0.279 0 0);               /* slate-800 */
+  --chat-muted-foreground: oklch(0.704 0 0);    /* slate-400 */
+  --chat-accent: oklch(0.372 0 0);              /* slate-700 */
+  --chat-accent-foreground: oklch(0.984 0 0);   /* slate-50 */
+  --chat-secondary: oklch(0.279 0 0);           /* slate-800 */
+  --chat-secondary-foreground: oklch(0.968 0 0); /* slate-100 */
+
+  /* Brand & States */
+  --chat-primary: oklch(0.769 0.188 70.08);      /* amber-500 */
+  --chat-primary-foreground: oklch(1 0 0);       /* white */
+  --chat-destructive: oklch(0.586 0.253 17.585); /* rose-600 */
+  --chat-destructive-foreground: oklch(0 0 0);   /* black */
+  --chat-success: oklch(0.6 0.118 184.704);      /* teal-600 */
+  --chat-success-foreground: oklch(0 0 0);       /* black */
+  --chat-warning: oklch(0.666 0.179 58.318);     /* amber-600 */
+  --chat-warning-foreground: oklch(0 0 0);       /* black */
+  --chat-info: oklch(0.588 0.158 241.966);       /* sky-600 */
+  --chat-info-foreground: oklch(0 0 0);          /* black */
+
+  /* Border & Focus */
+  --chat-border: oklch(0.372 0 0);              /* slate-700 */
+  --chat-input: oklch(0.372 0 0);               /* slate-700 */
+  --chat-ring: oklch(0.769 0.188 70.08);        /* amber-500 */
+
+  /* Sidebar */
+  --chat-sidebar: oklch(0.129 0 0);             /* slate-950 */
+  --chat-sidebar-foreground: oklch(0.968 0 0);  /* slate-100 */
+  --chat-sidebar-primary: oklch(1 0 0);         /* white */
+  --chat-sidebar-primary-foreground: oklch(0.279 0 0); /* slate-800 */
+  --chat-sidebar-accent: oklch(0.279 0 0);      /* slate-800 */
+  --chat-sidebar-accent-foreground: oklch(0.984 0 0); /* slate-50 */
+  --chat-sidebar-border: oklch(0.372 0 0);      /* slate-700 */
+  --chat-sidebar-ring: oklch(0.769 0.188 70.08); /* amber-500 */
 }
