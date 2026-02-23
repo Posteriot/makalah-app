@@ -59,6 +59,69 @@ src/app/
 - useRefrasa disederhanakan: hapus issueCount, issuesByCategory dari return
 - 12 redundant `export default` dihapus dari chat components
 
+### Peta Dependensi: globals.css vs globals-new.css
+
+Halaman chat pakai **keduanya**. Berikut breakdown per komponen:
+
+#### Fully Migrated ke `--chat-*` (globals-new.css) ✅
+
+Komponen ini **hanya** pakai `var(--chat-*)` tokens:
+
+| Komponen | Token yang dipakai |
+|----------|-------------------|
+| `chat/shell/TopBar.tsx` | `--chat-background`, `--chat-foreground`, `--chat-muted-foreground`, `--chat-accent`, `--chat-info` |
+| `chat/shell/ActivityBar.tsx` | `--chat-sidebar`, `--chat-sidebar-border`, `--chat-sidebar-foreground`, `--chat-sidebar-accent` |
+| `chat/ChatSidebar.tsx` | `--chat-sidebar-*`, `--chat-border`, `--chat-accent` |
+| `chat/sidebar/SidebarChatHistory.tsx` | `--chat-border`, `--chat-accent`, `--chat-muted-foreground`, `--chat-destructive` |
+| `chat/sidebar/SidebarPaperSessions.tsx` | `--chat-border`, `--chat-accent`, `--chat-muted-foreground`, `--chat-success` + Tailwind `sky-500/400` |
+| `chat/sidebar/SidebarProgress.tsx` | `--chat-muted-foreground`, `--chat-border`, `--chat-success` |
+| `chat/ArtifactPanel.tsx` | `--chat-background`, `--chat-border` |
+| `chat/ArtifactToolbar.tsx` | `--chat-border`, `--chat-secondary`, `--chat-muted-foreground` |
+| `chat/ArtifactTabs.tsx` | `--chat-border`, `--chat-muted-foreground`, `--chat-foreground` |
+| `chat/FullsizeArtifactModal.tsx` | `--chat-background`, `--chat-border`, `--chat-foreground`, `--chat-muted-foreground` |
+| `chat/layout/ChatLayout.tsx` | `--chat-background`, `--chat-border` |
+| `chat/ChatContainer.tsx` | `--chat-background` |
+| `chat/InlineCitationChip.tsx` | `--chat-info` |
+| `chat/QuotaWarningBanner.tsx` | `--chat-warning`, `--chat-destructive`, `--chat-muted`, `--chat-border` |
+| `chat/SearchStatusIndicator.tsx` | `--chat-muted-foreground`, `--chat-success`, `--chat-destructive` |
+| `chat/SourcesIndicator.tsx` | `--chat-muted-foreground`, `--chat-border`, `--chat-foreground`, `--chat-info` |
+| `chat/ToolStateIndicator.tsx` | `--chat-destructive`, `--chat-muted-foreground` |
+| `chat/MarkdownRenderer.tsx` | `--chat-info`, `--chat-muted`, `--chat-foreground`, `--chat-border` |
+| `chat/messages/TemplateGrid.tsx` | `--chat-foreground`, `--chat-muted-foreground`, `--chat-secondary`, `--chat-accent`, `--chat-primary` |
+| `refrasa/RefrasaToolbar.tsx` | `--chat-border`, `--chat-secondary`, `--chat-muted-foreground` |
+| `refrasa/RefrasaTabContent.tsx` | `--chat-border`, `--chat-muted-foreground` |
+| `refrasa/RefrasaLoadingIndicator.tsx` | `--chat-muted-foreground` |
+
+#### Masih pakai Tailwind semantic class (auto-resolve via remap) ⚠️
+
+`globals-new.css` punya **remap layer** yang men-set `--background`, `--muted-foreground`, dll di dalam `[data-chat-scope]` agar shadcn/ui primitives otomatis inherit token chat.
+
+| File | Class | Resolve ke |
+|------|-------|-----------|
+| `ai-elements/inline-citation.tsx:114` | `bg-secondary` | `--secondary` → `--chat-secondary` via remap |
+| `ai-elements/inline-citation.tsx:146,174,197,231,243` | `text-muted-foreground` | `--muted-foreground` → `--chat-muted-foreground` via remap |
+
+Ini **aman** karena berada di dalam shadcn Carousel/HoverCard yang render di bawah `[data-chat-scope]`. Tapi saat promosi ke global, class-class ini akan langsung resolve tanpa remap.
+
+#### Dark mode accessibility overrides (hardcoded OKLCH) 🎨
+
+4 komponen pakai `dark:text-[oklch(...)]` override untuk kontras aksesibilitas di dark mode:
+
+| File | Nilai | Tujuan |
+|------|-------|--------|
+| `chat/InlineCitationChip.tsx` | `oklch(0.746_0.16_232.661)` | Sky link contrast di dark mode |
+| `chat/SourcesIndicator.tsx` | `oklch(0.746_0.16_232.661)` | URL text contrast di dark mode |
+| `chat/MarkdownRenderer.tsx` | `oklch(0.746_0.16_232.661)` | Markdown link contrast di dark mode |
+| `refrasa/RefrasaToolbar.tsx` | `oklch(0.869/0.372...)` | Button hover state light/dark |
+
+Ini **melanggar** hard rule "no dark: override" tapi dipertahankan karena token `--chat-info` belum cukup terang di dark mode. Pertimbangkan menambah token `--chat-info-dark` saat promosi.
+
+#### Out of scope — chart library constraint
+
+| File | Detail |
+|------|--------|
+| `chat/ChartRenderer.tsx` | Hardcoded hex colors (`#f59e0b`, `#10b981`, dll) — diperlukan oleh chart library, bukan token dependency |
+
 ### Hard Rules yang Berlaku
 1. **No transparency** — kecuali shadow dan modal backdrop
 2. **No thin contrast** — minimum 4-step gap di skala 50-950
