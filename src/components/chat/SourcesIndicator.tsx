@@ -43,17 +43,16 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
 
     return (
         <div className="space-y-2">
-            {/* "Found X sources" Header - Mechanical Grace Emerald success */}
+            {/* "Found X sources" Header — slate muted container */}
             <div
                 className={cn(
                     "flex items-center gap-2.5 px-3 py-2",
-                    // Mechanical Grace: .rounded-badge (6px) + Emerald border
-                    "rounded-badge border-l-4 border-l-[var(--chat-success)] bg-[var(--chat-card)]",
+                    "rounded-badge bg-[var(--chat-muted)]",
                     "text-sm"
                 )}
             >
-                <CheckCircle className="h-4 w-4 flex-shrink-0 text-[var(--chat-success)]" />
-                <span className="font-mono text-xs font-medium uppercase tracking-wide text-[var(--chat-success-foreground)]">
+                <CheckCircle className="h-4 w-4 flex-shrink-0 text-[var(--chat-muted-foreground)]" />
+                <span className="font-mono text-xs font-medium uppercase tracking-wide text-[var(--chat-foreground)]">
                     Menemukan {sources.length} {sources.length === 1 ? "rujukan" : "rujukan"}
                 </span>
             </div>

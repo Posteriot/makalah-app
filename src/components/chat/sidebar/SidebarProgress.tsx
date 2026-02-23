@@ -122,16 +122,16 @@ function MilestoneItem({
         ? "Sedang berjalan"
         : undefined
 
-  // Milestone dot element - Mechanical Grace: Emerald (completed), Amber (current)
+  // Milestone dot element - Teal family: dark (completed), light (current), muted (pending)
   const dotElement = (
     <div
       className={cn(
         "w-3 h-3 rounded-full border-2 shrink-0 z-10 transition-all",
         state === "completed" &&
-          "bg-[var(--chat-success)] border-[color:var(--chat-success)]",
-        // Current state: solid fill + ring outline
+          "bg-[oklch(0.777_0.152_181.912)] border-[color:oklch(0.777_0.152_181.912)]",
+        // Current state: teal-600 (darkest) — active focus
         state === "current" &&
-          "bg-[var(--chat-warning)] border-[color:var(--chat-warning)] ring-2 ring-[var(--chat-warning)] ring-offset-1 ring-offset-[var(--chat-sidebar)]",
+          "bg-[var(--chat-success)] border-[color:var(--chat-success)] ring-2 ring-[var(--chat-success)] ring-offset-1 ring-offset-[var(--chat-sidebar)]",
         state === "pending" && "bg-transparent border-[color:var(--chat-muted-foreground)]",
         // Rewind styles
         canRewind &&
@@ -184,23 +184,24 @@ function MilestoneItem({
             className={cn(
               "w-0.5 flex-1 min-h-[24px]",
               state === "completed" &&
-                "bg-gradient-to-b from-[var(--chat-success)] to-[var(--chat-warning)]",
+                "bg-gradient-to-b from-[oklch(0.777_0.152_181.912)] to-[var(--chat-success)]",
               state === "current" &&
-                "bg-gradient-to-b from-[var(--chat-warning)] to-[var(--chat-border)]",
+                "bg-gradient-to-b from-[var(--chat-success)] to-[var(--chat-border)]",
               state === "pending" && "bg-[var(--chat-border)]"
             )}
           />
         )}
       </div>
 
-      {/* Milestone Content - Mechanical Grace: .text-interface */}
+      {/* Milestone Content — all text is slate, hierarchy via weight */}
       <div className={cn("pb-4", isLast && "pb-0")}>
         <div
           className={cn(
-            "text-sm font-mono font-medium transition-colors",
-            state === "current" && "text-[var(--chat-warning)]",
-            state === "pending" && "text-[var(--chat-muted-foreground)]",
-            canRewind && "group-hover:text-[var(--chat-warning)]"
+            "text-sm font-mono transition-colors",
+            state === "completed" && "font-semibold text-[var(--chat-foreground)]",
+            state === "current" && "font-semibold text-[var(--chat-foreground)]",
+            state === "pending" && "font-medium text-[var(--chat-muted-foreground)]",
+            canRewind && "group-hover:text-[var(--chat-foreground)]"
           )}
         >
           {index + 1}. {label}
@@ -209,9 +210,8 @@ function MilestoneItem({
           <div
             className={cn(
               "text-xs font-mono transition-colors",
-              // Mechanical Grace: Emerald completed, Amber in progress
-              state === "completed" && "text-[var(--chat-success)]",
-              state === "current" && "text-[var(--chat-warning)]"
+              state === "completed" && "text-[var(--chat-foreground)]",
+              state === "current" && "text-[var(--chat-muted-foreground)]"
             )}
           >
             {statusText}
