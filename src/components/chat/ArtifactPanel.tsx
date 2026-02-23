@@ -100,12 +100,14 @@ export function ArtifactPanel({
       )}
     >
       {/* Artifact Tabs */}
-      <ArtifactTabs
-        tabs={openTabs}
-        activeTabId={activeTabId}
-        onTabChange={onTabChange}
-        onTabClose={onTabClose}
-      />
+      <div className="shrink-0 border-b border-[color:var(--chat-border)]">
+        <ArtifactTabs
+          tabs={openTabs}
+          activeTabId={activeTabId}
+          onTabChange={onTabChange}
+          onTabClose={onTabClose}
+        />
+      </div>
 
       {/* Artifact Toolbar — metadata + actions (hidden for refrasa tabs) */}
       {!isRefrasaTab && (

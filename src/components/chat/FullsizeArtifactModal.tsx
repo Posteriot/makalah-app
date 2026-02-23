@@ -465,7 +465,7 @@ export function FullsizeArtifactModal({
                     <button
                       ref={primaryCloseButtonRef}
                       onClick={requestClose}
-                      className="flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring"
+                      className="flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
                       aria-label="Tutup fullscreen"
                     >
                       <Collapse className="h-4 w-4" />
@@ -684,7 +684,7 @@ export function FullsizeArtifactModal({
               )}
 
               {isEditing ? (
-                <div className="h-full overflow-hidden rounded-shell border border-[color:var(--chat-border)] bg-[var(--chat-background)] shadow-sm">
+                <div className="h-full overflow-hidden bg-[var(--chat-background)]">
                   <div className="flex items-center justify-between border-b border-[color:var(--chat-border)] px-3 py-1.5">
                     <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                       Workspace Editor
@@ -704,14 +704,14 @@ export function FullsizeArtifactModal({
                         }
                       }
                     }}
-                    className="h-[calc(100%-31px)] w-full resize-none bg-transparent p-4 text-base leading-7 text-[var(--chat-card-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-inset"
+                    className="h-[calc(100%-31px)] w-full resize-none bg-transparent p-4 text-base leading-7 text-[var(--chat-card-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)] focus-visible:ring-inset"
                     placeholder="Edit konten artifak..."
                     autoFocus
                     spellCheck
                   />
                 </div>
               ) : (
-                <div className="h-full overflow-hidden rounded-shell border border-[color:var(--chat-border)] bg-[var(--chat-background)]">
+                <div className="h-full overflow-hidden bg-[var(--chat-background)]">
                   <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
                     {isMermaid ? (
                       <MermaidRenderer code={extractMermaidCode(artifact.content)} />
@@ -736,12 +736,12 @@ export function FullsizeArtifactModal({
                     ) : shouldRenderMarkdown ? (
                       <MarkdownRenderer
                         markdown={artifact.content}
-                        className="max-w-none rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-4 text-sm leading-relaxed text-[var(--chat-card-foreground)]"
+                        className="max-w-none p-4 text-sm leading-relaxed text-[var(--chat-card-foreground)]"
                         sources={artifact.sources}
                         context="artifact"
                       />
                     ) : (
-                      <pre className="whitespace-pre-wrap rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-4 font-sans text-sm leading-relaxed text-[var(--chat-card-foreground)]">
+                      <pre className="whitespace-pre-wrap p-4 font-sans text-sm leading-relaxed text-[var(--chat-card-foreground)]">
                         {artifact.content}
                       </pre>
                     )}
@@ -752,7 +752,7 @@ export function FullsizeArtifactModal({
 
             {!isEditing && (
               <aside className="hidden w-[300px] shrink-0 border-l border-[color:var(--chat-border)] bg-[var(--chat-card)] xl:flex xl:flex-col">
-                <div className="border-b border-[color:var(--chat-border)] px-3 py-2">
+                <div className="px-3 py-2">
                   <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                     Sumber Terkait
                   </p>
@@ -777,14 +777,14 @@ export function FullsizeArtifactModal({
                       }}
                     >
                       <SelectTrigger
-                        className="h-8 w-full border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 text-[11px] font-mono text-[var(--chat-secondary-foreground)] focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+                        className="h-8 w-full border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 text-[11px] font-mono text-[var(--chat-secondary-foreground)] focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
                         disabled={sessionArtifactCount <= 1}
                       >
                         <SelectValue placeholder="Tidak ada artifak lain" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" side="bottom" sideOffset={4} className="max-h-[200px] w-[var(--radix-select-trigger-width)]">
                         {latestArtifactsInSession.map((sessionArtifact) => (
-                          <SelectItem key={sessionArtifact._id} value={sessionArtifact._id}>
+                          <SelectItem key={sessionArtifact._id} value={sessionArtifact._id} className="text-xs font-mono border-b border-slate-200 last:border-b-0 dark:border-slate-700">
                             {sessionArtifact.title} • v{sessionArtifact.version}
                           </SelectItem>
                         ))}
@@ -825,7 +825,7 @@ export function FullsizeArtifactModal({
                   }}
                 >
                   <SelectTrigger
-                    className="h-8 w-full border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 text-[11px] font-mono text-[var(--chat-secondary-foreground)] focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+                    className="h-8 w-full border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 text-[11px] font-mono text-[var(--chat-secondary-foreground)] focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
                     disabled={sessionArtifactCount <= 1}
                   >
                     <SelectValue placeholder="Tidak ada artifak lain" />

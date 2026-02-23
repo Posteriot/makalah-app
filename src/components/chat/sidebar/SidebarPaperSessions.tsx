@@ -373,7 +373,7 @@ function PaperFolderItem({
               }}
               disabled={isSavingTitle}
               autoFocus
-              className="h-7 w-full rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-2 text-[12px] font-mono shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+              className="h-7 w-full rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-2 text-[12px] font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
               aria-label="Edit working title"
             />
           ) : (
@@ -385,7 +385,7 @@ function PaperFolderItem({
           {!isFinalTitleLocked && (
             <button
               type="button"
-              className="h-6 w-6 shrink-0 rounded-action border border-[color:var(--chat-border)] text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+              className="h-6 w-6 shrink-0 rounded-action border border-[color:var(--chat-border)] text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
               onMouseDown={(event) => event.preventDefault()}
               onClick={(event) => {
                 if (isEditingTitle) {

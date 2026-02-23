@@ -306,7 +306,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 >
                   <SelectTrigger
                     size="sm"
-                    className="h-6 w-auto min-w-[130px] rounded-action border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0 text-[11px] font-mono font-medium text-[var(--chat-secondary-foreground)] focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+                    className="h-6 w-auto min-w-[130px] rounded-action border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0 text-[11px] font-mono font-medium text-[var(--chat-secondary-foreground)] focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
                   >
                     <SelectValue placeholder={`v${artifact.version}`} />
                   </SelectTrigger>
@@ -376,7 +376,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         ) : (
           <>
             <div className="flex-1 overflow-hidden px-4 py-3">
-              <div className="flex h-full flex-col overflow-hidden rounded-sm border border-[color:var(--chat-border)] bg-[var(--chat-background)]">
+              <div className="flex h-full flex-col overflow-hidden bg-[var(--chat-background)]">
                 <div className="relative flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
                   {isRefrasaLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-[var(--chat-card)] backdrop-blur-md">

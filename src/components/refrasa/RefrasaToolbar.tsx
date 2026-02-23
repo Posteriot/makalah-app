@@ -56,10 +56,10 @@ interface RefrasaToolbarProps {
 }
 
 const iconBtnClass =
-  "flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring"
+  "flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
 
 const collapsibleTriggerClass =
-  "flex items-center gap-1.5 rounded-sm text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring"
+  "flex items-center gap-1.5 rounded-sm text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
 
 export function RefrasaToolbar({
   artifact,
@@ -215,7 +215,7 @@ export function RefrasaToolbar({
                 onClick={onDelete}
                 className={cn(
                   iconBtnClass,
-                  "hover:bg-[var(--chat-destructive)] hover:text-[var(--chat-destructive-foreground)]"
+                  "hover:text-[var(--chat-foreground)]"
                 )}
                 aria-label="Hapus"
               >
@@ -233,7 +233,7 @@ export function RefrasaToolbar({
                   <button
                     onClick={() => setShowIssues((v) => !v)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring",
+                      "inline-flex items-center gap-1 rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]",
                       showIssues
                         ? "border-[color:var(--chat-border)] bg-[var(--chat-secondary)] text-[var(--chat-foreground)]"
                         : "border-[color:var(--chat-border)] bg-[var(--chat-accent)] text-[var(--chat-foreground)] hover:bg-[var(--chat-secondary)]"

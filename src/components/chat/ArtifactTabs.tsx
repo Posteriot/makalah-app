@@ -266,7 +266,7 @@ export function ArtifactTabs({
                 className={cn(
                   "group relative -mb-px flex min-w-[160px] max-w-[260px] cursor-pointer items-center gap-2 rounded-t-action rounded-b-none border-x border-t border-b-0 px-2.5 py-1",
                   "transition-colors duration-150",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--chat-card)]",
+                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]",
                   isActive
                     ? "border-[color:var(--chat-border)] bg-[var(--chat-card)] shadow-sm"
                     : "border-transparent bg-[var(--chat-muted)] hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]"
@@ -302,8 +302,8 @@ export function ArtifactTabs({
                   }}
                   className={cn(
                     "flex h-5 w-5 shrink-0 items-center justify-center rounded-badge text-[var(--chat-muted-foreground)] transition-colors",
-                    "hover:bg-[var(--chat-destructive)] hover:text-[var(--chat-destructive-foreground)]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring",
+                    "hover:text-[var(--chat-foreground)]",
+                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]",
                     isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                   )}
                   aria-label={`Tutup tab ${tab.title}`}
@@ -317,8 +317,8 @@ export function ArtifactTabs({
         </div>
       </div>
 
-      <div className="flex h-[34px] self-end items-center gap-2 border-l border-[color:var(--chat-border)] px-3 @[520px]/artifact:gap-0.5 @[520px]/artifact:px-2">
-        <span className="mr-1 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
+      <div className="flex h-[34px] self-end items-center gap-2 px-3 @[520px]/artifact:gap-0.5 @[520px]/artifact:px-2">
+        <span className="mr-1 rounded-sm border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
           {tabs.length} tab
         </span>
         <button

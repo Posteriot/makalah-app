@@ -30,7 +30,7 @@ export function ArtifactIndicator({
       className={cn(
         "group w-full cursor-pointer rounded-action border px-3 py-2.5 text-left transition-colors duration-150",
         "border-[color:var(--chat-border)] bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-border)]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--chat-background)]"
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
       )}
       aria-label={`${isUpdated ? "Buka artifak revisi" : "Buka artifak baru"}: ${title}`}
       aria-describedby={hintId}

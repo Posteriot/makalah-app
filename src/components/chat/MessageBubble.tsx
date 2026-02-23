@@ -548,21 +548,21 @@ export function MessageBubble({
                                     e.target.style.height = e.target.scrollHeight + 'px'
                                 }}
                                 onKeyDown={handleKeyDown}
-                                className="w-full resize-none overflow-hidden rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-3 text-sm text-[var(--chat-foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+                                className="w-full resize-none overflow-hidden rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-3 text-sm text-[var(--chat-foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
                                 rows={1}
                                 aria-label="Edit message content"
                             />
                             <div className="flex gap-2 justify-end">
                                 <button
                                     onClick={handleCancel}
-                                    className="flex items-center gap-1.5 rounded-action px-3 py-1.5 text-xs font-mono text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+                                    className="flex items-center gap-1.5 rounded-action px-3 py-1.5 text-xs font-mono text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
                                     aria-label="Batalkan edit"
                                 >
                                     <Xmark className="h-3.5 w-3.5" /> Batal
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="flex items-center gap-1.5 rounded-action border border-[color:var(--chat-primary)] bg-[var(--chat-primary)] px-3 py-1.5 text-xs font-mono font-medium text-[var(--chat-primary-foreground)] transition-colors hover:bg-[var(--chat-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+                                    className="flex items-center gap-1.5 rounded-action border border-[color:var(--chat-primary)] bg-[var(--chat-primary)] px-3 py-1.5 text-xs font-mono font-medium text-[var(--chat-primary-foreground)] transition-colors hover:bg-[var(--chat-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
                                     aria-label="Kirim pesan yang diedit"
                                 >
                                     <Send className="h-3.5 w-3.5" /> Kirim

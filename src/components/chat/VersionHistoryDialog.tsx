@@ -130,7 +130,7 @@ export function VersionHistoryDialog({
                                             className={cn(
                                                 "w-full rounded-action border p-3 text-left transition-colors",
                                                 "border-[color:var(--chat-border)] hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]",
-                                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-2",
+                                                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]",
                                                 isCurrentVersion &&
                                                     "border-[color:var(--chat-info)] bg-[var(--chat-info)]"
                                             )}
