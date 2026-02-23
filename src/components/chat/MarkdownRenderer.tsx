@@ -8,7 +8,7 @@ import { InlineCitationChip } from "./InlineCitationChip"
 
 const MermaidRenderer = dynamic(
   () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
-  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-[var(--chat-muted)]" /> }
 )
 
 interface MarkdownRendererProps {
@@ -415,7 +415,7 @@ function BareUrlCopyBadge({ url }: { url: string }) {
         <button
           type="button"
           onClick={handleCopy}
-          className="mx-0.5 inline-flex items-center rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-2 py-0.5 font-mono text-xs font-normal text-[var(--ds-artifact-chip-fg)] transition-colors hover:bg-[var(--ds-artifact-chip-hover-bg)]"
+          className="mx-0.5 inline-flex items-center rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0.5 font-mono text-xs font-normal text-[var(--chat-secondary-foreground)] transition-colors hover:bg-[var(--chat-accent)]"
         >
           URL Referensi
         </button>
@@ -481,7 +481,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
             href={rawUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 text-info hover:opacity-80 [overflow-wrap:anywhere] break-all"
+            className="underline underline-offset-2 text-[var(--chat-info)] hover:opacity-80 [overflow-wrap:anywhere] break-all"
           >
             {rawUrl}
           </a>,
@@ -541,7 +541,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       nodes.push(
         <code
           key={`${keyPrefix}-code-${partIndex++}`}
-          className="inline-flex items-center rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-2 py-0.5 font-mono text-[0.85em] font-medium text-[var(--ds-artifact-text-primary)] shadow-sm"
+          className="inline-flex items-center rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0.5 font-mono text-[0.85em] font-medium text-[var(--chat-card-foreground)] shadow-sm"
         >
           {inner}
         </code>,
@@ -599,7 +599,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
                 href={bracketedBareUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline underline-offset-2 text-info hover:opacity-80 [overflow-wrap:anywhere] break-all"
+                className="underline underline-offset-2 text-[var(--chat-info)] hover:opacity-80 [overflow-wrap:anywhere] break-all"
               >
                 {bracketedBareUrl}
               </a>,
@@ -660,7 +660,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       }
       const inner = text.slice(cursor + delimiter.length, end)
       nodes.push(
-        <strong key={`${keyPrefix}-strong-${partIndex++}`} className="text-foreground">
+        <strong key={`${keyPrefix}-strong-${partIndex++}`} className="text-[var(--chat-foreground)]">
           {renderInline(inner, `${keyPrefix}-strongi-${partIndex}`, sources, context)}
         </strong>,
       )
@@ -714,7 +714,7 @@ function renderBlocks(
         // h1: Display title - largest
         if (block.level === 1)
           return (
-            <h1 key={k} className="mt-6 mb-2 text-2xl font-bold tracking-tight text-foreground">
+            <h1 key={k} className="mt-6 mb-2 text-2xl font-bold tracking-tight text-[var(--chat-foreground)]">
               {content}
               {fallbackChip}
             </h1>
@@ -722,7 +722,7 @@ function renderBlocks(
         // h2: Section heading - dominant, border-t divider + big spacing to separate sections
         if (block.level === 2)
           return (
-            <h2 key={k} className="mt-10 pt-6 mb-1 border-t border-border/40 text-xl font-bold tracking-tight text-foreground first:mt-0 first:border-t-0 first:pt-0">
+            <h2 key={k} className="mt-10 pt-6 mb-1 border-t border-[color:var(--chat-border)] text-xl font-bold tracking-tight text-[var(--chat-foreground)] first:mt-0 first:border-t-0 first:pt-0">
               {content}
               {fallbackChip}
             </h2>
@@ -730,14 +730,14 @@ function renderBlocks(
         // h3: Sub-section heading
         if (block.level === 3)
           return (
-            <h3 key={k} className="mt-6 mb-1 text-lg font-semibold tracking-tight text-foreground">
+            <h3 key={k} className="mt-6 mb-1 text-lg font-semibold tracking-tight text-[var(--chat-foreground)]">
               {content}
               {fallbackChip}
             </h3>
           )
         // h4+: Minor heading
         return (
-          <h4 key={k} className="mt-4 mb-1 text-base font-semibold tracking-tight text-foreground">
+          <h4 key={k} className="mt-4 mb-1 text-base font-semibold tracking-tight text-[var(--chat-foreground)]">
             {content}
             {fallbackChip}
           </h4>
@@ -746,7 +746,7 @@ function renderBlocks(
       case "paragraph": {
         const lines = block.lines
         return (
-          <p key={k} className="mb-3 leading-relaxed text-foreground [overflow-wrap:anywhere] break-words">
+          <p key={k} className="mb-3 leading-relaxed text-[var(--chat-foreground)] [overflow-wrap:anywhere] break-words">
             {lines.map((line, lineIdx) => (
               <Fragment key={`${k}-p-${lineIdx}`}>
                 {renderInline(line, `${k}-pi-${lineIdx}`, sources, context)}
@@ -759,7 +759,7 @@ function renderBlocks(
       }
       case "ul":
         return (
-          <ul key={k} className="list-disc pl-6 mb-3 space-y-1 text-foreground [overflow-wrap:anywhere] break-words">
+          <ul key={k} className="list-disc pl-6 mb-3 space-y-1 text-[var(--chat-foreground)] [overflow-wrap:anywhere] break-words">
             {block.items.map((item, itemIdx) => (
               <li key={`${k}-li-${itemIdx}`} className="leading-relaxed [overflow-wrap:anywhere] break-words">
                 {renderInline(item.text, `${k}-uli-${itemIdx}`, sources, context)}
@@ -773,10 +773,10 @@ function renderBlocks(
         )
       case "ol":
         return (
-          <ol key={k} className="mb-3 space-y-2 text-foreground [overflow-wrap:anywhere] break-words">
+          <ol key={k} className="mb-3 space-y-2 text-[var(--chat-foreground)] [overflow-wrap:anywhere] break-words">
             {block.items.map((item, itemIdx) => (
               <li key={`${k}-li-${itemIdx}`} className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-2 leading-relaxed [overflow-wrap:anywhere] break-words">
-                <span className="pt-[1px] text-right font-mono tabular-nums text-muted-foreground">
+                <span className="pt-[1px] text-right font-mono tabular-nums text-[var(--chat-muted-foreground)]">
                   {item.number}.
                 </span>
                 <div className="min-w-0 [overflow-wrap:anywhere] break-words">
@@ -797,17 +797,17 @@ function renderBlocks(
         )
       case "outline":
         return (
-          <ol key={k} className="mb-3 space-y-2 text-foreground [overflow-wrap:anywhere] break-words">
+          <ol key={k} className="mb-3 space-y-2 text-[var(--chat-foreground)] [overflow-wrap:anywhere] break-words">
             {block.items.map((item, itemIdx) => (
               <li
                 key={`${k}-oli-${itemIdx}`}
                 className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-2 leading-relaxed"
               >
-                <span className="pt-[1px] text-right font-mono tabular-nums text-muted-foreground">
+                <span className="pt-[1px] text-right font-mono tabular-nums text-[var(--chat-muted-foreground)]">
                   {block.useOriginalNumbers ? item.number : itemIdx + 1}.
                 </span>
                 <div className="min-w-0 [overflow-wrap:anywhere] break-words">
-                  <div className="font-semibold text-foreground">
+                  <div className="font-semibold text-[var(--chat-foreground)]">
                     {renderInline(item.title, `${k}-ot-${itemIdx}`, sources, context)}
                     {item.children.length === 0 && itemIdx === block.items.length - 1 ? fallbackChip : null}
                   </div>
@@ -834,7 +834,7 @@ function renderBlocks(
         }
         return (
           <Fragment key={k}>
-            <pre className="my-2 overflow-x-auto rounded-action bg-background/50 p-3 text-xs leading-relaxed">
+            <pre className="my-2 overflow-x-auto rounded-action bg-[var(--chat-background)] p-3 text-xs leading-relaxed">
               <code>{block.code}</code>
             </pre>
             {fallbackChip ? <div className="mt-2">{fallbackChip}</div> : null}
@@ -843,7 +843,7 @@ function renderBlocks(
       case "blockquote": {
         const inner = parseBlocks(block.lines.join("\n"))
         return (
-          <blockquote key={k} className="border-l-2 border-border pl-3 my-2 opacity-90 space-y-2">
+          <blockquote key={k} className="border-l-2 border-[color:var(--chat-border)] pl-3 my-2 opacity-90 space-y-2">
             {renderBlocks(groupOutlineLists(inner), `${k}-q`, sources, {
               appendFallbackChip: shouldAppendFallback,
             }, context)}
@@ -853,13 +853,13 @@ function renderBlocks(
       case "table":
         return (
           <div key={k} className="my-3 overflow-x-auto">
-            <table className="w-full border-collapse rounded-action border border-border text-sm">
+            <table className="w-full border-collapse rounded-action border border-[color:var(--chat-border)] text-sm">
               <thead>
-                <tr className="bg-muted">
+                <tr className="bg-[var(--chat-muted)]">
                   {block.headers.map((header, hIdx) => (
                     <th
                       key={`${k}-th-${hIdx}`}
-                      className="border-b border-border px-3 py-2 text-left font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+                      className="border-b border-[color:var(--chat-border)] px-3 py-2 text-left font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]"
                       style={{ textAlign: block.alignments[hIdx] ?? "left" }}
                     >
                       {renderInline(header, `${k}-th-${hIdx}`, sources, context)}
@@ -869,11 +869,11 @@ function renderBlocks(
               </thead>
               <tbody>
                 {block.rows.map((row, rIdx) => (
-                  <tr key={`${k}-tr-${rIdx}`} className="border-b border-border/50 last:border-b-0">
+                  <tr key={`${k}-tr-${rIdx}`} className="border-b border-[color:var(--chat-border)] last:border-b-0">
                     {row.map((cell, cIdx) => (
                       <td
                         key={`${k}-td-${rIdx}-${cIdx}`}
-                        className="px-3 py-2 font-mono text-sm text-foreground"
+                        className="px-3 py-2 font-mono text-sm text-[var(--chat-foreground)]"
                         style={{ textAlign: block.alignments[cIdx] ?? "left" }}
                       >
                         {renderInline(cell, `${k}-td-${rIdx}-${cIdx}`, sources, context)}
@@ -889,7 +889,7 @@ function renderBlocks(
       case "hr":
         return (
           <Fragment key={k}>
-            <hr className="my-3 border-border/50" />
+            <hr className="my-3 border-[color:var(--chat-border)]" />
             {fallbackChip ? <div className="mt-2">{fallbackChip}</div> : null}
           </Fragment>
         )

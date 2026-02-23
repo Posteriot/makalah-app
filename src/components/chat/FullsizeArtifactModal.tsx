@@ -41,7 +41,7 @@ import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
 
 const MermaidRenderer = dynamic(
   () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
-  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-[var(--chat-muted)]" /> }
 )
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useRefrasa } from "@/lib/hooks/useRefrasa"
@@ -396,11 +396,12 @@ export function FullsizeArtifactModal({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div
-          className="absolute inset-0 bg-[var(--ds-artifact-backdrop)] backdrop-blur-sm"
+          className="absolute inset-0 backdrop-blur-sm"
+          style={{ backgroundColor: "oklch(0 0 0 / 0.55)" }}
           onClick={requestClose}
         />
         <div className="relative z-10 flex h-full w-full items-center justify-center">
-          <span className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <span className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--chat-muted-foreground)] border-t-transparent" />
         </div>
       </div>
     )
@@ -429,7 +430,8 @@ export function FullsizeArtifactModal({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div
-          className="absolute inset-0 bg-[var(--ds-artifact-backdrop)] backdrop-blur-sm"
+          className="absolute inset-0 backdrop-blur-sm"
+          style={{ backgroundColor: "oklch(0 0 0 / 0.55)" }}
           onClick={requestClose}
           aria-label="Close modal"
         />
@@ -440,7 +442,7 @@ export function FullsizeArtifactModal({
           aria-modal="true"
           aria-labelledby="artifact-fullscreen-title"
           className={cn(
-            "relative z-10 flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none border-0 bg-[var(--ds-artifact-panel-bg)] shadow-none"
+            "relative z-10 flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none border-0 bg-[var(--chat-card)] shadow-none"
           )}
           style={{
             paddingTop: "env(safe-area-inset-top)",
@@ -450,10 +452,10 @@ export function FullsizeArtifactModal({
           }}
         >
           {/* Header */}
-          <div className="shrink-0 border-b border-[color:var(--ds-artifact-divider-border)] bg-[var(--ds-artifact-panel-bg)] px-4 py-2.5 md:px-5 md:py-3">
+          <div className="shrink-0 border-b border-[color:var(--chat-border)] bg-[var(--chat-card)] px-4 py-2.5 md:px-5 md:py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h2 id="artifact-fullscreen-title" className="truncate text-lg font-semibold text-[var(--ds-artifact-text-primary)]">
+                <h2 id="artifact-fullscreen-title" className="truncate text-lg font-semibold text-[var(--chat-card-foreground)]">
                   {artifact.title}
                 </h2>
               </div>
@@ -463,7 +465,7 @@ export function FullsizeArtifactModal({
                     <button
                       ref={primaryCloseButtonRef}
                       onClick={requestClose}
-                      className="flex h-8 w-8 items-center justify-center rounded-action text-[var(--ds-artifact-icon-fg)] transition-colors hover:bg-[var(--ds-artifact-icon-hover-bg)] hover:text-[var(--ds-artifact-icon-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                       aria-label="Tutup fullscreen"
                     >
                       <Collapse className="h-4 w-4" />
@@ -476,7 +478,7 @@ export function FullsizeArtifactModal({
 
             <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="rounded-badge border border-[color:var(--ds-artifact-mode-badge-border)] bg-[var(--ds-artifact-mode-badge-bg)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-mode-badge-fg)]">
+                <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-info)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-info-foreground)]">
                   {isEditing ? "Mode Edit" : "Mode Baca"}
                 </span>
 
@@ -491,7 +493,7 @@ export function FullsizeArtifactModal({
                     <SelectTrigger
                       size="sm"
                       disabled={isEditing}
-                      className="h-6 w-auto min-w-[140px] rounded-action border-[color:var(--ds-artifact-viewer-select-border)] bg-[var(--ds-artifact-viewer-select-bg)] px-2 py-0 text-[11px] font-mono text-[var(--ds-artifact-viewer-select-fg)]"
+                      className="h-6 w-auto min-w-[140px] rounded-action border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0 text-[11px] font-mono text-[var(--chat-secondary-foreground)]"
                     >
                       <SelectValue placeholder={`v${artifact.version}`} />
                     </SelectTrigger>
@@ -506,24 +508,24 @@ export function FullsizeArtifactModal({
                 ) : null}
 
                 {isFinal && (
-                  <span className="rounded-badge border border-[color:var(--ds-state-success-border)] bg-[var(--ds-state-success-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-state-success-fg)]">
+                  <span className="rounded-badge border border-[color:var(--chat-success)] bg-[var(--chat-success)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-success-foreground)]">
                     FINAL
                   </span>
                 )}
 
                 {hasUnsavedChanges && (
-                  <span className="rounded-badge border border-[color:var(--ds-state-warning-border)] bg-[var(--ds-state-warning-bg)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-state-warning-fg)]">
+                  <span className="rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-warning-foreground)]">
                     Draft belum disimpan
                   </span>
                 )}
 
-                <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]">
+                <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-secondary-foreground)]">
                   {contentTypeLabel}
                 </span>
-                <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]">
+                <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-secondary-foreground)]">
                   {wordCount} kata
                 </span>
-                <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]">
+                <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-secondary-foreground)]">
                   {artifact.content.length} karakter
                 </span>
               </div>
@@ -539,7 +541,7 @@ export function FullsizeArtifactModal({
                       setEditContent(artifact.content)
                       }}
                       disabled={isSaving}
-                      className="h-7 px-2.5 font-mono text-[11px] text-[var(--ds-artifact-text-muted)] hover:text-[var(--ds-artifact-text-primary)]"
+                      className="h-7 px-2.5 font-mono text-[11px] text-[var(--chat-muted-foreground)] hover:text-[var(--chat-card-foreground)]"
                     >
                       Batal
                     </Button>
@@ -575,7 +577,7 @@ export function FullsizeArtifactModal({
                       disabled={copied}
                       className={cn(
                         "h-7 px-2.5 font-mono text-[11px]",
-                        copied && "border-[color:var(--ds-artifact-copy-badge-border)] bg-[var(--ds-artifact-copy-badge-bg)] text-[var(--ds-artifact-copy-badge-fg)]"
+                        copied && "border-[color:var(--chat-border)] bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
                       )}
                     >
                       {copied ? (
@@ -650,7 +652,7 @@ export function FullsizeArtifactModal({
 
           {/* Tab bar — shown when 2+ tabs */}
           {modalTabs.length > 1 && (
-            <div className="shrink-0 border-b border-[color:var(--ds-artifact-divider-border)]">
+            <div className="shrink-0 border-b border-[color:var(--chat-border)]">
               <ArtifactTabs
                 tabs={modalTabs}
                 activeTabId={modalActiveTabId}
@@ -676,18 +678,18 @@ export function FullsizeArtifactModal({
           <div className="flex min-h-0 flex-1 overflow-hidden">
             <div className="relative min-w-0 flex-1 overflow-hidden px-4 py-3 md:px-5 md:py-4">
               {isRefrasaLoading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-[var(--ds-artifact-viewer-overlay-bg)] backdrop-blur-md">
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-[var(--chat-card)] backdrop-blur-md">
                   <RefrasaLoadingIndicator />
                 </div>
               )}
 
               {isEditing ? (
-                <div className="h-full overflow-hidden rounded-shell border border-[color:var(--ds-artifact-viewer-canvas-border)] bg-[var(--ds-artifact-viewer-canvas-bg)] shadow-sm">
-                  <div className="flex items-center justify-between border-b border-[color:var(--ds-artifact-divider-border)] px-3 py-1.5">
-                    <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)]">
+                <div className="h-full overflow-hidden rounded-shell border border-[color:var(--chat-border)] bg-[var(--chat-background)] shadow-sm">
+                  <div className="flex items-center justify-between border-b border-[color:var(--chat-border)] px-3 py-1.5">
+                    <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                       Workspace Editor
                     </p>
-                    <p className="text-[10px] font-mono text-[var(--ds-artifact-text-muted)]">
+                    <p className="text-[10px] font-mono text-[var(--chat-muted-foreground)]">
                       {editWordCount} kata • {editCharCount} karakter • Ctrl/Cmd+S untuk simpan
                     </p>
                   </div>
@@ -702,21 +704,21 @@ export function FullsizeArtifactModal({
                         }
                       }
                     }}
-                    className="h-[calc(100%-31px)] w-full resize-none bg-transparent p-4 text-base leading-7 text-[var(--ds-artifact-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+                    className="h-[calc(100%-31px)] w-full resize-none bg-transparent p-4 text-base leading-7 text-[var(--chat-card-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
                     placeholder="Edit konten artifak..."
                     autoFocus
                     spellCheck
                   />
                 </div>
               ) : (
-                <div className="h-full overflow-hidden rounded-shell border border-[color:var(--ds-artifact-viewer-canvas-border)] bg-[var(--ds-artifact-viewer-canvas-bg)]">
+                <div className="h-full overflow-hidden rounded-shell border border-[color:var(--chat-border)] bg-[var(--chat-background)]">
                   <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
                     {isMermaid ? (
                       <MermaidRenderer code={extractMermaidCode(artifact.content)} />
                     ) : isChartArtifact ? (
                       <ChartRenderer content={artifact.content} />
                     ) : isCodeArtifact && language ? (
-                      <div className="overflow-hidden rounded-action border border-[color:var(--ds-artifact-viewer-canvas-border)]">
+                      <div className="overflow-hidden rounded-action border border-[color:var(--chat-border)]">
                         <SyntaxHighlighter
                           language={language}
                           style={oneDark}
@@ -734,12 +736,12 @@ export function FullsizeArtifactModal({
                     ) : shouldRenderMarkdown ? (
                       <MarkdownRenderer
                         markdown={artifact.content}
-                        className="max-w-none rounded-action border border-[color:var(--ds-artifact-viewer-canvas-border)] bg-[var(--ds-artifact-viewer-canvas-bg)] p-4 text-sm leading-relaxed text-[var(--ds-artifact-text-primary)]"
+                        className="max-w-none rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-4 text-sm leading-relaxed text-[var(--chat-card-foreground)]"
                         sources={artifact.sources}
                         context="artifact"
                       />
                     ) : (
-                      <pre className="whitespace-pre-wrap rounded-action border border-[color:var(--ds-artifact-viewer-canvas-border)] bg-[var(--ds-artifact-viewer-canvas-bg)] p-4 font-sans text-sm leading-relaxed text-[var(--ds-artifact-text-primary)]">
+                      <pre className="whitespace-pre-wrap rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-4 font-sans text-sm leading-relaxed text-[var(--chat-card-foreground)]">
                         {artifact.content}
                       </pre>
                     )}
@@ -749,19 +751,19 @@ export function FullsizeArtifactModal({
             </div>
 
             {!isEditing && (
-              <aside className="hidden w-[300px] shrink-0 border-l border-[color:var(--ds-artifact-divider-border)] bg-[var(--ds-artifact-panel-bg)] xl:flex xl:flex-col">
-                <div className="border-b border-[color:var(--ds-artifact-divider-border)] px-3 py-2">
-                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)]">
+              <aside className="hidden w-[300px] shrink-0 border-l border-[color:var(--chat-border)] bg-[var(--chat-card)] xl:flex xl:flex-col">
+                <div className="border-b border-[color:var(--chat-border)] px-3 py-2">
+                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                     Sumber Terkait
                   </p>
                 </div>
                 <div className="flex-1 overflow-auto p-3 scrollbar-thin">
-                  <div className="mb-3 rounded-action border border-[color:var(--ds-artifact-meta-card-border)] bg-[var(--ds-artifact-meta-card-bg)] p-2.5">
+                  <div className="mb-3 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-muted)] p-2.5">
                     <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)]">
+                      <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                         Artifak lainnya
                       </p>
-                      <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]">
+                      <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-secondary-foreground)]">
                         {sessionArtifactCount}
                       </span>
                     </div>
@@ -775,7 +777,7 @@ export function FullsizeArtifactModal({
                       }}
                     >
                       <SelectTrigger
-                        className="h-8 w-full border-[color:var(--ds-artifact-viewer-select-border)] bg-[var(--ds-artifact-viewer-select-bg)] px-2 text-[11px] font-mono text-[var(--ds-artifact-viewer-select-fg)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                        className="h-8 w-full border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 text-[11px] font-mono text-[var(--chat-secondary-foreground)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
                         disabled={sessionArtifactCount <= 1}
                       >
                         <SelectValue placeholder="Tidak ada artifak lain" />
@@ -793,7 +795,7 @@ export function FullsizeArtifactModal({
                   {artifact.sources && artifact.sources.length > 0 ? (
                     <SourcesIndicator sources={artifact.sources} />
                   ) : (
-                    <p className="text-[11px] font-mono text-[var(--ds-artifact-text-secondary)]">
+                    <p className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
                       Tidak ada sumber eksternal untuk versi ini.
                     </p>
                   )}
@@ -803,13 +805,13 @@ export function FullsizeArtifactModal({
           </div>
 
           {!isEditing && (
-            <div className="border-t border-[color:var(--ds-artifact-divider-border)] bg-[var(--ds-artifact-panel-bg)] px-4 py-1.5 md:px-5 xl:hidden">
-              <div className="mb-2 rounded-action border border-[color:var(--ds-artifact-meta-card-border)] bg-[var(--ds-artifact-meta-card-bg)] p-2.5">
+            <div className="border-t border-[color:var(--chat-border)] bg-[var(--chat-card)] px-4 py-1.5 md:px-5 xl:hidden">
+              <div className="mb-2 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-muted)] p-2.5">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)]">
+                  <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                     Artifak lainnya
                   </p>
-                  <span className="rounded-badge border border-[color:var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]">
+                  <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-secondary-foreground)]">
                     {sessionArtifactCount}
                   </span>
                 </div>
@@ -823,7 +825,7 @@ export function FullsizeArtifactModal({
                   }}
                 >
                   <SelectTrigger
-                    className="h-8 w-full border-[color:var(--ds-artifact-viewer-select-border)] bg-[var(--ds-artifact-viewer-select-bg)] px-2 text-[11px] font-mono text-[var(--ds-artifact-viewer-select-fg)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                    className="h-8 w-full border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 text-[11px] font-mono text-[var(--chat-secondary-foreground)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
                     disabled={sessionArtifactCount <= 1}
                   >
                     <SelectValue placeholder="Tidak ada artifak lain" />
@@ -841,7 +843,7 @@ export function FullsizeArtifactModal({
               {artifact.sources && artifact.sources.length > 0 ? (
                 <SourcesIndicator sources={artifact.sources} />
               ) : (
-                <p className="text-[11px] font-mono text-[var(--ds-artifact-text-secondary)]">
+                <p className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
                   Tidak ada sumber eksternal untuk versi ini.
                 </p>
               )}
@@ -870,7 +872,7 @@ export function FullsizeArtifactModal({
                 if (artifact?.content) setEditContent(artifact.content)
                 onClose()
               }}
-              className="bg-[var(--ds-artifact-danger-bg)] text-[var(--ds-artifact-danger-fg)] hover:bg-[var(--ds-artifact-danger-hover-bg)]"
+              className="bg-[var(--chat-destructive)] text-[var(--chat-destructive-foreground)] hover:bg-[var(--chat-destructive)]"
             >
               <WarningTriangle className="mr-1.5 h-4 w-4" />
               Tutup tanpa simpan

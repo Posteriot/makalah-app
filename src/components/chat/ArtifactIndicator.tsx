@@ -29,8 +29,8 @@ export function ArtifactIndicator({
       onClick={() => onSelect(artifactId)}
       className={cn(
         "group w-full cursor-pointer rounded-action border px-3 py-2.5 text-left transition-colors duration-150",
-        "border-border/65 bg-card/70 hover:bg-accent/35 hover:border-border",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        "border-[color:var(--chat-border)] bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-border)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--chat-background)]"
       )}
       aria-label={`${isUpdated ? "Buka artifak revisi" : "Buka artifak baru"}: ${title}`}
       aria-describedby={hintId}
@@ -40,8 +40,8 @@ export function ArtifactIndicator({
           className={cn(
             "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-action border",
             isUpdated
-              ? "border-[color:var(--ds-state-warning-border-soft)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-state-warning-fg)]"
-              : "border-[color:var(--ds-state-info-border)] bg-[var(--ds-state-info-bg)] text-[var(--ds-state-info-fg)]"
+              ? "border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
+              : "border-[color:var(--chat-info)] bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
           )}
           aria-hidden="true"
         >
@@ -50,33 +50,33 @@ export function ArtifactIndicator({
 
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-badge border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
+            <span className="rounded-badge border border-[color:var(--chat-primary)] bg-[var(--chat-primary)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-primary-foreground)]">
               Hasil Artifak
             </span>
             <span
               className={cn(
                 "rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
                 isUpdated
-                  ? "border-[color:var(--ds-state-warning-border-soft)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-state-warning-fg)]"
-                  : "border-[color:var(--ds-state-success-border-soft)] bg-[var(--ds-state-success-bg)] text-[var(--ds-state-success-fg)]"
+                  ? "border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
+                  : "border-[color:var(--chat-success)] bg-[var(--chat-success)] text-[var(--chat-success-foreground)]"
               )}
             >
               {isUpdated ? "Revisi" : "Baru"}
             </span>
             {typeof version === "number" && Number.isFinite(version) && (
-              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+              <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
                 v{version}
               </span>
             )}
           </div>
 
-          <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-          <p className="mt-0.5 text-[11px] font-mono text-muted-foreground">
+          <p className="truncate text-sm font-semibold text-[var(--chat-foreground)]">{title}</p>
+          <p className="mt-0.5 text-[11px] font-mono text-[var(--chat-muted-foreground)]">
             Klik untuk buka di panel artifak
           </p>
         </div>
 
-        <span className="mt-1 inline-flex shrink-0 items-center gap-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground transition-colors group-hover:text-foreground">
+        <span className="mt-1 inline-flex shrink-0 items-center gap-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)] transition-colors group-hover:text-[var(--chat-foreground)]">
           Buka
           <NavArrowRight className="h-3.5 w-3.5" />
         </span>

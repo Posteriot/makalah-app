@@ -108,23 +108,23 @@ export function ArtifactList({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border/50 px-3 py-2">
+      <div className="border-b border-[color:var(--chat-border)] px-3 py-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
             Daftar Artifak
           </p>
-          <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+          <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
             {items.length}
           </span>
         </div>
-        <p className="mt-1 text-[11px] font-mono text-muted-foreground/85">
+        <p className="mt-1 text-[11px] font-mono text-[var(--chat-muted-foreground)]">
           {showLatestOnly ? "Mode latest-only aktif" : "Semua versi ditampilkan"}
         </p>
       </div>
 
       <div className="scrollbar-thin flex-1 overflow-y-auto p-2">
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
+          <div className="flex flex-col items-center justify-center p-6 text-center text-[var(--chat-muted-foreground)]">
             <Page className="mb-2 h-8 w-8 opacity-50" />
             <span className="text-xs font-mono uppercase">Belum ada artifak</span>
           </div>
@@ -142,43 +142,43 @@ export function ArtifactList({
                   onClick={() => onSelect(artifact._id)}
                   className={cn(
                     "w-full rounded-action border p-2 text-left transition-colors",
-                    "border-border/55 hover:border-border hover:bg-accent/50",
+                    "border-[color:var(--chat-border)] hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1",
-                    isSelected && "border-primary/40 bg-primary/10"
+                    isSelected && "border-[color:var(--chat-primary)] bg-[var(--chat-accent)]"
                   )}
                   aria-label={`Pilih artifak ${artifact.title} versi ${artifact.version}`}
                   aria-current={isSelected ? "page" : undefined}
                 >
                   <div className="flex items-start gap-2">
-                    <TypeIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <TypeIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate text-sm font-medium text-foreground">
+                        <span className="truncate text-sm font-medium text-[var(--chat-foreground)]">
                           {artifact.title}
                         </span>
                         <Badge
                           variant="secondary"
-                          className="rounded-badge border border-border/60 bg-muted/70 px-1 py-0 text-[10px] font-mono"
+                          className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-1 py-0 text-[10px] font-mono"
                         >
                           v{artifact.version}
                         </Badge>
                         <Badge
                           variant="outline"
-                          className="rounded-badge border-border/60 px-1 py-0 text-[10px] font-mono"
+                          className="rounded-badge border-[color:var(--chat-border)] px-1 py-0 text-[10px] font-mono"
                         >
                           {typeLabels[artifact.type]}
                         </Badge>
                         {isFinal ? (
-                          <Badge className="rounded-badge border border-[color:var(--ds-state-success-border)] bg-[var(--ds-state-success-chip-bg)] px-1 py-0 text-[10px] font-mono uppercase text-[var(--ds-state-success-fg)]">
+                          <Badge className="rounded-badge border border-[color:var(--chat-success)] bg-[var(--chat-success)] px-1 py-0 text-[10px] font-mono uppercase text-[var(--chat-success-foreground)]">
                             Final
                           </Badge>
                         ) : (
-                          <Badge className="rounded-badge border border-[color:var(--ds-state-warning-border)] bg-[var(--ds-state-warning-chip-bg)] px-1 py-0 text-[10px] font-mono uppercase text-[var(--ds-state-warning-fg)]">
+                          <Badge className="rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] px-1 py-0 text-[10px] font-mono uppercase text-[var(--chat-warning-foreground)]">
                             Revisi
                           </Badge>
                         )}
                       </div>
-                      <p className="mt-0.5 text-[10px] font-mono text-muted-foreground">
+                      <p className="mt-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
                         Dibuat {formatDate(artifact.createdAt)}
                       </p>
                     </div>

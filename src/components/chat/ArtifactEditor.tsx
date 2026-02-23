@@ -62,13 +62,13 @@ export function ArtifactEditor({
   return (
     <div className="flex h-full flex-col">
       {/* Edit mode header */}
-      <div className="border-b border-border/60 bg-card/60 px-4 py-3">
+      <div className="border-b border-[color:var(--chat-border)] bg-[var(--chat-card)] px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground/85">
+            <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
               Mode Edit
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[var(--chat-muted-foreground)]">
               Ubah konten artifak lalu simpan sebagai versi baru.
             </p>
           </div>
@@ -76,8 +76,8 @@ export function ArtifactEditor({
             className={cn(
               "rounded-badge px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
               hasChanges
-                ? "border border-[color:var(--ds-state-warning-border)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-state-warning-fg)]"
-                : "border border-[color:var(--ds-state-success-border)] bg-[var(--ds-state-success-bg)] text-[var(--ds-state-success-fg)]"
+                ? "border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
+                : "border border-[color:var(--chat-success)] bg-[var(--chat-success)] text-[var(--chat-success-foreground)]"
             )}
           >
             {hasChanges ? "Draft berubah" : "Tanpa perubahan"}
@@ -87,13 +87,13 @@ export function ArtifactEditor({
 
       {/* Editor body */}
       <div className="flex-1 overflow-hidden p-4">
-        <div className="h-full overflow-hidden rounded-shell border border-border/60 bg-background/65 shadow-sm">
+        <div className="h-full overflow-hidden rounded-shell border border-[color:var(--chat-border)] bg-[var(--chat-background)] shadow-sm">
           <textarea
             ref={textareaRef}
             value={editedContent}
             onChange={(e) => setEditedContent(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="h-full w-full resize-none bg-transparent p-4 text-sm font-mono leading-relaxed text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
+            className="h-full w-full resize-none bg-transparent p-4 text-sm font-mono leading-relaxed text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
             placeholder="Masukkan konten artifak..."
             disabled={isLoading}
             aria-label="Edit konten artifak"
@@ -102,12 +102,12 @@ export function ArtifactEditor({
       </div>
 
       {/* Footer with status + actions + shortcut */}
-      <div className="border-t border-border/60 bg-card/50 px-4 py-3">
+      <div className="border-t border-[color:var(--chat-border)] bg-[var(--chat-card)] px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--chat-muted-foreground)]">
             <span>{charCount} karakter</span>
             {isLoading && (
-              <span className="inline-flex items-center gap-1 rounded-badge border border-primary/35 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+              <span className="inline-flex items-center gap-1 rounded-badge border border-[color:var(--chat-primary)] bg-[var(--chat-primary)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--chat-primary-foreground)]">
                 <span className="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent" />
                 Menyimpan
               </span>
@@ -120,7 +120,7 @@ export function ArtifactEditor({
               size="sm"
               onClick={onCancel}
               disabled={isLoading}
-              className="font-mono text-muted-foreground hover:text-foreground"
+              className="font-mono text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)]"
             >
               <Xmark className="mr-1 h-4 w-4" />
               Batal
@@ -137,12 +137,12 @@ export function ArtifactEditor({
           </div>
         </div>
 
-        <div className="mt-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground/90">
+        <div className="mt-2 border-t border-[color:var(--chat-border)] pt-2 text-[11px] text-[var(--chat-muted-foreground)]">
           <span className="font-mono">
-            <kbd className="rounded-badge border border-border/60 bg-muted/60 px-1 py-0.5 text-[10px]">⌘/Ctrl</kbd>+
-            <kbd className="rounded-badge border border-border/60 bg-muted/60 px-1 py-0.5 text-[10px]">Enter</kbd> simpan
+            <kbd className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-1 py-0.5 text-[10px]">⌘/Ctrl</kbd>+
+            <kbd className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-1 py-0.5 text-[10px]">Enter</kbd> simpan
             {" • "}
-            <kbd className="rounded-badge border border-border/60 bg-muted/60 px-1 py-0.5 text-[10px]">Esc</kbd> batal
+            <kbd className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-1 py-0.5 text-[10px]">Esc</kbd> batal
           </span>
         </div>
       </div>

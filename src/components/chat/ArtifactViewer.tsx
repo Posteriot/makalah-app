@@ -25,7 +25,7 @@ import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
 
 const MermaidRenderer = dynamic(
   () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
-  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-muted" /> }
+  { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-[var(--chat-muted)]" /> }
 )
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -258,7 +258,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
 
     if (!artifactId) {
       return (
-        <div className="flex h-full flex-col items-center justify-center p-8 text-muted-foreground">
+        <div className="flex h-full flex-col items-center justify-center p-8 text-[var(--chat-muted-foreground)]">
           <Page className="mb-4 h-12 w-12 opacity-50" />
           <p className="text-center">Pilih artifak untuk melihat konten</p>
         </div>
@@ -267,8 +267,8 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
 
     if (artifact === undefined) {
       return (
-        <div className="flex h-full flex-col items-center justify-center p-8 text-muted-foreground">
-          <span className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+        <div className="flex h-full flex-col items-center justify-center p-8 text-[var(--chat-muted-foreground)]">
+          <span className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-[var(--chat-muted-foreground)] border-t-transparent" />
           <p>Memuat artifak...</p>
         </div>
       )
@@ -276,7 +276,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
 
     if (artifact === null) {
       return (
-        <div className="flex h-full flex-col items-center justify-center p-8 text-muted-foreground">
+        <div className="flex h-full flex-col items-center justify-center p-8 text-[var(--chat-muted-foreground)]">
           <Page className="mb-4 h-12 w-12 opacity-50" />
           <p className="text-center">Artifak tidak ditemukan</p>
         </div>
@@ -297,8 +297,8 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     return (
       <div className="flex h-full flex-col">
         {hasHeaderMeta ? (
-          <div className="border-b border-[color:var(--ds-artifact-divider-border)] bg-inherit px-4 py-3">
-            <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono text-[var(--ds-artifact-text-muted)]">
+          <div className="border-b border-[color:var(--chat-border)] bg-inherit px-4 py-3">
+            <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
               {hasMultipleVersions ? (
                 <Select
                   value={viewingVersionId ?? undefined}
@@ -306,7 +306,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 >
                   <SelectTrigger
                     size="sm"
-                    className="h-6 w-auto min-w-[130px] rounded-action border-[color:var(--ds-artifact-viewer-select-border)] bg-[var(--ds-artifact-viewer-select-bg)] px-2 py-0 text-[11px] font-mono font-medium text-[var(--ds-artifact-viewer-select-fg)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                    className="h-6 w-auto min-w-[130px] rounded-action border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0 text-[11px] font-mono font-medium text-[var(--chat-secondary-foreground)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
                   >
                     <SelectValue placeholder={`v${artifact.version}`} />
                   </SelectTrigger>
@@ -324,7 +324,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span
-                      className="cursor-help rounded-badge border border-[color:var(--ds-state-warning-border)] bg-[var(--ds-state-warning-bg)] px-2 py-0.5 text-[11px] font-mono text-[var(--ds-state-warning-fg)]"
+                      className="cursor-help rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] px-2 py-0.5 text-[11px] font-mono text-[var(--chat-warning-foreground)]"
                       data-testid="artifact-type-badge"
                     >
                       <WarningTriangle className="mr-1 inline-block h-3 w-3" data-testid="invalidation-indicator" />
@@ -350,7 +350,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         {isInvalidated && (
           <Alert
             variant="warning"
-            className="mx-4 mt-2 border-[color:var(--ds-state-warning-border-soft)] bg-[var(--ds-state-warning-bg)] text-[var(--ds-artifact-warning-text-strong)]"
+            className="mx-4 mt-2 border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
             data-testid="invalidation-warning"
           >
             <WarningTriangle className="h-4 w-4" data-testid="invalidation-warning-icon" />
@@ -359,7 +359,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
               {invalidatedStageLabel && (
                 <span> karena rewind ke tahap <strong>{invalidatedStageLabel}</strong></span>
               )}
-              <span className="mt-1 block text-xs text-[var(--ds-artifact-warning-text-muted)]">
+              <span className="mt-1 block text-xs text-[var(--chat-warning-foreground)]">
                 Gunakan chat untuk meminta AI memperbarui artifak ini.
               </span>
             </AlertDescription>
@@ -376,10 +376,10 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         ) : (
           <>
             <div className="flex-1 overflow-hidden px-4 py-3">
-              <div className="flex h-full flex-col overflow-hidden rounded-sm border border-[color:var(--ds-artifact-viewer-canvas-border)] bg-[var(--ds-artifact-viewer-canvas-bg)]">
+              <div className="flex h-full flex-col overflow-hidden rounded-sm border border-[color:var(--chat-border)] bg-[var(--chat-background)]">
                 <div className="relative flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
                   {isRefrasaLoading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-[var(--ds-artifact-viewer-overlay-bg)] backdrop-blur-md">
+                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-[var(--chat-card)] backdrop-blur-md">
                       <RefrasaLoadingIndicator />
                     </div>
                   )}
@@ -407,12 +407,12 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                   ) : shouldRenderMarkdown ? (
                     <MarkdownRenderer
                       markdown={artifact.content}
-                      className="space-y-3 text-sm leading-relaxed text-[var(--ds-artifact-text-primary)]"
+                      className="space-y-3 text-sm leading-relaxed text-[var(--chat-card-foreground)]"
                       sources={artifact.sources}
                       context="artifact"
                     />
                   ) : (
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[var(--ds-artifact-text-primary)]">
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[var(--chat-card-foreground)]">
                       {artifact.content}
                     </pre>
                   )}
@@ -420,16 +420,16 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
               </div>
             </div>
 
-            <div className="border-t border-[color:var(--ds-artifact-divider-border)] bg-inherit px-4 py-2">
+            <div className="border-t border-[color:var(--chat-border)] bg-inherit px-4 py-2">
               {artifact.sources && artifact.sources.length > 0 ? (
                 <div>
-                  <p className="mb-1 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--ds-artifact-text-muted)]">
+                  <p className="mb-1 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                     Sumber Terkait
                   </p>
                   <SourcesIndicator sources={artifact.sources} />
                 </div>
               ) : (
-                <p className="text-[11px] font-mono text-[var(--ds-artifact-text-secondary)]">
+                <p className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
                   Tidak ada rujukan eksternal.
                 </p>
               )}

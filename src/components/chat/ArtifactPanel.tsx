@@ -95,7 +95,7 @@ export function ArtifactPanel({
       className={cn(
         "@container/artifact",
         "flex h-full w-full flex-col",
-        "rounded-shell border border-l-0 border-[color:var(--ds-artifact-panel-border)] bg-[var(--ds-artifact-panel-bg)]",
+        "rounded-shell border border-l-0 border-[color:var(--chat-border)] bg-[var(--chat-card)]",
         "transition-all duration-300 ease-in-out"
       )}
     >
@@ -157,8 +157,8 @@ export function ArtifactPanel({
           />
         ) : activeTabId && !activeArtifact ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-            <Page className="h-10 w-10 text-[var(--ds-artifact-empty-icon)]" />
-            <p className="max-w-[260px] text-sm text-[var(--ds-artifact-text-secondary)]">
+            <Page className="h-10 w-10 text-[var(--chat-muted-foreground)]" />
+            <p className="max-w-[260px] text-sm text-[var(--chat-muted-foreground)]">
               Artifak aktif tidak ditemukan. Kemungkinan artifak sudah berubah atau tidak lagi tersedia.
             </p>
             <Button
@@ -172,15 +172,15 @@ export function ArtifactPanel({
           </div>
         ) : openTabCount > 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-            <Page className="h-10 w-10 text-[var(--ds-artifact-empty-icon)]" />
-            <p className="max-w-[260px] text-sm text-[var(--ds-artifact-text-secondary)]">
+            <Page className="h-10 w-10 text-[var(--chat-muted-foreground)]" />
+            <p className="max-w-[260px] text-sm text-[var(--chat-muted-foreground)]">
               Pilih salah satu tab di atas untuk lanjut membaca atau mengedit artifak.
             </p>
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
-            <Page className="mb-4 h-12 w-12 text-[var(--ds-artifact-empty-icon)]" />
-            <p className="max-w-[260px] text-[13px] text-[var(--ds-artifact-text-secondary)]">
+            <Page className="mb-4 h-12 w-12 text-[var(--chat-muted-foreground)]" />
+            <p className="max-w-[260px] text-[13px] text-[var(--chat-muted-foreground)]">
               Belum ada artifak yang dibuka. Pilih artifak dari Sidebar Paper Sessions untuk memulai workspace.
             </p>
           </div>
