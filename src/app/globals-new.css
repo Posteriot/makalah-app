@@ -190,3 +190,11 @@
   --chat-sidebar-border: oklch(0.372 0 0);           /* neutral-700 */
   --chat-sidebar-ring: oklch(0.588 0.158 241.966);  /* sky-600 (focus ring) */
 }
+
+/* ── Mobile Overrides ── */
+@media (max-width: 767px) {
+  [data-chat-scope] {
+    --activity-bar-width: 0px;
+    --chat-input-pad-x: 1rem;
+  }
+}

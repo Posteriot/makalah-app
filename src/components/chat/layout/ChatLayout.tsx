@@ -263,13 +263,15 @@ export function ChatLayout({
           gridTemplateColumns: getGridTemplateColumns(),
         }}
       >
-        {/* Column 1: Activity Bar */}
-        <ActivityBar
-          activePanel={activePanel}
-          onPanelChange={handlePanelChange}
-          isSidebarCollapsed={isSidebarCollapsed}
-          onToggleSidebar={handleToggleSidebar}
-        />
+        {/* Column 1: Activity Bar — hidden on mobile (width handled by CSS var) */}
+        <div className="hidden md:flex">
+          <ActivityBar
+            activePanel={activePanel}
+            onPanelChange={handlePanelChange}
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={handleToggleSidebar}
+          />
+        </div>
 
         {/* Column 2: Sidebar */}
         <aside
