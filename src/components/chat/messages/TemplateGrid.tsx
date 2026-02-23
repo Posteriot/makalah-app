@@ -6,6 +6,7 @@ import { api } from "@convex/_generated/api"
 export interface Template {
   id: string
   label: string
+  chipLabel: string
   message: string
 }
 
@@ -13,12 +14,20 @@ const DEFAULT_TEMPLATES: Template[] = [
   {
     id: "starter-discussion",
     label: "Mari berdiskusi terlebih dahulu.",
+    chipLabel: "Diskusi riset",
     message: "Mari berdiskusi terlebih dahulu.",
   },
   {
     id: "starter-paper",
     label: "Mari berkolaborasi menyusun paper akademik.",
+    chipLabel: "Paper akademik",
     message: "Mari berkolaborasi menyusun paper akademik.",
+  },
+  {
+    id: "starter-refrasa",
+    label: "Tolong bantu saya memperbaiki gaya penulisan teks ini.",
+    chipLabel: "Refrasa",
+    message: "Tolong bantu saya memperbaiki gaya penulisan teks ini.",
   },
 ]
 
@@ -38,6 +47,7 @@ interface TemplateGridProps {
   onSidebarLinkClick?: (e: React.MouseEvent<HTMLButtonElement>) => void
   disabled?: boolean
   strictCmsMode?: boolean
+  variant?: "default" | "mobile-chips"
 }
 
 export function TemplateGrid({
@@ -45,6 +55,7 @@ export function TemplateGrid({
   onSidebarLinkClick,
   disabled = false,
   strictCmsMode = false,
+  variant = "default",
 }: TemplateGridProps) {
   const section = useQuery(api.pageContent.getSection, {
     pageSlug: "chat",
@@ -127,6 +138,26 @@ export function TemplateGrid({
   const darkModeLogoSrc = strictEnabled
     ? (strictPublished ? darkModeLogoUrl ?? lightModeLogoUrl : null)
     : darkModeLogoUrl ?? DEFAULT_DARK_MODE_LOGO_SRC
+
+  if (variant === "mobile-chips") {
+    return (
+      <div className="flex flex-wrap gap-2 justify-center">
+        {templates.map((template) => (
+          <button
+            key={template.id}
+            onClick={() => onTemplateSelect(template)}
+            disabled={disabled}
+            className="px-3 py-1.5 rounded-action text-xs font-mono
+              bg-[var(--chat-secondary)] text-[var(--chat-secondary-foreground)]
+              hover:bg-[var(--chat-accent)] disabled:opacity-50
+              transition-colors"
+          >
+            {template.chipLabel}
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl text-center">

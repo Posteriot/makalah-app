@@ -581,18 +581,52 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (!conversationId) {
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Mobile Header */}
-        <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="font-semibold">Makalah Chat</span>
-          <div className="w-9" />
+        {/* Mobile: Clean composer-first landing */}
+        <div className="md:hidden flex-1 flex flex-col">
+          <div className="flex items-center px-4 pt-3 pb-1">
+            <button
+              onClick={onMobileMenuClick}
+              className="p-2 -ml-2 rounded-action text-[var(--chat-muted-foreground)]"
+              aria-label="Menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center px-6">
+            <h1 className="font-mono tracking-widest text-lg text-[var(--chat-foreground)] mb-1">
+              M A K A L A H
+            </h1>
+            <p className="font-mono text-xs text-[var(--chat-muted-foreground)] mb-8">
+              Asisten penulisan ilmiah
+            </p>
+            <TemplateGrid
+              variant="mobile-chips"
+              onTemplateSelect={(template) =>
+                void handleStarterPromptClick(template.message)
+              }
+              disabled={isCreatingChat}
+            />
+          </div>
+          <ChatInput
+            input={input}
+            onInputChange={handleInputChange}
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!input.trim()) return
+              await handleStartNewChat(input.trim())
+            }}
+            isLoading={isCreatingChat}
+            isGenerating={false}
+            conversationId={conversationId}
+            uploadedFileIds={uploadedFileIds}
+            onFileUploaded={handleFileUploaded}
+          />
         </div>
 
-        {/* Empty State Content — fills available space above ChatInput */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="hidden md:block">
+        {/* Desktop: Existing empty state (unchanged) */}
+        <div className="hidden md:flex flex-1 flex-col h-full overflow-hidden">
+          {/* Empty State Content — fills available space above ChatInput */}
+          <div className="flex-1 flex items-center justify-center p-6">
             <TemplateGrid
               onTemplateSelect={(template) =>
                 void handleStarterPromptClick(template.message)
@@ -602,32 +636,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               strictCmsMode
             />
           </div>
-          <div className="md:hidden">
-            <TemplateGrid
-              onTemplateSelect={(template) =>
-                void handleStarterPromptClick(template.message)
-              }
-              onSidebarLinkClick={handleSidebarLinkClick}
-              disabled={isCreatingChat}
-            />
-          </div>
-        </div>
 
-        {/* Persistent ChatInput — always visible, even in start state */}
-        <ChatInput
-          input={input}
-          onInputChange={handleInputChange}
-          onSubmit={async (e) => {
-            e.preventDefault()
-            if (!input.trim()) return
-            await handleStartNewChat(input.trim())
-          }}
-          isLoading={isCreatingChat}
-          isGenerating={false}
-          conversationId={conversationId}
-          uploadedFileIds={uploadedFileIds}
-          onFileUploaded={handleFileUploaded}
-        />
+          {/* Persistent ChatInput — always visible, even in start state */}
+          <ChatInput
+            input={input}
+            onInputChange={handleInputChange}
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!input.trim()) return
+              await handleStartNewChat(input.trim())
+            }}
+            isLoading={isCreatingChat}
+            isGenerating={false}
+            conversationId={conversationId}
+            uploadedFileIds={uploadedFileIds}
+            onFileUploaded={handleFileUploaded}
+          />
+        </div>
       </div>
     )
   }
