@@ -13,8 +13,8 @@
  */
 export function ChatMiniFooter() {
   return (
-    <footer className="h-[var(--shell-footer-h)] px-4 flex items-center justify-end border-t border-border/50 bg-sidebar shrink-0">
-      <span className="text-interface text-[10px] text-muted-foreground tracking-wider uppercase">
+    <footer className="h-[var(--shell-footer-h)] px-4 flex items-center justify-end border-t border-[color:var(--chat-border)] bg-[var(--chat-sidebar)] shrink-0">
+      <span className="text-interface text-[10px] text-[var(--chat-muted-foreground)] tracking-wider uppercase">
         &copy; {new Date().getFullYear()} Makalah AI
       </span>
     </footer>

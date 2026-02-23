@@ -56,11 +56,11 @@ export function ChartRenderer({ content }: ChartRendererProps) {
     config = JSON.parse(content)
   } catch {
     return (
-      <div className="rounded-action border border-destructive/30 bg-destructive/5 p-4">
-        <p className="mb-2 font-mono text-xs font-semibold text-destructive">
+      <div className="rounded-action border border-[color:var(--chat-destructive)] bg-[var(--chat-card)] p-4">
+        <p className="mb-2 font-mono text-xs font-semibold text-[var(--chat-destructive)]">
           Gagal parse chart JSON
         </p>
-        <pre className="overflow-x-auto text-xs leading-relaxed text-muted-foreground">
+        <pre className="overflow-x-auto text-xs leading-relaxed text-[var(--chat-muted-foreground)]">
           {content}
         </pre>
       </div>
@@ -71,8 +71,8 @@ export function ChartRenderer({ content }: ChartRendererProps) {
 
   if (!Array.isArray(data) || data.length === 0) {
     return (
-      <div className="rounded-action border border-destructive/30 bg-destructive/5 p-4">
-        <p className="font-mono text-xs text-destructive">
+      <div className="rounded-action border border-[color:var(--chat-destructive)] bg-[var(--chat-card)] p-4">
+        <p className="font-mono text-xs text-[var(--chat-destructive)]">
           Data chart kosong atau tidak valid.
         </p>
       </div>
@@ -87,8 +87,8 @@ export function ChartRenderer({ content }: ChartRendererProps) {
 
   if (!["bar", "line", "pie"].includes(chartType)) {
     return (
-      <div className="rounded-action border border-destructive/30 bg-destructive/5 p-4">
-        <p className="font-mono text-xs text-destructive">
+      <div className="rounded-action border border-[color:var(--chat-destructive)] bg-[var(--chat-card)] p-4">
+        <p className="font-mono text-xs text-[var(--chat-destructive)]">
           Tipe chart tidak didukung: &quot;{chartType}&quot;. Gunakan &quot;bar&quot;, &quot;line&quot;, atau &quot;pie&quot;.
         </p>
       </div>
@@ -96,9 +96,9 @@ export function ChartRenderer({ content }: ChartRendererProps) {
   }
 
   return (
-    <div className="rounded-action border border-border bg-background p-4">
+    <div className="rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-4">
       {title && (
-        <h3 className="mb-3 text-center font-mono text-sm font-semibold text-foreground">
+        <h3 className="mb-3 text-center font-mono text-sm font-semibold text-[var(--chat-foreground)]">
           {title}
         </h3>
       )}

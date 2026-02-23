@@ -53,7 +53,7 @@ export function ChatInput({
             {uploadedFileIds.length > 0 && (
                 <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
                     {uploadedFileIds.map((id) => (
-                        <div key={id} className="flex items-center gap-2 bg-muted p-2 rounded-badge text-xs font-mono text-muted-foreground whitespace-nowrap">
+                        <div key={id} className="flex items-center gap-2 bg-[var(--chat-muted)] p-2 rounded-badge text-xs font-mono text-[var(--chat-muted-foreground)] whitespace-nowrap">
                             <Page className="h-3 w-3" />
                             <span>File attached</span>
                         </div>
@@ -61,12 +61,12 @@ export function ChatInput({
                 </div>
             )}
             <form onSubmit={onSubmit} className="flex">
-                <div className="grid w-full grid-cols-[auto_1fr_auto] items-end gap-x-2 gap-y-1 rounded-lg border border-[color:var(--chat-border)] bg-card/90 px-3 py-1.5">
+                <div className="grid w-full grid-cols-[auto_1fr_auto] items-end gap-x-2 gap-y-1 rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] px-3 py-1.5">
                     {/* Input Field */}
                     <div className="col-span-3">
                         <textarea
                             ref={textareaRef}
-                            className="w-full resize-none bg-transparent focus:outline-none min-h-[72px] px-2 py-0.5 text-sm leading-relaxed text-foreground placeholder:text-sm"
+                            className="w-full resize-none bg-transparent focus:outline-none min-h-[72px] px-2 py-0.5 text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm"
                             value={input}
                             onChange={onInputChange}
                             onKeyDown={handleKeyDown}
@@ -90,7 +90,7 @@ export function ChatInput({
                             <button
                                 type="button"
                                 onClick={onStop}
-                                className="w-9 h-9 flex items-center justify-center rounded-md hover-slash bg-transparent text-muted-foreground hover:rounded-full hover:bg-accent hover:text-foreground transition-all"
+                                className="w-9 h-9 flex items-center justify-center rounded-md hover-slash bg-transparent text-[var(--chat-muted-foreground)] hover:rounded-full hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] transition-all"
                                 aria-label="Stop generating response"
                             >
                                 <PauseSolid className="h-4 w-4" />
@@ -99,7 +99,7 @@ export function ChatInput({
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isLoading}
-                                className="w-9 h-9 flex items-center justify-center rounded-md hover-slash bg-transparent text-muted-foreground hover:rounded-full hover:bg-accent hover:text-foreground transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="w-9 h-9 flex items-center justify-center rounded-md hover-slash bg-transparent text-[var(--chat-muted-foreground)] hover:rounded-full hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                                 aria-label="Send message"
                             >
                                 <Send className="h-5 w-5" />

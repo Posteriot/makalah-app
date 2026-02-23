@@ -77,7 +77,7 @@ export function TopBar({
                   size="icon"
                   className={cn(
                     "w-8 h-8 rounded-action",
-                    "text-muted-foreground hover:text-foreground hover:bg-accent/80",
+                    "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
                     "transition-colors duration-150"
                   )}
                   onClick={onToggleSidebar}
@@ -104,7 +104,7 @@ export function TopBar({
                   className={cn(
                     "flex items-center justify-center",
                     "w-8 h-8 rounded-action",
-                    "text-muted-foreground hover:text-foreground hover:bg-accent/80",
+                    "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
                     "transition-colors duration-150"
                   )}
                   aria-label="Toggle theme"

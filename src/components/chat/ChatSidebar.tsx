@@ -132,7 +132,7 @@ export function ChatSidebar({
             className={cn(
               "flex items-center justify-center",
               "w-7 h-7 rounded-action",
-              "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+              "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]",
               "transition-colors duration-150"
             )}
             aria-label="Collapse sidebar"
@@ -175,7 +175,7 @@ export function ChatSidebar({
 
       {/* Section Label - Only show for chat-history panel */}
       {activePanel === "chat-history" && (
-        <div className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+        <div className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
           Riwayat <span className="ml-2 font-mono">{conversations.length}</span>
         </div>
       )}

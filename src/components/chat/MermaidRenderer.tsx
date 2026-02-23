@@ -84,7 +84,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
 
   if (error) {
     return (
-      <pre className="my-2 overflow-x-auto rounded-action bg-background/50 p-3 text-xs leading-relaxed">
+      <pre className="my-2 overflow-x-auto rounded-action bg-[var(--chat-background)] p-3 text-xs leading-relaxed">
         <code>{code}</code>
       </pre>
     )
@@ -92,7 +92,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
 
   if (!svg) {
     return (
-      <div className="my-2 h-32 animate-pulse rounded-action bg-muted" />
+      <div className="my-2 h-32 animate-pulse rounded-action bg-[var(--chat-muted)]" />
     )
   }
 

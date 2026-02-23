@@ -582,7 +582,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile Header */}
-        <div className="md:hidden p-4 border-b border-border/50 flex items-center justify-between">
+        <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
             <Menu className="h-5 w-5" />
           </Button>
@@ -624,7 +624,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (conversationNotFound) {
     return (
       <div className="flex-1 flex flex-col h-full">
-        <div className="md:hidden p-4 border-b border-border/50 flex items-center justify-between">
+        <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
             <Menu className="h-5 w-5" />
           </Button>
@@ -632,7 +632,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <div className="w-9" />
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
+          <div className="text-center text-[var(--chat-muted-foreground)]">
             {/* Mechanical Grace: Rose error color */}
             <WarningCircle className="h-12 w-12 mx-auto mb-4 text-[var(--chat-destructive)]" />
             <p className="mb-2 font-mono">Percakapan tidak ditemukan</p>
@@ -646,7 +646,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
-      <div className="md:hidden p-4 border-b border-border/50 flex items-center gap-2">
+      <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
           <Menu className="h-5 w-5" />
         </Button>

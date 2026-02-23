@@ -54,10 +54,10 @@ export function TemplateGrid({
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-narrative text-4xl font-medium tracking-tight text-foreground">
+        <h2 className="text-narrative text-4xl font-medium tracking-tight text-[var(--chat-foreground)]">
           Mari berdiskusi!
         </h2>
-        <p className="text-narrative text-muted-foreground text-sm leading-[1.4]">
+        <p className="text-narrative text-[var(--chat-muted-foreground)] text-sm leading-[1.4]">
           <span className="block">
             Ingin berdiskusi mengenai riset atau langsung menulis paper?
           </span>
@@ -69,7 +69,7 @@ export function TemplateGrid({
             <button
               type="button"
               onClick={onSidebarLinkClick}
-              className="underline underline-offset-4 decoration-primary/60 hover:decoration-primary text-foreground transition-colors"
+              className="underline underline-offset-4 decoration-[var(--chat-primary)] hover:decoration-[var(--chat-primary)] text-[var(--chat-foreground)] transition-colors"
             >
               sidebar
             </button>
@@ -78,7 +78,7 @@ export function TemplateGrid({
       </div>
 
       <div className="pt-2">
-        <p className="text-narrative text-sm font-medium text-muted-foreground mb-3">
+        <p className="text-narrative text-sm font-medium text-[var(--chat-muted-foreground)] mb-3">
           Atau gunakan template berikut:
         </p>
         <div className="flex flex-col items-center gap-3">
@@ -88,7 +88,7 @@ export function TemplateGrid({
               type="button"
               onClick={() => onTemplateSelect(template)}
               disabled={disabled}
-              className="w-fit max-w-full rounded-shell border-hairline bg-[var(--chat-secondary)] px-5 py-2.5 text-center text-interface text-sm text-foreground hover:bg-[var(--chat-accent)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-fit max-w-full rounded-shell border-hairline bg-[var(--chat-secondary)] px-5 py-2.5 text-center text-interface text-sm text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {template.label}
             </button>

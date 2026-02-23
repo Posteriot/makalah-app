@@ -30,14 +30,14 @@ export function QuickActions({ content }: QuickActionsProps) {
     }
 
     return (
-        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[color:var(--chat-border)]">
             <Tooltip>
                 <TooltipTrigger asChild>
                     <button
                         onClick={handleCopy}
                         className={cn(
-                            "flex items-center gap-1 text-[10px] font-mono transition-colors p-1.5 rounded-action hover:bg-muted",
-                            isCopied ? "text-[var(--chat-success)]" : "text-muted-foreground hover:text-foreground"
+                            "flex items-center gap-1 text-[10px] font-mono transition-colors p-1.5 rounded-action hover:bg-[var(--chat-muted)]",
+                            isCopied ? "text-[var(--chat-success)]" : "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)]"
                         )}
                         aria-label="Copy to clipboard"
                     >

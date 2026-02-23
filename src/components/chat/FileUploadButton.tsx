@@ -114,11 +114,11 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="p-2 rounded-action text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                        className="p-2 rounded-action text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)] transition-colors disabled:opacity-50"
                         aria-label="Attach file"
                     >
                         {isUploading ? (
-                            <span className="h-5 w-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin block" />
+                            <span className="h-5 w-5 border-2 border-[color:var(--chat-muted-foreground)] border-t-transparent rounded-full animate-spin block" />
                         ) : (
                             <Attachment className="h-5 w-5" />
                         )}

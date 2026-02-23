@@ -443,7 +443,7 @@ export function MessageBubble({
                             <TooltipTrigger asChild>
                                 <button
                                     onClick={startEditing}
-                                    className="p-1.5 hover:bg-accent rounded-action text-muted-foreground hover:text-foreground transition-colors"
+                                    className="p-1.5 hover:bg-[var(--chat-accent)] rounded-action text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
                                     aria-label="Edit message"
                                 >
                                     <EditPencil className="h-4 w-4" />
@@ -456,7 +456,7 @@ export function MessageBubble({
                             <TooltipTrigger asChild>
                                 <button
                                     disabled
-                                    className="p-1.5 rounded-action text-muted-foreground/40 cursor-not-allowed"
+                                    className="p-1.5 rounded-action text-[var(--chat-muted-foreground)] opacity-40 cursor-not-allowed"
                                     aria-label="Edit message"
                                     aria-disabled="true"
                                 >
@@ -479,7 +479,7 @@ export function MessageBubble({
                     isUser && [
                         "rounded-shell",
                         "bg-[var(--chat-muted)]",
-                        "border border-border/50",
+                        "border border-[color:var(--chat-border)]",
                         "max-w-[85%]",
                         // Keep edit state wide for better readability and stable layout.
                         isEditing && "w-full",
@@ -495,7 +495,7 @@ export function MessageBubble({
                     {/* File Attachments Badge - Mockup: blue/teal badge */}
                     {fileIds && fileIds.length > 0 && (
                         <div className="mb-3">
-                            <span className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-badge bg-info/20 text-info border border-info/30">
+                            <span className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-badge bg-[var(--chat-accent)] text-[var(--chat-info)] border border-[color:var(--chat-info)]">
                                 <Attachment className="h-3 w-3" />
                                 <span>{fileIds.length} {fileIds.length === 1 ? "file" : "files"}</span>
                             </span>
@@ -548,21 +548,21 @@ export function MessageBubble({
                                     e.target.style.height = e.target.scrollHeight + 'px'
                                 }}
                                 onKeyDown={handleKeyDown}
-                                className="w-full resize-none overflow-hidden rounded-action border border-border/70 bg-background p-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+                                className="w-full resize-none overflow-hidden rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-3 text-sm text-[var(--chat-foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
                                 rows={1}
                                 aria-label="Edit message content"
                             />
                             <div className="flex gap-2 justify-end">
                                 <button
                                     onClick={handleCancel}
-                                    className="flex items-center gap-1.5 rounded-action px-3 py-1.5 text-xs font-mono text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+                                    className="flex items-center gap-1.5 rounded-action px-3 py-1.5 text-xs font-mono text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
                                     aria-label="Batalkan edit"
                                 >
                                     <Xmark className="h-3.5 w-3.5" /> Batal
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="flex items-center gap-1.5 rounded-action border border-primary/40 bg-primary px-3 py-1.5 text-xs font-mono font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
+                                    className="flex items-center gap-1.5 rounded-action border border-[color:var(--chat-primary)] bg-[var(--chat-primary)] px-3 py-1.5 text-xs font-mono font-medium text-[var(--chat-primary-foreground)] transition-colors hover:bg-[var(--chat-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
                                     aria-label="Kirim pesan yang diedit"
                                 >
                                     <Send className="h-3.5 w-3.5" /> Kirim
@@ -577,14 +577,14 @@ export function MessageBubble({
                                     <span className="rounded-badge border border-[color:var(--chat-success)] bg-[var(--chat-card)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
                                         Tahap disetujui
                                     </span>
-                                    <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                                    <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
                                         Lifecycle artifak: terkunci
                                     </span>
                                 </div>
-                                <div className="mt-1 text-sm font-medium text-foreground">
+                                <div className="mt-1 text-sm font-medium text-[var(--chat-foreground)]">
                                     {autoUserAction.stageLabel}
                                 </div>
-                                <div className="mt-1 text-xs font-mono text-muted-foreground">
+                                <div className="mt-1 text-xs font-mono text-[var(--chat-muted-foreground)]">
                                     {autoUserAction.followupText || "Agen lanjut ke tahap berikutnya, artifak tahap ini jadi baseline referensi."}
                                 </div>
                             </div>
@@ -595,14 +595,14 @@ export function MessageBubble({
                                     <span className="rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-card)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide">
                                         Permintaan revisi
                                     </span>
-                                    <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                                    <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
                                         Lifecycle artifak: perlu update
                                     </span>
                                 </div>
-                                <div className="mt-1 text-sm font-medium text-foreground">
+                                <div className="mt-1 text-sm font-medium text-[var(--chat-foreground)]">
                                     {autoUserAction.stageLabel}
                                 </div>
-                                <div className="mt-1 whitespace-pre-wrap text-xs font-mono leading-relaxed text-muted-foreground">
+                                <div className="mt-1 whitespace-pre-wrap text-xs font-mono leading-relaxed text-[var(--chat-muted-foreground)]">
                                     {autoUserAction.feedback || "Feedback revisi telah dikirim. Agen akan memperbarui artifak pada tahap ini."}
                                 </div>
                             </div>
@@ -610,7 +610,7 @@ export function MessageBubble({
                     ) : (
                         <MarkdownRenderer
                             markdown={citedText ?? content}
-                            className="space-y-2 text-sm leading-relaxed text-foreground"
+                            className="space-y-2 text-sm leading-relaxed text-[var(--chat-foreground)]"
                             sources={sources}
                             context="chat"
                         />
@@ -622,10 +622,10 @@ export function MessageBubble({
                             {hasArtifactSignals && (
                                 <section className="space-y-2" aria-label="Hasil artifak">
                                     <div className="flex items-center gap-2">
-                                        <span className="rounded-badge border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
+                                        <span className="rounded-badge border border-[color:var(--chat-primary)] bg-[var(--chat-accent)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-primary)]">
                                             Hasil Kerja
                                         </span>
-                                        <p className="text-[11px] font-mono text-muted-foreground">
+                                        <p className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
                                             Buka artifak untuk lanjut edit atau revisi.
                                         </p>
                                     </div>

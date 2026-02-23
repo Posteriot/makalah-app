@@ -192,7 +192,7 @@ export function SidebarChatHistory({
 
   if (conversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
+      <div className="flex flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
         <ChatBubble className="h-8 w-8 mb-2" />
         <span className="text-xs">Belum ada percakapan</span>
       </div>
@@ -239,7 +239,7 @@ export function SidebarChatHistory({
                         disabled={isUpdating}
                         className={`h-6 text-sm px-1 py-0 font-medium ${
                           isExceedingMaxLength
-                            ? "border-destructive focus-visible:ring-destructive"
+                            ? "border-[color:var(--chat-destructive)] focus-visible:ring-[var(--chat-destructive)]"
                             : ""
                         }`}
                         aria-invalid={isExceedingMaxLength}
@@ -273,14 +273,14 @@ export function SidebarChatHistory({
                     )}
                   </div>
                   {!isEditing && (
-                    <div className="text-xs text-muted-foreground font-mono">
+                    <div className="text-xs text-[var(--chat-muted-foreground)] font-mono">
                       {formatRelativeTime(conv.lastMessageAt)}
                     </div>
                   )}
                 </div>
                 {/* Loading indicator saat updating */}
                 {isEditing && isUpdating && (
-                  <RefreshDouble className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <RefreshDouble className="h-4 w-4 animate-spin text-[var(--chat-muted-foreground)]" />
                 )}
               </>
             )
@@ -313,7 +313,7 @@ export function SidebarChatHistory({
                   <ContextMenuSeparator />
                   <ContextMenuItem
                     onClick={() => handleDeleteClick(conv._id, conv.title)}
-                    className="text-destructive focus:text-destructive"
+                    className="text-[var(--chat-destructive)] focus:text-[var(--chat-destructive)]"
                   >
                     <Trash className="h-4 w-4 mr-2" />
                     Hapus
@@ -332,7 +332,7 @@ export function SidebarChatHistory({
             <AlertDialogTitle>Hapus Percakapan?</AlertDialogTitle>
             <AlertDialogDescription>
               Percakapan{" "}
-              <span className="font-medium text-foreground">
+              <span className="font-medium text-[var(--chat-foreground)]">
                 &quot;{conversationToDelete?.title}&quot;
               </span>{" "}
               akan dihapus secara permanen. Aksi ini tidak bisa dibatalkan.
@@ -344,7 +344,7 @@ export function SidebarChatHistory({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-[var(--chat-destructive)] text-[var(--chat-destructive-foreground)] hover:bg-[var(--chat-destructive)]"
             >
               Hapus
             </AlertDialogAction>
