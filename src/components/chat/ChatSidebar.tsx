@@ -119,7 +119,7 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "h-full w-full overflow-hidden border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]",
+        "h-full w-full overflow-hidden border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)]",
         "flex flex-col",
         className
       )}

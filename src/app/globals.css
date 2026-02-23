@@ -344,9 +344,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Colors - Chat specific */
-  --color-chat-background: var(--chat-background);
-  --color-chat-input: var(--chat-input);
+  /* Colors - Chat specific (chat-background & chat-input moved to globals-new.css) */
   --color-user-message-bg: var(--user-message-bg);
   --color-list-hover-bg: var(--list-hover-bg);
   --color-list-selected-bg: var(--list-selected-bg);
@@ -559,9 +557,7 @@
   --shell-tab-bar-h: 36px;
   --shell-input-bar-h: 112px;
 
-  /* Chat Colors - Light Mode */
-  --chat-background: var(--background);
-  --chat-input: var(--slate-100);
+  /* Chat Colors - moved to globals-new.css */
   --user-message-bg: var(--slate-100);
   --list-hover-bg: var(--slate-200);
   --list-selected-bg: var(--slate-300);
@@ -645,9 +641,7 @@
   --neo-text: var(--neutral-50);
   --neo-text-muted: var(--neutral-300);
 
-  /* Chat Colors - Dark Mode */
-  --chat-background: var(--slate-900);
-  --chat-input: var(--slate-800);
+  /* Chat Colors - moved to globals-new.css */
   --user-message-bg: var(--slate-800);
   --list-hover-bg: var(--neutral-400-a15);
   --list-selected-bg: var(--neutral-400-a25);
