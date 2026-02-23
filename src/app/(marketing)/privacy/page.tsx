@@ -1,3 +1,5 @@
+"use client"
+
 import { CmsPageWrapper } from "@/components/marketing/CmsPageWrapper"
 import { SimplePolicyPage } from "@/components/marketing/SimplePolicyPage"
 import { openMailClientOrGmail } from "@/lib/utils/emailLink"
