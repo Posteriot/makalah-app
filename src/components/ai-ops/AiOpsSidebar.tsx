@@ -35,7 +35,7 @@ function SidebarNav({
               item.children && activeTab.startsWith(item.id + ".")
 
             const itemClasses = cn(
-              "font-mono text-sm flex w-full items-center gap-3 rounded-[8px] px-3 py-2 transition-colors",
+              "font-sans text-sm flex w-full items-center gap-3 rounded-[8px] px-3 py-2 transition-colors",
               isActive || isParentActive
                 ? "bg-slate-900/60 text-slate-100 dark:bg-slate-200/10 dark:text-slate-100"
                 : "text-muted-foreground hover:bg-slate-200 hover:text-slate-900 dark:hover:bg-slate-500 dark:hover:text-slate-50"
@@ -78,7 +78,7 @@ function SidebarNav({
                               closeAfterSelect?.()
                             }}
                             className={cn(
-                              "font-mono text-xs flex w-full items-center gap-2 rounded-[8px] px-2 py-1.5 transition-colors",
+                              "font-sans text-sm flex w-full items-center gap-2 rounded-[8px] px-2 py-1.5 transition-colors",
                               isChildActive
                                 ? "text-foreground font-medium"
                                 : "text-muted-foreground hover:text-foreground"
@@ -103,7 +103,7 @@ function SidebarNav({
       <div className="border-t border-border pt-4">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex items-center gap-1.5 font-sans text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           ← Admin Panel
         </Link>
@@ -132,7 +132,7 @@ export function AiOpsMobileSidebar({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-72 p-0">
         <SheetHeader className="border-b border-border px-5 py-4 pr-12">
-          <SheetTitle className="font-mono text-sm font-medium text-foreground">
+          <SheetTitle className="font-sans text-sm font-medium text-foreground">
             AI Ops Menu
           </SheetTitle>
         </SheetHeader>

@@ -13,7 +13,7 @@ export function ArtifactSyncPanel({
   data: ArtifactSyncData | undefined
 }) {
   return (
-    <div className="rounded-shell border border-border bg-card/90 p-5 dark:bg-slate-900/90">
+    <div className="rounded-[16px] border border-border bg-card/90 p-5 dark:bg-slate-900/90">
       <div className="flex items-center gap-2 mb-4">
         <Page className="h-4 w-4 text-amber-500" />
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">

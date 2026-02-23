@@ -47,7 +47,7 @@ export function DroppedKeysPanel({
   data: DroppedKeyEntry[] | undefined
 }) {
   return (
-    <div className="rounded-shell border border-border bg-card/90 p-5 dark:bg-slate-900/90 mt-4 mb-8">
+    <div className="rounded-[16px] border border-border bg-card/90 p-5 dark:bg-slate-900/90 mt-4 mb-8">
       <div className="flex items-center gap-2 mb-4">
         <WarningTriangle className="h-4 w-4 text-amber-500" />
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -58,7 +58,7 @@ export function DroppedKeysPanel({
       {!data ? (
         <div className="space-y-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="h-10 rounded-action bg-muted animate-pulse" />
+            <div key={i} className="h-10 rounded-[8px] bg-muted animate-pulse" />
           ))}
         </div>
       ) : data.length === 0 ? (
@@ -92,7 +92,7 @@ function DroppedKeyRow({ entry }: { entry: DroppedKeyEntry }) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-action border border-border px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-[8px] border border-border px-3 py-2">
       <div className="flex items-center gap-3 min-w-0">
         <div className="flex flex-col min-w-0">
           <span className="text-xs font-mono font-bold text-foreground truncate">
@@ -117,7 +117,7 @@ function DroppedKeyRow({ entry }: { entry: DroppedKeyEntry }) {
         <button
           onClick={handleCopy}
           title="Copy promote prompt"
-          className="flex items-center gap-1 rounded-badge border border-border px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+          className="flex items-center gap-1 rounded-[6px] border border-border px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
         >
           {copied ? (
             <>

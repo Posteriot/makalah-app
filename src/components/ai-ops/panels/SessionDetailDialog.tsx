@@ -116,13 +116,13 @@ export function SessionDetailDialog({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="relative w-full max-w-4xl max-h-[80vh] overflow-y-auto rounded-shell border border-border bg-background shadow-xl mx-4">
+      <div className="relative w-full max-w-4xl max-h-[80vh] overflow-y-auto rounded-[16px] border border-border bg-background shadow-xl mx-4">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-5 py-3">
           <h3 className="text-sm font-bold tracking-tight">Session Detail</h3>
           <button
             onClick={onClose}
-            className="rounded-action p-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="rounded-[8px] p-1 text-muted-foreground hover:text-foreground transition-colors"
           >
             <Xmark className="h-4 w-4" />
           </button>
@@ -194,7 +194,7 @@ export function SessionDetailDialog({
                         {d.ringkasan || "(kosong)"}
                       </span>
                       {d.superseded && (
-                        <span className="shrink-0 rounded-badge border border-rose-500/30 bg-rose-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-rose-500">
+                        <span className="shrink-0 rounded-[6px] border border-rose-500/30 bg-rose-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-rose-500">
                           superseded
                         </span>
                       )}
@@ -266,7 +266,7 @@ function StageDataList({ stages }: { stages: StageDetail[] }) {
             <button
               type="button"
               onClick={() => hasContent && setExpanded(isOpen ? null : s.stageId)}
-              className={`flex w-full items-center justify-between text-xs py-1.5 px-1 rounded-action transition-colors ${
+              className={`flex w-full items-center justify-between text-xs py-1.5 px-1 rounded-[8px] transition-colors ${
                 hasContent ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"
               }`}
             >
@@ -282,34 +282,34 @@ function StageDataList({ stages }: { stages: StageDetail[] }) {
                   {STAGE_LABELS[s.stageId] || s.stageId}
                 </span>
                 {s.validatedAt && (
-                  <span className="rounded-badge border border-emerald-500/30 bg-emerald-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-emerald-600">
+                  <span className="rounded-[6px] border border-emerald-500/30 bg-emerald-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-emerald-600">
                     validated
                   </span>
                 )}
                 {s.superseded && (
-                  <span className="rounded-badge border border-rose-500/30 bg-rose-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-rose-500">
+                  <span className="rounded-[6px] border border-rose-500/30 bg-rose-500/10 px-1 py-0.5 text-[8px] font-bold uppercase text-rose-500">
                     superseded
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 {s.hasRingkasan ? (
-                  <span className="inline-flex items-center gap-1 rounded-badge border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-sky-600">
+                  <span className="inline-flex items-center gap-1 rounded-[6px] border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-sky-600">
                     <Check className="size-2.5" strokeWidth={2.5} />
                     ringkasan
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-badge border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                  <span className="inline-flex items-center gap-1 rounded-[6px] border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
                     ringkasan
                   </span>
                 )}
                 {s.hasRingkasanDetail ? (
-                  <span className="inline-flex items-center gap-1 rounded-badge border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-emerald-600">
+                  <span className="inline-flex items-center gap-1 rounded-[6px] border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-emerald-600">
                     <AlignLeft className="size-2.5" strokeWidth={2.5} />
                     detail
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-badge border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                  <span className="inline-flex items-center gap-1 rounded-[6px] border border-muted/50 bg-muted/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">
                     detail
                   </span>
                 )}
@@ -349,7 +349,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
         {title}
       </h4>
-      <div className="rounded-action border border-border p-3">
+      <div className="rounded-[8px] border border-border p-3">
         {children}
       </div>
     </div>

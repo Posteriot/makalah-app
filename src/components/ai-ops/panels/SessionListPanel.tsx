@@ -72,7 +72,7 @@ export function SessionListPanel({
 
   return (
     <>
-      <div className="rounded-shell border border-border bg-card/90 dark:bg-slate-900/90 overflow-hidden">
+      <div className="rounded-[16px] border border-border bg-card/90 dark:bg-slate-900/90 overflow-hidden">
         <div className="border-b border-border bg-slate-200/45 px-5 py-3 dark:bg-slate-900/50">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-foreground">
@@ -131,12 +131,12 @@ export function SessionListPanel({
                         {stageLabel}
                       </span>
                       <span
-                        className={`rounded-badge border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${statusStyle}`}
+                        className={`rounded-[6px] border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${statusStyle}`}
                       >
                         {s.stageStatus}
                       </span>
                       {s.isDirty && (
-                        <span className="rounded-badge border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                        <span className="rounded-[6px] border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
                           DIRTY
                         </span>
                       )}
@@ -164,7 +164,7 @@ export function SessionListPanel({
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="inline-flex items-center gap-1 rounded-action px-2.5 py-1.5 text-[10px] font-mono font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-1 rounded-[8px] px-2.5 py-1.5 text-[10px] font-mono font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <NavArrowLeft className="h-3 w-3" />
               Prev
@@ -175,7 +175,7 @@ export function SessionListPanel({
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="inline-flex items-center gap-1 rounded-action px-2.5 py-1.5 text-[10px] font-mono font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-1 rounded-[8px] px-2.5 py-1.5 text-[10px] font-mono font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               Next
               <NavArrowRight className="h-3 w-3" />

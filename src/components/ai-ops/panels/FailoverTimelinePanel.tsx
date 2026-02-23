@@ -28,7 +28,7 @@ export function FailoverTimelinePanel({
 }) {
   if (!data) {
     return (
-      <div className="rounded-shell border border-border bg-card/90 p-5 dark:bg-slate-900/90">
+      <div className="rounded-[16px] border border-border bg-card/90 p-5 dark:bg-slate-900/90">
         <div className="mb-4">
           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Timeline Perpindahan Server
@@ -36,7 +36,7 @@ export function FailoverTimelinePanel({
         </div>
         <div className="space-y-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="h-8 rounded-action bg-muted animate-pulse" />
+            <div key={i} className="h-8 rounded-[8px] bg-muted animate-pulse" />
           ))}
         </div>
       </div>
@@ -54,7 +54,7 @@ export function FailoverTimelinePanel({
     .slice(0, 5)
 
   return (
-    <div className="rounded-shell border border-border bg-card/90 p-5 dark:bg-slate-900/90">
+    <div className="rounded-[16px] border border-border bg-card/90 p-5 dark:bg-slate-900/90">
       <div className="mb-4">
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Timeline Perpindahan Server

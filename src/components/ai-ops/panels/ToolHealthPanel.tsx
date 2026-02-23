@@ -51,7 +51,7 @@ export function ToolHealthPanel({
   data: ToolHealthEntry[] | undefined
 }) {
   return (
-    <div className="rounded-shell border border-border bg-card/90 p-5 dark:bg-slate-900/90">
+    <div className="rounded-[16px] border border-border bg-card/90 p-5 dark:bg-slate-900/90">
       <div className="mb-4">
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Kesehatan Tool
@@ -61,7 +61,7 @@ export function ToolHealthPanel({
       {!data ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-10 rounded-action bg-muted animate-pulse" />
+            <div key={i} className="h-10 rounded-[8px] bg-muted animate-pulse" />
           ))}
         </div>
       ) : data.length === 0 ? (
@@ -105,7 +105,7 @@ function ToolRow({ entry }: { entry: ToolHealthEntry }) {
         onClick={() => hasFailure && setExpanded(!expanded)}
         disabled={!hasFailure}
         className={cn(
-          "grid grid-cols-[1fr_80px_80px_80px] gap-2 w-full rounded-action border border-border px-3 py-2 text-left transition-colors",
+          "grid grid-cols-[1fr_80px_80px_80px] gap-2 w-full rounded-[8px] border border-border px-3 py-2 text-left transition-colors",
           hasFailure && "cursor-pointer hover:bg-muted/50"
         )}
       >
@@ -138,7 +138,7 @@ function ToolRow({ entry }: { entry: ToolHealthEntry }) {
       </button>
 
       {expanded && entry.lastFailure !== undefined && (
-        <div className="ml-6 mt-1 mb-1 rounded-action border border-border/50 bg-muted/30 px-3 py-2">
+        <div className="ml-6 mt-1 mb-1 rounded-[8px] border border-border/50 bg-muted/30 px-3 py-2">
           <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
             <span>Kegagalan terakhir:</span>
             <span className="text-rose-500 font-bold">

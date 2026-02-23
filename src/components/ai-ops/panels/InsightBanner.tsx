@@ -104,7 +104,7 @@ export function InsightBanner({
   if (insights.length === 0) return null
 
   return (
-    <div className="rounded-shell border border-border p-4 mb-8">
+    <div className="rounded-[16px] border border-border p-4 mb-8">
       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 block">
         Insights
       </span>

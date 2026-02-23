@@ -24,7 +24,7 @@ export function LatencyDistributionPanel({
     : 1
 
   return (
-    <div className="rounded-shell border border-border bg-card/90 p-5 dark:bg-slate-900/90">
+    <div className="rounded-[16px] border border-border bg-card/90 p-5 dark:bg-slate-900/90">
       <div className="mb-4">
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Distribusi Latensi

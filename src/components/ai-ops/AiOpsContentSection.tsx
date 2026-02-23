@@ -112,11 +112,11 @@ export function AiOpsContentSection({
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
           <div className="space-y-2">
-            <h1 className="flex items-center gap-2 text-2xl font-medium tracking-tight text-foreground md:text-3xl">
+            <h1 className="font-sans flex items-center gap-2 text-2xl font-medium tracking-tight text-foreground md:text-3xl">
               <HeaderIcon className="h-6 w-6 text-foreground" />
               {currentTab.headerTitle}
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="font-sans text-sm text-muted-foreground">
               {currentTab.headerDescription}
             </p>
           </div>
@@ -130,7 +130,7 @@ export function AiOpsContentSection({
                   className={cn(
                     "rounded-[8px] px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors",
                     period === opt.value
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-emerald-700 text-white"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >

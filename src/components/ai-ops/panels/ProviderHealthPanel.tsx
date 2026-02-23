@@ -39,7 +39,7 @@ export function ProviderHealthPanel({
   data: ProviderHealthEntry[] | undefined
 }) {
   return (
-    <div className="rounded-shell border border-border bg-card/90 p-5 dark:bg-slate-900/90">
+    <div className="rounded-[16px] border border-border bg-card/90 p-5 dark:bg-slate-900/90">
       <div className="mb-4">
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Kesehatan Provider
@@ -49,7 +49,7 @@ export function ProviderHealthPanel({
       {!data ? (
         <div className="space-y-3">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="h-10 rounded-action bg-muted animate-pulse" />
+            <div key={i} className="h-10 rounded-[8px] bg-muted animate-pulse" />
           ))}
         </div>
       ) : data.length === 0 ? (
@@ -61,7 +61,7 @@ export function ProviderHealthPanel({
           {data.map((entry) => (
             <div
               key={entry.provider}
-              className="flex items-center justify-between gap-3 rounded-action border border-border px-3 py-2"
+              className="flex items-center justify-between gap-3 rounded-[8px] border border-border px-3 py-2"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div

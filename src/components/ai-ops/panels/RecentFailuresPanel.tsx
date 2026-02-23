@@ -51,7 +51,7 @@ export function RecentFailuresPanel({
     : []
 
   return (
-    <div className="rounded-shell border border-border bg-card/90 p-5 dark:bg-slate-900/90">
+    <div className="rounded-[16px] border border-border bg-card/90 p-5 dark:bg-slate-900/90">
       <div className="mb-4">
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Kegagalan Terbaru
@@ -61,7 +61,7 @@ export function RecentFailuresPanel({
       {!data ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-12 rounded-action bg-muted animate-pulse" />
+            <div key={i} className="h-12 rounded-[8px] bg-muted animate-pulse" />
           ))}
         </div>
       ) : data.length === 0 ? (
@@ -74,7 +74,7 @@ export function RecentFailuresPanel({
             {visible.map((failure) => (
               <div
                 key={failure._id}
-                className="flex items-start gap-2.5 rounded-action border border-border px-3 py-2"
+                className="flex items-start gap-2.5 rounded-[8px] border border-border px-3 py-2"
               >
                 <WarningCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
@@ -92,7 +92,7 @@ export function RecentFailuresPanel({
                       </span>
                     )}
                     {failure.failoverUsed && (
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-500 border border-amber-500/30 rounded-badge px-1.5 py-0.5">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-500 border border-amber-500/30 rounded-[6px] px-1.5 py-0.5">
                         Failover
                       </span>
                     )}
