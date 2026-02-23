@@ -14,7 +14,7 @@ export function RefrasaIssueItem({ issue }: RefrasaIssueItemProps) {
       case "critical":
         return "rounded-badge border border-[color:var(--chat-destructive)] bg-[var(--chat-destructive)] text-[var(--chat-destructive-foreground)]"
       case "warning":
-        return "rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
+        return "rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
       case "info":
       default:
         return "rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] text-[var(--chat-secondary-foreground)]"

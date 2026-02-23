@@ -324,7 +324,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span
-                      className="cursor-help rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] px-2 py-0.5 text-[11px] font-mono text-[var(--chat-warning-foreground)]"
+                      className="cursor-help rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-2 py-0.5 text-[11px] font-mono text-[var(--chat-muted-foreground)]"
                       data-testid="artifact-type-badge"
                     >
                       <WarningTriangle className="mr-1 inline-block h-3 w-3" data-testid="invalidation-indicator" />
@@ -349,8 +349,8 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
 
         {isInvalidated && (
           <Alert
-            variant="warning"
-            className="mx-4 mt-2 border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
+            variant="default"
+            className="mx-4 mt-2 border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-foreground)]"
             data-testid="invalidation-warning"
           >
             <WarningTriangle className="h-4 w-4" data-testid="invalidation-warning-icon" />
@@ -359,7 +359,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
               {invalidatedStageLabel && (
                 <span> karena rewind ke tahap <strong>{invalidatedStageLabel}</strong></span>
               )}
-              <span className="mt-1 block text-xs text-[var(--chat-warning-foreground)]">
+              <span className="mt-1 block text-xs text-[var(--chat-muted-foreground)]">
                 Gunakan chat untuk meminta AI memperbarui artifak ini.
               </span>
             </AlertDescription>

@@ -498,13 +498,13 @@ function ArtifactTreeItem({
             "my-1 mr-3 flex cursor-pointer items-center gap-2 rounded-action border px-3.5 py-2 transition-colors",
             "border-transparent hover:bg-[var(--chat-accent)]",
             isSelected &&
-              "border-[color:var(--chat-primary)] bg-[var(--chat-accent)] shadow-[inset_0_1px_0_var(--chat-border)]"
+              "border-[color:var(--chat-border)] bg-[var(--chat-accent)] shadow-[inset_0_1px_0_var(--chat-border)]"
           )}
           aria-current={isSelected ? "page" : undefined}
         >
           {/* Document Icon / Refrasa Badge */}
           {artifact.type === "refrasa" ? (
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--chat-warning)] text-[9px] font-mono font-bold text-[var(--chat-warning-foreground)]">
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--chat-info)] text-[9px] font-mono font-bold text-[var(--chat-info-foreground)]">
               R
             </span>
           ) : (
@@ -513,7 +513,7 @@ function ArtifactTreeItem({
                 "h-4 w-4 shrink-0",
                 isFinal
                   ? "text-[var(--chat-muted-foreground)]"
-                  : "text-[var(--chat-warning)]"
+                  : "text-[var(--chat-muted-foreground)]"
               )}
             />
           )}
@@ -533,7 +533,7 @@ function ArtifactTreeItem({
             </span>
           )}
           {!isFinal && (
-            <span className="ml-1 shrink-0 rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--chat-warning-foreground)]">
+            <span className="ml-1 shrink-0 rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--chat-muted-foreground)]">
               REVISI
             </span>
           )}

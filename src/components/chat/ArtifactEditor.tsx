@@ -76,8 +76,8 @@ export function ArtifactEditor({
             className={cn(
               "rounded-badge px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
               hasChanges
-                ? "border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
-                : "border border-[color:var(--chat-success)] bg-[var(--chat-success)] text-[var(--chat-success-foreground)]"
+                ? "border border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
+                : "border border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
             )}
           >
             {hasChanges ? "Draft berubah" : "Tanpa perubahan"}

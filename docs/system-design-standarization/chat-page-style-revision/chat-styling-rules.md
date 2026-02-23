@@ -132,7 +132,25 @@ Logika: background sama → foreground sama.
 - `border-l-4` atau thick accent border ("strip") — norak
 - Border slate-200 di light mode — tidak terlihat terhadap sidebar bg
 
-### 3.5 Background — Slate Tokens Only
+### 3.5 Selection & Focus Border — Lembut, Bukan Tegas
+
+| Konteks | Token |
+|---------|-------|
+| Selected item border (artifact, sidebar item) | `--chat-border` (slate-300 light, slate-700 dark) |
+| Hover border (list item, card) | `--chat-border` |
+| Keyboard focus ring | `--chat-ring` (sky-600 — biarkan vivid untuk a11y) |
+
+Selection state cukup dibedakan via **background shift** (`--chat-accent`) + border halus (`--chat-border`).
+
+**DILARANG:**
+- `border-[color:var(--chat-primary)]` untuk selection/hover border — terlalu gelap (slate-800), njomplang
+- `--chat-primary` hanya boleh untuk: background CTA button, text link, badge primer
+- Border selected item tidak boleh lebih gelap dari `--chat-border`
+
+**Logika:** Border slate-800 di antara elemen slate-300 menciptakan kontras visual yang mengganggu.
+Cukup gunakan `--chat-border` + `bg-[var(--chat-accent)]` untuk membedakan item terpilih.
+
+### 3.6 Background — Slate Tokens Only
 
 | Konteks | Token |
 |---------|-------|
@@ -170,7 +188,7 @@ Layout: vertikal
 
 ```
 Container: bg-[var(--chat-info/success/warning)], rounded-badge
-Text: text-[var(--chat-*-foreground)] → selalu white
+Text: menggunakan token foreground state (e.g. --chat-info-foreground) → selalu white
 Icon: white (ikut foreground)
 ```
 
@@ -269,6 +287,9 @@ grep -rn "chat-warning" src/components/chat/ --include="*.tsx"
 
 # 8. Black foreground di state token (globals-new.css)
 grep -n "oklch(0 0 0)" src/app/globals-new.css
+
+# 9. Selection/hover border pakai --chat-primary (harus --chat-border)
+grep -rn "chat-primary" src/components/chat/ --include="*.tsx" | grep "border-\[color"
 ```
 
 ### Setiap Temuan Harus Dijawab:

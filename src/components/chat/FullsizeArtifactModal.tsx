@@ -514,7 +514,7 @@ export function FullsizeArtifactModal({
                 )}
 
                 {hasUnsavedChanges && (
-                  <span className="rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-warning-foreground)]">
+                  <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
                     Draft belum disimpan
                   </span>
                 )}

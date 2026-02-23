@@ -18,7 +18,7 @@ import { Id } from "../../../convex/_generated/dataModel"
 
 function RefrasaBadge() {
   return (
-    <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-[var(--chat-warning)] text-[9px] font-mono font-bold text-[var(--chat-warning-foreground)]">
+    <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-[var(--chat-info)] text-[9px] font-mono font-bold text-[var(--chat-info-foreground)]">
       R
     </span>
   )

@@ -144,7 +144,7 @@ export function ArtifactList({
                     "w-full rounded-action border p-2 text-left transition-colors",
                     "border-[color:var(--chat-border)] hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1",
-                    isSelected && "border-[color:var(--chat-primary)] bg-[var(--chat-accent)]"
+                    isSelected && "border-[color:var(--chat-border)] bg-[var(--chat-accent)]"
                   )}
                   aria-label={`Pilih artifak ${artifact.title} versi ${artifact.version}`}
                   aria-current={isSelected ? "page" : undefined}
@@ -173,7 +173,7 @@ export function ArtifactList({
                             Final
                           </Badge>
                         ) : (
-                          <Badge className="rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] px-1 py-0 text-[10px] font-mono uppercase text-[var(--chat-warning-foreground)]">
+                          <Badge className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-1 py-0 text-[10px] font-mono uppercase text-[var(--chat-muted-foreground)]">
                             Revisi
                           </Badge>
                         )}

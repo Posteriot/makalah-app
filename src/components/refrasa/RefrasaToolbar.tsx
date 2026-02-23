@@ -235,8 +235,8 @@ export function RefrasaToolbar({
                     className={cn(
                       "inline-flex items-center gap-1 rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring",
                       showIssues
-                        ? "border-[color:var(--chat-warning)] bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]"
-                        : "border-[color:var(--chat-warning)] bg-[var(--chat-accent)] text-[var(--chat-warning)] hover:border-[color:var(--chat-warning)] hover:bg-[var(--chat-warning)]"
+                        ? "border-[color:var(--chat-border)] bg-[var(--chat-secondary)] text-[var(--chat-foreground)]"
+                        : "border-[color:var(--chat-border)] bg-[var(--chat-accent)] text-[var(--chat-foreground)] hover:bg-[var(--chat-secondary)]"
                     )}
                     aria-label="Lihat masalah"
                     aria-expanded={showIssues}
