@@ -8,7 +8,7 @@ import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { Menu, WarningCircle, Refresh } from "iconoir-react"
+import { Menu, WarningCircle, Refresh, MoreVert } from "iconoir-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -82,6 +82,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
   const [isCreatingChat, setIsCreatingChat] = useState(false)
+  const [showActionSheet, setShowActionSheet] = useState(false)
   const [processUi, setProcessUi] = useState<{
     visible: boolean
     status: ProcessVisualStatus
@@ -661,12 +662,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (conversationNotFound) {
     return (
       <div className="flex-1 flex flex-col h-full">
-        <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
+        <div className="md:hidden px-3 py-2.5 border-b border-[color:var(--chat-border)] flex items-center gap-2 bg-[var(--chat-background)]">
+          <button onClick={onMobileMenuClick} className="p-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)]" aria-label="Menu">
             <Menu className="h-5 w-5" />
-          </Button>
-          <span className="font-semibold">Makalah Chat</span>
-          <div className="w-9" />
+          </button>
+          <span className="flex-1 truncate text-sm font-mono font-semibold text-[var(--chat-foreground)]">
+            Makalah
+          </span>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-[var(--chat-muted-foreground)]">
@@ -683,11 +685,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
-      <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
+      <div className="md:hidden px-3 py-2.5 border-b border-[color:var(--chat-border)] flex items-center gap-2 bg-[var(--chat-background)]">
+        <button onClick={onMobileMenuClick} className="p-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)]" aria-label="Menu">
           <Menu className="h-5 w-5" />
-        </Button>
-        <span className="font-semibold">Makalah Chat</span>
+        </button>
+        <span className="flex-1 truncate text-sm font-mono font-semibold text-[var(--chat-foreground)]">
+          {conversation?.title || "Percakapan baru"}
+        </span>
+        <button onClick={() => setShowActionSheet(true)} className="p-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)]" aria-label="Actions">
+          <MoreVert className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Quota Warning Banner */}
