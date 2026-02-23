@@ -96,9 +96,9 @@ export function MobilePaperMiniBar({
                     "flex flex-col items-center gap-0.5 px-2 py-1 rounded-badge",
                     "text-[10px] font-mono min-w-[48px] transition-colors",
                     isCompleted
-                      ? "bg-[var(--chat-success)]/15 text-[var(--chat-success)]"
+                      ? "bg-[var(--chat-muted)] text-[var(--chat-foreground)]"
                       : isCurrent
-                        ? "bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
+                        ? "bg-[var(--chat-secondary)] text-[var(--chat-foreground)] ring-1 ring-[var(--chat-border)]"
                         : "bg-transparent text-[var(--chat-muted-foreground)]",
                     canRewind && "cursor-pointer active:scale-95"
                   )}

@@ -159,18 +159,18 @@ export function MobileActionSheet({
   }
 
   const actionButtonClass =
-    "flex w-full items-center gap-3 px-4 py-3 font-mono text-sm text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)] transition-colors duration-50 active:bg-[var(--chat-accent)]"
+    "flex w-full items-center gap-3 px-5 py-3.5 font-mono text-sm text-[var(--chat-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
 
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="rounded-t-xl border-t border-[var(--chat-border)] bg-[var(--chat-background)] p-0 [&>button]:hidden"
+          className="rounded-t-shell border-t border-[var(--chat-border)] bg-[var(--chat-background)] p-0 [&>button]:hidden"
         >
           {/* Drag handle */}
-          <div className="flex justify-center pt-3 pb-1">
-            <div className="h-1 w-8 rounded-full bg-[var(--chat-muted-foreground)]/30" />
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="h-1 w-10 rounded-full bg-[var(--chat-muted)]" />
           </div>
 
           <SheetHeader className="sr-only">
@@ -210,7 +210,7 @@ export function MobileActionSheet({
                 <button
                   onClick={handleSaveRename}
                   disabled={isSaving || !renameValue.trim()}
-                  className="flex-1 rounded-action bg-[var(--chat-foreground)] px-3 py-2 font-mono text-sm text-[var(--chat-background)] hover:opacity-90 transition-opacity duration-50 disabled:opacity-50"
+                  className="flex-1 rounded-action bg-[var(--chat-foreground)] px-3 py-2 font-mono text-sm text-[var(--chat-background)] active:bg-[var(--chat-secondary-foreground)] transition-colors duration-50 disabled:opacity-50"
                 >
                   {isSaving ? "Menyimpan..." : "Simpan"}
                 </button>
@@ -245,7 +245,7 @@ export function MobileActionSheet({
               {conversationId && conversation && (
                 <button
                   onClick={handleDeleteClick}
-                  className="flex w-full items-center gap-3 px-4 py-3 font-mono text-sm text-[var(--chat-destructive)] hover:bg-[var(--chat-accent)] transition-colors duration-50 active:bg-[var(--chat-accent)]"
+                  className="flex w-full items-center gap-3 px-5 py-3.5 font-mono text-sm text-[var(--chat-destructive)] active:bg-[var(--chat-accent)] transition-colors duration-50"
                 >
                   <Trash className="size-4 shrink-0" strokeWidth={1.5} />
                   <span>Hapus Percakapan</span>
@@ -256,7 +256,7 @@ export function MobileActionSheet({
               <div className="border-t border-[var(--chat-border)] mt-1" />
               <button
                 onClick={handleClose}
-                className="flex w-full items-center justify-center px-4 py-3 font-mono text-sm text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)] transition-colors duration-50 active:bg-[var(--chat-accent)]"
+                className="flex w-full items-center justify-center px-5 py-3.5 font-mono text-sm text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
               >
                 Batal
               </button>

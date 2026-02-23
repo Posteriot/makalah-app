@@ -588,20 +588,22 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile: Clean composer-first landing */}
         <div className="md:hidden flex-1 flex flex-col">
-          <div className="flex items-center px-4 pt-3 pb-1">
+          {/* Header: hamburger only, minimal chrome */}
+          <div className="flex items-center justify-between px-4 pt-[env(safe-area-inset-top,0px)]">
             <button
               onClick={onMobileMenuClick}
-              className="p-2 -ml-2 rounded-action text-[var(--chat-muted-foreground)]"
+              className="p-2.5 -ml-2 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
               aria-label="Menu"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5" strokeWidth={1.5} />
             </button>
           </div>
-          <div className="flex-1 flex flex-col items-center justify-center px-6">
-            <h1 className="font-mono tracking-widest text-lg text-[var(--chat-foreground)] mb-1">
+          {/* Center content: brand + chips */}
+          <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-12">
+            <h1 className="font-mono tracking-[0.25em] text-base font-medium text-[var(--chat-foreground)] mb-1.5">
               M A K A L A H
             </h1>
-            <p className="font-mono text-xs text-[var(--chat-muted-foreground)] mb-8">
+            <p className="font-mono text-[11px] text-[var(--chat-muted-foreground)] mb-10">
               Asisten penulisan ilmiah
             </p>
             <TemplateGrid
@@ -666,13 +668,19 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (conversationNotFound) {
     return (
       <div className="flex-1 flex flex-col h-full">
-        <div className="md:hidden px-3 py-2.5 border-b border-[color:var(--chat-border)] flex items-center gap-2 bg-[var(--chat-background)]">
-          <button onClick={onMobileMenuClick} className="p-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)]" aria-label="Menu">
-            <Menu className="h-5 w-5" />
-          </button>
-          <span className="flex-1 truncate text-sm font-mono font-semibold text-[var(--chat-foreground)]">
-            Makalah
-          </span>
+        <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
+          <div className="flex items-center gap-2 h-11">
+            <button
+              onClick={onMobileMenuClick}
+              className="p-2 -ml-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+              aria-label="Menu"
+            >
+              <Menu className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <span className="flex-1 truncate text-sm font-mono font-medium text-[var(--chat-foreground)]">
+              Makalah
+            </span>
+          </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-[var(--chat-muted-foreground)]">
@@ -689,16 +697,26 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
-      <div className="md:hidden px-3 py-2.5 border-b border-[color:var(--chat-border)] flex items-center gap-2 bg-[var(--chat-background)]">
-        <button onClick={onMobileMenuClick} className="p-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)]" aria-label="Menu">
-          <Menu className="h-5 w-5" />
-        </button>
-        <span className="flex-1 truncate text-sm font-mono font-semibold text-[var(--chat-foreground)]">
-          {conversation?.title || "Percakapan baru"}
-        </span>
-        <button onClick={() => setShowActionSheet(true)} className="p-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)]" aria-label="Actions">
-          <MoreVert className="h-5 w-5" />
-        </button>
+      <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
+        <div className="flex items-center gap-2 h-11">
+          <button
+            onClick={onMobileMenuClick}
+            className="p-2 -ml-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+            aria-label="Menu"
+          >
+            <Menu className="h-5 w-5" strokeWidth={1.5} />
+          </button>
+          <span className="flex-1 truncate text-sm font-mono font-medium text-[var(--chat-foreground)]">
+            {conversation?.title || "Percakapan baru"}
+          </span>
+          <button
+            onClick={() => setShowActionSheet(true)}
+            className="p-2 -mr-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+            aria-label="Actions"
+          >
+            <MoreVert className="h-5 w-5" strokeWidth={1.5} />
+          </button>
+        </div>
       </div>
 
       {/* Quota Warning Banner */}

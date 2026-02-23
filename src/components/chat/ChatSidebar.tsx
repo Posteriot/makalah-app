@@ -153,10 +153,10 @@ export function ChatSidebar({
             key={panel}
             onClick={() => onPanelChange?.(panel)}
             className={cn(
-              "flex-1 py-2 text-[10px] font-mono uppercase tracking-widest transition-colors",
+              "flex-1 py-3 text-[10px] font-mono font-bold uppercase tracking-widest transition-colors duration-150",
               activePanel === panel
                 ? "text-[var(--chat-sidebar-foreground)] border-b-2 border-[color:var(--chat-sidebar-primary)]"
-                : "text-[var(--chat-muted-foreground)]"
+                : "text-[var(--chat-muted-foreground)] active:text-[var(--chat-sidebar-foreground)]"
             )}
           >
             {panel === "chat-history" ? "Riwayat" : panel === "paper" ? "Paper" : "Progres"}

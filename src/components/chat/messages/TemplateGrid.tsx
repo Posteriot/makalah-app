@@ -141,16 +141,17 @@ export function TemplateGrid({
 
   if (variant === "mobile-chips") {
     return (
-      <div className="flex flex-wrap gap-2 justify-center">
+      <div className="flex flex-wrap gap-2.5 justify-center">
         {templates.map((template) => (
           <button
             key={template.id}
             onClick={() => onTemplateSelect(template)}
             disabled={disabled}
-            className="px-3 py-1.5 rounded-action text-xs font-mono
+            className="px-4 py-2 rounded-action text-xs font-mono
+              border border-[color:var(--chat-border)]
               bg-[var(--chat-secondary)] text-[var(--chat-secondary-foreground)]
-              hover:bg-[var(--chat-accent)] disabled:opacity-50
-              transition-colors"
+              active:bg-[var(--chat-accent)] disabled:opacity-50
+              transition-colors duration-50"
           >
             {template.chipLabel}
           </button>
