@@ -22,6 +22,7 @@ import { useSession } from "@/lib/auth-client"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
 import { MobilePaperMiniBar } from "../paper/MobilePaperMiniBar"
+import { MobileActionSheet } from "./mobile/MobileActionSheet"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 interface ChatWindowProps {
@@ -857,6 +858,17 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           onFileUploaded={handleFileUploaded}
         />
       </div>
+
+      {/* Mobile Action Sheet */}
+      <MobileActionSheet
+        open={showActionSheet}
+        onOpenChange={setShowActionSheet}
+        conversationId={safeConversationId}
+        onViewArtifacts={() => {
+          // TODO: Task 8 will add artifact list screen
+        }}
+        onNewChat={() => router.push("/chat")}
+      />
     </div>
   )
 }
