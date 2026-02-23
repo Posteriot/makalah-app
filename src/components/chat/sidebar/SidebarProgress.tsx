@@ -397,7 +397,7 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     <>
       <div className="flex flex-col h-full">
         {/* Header - Mechanical Grace: .border-hairline */}
-        <div className="p-4 border-b border-[color:var(--chat-border)]">
+        <div className="p-4 border-b border-[color:var(--chat-sidebar-border)]">
           <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)] mb-1">Progress</div>
           <div className="text-xs font-mono text-[var(--chat-muted-foreground)] truncate mb-3">
             {paperTitle}

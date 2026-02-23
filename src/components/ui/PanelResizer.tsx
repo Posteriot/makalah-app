@@ -118,8 +118,9 @@ export function PanelResizer({
         "relative z-20 flex-shrink-0",
         "w-full cursor-col-resize",
         "transition-colors duration-150",
-        // Sidebar-main and main-panel separator tones
-        "bg-[var(--chat-border)]",
+        // Transparent by default — panel borders provide separation
+        // Only visible on hover/drag as interactive affordance
+        "bg-transparent",
         "hover:bg-[var(--chat-info)]",
         isDragging && "bg-[var(--chat-info)]",
         // Position-specific margins for overlap

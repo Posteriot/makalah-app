@@ -186,7 +186,7 @@ export function ChatSidebar({
       {/* Credit Meter — border-top only, seamless with sidebar bg */}
       <CreditMeter
         variant="compact"
-        className="shrink-0 border-t-[0.5px] border-[color:var(--chat-border)] bg-transparent"
+        className="shrink-0 border-t border-[color:var(--chat-sidebar-border)] bg-transparent"
         onClick={() => router.push("/subscription/overview")}
       />
     </aside>
