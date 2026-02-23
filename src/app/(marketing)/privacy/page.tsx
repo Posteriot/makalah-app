@@ -1,7 +1,15 @@
 import { CmsPageWrapper } from "@/components/marketing/CmsPageWrapper"
 import { SimplePolicyPage } from "@/components/marketing/SimplePolicyPage"
+import { openMailClientOrGmail } from "@/lib/utils/emailLink"
+import type { MouseEvent } from "react"
 
 export default function PrivacyPage() {
+    function handleSupportEmailClick(event: MouseEvent<HTMLAnchorElement>) {
+        event.preventDefault()
+        event.stopPropagation()
+        openMailClientOrGmail("mailto:dukungan@makalah.ai", { openInNewTab: true })
+    }
+
     return (
         <CmsPageWrapper slug="privacy" badge="Legal">
             <SimplePolicyPage badge="Legal" title="Kebijakan Privasi Makalah AI">
@@ -62,7 +70,15 @@ export default function PrivacyPage() {
                     <h2 className="text-interface text-base font-medium text-foreground">6. Kontak Kami</h2>
                     <p className="text-narrative text-sm leading-relaxed text-muted-foreground">
                         Jika ada pertanyaan mengenai privasi data Anda, silakan hubungi tim kami di:<br />
-                        <strong>Email</strong>: dukungan@makalah.ai<br />
+                        <strong>Email</strong>:{" "}
+                        <a
+                            href="mailto:dukungan@makalah.ai"
+                            onClick={handleSupportEmailClick}
+                            className="text-slate-600 underline transition-colors hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100"
+                        >
+                            dukungan@makalah.ai
+                        </a>
+                        <br />
                         <strong>Alamat</strong>: Jl. H. Jian, Kebayoran Baru, Jakarta Selatan
                     </p>
                 </section>
