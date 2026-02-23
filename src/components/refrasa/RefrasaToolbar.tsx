@@ -344,7 +344,7 @@ export function RefrasaToolbar({
               "h-7 px-2.5 font-mono text-[11px] text-[var(--chat-secondary-foreground)]",
               isApplied
                 ? "bg-[var(--chat-success)] text-[var(--chat-success-foreground)] hover:bg-[var(--chat-success)]"
-                : "bg-[var(--chat-secondary)] hover:bg-[oklch(0.869_0.025_257.3)] dark:hover:bg-[oklch(0.372_0.025_257.3)] transition-colors"
+                : "bg-[var(--chat-secondary)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.372_0.044_257.287)] transition-colors"
             )}
           >
             {isApplying ? (
