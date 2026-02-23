@@ -309,11 +309,11 @@ function PaperFolderItem({
     }
   }
 
-  // Status dot — slate family, subtle
+  // Status dot — sky for in-progress, green for completed
   const isCompleted = session.currentStage === "completed"
   const statusColorClass = isCompleted
     ? "bg-[var(--chat-success)]"
-    : "bg-[var(--chat-muted-foreground)]"
+    : "bg-sky-500 dark:bg-sky-400"
 
   // Group artifacts by type and get latest version of each
   const latestArtifacts = artifacts
@@ -348,7 +348,7 @@ function PaperFolderItem({
         />
 
         {/* Folder Icon - Solid sky style */}
-        <Folder className="h-[18px] w-[18px] shrink-0 text-[var(--chat-muted-foreground)] [&_path]:fill-current [&_path]:stroke-current" />
+        <Folder className="h-[18px] w-[18px] shrink-0 text-sky-500 dark:text-sky-400 [&_path]:fill-current [&_path]:stroke-current" />
 
         <div
           className="flex flex-1 min-w-0 items-center gap-1.5"
