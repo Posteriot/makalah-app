@@ -180,8 +180,8 @@ export function SidebarPaperSessions({
     <div className="flex flex-col h-full">
       {/* Header - padding 20px 16px 12px 16px, no border */}
       <div className="pt-5 px-4 pb-3">
-        <div className="text-base font-semibold">Sesi Paper</div>
-        <div className="text-[13px] font-mono text-[var(--chat-muted-foreground)]">
+        <div className="text-sm font-semibold">Sesi Paper</div>
+        <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
           Folder Artifak
         </div>
       </div>
@@ -377,7 +377,7 @@ function PaperFolderItem({
               aria-label="Edit working title"
             />
           ) : (
-            <span className="text-[13px] font-mono font-medium truncate flex-1">
+            <span className="text-xs font-mono font-medium truncate flex-1">
               {displayTitle}
             </span>
           )}
@@ -519,7 +519,7 @@ function ArtifactTreeItem({
           )}
 
           {/* File Name */}
-          <span className="flex-1 truncate text-[13px]">{artifact.title}</span>
+          <span className="flex-1 truncate text-xs">{artifact.title}</span>
 
           {/* Version Badge */}
           <span className="shrink-0 rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-0.5 text-[9px] font-mono font-medium text-[var(--chat-secondary-foreground)]">
