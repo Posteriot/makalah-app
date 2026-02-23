@@ -208,7 +208,7 @@ export function RefrasaTabContent({
           {/* Desktop: side-by-side */}
           <div className="hidden flex-1 overflow-hidden md:grid md:grid-cols-2 md:gap-0">
             {/* Left: Original */}
-            <div className="overflow-y-auto border-r border-[color:var(--chat-border)] p-4 scrollbar-thin">
+            <div className="overflow-y-auto overflow-x-hidden border-r border-[color:var(--chat-border)] px-8 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
               <span className="mb-3 inline-block rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-secondary-foreground)]">
                 Asli
               </span>
@@ -221,7 +221,7 @@ export function RefrasaTabContent({
               )}
             </div>
             {/* Right: Refrasa */}
-            <div className="overflow-y-auto p-4 scrollbar-thin">
+            <div className="overflow-y-auto overflow-x-hidden px-8 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
               <span className="mb-3 inline-block rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-info)] px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-info-foreground)]">
                 Refrasa
               </span>
@@ -257,22 +257,26 @@ export function RefrasaTabContent({
                 Refrasa
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
-              <MarkdownRenderer
-                markdown={(mobileCompareTab === "asli" ? sourceArtifact?.content : artifact.content) ?? ""}
-                className="text-sm leading-relaxed text-[var(--chat-foreground)]"
-                context="artifact"
-              />
+            <div className="flex-1 overflow-hidden px-4 py-3">
+              <div className="relative flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
+                <MarkdownRenderer
+                  markdown={(mobileCompareTab === "asli" ? sourceArtifact?.content : artifact.content) ?? ""}
+                  className="text-sm leading-relaxed text-[var(--chat-foreground)]"
+                  context="artifact"
+                />
+              </div>
             </div>
           </div>
         </>
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
-          <MarkdownRenderer
-            markdown={artifact.content}
-            className="text-sm leading-relaxed text-[var(--chat-foreground)]"
-            context="artifact"
-          />
+        <div className="flex-1 overflow-hidden px-4 py-3">
+          <div className="relative flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
+            <MarkdownRenderer
+              markdown={artifact.content}
+              className="text-sm leading-relaxed text-[var(--chat-foreground)]"
+              context="artifact"
+            />
+          </div>
         </div>
       )}
     </div>
