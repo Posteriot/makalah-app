@@ -49,6 +49,15 @@ src/app/
 - SourcesIndicator: inline collapsible tanpa container
 - Responsive toolbar: 2-layer layout (context + actions) konsisten di ArtifactToolbar dan RefrasaToolbar
 - Dark mode: OKLCH per-step hue native Tailwind, chroma halved untuk surface gelap
+- Chat history typography: judul `text-xs`, timestamp `text-[11px]`, gap judul-waktu dirapatkan
+- Paper session folder: icon folder dan status dot diubah ke sky (`sky-500`/`sky-400`)
+
+### Dead Code Cleanup (24 Feb 2026)
+- 7 file dihapus: ThinkingIndicator, ChatMiniFooter, VersionHistoryDialog, ArtifactList, useResizer, RefrasaButton, lib/refrasa barrel
+- Dead exports dihapus: InlineCitationText, InlineCitationQuote, getRandomLoadingMessage, getLoadingMessageByIndex, RefrasaRequest
+- Dead prop dihapus: `conversationId` dari RefrasaTabContent + 2 call sites
+- useRefrasa disederhanakan: hapus issueCount, issuesByCategory dari return
+- 12 redundant `export default` dihapus dari chat components
 
 ### Hard Rules yang Berlaku
 1. **No transparency** — kecuali shadow dan modal backdrop
@@ -131,6 +140,7 @@ File `global-css-template.css` di folder ini berisi template final tanpa prefix 
 ## Catatan Penting
 
 - **Jangan langsung promosi** sebelum semua halaman chat 100% visual QA passed
+- **Privacy page** sudah di-fix: tambah `"use client"` directive karena ada onClick handler di Server Component
 - **Popover citation** masih pakai light theme di portal — perlu di-address sebelum promosi
 - `@theme inline` bridge di `globals-new.css` memungkinkan Tailwind utilities (`bg-chat-muted`, `text-chat-foreground`) — bridge ini harus dipertahankan atau diganti saat merge ke `globals.css`
 - Portal elements (Radix Select, HoverCard) render di luar `[data-chat-scope]` — perlu hardcode slate values atau tambahkan `data-chat-scope` attribute. Masalah ini hilang setelah promosi ke `:root`
