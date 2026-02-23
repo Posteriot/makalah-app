@@ -72,8 +72,8 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
                 icon: <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />,
                 text: customMessage || "Pencarian",
                 containerClass: "",
-                iconClass: "text-[var(--ds-text-muted)]",
-                textClass: "text-[var(--ds-text-muted)]",
+                iconClass: "text-[var(--chat-muted-foreground)]",
+                textClass: "text-[var(--chat-muted-foreground)]",
             }
 
         case "done":
@@ -81,8 +81,8 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
                 icon: <CheckCircle className="h-4 w-4" />,
                 text: customMessage || "Pencarian selesai",
                 containerClass: "",
-                iconClass: "text-[var(--ds-state-success-fg)]",
-                textClass: "text-[var(--ds-state-success-fg)]",
+                iconClass: "text-[var(--chat-success)]",
+                textClass: "text-[var(--chat-success)]",
             }
 
         case "error":
@@ -90,8 +90,8 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
                 icon: <XmarkCircle className="h-4 w-4" />,
                 text: customMessage || "Pencarian gagal",
                 containerClass: "",
-                iconClass: "text-[var(--ds-state-danger-fg)]",
-                textClass: "text-[var(--ds-state-danger-fg)]",
+                iconClass: "text-[var(--chat-destructive)]",
+                textClass: "text-[var(--chat-destructive)]",
             }
 
         default:
@@ -99,8 +99,8 @@ function getStatusConfig(status: SearchStatus, customMessage?: string) {
                 icon: <Search className="h-4 w-4" />,
                 text: "Pencarian",
                 containerClass: "",
-                iconClass: "text-[var(--ds-text-muted)]",
-                textClass: "text-[var(--ds-text-muted)]",
+                iconClass: "text-[var(--chat-muted-foreground)]",
+                textClass: "text-[var(--chat-muted-foreground)]",
             }
     }
 }

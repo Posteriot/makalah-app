@@ -93,8 +93,8 @@ export function ToolStateIndicator({ toolName, state, errorText, persistUntilDon
                 "text-[11px] font-mono tracking-wide",
                 "transition-all duration-300 animate-in fade-in zoom-in-95",
                 isError
-                    ? "text-[var(--ds-state-danger-fg)]"
-                    : "text-[var(--ds-text-muted)]"
+                    ? "text-[var(--chat-destructive)]"
+                    : "text-[var(--chat-muted-foreground)]"
             )}
             role="status"
             aria-label={text}

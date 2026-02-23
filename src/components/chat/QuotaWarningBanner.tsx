@@ -109,21 +109,21 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
 
   // Mechanical Grace: Slate background, Signal Theory borders
   const bannerStyles = {
-    warning: "bg-[var(--ds-quota-warning-bg)] border-[color:var(--ds-quota-warning-border)] text-[var(--ds-quota-warning-fg)]",
-    critical: "bg-[var(--ds-quota-critical-bg)] border-[color:var(--ds-quota-critical-border)] text-[var(--ds-quota-critical-fg)]",
-    depleted: "bg-[var(--ds-quota-depleted-bg)] border-[color:var(--ds-quota-depleted-border)] text-[var(--ds-quota-depleted-fg)]",
+    warning: "bg-[var(--chat-warning)] border-[color:var(--chat-border)] text-[var(--chat-warning-foreground)]",
+    critical: "bg-[var(--chat-destructive)] border-[color:var(--chat-border)] text-[var(--chat-destructive-foreground)]",
+    depleted: "bg-[var(--chat-destructive)] border-[color:var(--chat-border)] text-[var(--chat-destructive-foreground)]",
   }
 
   const iconStyles = {
-    warning: "text-[var(--ds-quota-warning-icon)]",
-    critical: "text-[var(--ds-quota-critical-icon)]",
-    depleted: "text-[var(--ds-quota-depleted-icon)]",
+    warning: "text-[var(--chat-warning-foreground)]",
+    critical: "text-[var(--chat-destructive-foreground)]",
+    depleted: "text-[var(--chat-destructive-foreground)]",
   }
 
   const linkStyles = {
-    warning: "text-[var(--ds-quota-warning-link)]",
-    critical: "text-[var(--ds-quota-critical-link)]",
-    depleted: "text-[var(--ds-quota-depleted-link)]",
+    warning: "text-[var(--chat-warning-foreground)]",
+    critical: "text-[var(--chat-destructive-foreground)]",
+    depleted: "text-[var(--chat-destructive-foreground)]",
   }
 
   const Icon = bannerType === "depleted" ? WarningTriangle :
@@ -154,7 +154,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
       {bannerType !== "depleted" && (
         <button
           onClick={handleDismiss}
-          className="p-1 rounded-action hover:bg-[var(--ds-quota-dismiss-hover-bg)] flex-shrink-0"
+          className="p-1 rounded-action hover:bg-[var(--chat-muted)] flex-shrink-0"
           aria-label="Tutup"
         >
           <Xmark className="h-4 w-4" />

@@ -48,12 +48,12 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                 className={cn(
                     "flex items-center gap-2.5 px-3 py-2",
                     // Mechanical Grace: .rounded-badge (6px) + Emerald border
-                    "rounded-badge border-l-4 border-l-[var(--ds-sources-header-border)] bg-[var(--ds-sources-header-bg)]",
+                    "rounded-badge border-l-4 border-l-[var(--chat-success)] bg-[var(--chat-card)]",
                     "text-sm"
                 )}
             >
-                <CheckCircle className="h-4 w-4 flex-shrink-0 text-[var(--ds-sources-header-fg)]" />
-                <span className="font-mono text-xs font-medium uppercase tracking-wide text-[var(--ds-sources-header-fg)]">
+                <CheckCircle className="h-4 w-4 flex-shrink-0 text-[var(--chat-success)]" />
+                <span className="font-mono text-xs font-medium uppercase tracking-wide text-[var(--chat-success-foreground)]">
                     Menemukan {sources.length} {sources.length === 1 ? "rujukan" : "rujukan"}
                 </span>
             </div>
@@ -63,7 +63,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                 open={isOpen}
                 onOpenChange={setIsOpen}
                 // Mechanical Grace: .border-hairline + .rounded-badge
-                className="rounded-badge border border-border/50 bg-muted/30"
+                className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)]"
             >
                 {/* Collapsed Header */}
                 <CollapsibleTrigger asChild>
@@ -71,16 +71,16 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                         className={cn(
                             "flex w-full items-center justify-between gap-3",
                             "px-3 py-2 text-sm",
-                            "hover:bg-accent/50 transition-colors rounded-badge",
-                            isOpen && "border-b border-border/50 rounded-b-none"
+                            "hover:bg-[var(--chat-accent)] transition-colors rounded-badge",
+                            isOpen && "border-b border-[color:var(--chat-border)] rounded-b-none"
                         )}
                     >
-                        <span className="font-mono font-medium text-foreground">
+                        <span className="font-mono font-medium text-[var(--chat-foreground)]">
                             {sources.length} {sources.length === 1 ? "rujukan" : "rujukan"}
                         </span>
                         <NavArrowDown
                             className={cn(
-                                "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                                "h-4 w-4 text-[var(--chat-muted-foreground)] transition-transform duration-200",
                                 isOpen && "rotate-180"
                             )}
                         />
@@ -90,7 +90,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                 {/* Expanded Content */}
                 <CollapsibleContent className="px-3 py-2">
                     {/* Mechanical Grace: .border-hairline dividers */}
-                    <div className="flex flex-col divide-y divide-border/50">
+                    <div className="flex flex-col divide-y divide-[var(--chat-border)]">
                         {displayedSources.map(({ source, idx }) => {
                             const parts = getWebCitationDisplayParts(source)
                             return (
@@ -105,7 +105,7 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowAll(!showAll)}
-                            className="h-7 w-full mt-2 text-xs font-mono text-muted-foreground hover:text-foreground"
+                            className="h-7 w-full mt-2 text-xs font-mono text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)]"
                         >
                             {showAll ? "Gulung" : `Tampilkan ${remainingCount} lagi`}
                         </Button>
@@ -128,18 +128,18 @@ function SourceItem({ parts }: { parts: ReturnType<typeof getWebCitationDisplayP
             className={cn(
                 "group flex flex-col gap-0.5 py-2",
                 "-mx-1 px-1 rounded transition-colors",
-                "hover:bg-[var(--ds-sources-item-hover-bg)]"
+                "hover:bg-[var(--chat-accent)]"
             )}
         >
             {/* Title */}
-            <span className="text-sm font-medium text-foreground flex items-center gap-1">
+            <span className="text-sm font-medium text-[var(--chat-foreground)] flex items-center gap-1">
                 {parts.title}
                 {/* Mechanical Grace: .icon-micro (12px) */}
                 <OpenNewWindow className="h-3 w-3 opacity-0 group-hover:opacity-70 transition-opacity" />
             </span>
 
             {/* URL - Mechanical Grace: Mono typography */}
-            <span className="truncate font-mono text-xs text-muted-foreground transition-colors hover:text-[var(--ds-sources-link-hover-fg)]">
+            <span className="truncate font-mono text-xs text-[var(--chat-muted-foreground)] transition-colors hover:text-[var(--chat-info)]">
                 {parts.url}
             </span>
         </a>

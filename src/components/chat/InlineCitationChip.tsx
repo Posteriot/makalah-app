@@ -70,7 +70,7 @@ export function InlineCitationChip({ sources }: { sources: CitationSource[] }) {
   const safeSources = sources ?? []
   const isMobile = useIsMobile()
   const citationChipClassName =
-    "ml-1 cursor-pointer rounded-badge border border-[color:var(--ds-citation-chip-border)] bg-[var(--ds-citation-chip-bg)] px-2.5 py-0.5 font-mono text-xs font-semibold text-[var(--ds-citation-chip-fg)] shadow-[inset_0_1px_0_var(--ds-citation-chip-shadow)]"
+    "ml-1 cursor-pointer rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2.5 py-0.5 font-mono text-xs font-semibold text-[var(--chat-secondary-foreground)] shadow-[inset_0_1px_0_var(--chat-border)]"
 
   const hostname = safeSources.length > 0 ? formatHostname(safeSources[0].url) : "sumber"
   const chipLabel = `${hostname}${safeSources.length > 1 ? ` +${safeSources.length - 1}` : ""}`
