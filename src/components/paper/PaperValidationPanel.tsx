@@ -61,17 +61,17 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
             className={cn(
                 // Container - centered card style like mockup
                 "max-w-[80%] mx-auto my-4",
-                "bg-[var(--ds-status-surface)] border border-[var(--ds-status-border)] rounded-lg",
+                "bg-[var(--chat-card)] border border-[color:var(--chat-border)] rounded-lg",
                 "shadow-none",
                 "animate-in fade-in slide-in-from-bottom-4 duration-500"
             )}
         >
             {isDirty && (
-                <div className="flex items-start gap-2 p-3 mx-4 mt-4 mb-0 bg-[var(--ds-state-warning-bg)] border border-[var(--ds-state-warning-border)] rounded-action text-xs text-[var(--ds-state-warning-fg)]">
+                <div className="flex items-start gap-2 p-3 mx-4 mt-4 mb-0 bg-[var(--chat-warning)] border border-[color:var(--chat-warning)] rounded-action text-xs text-[var(--chat-warning-foreground)]">
                     <WarningCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                     <div>
                         <span className="font-semibold">Percakapan berubah sejak data terakhir disimpan.</span>
-                        <span className="block mt-0.5 text-muted-foreground">
+                        <span className="block mt-0.5 text-[var(--chat-muted-foreground)]">
                             Sebaiknya minta AI sinkronkan data sebelum approve.
                         </span>
                     </div>
@@ -87,10 +87,10 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                 {/* Header Section */}
                 <div className="flex items-center justify-between gap-3 flex-1">
                     <div className="flex flex-col gap-1">
-                        <h3 className="text-sm font-semibold text-foreground">
+                        <h3 className="text-sm font-semibold text-[var(--chat-foreground)]">
                             Validasi Tahap: {stageLabel}
                         </h3>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-[var(--chat-muted-foreground)]">
                             Periksa draft di artifact. Apakah sudah sesuai atau perlu revisi?
                         </p>
                     </div>
@@ -101,7 +101,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             variant="ghost"
                             size="icon"
                             onClick={() => setShowRevisionForm(false)}
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground flex-shrink-0"
+                            className="h-7 w-7 text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] flex-shrink-0"
                         >
                             <Xmark className="h-4 w-4" />
                         </Button>
@@ -118,8 +118,8 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             disabled={isSubmitting || isLoading}
                             className={cn(
                                 "gap-2 h-9 px-4 rounded-action",
-                                "border-[var(--ds-artifact-chip-border)] text-[var(--ds-artifact-chip-fg)]",
-                                "hover:bg-[var(--ds-artifact-chip-hover-bg)] hover:border-[var(--ds-artifact-tab-active-border)]"
+                                "border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
+                                "hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
                             )}
                         >
                             <EditPencil className="h-3.5 w-3.5" />
@@ -131,8 +131,8 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             disabled={isSubmitting || isLoading}
                             className={cn(
                                 "gap-2 h-9 px-4 rounded-action",
-                                "bg-[var(--ds-status-progress-success)] hover:brightness-110",
-                                "text-[var(--ds-sidebar-cta-fg)] border-none"
+                                "bg-[var(--chat-success)] hover:brightness-110",
+                                "text-[var(--chat-success-foreground)] border-none"
                             )}
                         >
                             <Check className="h-3.5 w-3.5" />
@@ -150,9 +150,9 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             onChange={(e) => setFeedback(e.target.value)}
                             className={cn(
                                 "resize-none min-h-[100px]",
-                                "text-sm bg-muted",
-                                "border-border focus:border-primary",
-                                "placeholder:text-muted-foreground"
+                                "text-sm bg-[var(--chat-muted)]",
+                                "border-[color:var(--chat-border)] focus:border-[color:var(--chat-primary)]",
+                                "placeholder:text-[var(--chat-muted-foreground)]"
                             )}
                         />
                         <div className="flex justify-end">
@@ -162,8 +162,8 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                                 disabled={isSubmitting || !feedback.trim()}
                                 className={cn(
                                     "gap-2 h-9 px-4",
-                                    "bg-primary text-primary-foreground",
-                                    "hover:bg-primary/90"
+                                    "bg-[var(--chat-primary)] text-[var(--chat-primary-foreground)]",
+                                    "hover:brightness-110"
                                 )}
                             >
                                 <Send className="h-3.5 w-3.5" />

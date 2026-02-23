@@ -127,7 +127,7 @@ export const PaperStageProgress: React.FC<PaperStageProgressProps> = ({
 
     return (
         <>
-            <div className="w-full bg-[var(--ds-status-surface)] backdrop-blur-sm border-b border-[var(--ds-status-border)] shadow-sm overflow-x-auto no-scrollbar">
+            <div className="w-full bg-[var(--chat-card)] backdrop-blur-sm border-b border-[color:var(--chat-border)] shadow-sm overflow-x-auto no-scrollbar">
                 <div className="flex items-center min-w-max p-4 gap-2">
                     {STAGE_ORDER.map((stageId, index) => {
                         const isCompleted = index < currentIndex;
@@ -147,13 +147,13 @@ export const PaperStageProgress: React.FC<PaperStageProgressProps> = ({
                                 className={cn(
                                     "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all",
                                     isCompleted
-                                        ? "bg-[var(--ds-state-success-bg)] border-[var(--ds-state-success-fg)] text-[var(--ds-state-success-fg)]"
+                                        ? "bg-[var(--chat-success)] border-[color:var(--chat-success)] text-[var(--chat-success-foreground)]"
                                         : isActive
-                                            ? "bg-[var(--ds-state-info-bg)] border-[var(--ds-state-info-fg)] text-[var(--ds-state-info-fg)] shadow-[0_0_10px_var(--ds-state-info-border)]"
-                                            : "bg-[var(--ds-status-track-bg)] border-[var(--ds-status-border)] text-muted-foreground",
+                                            ? "bg-[var(--chat-info)] border-[color:var(--chat-info)] text-[var(--chat-info-foreground)] shadow-[0_0_10px_var(--chat-info)]"
+                                            : "bg-[var(--chat-muted)] border-[color:var(--chat-border)] text-[var(--chat-muted-foreground)]",
                                     // Rewind styles
-                                    canRewind && "cursor-pointer hover:scale-110 hover:shadow-[0_0_15px_var(--ds-state-success-border)] active:scale-95",
-                                    canRewind && "ring-0 hover:ring-2 hover:ring-[var(--ds-state-success-border)]"
+                                    canRewind && "cursor-pointer hover:scale-110 hover:shadow-[0_0_15px_var(--chat-success)] active:scale-95",
+                                    canRewind && "ring-0 hover:ring-2 hover:ring-[var(--chat-success)]"
                                 )}
                                 onClick={canRewind ? () => handleStageClick(stageId, index) : undefined}
                                 role={canRewind ? "button" : undefined}
@@ -196,8 +196,8 @@ export const PaperStageProgress: React.FC<PaperStageProgressProps> = ({
                                     <span
                                         className={cn(
                                             "text-[10px] font-medium whitespace-nowrap",
-                                            isActive ? "text-[var(--ds-state-info-fg)]" : "text-muted-foreground",
-                                            canRewind && "text-[var(--ds-state-success-fg)]" // Highlight label for rewindable
+                                            isActive ? "text-[var(--chat-info)]" : "text-[var(--chat-muted-foreground)]",
+                                            canRewind && "text-[var(--chat-success)]" // Highlight label for rewindable
                                         )}
                                     >
                                         {label}
@@ -206,9 +206,9 @@ export const PaperStageProgress: React.FC<PaperStageProgressProps> = ({
                                         <div className="flex gap-1">
                                             <span className={cn(
                                                 "text-[8px] uppercase tracking-tighter px-1.5 py-0.5 rounded-full",
-                                                stageStatus === "pending_validation" ? "bg-[var(--ds-state-warning-chip-bg)] text-[var(--ds-state-warning-fg)]" :
-                                                    stageStatus === "revision" ? "bg-[var(--ds-state-danger-bg)] text-[var(--ds-state-danger-fg)]" :
-                                                        "bg-[var(--ds-state-info-bg)] text-[var(--ds-state-info-fg)] animate-pulse"
+                                                stageStatus === "pending_validation" ? "bg-[var(--chat-warning)] text-[var(--chat-warning-foreground)]" :
+                                                    stageStatus === "revision" ? "bg-[var(--chat-destructive)] text-[var(--chat-destructive-foreground)]" :
+                                                        "bg-[var(--chat-info)] text-[var(--chat-info-foreground)] animate-pulse"
                                             )}>
                                                 {stageStatus === "pending_validation" ? "Menunggu Anda" :
                                                     stageStatus === "revision" ? "Revisi" : "Sedang menulis..."}
@@ -221,7 +221,7 @@ export const PaperStageProgress: React.FC<PaperStageProgressProps> = ({
                                     <div
                                         className={cn(
                                             "w-6 h-[2px] mb-6 transition-colors",
-                                            isCompleted ? "bg-[var(--ds-status-progress-success)]" : "bg-[var(--ds-status-track-bg)]"
+                                            isCompleted ? "bg-[var(--chat-success)]" : "bg-[var(--chat-muted)]"
                                         )}
                                     />
                                 )}

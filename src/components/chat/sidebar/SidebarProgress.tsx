@@ -128,14 +128,14 @@ function MilestoneItem({
       className={cn(
         "w-3 h-3 rounded-full border-2 shrink-0 z-10 transition-all",
         state === "completed" &&
-          "bg-[var(--ds-status-progress-success)] border-[var(--ds-status-progress-success)]",
+          "bg-[var(--chat-success)] border-[color:var(--chat-success)]",
         // Current state: solid fill + ring outline
         state === "current" &&
-          "bg-[var(--ds-state-warning-fg)] border-[var(--ds-state-warning-fg)] ring-2 ring-[var(--ds-state-warning-border)] ring-offset-1 ring-offset-sidebar",
-        state === "pending" && "bg-transparent border-muted-foreground/50",
+          "bg-[var(--chat-warning)] border-[color:var(--chat-warning)] ring-2 ring-[var(--chat-warning)] ring-offset-1 ring-offset-[var(--chat-sidebar)]",
+        state === "pending" && "bg-transparent border-[color:var(--chat-muted-foreground)]",
         // Rewind styles
         canRewind &&
-          "cursor-pointer hover:scale-125 hover:ring-2 hover:ring-[var(--ds-state-success-border)]"
+          "cursor-pointer hover:scale-125 hover:ring-2 hover:ring-[var(--chat-success)]"
       )}
       onClick={canRewind ? onRewindClick : undefined}
       role={canRewind ? "button" : undefined}
@@ -184,10 +184,10 @@ function MilestoneItem({
             className={cn(
               "w-0.5 flex-1 min-h-[24px]",
               state === "completed" &&
-                "bg-gradient-to-b from-[var(--ds-status-progress-success)] via-[color-mix(in_oklch,var(--ds-status-progress-success)_90%,transparent)] to-[var(--ds-state-warning-fg)]",
+                "bg-gradient-to-b from-[var(--chat-success)] to-[var(--chat-warning)]",
               state === "current" &&
-                "bg-gradient-to-b from-[var(--ds-state-warning-border-soft)] to-border",
-              state === "pending" && "bg-border"
+                "bg-gradient-to-b from-[var(--chat-warning)] to-[var(--chat-border)]",
+              state === "pending" && "bg-[var(--chat-border)]"
             )}
           />
         )}
@@ -198,9 +198,9 @@ function MilestoneItem({
         <div
           className={cn(
             "text-sm font-mono font-medium transition-colors",
-            state === "current" && "text-[var(--ds-state-warning-fg)]",
-            state === "pending" && "text-muted-foreground",
-            canRewind && "group-hover:text-[var(--ds-state-warning-fg)]"
+            state === "current" && "text-[var(--chat-warning)]",
+            state === "pending" && "text-[var(--chat-muted-foreground)]",
+            canRewind && "group-hover:text-[var(--chat-warning)]"
           )}
         >
           {index + 1}. {label}
@@ -210,8 +210,8 @@ function MilestoneItem({
             className={cn(
               "text-xs font-mono transition-colors",
               // Mechanical Grace: Emerald completed, Amber in progress
-              state === "completed" && "text-[var(--ds-state-success-fg)]",
-              state === "current" && "text-[var(--ds-state-warning-fg)]"
+              state === "completed" && "text-[var(--chat-success)]",
+              state === "current" && "text-[var(--chat-warning)]"
             )}
           >
             {statusText}
@@ -313,7 +313,7 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
   // Initial state before any conversation is selected
   if (!conversationId) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
+      <div className="flex flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
         <GitBranch className="h-8 w-8 mb-2" />
         <span className="text-sm font-mono font-medium">
           Belum ada linimasa progres penyusunan paper. Silakan mulai percakapan baru.
@@ -346,7 +346,7 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
   // Empty state - no paper session in this conversation
   if (!isPaperMode || !session) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
+      <div className="flex flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
         <GitBranch className="h-8 w-8 mb-2" />
         <span className="text-sm font-mono font-medium mb-1">Tidak ada paper aktif</span>
         <span className="text-xs font-mono">
@@ -397,21 +397,21 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     <>
       <div className="flex flex-col h-full">
         {/* Header - Mechanical Grace: .border-hairline */}
-        <div className="p-4 border-b border-border/50">
-          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground mb-1">Progress</div>
-          <div className="text-xs font-mono text-muted-foreground truncate mb-3">
+        <div className="p-4 border-b border-[color:var(--chat-border)]">
+          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)] mb-1">Progress</div>
+          <div className="text-xs font-mono text-[var(--chat-muted-foreground)] truncate mb-3">
             {paperTitle}
           </div>
 
           {/* Progress Bar - Mechanical Grace: .rounded-full, Emerald fill */}
           <div className="space-y-1">
-            <div className="h-2 rounded-full overflow-hidden bg-[var(--ds-status-track-bg)] ring-1 ring-[var(--ds-status-border)]">
+            <div className="h-2 rounded-full overflow-hidden bg-[var(--chat-muted)] ring-1 ring-[var(--chat-border)]">
               <div
-                className="h-full bg-[var(--ds-status-progress-success)] rounded-full transition-all duration-300"
+                className="h-full bg-[var(--chat-success)] rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <div className="text-xs font-mono text-muted-foreground text-right">
+            <div className="text-xs font-mono text-[var(--chat-muted-foreground)] text-right">
               {progressPercent}% &middot; Stage {stageNumber}/{totalStages}
             </div>
           </div>

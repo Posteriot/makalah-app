@@ -100,14 +100,14 @@ export function SidebarPaperSessions({
     return (
       <div className="flex flex-col h-full">
         <div className="pt-5 px-4 pb-3">
-          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">Sesi Paper</div>
-          <div className="text-[11px] font-mono text-muted-foreground/70 mt-1">
+          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">Sesi Paper</div>
+          <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] mt-1">
             Folder Artifak
           </div>
         </div>
         <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
-          <Page className="h-8 w-8 text-muted-foreground/50 mb-2" />
-          <span className="text-sm text-muted-foreground/70 font-medium font-mono">
+          <Page className="h-8 w-8 text-[var(--chat-muted-foreground)] opacity-50 mb-2" />
+          <span className="text-sm text-[var(--chat-muted-foreground)] font-medium font-mono">
             Belum ada sesi penyusunan paper. Silakan mulai percakapan baru.
           </span>
         </div>
@@ -145,18 +145,18 @@ export function SidebarPaperSessions({
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="pt-5 px-4 pb-3">
-          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">Sesi Paper</div>
-          <div className="text-[11px] font-mono text-muted-foreground/70 mt-1">
+          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">Sesi Paper</div>
+          <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] mt-1">
             Folder Artifak
           </div>
         </div>
         {/* Empty state - same messaging as SidebarProgress */}
         <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
-          <Page className="h-8 w-8 text-muted-foreground/50 mb-2" />
-          <span className="text-sm text-muted-foreground/70 font-medium font-mono mb-1">
+          <Page className="h-8 w-8 text-[var(--chat-muted-foreground)] opacity-50 mb-2" />
+          <span className="text-sm text-[var(--chat-muted-foreground)] font-medium font-mono mb-1">
             Tidak ada paper aktif
           </span>
-          <span className="text-xs text-muted-foreground/50 font-mono">
+          <span className="text-xs text-[var(--chat-muted-foreground)] opacity-50 font-mono">
             Percakapan ini bukan sesi penulisan paper
           </span>
         </div>
@@ -181,7 +181,7 @@ export function SidebarPaperSessions({
       {/* Header - padding 20px 16px 12px 16px, no border */}
       <div className="pt-5 px-4 pb-3">
         <div className="text-base font-semibold">Sesi Paper</div>
-        <div className="text-[13px] font-mono text-muted-foreground">
+        <div className="text-[13px] font-mono text-[var(--chat-muted-foreground)]">
           Folder Artifak
         </div>
       </div>
@@ -312,8 +312,8 @@ function PaperFolderItem({
   // Status color - Mechanical Grace: Sky for in-progress, Emerald for completed
   const isCompleted = session.currentStage === "completed"
   const statusColorClass = isCompleted
-    ? "bg-[var(--ds-status-progress-success)]"
-    : "bg-[var(--ds-state-info-fg)]"
+    ? "bg-[var(--chat-success)]"
+    : "bg-[var(--chat-info)]"
 
   // Group artifacts by type and get latest version of each
   const latestArtifacts = artifacts
@@ -327,14 +327,14 @@ function PaperFolderItem({
       <div
         className={cn(
           "flex cursor-pointer items-center gap-2 rounded-action border border-transparent px-4 py-2 transition-colors",
-          "hover:border-border/40 hover:bg-accent/60"
+          "hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]"
         )}
         onClick={onToggle}
       >
         {/* Chevron - rotates when expanded */}
         <NavArrowRight
           className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform duration-150 shrink-0",
+            "h-4 w-4 text-[var(--chat-muted-foreground)] transition-transform duration-150 shrink-0",
             isExpanded && "rotate-90"
           )}
         />
@@ -348,7 +348,7 @@ function PaperFolderItem({
         />
 
         {/* Folder Icon - Solid sky style */}
-        <Folder className="h-[18px] w-[18px] shrink-0 text-[var(--ds-state-info-fg)] [&_path]:fill-current [&_path]:stroke-current" />
+        <Folder className="h-[18px] w-[18px] shrink-0 text-[var(--chat-info)] [&_path]:fill-current [&_path]:stroke-current" />
 
         <div
           className="flex flex-1 min-w-0 items-center gap-1.5"
@@ -373,7 +373,7 @@ function PaperFolderItem({
               }}
               disabled={isSavingTitle}
               autoFocus
-              className="h-7 w-full rounded-action border border-border/70 bg-background px-2 text-[12px] font-mono shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+              className="h-7 w-full rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-2 text-[12px] font-mono shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
               aria-label="Edit working title"
             />
           ) : (
@@ -385,7 +385,7 @@ function PaperFolderItem({
           {!isFinalTitleLocked && (
             <button
               type="button"
-              className="h-6 w-6 shrink-0 rounded-action border border-border/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+              className="h-6 w-6 shrink-0 rounded-action border border-[color:var(--chat-border)] text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
               onMouseDown={(event) => event.preventDefault()}
               onClick={(event) => {
                 if (isEditingTitle) {
@@ -414,11 +414,11 @@ function PaperFolderItem({
         <div className="pl-6 pr-1.5">
           {/* Stage Info - Mechanical Grace: Mono metadata */}
           <div className="px-4 pt-1 pb-2">
-            <div className="text-[11px] font-mono text-muted-foreground/90">
+            <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
               Stage {stageNumber}/13 - {stageLabel}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span className="rounded-badge border border-border/60 bg-background/70 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+              <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
                 {hasArtifacts ? `${latestArtifacts.length} artifak` : "Belum ada artifak"}
               </span>
             </div>
@@ -441,7 +441,7 @@ function PaperFolderItem({
               ))}
             </TooltipProvider>
           ) : (
-            <div className="text-[11px] font-mono text-muted-foreground/70 py-2 px-4 uppercase">
+            <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] py-2 px-4 uppercase">
               Belum ada artifak
             </div>
           )}
@@ -496,15 +496,15 @@ function ArtifactTreeItem({
           onClick={handleClick}
           className={cn(
             "my-1 mr-3 flex cursor-pointer items-center gap-2 rounded-action border px-3.5 py-2 transition-colors",
-            "border-transparent hover:bg-[var(--ds-chat-history-item-hover-bg)]",
+            "border-transparent hover:bg-[var(--chat-accent)]",
             isSelected &&
-              "border-[var(--ds-chat-history-item-active-border)] bg-[var(--ds-chat-history-item-active-bg)] shadow-[inset_0_1px_0_var(--ds-citation-chip-shadow)]"
+              "border-[color:var(--chat-primary)] bg-[var(--chat-accent)] shadow-[inset_0_1px_0_var(--chat-border)]"
           )}
           aria-current={isSelected ? "page" : undefined}
         >
           {/* Document Icon / Refrasa Badge */}
           {artifact.type === "refrasa" ? (
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--ds-state-warning-chip-bg)] text-[9px] font-mono font-bold text-[var(--ds-state-warning-fg)]">
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--chat-warning)] text-[9px] font-mono font-bold text-[var(--chat-warning-foreground)]">
               R
             </span>
           ) : (
@@ -512,8 +512,8 @@ function ArtifactTreeItem({
               className={cn(
                 "h-4 w-4 shrink-0",
                 isFinal
-                  ? "text-[var(--ds-artifact-icon-fg)]"
-                  : "text-[var(--ds-state-warning-fg)]"
+                  ? "text-[var(--chat-muted-foreground)]"
+                  : "text-[var(--chat-warning)]"
               )}
             />
           )}
@@ -522,18 +522,18 @@ function ArtifactTreeItem({
           <span className="flex-1 truncate text-[13px]">{artifact.title}</span>
 
           {/* Version Badge */}
-          <span className="shrink-0 rounded-badge border border-border/60 bg-[var(--ds-paper-session-version-badge-bg)] px-1.5 py-0.5 text-[9px] font-mono font-medium text-[var(--ds-paper-session-version-badge-fg)]">
+          <span className="shrink-0 rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-0.5 text-[9px] font-mono font-medium text-[var(--chat-secondary-foreground)]">
             v{artifact.version}
           </span>
 
           {/* Status Badge */}
           {isFinal && (
-            <span className="ml-1 shrink-0 rounded-badge border border-[var(--ds-state-success-border)] bg-[var(--ds-state-success-chip-bg)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--ds-state-success-fg)]">
+            <span className="ml-1 shrink-0 rounded-badge border border-[color:var(--chat-success)] bg-[var(--chat-success)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--chat-success-foreground)]">
               FINAL
             </span>
           )}
           {!isFinal && (
-            <span className="ml-1 shrink-0 rounded-badge border border-[var(--ds-state-warning-border)] bg-[var(--ds-state-warning-chip-bg)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--ds-state-warning-fg)]">
+            <span className="ml-1 shrink-0 rounded-badge border border-[color:var(--chat-warning)] bg-[var(--chat-warning)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--chat-warning-foreground)]">
               REVISI
             </span>
           )}

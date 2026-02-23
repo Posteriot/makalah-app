@@ -80,13 +80,13 @@ export function VersionHistoryDialog({
                     Riwayat ({versionHistory?.length ?? 0})
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[80vh] max-w-lg border-[var(--ds-artifact-panel-border)] bg-[var(--ds-artifact-panel-bg)]">
+            <DialogContent className="max-h-[80vh] max-w-lg border-[color:var(--chat-border)] bg-[var(--chat-card)]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Clock className="h-5 w-5" />
                         Riwayat Versi
                     </DialogTitle>
-                    <DialogDescription className="text-xs font-mono text-muted-foreground">
+                    <DialogDescription className="text-xs font-mono text-[var(--chat-muted-foreground)]">
                         Pilih versi untuk ditampilkan di viewer artifak.
                     </DialogDescription>
                 </DialogHeader>
@@ -95,7 +95,7 @@ export function VersionHistoryDialog({
                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
                     {versionHistory === undefined ? (
                         <div className="flex items-center justify-center py-8">
-                            <span className="h-6 w-6 border-2 border-[var(--ds-artifact-text-muted)] border-t-transparent rounded-full animate-spin" />
+                            <span className="h-6 w-6 border-2 border-[color:var(--chat-muted-foreground)] border-t-transparent rounded-full animate-spin" />
                         </div>
                     ) : (
                         <div className="space-y-3 pr-1">
@@ -108,16 +108,16 @@ export function VersionHistoryDialog({
                                     <div key={version._id} className="relative pl-7">
                                         {!isLastItem && (
                                             <span
-                                                className="absolute left-2.5 top-4 h-[calc(100%+8px)] w-px bg-[var(--ds-artifact-divider-border)]"
+                                                className="absolute left-2.5 top-4 h-[calc(100%+8px)] w-px bg-[var(--chat-border)]"
                                                 aria-hidden="true"
                                             />
                                         )}
                                         <span
                                             className={cn(
-                                                "absolute left-[5px] top-3 h-3 w-3 rounded-full border-2 border-[var(--ds-artifact-panel-bg)]",
+                                                "absolute left-[5px] top-3 h-3 w-3 rounded-full border-2 border-[color:var(--chat-card)]",
                                                 isCurrentVersion
-                                                    ? "bg-[var(--ds-state-info-fg)]"
-                                                    : "bg-[var(--ds-artifact-text-subtle)]"
+                                                    ? "bg-[var(--chat-info)]"
+                                                    : "bg-[var(--chat-muted-foreground)]"
                                             )}
                                             aria-hidden="true"
                                         />
@@ -129,10 +129,10 @@ export function VersionHistoryDialog({
                                             }}
                                             className={cn(
                                                 "w-full rounded-action border p-3 text-left transition-colors",
-                                                "border-[var(--ds-artifact-chip-border)] hover:border-[var(--ds-artifact-tab-active-border)] hover:bg-[var(--ds-artifact-chip-hover-bg)]",
-                                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2",
+                                                "border-[color:var(--chat-border)] hover:border-[color:var(--chat-primary)] hover:bg-[var(--chat-accent)]",
+                                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-2",
                                                 isCurrentVersion &&
-                                                    "border-[var(--ds-state-info-border)] bg-[var(--ds-state-info-bg)]"
+                                                    "border-[color:var(--chat-info)] bg-[var(--chat-info)]"
                                             )}
                                         >
                                             <div className="flex items-start justify-between gap-2">
@@ -142,7 +142,7 @@ export function VersionHistoryDialog({
                                                         {isLatest && (
                                                             <Badge
                                                                 variant="secondary"
-                                                                className="rounded-badge border border-[var(--ds-artifact-chip-border)] bg-[var(--ds-artifact-chip-bg)] px-1 py-0 text-[10px] font-mono text-[var(--ds-artifact-chip-fg)]"
+                                                                className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1 py-0 text-[10px] font-mono text-[var(--chat-secondary-foreground)]"
                                                             >
                                                                 Terbaru
                                                             </Badge>
@@ -150,25 +150,25 @@ export function VersionHistoryDialog({
                                                         {isCurrentVersion && (
                                                             <Badge
                                                                 variant="default"
-                                                                className="rounded-badge border border-[var(--ds-state-info-border)] bg-[var(--ds-state-info-bg)] px-1 py-0 text-[10px] font-mono text-[var(--ds-state-info-fg)]"
+                                                                className="rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-info)] px-1 py-0 text-[10px] font-mono text-[var(--chat-info-foreground)]"
                                                             >
                                                                 Dilihat
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    <p className="mt-0.5 text-xs font-mono text-muted-foreground">
+                                                    <p className="mt-0.5 text-xs font-mono text-[var(--chat-muted-foreground)]">
                                                         {formatDate(version.createdAt)}
                                                     </p>
                                                 </div>
                                                 <NavArrowRight
                                                     className={cn(
-                                                        "h-4 w-4 shrink-0 text-[var(--ds-artifact-text-muted)]",
-                                                        isCurrentVersion && "text-[var(--ds-state-info-fg)]"
+                                                        "h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]",
+                                                        isCurrentVersion && "text-[var(--chat-info)]"
                                                     )}
                                                 />
                                             </div>
 
-                                            <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                                            <p className="mt-2 text-xs text-[var(--chat-muted-foreground)] line-clamp-2">
                                                 {truncateContent(version.content)}
                                             </p>
                                         </button>
@@ -180,7 +180,7 @@ export function VersionHistoryDialog({
                 </div>
 
                 {/* Footer info - Mechanical Grace: .border-hairline + Mono */}
-                <div className="border-t border-[var(--ds-artifact-divider-border)] pt-4 text-xs font-mono text-muted-foreground">
+                <div className="border-t border-[color:var(--chat-border)] pt-4 text-xs font-mono text-[var(--chat-muted-foreground)]">
                     <div className="flex items-center justify-between">
                         <span>Total {versionHistory?.length ?? 0} versi</span>
                         <span>

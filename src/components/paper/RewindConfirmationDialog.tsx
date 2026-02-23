@@ -45,7 +45,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
-                        <Undo className="h-5 w-5 text-[var(--ds-state-warning-fg)]" />
+                        <Undo className="h-5 w-5 text-[var(--chat-warning)]" />
                         Kembali ke tahap {targetLabel}?
                     </AlertDialogTitle>
                     <AlertDialogDescription asChild>
@@ -53,13 +53,13 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                             <p>
                                 Anda akan kembali dari tahap <strong>{currentLabel}</strong> ke tahap <strong>{targetLabel}</strong>.
                             </p>
-                            <div className="flex items-start gap-2 p-3 bg-[var(--ds-state-warning-bg)] border border-[var(--ds-state-warning-border)] rounded-md">
-                                <WarningTriangle className="h-4 w-4 text-[var(--ds-state-warning-fg)] mt-0.5 shrink-0" />
-                                <div className="text-xs text-[var(--ds-state-warning-fg)]">
+                            <div className="flex items-start gap-2 p-3 bg-[var(--chat-warning)] border border-[color:var(--chat-warning)] rounded-md">
+                                <WarningTriangle className="h-4 w-4 text-[var(--chat-warning-foreground)] mt-0.5 shrink-0" />
+                                <div className="text-xs text-[var(--chat-warning-foreground)]">
                                     <strong>Perhatian:</strong> Semua artifact dan keputusan dari tahap {targetLabel} sampai {currentLabel} akan ditandai sebagai <em>invalidated</em> dan perlu direvisi ulang.
                                 </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-[var(--chat-muted-foreground)]">
                                 Progres Anda tidak hilang, tetapi perlu divalidasi ulang setelah revisi.
                             </p>
                         </div>
@@ -72,7 +72,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                     <AlertDialogAction
                         onClick={handleConfirm}
                         disabled={isSubmitting}
-                        className="bg-[var(--ds-state-warning-fg)] hover:brightness-110 text-[var(--ds-sidebar-cta-fg)]"
+                        className="bg-[var(--chat-warning)] hover:brightness-110 text-[var(--chat-warning-foreground)]"
                     >
                         {isSubmitting ? (
                             <>
