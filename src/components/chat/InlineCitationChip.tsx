@@ -14,7 +14,6 @@ import {
   InlineCitationCarouselPrev,
   InlineCitationSource,
 } from "@/components/ai-elements/inline-citation"
-import { Badge } from "@/components/ui/badge"
 import {
   Sheet,
   SheetContent,
@@ -70,7 +69,7 @@ export function InlineCitationChip({ sources }: { sources: CitationSource[] }) {
   const safeSources = sources ?? []
   const isMobile = useIsMobile()
   const citationChipClassName =
-    "ml-1 cursor-pointer rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2.5 py-0.5 font-mono text-xs font-semibold text-[var(--chat-secondary-foreground)] shadow-[inset_0_1px_0_var(--chat-border)]"
+    "ml-1 cursor-pointer font-mono text-[11px] text-[var(--chat-info)] underline-offset-2 hover:underline dark:text-[oklch(0.746_0.16_232.661)]"
 
   const hostname = safeSources.length > 0 ? formatHostname(safeSources[0].url) : "sumber"
   const chipLabel = `${hostname}${safeSources.length > 1 ? ` +${safeSources.length - 1}` : ""}`
@@ -103,9 +102,9 @@ export function InlineCitationChip({ sources }: { sources: CitationSource[] }) {
       <InlineCitation className="align-baseline">
         <Sheet>
           <SheetTrigger asChild>
-            <Badge className={citationChipClassName} variant="secondary">
+            <span className={citationChipClassName}>
               {chipLabel}
-            </Badge>
+            </span>
           </SheetTrigger>
           <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto">
             <SheetHeader>

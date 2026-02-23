@@ -15,7 +15,7 @@ interface MarkdownRendererProps {
   markdown: string
   className?: string
   sources?: CitationSource[]
-  /** "chat" = bare URLs render as clickable links; "artifact" = BareUrlCopyBadge (default) */
+  /** "chat" = bare URLs render as clickable links (default); "artifact" = BareUrlCopyBadge */
   context?: "chat" | "artifact"
 }
 
@@ -398,6 +398,7 @@ function sanitizeHref(href: string | undefined): string | undefined {
 }
 
 const BARE_URL_REGEX = /\bhttps?:\/\/[^\s<>()\[\]{}"']+/g
+const linkClassName = "underline underline-offset-2 text-[var(--chat-info)] dark:text-[oklch(0.746_0.16_232.661)] hover:opacity-80 [overflow-wrap:anywhere] break-all"
 
 function BareUrlCopyBadge({ url }: { url: string }) {
   const handleCopy = async () => {
@@ -473,26 +474,26 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
         )
       }
 
-      if (context === "chat") {
-        // Chat: render as clickable link
+      if (context === "artifact") {
+        // Artifact: render as copy badge
+        nodes.push(
+          <BareUrlCopyBadge
+            key={`${keyPrefix}-url-${partIndex++}`}
+            url={rawUrl}
+          />,
+        )
+      } else {
+        // Chat (default): render as clickable link
         nodes.push(
           <a
             key={`${keyPrefix}-url-${partIndex++}`}
             href={rawUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 text-[var(--chat-info)] hover:opacity-80 [overflow-wrap:anywhere] break-all"
+            className={linkClassName}
           >
             {rawUrl}
           </a>,
-        )
-      } else {
-        // Artifact (default): render as copy badge
-        nodes.push(
-          <BareUrlCopyBadge
-            key={`${keyPrefix}-url-${partIndex++}`}
-            url={rawUrl}
-          />,
         )
       }
 
@@ -538,14 +539,28 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
         break
       }
       const inner = text.slice(cursor + 1, end)
-      nodes.push(
-        <code
-          key={`${keyPrefix}-code-${partIndex++}`}
-          className="inline-flex items-center rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0.5 font-mono text-[0.85em] font-medium text-[var(--chat-card-foreground)] shadow-sm"
-        >
-          {inner}
-        </code>,
-      )
+      if (context !== "artifact" && /^https?:\/\//.test(inner)) {
+        nodes.push(
+          <a
+            key={`${keyPrefix}-codeurl-${partIndex++}`}
+            href={inner}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClassName}
+          >
+            {inner}
+          </a>,
+        )
+      } else {
+        nodes.push(
+          <code
+            key={`${keyPrefix}-code-${partIndex++}`}
+            className="inline-flex items-center rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0.5 font-mono text-[0.85em] font-medium text-[var(--chat-card-foreground)] shadow-sm"
+          >
+            {inner}
+          </code>,
+        )
+      }
       cursor = end + 1
       continue
     }
@@ -592,24 +607,24 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
         const bracketedBareUrl = sanitizeHref(bracketBody)
         const nextChar = text[closeBracket + 1]
         if (bracketedBareUrl && nextChar !== "(") {
-          if (context === "chat") {
+          if (context === "artifact") {
+            nodes.push(
+              <BareUrlCopyBadge
+                key={`${keyPrefix}-url-${partIndex++}`}
+                url={bracketedBareUrl}
+              />,
+            )
+          } else {
             nodes.push(
               <a
                 key={`${keyPrefix}-url-${partIndex++}`}
                 href={bracketedBareUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline underline-offset-2 text-[var(--chat-info)] hover:opacity-80 [overflow-wrap:anywhere] break-all"
+                className={linkClassName}
               >
                 {bracketedBareUrl}
               </a>,
-            )
-          } else {
-            nodes.push(
-              <BareUrlCopyBadge
-                key={`${keyPrefix}-url-${partIndex++}`}
-                url={bracketedBareUrl}
-              />,
             )
           }
           cursor = closeBracket + 1

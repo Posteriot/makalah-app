@@ -1,6 +1,5 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
 import {
   Carousel,
   CarouselContent,
@@ -38,7 +37,7 @@ export const InlineCitationCard = (props: InlineCitationCardProps) => (
   <HoverCard closeDelay={180} openDelay={0} {...props} />
 )
 
-export type InlineCitationCardTriggerProps = ComponentProps<typeof Badge> & {
+export type InlineCitationCardTriggerProps = ComponentProps<"span"> & {
   sources: string[]
 }
 
@@ -61,24 +60,23 @@ export const InlineCitationCardTrigger = ({
 
   return (
     <HoverCardTrigger>
-      <Badge
+      <span
         className={cn(
-          "ml-1 rounded-sm border border-slate-300 bg-slate-200 px-2.5 py-0.5 font-mono text-xs font-normal text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:shadow-none",
+          "ml-1 cursor-pointer font-mono text-[11px] text-[var(--chat-info)] underline-offset-2 hover:underline dark:text-[oklch(0.746_0.16_232.661)]",
           className
         )}
-        variant="secondary"
-        {...(props as ComponentProps<typeof Badge>)}
+        {...(props as ComponentProps<"span">)}
       >
         {hostname}
         {suffix}
-      </Badge>
+      </span>
     </HoverCardTrigger>
   )
 }
 
 export type InlineCitationCardBodyProps = ComponentProps<"div">
 export const InlineCitationCardBody = ({ className, ...props }: InlineCitationCardBodyProps) => (
-  <HoverCardContent className={cn("w-80 max-w-[90vw] p-0", className)} {...props} />
+  <HoverCardContent className={cn("w-80 max-w-[90vw] p-0", className)} data-chat-scope {...props} />
 )
 
 export type InlineCitationCarouselProps = ComponentProps<typeof Carousel>
