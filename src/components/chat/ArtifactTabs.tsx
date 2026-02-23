@@ -353,5 +353,3 @@ export function ArtifactTabs({
     </div>
   )
 }
-
-export default ArtifactTabs

@@ -139,5 +139,3 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     </ChatLayout>
   )
 }
-
-export default ChatContainer

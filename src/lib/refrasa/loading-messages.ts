@@ -27,18 +27,3 @@ export const LOADING_MESSAGES = [
  * Messages rotate every 2.5 seconds
  */
 export const LOADING_ROTATION_INTERVAL = 2500
-
-/**
- * Get a random loading message
- */
-export function getRandomLoadingMessage(): string {
-  const index = Math.floor(Math.random() * LOADING_MESSAGES.length)
-  return LOADING_MESSAGES[index]
-}
-
-/**
- * Get loading message by index (wraps around)
- */
-export function getLoadingMessageByIndex(index: number): string {
-  return LOADING_MESSAGES[index % LOADING_MESSAGES.length]
-}

@@ -667,7 +667,6 @@ export function FullsizeArtifactModal({
             <div className="flex min-h-0 flex-1 overflow-hidden">
               <RefrasaTabContent
                 artifactId={modalActiveTabId}
-                conversationId={artifact.conversationId}
                 userId={currentUser._id}
                 onTabClose={(id) => closeModalTab(id)}
                 onActivateTab={setModalActiveTab}

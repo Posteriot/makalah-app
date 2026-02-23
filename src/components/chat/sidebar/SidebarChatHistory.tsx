@@ -210,7 +210,7 @@ export function SidebarChatHistory({
 
             // Shared classes for both Link and div
             const itemClasses = cn(
-              "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center rounded-action border px-2.5 py-2.5 text-left transition-colors",
+              "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center rounded-action border px-2.5 py-2 text-left transition-colors",
               "border-transparent",
               currentConversationId === conv._id
                 ? "border-[color:var(--chat-border)] bg-[var(--chat-accent)] shadow-[inset_0_1px_0_var(--chat-border)]"
@@ -223,7 +223,7 @@ export function SidebarChatHistory({
                 <div className="flex-1 min-w-0">
                   <div
                     className={cn(
-                      "pb-0.5",
+                      "",
                       isEditing
                         ? "flex items-center gap-2"
                         : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
@@ -237,7 +237,7 @@ export function SidebarChatHistory({
                         onKeyDown={handleEditKeyDown}
                         onBlur={handleSaveEdit}
                         disabled={isUpdating}
-                        className={`h-6 text-sm px-1 py-0 font-medium ${
+                        className={`h-5 text-xs px-1 py-0 font-medium ${
                           isExceedingMaxLength
                             ? "border-[color:var(--chat-destructive)] focus-visible:ring-[var(--chat-destructive)]"
                             : ""
@@ -248,7 +248,7 @@ export function SidebarChatHistory({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span
-                            className="block min-w-0 font-sans font-medium text-sm truncate"
+                            className="block min-w-0 font-sans font-medium text-xs truncate"
                           >
                             {conv.title}
                           </span>
@@ -273,7 +273,7 @@ export function SidebarChatHistory({
                     )}
                   </div>
                   {!isEditing && (
-                    <div className="text-xs text-[var(--chat-muted-foreground)] font-mono">
+                    <div className="text-[11px] text-[var(--chat-muted-foreground)] font-mono">
                       {formatRelativeTime(conv.lastMessageAt)}
                     </div>
                   )}
@@ -354,5 +354,3 @@ export function SidebarChatHistory({
     </>
   )
 }
-
-export default SidebarChatHistory

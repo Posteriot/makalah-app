@@ -11,7 +11,6 @@ import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer"
 
 interface RefrasaTabContentProps {
   artifactId: Id<"artifacts">
-  conversationId: Id<"conversations">
   userId: Id<"users">
   onTabClose?: (artifactId: Id<"artifacts">) => void
   onExpand?: () => void

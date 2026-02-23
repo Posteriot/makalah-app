@@ -134,5 +134,3 @@ export function useArtifactTabs(): UseArtifactTabsReturn {
     updateTabTitle,
   }
 }
-
-export default useArtifactTabs

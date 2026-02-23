@@ -370,5 +370,3 @@ export function ChatLayout({
     </div>
   )
 }
-
-export default ChatLayout

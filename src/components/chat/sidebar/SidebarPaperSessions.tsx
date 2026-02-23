@@ -588,5 +588,3 @@ function getLatestArtifactVersions(artifacts: ArtifactItem[]): ArtifactItem[] {
 
   return result
 }
-
-export default SidebarPaperSessions

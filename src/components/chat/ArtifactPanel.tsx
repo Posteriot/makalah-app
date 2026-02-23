@@ -143,7 +143,6 @@ export function ArtifactPanel({
         {activeTabId && isRefrasaTab && conversationId && currentUser?._id ? (
           <RefrasaTabContent
             artifactId={activeTabId}
-            conversationId={conversationId}
             userId={currentUser._id}
             onTabClose={onTabClose}
             onExpand={() => setIsFullsizeOpen(true)}
@@ -205,5 +204,3 @@ export function ArtifactPanel({
     </div>
   )
 }
-
-export default ArtifactPanel

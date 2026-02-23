@@ -177,5 +177,3 @@ export function TopBar({
     </TooltipProvider>
   )
 }
-
-export default TopBar

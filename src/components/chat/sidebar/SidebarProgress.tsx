@@ -451,5 +451,3 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     </>
   )
 }
-
-export default SidebarProgress

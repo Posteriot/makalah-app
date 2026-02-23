@@ -61,16 +61,6 @@ export interface RefrasaIssue {
 }
 
 /**
- * Request body for POST /api/refrasa
- */
-export interface RefrasaRequest {
-  /** Text content to analyze and refrasa (minimum 50 chars) */
-  content: string
-  /** Optional artifact ID for tracking purposes */
-  artifactId?: string
-}
-
-/**
  * Response from POST /api/refrasa
  *
  * Note: Score fields removed due to self-grading bias.

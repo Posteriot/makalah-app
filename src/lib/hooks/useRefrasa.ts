@@ -4,7 +4,7 @@ import { useState, useCallback } from "react"
 import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import type { RefrasaResponse, RefrasaIssue } from "@/lib/refrasa/types"
+import type { RefrasaResponse } from "@/lib/refrasa/types"
 
 interface UseRefrasaState {
   isLoading: boolean
@@ -18,14 +18,11 @@ interface UseRefrasaOptions {
   onArtifactCreated?: (artifactId: Id<"artifacts">, title: string) => void
 }
 
-interface UseRefrasaReturn extends UseRefrasaState {
+interface UseRefrasaReturn {
+  isLoading: boolean
+  error: string | null
   analyzeAndRefrasa: (content: string, sourceArtifactId: Id<"artifacts">, sourceTitle: string) => Promise<void>
   reset: () => void
-  issueCount: number
-  issuesByCategory: {
-    naturalness: RefrasaIssue[]
-    style: RefrasaIssue[]
-  }
 }
 
 export function useRefrasa(options: UseRefrasaOptions): UseRefrasaReturn {
@@ -84,18 +81,10 @@ export function useRefrasa(options: UseRefrasaOptions): UseRefrasaReturn {
     setState({ isLoading: false, result: null, error: null })
   }, [])
 
-  const issueCount = state.result?.issues.length ?? 0
-
-  const issuesByCategory = {
-    naturalness: state.result?.issues.filter((i) => i.category === "naturalness") ?? [],
-    style: state.result?.issues.filter((i) => i.category === "style") ?? [],
-  }
-
   return {
-    ...state,
+    isLoading: state.isLoading,
+    error: state.error,
     analyzeAndRefrasa,
     reset,
-    issueCount,
-    issuesByCategory,
   }
 }

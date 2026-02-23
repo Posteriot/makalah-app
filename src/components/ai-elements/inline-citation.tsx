@@ -27,11 +27,6 @@ export const InlineCitation = ({ className, ...props }: InlineCitationProps) => 
   <span className={cn("inline-flex items-center gap-1", className)} {...props} />
 )
 
-export type InlineCitationTextProps = ComponentProps<"span">
-export const InlineCitationText = ({ className, ...props }: InlineCitationTextProps) => (
-  <span className={cn("transition-colors group-hover:bg-accent", className)} {...props} />
-)
-
 export type InlineCitationCardProps = ComponentProps<typeof HoverCard>
 export const InlineCitationCard = (props: InlineCitationCardProps) => (
   <HoverCard closeDelay={180} openDelay={0} {...props} />
@@ -251,16 +246,3 @@ export const InlineCitationSource = ({
   </div>
 )
 
-export type InlineCitationQuoteProps = ComponentProps<"blockquote">
-export const InlineCitationQuote = ({
-  children,
-  className,
-  ...props
-}: InlineCitationQuoteProps) => (
-  <blockquote
-    className={cn("border-muted border-l-2 pl-3 text-muted-foreground text-sm", className)}
-    {...props}
-  >
-    {children}
-  </blockquote>
-)

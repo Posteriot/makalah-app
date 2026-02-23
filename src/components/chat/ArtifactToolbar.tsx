@@ -338,5 +338,3 @@ export function ArtifactToolbar({
     </div>
   )
 }
-
-export default ArtifactToolbar

@@ -243,5 +243,3 @@ export function ActivityBar({
     </TooltipProvider>
   )
 }
-
-export default ActivityBar
