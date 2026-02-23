@@ -306,7 +306,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                 >
                   <SelectTrigger
                     size="sm"
-                    className="h-6 w-auto min-w-[130px] rounded-action border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0 text-[11px] font-mono font-medium text-[var(--chat-secondary-foreground)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                    className="h-6 w-auto min-w-[130px] rounded-action border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0 text-[11px] font-mono font-medium text-[var(--chat-secondary-foreground)] focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
                   >
                     <SelectValue placeholder={`v${artifact.version}`} />
                   </SelectTrigger>

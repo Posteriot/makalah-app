@@ -93,7 +93,7 @@ export function ArtifactEditor({
             value={editedContent}
             onChange={(e) => setEditedContent(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="h-full w-full resize-none bg-transparent p-4 text-sm font-mono leading-relaxed text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
+            className="h-full w-full resize-none bg-transparent p-4 text-sm font-mono leading-relaxed text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
             placeholder="Masukkan konten artifak..."
             disabled={isLoading}
             aria-label="Edit konten artifak"

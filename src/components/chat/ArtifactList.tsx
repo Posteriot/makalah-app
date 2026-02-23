@@ -143,7 +143,7 @@ export function ArtifactList({
                   className={cn(
                     "w-full rounded-action border p-2 text-left transition-colors",
                     "border-[color:var(--chat-border)] hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1",
                     isSelected && "border-[color:var(--chat-primary)] bg-[var(--chat-accent)]"
                   )}
                   aria-label={`Pilih artifak ${artifact.title} versi ${artifact.version}`}

@@ -548,21 +548,21 @@ export function MessageBubble({
                                     e.target.style.height = e.target.scrollHeight + 'px'
                                 }}
                                 onKeyDown={handleKeyDown}
-                                className="w-full resize-none overflow-hidden rounded-action border border-border/70 bg-background p-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                                className="w-full resize-none overflow-hidden rounded-action border border-border/70 bg-background p-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
                                 rows={1}
                                 aria-label="Edit message content"
                             />
                             <div className="flex gap-2 justify-end">
                                 <button
                                     onClick={handleCancel}
-                                    className="flex items-center gap-1.5 rounded-action px-3 py-1.5 text-xs font-mono text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                                    className="flex items-center gap-1.5 rounded-action px-3 py-1.5 text-xs font-mono text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
                                     aria-label="Batalkan edit"
                                 >
                                     <Xmark className="h-3.5 w-3.5" /> Batal
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="flex items-center gap-1.5 rounded-action border border-primary/40 bg-primary px-3 py-1.5 text-xs font-mono font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
+                                    className="flex items-center gap-1.5 rounded-action border border-primary/40 bg-primary px-3 py-1.5 text-xs font-mono font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-1"
                                     aria-label="Kirim pesan yang diedit"
                                 >
                                     <Send className="h-3.5 w-3.5" /> Kirim

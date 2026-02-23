@@ -77,7 +77,7 @@ export function ArtifactToolbar({
   const isRefrasaReady = artifact.contentLength >= 50
 
   const iconActionClass =
-    "h-8 w-8 rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--chat-card)]"
+    "h-8 w-8 rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chat-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--chat-card)]"
   const sidebarButtonSurfaceClass =
     "border-[color:var(--chat-border)] bg-[var(--chat-primary)] text-[var(--chat-primary-foreground)] hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-primary)] hover:text-[var(--chat-primary-foreground)]"
 
