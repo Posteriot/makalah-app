@@ -29,6 +29,7 @@ interface ChatWindowProps {
   conversationId: string | null
   onMobileMenuClick?: () => void
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  onShowArtifactList?: () => void
 }
 
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
@@ -75,7 +76,7 @@ function consumePendingStarterPrompt(conversationId: string): string | null {
   }
 }
 
-export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect }: ChatWindowProps) {
+export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, onShowArtifactList }: ChatWindowProps) {
   const router = useRouter()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
@@ -864,9 +865,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         open={showActionSheet}
         onOpenChange={setShowActionSheet}
         conversationId={safeConversationId}
-        onViewArtifacts={() => {
-          // TODO: Task 8 will add artifact list screen
-        }}
+        onViewArtifacts={() => onShowArtifactList?.()}
         onNewChat={() => router.push("/chat")}
       />
     </div>
