@@ -1,9 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { NavArrowDown, CheckCircle, OpenNewWindow } from "iconoir-react"
-
-import { Button } from "@/components/ui/button"
+import { NavArrowDown, NavArrowUp, CheckCircle, OpenNewWindow } from "iconoir-react"
 import {
     Collapsible,
     CollapsibleContent,
@@ -22,14 +20,6 @@ interface SourcesIndicatorProps {
     sources: Source[]
 }
 
-/**
- * SourcesIndicator - Collapsible sources panel
- *
- * Mockup compliance:
- * - "Found X sources" header with GREEN background + checkmark
- * - Collapsible with chevron rotation
- * - Source items: Title on top, URL below (text-xs, muted)
- */
 export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [showAll, setShowAll] = useState(false)
@@ -42,103 +32,68 @@ export function SourcesIndicator({ sources }: SourcesIndicatorProps) {
     const hasMore = sources.length > 5
 
     return (
-        <div className="space-y-2">
-            {/* "Found X sources" Header — slate muted container */}
-            <div
-                className={cn(
-                    "flex items-center gap-2.5 px-3 py-2",
-                    "rounded-badge bg-[var(--chat-muted)]",
-                    "text-sm"
-                )}
-            >
-                <CheckCircle className="h-4 w-4 flex-shrink-0 text-[var(--chat-muted-foreground)]" />
-                <span className="font-mono text-xs font-medium uppercase tracking-wide text-[var(--chat-foreground)]">
-                    Menemukan {sources.length} {sources.length === 1 ? "rujukan" : "rujukan"}
-                </span>
-            </div>
-
-            {/* Collapsible Sources List */}
-            <Collapsible
-                open={isOpen}
-                onOpenChange={setIsOpen}
-                // Mechanical Grace: .border-hairline + .rounded-badge
-                className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)]"
-            >
-                {/* Collapsed Header */}
-                <CollapsibleTrigger asChild>
-                    <button
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+            <CollapsibleTrigger asChild>
+                <button
+                    className="flex w-full items-center gap-2 py-1.5 text-left transition-colors hover:opacity-80"
+                >
+                    <CheckCircle className="h-3.5 w-3.5 flex-shrink-0 text-[var(--chat-muted-foreground)]" />
+                    <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--chat-muted-foreground)]">
+                        Menemukan {sources.length} rujukan
+                    </span>
+                    <NavArrowDown
                         className={cn(
-                            "flex w-full items-center justify-between gap-3",
-                            "px-3 py-2 text-sm",
-                            "hover:bg-[var(--chat-accent)] transition-colors rounded-badge",
-                            isOpen && "border-b border-[color:var(--chat-border)] rounded-b-none"
+                            "h-3.5 w-3.5 text-[var(--chat-muted-foreground)] transition-transform duration-200",
+                            isOpen && "rotate-180"
                         )}
+                    />
+                </button>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent className="pt-1">
+                <div className="flex flex-col divide-y divide-[var(--chat-border)]">
+                    {displayedSources.map(({ source, idx }) => {
+                        const parts = getWebCitationDisplayParts(source)
+                        return (
+                            <SourceItem key={idx} parts={parts} />
+                        )
+                    })}
+                </div>
+
+                {hasMore && (
+                    <button
+                        type="button"
+                        onClick={() => setShowAll(!showAll)}
+                        className="flex items-center gap-1 pt-1 font-mono text-[11px] text-[var(--chat-muted-foreground)] transition-colors hover:text-[var(--chat-foreground)]"
                     >
-                        <span className="font-mono font-medium text-[var(--chat-foreground)]">
-                            {sources.length} {sources.length === 1 ? "rujukan" : "rujukan"}
-                        </span>
-                        <NavArrowDown
-                            className={cn(
-                                "h-4 w-4 text-[var(--chat-muted-foreground)] transition-transform duration-200",
-                                isOpen && "rotate-180"
-                            )}
-                        />
+                        {showAll ? (
+                            <NavArrowUp className="h-3.5 w-3.5" />
+                        ) : (
+                            <>
+                                <NavArrowDown className="h-3.5 w-3.5" />
+                                <span>+{remainingCount}</span>
+                            </>
+                        )}
                     </button>
-                </CollapsibleTrigger>
-
-                {/* Expanded Content */}
-                <CollapsibleContent className="px-3 py-2">
-                    {/* Mechanical Grace: .border-hairline dividers */}
-                    <div className="flex flex-col divide-y divide-[var(--chat-border)]">
-                        {displayedSources.map(({ source, idx }) => {
-                            const parts = getWebCitationDisplayParts(source)
-                            return (
-                                <SourceItem key={idx} parts={parts} />
-                            )
-                        })}
-                    </div>
-
-                    {/* Show More Button */}
-                    {hasMore && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowAll(!showAll)}
-                            className="h-7 w-full mt-2 text-xs font-mono text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)]"
-                        >
-                            {showAll ? "Gulung" : `Tampilkan ${remainingCount} lagi`}
-                        </Button>
-                    )}
-                </CollapsibleContent>
-            </Collapsible>
-        </div>
+                )}
+            </CollapsibleContent>
+        </Collapsible>
     )
 }
 
-/**
- * Individual source item
- */
 function SourceItem({ parts }: { parts: ReturnType<typeof getWebCitationDisplayParts> }) {
     return (
         <a
             href={parts.url}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn(
-                "group flex flex-col gap-0.5 py-2",
-                "-mx-1 px-1 rounded transition-colors",
-                "hover:bg-[var(--chat-accent)]"
-            )}
+            className="group flex flex-col gap-0.5 py-1.5 transition-colors hover:opacity-80"
         >
-            {/* Title */}
-            <span className="text-sm font-medium text-[var(--chat-foreground)] flex items-center gap-1">
+            <span className="text-xs font-medium text-[var(--chat-foreground)] flex items-center gap-1">
                 {parts.title}
-                {/* Mechanical Grace: .icon-micro (12px) */}
-                <OpenNewWindow className="h-3 w-3 opacity-0 group-hover:opacity-70 transition-opacity" />
+                <OpenNewWindow className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-70 transition-opacity" />
             </span>
-
-            {/* URL - Mechanical Grace: Mono typography */}
-            <span className="truncate font-mono text-xs text-[var(--chat-muted-foreground)] transition-colors hover:text-[var(--chat-info)]">
+            <span className="truncate font-mono text-[11px] text-[var(--chat-info)] dark:text-[oklch(0.746_0.16_232.661)] group-hover:underline">
                 {parts.url}
             </span>
         </a>
