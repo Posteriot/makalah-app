@@ -245,39 +245,46 @@ export function ChatLayout({
   return (
     <div
       className="flex flex-col h-dvh"
-      style={{
-        ...CSS_VARS,
-        "--chat-input-pad-x": isBothSidePanelsCollapsed ? "10rem" : "5rem",
-      } as React.CSSProperties}
+      style={CSS_VARS as React.CSSProperties}
     >
-      {/* Grid Content — full height, no header bar above */}
+      {/* ═══════════════════════════════════════════════════════
+          MOBILE LAYOUT (< md) — simple single-column flex
+          No CSS Grid, no ActivityBar, no TopBar, no side panels.
+          Sidebar accessible via Sheet drawer only.
+         ═══════════════════════════════════════════════════════ */}
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden md:hidden bg-[var(--chat-background)]">
+        {children}
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════
+          DESKTOP LAYOUT (≥ md) — 6-column CSS Grid
+          ActivityBar | Sidebar | Resizer | Main | Resizer | Panel
+         ═══════════════════════════════════════════════════════ */}
       <div
         data-testid="chat-layout"
         className={cn(
-          "grid flex-1 min-h-0 overflow-hidden",
+          "hidden md:grid flex-1 min-h-0 overflow-hidden",
           "transition-[grid-template-columns] duration-300 ease-in-out",
           isSidebarCollapsed && "sidebar-collapsed",
           !isArtifactPanelOpen && "panel-collapsed"
         )}
         style={{
           gridTemplateColumns: getGridTemplateColumns(),
-        }}
+          "--chat-input-pad-x": isBothSidePanelsCollapsed ? "10rem" : "5rem",
+        } as React.CSSProperties}
       >
-        {/* Column 1: Activity Bar — hidden on mobile (width handled by CSS var) */}
-        <div className="hidden md:flex">
-          <ActivityBar
-            activePanel={activePanel}
-            onPanelChange={handlePanelChange}
-            isSidebarCollapsed={isSidebarCollapsed}
-            onToggleSidebar={handleToggleSidebar}
-          />
-        </div>
+        {/* Column 1: Activity Bar */}
+        <ActivityBar
+          activePanel={activePanel}
+          onPanelChange={handlePanelChange}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebar={handleToggleSidebar}
+        />
 
         {/* Column 2: Sidebar */}
         <aside
           className={cn(
             "flex flex-col overflow-hidden bg-[var(--chat-accent)]",
-            "hidden md:flex",
             isSidebarCollapsed && "w-0"
           )}
         >
@@ -299,17 +306,17 @@ export function ChatLayout({
         </aside>
 
         {/* Column 3: Left Resizer */}
-        {!isSidebarCollapsed && (
+        {!isSidebarCollapsed ? (
           <PanelResizer
             position="left"
             onResize={handleSidebarResize}
             onDoubleClick={handleSidebarReset}
-            className="hidden md:flex"
           />
+        ) : (
+          <div />
         )}
-        {isSidebarCollapsed && <div className="hidden md:block" />}
 
-        {/* Column 4: Main Content — NO ShellHeader, NO ChatTabs */}
+        {/* Column 4: Main Content */}
         <main className="flex flex-col overflow-hidden bg-[var(--chat-background)]">
           <TopBar
             isSidebarCollapsed={isSidebarCollapsed}
@@ -322,20 +329,20 @@ export function ChatLayout({
         </main>
 
         {/* Column 5: Right Resizer */}
-        {isArtifactPanelOpen && (
+        {isArtifactPanelOpen ? (
           <PanelResizer
             position="right"
             onResize={handlePanelResize}
             onDoubleClick={handlePanelReset}
-            className="hidden md:flex"
           />
+        ) : (
+          <div />
         )}
-        {!isArtifactPanelOpen && <div className="hidden md:block" />}
 
         {/* Column 6: Artifact Panel */}
         <aside
           className={cn(
-            "hidden md:flex flex-col overflow-hidden",
+            "flex flex-col overflow-hidden",
             "border-l border-[color:var(--chat-border)] bg-[var(--chat-card)]",
             !isArtifactPanelOpen && "w-0 border-l-0"
           )}
