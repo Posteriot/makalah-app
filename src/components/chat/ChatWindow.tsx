@@ -21,6 +21,8 @@ import { PaperValidationPanel } from "../paper/PaperValidationPanel"
 import { useSession } from "@/lib/auth-client"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
+import { MobilePaperMiniBar } from "../paper/MobilePaperMiniBar"
+import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 interface ChatWindowProps {
   conversationId: string | null
@@ -832,6 +834,15 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           progress={processUi.progress}
           message={processUi.message}
         />
+
+        {/* Mobile Paper Mini-bar */}
+        {isPaperMode && paperSession?.currentStage && (
+          <MobilePaperMiniBar
+            currentStage={paperSession.currentStage as PaperStageId}
+            stageStatus={stageStatus ?? "drafting"}
+            stageData={stageData}
+          />
+        )}
 
         {/* Input Area */}
         <ChatInput
