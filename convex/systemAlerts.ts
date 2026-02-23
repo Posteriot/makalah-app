@@ -2,6 +2,9 @@ import { mutation, query, internalMutation } from "./_generated/server"
 import { v } from "convex/values"
 import { requireRole } from "./permissions"
 
+const LEGACY_UPDATE_STAGE_SIGNATURE = "updateStageData({ stage, data })"
+const ARTIFACT_SOURCES_SECTION_MARKER = "**SOURCES DAN SITASI ARTIFACT:**"
+
 // ============================================================================
 // QUERIES
 // ============================================================================
@@ -117,6 +120,48 @@ export const isFallbackActive = query({
   },
 })
 
+/**
+ * Analyze prompt contract drift for active system prompt
+ * Admin/superadmin only
+ */
+export const getPromptContractDriftStatus = query({
+  args: { requestorUserId: v.id("users") },
+  handler: async ({ db }, { requestorUserId }) => {
+    await requireRole(db, requestorUserId, "admin")
+
+    const activePrompt = await db
+      .query("systemPrompts")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .first()
+
+    if (!activePrompt) {
+      return {
+        hasDrift: true,
+        issues: ["Tidak ada system prompt aktif"],
+        promptId: null,
+      }
+    }
+
+    const issues: string[] = []
+
+    if (activePrompt.content.includes(LEGACY_UPDATE_STAGE_SIGNATURE)) {
+      issues.push("Legacy signature updateStageData({ stage, data }) masih ada")
+    }
+
+    if (!activePrompt.content.includes(ARTIFACT_SOURCES_SECTION_MARKER)) {
+      issues.push("Section SOURCES DAN SITASI ARTIFACT belum ada")
+    }
+
+    return {
+      hasDrift: issues.length > 0,
+      issues,
+      promptId: activePrompt._id,
+      promptVersion: activePrompt.version,
+      checkedAt: Date.now(),
+    }
+  },
+})
+
 // ============================================================================
 // MUTATIONS
 // ============================================================================
@@ -179,6 +224,52 @@ export const createAlertInternal = internalMutation({
     })
 
     return { alertId }
+  },
+})
+
+/**
+ * Create or refresh warning alert for prompt contract drift
+ * Admin/superadmin only
+ */
+export const upsertPromptContractDriftAlert = mutation({
+  args: {
+    requestorUserId: v.id("users"),
+    issues: v.array(v.string()),
+  },
+  handler: async ({ db }, { requestorUserId, issues }) => {
+    await requireRole(db, requestorUserId, "admin")
+
+    if (issues.length === 0) {
+      return { created: false, message: "No drift issues provided" }
+    }
+
+    const driftMessage = `Prompt contract drift terdeteksi: ${issues.join(" | ")}`
+
+    const unresolvedDrift = await db
+      .query("systemAlerts")
+      .withIndex("by_type", (q) => q.eq("alertType", "prompt_contract_drift"))
+      .filter((q) => q.eq(q.field("resolved"), false))
+      .collect()
+
+    const alreadyExists = unresolvedDrift.some((alert) => alert.message === driftMessage)
+    if (alreadyExists) {
+      return { created: false, message: "Drift alert already exists" }
+    }
+
+    const alertId = await db.insert("systemAlerts", {
+      alertType: "prompt_contract_drift",
+      severity: "warning",
+      message: driftMessage,
+      source: "system-health-panel",
+      resolved: false,
+      metadata: {
+        issues,
+        requestorUserId,
+      },
+      createdAt: Date.now(),
+    })
+
+    return { created: true, alertId, message: "Prompt drift alert created" }
   },
 })
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
@@ -34,10 +34,27 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
   const fallbackStatus = useQuery(api.systemAlerts.isFallbackActive, {
     requestorUserId: userId,
   })
+  const promptDriftStatus = useQuery(api.systemAlerts.getPromptContractDriftStatus, {
+    requestorUserId: userId,
+  })
 
   // Mutations
   const resolveAlert = useMutation(api.systemAlerts.resolveAlert)
   const resolveAllFallback = useMutation(api.systemAlerts.resolveAlertsByType)
+  const upsertPromptDriftAlert = useMutation(api.systemAlerts.upsertPromptContractDriftAlert)
+
+  const driftSignature = useMemo(
+    () => (promptDriftStatus?.issues ?? []).join("|"),
+    [promptDriftStatus?.issues]
+  )
+
+  useEffect(() => {
+    if (!promptDriftStatus?.hasDrift || !promptDriftStatus.issues?.length) return
+    void upsertPromptDriftAlert({
+      requestorUserId: userId,
+      issues: promptDriftStatus.issues,
+    })
+  }, [driftSignature, promptDriftStatus?.hasDrift, promptDriftStatus?.issues, upsertPromptDriftAlert, userId])
 
   const handleResolveAlert = async (alertId: Id<"systemAlerts">) => {
     setIsResolving(alertId)
@@ -93,6 +110,7 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
 
   const isFallbackMode = fallbackStatus?.active === true
   const hasUnresolvedAlerts = (alertCount?.total ?? 0) > 0
+  const hasPromptContractDrift = promptDriftStatus?.hasDrift === true
 
   return (
     <div className="overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90">
@@ -186,6 +204,19 @@ export function SystemHealthPanel({ userId }: SystemHealthPanelProps) {
                       <p className="text-[11px] text-muted-foreground opacity-60 leading-relaxed italic border-t border-border/10 pt-4">
                         * Prompt ini sedang aktif secara global untuk seluruh permintaan AI aplikasi.
                       </p>
+
+                      {hasPromptContractDrift && (
+                        <div className="rounded-action border border-yellow-500/40 bg-yellow-500/10 p-3">
+                          <p className="text-[11px] font-semibold text-yellow-700 dark:text-yellow-300">
+                            Contract Drift Detected
+                          </p>
+                          <ul className="mt-2 space-y-1 text-[11px] text-yellow-800 dark:text-yellow-200">
+                            {(promptDriftStatus?.issues ?? []).map((issue) => (
+                              <li key={issue}>• {issue}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

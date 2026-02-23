@@ -40,6 +40,7 @@ import {
     type OperationType,
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
+import { enforceArtifactSourcesPolicy } from "@/lib/ai/artifact-sources-policy"
 
 export async function POST(req: Request) {
     try {
@@ -914,6 +915,18 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
+                        const policy = enforceArtifactSourcesPolicy({
+                            hasRecentSourcesInDb,
+                            sources,
+                            operation: "createArtifact",
+                        })
+                        if (!policy.allowed) {
+                            return {
+                                success: false,
+                                error: policy.error,
+                            }
+                        }
+
                         const result = await retryMutation(
                             () => fetchMutationWithToken(api.artifacts.create, {
                                 conversationId: currentConversationId as Id<"conversations">,
@@ -980,6 +993,18 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 }),
                 execute: async ({ artifactId, content, title, sources }) => {
                     try {
+                        const policy = enforceArtifactSourcesPolicy({
+                            hasRecentSourcesInDb,
+                            sources,
+                            operation: "updateArtifact",
+                        })
+                        if (!policy.allowed) {
+                            return {
+                                success: false,
+                                error: policy.error,
+                            }
+                        }
+
                         const result = await retryMutation(
                             () => fetchMutationWithToken(api.artifacts.update, {
                                 artifactId: artifactId as Id<"artifacts">,
