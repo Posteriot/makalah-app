@@ -365,6 +365,7 @@ export function ChatLayout({
             onCloseMobile={() => setIsMobileOpen(false)}
             isLoading={isLoading}
             isCreating={isCreating}
+            onPanelChange={handlePanelChange}
           />
         </SheetContent>
       </Sheet>

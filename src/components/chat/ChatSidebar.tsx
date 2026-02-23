@@ -1,8 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, Settings } from "iconoir-react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 import { SidebarChatHistory } from "./sidebar/SidebarChatHistory"
@@ -52,6 +53,8 @@ interface ChatSidebarProps {
   isCreating?: boolean
   /** Callback to collapse sidebar (desktop only) */
   onCollapseSidebar?: () => void
+  /** Callback when panel tab changes (mobile drawer tabs) */
+  onPanelChange?: (panel: PanelType) => void
 }
 
 /**
@@ -82,6 +85,7 @@ export function ChatSidebar({
   isLoading,
   isCreating,
   onCollapseSidebar,
+  onPanelChange,
 }: ChatSidebarProps) {
   const router = useRouter()
 
@@ -142,6 +146,24 @@ export function ChatSidebar({
         </div>
       )}
 
+      {/* Mobile Panel Tabs — replaces ActivityBar on mobile */}
+      <div className="md:hidden flex border-b border-[color:var(--chat-sidebar-border)]">
+        {(["chat-history", "paper", "progress"] as const).map((panel) => (
+          <button
+            key={panel}
+            onClick={() => onPanelChange?.(panel)}
+            className={cn(
+              "flex-1 py-2 text-[10px] font-mono uppercase tracking-widest transition-colors",
+              activePanel === panel
+                ? "text-[var(--chat-sidebar-foreground)] border-b-2 border-[color:var(--chat-sidebar-primary)]"
+                : "text-[var(--chat-muted-foreground)]"
+            )}
+          >
+            {panel === "chat-history" ? "Riwayat" : panel === "paper" ? "Paper" : "Progres"}
+          </button>
+        ))}
+      </div>
+
       {/* Header - Only show New Chat for chat-history panel */}
       {activePanel === "chat-history" && (
         <div className="shrink-0 px-3 pb-3 pt-3">
@@ -189,6 +211,18 @@ export function ChatSidebar({
         className="shrink-0 border-t border-[color:var(--chat-sidebar-border)] bg-transparent"
         onClick={() => router.push("/subscription/overview")}
       />
+
+      {/* Mobile Settings Link */}
+      <div className="md:hidden px-4 py-2 border-t border-[color:var(--chat-sidebar-border)]">
+        <Link
+          href="/settings"
+          className="flex items-center gap-2 text-xs font-mono text-[var(--chat-muted-foreground)]"
+          onClick={() => onCloseMobile?.()}
+        >
+          <Settings className="h-4 w-4" />
+          Pengaturan
+        </Link>
+      </div>
     </aside>
   )
 }
