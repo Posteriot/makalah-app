@@ -12,6 +12,7 @@ import type * as adminManualUserCreation from "../adminManualUserCreation.js";
 import type * as adminUserManagement from "../adminUserManagement.js";
 import type * as aiOps from "../aiOps.js";
 import type * as aiProviderConfigs from "../aiProviderConfigs.js";
+import type * as aiTelemetry from "../aiTelemetry.js";
 import type * as appConfig from "../appConfig.js";
 import type * as artifacts from "../artifacts.js";
 import type * as auth from "../auth.js";
@@ -101,6 +102,7 @@ declare const fullApi: ApiFromModules<{
   adminUserManagement: typeof adminUserManagement;
   aiOps: typeof aiOps;
   aiProviderConfigs: typeof aiProviderConfigs;
+  aiTelemetry: typeof aiTelemetry;
   appConfig: typeof appConfig;
   artifacts: typeof artifacts;
   auth: typeof auth;

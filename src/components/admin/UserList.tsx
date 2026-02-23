@@ -188,7 +188,6 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
   }
 
   const DESKTOP_DYNAMIC_COLUMN_COUNT = 2
-  const MOBILE_DYNAMIC_COLUMN_COUNT = 1
 
   const visibleDynamicColumnsDesktop = Array.from(
     { length: DESKTOP_DYNAMIC_COLUMN_COUNT },
@@ -196,7 +195,7 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
   )
 
   const visibleDynamicColumnsMobile = Array.from(
-    { length: MOBILE_DYNAMIC_COLUMN_COUNT },
+    { length: 1 },
     (_, offset) => DYNAMIC_COLUMNS[(dynamicColumnStart + offset) % DYNAMIC_COLUMNS.length]
   )
 
@@ -396,16 +395,6 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
     if (columnKey === "deleteAction") {
       return renderDeleteActionCell(user)
     }
-
-    return user.emailVerified ? (
-      <span className="inline-flex items-center rounded-badge border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold tracking-wide text-emerald-600 uppercase dark:text-emerald-400">
-        Verified
-      </span>
-    ) : (
-      <span className="inline-flex items-center rounded-badge border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold tracking-wide text-amber-600 uppercase dark:text-amber-400">
-        Belum Verified
-      </span>
-    )
   }
 
   if (paginationStatus === "LoadingFirstPage") {
@@ -442,7 +431,6 @@ export function UserList({ userId, currentUserRole }: UserListProps) {
         getFullName={getFullName}
         renderDynamicCell={renderDynamicCell}
         isCannotModifyRow={isCannotModifyRow}
-        isLoading={isLoading}
       />
 
       <div className="hidden overflow-hidden rounded-shell border-main border border-border bg-card/90 dark:bg-slate-900/90 md:block">

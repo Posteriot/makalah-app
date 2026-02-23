@@ -65,60 +65,8 @@ export const register = mutation({
 })
 
 // ════════════════════════════════════════════════════════════════
-// Public Queries
-// ════════════════════════════════════════════════════════════════
-
-/**
- * Check if email exists in waitlist (for form validation)
- * Returns boolean only - no sensitive data exposed
- */
-export const checkEmailExists = query({
-  args: {
-    email: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const email = args.email.toLowerCase().trim()
-
-    const entry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique()
-
-    return entry !== null
-  },
-})
-
-// ════════════════════════════════════════════════════════════════
 // Admin Queries
 // ════════════════════════════════════════════════════════════════
-
-/**
- * Get all waitlist entries (admin only)
- */
-export const getAll = query({
-  args: {
-    adminUserId: v.id("users"),
-    statusFilter: v.optional(
-      v.union(v.literal("pending"), v.literal("invited"), v.literal("registered"))
-    ),
-  },
-  handler: async (ctx, args) => {
-    await requireRole(ctx.db, args.adminUserId, "admin")
-
-    const entries = args.statusFilter
-      ? await ctx.db
-          .query("waitlistEntries")
-          .withIndex("by_status", (q) => q.eq("status", args.statusFilter!))
-          .order("desc")
-          .collect()
-      : await ctx.db
-          .query("waitlistEntries")
-          .order("desc")
-          .collect()
-
-    return entries
-  },
-})
 
 /**
  * Get paginated waitlist entries (admin only).

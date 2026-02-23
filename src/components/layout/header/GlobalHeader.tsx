@@ -13,7 +13,6 @@ import {
   Settings,
   LogOut,
   RefreshDouble,
-  UserPlus,
 } from "iconoir-react"
 import {
   Accordion,
@@ -460,7 +459,6 @@ export function GlobalHeader() {
                     </Link>
 
                     {isAdmin && (
-                      <>
                         <Link
                           href="/dashboard"
                           className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
@@ -469,15 +467,6 @@ export function GlobalHeader() {
                           <Settings className="icon-interface" />
                           <span>Admin Panel</span>
                         </Link>
-                        <Link
-                          href="/dashboard?tab=waitlist"
-                          className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
-                          onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                        >
-                          <UserPlus className="icon-interface" />
-                          <span>Waiting List</span>
-                        </Link>
-                      </>
                     )}
 
                     <button

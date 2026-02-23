@@ -29,7 +29,6 @@ interface UserListFullscreenProps {
   getFullName: (user: User) => string
   renderDynamicCell: (key: DynamicColumnKey, user: User) => ReactNode
   isCannotModifyRow: (user: User) => boolean
-  isLoading: boolean
 }
 
 export function UserListFullscreen({

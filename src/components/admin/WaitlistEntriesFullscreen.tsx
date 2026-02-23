@@ -6,7 +6,7 @@ import { Collapse, Mail, RefreshDouble, Trash } from "iconoir-react"
 import { WaitlistStatusBadge } from "./WaitlistStatusBadge"
 import type { Id } from "@convex/_generated/dataModel"
 
-export interface WaitlistEntry {
+interface WaitlistEntry {
   _id: Id<"waitlistEntries">
   firstName: string
   lastName: string
