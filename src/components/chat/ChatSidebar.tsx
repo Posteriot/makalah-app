@@ -119,14 +119,14 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "h-full w-full overflow-hidden border-r border-[color:var(--ds-sidebar-border)] bg-[var(--ds-sidebar-surface)]",
+        "h-full w-full overflow-hidden border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]",
         "flex flex-col",
         className
       )}
     >
       {/* Sidebar Header — Collapse toggle */}
       {onCollapseSidebar && (
-        <div className="flex h-11 shrink-0 items-center justify-end border-b border-[color:var(--ds-sidebar-border-strong)] px-3">
+        <div className="flex h-11 shrink-0 items-center justify-end border-b border-[color:var(--chat-sidebar-border)] px-3">
           <button
             onClick={onCollapseSidebar}
             className={cn(
@@ -151,8 +151,8 @@ export function ChatSidebar({
               onCloseMobile?.()
             }}
             className={cn(
-              "h-10 w-full items-center justify-center gap-2 rounded-action border border-[color:var(--ds-sidebar-cta-border)] bg-[var(--ds-sidebar-cta-bg)] px-4 py-0 text-sm font-medium leading-none text-[var(--ds-sidebar-cta-fg)]",
-              "hover:bg-[var(--ds-sidebar-cta-bg-hover)]"
+              "h-10 w-full items-center justify-center gap-2 rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar-primary)] px-4 py-0 text-sm font-medium leading-none text-[var(--chat-sidebar-primary-foreground)]",
+              "hover:opacity-90"
             )}
             aria-label="Start new chat"
             aria-busy={isCreating}
@@ -186,7 +186,7 @@ export function ChatSidebar({
       {/* Credit Meter — border-top only, seamless with sidebar bg */}
       <CreditMeter
         variant="compact"
-        className="shrink-0 border-t-[0.5px] border-[color:var(--border-hairline)] bg-transparent"
+        className="shrink-0 border-t-[0.5px] border-[color:var(--chat-border)] bg-transparent"
         onClick={() => router.push("/subscription/overview")}
       />
     </aside>

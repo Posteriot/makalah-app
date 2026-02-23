@@ -274,7 +274,7 @@ export function ChatLayout({
         {/* Column 2: Sidebar */}
         <aside
           className={cn(
-            "flex flex-col overflow-hidden bg-[var(--ds-surface-subtle)]",
+            "flex flex-col overflow-hidden bg-[var(--chat-accent)]",
             "hidden md:flex",
             isSidebarCollapsed && "w-0"
           )}
@@ -308,7 +308,7 @@ export function ChatLayout({
         {isSidebarCollapsed && <div className="hidden md:block" />}
 
         {/* Column 4: Main Content — NO ShellHeader, NO ChatTabs */}
-        <main className="flex flex-col overflow-hidden bg-[var(--ds-surface-base)]">
+        <main className="flex flex-col overflow-hidden bg-[var(--chat-background)]">
           <TopBar
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={handleToggleSidebar}
@@ -334,7 +334,7 @@ export function ChatLayout({
         <aside
           className={cn(
             "hidden md:flex flex-col overflow-hidden",
-            "border-l border-[color:var(--ds-border-subtle)] bg-[var(--ds-surface-panel)]",
+            "border-l border-[color:var(--chat-border)] bg-[var(--chat-card)]",
             !isArtifactPanelOpen && "w-0 border-l-0"
           )}
         >

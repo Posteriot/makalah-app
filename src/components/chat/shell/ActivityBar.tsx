@@ -56,10 +56,10 @@ function ActivityBarItem({
           size="icon"
           className={cn(
             "h-10 w-10 rounded-action border border-transparent transition-all duration-150",
-            "text-[var(--ds-activity-item-fg)] hover:bg-[var(--ds-activity-item-hover-bg)] hover:text-[var(--ds-activity-item-hover-fg)]",
-            "focus-visible:ring-2 focus-visible:ring-muted-foreground/40 focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--ds-surface-activitybar)]",
+            "text-[var(--chat-sidebar-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)]",
+            "focus-visible:ring-2 focus-visible:ring-muted-foreground/40 focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--chat-sidebar)]",
             isActive &&
-              "border-[color:var(--ds-activity-item-active-border)] bg-[var(--ds-activity-item-active-bg)] text-[var(--ds-activity-item-active-fg)]"
+              "border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
           )}
           onClick={onClick}
           aria-label={`${label} panel`}
@@ -190,7 +190,7 @@ export function ActivityBar({
         className={cn(
           "flex flex-col items-center gap-0 py-0",
           "w-[var(--activity-bar-width)] min-w-[48px]",
-          "border-r border-[color:var(--ds-border-activitybar)] bg-[var(--ds-surface-activitybar)]"
+          "border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]"
         )}
         data-testid="activity-bar"
         onKeyDown={handleKeyDown}
@@ -200,8 +200,8 @@ export function ActivityBar({
           href="/"
           className={cn(
             "flex items-center justify-center",
-            "h-11 w-full rounded-none border-b border-[color:var(--ds-border-activitybar-strong)]",
-            "hover:bg-[var(--ds-surface-activitybar-hover)] transition-colors"
+            "h-11 w-full rounded-none border-b border-[color:var(--chat-sidebar-border)]",
+            "hover:bg-[var(--chat-sidebar-accent)] transition-colors"
           )}
           aria-label="Home"
         >

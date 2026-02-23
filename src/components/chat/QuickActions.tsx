@@ -37,7 +37,7 @@ export function QuickActions({ content }: QuickActionsProps) {
                         onClick={handleCopy}
                         className={cn(
                             "flex items-center gap-1 text-[10px] font-mono transition-colors p-1.5 rounded-action hover:bg-muted",
-                            isCopied ? "text-emerald-500" : "text-muted-foreground hover:text-foreground"
+                            isCopied ? "text-[var(--chat-success)]" : "text-muted-foreground hover:text-foreground"
                         )}
                         aria-label="Copy to clipboard"
                     >

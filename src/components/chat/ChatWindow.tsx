@@ -634,7 +634,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-muted-foreground">
             {/* Mechanical Grace: Rose error color */}
-            <WarningCircle className="h-12 w-12 mx-auto mb-4 text-[var(--ds-state-danger-fg-muted)]" />
+            <WarningCircle className="h-12 w-12 mx-auto mb-4 text-[var(--chat-destructive)]" />
             <p className="mb-2 font-mono">Percakapan tidak ditemukan</p>
             <p className="text-sm opacity-75 font-mono">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
           </div>
@@ -753,7 +753,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           {/* Error State Overlay - Mechanical Grace: Rose error */}
           {error && (
             <div
-              className="absolute bottom-4 bg-[var(--ds-state-danger-bg)] border border-[color:var(--ds-state-danger-border)] text-[var(--ds-state-danger-fg)] p-3 rounded-action flex items-center justify-between text-sm shadow-sm backdrop-blur-sm"
+              className="absolute bottom-4 bg-[var(--chat-destructive)] border border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)] p-3 rounded-action flex items-center justify-between text-sm shadow-sm backdrop-blur-sm"
               style={{
                 left: "var(--chat-input-pad-x, 5rem)",
                 right: "var(--chat-input-pad-x, 5rem)",
@@ -763,7 +763,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 <WarningCircle className="h-4 w-4" />
                 <span className="font-mono">Gagal mengirim pesan.</span>
               </div>
-              <Button variant="outline" size="sm" onClick={() => handleRegenerate()} className="bg-background hover:bg-accent h-7 text-xs font-mono border-[color:var(--ds-state-danger-border)] hover:border-[color:var(--ds-state-danger-border-strong)]">
+              <Button variant="outline" size="sm" onClick={() => handleRegenerate()} className="bg-[var(--chat-background)] hover:bg-[var(--chat-accent)] h-7 text-xs font-mono border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)]">
                 <Refresh className="h-3 w-3 mr-1" />
                 Coba Lagi
               </Button>

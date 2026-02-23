@@ -64,7 +64,7 @@ export function TopBar({
         className={cn(
           "flex items-center justify-between",
           "pl-4 pr-6 py-0",
-          "shrink-0 bg-[var(--ds-surface-base)]"
+          "shrink-0 bg-[var(--chat-background)]"
         )}
       >
         {/* Left: Expand sidebar toggle (only when collapsed) */}
@@ -128,12 +128,12 @@ export function TopBar({
                   "transition-colors duration-150",
                   hasArtifacts &&
                     isPanelCollapsed &&
-                    "border-transparent bg-transparent text-[var(--ds-text-toolbar-muted)] hover:bg-transparent hover:text-[var(--ds-text-toolbar-hover)]",
+                    "border-transparent bg-transparent text-[var(--chat-muted-foreground)] hover:bg-transparent hover:text-[var(--chat-foreground)]",
                   hasArtifacts &&
                     !isPanelCollapsed &&
-                    "border-transparent bg-transparent text-[var(--ds-text-toolbar-active)] hover:bg-transparent hover:text-[var(--ds-text-toolbar-hover-active)]",
+                    "border-transparent bg-transparent text-[var(--chat-foreground)] hover:bg-transparent hover:text-[var(--chat-foreground)]",
                   !hasArtifacts &&
-                    "cursor-not-allowed border border-transparent bg-transparent text-[var(--ds-text-toolbar-disabled)] hover:bg-transparent hover:text-[var(--ds-text-toolbar-disabled)]"
+                    "cursor-not-allowed border border-transparent bg-transparent text-[var(--chat-muted-foreground)] hover:bg-transparent hover:text-[var(--chat-muted-foreground)]"
                 )}
                 aria-label={
                   !hasArtifacts
@@ -155,7 +155,7 @@ export function TopBar({
                     className={cn(
                       "pointer-events-none absolute -bottom-0 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
                       "text-[9px] font-semibold font-mono leading-none",
-                      "bg-[var(--ds-badge-artifact-bg)] text-[var(--ds-badge-artifact-fg)]"
+                      "bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
                     )}
                   >
                     {compactArtifactCount}

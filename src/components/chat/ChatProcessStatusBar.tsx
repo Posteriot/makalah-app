@@ -28,7 +28,7 @@ export function ChatProcessStatusBar({
       <div
         className={cn(
           "rounded-lg border px-3 py-2",
-          "bg-[var(--ds-status-surface)] border-[color:var(--ds-status-border)] text-[var(--ds-text-muted-strong)]"
+          "bg-[var(--chat-card)] border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]"
         )}
         role="status"
         aria-live="polite"
@@ -36,16 +36,16 @@ export function ChatProcessStatusBar({
       >
         <div className="mb-2 flex items-center justify-between gap-3">
           <span className="text-xs font-mono font-medium tracking-wide">{message}</span>
-          <span className="text-[11px] font-mono text-[var(--ds-text-muted)]">{safeProgress}%</span>
+          <span className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">{safeProgress}%</span>
         </div>
 
-        <div className="relative h-1.5 overflow-hidden rounded-full bg-[var(--ds-status-track-bg)]">
+        <div className="relative h-1.5 overflow-hidden rounded-full bg-[var(--chat-muted)]">
           <div
             className={cn(
               "h-full rounded-full transition-[width] duration-300 ease-out",
               isError
-                ? "bg-[var(--ds-status-progress-error)]"
-                : "bg-[var(--ds-status-progress-success)]",
+                ? "bg-[var(--chat-destructive)]"
+                : "bg-[var(--chat-success)]",
               isProcessing && "animate-pulse"
             )}
             style={{ width: `${safeProgress}%` }}
