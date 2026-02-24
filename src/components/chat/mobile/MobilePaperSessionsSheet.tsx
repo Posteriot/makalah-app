@@ -321,11 +321,11 @@ export function MobilePaperSessionsSheet({
         data-chat-scope=""
       >
         {/* Drag handle */}
-        <div className="flex justify-center pb-2 pt-3">
+        <div className="flex justify-center pb-0 pt-1">
           <div className="h-1 w-10 rounded-full bg-[var(--chat-muted)]" />
         </div>
 
-        <SheetHeader className="px-4 pb-3">
+        <SheetHeader className="gap-0.5 px-4 pb-1.5 pt-1">
           <SheetTitle className="text-left font-sans text-sm font-semibold text-[var(--chat-foreground)]">
             Sesi Paper
           </SheetTitle>
