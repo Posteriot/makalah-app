@@ -22,12 +22,14 @@ interface MobileArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
   onClose: () => void
   onRefrasa: (artifactId: Id<"artifacts">) => void
+  onOpenArtifact?: (artifactId: Id<"artifacts">) => void
 }
 
 export function MobileArtifactViewer({
   artifactId,
   onClose,
   onRefrasa,
+  onOpenArtifact,
 }: MobileArtifactViewerProps) {
   const viewerRef = useRef<ArtifactViewerRef>(null)
   const { user } = useCurrentUser()
@@ -74,12 +76,16 @@ export function MobileArtifactViewer({
       })
       await markApplied({ artifactId: artifactId!, userId: user._id })
       setApplied(true)
-      setTimeout(() => onClose(), 1500)
     } catch (err) {
       console.error("[MobileArtifactViewer] Apply failed:", err)
     } finally {
       setIsApplying(false)
     }
+  }
+
+  const handleOpenSourceArtifact = () => {
+    if (!artifact?.sourceArtifactId) return
+    onOpenArtifact?.(artifact.sourceArtifactId)
   }
 
   const handleDelete = async () => {
@@ -272,20 +278,25 @@ export function MobileArtifactViewer({
               <TooltipContent side="bottom" className="font-mono text-xs">Hapus</TooltipContent>
             </Tooltip>
 
-            {/* Terapkan button — pushed right */}
-            <button
-              onClick={handleApply}
-              disabled={isApplying || applied}
-              className={cn(
-                "ml-auto inline-flex items-center gap-1.5 rounded-action px-3 py-1.5 font-sans text-xs font-medium transition-colors duration-150",
-                applied
-                  ? "bg-[var(--chat-success)] text-[var(--chat-success-foreground)]"
-                  : "bg-[var(--chat-primary)] text-[var(--chat-primary-foreground)] active:opacity-80"
-              )}
-            >
-              <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
-              {applied ? "Diterapkan" : isApplying ? "Menerapkan..." : "Terapkan"}
-            </button>
+            {/* Terapkan / Buka Artifact button — pushed right */}
+            {applied ? (
+              <button
+                onClick={handleOpenSourceArtifact}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-action px-3 py-1.5 font-mono text-[11px] bg-[var(--chat-success)] text-[var(--chat-success-foreground)] active:opacity-80 transition-colors duration-150"
+              >
+                <Page className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Buka Artifact
+              </button>
+            ) : (
+              <button
+                onClick={handleApply}
+                disabled={isApplying}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-action px-3 py-1.5 font-mono text-[11px] text-[var(--chat-secondary-foreground)] bg-[var(--chat-secondary)] active:bg-[var(--chat-accent)] transition-colors duration-150"
+              >
+                <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
+                {isApplying ? "Menerapkan..." : "Terapkan"}
+              </button>
+            )}
           </TooltipProvider>
         </div>
       )}

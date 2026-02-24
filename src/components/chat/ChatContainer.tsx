@@ -168,6 +168,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
           artifactId={mobileArtifactId}
           onClose={() => setMobileArtifactId(null)}
           onRefrasa={(artifactId) => setMobileRefrasaId(artifactId)}
+          onOpenArtifact={(artifactId) => setMobileArtifactId(artifactId)}
         />
       )}
 
