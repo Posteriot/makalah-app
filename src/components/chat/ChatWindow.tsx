@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
+import type { ReasoningTraceStep, ReasoningTraceStatus } from "./ReasoningTracePanel"
 import { useMessages } from "@/lib/hooks/useMessages"
 import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowUpSquare, FastArrowDownSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
 import { useTheme } from "next-themes"
@@ -90,6 +91,87 @@ function consumePendingStarterPrompt(conversationId: string): string | null {
     window.sessionStorage.removeItem(PENDING_STARTER_PROMPT_KEY)
     return null
   }
+}
+
+const REASONING_STEP_ORDER = [
+  "intent-analysis",
+  "paper-context-check",
+  "search-decision",
+  "source-validation",
+  "response-compose",
+  "tool-action",
+] as const
+
+const REASONING_STATUS_SET = new Set<ReasoningTraceStatus>([
+  "pending",
+  "running",
+  "done",
+  "skipped",
+  "error",
+])
+
+function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] {
+  const byStepKey = new Map<string, ReasoningTraceStep>()
+
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+
+    const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+    if (maybeDataPart.type !== "data-reasoning-trace") continue
+    if (!maybeDataPart.data || typeof maybeDataPart.data !== "object") continue
+
+    const data = maybeDataPart.data as {
+      traceId?: unknown
+      stepKey?: unknown
+      label?: unknown
+      status?: unknown
+      progress?: unknown
+      meta?: unknown
+    }
+
+    if (typeof data.traceId !== "string") continue
+    if (typeof data.stepKey !== "string") continue
+    if (typeof data.label !== "string") continue
+    if (typeof data.status !== "string" || !REASONING_STATUS_SET.has(data.status as ReasoningTraceStatus)) continue
+
+    const progress =
+      typeof data.progress === "number" && Number.isFinite(data.progress)
+        ? Math.max(0, Math.min(100, Math.round(data.progress)))
+        : 0
+
+    const parsedStep: ReasoningTraceStep = {
+      traceId: data.traceId,
+      stepKey: data.stepKey,
+      label: data.label,
+      status: data.status as ReasoningTraceStatus,
+      progress,
+    }
+
+    if (data.meta && typeof data.meta === "object") {
+      const meta = data.meta as {
+        note?: unknown
+        sourceCount?: unknown
+        toolName?: unknown
+        stage?: unknown
+      }
+      parsedStep.meta = {
+        ...(typeof meta.note === "string" ? { note: meta.note } : {}),
+        ...(typeof meta.sourceCount === "number" && Number.isFinite(meta.sourceCount)
+          ? { sourceCount: meta.sourceCount }
+          : {}),
+        ...(typeof meta.toolName === "string" ? { toolName: meta.toolName } : {}),
+        ...(typeof meta.stage === "string" ? { stage: meta.stage } : {}),
+      }
+    }
+
+    byStepKey.set(data.stepKey, parsedStep)
+  }
+
+  const ordered = REASONING_STEP_ORDER
+    .map((stepKey) => byStepKey.get(stepKey))
+    .filter((step): step is ReasoningTraceStep => Boolean(step))
+
+  return ordered
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -348,6 +430,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
+  const activeReasoningTraceSteps = useMemo(() => {
+    if (!processUi.visible) return []
+    const lastAssistantMessage = [...messages].reverse().find((msg) => msg.role === "assistant")
+    if (!lastAssistantMessage) return []
+    return extractReasoningTraceSteps(lastAssistantMessage)
+  }, [messages, processUi.visible])
 
   const clearProcessTimers = useCallback(() => {
     if (processIntervalRef.current !== null) {
@@ -989,6 +1077,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           status={processUi.status}
           progress={processUi.progress}
           message={processUi.message}
+          reasoningSteps={activeReasoningTraceSteps}
         />
 
         {/* Mobile Paper Progress Bar */}
