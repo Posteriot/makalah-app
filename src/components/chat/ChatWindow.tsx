@@ -587,9 +587,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile: Same content as desktop, adapted layout */}
-        <div className="md:hidden flex-1 flex flex-col">
+        <div className="md:hidden flex-1 flex flex-col min-h-0">
           {/* Header: hamburger for drawer access */}
-          <div className="flex items-center px-3 pt-[env(safe-area-inset-top,0px)]">
+          <div className="shrink-0 flex items-center px-3 pt-[env(safe-area-inset-top,0px)]">
             <button
               onClick={onMobileMenuClick}
               className="p-2 -ml-1 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
@@ -598,8 +598,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               <Menu className="h-5 w-5" strokeWidth={1.5} />
             </button>
           </div>
-          {/* Same TemplateGrid as desktop (default variant) */}
-          <div className="flex-1 flex items-center justify-center p-6">
+          {/* TemplateGrid — scrollable so it shrinks when keyboard opens */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-6">
             <TemplateGrid
               onTemplateSelect={(template) =>
                 void handleStarterPromptClick(template.message)
@@ -608,6 +608,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               disabled={isCreatingChat}
             />
           </div>
+          {/* ChatInput — shrink-0 so it stays visible above keyboard */}
           <ChatInput
             input={input}
             onInputChange={handleInputChange}
