@@ -1,8 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, Settings, SidebarCollapse } from "iconoir-react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 import { SidebarChatHistory } from "./sidebar/SidebarChatHistory"
@@ -52,6 +53,8 @@ interface ChatSidebarProps {
   isCreating?: boolean
   /** Callback to collapse sidebar (desktop only) */
   onCollapseSidebar?: () => void
+  /** Callback when panel tab changes (mobile drawer tabs) */
+  onPanelChange?: (panel: PanelType) => void
 }
 
 /**
@@ -82,6 +85,8 @@ export function ChatSidebar({
   isLoading,
   isCreating,
   onCollapseSidebar,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onPanelChange,
 }: ChatSidebarProps) {
   const router = useRouter()
 
@@ -124,7 +129,7 @@ export function ChatSidebar({
         className
       )}
     >
-      {/* Sidebar Header — Collapse toggle */}
+      {/* Desktop: Collapse toggle header */}
       {onCollapseSidebar && (
         <div className="flex h-11 shrink-0 items-center justify-end border-b border-[color:var(--chat-sidebar-border)] px-3">
           <button
@@ -132,7 +137,7 @@ export function ChatSidebar({
             className={cn(
               "flex items-center justify-center",
               "w-7 h-7 rounded-action",
-              "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]",
+              "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]",
               "transition-colors duration-150"
             )}
             aria-label="Collapse sidebar"
@@ -142,17 +147,20 @@ export function ChatSidebar({
         </div>
       )}
 
-      {/* Header - Only show New Chat for chat-history panel */}
+      {/* New Chat button — same tokens as desktop: --chat-sidebar-primary bg, --chat-sidebar-border border */}
       {activePanel === "chat-history" && (
-        <div className="shrink-0 px-3 pb-3 pt-3">
+        <div className="hidden md:block shrink-0 px-3 pt-5 pb-2.5">
           <Button
             onClick={() => {
               onNewChat()
               onCloseMobile?.()
             }}
             className={cn(
-              "h-10 w-full items-center justify-center gap-2 rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar-primary)] px-4 py-0 text-sm font-medium leading-none text-[var(--chat-sidebar-primary-foreground)]",
-              "hover:opacity-90"
+              "h-9 w-full items-center justify-center gap-2 rounded-action",
+              "border border-[color:var(--chat-sidebar-border)]",
+              "bg-[var(--chat-sidebar-primary)] text-[var(--chat-sidebar-primary-foreground)]",
+              "px-4 py-0 text-sm font-sans font-medium leading-none",
+              "active:bg-[var(--chat-sidebar-accent)] transition-colors duration-150"
             )}
             aria-label="Start new chat"
             aria-busy={isCreating}
@@ -173,22 +181,49 @@ export function ChatSidebar({
         </div>
       )}
 
-      {/* Section Label - Only show for chat-history panel */}
+      {/* Section header — Riwayat label with count badge */}
       {activePanel === "chat-history" && (
-        <div className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
-          Riwayat <span className="ml-2 font-mono">{conversations.length}</span>
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[var(--chat-sidebar)]">
+          <div className="flex items-center gap-2.5">
+            <span className="text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
+              Riwayat
+            </span>
+            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-sm bg-[var(--chat-success)] text-[10px] font-mono font-bold text-[var(--chat-background)]">
+              {conversations.length}
+            </span>
+          </div>
+          {/* Mobile: SidebarCollapse to close drawer */}
+          <button
+            onClick={onCloseMobile}
+            className="md:hidden text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-150"
+            aria-label="Close sidebar"
+          >
+            <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />
+          </button>
         </div>
       )}
 
-      {/* Content - Conditionally rendered based on activePanel */}
+      {/* Content — flat scrollable list, same as desktop */}
       <div className="flex-1 flex flex-col overflow-hidden">{renderContent()}</div>
 
-      {/* Credit Meter — border-top only, seamless with sidebar bg */}
+      {/* CreditMeter — same as desktop: border-top separator, transparent bg */}
       <CreditMeter
         variant="compact"
         className="shrink-0 border-t border-[color:var(--chat-sidebar-border)] bg-transparent"
         onClick={() => router.push("/subscription/overview")}
       />
+
+      {/* Mobile-only: Settings link */}
+      <div className="md:hidden px-4 py-3 border-t border-[color:var(--chat-sidebar-border)]">
+        <Link
+          href="/settings"
+          className="flex items-center gap-2 text-xs font-sans text-[var(--chat-muted-foreground)] active:text-[var(--chat-sidebar-foreground)] active:bg-[var(--chat-sidebar-accent)] transition-colors duration-150"
+          onClick={() => onCloseMobile?.()}
+        >
+          <Settings className="h-4 w-4" />
+          Atur Akun
+        </Link>
+      </div>
     </aside>
   )
 }

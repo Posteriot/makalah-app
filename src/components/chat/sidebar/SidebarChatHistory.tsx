@@ -201,29 +201,27 @@ export function SidebarChatHistory({
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto px-1 pb-2 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
         <TooltipProvider delayDuration={300}>
           {conversations.map((conv) => {
             const paperSession = paperSessionMap.get(conv._id)
             const isEditing = editingId === conv._id
             const isExceedingMaxLength = isEditing && editValue.length > 50
 
-            // Shared classes for both Link and div
+            // Flat list — no border, no rounded, no shadow. Matches desktop exactly.
+            const isActive = currentConversationId === conv._id
             const itemClasses = cn(
-              "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center rounded-action border px-2.5 py-2 text-left transition-colors",
-              "border-transparent",
-              currentConversationId === conv._id
-                ? "border-[color:var(--chat-border)] bg-[var(--chat-accent)] shadow-[inset_0_1px_0_var(--chat-border)]"
-                : "hover:bg-[var(--chat-sidebar-accent)]"
+              "group flex w-full items-center px-4 py-3.5 text-left transition-colors duration-150",
+              isActive
+                ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
+                : "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-sidebar-accent-foreground)]"
             )
 
-            // Content yang sama untuk edit mode dan normal mode
             const renderContent = () => (
               <>
                 <div className="flex-1 min-w-0">
                   <div
                     className={cn(
-                      "",
                       isEditing
                         ? "flex items-center gap-2"
                         : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
@@ -247,9 +245,7 @@ export function SidebarChatHistory({
                     ) : (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span
-                            className="block min-w-0 font-sans font-medium text-xs truncate"
-                          >
+                          <span className="block min-w-0 font-sans font-medium text-xs text-[var(--chat-sidebar-foreground)] truncate">
                             {conv.title}
                           </span>
                         </TooltipTrigger>
@@ -273,7 +269,7 @@ export function SidebarChatHistory({
                     )}
                   </div>
                   {!isEditing && (
-                    <div className="text-[11px] text-[var(--chat-muted-foreground)] font-mono">
+                    <div className="mt-1 text-[11px] text-[var(--chat-muted-foreground)] font-mono">
                       {formatRelativeTime(conv.lastMessageAt)}
                     </div>
                   )}

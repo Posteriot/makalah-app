@@ -437,7 +437,7 @@ export function MessageBubble({
         >
             {/* Edit Button - Outside bubble, to the left (for user messages) */}
             {!isEditing && isUser && onEdit && (
-                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity pt-2">
+                <div className="flex items-center md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
                     {editPermission.allowed ? (
                         <Tooltip>
                             <TooltipTrigger asChild>

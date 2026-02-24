@@ -8,7 +8,8 @@ import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { Menu, WarningCircle, Refresh } from "iconoir-react"
+import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowRightSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
+import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -21,11 +22,17 @@ import { PaperValidationPanel } from "../paper/PaperValidationPanel"
 import { useSession } from "@/lib/auth-client"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
+import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
+import { MobilePaperSessionsSheet } from "./mobile/MobilePaperSessionsSheet"
+import { MobileProgressBar } from "./mobile/MobileProgressBar"
+import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
+import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 interface ChatWindowProps {
   conversationId: string | null
   onMobileMenuClick?: () => void
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  onShowArtifactList?: () => void
 }
 
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
@@ -72,7 +79,8 @@ function consumePendingStarterPrompt(conversationId: string): string | null {
   }
 }
 
-export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect }: ChatWindowProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, onShowArtifactList }: ChatWindowProps) {
   const router = useRouter()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
@@ -82,6 +90,10 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
   const [isCreatingChat, setIsCreatingChat] = useState(false)
+  const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
+  const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
+  const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
+  const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [processUi, setProcessUi] = useState<{
     visible: boolean
     status: ProcessVisualStatus
@@ -100,6 +112,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const starterPromptAttemptedForConversationRef = useRef<string | null>(null)
 
   const { data: session } = useSession()
+  const { resolvedTheme, setTheme } = useTheme()
   const userId = useQuery(api.chatHelpers.getUserId, session?.user?.id ? { betterAuthUserId: session.user.id } : "skip")
   const createConversation = useMutation(api.conversations.createConversation)
 
@@ -120,6 +133,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     approveStage,
     requestRevision,
     markStageAsDirty,
+    rewindToStage,
     getStageStartIndex,
   } = usePaperSession(safeConversationId ?? undefined)
 
@@ -576,23 +590,87 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     onMobileMenuClick?.()
   }
 
+  // Mobile rewind handler — opens confirmation dialog
+  const handleMobileRewindRequest = useCallback((targetStage: PaperStageId) => {
+    setPendingRewindTarget(targetStage)
+  }, [])
+
+  const handleRewindConfirm = useCallback(async () => {
+    if (!pendingRewindTarget || !userId) return
+    setIsRewindSubmitting(true)
+    try {
+      const result = await rewindToStage(userId, pendingRewindTarget)
+      if (result.success) {
+        toast.success("Berhasil kembali ke tahap sebelumnya.")
+      } else {
+        const errorMsg = "error" in result && typeof result.error === "string" ? result.error : "Gagal melakukan rewind."
+        toast.error(errorMsg)
+      }
+    } catch (error) {
+      console.error("Rewind failed:", error)
+      toast.error("Gagal melakukan rewind.")
+    } finally {
+      setIsRewindSubmitting(false)
+      setPendingRewindTarget(null)
+    }
+  }, [pendingRewindTarget, userId, rewindToStage])
+
   // Landing page empty state (no conversation selected)
   // ChatInput is persistent — always visible at bottom, even in start state
   if (!conversationId) {
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Mobile Header */}
-        <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="font-semibold">Makalah Chat</span>
-          <div className="w-9" />
+        {/* Mobile: Same content as desktop, adapted layout */}
+        <div className="md:hidden flex-1 flex flex-col min-h-0">
+          {/* Header: sidebar expand + theme toggle */}
+          <div className="shrink-0 flex items-center justify-between h-11 px-3 pt-[env(safe-area-inset-top,0px)]">
+            <button
+              onClick={onMobileMenuClick}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Open sidebar"
+            >
+              <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Toggle theme"
+            >
+              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
+            </button>
+          </div>
+          {/* TemplateGrid — scrollable so it shrinks when keyboard opens */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-6">
+            <TemplateGrid
+              onTemplateSelect={(template) =>
+                void handleStarterPromptClick(template.message)
+              }
+              onSidebarLinkClick={handleSidebarLinkClick}
+              disabled={isCreatingChat}
+            />
+          </div>
+          {/* ChatInput — shrink-0 so it stays visible above keyboard */}
+          <ChatInput
+            input={input}
+            onInputChange={handleInputChange}
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!input.trim()) return
+              await handleStartNewChat(input.trim())
+            }}
+            isLoading={isCreatingChat}
+            isGenerating={false}
+            conversationId={conversationId}
+            uploadedFileIds={uploadedFileIds}
+            onFileUploaded={handleFileUploaded}
+          />
         </div>
 
-        {/* Empty State Content — fills available space above ChatInput */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="hidden md:block">
+        {/* Desktop: Existing empty state (unchanged) */}
+        <div className="hidden md:flex flex-1 flex-col h-full overflow-hidden">
+          {/* Empty State Content — fills available space above ChatInput */}
+          <div className="flex-1 flex items-center justify-center p-6">
             <TemplateGrid
               onTemplateSelect={(template) =>
                 void handleStarterPromptClick(template.message)
@@ -602,32 +680,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               strictCmsMode
             />
           </div>
-          <div className="md:hidden">
-            <TemplateGrid
-              onTemplateSelect={(template) =>
-                void handleStarterPromptClick(template.message)
-              }
-              onSidebarLinkClick={handleSidebarLinkClick}
-              disabled={isCreatingChat}
-            />
-          </div>
-        </div>
 
-        {/* Persistent ChatInput — always visible, even in start state */}
-        <ChatInput
-          input={input}
-          onInputChange={handleInputChange}
-          onSubmit={async (e) => {
-            e.preventDefault()
-            if (!input.trim()) return
-            await handleStartNewChat(input.trim())
-          }}
-          isLoading={isCreatingChat}
-          isGenerating={false}
-          conversationId={conversationId}
-          uploadedFileIds={uploadedFileIds}
-          onFileUploaded={handleFileUploaded}
-        />
+          {/* Persistent ChatInput — always visible, even in start state */}
+          <ChatInput
+            input={input}
+            onInputChange={handleInputChange}
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!input.trim()) return
+              await handleStartNewChat(input.trim())
+            }}
+            isLoading={isCreatingChat}
+            isGenerating={false}
+            conversationId={conversationId}
+            uploadedFileIds={uploadedFileIds}
+            onFileUploaded={handleFileUploaded}
+          />
+        </div>
       </div>
     )
   }
@@ -636,19 +705,31 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (conversationNotFound) {
     return (
       <div className="flex-1 flex flex-col h-full">
-        <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="font-semibold">Makalah Chat</span>
-          <div className="w-9" />
+        <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
+          <div className="flex items-center justify-between h-11">
+            <button
+              onClick={onMobileMenuClick}
+              className="shrink-0 text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Open sidebar"
+            >
+              <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="shrink-0 text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Toggle theme"
+            >
+              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-[var(--chat-muted-foreground)]">
             {/* Mechanical Grace: Rose error color */}
             <WarningCircle className="h-12 w-12 mx-auto mb-4 text-[var(--chat-destructive)]" />
-            <p className="mb-2 font-mono">Percakapan tidak ditemukan</p>
-            <p className="text-sm opacity-75 font-mono">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
+            <p className="mb-2 font-sans">Percakapan tidak ditemukan</p>
+            <p className="text-sm opacity-75 font-sans">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
           </div>
         </div>
       </div>
@@ -658,11 +739,56 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
-      <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-          <Menu className="h-5 w-5" />
-        </Button>
-        <span className="font-semibold">Makalah Chat</span>
+      <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
+        <div className="flex items-center h-11">
+          {/* Left group: sidebar + theme */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onMobileMenuClick}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Open sidebar"
+            >
+              <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Toggle theme"
+            >
+              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
+            </button>
+          </div>
+
+          {/* Tappable title — centered, opens Edit/Delete sheet */}
+          <button
+            onClick={() => setShowEditDeleteSheet(true)}
+            className="flex-1 flex items-center justify-center gap-1 min-w-0 active:bg-[var(--chat-accent)] rounded-action px-1.5 py-1 transition-colors duration-50"
+          >
+            <span className="truncate text-sm font-sans font-medium text-[var(--chat-foreground)]">
+              {conversation?.title || "Percakapan baru"}
+            </span>
+            <NavArrowDown className="h-3 w-3 shrink-0 text-[var(--chat-muted-foreground)]" strokeWidth={1.5} />
+          </button>
+
+          {/* Right group: new chat + paper sessions */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => router.push("/chat")}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Chat baru"
+            >
+              <ChatPlusIn className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setShowPaperSessionsSheet(true)}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Paper sessions"
+            >
+              <FastArrowRightSquare className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Quota Warning Banner */}
@@ -753,6 +879,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               initialTopMostItemIndex={messages.length - 1}
               style={{ height: "100%" }}
               components={{
+                Header: () => <div className="pt-4" />,
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
@@ -801,6 +928,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           message={processUi.message}
         />
 
+        {/* Mobile Paper Progress Bar */}
+        {isPaperMode && paperSession?.currentStage && (
+          <MobileProgressBar
+            currentStage={paperSession.currentStage as PaperStageId}
+            stageStatus={stageStatus ?? "drafting"}
+            stageData={stageData}
+            onRewindRequest={handleMobileRewindRequest}
+          />
+        )}
+
         {/* Input Area */}
         <ChatInput
           input={input}
@@ -814,6 +951,38 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           onFileUploaded={handleFileUploaded}
         />
       </div>
+
+      {/* Mobile Edit/Delete Sheet */}
+      <MobileEditDeleteSheet
+        open={showEditDeleteSheet}
+        onOpenChange={setShowEditDeleteSheet}
+        conversationId={safeConversationId}
+      />
+
+      {/* Mobile Paper Sessions Sheet */}
+      <MobilePaperSessionsSheet
+        open={showPaperSessionsSheet}
+        onOpenChange={setShowPaperSessionsSheet}
+        conversationId={safeConversationId}
+        onArtifactSelect={onArtifactSelect}
+      />
+
+      {/* Rewind Confirmation Dialog (mobile progress bar) */}
+      {isPaperMode && paperSession?.currentStage && (
+        <RewindConfirmationDialog
+          open={pendingRewindTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPendingRewindTarget(null)
+              setIsRewindSubmitting(false)
+            }
+          }}
+          targetStage={pendingRewindTarget}
+          currentStage={paperSession.currentStage}
+          onConfirm={handleRewindConfirm}
+          isSubmitting={isRewindSubmitting}
+        />
+      )}
     </div>
   )
 }
