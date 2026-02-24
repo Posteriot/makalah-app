@@ -146,27 +146,9 @@ export function ChatSidebar({
         </div>
       )}
 
-      {/* Mobile: Panel tabs — replaces ActivityBar (desktop has separate ActivityBar) */}
-      <div className="md:hidden flex shrink-0 border-b border-[color:var(--chat-sidebar-border)]">
-        {(["chat-history", "paper", "progress"] as const).map((panel) => (
-          <button
-            key={panel}
-            onClick={() => onPanelChange?.(panel)}
-            className={cn(
-              "flex-1 py-3 text-[10px] font-mono font-bold uppercase tracking-widest transition-colors duration-150",
-              activePanel === panel
-                ? "text-[var(--chat-sidebar-foreground)] border-b-2 border-[color:var(--chat-sidebar-primary)]"
-                : "text-[var(--chat-muted-foreground)] active:text-[var(--chat-sidebar-foreground)]"
-            )}
-          >
-            {panel === "chat-history" ? "Riwayat" : panel === "paper" ? "Paper" : "Progres"}
-          </button>
-        ))}
-      </div>
-
       {/* New Chat button — same tokens as desktop: --chat-sidebar-primary bg, --chat-sidebar-border border */}
       {activePanel === "chat-history" && (
-        <div className="shrink-0 px-3 pt-5 pb-2.5">
+        <div className="hidden md:block shrink-0 px-3 pt-5 pb-2.5">
           <Button
             onClick={() => {
               onNewChat()
@@ -223,7 +205,7 @@ export function ChatSidebar({
           onClick={() => onCloseMobile?.()}
         >
           <Settings className="h-4 w-4" />
-          Pengaturan
+          Atur Akun
         </Link>
       </div>
     </aside>
