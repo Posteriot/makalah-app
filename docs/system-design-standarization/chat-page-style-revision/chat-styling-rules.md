@@ -308,6 +308,15 @@ grep -rn "flex-col.*textarea\|flex-col.*px-3.*py-2" src/components/chat/ChatInpu
 
 # 15. ChatInput tanpa shrink-0 (akan hilang saat keyboard muncul)
 grep -rn "ChatInput" src/components/chat/ChatWindow.tsx | grep -v "shrink-0\|import\|//"
+
+# 16. AlertDialogContent tanpa data-chat-scope (portal token leak)
+grep -rn "AlertDialogContent" src/components/chat/ --include="*.tsx" | grep -v "data-chat-scope"
+
+# 17. Pewarnaan semantik pada action items (destructive/success sebagai teks)
+grep -rn "chat-destructive\|chat-success\|chat-warning" src/components/chat/mobile/ --include="*.tsx"
+
+# 18. Artifact count tanpa deduplikasi (raw length vs sidebar logic)
+grep -rn "artifacts.*length\|artifactCount" src/components/chat/mobile/ --include="*.tsx" | grep -v "latest\|Map\|size"
 ```
 
 ### Setiap Temuan Harus Dijawab:
@@ -555,6 +564,81 @@ Nilai radius aktual di `globals.css`, **BUKAN** dari dokumentasi CLAUDE.md (yang
 
 **PENTING:** Jangan percaya nilai pixel di dokumentasi tanpa verifikasi ke `globals.css`. Selalu cek kode sebagai sumber kebenaran.
 
+### 7.12 MobileActionSheet (Bottom Drawer)
+
+Bottom sheet drawer dipicu oleh 3-dot menu di header conversation. Komponen ini adalah **turunan sidebar**, bukan UI standalone.
+
+**Portal scope:** Sheet dan AlertDialog keduanya render via Portal — **kedua-duanya** harus punya `data-chat-scope=""`.
+
+```tsx
+// BENAR — kedua portal punya scope
+<SheetContent data-chat-scope="">
+<AlertDialogContent data-chat-scope="">
+
+// SALAH — token bocor, background tembus
+<SheetContent>
+<AlertDialogContent>
+```
+
+**Font: `font-sans`**, bukan `font-mono`. Drawer adalah turunan sidebar, dan sidebar pakai `font-sans` untuk action items. Satu-satunya pengecualian `font-mono` di drawer: signal label (e.g. "Edit Judul" label dengan `uppercase tracking-widest`).
+
+| Elemen | Font |
+|--------|------|
+| Action items (Chat Baru, Edit Judul, dll) | `font-sans text-sm` |
+| Rename input | `font-sans text-sm` |
+| Button labels (Simpan, Batal) | `font-sans text-sm` |
+| Signal label ("EDIT JUDUL") | `font-mono text-xs font-bold uppercase tracking-widest` |
+| Character counter (28/50) | `font-sans text-xs` |
+| AlertDialog title | `font-sans` |
+| AlertDialog description | `font-sans text-sm` |
+
+**DILARANG — Pewarnaan Semantik pada Action Items:**
+
+Semua action items termasuk "Hapus Percakapan" menggunakan `--chat-foreground` yang sama. Tidak boleh ada pewarnaan konvensi (merah untuk delete, hijau untuk success, dst).
+
+```tsx
+// BENAR — semua item warna sama
+<button className="... text-[var(--chat-foreground)] ...">Hapus Percakapan</button>
+
+// SALAH — pewarnaan semantik
+<button className="... text-[var(--chat-destructive)] ...">Hapus Percakapan</button>
+```
+
+Logika: Sidebar tidak punya warna merah untuk delete. Drawer turunan sidebar → ikut aturan yang sama. Konfirmasi sudah ditangani oleh AlertDialog terpisah.
+
+**AlertDialog button juga tanpa pewarnaan semantik:**
+
+```tsx
+// BENAR — foreground/background invert (sama kayak tombol Simpan di rename)
+className="bg-[var(--chat-foreground)] text-[var(--chat-background)]"
+
+// SALAH — warna merah destructive
+className="bg-[var(--chat-destructive)] text-white"
+```
+
+**Artifact Count — Harus Konsisten dengan Sidebar:**
+
+Drawer menampilkan "Lihat Artifacts (N)". Angka N **harus** di-deduplikasi per `type-title` dan ambil versi terbaru saja — logika yang sama persis dengan `getLatestArtifactVersions()` di `SidebarPaperSessions.tsx`.
+
+```tsx
+// BENAR — deduplikasi, konsisten dengan sidebar
+const artifactCount = (() => {
+  if (!artifacts || artifacts.length === 0) return 0
+  const latest = new Map<string, number>()
+  for (const a of artifacts) {
+    const key = `${a.type}-${a.title}`
+    const existing = latest.get(key)
+    if (existing === undefined || a.version > existing) {
+      latest.set(key, a.version)
+    }
+  }
+  return latest.size
+})()
+
+// SALAH — raw count, beda angka dari sidebar
+const artifactCount = artifacts?.length ?? 0
+```
+
 ---
 
 ## 8. File Reference
@@ -569,9 +653,10 @@ Nilai radius aktual di `globals.css`, **BUKAN** dari dokumentasi CLAUDE.md (yang
 | `src/components/chat/sidebar/SidebarChatHistory.tsx` | Conversation list — flat list pattern |
 | `src/components/chat/shell/ActivityBar.tsx` | Desktop-only vertical nav (mobile pakai tabs di ChatSidebar) |
 | `src/components/chat/ChatInput.tsx` | 3-state mobile input (collapsed/expanded/fullscreen) + desktop input |
+| `src/components/chat/mobile/MobileActionSheet.tsx` | Bottom drawer + delete AlertDialog (kedua portal butuh `data-chat-scope`) |
 | Dokumen ini | Panduan deteksi + justifikasi aturan |
 
 ---
 
 *Dokumen ini adalah living document. Update setiap kali ditemukan pola anomali baru.*
-*Last updated: 24 Feb 2026 — Added 7.9 (ChatInput 3-state), 7.10 (iOS Keyboard Survival), 7.11 (Radius Scale), grep #14-#15.*
+*Last updated: 24 Feb 2026 — Added 7.12 (MobileActionSheet), grep #16-#18. Previous: 7.9-7.11, grep #14-#15.*
