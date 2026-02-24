@@ -126,3 +126,26 @@ Syarat wajib sebelum ubah baseline:
    - kualitas sitasi/referensi (termasuk URL)
    - konsistensi jawaban antarstage
 3. Update dokumen anchor dan red-line bersamaan dalam satu commit.
+
+---
+
+## 8) Evidence Safety Gate (Simulasi Real)
+
+Tanggal simulasi: 25 Februari 2026  
+Commit tervalidasi: `446ff3b`  
+Skenario wajib: `pendahuluan-heavy` dan `diskusi-medium`.
+
+Ringkasan hasil:
+1. `pendahuluan-heavy`
+   - before: `1192 tokens`
+   - after efektif: `1006 tokens`
+   - penghematan efektif: `15.60%` (LULUS batas aman `>=15%`)
+2. `diskusi-medium`
+   - before: `474 tokens`
+   - after efektif: `457 tokens`
+   - penghematan efektif: `3.59%` (LULUS batas aman `>=3%`)
+
+Catatan validasi:
+1. Baseline locked (`refs=5`, `sitasi=5`, `detail window=3`) dipertahankan.
+2. Penghematan tercapai tanpa menurunkan guardrail referensi URL.
+3. Dokumen ini dan dokumen anchor harus tetap diupdate berpasangan jika baseline diubah di masa depan.
