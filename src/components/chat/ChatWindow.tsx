@@ -587,6 +587,31 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     onMobileMenuClick?.()
   }
 
+  // Mobile rewind handler — opens confirmation dialog
+  const handleMobileRewindRequest = useCallback((targetStage: PaperStageId) => {
+    setPendingRewindTarget(targetStage)
+  }, [])
+
+  const handleRewindConfirm = useCallback(async () => {
+    if (!pendingRewindTarget || !userId) return
+    setIsRewindSubmitting(true)
+    try {
+      const result = await rewindToStage(userId, pendingRewindTarget)
+      if (result.success) {
+        toast.success("Berhasil kembali ke tahap sebelumnya.")
+      } else {
+        const errorMsg = "error" in result && typeof result.error === "string" ? result.error : "Gagal melakukan rewind."
+        toast.error(errorMsg)
+      }
+    } catch (error) {
+      console.error("Rewind failed:", error)
+      toast.error("Gagal melakukan rewind.")
+    } finally {
+      setIsRewindSubmitting(false)
+      setPendingRewindTarget(null)
+    }
+  }, [pendingRewindTarget, userId, rewindToStage])
+
   // Landing page empty state (no conversation selected)
   // ChatInput is persistent — always visible at bottom, even in start state
   if (!conversationId) {
@@ -885,6 +910,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             currentStage={paperSession.currentStage as PaperStageId}
             stageStatus={stageStatus ?? "drafting"}
             stageData={stageData}
+            onRewindRequest={handleMobileRewindRequest}
           />
         )}
 
@@ -916,6 +942,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         conversationId={safeConversationId}
         onArtifactSelect={onArtifactSelect}
       />
+
+      {/* Rewind Confirmation Dialog (mobile progress bar) */}
+      {isPaperMode && paperSession?.currentStage && (
+        <RewindConfirmationDialog
+          open={pendingRewindTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPendingRewindTarget(null)
+              setIsRewindSubmitting(false)
+            }
+          }}
+          targetStage={pendingRewindTarget}
+          currentStage={paperSession.currentStage}
+          onConfirm={handleRewindConfirm}
+          isSubmitting={isRewindSubmitting}
+        />
+      )}
     </div>
   )
 }
