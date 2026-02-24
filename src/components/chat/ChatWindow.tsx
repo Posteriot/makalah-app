@@ -622,22 +622,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile: Same content as desktop, adapted layout */}
         <div className="md:hidden flex-1 flex flex-col min-h-0">
-          {/* Header: sidebar expand + theme toggle */}
-          <div className="shrink-0 flex items-center justify-between px-3 pt-[env(safe-area-inset-top,0px)]">
+          {/* Header: sidebar expand only */}
+          <div className="shrink-0 flex items-center px-3 pt-[env(safe-area-inset-top,0px)]">
             <button
               onClick={onMobileMenuClick}
               className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
               aria-label="Open sidebar"
             >
               <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              className="p-2 -mr-1 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-              aria-label="Toggle theme"
-            >
-              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
-              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
             </button>
           </div>
           {/* TemplateGrid — scrollable so it shrinks when keyboard opens */}
@@ -706,21 +698,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     return (
       <div className="flex-1 flex flex-col h-full">
         <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
-          <div className="flex items-center justify-between h-11">
+          <div className="flex items-center h-11">
             <button
               onClick={onMobileMenuClick}
               className="shrink-0 text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
               aria-label="Open sidebar"
             >
               <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              className="p-2 -mr-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-              aria-label="Toggle theme"
-            >
-              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
-              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
             </button>
           </div>
         </div>
@@ -741,13 +725,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       {/* Mobile Header */}
       <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
         <div className="flex items-center gap-1 h-11">
-          {/* Hamburger */}
+          {/* Sidebar expand */}
           <button
             onClick={onMobileMenuClick}
             className="shrink-0 text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
             aria-label="Open sidebar"
           >
             <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
+          </button>
+
+          {/* Theme toggle — next to sidebar icon */}
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="shrink-0 text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+            aria-label="Toggle theme"
+          >
+            <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+            <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
           </button>
 
           {/* Tappable title — opens Edit/Delete sheet */}
@@ -759,16 +753,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               {conversation?.title || "Percakapan baru"}
             </span>
             <NavArrowDown className="h-3 w-3 shrink-0 text-[var(--chat-muted-foreground)]" strokeWidth={1.5} />
-          </button>
-
-          {/* Theme toggle */}
-          <button
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            className="p-2 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-            aria-label="Toggle theme"
-          >
-            <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
-            <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
           </button>
 
           {/* New chat */}
