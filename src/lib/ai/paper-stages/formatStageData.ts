@@ -26,6 +26,8 @@ const SUMMARY_CHAR_LIMIT = 1000;
 const RINGKASAN_CHAR_LIMIT = 280;
 const DETAIL_WINDOW_SIZE = 3;
 const RINGKASAN_DETAIL_CHAR_LIMIT = 1000;
+const WEB_REFERENCES_CAP = 5;
+const CITATION_CAP = 5;
 
 interface StageData {
     gagasan?: GagasanData;
@@ -75,7 +77,10 @@ function formatWebSearchReferences(stageData: StageData, currentStage: PaperStag
 
     if (!refs || refs.length === 0) return "";
 
-    const lines = refs.map((ref, i) => {
+    const refsToShow = refs.slice(0, WEB_REFERENCES_CAP);
+    const remainingRefs = refs.length - refsToShow.length;
+
+    const lines = refsToShow.map((ref, i) => {
         const date = ref.publishedAt
             ? ` (${new Date(ref.publishedAt).getFullYear()})`
             : "";
@@ -85,6 +90,9 @@ function formatWebSearchReferences(stageData: StageData, currentStage: PaperStag
     return [
         `REFERENSI WEB SEARCH TERSIMPAN (WAJIB gunakan, JANGAN fabricate):`,
         ...lines,
+        ...(remainingRefs > 0
+            ? [`  ... dan ${remainingRefs} referensi lainnya (disingkat untuk efisiensi konteks).`]
+            : []),
         ``,
         `SEMUA sitasi in-text HARUS merujuk ke referensi di atas.`,
         `Jika butuh referensi tambahan, MINTA user untuk search terlebih dahulu.`,
@@ -348,10 +356,17 @@ function formatPendahuluanData(data: PendahuluanData, isCurrentStage: boolean, s
     if (data.signifikansiPenelitian) output += `Signifikansi Penelitian: ${truncateText(data.signifikansiPenelitian, summaryMode)}\n`;
     if (data.hipotesis) output += `Hipotesis: ${truncateText(data.hipotesis, summaryMode)}\n`;
     if (data.sitasiAPA && data.sitasiAPA.length > 0) {
-        output += `Daftar Sitasi (${data.sitasiAPA.length}):\n`;
-        data.sitasiAPA.forEach((cite, i) => {
-            output += `  ${i + 1}. ${cite.inTextCitation} - ${cite.fullReference}\n`;
+        const citationsToShow = data.sitasiAPA.slice(0, CITATION_CAP);
+        const remainingCitations = data.sitasiAPA.length - citationsToShow.length;
+
+        output += `Daftar Sitasi (ditampilkan ${citationsToShow.length}/${data.sitasiAPA.length}):\n`;
+        citationsToShow.forEach((cite, i) => {
+            const citationUrl = cite.url ? ` — ${cite.url}` : " — URL tidak tersedia";
+            output += `  ${i + 1}. ${cite.inTextCitation} - ${cite.fullReference}${citationUrl}\n`;
         });
+        if (remainingCitations > 0) {
+            output += `  ... dan ${remainingCitations} sitasi lainnya (disingkat untuk efisiensi konteks)\n`;
+        }
     }
 
     return output.trim();

@@ -166,6 +166,7 @@ ATURAN UMUM:
 ${stageInstructions}
 
 KONTEKS TAHAP SELESAI & CHECKLIST:
+Catatan kompresi konteks aktif: refs maks 5, sitasi maks 5, ringkasan detail hanya 3 tahap selesai terakhir.
 ${formattedData}
 ${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
 ---
