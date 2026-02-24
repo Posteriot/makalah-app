@@ -188,6 +188,10 @@ function BlockRenderer({ block }: { block: DocBlock }) {
 
 export function BlogArticlePage({ slug }: { slug: string }) {
   const post = useQuery(api.blog.getPostBySlug, { slug })
+  const pageSettings = useQuery(api.pageContent.getSection, {
+    pageSlug: "blog",
+    sectionSlug: "blog-page-settings",
+  })
   const normalizedCategory = useMemo(() => {
     if (!post) return null
     return normalizeCategory(post.category, post.title, post.excerpt)
@@ -216,7 +220,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
     return (
       <div className="bg-background text-foreground">
         <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
-          <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
+          {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(var(--header-h)+16px)] md:px-8 md:pb-12 md:pt-[calc(var(--header-h)+20px)]">
             <div className="h-16 w-48 animate-pulse rounded-action border-hairline bg-card/40 dark:bg-slate-800/45" />
             <div className="mt-5 h-[4.5rem] w-full animate-pulse rounded-action border-hairline bg-card/40 dark:bg-slate-800/45 md:w-3/4" />
@@ -232,7 +236,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
     return (
       <div className="bg-background text-foreground">
         <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
-          <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
+          {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
           <div className="relative z-10 mx-auto w-full max-w-5xl px-4 pb-10 pt-[calc(var(--header-h)+20px)] md:px-8 md:pt-[calc(var(--header-h)+24px)]">
             <div className="rounded-shell border-hairline bg-card/90 p-8 text-center backdrop-blur-[1px] dark:bg-slate-800/90 md:p-12">
               <h1 className="text-narrative mb-2 text-2xl font-medium md:text-3xl">Artikel Tidak Ditemukan</h1>
@@ -257,7 +261,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
     return (
       <div className="bg-background text-foreground">
         <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
-          <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
+          {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
           <div className="relative z-10 mx-auto w-full max-w-5xl px-4 pb-10 pt-[calc(var(--header-h)+20px)] md:px-8 md:pt-[calc(var(--header-h)+24px)]">
             <div className="rounded-shell border-hairline bg-card/90 p-8 text-center backdrop-blur-[1px] dark:bg-slate-800/90 md:p-12">
               <h1 className="text-narrative mb-2 text-2xl font-medium md:text-3xl">Artikel Tidak Tersedia</h1>
@@ -281,7 +285,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
   return (
     <div className="bg-background text-foreground">
       <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
-        <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
+        {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-10 pt-[calc(var(--header-h)+16px)] md:px-8 md:pb-14 md:pt-[calc(var(--header-h)+20px)]">
           <div className="grid grid-cols-1 gap-7 md:grid-cols-16 md:gap-8">

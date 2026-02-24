@@ -2,7 +2,6 @@
 
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { ManifestoSectionStatic } from "./ManifestoSectionStatic"
 import { ManifestoSectionCMS } from "./ManifestoSectionCMS"
 
 export function ManifestoSection() {

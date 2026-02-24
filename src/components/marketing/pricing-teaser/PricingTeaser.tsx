@@ -63,9 +63,9 @@ export function PricingTeaser() {
       id="pemakaian-harga"
     >
       {/* Background patterns — conditional via CMS when published */}
-      {(!useCms || headerSection.showGridPattern !== false) && <GridPattern className="z-0" />}
-      {(!useCms || headerSection.showDiagonalStripes !== false) && <DiagonalStripes className="opacity-70" />}
-      {(!useCms || headerSection.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
+      {headerSection != null && headerSection.showGridPattern !== false && <GridPattern className="z-0" />}
+      {headerSection != null && headerSection.showDiagonalStripes !== false && <DiagonalStripes className="opacity-70" />}
+      {headerSection != null && headerSection.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-6 md:px-8 md:py-10">
         <div className="grid grid-cols-16 gap-comfort content-center">

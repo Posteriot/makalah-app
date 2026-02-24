@@ -2,7 +2,6 @@
 
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { CareerContactSectionStatic } from "./CareerContactSectionStatic"
 import { CareerContactSectionCMS } from "./CareerContactSectionCMS"
 
 export function CareerContactSection() {

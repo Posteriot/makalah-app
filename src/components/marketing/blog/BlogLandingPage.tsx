@@ -106,9 +106,9 @@ export function BlogLandingPage() {
     <div className="bg-background text-foreground">
       <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
         {/* Background patterns — conditional via CMS page-settings */}
-        {pageSettings?.isPublished && pageSettings.showGridPattern === true && <GridPattern className="z-0" />}
-        {(!pageSettings?.isPublished || pageSettings.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
-        {pageSettings?.isPublished && pageSettings.showDiagonalStripes === true && <DiagonalStripes className="z-0" />}
+        {pageSettings != null && pageSettings.showGridPattern !== false && <GridPattern className="z-0" />}
+        {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
+        {pageSettings != null && pageSettings.showDiagonalStripes !== false && <DiagonalStripes className="z-0" />}
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(var(--header-h)+16px)] md:px-8 md:pb-10 md:pt-[calc(var(--header-h)+20px)]">
           <div className="grid grid-cols-1 gap-comfort md:grid-cols-16">
@@ -147,6 +147,7 @@ export function BlogLandingPage() {
               <BlogHeadlineSection
                 isLoading={isLoadingPosts}
                 headlinePost={headlinePost}
+                showDiagonalStripes={pageSettings?.showDiagonalStripes}
               />
 
               <div className="mt-4 mb-5 md:hidden">
@@ -164,6 +165,7 @@ export function BlogLandingPage() {
                   onToggleRow={(rowKey) =>
                     setExpandedRowKey((currentKey) => (currentKey === rowKey ? null : rowKey))
                   }
+                  showDiagonalStripes={pageSettings?.showDiagonalStripes}
                 />
               </div>
 

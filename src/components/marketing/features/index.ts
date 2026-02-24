@@ -1,6 +1,4 @@
 export { WorkflowFeatureSection } from "./WorkflowFeatureSection"
-export { WorkflowFeatureStatic } from "./WorkflowFeatureStatic"
 export { WorkflowFeatureCMS } from "./WorkflowFeatureCMS"
 export { RefrasaFeatureSection } from "./RefrasaFeatureSection"
-export { RefrasaFeatureStatic } from "./RefrasaFeatureStatic"
 export { RefrasaFeatureCMS } from "./RefrasaFeatureCMS"

@@ -2,15 +2,14 @@
 
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { HeroStatic } from "./HeroStatic"
 import { HeroCMS } from "./HeroCMS"
 
 /**
- * HeroSection — wrapper component with CMS query + static fallback.
+ * HeroSection — wrapper component with CMS query.
  *
  * 1. Query CMS data for hero section (pageSlug: "home", sectionSlug: "hero")
  * 2. If CMS published → render HeroCMS with editable text + image
- * 3. If no CMS data or unpublished → render HeroStatic (current hardcoded hero)
+ * 3. If no CMS data or unpublished → hidden (return null)
  */
 export function HeroSection() {
   const section = useQuery(api.pageContent.getSection, {

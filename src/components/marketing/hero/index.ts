@@ -18,5 +18,4 @@ export { ChatInputHeroMock } from "./ChatInputHeroMock"
 
 // CMS-driven wrapper
 export { HeroSection } from "./HeroSection"
-export { HeroStatic } from "./HeroStatic"
 export { HeroCMS } from "./HeroCMS"

@@ -16,6 +16,7 @@ interface BlogFeedSectionProps {
   expandedRowKeyResolved: string | null
   onToggleRow: (rowKey: string) => void
   onExpandRow: (rowKey: string) => void
+  showDiagonalStripes?: boolean
 }
 
 function RowThumbnail({
@@ -62,6 +63,7 @@ export function BlogFeedSection({
   expandedRowKeyResolved,
   onToggleRow,
   onExpandRow,
+  showDiagonalStripes,
 }: BlogFeedSectionProps) {
   const router = useRouter()
 
@@ -172,7 +174,7 @@ export function BlogFeedSection({
                   </p>
 
                   <div className="relative overflow-hidden rounded-md border-hairline border bg-slate-100 px-2 py-4 dark:bg-slate-800 md:px-3 md:py-5 lg:px-4">
-                    <DiagonalStripes className="opacity-40" />
+                    {showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
 
                     <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center md:gap-6">
                       <div className="space-y-2">

@@ -114,9 +114,9 @@ export function Footer() {
     <div id="footer" className="bg-background text-foreground">
       <footer className="relative overflow-hidden bg-[color:var(--footer-background)]">
         {/* Background patterns — conditional via CMS */}
-        {footerConfig?.showGridPattern === true && <GridPattern className="z-0" />}
-        {footerConfig?.showDottedPattern === true && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
-        {footerConfig?.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
+        {footerConfig != null && footerConfig.showGridPattern !== false && <GridPattern className="z-0" />}
+        {footerConfig != null && footerConfig.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
+        {footerConfig != null && footerConfig.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
 
         {/* Content container - align with header (max-w-7xl) */}
         <div className="relative z-[1] mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">

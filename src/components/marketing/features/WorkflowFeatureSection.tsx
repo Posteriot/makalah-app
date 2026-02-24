@@ -2,7 +2,6 @@
 
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { WorkflowFeatureStatic } from "./WorkflowFeatureStatic"
 import { WorkflowFeatureCMS } from "./WorkflowFeatureCMS"
 
 export function WorkflowFeatureSection() {

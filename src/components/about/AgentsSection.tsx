@@ -2,7 +2,6 @@
 
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { AgentsSectionStatic } from "./AgentsSectionStatic"
 import { AgentsSectionCMS } from "./AgentsSectionCMS"
 
 export function AgentsSection() {

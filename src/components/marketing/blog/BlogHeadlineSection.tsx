@@ -12,11 +12,13 @@ import { DiagonalStripes } from "@/components/marketing/SectionBackground"
 interface BlogHeadlineSectionProps {
   isLoading: boolean
   headlinePost: BlogPost | null
+  showDiagonalStripes?: boolean
 }
 
 export function BlogHeadlineSection({
   isLoading,
   headlinePost,
+  showDiagonalStripes,
 }: BlogHeadlineSectionProps) {
   if (isLoading) {
     return <div className="h-[220px] animate-pulse rounded-shell border-hairline bg-card/30 dark:bg-slate-800/40" />
@@ -84,10 +86,10 @@ export function BlogHeadlineSection({
       </div>
 
       <div className="relative overflow-hidden rounded-md border-hairline border bg-slate-100 px-2 py-4 dark:bg-slate-800 md:px-3 md:py-5 lg:px-4">
-        <DiagonalStripes className="opacity-40" />
+        {showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
 
         <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center md:gap-6">
-          
+
           <div className="space-y-2">
             <p className="text-signal text-[10px] font-bold tracking-widest text-muted-foreground">
               / {normalizedCategory.toUpperCase()}

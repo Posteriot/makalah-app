@@ -30,9 +30,9 @@ export default function PricingPage() {
       id="pricing"
     >
       {/* Background patterns — conditional via CMS when published */}
-      {(!useCms || headerSection.showGridPattern !== false) && <GridPattern className="z-0" />}
-      {(!useCms || headerSection.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
-      {(!useCms || headerSection.showDiagonalStripes !== false) && <DiagonalStripes className="z-0" />}
+      {headerSection != null && headerSection.showGridPattern !== false && <GridPattern className="z-0" />}
+      {headerSection != null && headerSection.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
+      {headerSection != null && headerSection.showDiagonalStripes !== false && <DiagonalStripes className="z-0" />}
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8">
         <div className="grid grid-cols-16 gap-comfort content-center">

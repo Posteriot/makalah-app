@@ -28,9 +28,9 @@ export function SimplePolicyPage({ badge, title, children }: SimplePolicyPagePro
     return (
         <div className="relative isolate min-h-screen overflow-hidden bg-[color:var(--section-bg-alt)] pt-[var(--header-h)] pb-24">
             {/* Background patterns — conditional via CMS page-settings */}
-            {pageSettings?.isPublished && pageSettings.showGridPattern === true && <GridPattern className="z-0" />}
-            {(!pageSettings?.isPublished || pageSettings.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
-            {pageSettings?.isPublished && pageSettings.showDiagonalStripes === true && <DiagonalStripes className="z-0" />}
+            {pageSettings != null && pageSettings.showGridPattern !== false && <GridPattern className="z-0" />}
+            {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
+            {pageSettings != null && pageSettings.showDiagonalStripes !== false && <DiagonalStripes className="z-0" />}
 
             <div className="relative z-10 mx-auto w-full max-w-7xl px-4 lg:px-8">
                 <div className="mx-auto mt-4 w-full max-w-4xl rounded-shell bg-card/90 px-5 py-8 backdrop-blur-[1px] dark:bg-slate-900 md:px-9 md:py-10">

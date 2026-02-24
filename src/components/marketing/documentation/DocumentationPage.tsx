@@ -186,9 +186,9 @@ function DocumentationContent() {
   return (
     <div className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)] pt-[var(--header-h)]">
       {/* Background patterns — conditional via CMS when page-settings published */}
-      {pageSettings?.isPublished && pageSettings.showGridPattern === true && <GridPattern className="z-0" />}
-      {(!pageSettings?.isPublished || pageSettings.showDottedPattern !== false) && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
-      {pageSettings?.isPublished && pageSettings.showDiagonalStripes === true && <DiagonalStripes className="z-0" />}
+      {pageSettings != null && pageSettings.showGridPattern !== false && <GridPattern className="z-0" />}
+      {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
+      {pageSettings != null && pageSettings.showDiagonalStripes !== false && <DiagonalStripes className="z-0" />}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 lg:px-8">
         <div className="grid grid-cols-1 gap-comfort pb-6 md:grid-cols-16">
           <aside className="hidden md:col-span-4 md:block">
