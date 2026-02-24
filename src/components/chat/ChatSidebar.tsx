@@ -1,7 +1,8 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft, Settings, SidebarCollapse } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, Settings, SidebarCollapse, SunLight, HalfMoon } from "iconoir-react"
+import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -89,6 +90,7 @@ export function ChatSidebar({
   onPanelChange,
 }: ChatSidebarProps) {
   const router = useRouter()
+  const { resolvedTheme, setTheme } = useTheme()
 
   // Render sidebar content based on active panel
   const renderContent = () => {
@@ -213,11 +215,21 @@ export function ChatSidebar({
         onClick={() => router.push("/subscription/overview")}
       />
 
-      {/* Mobile-only: Settings link (desktop has this in dashboard nav) */}
-      <div className="md:hidden px-4 py-3 border-t border-[color:var(--chat-sidebar-border)]">
+      {/* Mobile-only: Theme toggle + Settings link */}
+      <div className="md:hidden border-t border-[color:var(--chat-sidebar-border)]">
+        {/* Theme toggle */}
+        <button
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          className="flex w-full items-center gap-2 px-4 py-3 text-xs font-sans text-[var(--chat-muted-foreground)] active:text-[var(--chat-sidebar-foreground)] active:bg-[var(--chat-sidebar-accent)] transition-colors duration-150"
+        >
+          <SunLight className="h-4 w-4 hidden dark:block" />
+          <HalfMoon className="h-4 w-4 block dark:hidden" />
+          <span>{resolvedTheme === "dark" ? "Mode Terang" : "Mode Gelap"}</span>
+        </button>
+        {/* Settings link */}
         <Link
           href="/settings"
-          className="flex items-center gap-2 text-xs font-mono text-[var(--chat-muted-foreground)] active:text-[var(--chat-sidebar-foreground)] transition-colors duration-150"
+          className="flex items-center gap-2 px-4 py-3 text-xs font-sans text-[var(--chat-muted-foreground)] active:text-[var(--chat-sidebar-foreground)] active:bg-[var(--chat-sidebar-accent)] transition-colors duration-150"
           onClick={() => onCloseMobile?.()}
         >
           <Settings className="h-4 w-4" />
