@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import { cn } from "@/lib/utils"
 
 export type ReasoningTraceStatus = "pending" | "running" | "done" | "skipped" | "error"
@@ -11,60 +11,46 @@ export interface ReasoningTraceStep {
   label: string
   status: ReasoningTraceStatus
   progress: number
+  ts?: number
   meta?: {
     note?: string
     sourceCount?: number
     toolName?: string
     stage?: string
+    mode?: "normal" | "paper" | "websearch"
   }
 }
 
 interface ReasoningTracePanelProps {
   steps: ReasoningTraceStep[]
+  className?: string
 }
 
-export function ReasoningTracePanel({ steps }: ReasoningTracePanelProps) {
-  const [expanded, setExpanded] = useState(true)
-
-  const orderedSteps = useMemo(() => steps.slice().sort((a, b) => a.progress - b.progress), [steps])
+export function ReasoningTracePanel({ steps, className }: ReasoningTracePanelProps) {
+  const orderedSteps = useMemo(
+    () => steps.slice().sort((a, b) => (a.progress === b.progress ? (a.ts ?? 0) - (b.ts ?? 0) : a.progress - b.progress)),
+    [steps]
+  )
 
   if (orderedSteps.length === 0) return null
 
   return (
-    <div className="mt-2 rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)]/60 px-3 py-2">
-      <button
-        type="button"
-        onClick={() => setExpanded((prev) => !prev)}
-        className="flex w-full items-center justify-between text-left"
-        aria-expanded={expanded}
-      >
-        <span className="text-[11px] font-mono font-semibold tracking-wide text-[var(--chat-foreground)]">
-          Apa yang dipikirkan model
-        </span>
-        <span className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-          {expanded ? "Sembunyikan" : "Tampilkan"}
-        </span>
-      </button>
-
-      {expanded && (
-        <div className="mt-2 space-y-1.5">
-          {orderedSteps.map((step) => {
-            const tone = getTone(step.status)
-            const detail = getDetail(step)
-            return (
-              <div key={`${step.traceId}-${step.stepKey}`} className="rounded-md border border-[color:var(--chat-border)]/70 px-2 py-1.5">
-                <div className="flex items-center justify-between gap-3">
-                  <span className={cn("text-[11px] font-mono", tone.textClass)}>{step.label}</span>
-                  <span className={cn("text-[10px] font-mono uppercase", tone.badgeClass)}>{step.status}</span>
-                </div>
-                {detail && (
-                  <p className="mt-1 text-[10px] font-mono text-[var(--chat-muted-foreground)]">{detail}</p>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+    <div className={cn("space-y-2", className)}>
+      {orderedSteps.map((step) => {
+        const tone = getTone(step.status)
+        const detail = getDetail(step)
+        return (
+          <div key={`${step.traceId}-${step.stepKey}`} className="rounded-md border border-[color:var(--chat-border)]/70 px-3 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className={cn("text-xs font-mono", tone.textClass)}>{step.label}</span>
+              <span className={cn("text-[10px] font-mono uppercase", tone.badgeClass)}>{step.status}</span>
+            </div>
+            {detail && (
+              <p className="mt-1 text-[11px] font-mono text-[var(--chat-muted-foreground)]">{detail}</p>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -103,16 +89,42 @@ function getDetail(step: ReasoningTraceStep): string | null {
   }
 
   if (step.meta?.toolName) {
-    return `Tool: ${step.meta.toolName}`
+    return `Tool aktif: ${step.meta.toolName}`
   }
 
   if (step.meta?.stage) {
-    return `Stage: ${step.meta.stage}`
+    return `Tahap aktif: ${step.meta.stage}`
+  }
+
+  if (step.meta?.mode) {
+    if (step.meta.mode === "paper") return "Mode paper workflow aktif"
+    if (step.meta.mode === "websearch") return "Mode pencarian web aktif"
+    return "Mode chat normal aktif"
   }
 
   if (step.meta?.note) {
-    return step.meta.note
+    return humanizeNote(step.meta.note)
   }
 
   return null
+}
+
+function humanizeNote(note: string): string {
+  const normalized = note.trim().toLowerCase()
+  if (!normalized) return note
+
+  if (normalized === "web-search-enabled") return "Pencarian web diaktifkan"
+  if (normalized === "web-search-disabled") return "Pencarian web tidak diaktifkan"
+  if (normalized === "no-web-search") return "Tidak butuh pencarian web di langkah ini"
+  if (normalized === "source-detected") return "Sumber baru terdeteksi dan sedang dicek"
+  if (normalized === "sources-validated") return "Sumber sudah diverifikasi"
+  if (normalized === "no-sources-returned") return "Belum ada sumber valid yang bisa dipakai"
+  if (normalized === "tool-running") return "Tool sedang dijalankan"
+  if (normalized === "tool-done") return "Eksekusi tool selesai"
+  if (normalized === "no-tool-detected-yet" || normalized === "no-tool-call") return "Belum ada tool yang perlu dipanggil"
+  if (normalized === "tool-completed") return "Tool yang dipakai sudah selesai"
+  if (normalized === "stopped-by-user-or-stream-abort") return "Proses dihentikan sebelum selesai"
+  if (normalized === "stream-error") return "Terjadi kendala saat streaming jawaban"
+
+  return note.replace(/-/g, " ")
 }

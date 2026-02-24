@@ -110,6 +110,46 @@ const REASONING_STATUS_SET = new Set<ReasoningTraceStatus>([
   "error",
 ])
 
+interface PersistedReasoningTraceStepRaw {
+  stepKey?: unknown
+  label?: unknown
+  status?: unknown
+  progress?: unknown
+  ts?: unknown
+  meta?: unknown
+}
+
+interface PersistedReasoningTraceRaw {
+  headline?: unknown
+  steps?: unknown
+}
+
+function parseReasoningMeta(meta: unknown): ReasoningTraceStep["meta"] | undefined {
+  if (!meta || typeof meta !== "object") return undefined
+
+  const value = meta as {
+    note?: unknown
+    sourceCount?: unknown
+    toolName?: unknown
+    stage?: unknown
+    mode?: unknown
+  }
+
+  const parsed = {
+    ...(typeof value.note === "string" ? { note: value.note } : {}),
+    ...(typeof value.sourceCount === "number" && Number.isFinite(value.sourceCount)
+      ? { sourceCount: value.sourceCount }
+      : {}),
+    ...(typeof value.toolName === "string" ? { toolName: value.toolName } : {}),
+    ...(typeof value.stage === "string" ? { stage: value.stage } : {}),
+    ...(value.mode === "normal" || value.mode === "paper" || value.mode === "websearch"
+      ? { mode: value.mode }
+      : {}),
+  }
+
+  return Object.keys(parsed).length > 0 ? parsed : undefined
+}
+
 function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] {
   const byStepKey = new Map<string, ReasoningTraceStep>()
 
@@ -126,6 +166,7 @@ function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] 
       label?: unknown
       status?: unknown
       progress?: unknown
+      ts?: unknown
       meta?: unknown
     }
 
@@ -145,26 +186,42 @@ function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] 
       label: data.label,
       status: data.status as ReasoningTraceStatus,
       progress,
+      ...(typeof data.ts === "number" && Number.isFinite(data.ts) ? { ts: data.ts } : {}),
     }
 
-    if (data.meta && typeof data.meta === "object") {
-      const meta = data.meta as {
-        note?: unknown
-        sourceCount?: unknown
-        toolName?: unknown
-        stage?: unknown
-      }
-      parsedStep.meta = {
-        ...(typeof meta.note === "string" ? { note: meta.note } : {}),
-        ...(typeof meta.sourceCount === "number" && Number.isFinite(meta.sourceCount)
-          ? { sourceCount: meta.sourceCount }
-          : {}),
-        ...(typeof meta.toolName === "string" ? { toolName: meta.toolName } : {}),
-        ...(typeof meta.stage === "string" ? { stage: meta.stage } : {}),
-      }
-    }
+    const parsedMeta = parseReasoningMeta(data.meta)
+    if (parsedMeta) parsedStep.meta = parsedMeta
 
     byStepKey.set(data.stepKey, parsedStep)
+  }
+
+  if (byStepKey.size === 0) {
+    const persistedTrace = (uiMessage as unknown as { reasoningTrace?: PersistedReasoningTraceRaw }).reasoningTrace
+    if (persistedTrace && typeof persistedTrace === "object" && Array.isArray(persistedTrace.steps)) {
+      for (const rawStep of persistedTrace.steps as PersistedReasoningTraceStepRaw[]) {
+        if (!rawStep || typeof rawStep !== "object") continue
+        if (typeof rawStep.stepKey !== "string") continue
+        if (typeof rawStep.label !== "string") continue
+        if (typeof rawStep.status !== "string") continue
+        if (!REASONING_STATUS_SET.has(rawStep.status as ReasoningTraceStatus)) continue
+
+        const progress =
+          typeof rawStep.progress === "number" && Number.isFinite(rawStep.progress)
+            ? Math.max(0, Math.min(100, Math.round(rawStep.progress)))
+            : 0
+        const parsedMeta = parseReasoningMeta(rawStep.meta)
+
+        byStepKey.set(rawStep.stepKey, {
+          traceId: uiMessage.id,
+          stepKey: rawStep.stepKey,
+          label: rawStep.label,
+          status: rawStep.status as ReasoningTraceStatus,
+          progress,
+          ...(typeof rawStep.ts === "number" && Number.isFinite(rawStep.ts) ? { ts: rawStep.ts } : {}),
+          ...(parsedMeta ? { meta: parsedMeta } : {}),
+        })
+      }
+    }
   }
 
   const ordered = REASONING_STEP_ORDER
@@ -172,6 +229,40 @@ function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] 
     .filter((step): step is ReasoningTraceStep => Boolean(step))
 
   return ordered
+}
+
+function extractReasoningHeadline(uiMessage: UIMessage, steps: ReasoningTraceStep[]): string | null {
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (dataPart.type !== "data-reasoning-headline") continue
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    const data = dataPart.data as { text?: unknown }
+    if (typeof data.text === "string" && data.text.trim()) {
+      return data.text.trim()
+    }
+  }
+
+  const persistedTrace = (uiMessage as unknown as { reasoningTrace?: PersistedReasoningTraceRaw }).reasoningTrace
+  if (persistedTrace && typeof persistedTrace.headline === "string" && persistedTrace.headline.trim()) {
+    return persistedTrace.headline.trim()
+  }
+
+  if (steps.length === 0) return null
+
+  const running = steps.find((step) => step.status === "running")
+  if (running) return `Sedang ${lowerFirst(running.label)}...`
+
+  const errored = steps.find((step) => step.status === "error")
+  if (errored) return `Terjadi kendala saat ${lowerFirst(errored.label)}.`
+
+  return "Selesai menyusun jawaban."
+}
+
+function lowerFirst(input: string) {
+  if (!input) return input
+  return input.charAt(0).toLowerCase() + input.slice(1)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -409,15 +500,52 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       historyMessages &&
       syncedConversationRef.current !== conversationId
     ) {
-      const mappedMessages = historyMessages.map(msg => ({
-        id: msg._id,
-        role: msg.role as "user" | "assistant" | "system" | "data",
-        content: msg.content,
-        parts: [{ type: 'text', text: msg.content } as const],
-        annotations: msg.fileIds ? [{ type: 'file_ids', fileIds: msg.fileIds }] : undefined,
+      const mappedMessages = historyMessages.map((msg) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sources: (msg as any).sources,
-      })) as unknown as UIMessage[]
+        const rawReasoningTrace = (msg as any).reasoningTrace as PersistedReasoningTraceRaw | undefined
+        const reasoningTrace =
+          rawReasoningTrace &&
+          typeof rawReasoningTrace === "object" &&
+          Array.isArray(rawReasoningTrace.steps)
+            ? rawReasoningTrace
+            : undefined
+
+        const traceId = `persisted-${msg._id}`
+        const persistedTraceParts = reasoningTrace
+          ? (reasoningTrace.steps as PersistedReasoningTraceStepRaw[])
+              .filter((step) => step && typeof step === "object")
+              .map((step) => ({
+                type: "data-reasoning-trace",
+                id: `${traceId}-${typeof step.stepKey === "string" ? step.stepKey : "step"}`,
+                data: {
+                  traceId,
+                  stepKey: typeof step.stepKey === "string" ? step.stepKey : "unknown-step",
+                  label: typeof step.label === "string" ? step.label : "Langkah reasoning",
+                  status:
+                    typeof step.status === "string" && REASONING_STATUS_SET.has(step.status as ReasoningTraceStatus)
+                      ? step.status
+                      : "pending",
+                  progress:
+                    typeof step.progress === "number" && Number.isFinite(step.progress)
+                      ? Math.max(0, Math.min(100, Math.round(step.progress)))
+                      : 0,
+                  ...(typeof step.ts === "number" && Number.isFinite(step.ts) ? { ts: step.ts } : {}),
+                  ...(step.meta && typeof step.meta === "object" ? { meta: step.meta } : {}),
+                },
+              }))
+          : []
+
+        return {
+          id: msg._id,
+          role: msg.role as "user" | "assistant" | "system" | "data",
+          content: msg.content,
+          parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts],
+          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds }] : undefined,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sources: (msg as any).sources,
+          ...(reasoningTrace ? { reasoningTrace } : {}),
+        }
+      }) as unknown as UIMessage[]
 
       setMessages(mappedMessages)
       syncedConversationRef.current = conversationId
@@ -430,12 +558,24 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
-  const activeReasoningTraceSteps = useMemo(() => {
-    if (!processUi.visible) return []
-    const lastAssistantMessage = [...messages].reverse().find((msg) => msg.role === "assistant")
-    if (!lastAssistantMessage) return []
-    return extractReasoningTraceSteps(lastAssistantMessage)
-  }, [messages, processUi.visible])
+  const activeReasoningState = useMemo(() => {
+    const assistants = [...messages].reverse().filter((msg) => msg.role === "assistant")
+    for (const assistant of assistants) {
+      const steps = extractReasoningTraceSteps(assistant)
+      const headline = extractReasoningHeadline(assistant, steps)
+      if (steps.length > 0 || headline) {
+        return {
+          steps,
+          headline,
+        }
+      }
+    }
+
+    return {
+      steps: [] as ReasoningTraceStep[],
+      headline: null as string | null,
+    }
+  }, [messages])
 
   const clearProcessTimers = useCallback(() => {
     if (processIntervalRef.current !== null) {
@@ -459,7 +599,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         visible: true,
         status: "submitted",
         progress: 8,
-        message: "Menyiapkan respons...",
+        message: "Model mulai memproses...",
       })
     } else if (status === "streaming") {
       clearProcessTimers()
@@ -467,7 +607,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         visible: true,
         status: "streaming",
         progress: Math.max(prev.progress, 16),
-        message: "Agen menyusun jawaban...",
+        message: "Model sedang memproses...",
       }))
       processIntervalRef.current = window.setInterval(() => {
         setProcessUi((prev) => {
@@ -1077,7 +1217,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           status={processUi.status}
           progress={processUi.progress}
           message={processUi.message}
-          reasoningSteps={activeReasoningTraceSteps}
+          reasoningSteps={activeReasoningState.steps}
+          reasoningHeadline={activeReasoningState.headline}
         />
 
         {/* Mobile Paper Progress Bar */}
