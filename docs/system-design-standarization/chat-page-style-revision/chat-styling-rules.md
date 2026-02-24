@@ -1,7 +1,7 @@
 # Chat Page Styling Rules
 
 > Dokumen justifikasi aturan tegas untuk seluruh komponen dalam `[data-chat-scope]`.
-> Disusun dari hikmah koreksi mikro visual QA session 23–24 Feb 2026.
+> Disusun dari hikmah koreksi mikro visual QA session 23–24 Feb 2026 + mobile redesign session 24 Feb 2026.
 > Digunakan sebagai checklist deteksi anomali dan panduan implementasi.
 
 ## 1. Token Architecture
@@ -290,6 +290,18 @@ grep -n "oklch(0 0 0)" src/app/globals-new.css
 
 # 9. Selection/hover border pakai --chat-primary (harus --chat-border)
 grep -rn "chat-primary" src/components/chat/ --include="*.tsx" | grep "border-\[color"
+
+# 10. Sheet/Portal tanpa data-chat-scope (mobile token leak)
+grep -rn "SheetContent" src/components/chat/ --include="*.tsx" | grep -v "data-chat-scope"
+
+# 11. Card-style per-item di conversation list (harus flat)
+grep -rn "rounded-action\|border-transparent\|shadow-\[inset" src/components/chat/sidebar/ --include="*.tsx"
+
+# 12. font-mono untuk judul (harus font-sans)
+grep -rn "font-mono.*truncate\|font-mono.*title\|font-mono.*conv\.title" src/components/chat/ --include="*.tsx"
+
+# 13. hover: state di mobile-only komponen (harus active:)
+grep -rn "hover:bg-\|hover:text-\|hover:opacity" src/components/chat/ --include="*.tsx" | grep -v "md:\|lg:\|hidden"
 ```
 
 ### Setiap Temuan Harus Dijawab:
@@ -303,15 +315,147 @@ grep -rn "chat-primary" src/components/chat/ --include="*.tsx" | grep "border-\[
 
 ---
 
-## 7. File Reference
+## 7. Mobile Adaptation Rules
+
+> Aturan khusus untuk komponen mobile di dalam `[data-chat-scope]`.
+> Prinsip utama: **Mobile adalah turunan desktop, bukan desain terpisah.**
+
+### 7.1 Prinsip Derivasi
+
+Mobile sidebar, landing page, dan semua komponen chat mobile **HARUS** merupakan adaptasi visual dari desktop.
+Bukan desain baru. Bukan "web yang di-mobile-kan". Tapi desain desktop yang di-app-kan.
+
+**Proses desain mobile:**
+1. Baca kode desktop komponen yang sama
+2. Identifikasi token, font, spacing, layout yang dipakai desktop
+3. Adaptasi ke mobile: touch target lebih besar, `active:` ganti `hover:`, layout single-column
+4. JANGAN mengarang elemen, warna, atau layout yang tidak ada di desktop
+
+**DILARANG:**
+- Menambah border/rounded/shadow per-item yang tidak ada di desktop
+- Menggunakan font berbeda dari desktop (e.g. mono untuk judul padahal desktop pakai sans)
+- Membuat layout card-based ketika desktop flat list
+- Menambah elemen dekoratif (branding, tagline) yang tidak ada di desktop
+
+### 7.2 Sheet/Portal Token Scope
+
+Radix UI Sheet (dan semua Portal-based component) render di `document.body` level — **di luar** `data-chat-scope` div di `chat/layout.tsx`.
+
+**WAJIB:** Tambahkan `data-chat-scope=""` pada `SheetContent` atau container Portal manapun yang membutuhkan `--chat-*` tokens.
+
+```tsx
+// BENAR
+<SheetContent data-chat-scope="">
+
+// SALAH — tokens fallback ke globals.css
+<SheetContent>
+```
+
+**Tanpa ini:** Semua `var(--chat-*)` gagal resolve, komponen mengambil dari `globals.css` (e.g. `--primary` = amber, bukan `--chat-sidebar-primary` = neutral).
+
+### 7.3 Font Rules (Sidebar)
+
+| Elemen | Font | Class |
+|--------|------|-------|
+| Judul percakapan | Geist Sans | `font-sans font-medium text-xs` |
+| Timestamp | Geist Mono | `font-mono text-[11px]` |
+| Section label (RIWAYAT) | Geist Mono | `font-mono font-bold text-[10px] uppercase tracking-widest` |
+| Button label | Geist Sans | `font-sans font-medium text-sm` |
+| Tab label (mobile) | Geist Mono | `font-mono font-bold text-[10px] uppercase tracking-widest` |
+
+**DILARANG:**
+- `font-mono` untuk judul percakapan
+- `font-sans` untuk timestamp atau angka
+- Mengambil font class dari `globals.css` token (e.g. `text-interface`, `text-narrative`) — gunakan Tailwind langsung
+
+### 7.4 Flat List Pattern (Conversation Items)
+
+Desktop conversation list menggunakan flat list tanpa dekorasi per-item.
+
+**BENAR (ikuti desktop):**
+```tsx
+const itemClasses = cn(
+  "group flex w-full items-center px-4 py-3.5 text-left transition-colors duration-150",
+  isActive
+    ? "bg-[var(--chat-accent)]"
+    : "active:bg-[var(--chat-sidebar-accent)]"
+)
+```
+
+**SALAH (jangan buat card-based):**
+```tsx
+// DILARANG — border, rounded, shadow per-item
+"mx-1 my-0.5 rounded-action border border-transparent"
+"shadow-[inset_0_1px_0_var(--chat-border)]"
+```
+
+### 7.5 Touch Interaction
+
+Mobile menggunakan `active:` state, bukan `hover:`.
+
+| Desktop | Mobile |
+|---------|--------|
+| `hover:bg-[var(--chat-sidebar-accent)]` | `active:bg-[var(--chat-sidebar-accent)]` |
+| `hover:text-[var(--chat-foreground)]` | `active:text-[var(--chat-sidebar-foreground)]` |
+| `hover:opacity-90` | ❌ DILARANG — gunakan `active:bg-*` |
+
+`transition-colors duration-150` tetap dipakai di mobile untuk feedback visual halus.
+
+### 7.6 Button Sizing (Sidebar)
+
+```
+Container: px-3 pt-5 pb-2.5
+Button: h-9, rounded-action, border border-[color:var(--chat-sidebar-border)]
+Background: bg-[var(--chat-sidebar-primary)]
+Text: text-[var(--chat-sidebar-primary-foreground)]
+Active: active:bg-[var(--chat-sidebar-accent)]
+```
+
+`pt-5` memberikan jarak yang cukup antara mobile tabs dan button.
+Jangan kurangi — jarak yang sempit membuat UI terasa sesak.
+
+### 7.7 Mobile Tab Bar (Pengganti ActivityBar)
+
+Desktop menggunakan ActivityBar vertikal. Mobile menggunakan horizontal tabs di atas sidebar.
+
+```
+Container: flex, border-b, md:hidden
+Tab: flex-1, py-3, text-[10px] font-mono font-bold uppercase tracking-widest
+Active: text-[var(--chat-sidebar-foreground)], border-b-2 border-[color:var(--chat-sidebar-primary)]
+Inactive: text-[var(--chat-muted-foreground)], active:text-[var(--chat-sidebar-foreground)]
+```
+
+### 7.8 Globals.css vs Globals-new.css
+
+| Scope | File | Tokens |
+|-------|------|--------|
+| Chat page (`/chat/*`) | `globals-new.css` | `--chat-*` via `[data-chat-scope]` |
+| Marketing, admin, auth | `globals.css` | `--primary`, `--background`, dll |
+
+**DILARANG** menggunakan `globals.css` tokens di dalam komponen chat:
+- `--primary` (amber) — gunakan `--chat-primary` atau `--chat-sidebar-primary`
+- `--background` — gunakan `--chat-background`
+- `--foreground` — gunakan `--chat-foreground`
+- `--muted` — gunakan `--chat-muted`
+
+Jika button berwarna amber/orange di mobile sidebar, **pasti** token bocor ke `globals.css` karena `data-chat-scope` tidak terpasang.
+
+---
+
+## 8. File Reference
 
 | File | Peran |
 |------|-------|
-| `src/app/globals-new.css` | Satu sumber kebenaran token warna |
-| `src/app/globals.css` | Global app tokens (admin, marketing) — jangan pakai di chat |
+| `src/app/globals-new.css` | Satu sumber kebenaran token warna `--chat-*` |
+| `src/app/globals.css` | Global app tokens (admin, marketing) — JANGAN pakai di chat |
 | `src/app/chat/layout.tsx` | `data-chat-scope` attribute boundary |
+| `src/components/chat/layout/ChatLayout.tsx` | Grid orchestrator + mobile Sheet (harus ada `data-chat-scope` di SheetContent) |
+| `src/components/chat/ChatSidebar.tsx` | Sidebar container (desktop + mobile shared) |
+| `src/components/chat/sidebar/SidebarChatHistory.tsx` | Conversation list — flat list pattern |
+| `src/components/chat/shell/ActivityBar.tsx` | Desktop-only vertical nav (mobile pakai tabs di ChatSidebar) |
 | Dokumen ini | Panduan deteksi + justifikasi aturan |
 
 ---
 
 *Dokumen ini adalah living document. Update setiap kali ditemukan pola anomali baru.*
+*Last updated: 24 Feb 2026 — Added Section 7 (Mobile Adaptation Rules) + grep patterns #10-#13.*

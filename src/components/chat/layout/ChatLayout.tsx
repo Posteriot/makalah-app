@@ -353,7 +353,7 @@ export function ChatLayout({
 
       {/* Mobile Sidebar Sheet */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-        <SheetContent side="left" className="p-0 w-[300px] [&>button]:hidden">
+        <SheetContent side="left" className="p-0 w-[300px] [&>button]:hidden" data-chat-scope="">
           <SheetHeader className="sr-only">
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>

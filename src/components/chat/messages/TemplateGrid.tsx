@@ -23,12 +23,6 @@ const DEFAULT_TEMPLATES: Template[] = [
     chipLabel: "Paper akademik",
     message: "Mari berkolaborasi menyusun paper akademik.",
   },
-  {
-    id: "starter-refrasa",
-    label: "Tolong bantu saya memperbaiki gaya penulisan teks ini.",
-    chipLabel: "Refrasa",
-    message: "Tolong bantu saya memperbaiki gaya penulisan teks ini.",
-  },
 ]
 
 const DEFAULT_HEADING = "Mari berdiskusi!"

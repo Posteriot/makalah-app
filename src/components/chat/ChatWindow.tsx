@@ -586,31 +586,25 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (!conversationId) {
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Mobile: Clean composer-first landing */}
+        {/* Mobile: Same content as desktop, adapted layout */}
         <div className="md:hidden flex-1 flex flex-col">
-          {/* Header: hamburger only, minimal chrome */}
-          <div className="flex items-center justify-between px-4 pt-[env(safe-area-inset-top,0px)]">
+          {/* Header: hamburger for drawer access */}
+          <div className="flex items-center px-3 pt-[env(safe-area-inset-top,0px)]">
             <button
               onClick={onMobileMenuClick}
-              className="p-2.5 -ml-2 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+              className="p-2 -ml-1 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
               aria-label="Menu"
             >
               <Menu className="h-5 w-5" strokeWidth={1.5} />
             </button>
           </div>
-          {/* Center content: brand + chips */}
-          <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-12">
-            <h1 className="font-mono tracking-[0.25em] text-base font-medium text-[var(--chat-foreground)] mb-1.5">
-              M A K A L A H
-            </h1>
-            <p className="font-mono text-[11px] text-[var(--chat-muted-foreground)] mb-10">
-              Asisten penulisan ilmiah
-            </p>
+          {/* Same TemplateGrid as desktop (default variant) */}
+          <div className="flex-1 flex items-center justify-center p-6">
             <TemplateGrid
-              variant="mobile-chips"
               onTemplateSelect={(template) =>
                 void handleStarterPromptClick(template.message)
               }
+              onSidebarLinkClick={handleSidebarLinkClick}
               disabled={isCreatingChat}
             />
           </div>
