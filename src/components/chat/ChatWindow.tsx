@@ -626,7 +626,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <div className="shrink-0 flex items-center justify-between px-3 pt-[env(safe-area-inset-top,0px)]">
             <button
               onClick={onMobileMenuClick}
-              className="p-2 -ml-1 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
               aria-label="Open sidebar"
             >
               <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
@@ -709,7 +709,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <div className="flex items-center justify-between h-11">
             <button
               onClick={onMobileMenuClick}
-              className="p-2 -ml-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+              className="shrink-0 text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
               aria-label="Open sidebar"
             >
               <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
@@ -744,7 +744,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           {/* Hamburger */}
           <button
             onClick={onMobileMenuClick}
-            className="p-2 -ml-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+            className="shrink-0 text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
             aria-label="Open sidebar"
           >
             <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />

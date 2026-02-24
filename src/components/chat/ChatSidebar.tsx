@@ -195,10 +195,10 @@ export function ChatSidebar({
           {/* Mobile: SidebarCollapse to close drawer */}
           <button
             onClick={onCloseMobile}
-            className="md:hidden p-1.5 -mr-1.5 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
+            className="md:hidden text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-150"
             aria-label="Close sidebar"
           >
-            <SidebarCollapse className="h-4 w-4" strokeWidth={1.5} />
+            <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />
           </button>
         </div>
       )}
