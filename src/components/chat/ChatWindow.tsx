@@ -24,6 +24,7 @@ import { QuotaWarningBanner } from "./QuotaWarningBanner"
 import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
 import { MobilePaperSessionsSheet } from "./mobile/MobilePaperSessionsSheet"
 import { MobileProgressBar } from "./mobile/MobileProgressBar"
+import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 interface ChatWindowProps {
@@ -89,6 +90,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [isCreatingChat, setIsCreatingChat] = useState(false)
   const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
   const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
+  const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
+  const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [processUi, setProcessUi] = useState<{
     visible: boolean
     status: ProcessVisualStatus
@@ -127,6 +130,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     approveStage,
     requestRevision,
     markStageAsDirty,
+    rewindToStage,
     getStageStartIndex,
   } = usePaperSession(safeConversationId ?? undefined)
 
@@ -599,6 +603,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             >
               <Menu className="h-5 w-5" strokeWidth={1.5} />
             </button>
+            <span className="flex-1 text-sm font-sans font-medium text-[var(--chat-foreground)]">
+              Makalah
+            </span>
           </div>
           {/* TemplateGrid — scrollable so it shrinks when keyboard opens */}
           <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-6">
@@ -674,7 +681,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             >
               <Menu className="h-5 w-5" strokeWidth={1.5} />
             </button>
-            <span className="flex-1 truncate text-sm font-mono font-medium text-[var(--chat-foreground)]">
+            <span className="flex-1 truncate text-sm font-sans font-medium text-[var(--chat-foreground)]">
               Makalah
             </span>
           </div>
@@ -683,8 +690,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <div className="text-center text-[var(--chat-muted-foreground)]">
             {/* Mechanical Grace: Rose error color */}
             <WarningCircle className="h-12 w-12 mx-auto mb-4 text-[var(--chat-destructive)]" />
-            <p className="mb-2 font-mono">Percakapan tidak ditemukan</p>
-            <p className="text-sm opacity-75 font-mono">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
+            <p className="mb-2 font-sans">Percakapan tidak ditemukan</p>
+            <p className="text-sm opacity-75 font-sans">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
           </div>
         </div>
       </div>
