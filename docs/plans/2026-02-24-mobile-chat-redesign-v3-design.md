@@ -119,7 +119,7 @@ Replaces sidebar Settings link. 1-column card layout rendered within the chat la
 
 All new mobile components follow `chat-styling-rules.md`:
 - `data-chat-scope=""` on all Sheet/AlertDialog portal content
-- `border-[color:var(--chat-border)]` syntax (not bare `border-[var(...)]` without `color:` prefix)
+- Border classes MUST include the `color:` prefix inside arbitrary value brackets (e.g. `[color:var(--token)]`). Omitting it causes Tailwind to misinterpret the value as border-width.
 - `font-sans` for all text (except signal labels: `font-mono` + uppercase + tracking-widest)
 - `active:` not `hover:` for touch interactions
 - No semantic coloring (`--chat-destructive`) on action items
