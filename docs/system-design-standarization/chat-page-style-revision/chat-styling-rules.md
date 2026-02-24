@@ -302,6 +302,12 @@ grep -rn "font-mono.*truncate\|font-mono.*title\|font-mono.*conv\.title" src/com
 
 # 13. hover: state di mobile-only komponen (harus active:)
 grep -rn "hover:bg-\|hover:text-\|hover:opacity" src/components/chat/ --include="*.tsx" | grep -v "md:\|lg:\|hidden"
+
+# 14. Toolbar row terpisah di bawah textarea (harus inline)
+grep -rn "flex-col.*textarea\|flex-col.*px-3.*py-2" src/components/chat/ChatInput.tsx | grep -v "DESKTOP\|hidden md"
+
+# 15. ChatInput tanpa shrink-0 (akan hilang saat keyboard muncul)
+grep -rn "ChatInput" src/components/chat/ChatWindow.tsx | grep -v "shrink-0\|import\|//"
 ```
 
 ### Setiap Temuan Harus Dijawab:
@@ -440,6 +446,115 @@ Inactive: text-[var(--chat-muted-foreground)], active:text-[var(--chat-sidebar-f
 
 Jika button berwarna amber/orange di mobile sidebar, **pasti** token bocor ke `globals.css` karena `data-chat-scope` tidak terpasang.
 
+### 7.9 Mobile ChatInput (3-State)
+
+Mobile ChatInput memiliki 3 state: collapsed, expanded, fullscreen.
+
+**State 1 — Collapsed (idle, tanpa teks):**
+```
+┌─────────────────────────────────────────┐
+│  📎  Kirim percakapan...          ▶     │
+└─────────────────────────────────────────┘
+```
+
+**State 2 — Expanded (sedang mengetik, max 6 baris):**
+```
+┌─────────────────────────────────────────┐
+│  📎  Teks yang diketik...      ⛶  ▶    │
+└─────────────────────────────────────────┘
+```
+
+**State 3 — Fullscreen (overlay fixed untuk teks panjang).**
+
+**ATURAN KRITIS — Inline Layout:**
+
+Semua button (attach, expand, send) **HARUS** inline dengan textarea dalam satu `flex items-end` row.
+
+```tsx
+// BENAR — inline, tidak pernah ter-clip keyboard
+<div className="flex w-full items-end gap-1 rounded-lg border ...">
+  <FileUploadButton />       {/* kiri, self-end */}
+  <textarea className="flex-1" />  {/* tengah, grows */}
+  <div className="flex items-center gap-0.5">  {/* kanan, self-end */}
+    <ExpandButton />
+    <SendButton />
+  </div>
+</div>
+```
+
+```tsx
+// SALAH — toolbar di row terpisah di bawah textarea
+// iOS keyboard akan clip row ini karena berada di luar viewport
+<div className="flex flex-col">
+  <textarea />
+  <div className="flex justify-between mt-1">  {/* ← AKAN TER-CLIP */}
+    <FileUploadButton />
+    <SendButton />
+  </div>
+</div>
+```
+
+**Alasan:** Ketika iOS keyboard muncul, viewport menyusut drastis. Jika toolbar ada di baris terpisah di bawah textarea, `overflow-hidden` pada parent chain akan clip toolbar tersebut — membuat send button dan attach button tidak terlihat.
+
+**Container:**
+```
+Border: rounded-lg (12px), border border-[color:var(--chat-border)]
+Background: bg-[var(--chat-card)]
+Padding: px-2 py-1.5
+Outer wrapper: px-3 py-2, shrink-0
+```
+
+### 7.10 iOS Keyboard Layout Survival
+
+Ketika virtual keyboard iOS muncul, `dvh` menyusut dan konten yang rigid akan ter-clip.
+
+**Aturan parent container:**
+
+| Elemen | Harus | Jangan |
+|--------|-------|--------|
+| ChatInput wrapper | `shrink-0` | `flex-1` (ikut shrink = hilang) |
+| Content area (TemplateGrid, messages) | `flex-1 min-h-0 overflow-y-auto` | `flex-1` tanpa `min-h-0` (rigid, nggak bisa shrink) |
+| Header/nav | `shrink-0` | tanpa shrink-0 (ikut terdorong keluar viewport) |
+
+**Pattern yang benar untuk mobile page:**
+```tsx
+<div className="flex-1 flex flex-col min-h-0">
+  <header className="shrink-0">...</header>
+  <div className="flex-1 min-h-0 overflow-y-auto">
+    {/* Konten yang bisa scroll/shrink saat keyboard muncul */}
+  </div>
+  <ChatInput />  {/* shrink-0: selalu terlihat di atas keyboard */}
+</div>
+```
+
+**DILARANG:**
+- `overflow-hidden` pada container yang memuat ChatInput (pakai `overflow-y-auto` atau `min-h-0`)
+- `flex-1` pada ChatInput wrapper (harus tetap compact, tidak ikut shrink)
+- Menaruh button/toolbar di row terpisah di bawah textarea (lihat 7.9)
+
+### 7.11 Radius Scale (Sumber Kebenaran: Kode)
+
+Nilai radius aktual di `globals.css`, **BUKAN** dari dokumentasi CLAUDE.md (yang bisa mismatch):
+
+| Variable | Value | Tailwind Class |
+|----------|-------|----------------|
+| `--radius-xs` | 2px | `rounded-xs` |
+| `--radius-sm` | 4px | `rounded-sm` |
+| `--radius-s-md` | 6px | — |
+| `--radius-md` | 8px | `rounded-md` |
+| `--radius-lg` | 12px | `rounded-lg` |
+| `--radius-xl` | 16px | `rounded-xl` |
+
+**Custom utility classes:**
+
+| Class | Variable | Value |
+|-------|----------|-------|
+| `rounded-action` | `--radius-sm` | **4px** |
+| `rounded-badge` | `--radius-s-md` | **6px** |
+| `rounded-shell` | `--radius-xl` | **16px** |
+
+**PENTING:** Jangan percaya nilai pixel di dokumentasi tanpa verifikasi ke `globals.css`. Selalu cek kode sebagai sumber kebenaran.
+
 ---
 
 ## 8. File Reference
@@ -453,9 +568,10 @@ Jika button berwarna amber/orange di mobile sidebar, **pasti** token bocor ke `g
 | `src/components/chat/ChatSidebar.tsx` | Sidebar container (desktop + mobile shared) |
 | `src/components/chat/sidebar/SidebarChatHistory.tsx` | Conversation list — flat list pattern |
 | `src/components/chat/shell/ActivityBar.tsx` | Desktop-only vertical nav (mobile pakai tabs di ChatSidebar) |
+| `src/components/chat/ChatInput.tsx` | 3-state mobile input (collapsed/expanded/fullscreen) + desktop input |
 | Dokumen ini | Panduan deteksi + justifikasi aturan |
 
 ---
 
 *Dokumen ini adalah living document. Update setiap kali ditemukan pola anomali baru.*
-*Last updated: 24 Feb 2026 — Added Section 7 (Mobile Adaptation Rules) + grep patterns #10-#13.*
+*Last updated: 24 Feb 2026 — Added 7.9 (ChatInput 3-state), 7.10 (iOS Keyboard Survival), 7.11 (Radius Scale), grep #14-#15.*
