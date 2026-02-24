@@ -879,6 +879,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               initialTopMostItemIndex={messages.length - 1}
               style={{ height: "100%" }}
               components={{
+                Header: () => <div className="pt-4" />,
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}

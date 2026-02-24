@@ -188,7 +188,7 @@ export function ChatSidebar({
             <span className="text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
               Riwayat
             </span>
-            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-[var(--chat-success)] text-[10px] font-mono font-bold text-[var(--chat-background)]">
+            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-sm bg-[var(--chat-success)] text-[10px] font-mono font-bold text-[var(--chat-background)]">
               {conversations.length}
             </span>
           </div>
