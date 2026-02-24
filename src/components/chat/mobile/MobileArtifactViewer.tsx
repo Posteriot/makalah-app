@@ -15,6 +15,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { cn } from "@/lib/utils"
+import { MobileRefrasaIssuesSheet } from "./MobileRefrasaIssuesSheet"
 
 interface MobileArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
@@ -327,6 +328,13 @@ export function MobileArtifactViewer({
           <ArtifactViewer ref={viewerRef} artifactId={artifactId} />
         )}
       </div>
+
+      {/* Issues bottom sheet */}
+      <MobileRefrasaIssuesSheet
+        open={showIssuesSheet}
+        onOpenChange={setShowIssuesSheet}
+        issues={issues}
+      />
     </div>
   )
 }
