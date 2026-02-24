@@ -4,11 +4,12 @@ import { useChat } from "@ai-sdk/react"
 import { UIMessage, DefaultChatTransport } from "ai"
 import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { Menu, WarningCircle, Refresh, ChatPlusIn, FastArrowRightSquare, NavArrowDown } from "iconoir-react"
+import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowRightSquare, NavArrowDown } from "iconoir-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -625,13 +626,24 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             <button
               onClick={onMobileMenuClick}
               className="p-2 -ml-1 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-              aria-label="Menu"
+              aria-label="Open sidebar"
             >
-              <Menu className="h-5 w-5" strokeWidth={1.5} />
+              <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
             </button>
-            <span className="flex-1 text-sm font-sans font-medium text-[var(--chat-foreground)]">
-              Makalah
-            </span>
+            <Image
+              src="/logo/makalah_logo_light.svg"
+              alt="Makalah"
+              width={20}
+              height={20}
+              className="hidden dark:block"
+            />
+            <Image
+              src="/logo/makalah_logo_dark.svg"
+              alt="Makalah"
+              width={20}
+              height={20}
+              className="block dark:hidden"
+            />
           </div>
           {/* TemplateGrid — scrollable so it shrinks when keyboard opens */}
           <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-6">
@@ -703,13 +715,24 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             <button
               onClick={onMobileMenuClick}
               className="p-2 -ml-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-              aria-label="Menu"
+              aria-label="Open sidebar"
             >
-              <Menu className="h-5 w-5" strokeWidth={1.5} />
+              <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
             </button>
-            <span className="flex-1 truncate text-sm font-sans font-medium text-[var(--chat-foreground)]">
-              Makalah
-            </span>
+            <Image
+              src="/logo/makalah_logo_light.svg"
+              alt="Makalah"
+              width={20}
+              height={20}
+              className="hidden dark:block"
+            />
+            <Image
+              src="/logo/makalah_logo_dark.svg"
+              alt="Makalah"
+              width={20}
+              height={20}
+              className="block dark:hidden"
+            />
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
@@ -733,9 +756,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <button
             onClick={onMobileMenuClick}
             className="p-2 -ml-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-            aria-label="Menu"
+            aria-label="Open sidebar"
           >
-            <Menu className="h-5 w-5" strokeWidth={1.5} />
+            <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
           </button>
 
           {/* Tappable title — opens Edit/Delete sheet */}

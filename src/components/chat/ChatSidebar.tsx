@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft, Settings } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, Settings, SidebarCollapse } from "iconoir-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -181,10 +181,25 @@ export function ChatSidebar({
         </div>
       )}
 
-      {/* Section label — same as desktop: mono, uppercase, tracking-widest, --chat-muted-foreground */}
+      {/* Section header — Riwayat label with count badge */}
       {activePanel === "chat-history" && (
-        <div className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
-          Riwayat <span className="ml-2 font-mono">{conversations.length}</span>
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[var(--chat-sidebar)]">
+          <div className="flex items-center gap-2.5">
+            <span className="text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
+              Riwayat
+            </span>
+            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-[var(--chat-success)] text-[10px] font-mono font-bold text-[var(--chat-background)]">
+              {conversations.length}
+            </span>
+          </div>
+          {/* Mobile: SidebarCollapse to close drawer */}
+          <button
+            onClick={onCloseMobile}
+            className="md:hidden p-1.5 -mr-1.5 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
+            aria-label="Close sidebar"
+          >
+            <SidebarCollapse className="h-4 w-4" strokeWidth={1.5} />
+          </button>
         </div>
       )}
 

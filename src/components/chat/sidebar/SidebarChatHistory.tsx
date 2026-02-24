@@ -212,8 +212,8 @@ export function SidebarChatHistory({
             const itemClasses = cn(
               "group flex w-full items-center px-4 py-3.5 text-left transition-colors duration-150",
               currentConversationId === conv._id
-                ? "bg-[var(--chat-accent)]"
-                : "active:bg-[var(--chat-sidebar-accent)]"
+                ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
+                : "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)] active:bg-[var(--chat-sidebar-accent)]"
             )
 
             const renderContent = () => (
