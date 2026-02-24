@@ -4,7 +4,6 @@ import { useChat } from "@ai-sdk/react"
 import { UIMessage, DefaultChatTransport } from "ai"
 import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
@@ -621,7 +620,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile: Same content as desktop, adapted layout */}
         <div className="md:hidden flex-1 flex flex-col min-h-0">
-          {/* Header: hamburger for drawer access */}
+          {/* Header: sidebar expand only, no branding (body has logo+text) */}
           <div className="shrink-0 flex items-center px-3 pt-[env(safe-area-inset-top,0px)]">
             <button
               onClick={onMobileMenuClick}
@@ -630,20 +629,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             >
               <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
             </button>
-            <Image
-              src="/logo/makalah_logo_light.svg"
-              alt="Makalah"
-              width={20}
-              height={20}
-              className="hidden dark:block"
-            />
-            <Image
-              src="/logo/makalah_logo_dark.svg"
-              alt="Makalah"
-              width={20}
-              height={20}
-              className="block dark:hidden"
-            />
           </div>
           {/* TemplateGrid — scrollable so it shrinks when keyboard opens */}
           <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-6">
@@ -719,20 +704,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             >
               <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
             </button>
-            <Image
-              src="/logo/makalah_logo_light.svg"
-              alt="Makalah"
-              width={20}
-              height={20}
-              className="hidden dark:block"
-            />
-            <Image
-              src="/logo/makalah_logo_dark.svg"
-              alt="Makalah"
-              width={20}
-              height={20}
-              className="block dark:hidden"
-            />
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
