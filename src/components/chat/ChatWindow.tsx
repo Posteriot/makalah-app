@@ -8,7 +8,8 @@ import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowRightSquare, NavArrowDown } from "iconoir-react"
+import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowRightSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
+import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -111,6 +112,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const starterPromptAttemptedForConversationRef = useRef<string | null>(null)
 
   const { data: session } = useSession()
+  const { resolvedTheme, setTheme } = useTheme()
   const userId = useQuery(api.chatHelpers.getUserId, session?.user?.id ? { betterAuthUserId: session.user.id } : "skip")
   const createConversation = useMutation(api.conversations.createConversation)
 
@@ -620,14 +622,22 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile: Same content as desktop, adapted layout */}
         <div className="md:hidden flex-1 flex flex-col min-h-0">
-          {/* Header: sidebar expand only, no branding (body has logo+text) */}
-          <div className="shrink-0 flex items-center px-3 pt-[env(safe-area-inset-top,0px)]">
+          {/* Header: sidebar expand + theme toggle */}
+          <div className="shrink-0 flex items-center justify-between px-3 pt-[env(safe-area-inset-top,0px)]">
             <button
               onClick={onMobileMenuClick}
               className="p-2 -ml-1 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
               aria-label="Open sidebar"
             >
               <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="p-2 -mr-1 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+              aria-label="Toggle theme"
+            >
+              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
             </button>
           </div>
           {/* TemplateGrid — scrollable so it shrinks when keyboard opens */}
@@ -696,13 +706,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     return (
       <div className="flex-1 flex flex-col h-full">
         <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
-          <div className="flex items-center gap-2 h-11">
+          <div className="flex items-center justify-between h-11">
             <button
               onClick={onMobileMenuClick}
               className="p-2 -ml-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
               aria-label="Open sidebar"
             >
               <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="p-2 -mr-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+              aria-label="Toggle theme"
+            >
+              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
             </button>
           </div>
         </div>
@@ -741,6 +759,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               {conversation?.title || "Percakapan baru"}
             </span>
             <NavArrowDown className="h-3 w-3 shrink-0 text-[var(--chat-muted-foreground)]" strokeWidth={1.5} />
+          </button>
+
+          {/* Theme toggle */}
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="p-2 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+            aria-label="Toggle theme"
+          >
+            <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+            <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
           </button>
 
           {/* New chat */}
