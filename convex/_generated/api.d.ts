@@ -74,6 +74,7 @@ import type * as migrations_updateToGPT4oForToolCalling from "../migrations/upda
 import type * as migrations_upsertDocumentationLanggananTierPembayaranS11 from "../migrations/upsertDocumentationLanggananTierPembayaranS11.js";
 import type * as migrations_upsertDocumentationLegalS7S8S10 from "../migrations/upsertDocumentationLegalS7S8S10.js";
 import type * as migrations_upsertDocumentationRefrasaS9 from "../migrations/upsertDocumentationRefrasaS9.js";
+import type * as migrations_upsertPrivacyPolicyGoogleOAuth from "../migrations/upsertPrivacyPolicyGoogleOAuth.js";
 import type * as pageContent from "../pageContent.js";
 import type * as paperSessions from "../paperSessions.js";
 import type * as paperSessions_constants from "../paperSessions/constants.js";
@@ -165,6 +166,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/upsertDocumentationLanggananTierPembayaranS11": typeof migrations_upsertDocumentationLanggananTierPembayaranS11;
   "migrations/upsertDocumentationLegalS7S8S10": typeof migrations_upsertDocumentationLegalS7S8S10;
   "migrations/upsertDocumentationRefrasaS9": typeof migrations_upsertDocumentationRefrasaS9;
+  "migrations/upsertPrivacyPolicyGoogleOAuth": typeof migrations_upsertPrivacyPolicyGoogleOAuth;
   pageContent: typeof pageContent;
   paperSessions: typeof paperSessions;
   "paperSessions/constants": typeof paperSessions_constants;

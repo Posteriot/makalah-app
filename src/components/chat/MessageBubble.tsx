@@ -50,6 +50,14 @@ type ArtifactSignal = {
     version?: number
 }
 
+/** Persisted artifact from Convex (for post-refresh signal reconstruction) */
+interface PersistedArtifact {
+    _id: Id<"artifacts">
+    title: string
+    version: number
+    parentId?: Id<"artifacts">
+}
+
 interface MessageBubbleProps {
     message: UIMessage
     onEdit?: (messageId: string, newContent: string) => void
@@ -62,6 +70,8 @@ interface MessageBubbleProps {
     currentStageStartIndex?: number
     allMessages?: PermissionMessage[]
     stageData?: Record<string, StageDataEntry>
+    /** Persisted artifacts matched to this message (survives page refresh) */
+    persistedArtifacts?: PersistedArtifact[]
 }
 
 export function MessageBubble({
@@ -74,6 +84,7 @@ export function MessageBubble({
     currentStageStartIndex = 0,
     allMessages = [],
     stageData,
+    persistedArtifacts,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -360,7 +371,16 @@ export function MessageBubble({
     const fileIds = fileAnnotations?.fileIds ?? []
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
-    const artifactSignals = extractArtifactSignals(message)
+    // Live signals from streaming take priority; persisted artifacts are fallback after refresh
+    const liveArtifactSignals = extractArtifactSignals(message)
+    const artifactSignals: ArtifactSignal[] = liveArtifactSignals.length > 0
+        ? liveArtifactSignals
+        : (persistedArtifacts ?? []).map((a) => ({
+            artifactId: a._id,
+            title: a.title,
+            status: a.parentId ? "updated" as const : "created" as const,
+            ...(a.version > 1 ? { version: a.version } : {}),
+        }))
     const inProgressTools = extractInProgressTools(message)
     const dedupedInProgressTools = inProgressTools.filter((tool, index, allTools) => {
         const normalizedErrorText = (tool.errorText ?? "").trim().toLowerCase() || "__no_error__"
@@ -622,11 +642,11 @@ export function MessageBubble({
                             {hasArtifactSignals && (
                                 <section className="space-y-2" aria-label="Hasil artifak">
                                     <div className="flex items-center gap-2">
-                                        <span className="rounded-badge border border-[color:var(--chat-primary)] bg-[var(--chat-accent)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-primary)]">
-                                            Hasil Kerja
+                                        <span className="shrink-0 whitespace-nowrap rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-accent)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-primary)]">
+                                            Hasil
                                         </span>
                                         <p className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-                                            Buka artifak untuk lanjut edit atau revisi.
+                                            Buka artifak untuk baca atau revisi.
                                         </p>
                                     </div>
                                     {artifactSignals.map((artifact) => (

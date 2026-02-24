@@ -147,20 +147,20 @@ export function ChatSidebar({
         </div>
       )}
 
-      {/* New Chat button — same tokens as desktop: --chat-sidebar-primary bg, --chat-sidebar-border border */}
+      {/* New Chat button — outline style matching chat toolbar buttons */}
       {activePanel === "chat-history" && (
-        <div className="hidden md:block shrink-0 px-3 pt-5 pb-2.5">
+        <div className="hidden md:block shrink-0 px-2 pt-3 pb-2.5">
           <Button
             onClick={() => {
               onNewChat()
               onCloseMobile?.()
             }}
             className={cn(
-              "h-9 w-full items-center justify-center gap-2 rounded-action",
+              "h-10 w-full items-center justify-center gap-2 rounded-action",
               "border border-[color:var(--chat-sidebar-border)]",
-              "bg-[var(--chat-sidebar-primary)] text-[var(--chat-sidebar-primary-foreground)]",
+              "bg-[var(--chat-sidebar)] text-[var(--chat-sidebar-foreground)]",
               "px-4 py-0 text-sm font-sans font-medium leading-none",
-              "active:bg-[var(--chat-sidebar-accent)] transition-colors duration-150"
+              "hover:bg-[var(--chat-sidebar-accent)] active:bg-[var(--chat-sidebar-accent)] transition-colors duration-150"
             )}
             aria-label="Start new chat"
             aria-busy={isCreating}

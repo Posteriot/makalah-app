@@ -181,11 +181,11 @@
   --chat-ring: oklch(0.588 0.158 241.966);           /* sky-600 (focus ring) */
 
   /* Sidebar */
-  --chat-sidebar: oklch(0.129 0 0);                  /* neutral-950 — activity bar */
+  --chat-sidebar: oklch(0.279 0 0);                  /* neutral-800 — matches active item */
   --chat-sidebar-foreground: oklch(0.968 0 0);       /* neutral-100 */
   --chat-sidebar-primary: oklch(0.968 0 0);          /* neutral-100 */
   --chat-sidebar-primary-foreground: oklch(0.279 0 0); /* neutral-800 */
-  --chat-sidebar-accent: oklch(0.279 0 0);           /* neutral-800 */
+  --chat-sidebar-accent: oklch(0.321 0 0);           /* between neutral-700 and neutral-800 */
   --chat-sidebar-accent-foreground: oklch(0.984 0 0); /* neutral-50 */
   --chat-sidebar-border: oklch(0.372 0 0);           /* neutral-700 */
   --chat-sidebar-ring: oklch(0.588 0.158 241.966);  /* sky-600 (focus ring) */

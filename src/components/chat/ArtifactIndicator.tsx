@@ -37,12 +37,7 @@ export function ArtifactIndicator({
     >
       <div className="flex items-start gap-3">
         <span
-          className={cn(
-            "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-action border",
-            isUpdated
-              ? "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
-              : "border-[color:var(--chat-info)] bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
-          )}
+          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-card)] text-[var(--chat-muted-foreground)]"
           aria-hidden="true"
         >
           {isUpdated ? <EditPencil className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
@@ -50,15 +45,15 @@ export function ArtifactIndicator({
 
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-badge border border-[color:var(--chat-primary)] bg-[var(--chat-primary)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-primary-foreground)]">
-              Hasil Artifak
+            <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-card)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
+              Artifak
             </span>
             <span
               className={cn(
                 "rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
                 isUpdated
-                  ? "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
-                  : "border-[color:var(--chat-success)] bg-[var(--chat-success)] text-[var(--chat-success-foreground)]"
+                  ? "border-[color:var(--chat-border)] bg-[var(--chat-card)] text-[var(--chat-muted-foreground)]"
+                  : "border-[color:var(--chat-success)] bg-[var(--chat-card)] text-[var(--chat-success)]"
               )}
             >
               {isUpdated ? "Revisi" : "Baru"}
