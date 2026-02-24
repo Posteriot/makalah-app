@@ -15,6 +15,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { cn } from "@/lib/utils"
+import type { RefrasaIssue } from "@/lib/refrasa/types"
 import { MobileRefrasaIssuesSheet } from "./MobileRefrasaIssuesSheet"
 
 interface MobileArtifactViewerProps {
@@ -59,7 +60,7 @@ export function MobileArtifactViewer({
   )
 
   const issues = artifact?.refrasaIssues
-    ? (artifact.refrasaIssues as Array<{ category: string; type: string; message: string; severity: string; suggestion?: string }>)
+    ? (artifact.refrasaIssues as RefrasaIssue[])
     : []
 
   const handleApply = async () => {

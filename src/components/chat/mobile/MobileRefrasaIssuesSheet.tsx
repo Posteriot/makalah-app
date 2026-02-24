@@ -14,14 +14,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-
-interface RefrasaIssue {
-  category: string
-  type: string
-  message: string
-  severity: string
-  suggestion?: string
-}
+import type { RefrasaIssue } from "@/lib/refrasa/types"
 
 interface MobileRefrasaIssuesSheetProps {
   open: boolean
