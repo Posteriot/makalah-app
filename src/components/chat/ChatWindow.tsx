@@ -592,13 +592,25 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
         {/* Empty State Content — fills available space above ChatInput */}
         <div className="flex-1 flex items-center justify-center p-6">
-          <TemplateGrid
-            onTemplateSelect={(template) =>
-              void handleStarterPromptClick(template.message)
-            }
-            onSidebarLinkClick={handleSidebarLinkClick}
-            disabled={isCreatingChat}
-          />
+          <div className="hidden md:block">
+            <TemplateGrid
+              onTemplateSelect={(template) =>
+                void handleStarterPromptClick(template.message)
+              }
+              onSidebarLinkClick={handleSidebarLinkClick}
+              disabled={isCreatingChat}
+              strictCmsMode
+            />
+          </div>
+          <div className="md:hidden">
+            <TemplateGrid
+              onTemplateSelect={(template) =>
+                void handleStarterPromptClick(template.message)
+              }
+              onSidebarLinkClick={handleSidebarLinkClick}
+              disabled={isCreatingChat}
+            />
+          </div>
         </div>
 
         {/* Persistent ChatInput — always visible, even in start state */}
@@ -676,11 +688,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           ) : messages.length === 0 ? (
             // Empty state with horizontal boundary in sync with ChatInput
             <div className="flex flex-col items-center justify-center h-full" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
-              <TemplateGrid
-                onTemplateSelect={handleTemplateSelect}
-                onSidebarLinkClick={handleSidebarLinkClick}
-                disabled={isLoading}
-              />
+              <div className="hidden md:block">
+                <TemplateGrid
+                  onTemplateSelect={handleTemplateSelect}
+                  onSidebarLinkClick={handleSidebarLinkClick}
+                  disabled={isLoading}
+                  strictCmsMode
+                />
+              </div>
+              <div className="md:hidden">
+                <TemplateGrid
+                  onTemplateSelect={handleTemplateSelect}
+                  onSidebarLinkClick={handleSidebarLinkClick}
+                  disabled={isLoading}
+                />
+              </div>
             </div>
           ) : (
             // Messages list

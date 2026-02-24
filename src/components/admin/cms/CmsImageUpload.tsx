@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { Upload, MediaImage } from "iconoir-react"
+import { toast } from "sonner"
 
 type CmsImageUploadProps = {
   currentImageId?: Id<"_storage"> | null
@@ -47,12 +48,41 @@ export function CmsImageUpload({
     try {
       const uploadUrl = await generateUploadUrl({ requestorId: userId })
       const result = await fetch(uploadUrl, {
-        method: "PUT",
+        method: "POST",
         headers: { "Content-Type": file.type },
         body: file,
       })
-      const { storageId } = await result.json()
+
+      if (!result.ok) {
+        const errorBody = await result.text().catch(() => "")
+        throw new Error(
+          errorBody || `Upload gagal (${result.status} ${result.statusText})`
+        )
+      }
+
+      const responseText = await result.text()
+      if (!responseText) {
+        throw new Error("Upload gagal: response kosong dari server.")
+      }
+
+      let payload: { storageId?: Id<"_storage"> }
+      try {
+        payload = JSON.parse(responseText) as { storageId?: Id<"_storage"> }
+      } catch {
+        throw new Error("Upload gagal: response server bukan JSON valid.")
+      }
+
+      const { storageId } = payload
+      if (!storageId) {
+        throw new Error("Upload gagal: storageId tidak ditemukan.")
+      }
+
       onUpload(storageId)
+    } catch (error) {
+      console.error("CMS image upload failed:", error)
+      toast.error(
+        error instanceof Error ? error.message : "Upload gambar gagal."
+      )
     } finally {
       setIsUploading(false)
     }

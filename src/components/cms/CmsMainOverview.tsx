@@ -6,6 +6,7 @@ import type { Id } from "@convex/_generated/dataModel"
 import type { CmsPageId } from "./CmsActivityBar"
 import {
   Home,
+  ChatBubble,
   InfoCircle,
   Book,
   Journal,
@@ -28,6 +29,7 @@ const PAGE_DEFS: Array<{
   group: "content" | "global"
 }> = [
   { page: "home", label: "Home", icon: <Home className="h-4 w-4" strokeWidth={1.5} />, group: "content" },
+  { page: "chat", label: "Chat", icon: <ChatBubble className="h-4 w-4" strokeWidth={1.5} />, group: "content" },
   { page: "about", label: "About", icon: <InfoCircle className="h-4 w-4" strokeWidth={1.5} />, group: "content" },
   { page: "pricing", label: "Pricing", icon: <CreditCard className="h-4 w-4" strokeWidth={1.5} />, group: "content" },
   { page: "documentation", label: "Dokumentasi", icon: <Book className="h-4 w-4" strokeWidth={1.5} />, group: "content" },
@@ -66,6 +68,13 @@ export function CmsMainOverview({ userId, onPageClick }: CmsMainOverviewProps) {
       case "about": {
         const sections = (allPageSections ?? []).filter(
           (s) => s.pageSlug === "about" && s.sectionType !== "page-settings"
+        )
+        const pub = sections.filter((s) => s.isPublished).length
+        return { summary: `${sections.length} sections · ${pub} published`, published: pub, total: sections.length }
+      }
+      case "chat": {
+        const sections = (allPageSections ?? []).filter(
+          (s) => s.pageSlug === "chat"
         )
         const pub = sections.filter((s) => s.isPublished).length
         return { summary: `${sections.length} sections · ${pub} published`, published: pub, total: sections.length }
@@ -116,7 +125,7 @@ export function CmsMainOverview({ userId, onPageClick }: CmsMainOverviewProps) {
       <div className="mx-auto w-full max-w-2xl p-comfort pt-8">
         <Skeleton className="mb-6 h-7 w-48" />
         <Skeleton className="mb-4 h-4 w-64" />
-        {Array.from({ length: 7 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="mb-2 h-14 w-full" />
         ))}
       </div>

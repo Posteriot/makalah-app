@@ -10,7 +10,7 @@ import { normalizeCategory } from "@/components/marketing/blog/utils"
 import type { CmsPageId } from "./CmsActivityBar"
 
 /**
- * Section identifiers for Home and About pages
+ * Section identifiers for Home, Chat, and About pages
  */
 export type CmsSectionId =
   | "hero"
@@ -18,6 +18,7 @@ export type CmsSectionId =
   | "features-workflow"
   | "features-refrasa"
   | "pricing-teaser"
+  | "chat-empty-state"
   | "manifesto"
   | "problems"
   | "agents"
@@ -65,6 +66,10 @@ export const HOME_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
   { id: "pricing-teaser", label: "Pricing Teaser" },
 ]
 
+export const CHAT_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
+  { id: "chat-empty-state", label: "Empty State" },
+]
+
 export const ABOUT_SECTIONS: Array<{ id: CmsSectionId; label: string }> = [
   { id: "manifesto", label: "Manifesto" },
   { id: "problems", label: "Problems" },
@@ -106,6 +111,7 @@ export const BLOG_CATEGORIES: Array<{ id: BlogCategoryId; label: string; categor
 
 const PAGE_TITLES: Record<CmsPageId, string> = {
   home: "Home",
+  chat: "Chat",
   about: "About",
   pricing: "Pricing",
   documentation: "Dokumentasi",
@@ -420,6 +426,12 @@ export function CmsSidebar({
         return (
           <div className="py-1">
             {renderSectionList(HOME_SECTIONS)}
+          </div>
+        )
+      case "chat":
+        return (
+          <div className="py-1">
+            {renderSectionList(CHAT_SECTIONS)}
           </div>
         )
       case "about":

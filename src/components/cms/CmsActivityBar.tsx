@@ -6,6 +6,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import {
   Home,
+  ChatBubble,
   InfoCircle,
   Book,
   Journal,
@@ -24,12 +25,13 @@ import {
 /**
  * CMS page identifiers for activity bar navigation
  *
- * - home, about, documentation, blog: Content pages with sidebar sections
+ * - home, chat, about, documentation, blog: Content pages with sidebar sections
  * - legal: Parent for Privacy, Security, Terms (children in sidebar)
  * - global-layout: Parent for Header, Footer (children in sidebar)
  */
 export type CmsPageId =
   | "home"
+  | "chat"
   | "about"
   | "pricing"
   | "documentation"
@@ -99,6 +101,11 @@ const contentPageItems: Array<{
     label: "Home",
   },
   {
+    page: "chat",
+    icon: <ChatBubble className="h-5 w-5" aria-hidden="true" />,
+    label: "Chat",
+  },
+  {
     page: "about",
     icon: <InfoCircle className="h-5 w-5" aria-hidden="true" />,
     label: "About",
@@ -148,7 +155,7 @@ const allPages: CmsPageId[] = [
  * CmsActivityBar - Vertical navigation bar for CMS layout
  *
  * Two groups separated by a visual divider:
- * 1. Content Pages - home, about, documentation, blog, legal
+ * 1. Content Pages - home, chat, about, documentation, blog, legal
  * 2. Global Components - global-layout (header + footer)
  */
 export function CmsActivityBar({

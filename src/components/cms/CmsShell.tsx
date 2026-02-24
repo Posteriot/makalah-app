@@ -26,6 +26,7 @@ import { BlogPostListEditor } from "@/components/admin/cms/BlogPostListEditor"
 import { BlogPostEditor } from "@/components/admin/cms/BlogPostEditor"
 import { PricingPlanEditor } from "@/components/admin/cms/PricingPlanEditor"
 import { PricingHeaderEditor } from "@/components/admin/cms/PricingHeaderEditor"
+import { ChatEmptyStateEditor } from "@/components/admin/cms/ChatEmptyStateEditor"
 import { CmsPageOverview } from "./CmsPageOverview"
 import { CmsPricingOverview } from "./CmsPricingOverview"
 import { CmsDocOverview } from "./CmsDocOverview"
@@ -33,7 +34,7 @@ import { CmsBlogOverview } from "./CmsBlogOverview"
 import { CmsLegalOverview } from "./CmsLegalOverview"
 import { CmsGlobalLayoutOverview } from "./CmsGlobalLayoutOverview"
 import { CmsMainOverview } from "./CmsMainOverview"
-import { HOME_SECTIONS, ABOUT_SECTIONS } from "./CmsSidebar"
+import { HOME_SECTIONS, CHAT_SECTIONS, ABOUT_SECTIONS } from "./CmsSidebar"
 
 /**
  * CmsShell - 4-column CSS Grid orchestrator for CMS layout
@@ -144,6 +145,9 @@ export function CmsShell({ userId }: CmsShellProps) {
     if (activePage === "home" && activeSection === "features-refrasa") return <FeatureShowcaseEditor pageSlug="home" sectionSlug="features-refrasa" userId={userId} />
     if (activePage === "home" && activeSection === "pricing-teaser") return <PricingHeaderEditor pageSlug="home" sectionSlug="pricing-teaser" userId={userId} onNavigateToPricing={() => { setActivePage("pricing"); setActiveSection(null) }} />
 
+    // Chat sections
+    if (activePage === "chat" && activeSection === "chat-empty-state") return <ChatEmptyStateEditor userId={userId} />
+
     // About sections
     if (activePage === "about" && activeSection === "manifesto") return <ManifestoSectionEditor userId={userId} />
     if (activePage === "about" && activeSection === "problems") return <ProblemsSectionEditor userId={userId} />
@@ -237,6 +241,17 @@ export function CmsShell({ userId }: CmsShellProps) {
           pageTitle="About"
           pageSlug="about"
           sections={ABOUT_SECTIONS}
+          userId={userId}
+          onSectionClick={(id) => setActiveSection(id)}
+        />
+      )
+    }
+    if (activePage === "chat" && !activeSection) {
+      return (
+        <CmsPageOverview
+          pageTitle="Chat"
+          pageSlug="chat"
+          sections={CHAT_SECTIONS}
           userId={userId}
           onSectionClick={(id) => setActiveSection(id)}
         />
