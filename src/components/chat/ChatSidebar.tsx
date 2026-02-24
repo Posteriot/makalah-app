@@ -183,7 +183,7 @@ export function ChatSidebar({
 
       {/* Section header — Riwayat label with count badge */}
       {activePanel === "chat-history" && (
-        <div className="shrink-0 flex items-center justify-between border-b border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)] px-3 py-2.5 md:border-b-0">
+        <div className="shrink-0 flex items-center justify-between bg-[var(--chat-accent)] px-3 py-2.5">
           <div className="flex items-center">
             <span className="inline-flex h-8 items-center gap-2 rounded-md border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] pl-3 pr-1.5 text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
               Riwayat

@@ -677,7 +677,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         {/* Mobile: Same content as desktop, adapted layout */}
         <div className="md:hidden flex-1 flex flex-col min-h-0">
           {/* Header: sidebar expand + theme toggle */}
-          <div className="shrink-0 flex items-center justify-between h-11 px-3 pt-[env(safe-area-inset-top,0px)]">
+          <div className="shrink-0 flex items-center justify-between h-11 px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)]">
             <button
               onClick={onMobileMenuClick}
               className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
@@ -759,7 +759,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (conversationNotFound) {
     return (
       <div className="flex-1 flex flex-col h-full">
-        <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
+        <div className="md:hidden px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)] bg-[var(--chat-background)]">
           <div className="flex items-center justify-between h-11">
             <button
               onClick={onMobileMenuClick}
@@ -793,7 +793,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
-      <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
+      <div className="md:hidden px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)] bg-[var(--chat-background)]">
         <div className="flex items-center h-11">
           {/* Left group: sidebar + theme */}
           <div className="flex items-center gap-2 shrink-0">

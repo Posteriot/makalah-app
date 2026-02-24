@@ -94,7 +94,7 @@ export function TopBar({
         </div>
 
         {/* Right: Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-1">
           {/* Theme Toggle */}
           {!isLoading && user && (
             <Tooltip>
