@@ -429,16 +429,11 @@ Active: active:bg-[var(--chat-sidebar-accent)]
 `pt-5` memberikan jarak yang cukup antara mobile tabs dan button.
 Jangan kurangi — jarak yang sempit membuat UI terasa sesak.
 
-### 7.7 Mobile Tab Bar (Pengganti ActivityBar)
+### 7.7 Mobile Tab Bar — DEPRECATED (v3 Redesign)
 
-Desktop menggunakan ActivityBar vertikal. Mobile menggunakan horizontal tabs di atas sidebar.
+> **DIHAPUS di v3 redesign (24 Feb 2026).** Mobile sidebar tidak lagi punya tabs. Sidebar hanya menampilkan riwayat chat. Paper sessions dipindahkan ke bottom sheet (`MobilePaperSessionsSheet`). Progress dipindahkan ke inline bar (`MobileProgressBar`).
 
-```
-Container: flex, border-b, md:hidden
-Tab: flex-1, py-3, text-[10px] font-mono font-bold uppercase tracking-widest
-Active: text-[var(--chat-sidebar-foreground)], border-b-2 border-[color:var(--chat-sidebar-primary)]
-Inactive: text-[var(--chat-muted-foreground)], active:text-[var(--chat-sidebar-foreground)]
-```
+Mobile sidebar sekarang = `SidebarChatHistory` + `CreditMeter` + "Atur Akun" link. Tidak ada panel switching.
 
 ### 7.8 Globals.css vs Globals-new.css
 
@@ -564,80 +559,87 @@ Nilai radius aktual di `globals.css`, **BUKAN** dari dokumentasi CLAUDE.md (yang
 
 **PENTING:** Jangan percaya nilai pixel di dokumentasi tanpa verifikasi ke `globals.css`. Selalu cek kode sebagai sumber kebenaran.
 
-### 7.12 MobileActionSheet (Bottom Drawer)
+### 7.12 MobileEditDeleteSheet (Pengganti MobileActionSheet)
 
-Bottom sheet drawer dipicu oleh 3-dot menu di header conversation. Komponen ini adalah **turunan sidebar**, bukan UI standalone.
+> **v3 redesign:** `MobileActionSheet` dihapus. Diganti oleh `MobileEditDeleteSheet` (edit/hapus) dan `MobilePaperSessionsSheet` (paper sessions). Pemicu berubah: edit/hapus dipicu oleh tap pada judul di header, bukan 3-dot menu.
 
-**Portal scope:** Sheet dan AlertDialog keduanya render via Portal — **kedua-duanya** harus punya `data-chat-scope=""`.
+Bottom sheet kecil untuk rename dan delete percakapan. Dipicu oleh tap pada judul percakapan di mobile header.
 
-```tsx
-// BENAR — kedua portal punya scope
-<SheetContent data-chat-scope="">
-<AlertDialogContent data-chat-scope="">
+**Semua aturan portal, font, dan pewarnaan dari versi sebelumnya tetap berlaku:**
 
-// SALAH — token bocor, background tembus
-<SheetContent>
-<AlertDialogContent>
+- `data-chat-scope=""` pada SheetContent DAN AlertDialogContent
+- `font-sans` untuk semua teks (kecuali signal label: `font-mono uppercase tracking-widest`)
+- Tidak ada pewarnaan semantik — semua action items pakai `--chat-foreground`
+- AlertDialog button: `bg-[var(--chat-foreground)] text-[var(--chat-background)]` (bukan merah)
+
+### 7.13 MobilePaperSessionsSheet
+
+Bottom sheet yang menampilkan folder paper session dan artifact tree. Dipicu oleh `FastArrowRightSquare` icon di header.
+
+**Derivasi dari:** `SidebarPaperSessions.tsx` (desktop sidebar paper panel).
+
+| Aspek | Aturan |
+|-------|--------|
+| Portal scope | `data-chat-scope=""` pada SheetContent |
+| Max height | `max-h-[70vh]` — tidak menutupi seluruh layar |
+| Font | `font-sans` untuk display text, `font-mono` untuk badges dan metadata |
+| Touch | `active:bg-[var(--chat-accent)]` pada semua item |
+| Artifact count | Deduplikasi per `type-title` (sama dengan sidebar) |
+| Edit/delete | **TIDAK ADA** — read-only browse |
+| Artifact tap | `onArtifactSelect(id)` + close sheet |
+
+**Artifact tree icons:**
+- Paper artifact: `Page` icon
+- Refrasa artifact: `R` badge (sky background)
+- Version: `v{N}` badge (`rounded-badge`, `font-mono`)
+- Status: `FINAL` (success) atau `REVISI` (muted)
+
+### 7.14 MobileProgressBar (Pengganti MobilePaperMiniBar)
+
+Horizontal progress timeline dengan number pills. Posisi: sticky di atas ChatInput, hanya terlihat saat paper session aktif.
+
+**Collapsed state:** Single line: `GitBranch` icon + nama stage + "N/13" counter + chevron.
+**Expanded state:** Horizontal scrollable row dengan 13 number pills terhubung garis.
+
+| Elemen | Styling |
+|--------|---------|
+| Collapsed bar | `bg-[var(--chat-muted)] border-t border-[color:var(--chat-border)]` |
+| Stage name | `font-sans text-xs font-semibold` |
+| Counter | `font-mono text-xs tabular-nums` |
+| Pill (completed) | `bg-[var(--chat-success)] text-[var(--chat-background)]` |
+| Pill (current) | `bg-[var(--chat-success)] text-[var(--chat-background)] ring-2 ring-[var(--chat-success)]/30` |
+| Pill (pending) | `bg-transparent border border-[color:var(--chat-border)]` |
+| Connecting line | `h-px w-3`, success antara completed, border untuk sisanya |
+| Tooltip | Absolute positioned, `bg-[var(--chat-foreground)] text-[var(--chat-background)]` |
+
+**Rewind:** Completed pills dalam jarak 2 stage dari current bisa di-tap. Trigger `RewindConfirmationDialog`.
+
+### 7.15 Mobile Header Layout (v3)
+
+Header baru untuk conversation aktif:
+
+```
+┌──────────────────────────────────────┐
+│  ☰  │  Judul ▾  │  [+💬]  [»]      │
+└──────────────────────────────────────┘
 ```
 
-**Font: `font-sans`**, bukan `font-mono`. Drawer adalah turunan sidebar, dan sidebar pakai `font-sans` untuk action items. Satu-satunya pengecualian `font-mono` di drawer: signal label (e.g. "Edit Judul" label dengan `uppercase tracking-widest`).
+| Elemen | Icon | Action |
+|--------|------|--------|
+| Hamburger | `Menu` | Buka sidebar (riwayat only) |
+| Judul ▾ | — + `NavArrowDown` | Tap → buka MobileEditDeleteSheet |
+| +💬 | `ChatPlusIn` | Navigate ke `/chat` (new chat) |
+| » | `FastArrowRightSquare` | Buka MobilePaperSessionsSheet |
 
-| Elemen | Font |
-|--------|------|
-| Action items (Chat Baru, Edit Judul, dll) | `font-sans text-sm` |
-| Rename input | `font-sans text-sm` |
-| Button labels (Simpan, Batal) | `font-sans text-sm` |
-| Signal label ("EDIT JUDUL") | `font-mono text-xs font-bold uppercase tracking-widest` |
-| Character counter (28/50) | `font-sans text-xs` |
-| AlertDialog title | `font-sans` |
-| AlertDialog description | `font-sans text-sm` |
+**Styling:**
+- `font-sans font-medium text-sm` untuk judul (BUKAN `font-mono`)
+- `h-5 w-5` untuk semua header icons
+- `rounded-action` untuk semua button
+- `active:bg-[var(--chat-accent)]` untuk touch feedback
+- Container: `h-11 gap-1`
 
-**DILARANG — Pewarnaan Semantik pada Action Items:**
-
-Semua action items termasuk "Hapus Percakapan" menggunakan `--chat-foreground` yang sama. Tidak boleh ada pewarnaan konvensi (merah untuk delete, hijau untuk success, dst).
-
-```tsx
-// BENAR — semua item warna sama
-<button className="... text-[var(--chat-foreground)] ...">Hapus Percakapan</button>
-
-// SALAH — pewarnaan semantik
-<button className="... text-[var(--chat-destructive)] ...">Hapus Percakapan</button>
-```
-
-Logika: Sidebar tidak punya warna merah untuk delete. Drawer turunan sidebar → ikut aturan yang sama. Konfirmasi sudah ditangani oleh AlertDialog terpisah.
-
-**AlertDialog button juga tanpa pewarnaan semantik:**
-
-```tsx
-// BENAR — foreground/background invert (sama kayak tombol Simpan di rename)
-className="bg-[var(--chat-foreground)] text-[var(--chat-background)]"
-
-// SALAH — warna merah destructive
-className="bg-[var(--chat-destructive)] text-white"
-```
-
-**Artifact Count — Harus Konsisten dengan Sidebar:**
-
-Drawer menampilkan "Lihat Artifacts (N)". Angka N **harus** di-deduplikasi per `type-title` dan ambil versi terbaru saja — logika yang sama persis dengan `getLatestArtifactVersions()` di `SidebarPaperSessions.tsx`.
-
-```tsx
-// BENAR — deduplikasi, konsisten dengan sidebar
-const artifactCount = (() => {
-  if (!artifacts || artifacts.length === 0) return 0
-  const latest = new Map<string, number>()
-  for (const a of artifacts) {
-    const key = `${a.type}-${a.title}`
-    const existing = latest.get(key)
-    if (existing === undefined || a.version > existing) {
-      latest.set(key, a.version)
-    }
-  }
-  return latest.size
-})()
-
-// SALAH — raw count, beda angka dari sidebar
-const artifactCount = artifacts?.length ?? 0
-```
+Landing page header: `☰ | "Makalah" (font-sans)`
+Not-found header: `☰ | "Makalah" (font-sans)`
 
 ---
 
@@ -653,10 +655,12 @@ const artifactCount = artifacts?.length ?? 0
 | `src/components/chat/sidebar/SidebarChatHistory.tsx` | Conversation list — flat list pattern |
 | `src/components/chat/shell/ActivityBar.tsx` | Desktop-only vertical nav (mobile pakai tabs di ChatSidebar) |
 | `src/components/chat/ChatInput.tsx` | 3-state mobile input (collapsed/expanded/fullscreen) + desktop input |
-| `src/components/chat/mobile/MobileActionSheet.tsx` | Bottom drawer + delete AlertDialog (kedua portal butuh `data-chat-scope`) |
+| `src/components/chat/mobile/MobileEditDeleteSheet.tsx` | Edit/hapus sheet (pengganti MobileActionSheet) |
+| `src/components/chat/mobile/MobilePaperSessionsSheet.tsx` | Paper session browser sheet |
+| `src/components/chat/mobile/MobileProgressBar.tsx` | Horizontal progress timeline (pengganti MobilePaperMiniBar) |
 | Dokumen ini | Panduan deteksi + justifikasi aturan |
 
 ---
 
 *Dokumen ini adalah living document. Update setiap kali ditemukan pola anomali baru.*
-*Last updated: 24 Feb 2026 — Added 7.12 (MobileActionSheet), grep #16-#18. Previous: 7.9-7.11, grep #14-#15.*
+*Last updated: 24 Feb 2026 — v3 redesign: replaced MobileActionSheet with MobileEditDeleteSheet + MobilePaperSessionsSheet, replaced MobilePaperMiniBar with MobileProgressBar, deprecated mobile sidebar tabs (7.7), added 7.13-7.15.*
