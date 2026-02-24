@@ -85,6 +85,7 @@ export function ChatSidebar({
   isLoading,
   isCreating,
   onCollapseSidebar,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onPanelChange,
 }: ChatSidebarProps) {
   const router = useRouter()

@@ -78,6 +78,7 @@ function consumePendingStarterPrompt(conversationId: string): string | null {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, onShowArtifactList }: ChatWindowProps) {
   const router = useRouter()
   const virtuosoRef = useRef<VirtuosoHandle>(null)

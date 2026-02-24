@@ -18,6 +18,7 @@ interface MobileProgressBarProps {
 
 export function MobileProgressBar({
   currentStage,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   stageStatus,
   stageData,
   onRewindRequest,
