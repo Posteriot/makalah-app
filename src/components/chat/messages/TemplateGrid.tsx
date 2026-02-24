@@ -105,6 +105,7 @@ export function TemplateGrid({
       return {
         id: `cms-template-${index + 1}`,
         label: text,
+        chipLabel: text,
         message: text,
       } satisfies Template
     })
