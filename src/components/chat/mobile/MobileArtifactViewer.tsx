@@ -1,9 +1,18 @@
 "use client"
 
-import { useRef } from "react"
-import { Xmark, EditPencil, Copy, TextBox } from "iconoir-react"
+import { useRef, useState } from "react"
+import { Xmark, EditPencil, Copy, Check, MagicWand, Download, Page } from "iconoir-react"
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip"
 import { ArtifactViewer, type ArtifactViewerRef } from "../ArtifactViewer"
 import type { Id } from "../../../../convex/_generated/dataModel"
+import { useQuery } from "convex/react"
+import { api } from "../../../../convex/_generated/api"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 
 interface MobileArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
@@ -17,6 +26,24 @@ export function MobileArtifactViewer({
   onRefrasa,
 }: MobileArtifactViewerProps) {
   const viewerRef = useRef<ArtifactViewerRef>(null)
+  const { user } = useCurrentUser()
+  const [copied, setCopied] = useState(false)
+
+  const artifact = useQuery(
+    api.artifacts.get,
+    artifactId && user?._id
+      ? { artifactId, userId: user._id }
+      : "skip"
+  )
+
+  const isRefrasa = artifact?.type === "refrasa"
+  const headerTitle = artifact?.title ?? "Artifact"
+
+  const handleCopy = () => {
+    viewerRef.current?.copy()
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[var(--chat-background)] md:hidden">
@@ -30,42 +57,89 @@ export function MobileArtifactViewer({
           >
             <Xmark className="h-5 w-5" strokeWidth={1.5} />
           </button>
-          <span className="flex-1 truncate font-mono text-sm font-medium text-[var(--chat-foreground)]">
-            Artifact
+          {isRefrasa ? (
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-badge bg-[var(--chat-info)] font-mono text-[10px] font-bold text-[var(--chat-info-foreground)]">
+              R
+            </span>
+          ) : (
+            <Page className="h-5 w-5 shrink-0 text-[var(--chat-muted-foreground)]" strokeWidth={1.5} />
+          )}
+          <span className="flex-1 truncate font-sans text-sm font-medium text-[var(--chat-foreground)]">
+            {headerTitle}
           </span>
         </div>
       </div>
 
+      {/* Artifact toolbar — icon-only, non-refrasa only */}
+      {!isRefrasa && (
+        <div className="flex items-center gap-1 border-b border-[color:var(--chat-border)] px-3 py-1.5">
+          <TooltipProvider delayDuration={200}>
+            {/* Edit */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => viewerRef.current?.startEdit()}
+                  className="rounded-action p-2 text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+                  aria-label="Edit"
+                >
+                  <EditPencil className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-mono text-xs">Edit</TooltipContent>
+            </Tooltip>
+
+            {/* Copy */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleCopy}
+                  className="rounded-action p-2 text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+                  aria-label="Salin"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-[var(--chat-success)]" strokeWidth={1.5} />
+                  ) : (
+                    <Copy className="h-4 w-4" strokeWidth={1.5} />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-mono text-xs">Salin</TooltipContent>
+            </Tooltip>
+
+            {/* Refrasa */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => { if (artifactId) onRefrasa(artifactId) }}
+                  className="rounded-action p-2 text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+                  aria-label="Refrasa"
+                >
+                  <MagicWand className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-mono text-xs">Refrasa</TooltipContent>
+            </Tooltip>
+
+            {/* Download */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => viewerRef.current?.download()}
+                  className="rounded-action p-2 text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+                  aria-label="Unduh"
+                >
+                  <Download className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-mono text-xs">Unduh</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+
       {/* Content — ArtifactViewer fills remaining space */}
       <div className="flex-1 overflow-hidden">
         <ArtifactViewer ref={viewerRef} artifactId={artifactId} />
-      </div>
-
-      {/* Bottom action bar */}
-      <div className="flex items-center justify-around gap-3 border-t border-[color:var(--chat-border)] bg-[var(--chat-background)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <button
-          onClick={() => viewerRef.current?.startEdit()}
-          className="flex items-center gap-1.5 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-4 py-2.5 font-mono text-xs text-[var(--chat-secondary-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-        >
-          <EditPencil className="h-4 w-4" strokeWidth={1.5} />
-          Edit
-        </button>
-        <button
-          onClick={() => {
-            if (artifactId) onRefrasa(artifactId)
-          }}
-          className="flex items-center gap-1.5 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-4 py-2.5 font-mono text-xs text-[var(--chat-secondary-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-        >
-          <TextBox className="h-4 w-4" strokeWidth={1.5} />
-          Refrasa
-        </button>
-        <button
-          onClick={() => viewerRef.current?.copy()}
-          className="flex items-center gap-1.5 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-4 py-2.5 font-mono text-xs text-[var(--chat-secondary-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-        >
-          <Copy className="h-4 w-4" strokeWidth={1.5} />
-          Copy
-        </button>
       </div>
     </div>
   )
