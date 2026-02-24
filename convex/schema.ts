@@ -124,6 +124,33 @@ export default defineSchema({
       title: v.string(),
       publishedAt: v.optional(v.number()),
     }))),
+    // Persistent curated reasoning trace (sanitized, never raw CoT)
+    reasoningTrace: v.optional(v.object({
+      version: v.number(),
+      headline: v.string(),
+      traceMode: v.literal("curated"),
+      completedAt: v.number(),
+      steps: v.array(v.object({
+        stepKey: v.string(),
+        label: v.string(),
+        status: v.union(
+          v.literal("pending"),
+          v.literal("running"),
+          v.literal("done"),
+          v.literal("skipped"),
+          v.literal("error")
+        ),
+        progress: v.optional(v.number()),
+        ts: v.number(),
+        meta: v.optional(v.object({
+          mode: v.optional(v.union(v.literal("normal"), v.literal("paper"), v.literal("websearch"))),
+          stage: v.optional(v.string()),
+          note: v.optional(v.string()),
+          sourceCount: v.optional(v.number()),
+          toolName: v.optional(v.string()),
+        })),
+      })),
+    })),
   })
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_conversation_role", ["conversationId", "role", "createdAt"]),
