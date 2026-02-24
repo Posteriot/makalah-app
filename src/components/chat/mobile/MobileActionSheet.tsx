@@ -65,7 +65,19 @@ export function MobileActionSheet({
       : "skip"
   )
 
-  const artifactCount = artifacts?.length ?? 0
+  // Count unique artifacts (latest version per type-title, same logic as sidebar)
+  const artifactCount = (() => {
+    if (!artifacts || artifacts.length === 0) return 0
+    const latest = new Map<string, number>()
+    for (const a of artifacts) {
+      const key = `${a.type}-${a.title}`
+      const existing = latest.get(key)
+      if (existing === undefined || a.version > existing) {
+        latest.set(key, a.version)
+      }
+    }
+    return latest.size
+  })()
 
   // Reset rename state when sheet closes
   useEffect(() => {
@@ -159,14 +171,15 @@ export function MobileActionSheet({
   }
 
   const actionButtonClass =
-    "flex w-full items-center gap-3 px-5 py-3.5 font-mono text-sm text-[var(--chat-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+    "flex w-full items-center gap-3 px-5 py-3.5 font-sans text-sm text-[var(--chat-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
 
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="rounded-t-shell border-t border-[var(--chat-border)] bg-[var(--chat-background)] p-0 [&>button]:hidden"
+          className="rounded-t-shell border-t border-[color:var(--chat-border)] bg-[var(--chat-background)] p-0 [&>button]:hidden"
+          data-chat-scope=""
         >
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-2">
@@ -193,24 +206,24 @@ export function MobileActionSheet({
                   if (e.key === "Escape") handleCancelRename()
                 }}
                 maxLength={50}
-                className="w-full rounded-action border border-[var(--chat-border)] bg-[var(--chat-background)] px-3 py-2 font-mono text-sm text-[var(--chat-foreground)] placeholder:text-[var(--chat-muted-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--chat-accent)]"
+                className="w-full rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-3 py-2 font-sans text-sm text-[var(--chat-foreground)] placeholder:text-[var(--chat-muted-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--chat-accent)]"
                 placeholder="Judul percakapan..."
               />
-              <div className="mt-1 text-right font-mono text-xs text-[var(--chat-muted-foreground)]">
+              <div className="mt-1 text-right font-sans text-xs text-[var(--chat-muted-foreground)]">
                 {renameValue.length}/50
               </div>
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={handleCancelRename}
                   disabled={isSaving}
-                  className="flex-1 rounded-action border border-[var(--chat-border)] px-3 py-2 font-mono text-sm text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)] transition-colors duration-50"
+                  className="flex-1 rounded-action border border-[color:var(--chat-border)] px-3 py-2 font-sans text-sm text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
                 >
                   Batal
                 </button>
                 <button
                   onClick={handleSaveRename}
                   disabled={isSaving || !renameValue.trim()}
-                  className="flex-1 rounded-action bg-[var(--chat-foreground)] px-3 py-2 font-mono text-sm text-[var(--chat-background)] active:bg-[var(--chat-secondary-foreground)] transition-colors duration-50 disabled:opacity-50"
+                  className="flex-1 rounded-action bg-[var(--chat-foreground)] px-3 py-2 font-sans text-sm text-[var(--chat-background)] active:bg-[var(--chat-secondary-foreground)] transition-colors duration-50 disabled:opacity-50"
                 >
                   {isSaving ? "Menyimpan..." : "Simpan"}
                 </button>
@@ -245,7 +258,7 @@ export function MobileActionSheet({
               {conversationId && conversation && (
                 <button
                   onClick={handleDeleteClick}
-                  className="flex w-full items-center gap-3 px-5 py-3.5 font-mono text-sm text-[var(--chat-destructive)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+                  className={actionButtonClass}
                 >
                   <Trash className="size-4 shrink-0" strokeWidth={1.5} />
                   <span>Hapus Percakapan</span>
@@ -253,10 +266,10 @@ export function MobileActionSheet({
               )}
 
               {/* Separator + Batal */}
-              <div className="border-t border-[var(--chat-border)] mt-1" />
+              <div className="border-t border-[color:var(--chat-border)] mt-1" />
               <button
                 onClick={handleClose}
-                className="flex w-full items-center justify-center px-5 py-3.5 font-mono text-sm text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+                className="flex w-full items-center justify-center px-5 py-3.5 font-sans text-sm text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
               >
                 Batal
               </button>
@@ -267,26 +280,29 @@ export function MobileActionSheet({
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="bg-[var(--chat-background)] border-[var(--chat-border)]">
+        <AlertDialogContent
+          className="bg-[var(--chat-background)] border border-[color:var(--chat-border)]"
+          data-chat-scope=""
+        >
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-mono text-[var(--chat-foreground)]">
+            <AlertDialogTitle className="font-sans text-[var(--chat-foreground)]">
               Hapus Percakapan?
             </AlertDialogTitle>
-            <AlertDialogDescription className="font-mono text-sm text-[var(--chat-muted-foreground)]">
+            <AlertDialogDescription className="font-sans text-sm text-[var(--chat-muted-foreground)]">
               Percakapan ini akan dihapus permanen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
               disabled={isDeleting}
-              className="font-mono text-sm border-[var(--chat-border)] text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)]"
+              className="font-sans text-sm border-[color:var(--chat-border)] text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)]"
             >
               Batal
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               disabled={isDeleting}
-              className="font-mono text-sm bg-[var(--chat-destructive)] text-white hover:bg-[var(--chat-destructive)]/90"
+              className="font-sans text-sm bg-[var(--chat-foreground)] text-[var(--chat-background)] active:opacity-90"
             >
               {isDeleting ? "Menghapus..." : "Hapus"}
             </AlertDialogAction>
