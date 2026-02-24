@@ -176,3 +176,32 @@ Jangan langsung lanjut coding sebelum checklist ini selesai.
 1. Fokus optimasi: context injection yang sudah ada, bukan ganti arsitektur.
 2. Prioritas kompresi: `completed summaries` + `refs` + `sitasi`.
 3. Konfigurasi awal paling aman: cap `5`.
+
+---
+
+## 10) Evidence Simulasi Implementasi (Before vs After)
+
+Tanggal eksekusi simulasi: 25 Februari 2026  
+Commit implementasi: `446ff3b`  
+Metode:
+1. Bandingkan output `formatStageData` pada state `before=HEAD^` vs `after=446ff3b`.
+2. Estimasi token: `ceil(chars/4)`.
+3. Gunakan 2 skenario wajib: `pendahuluan-heavy` dan `diskusi-medium`.
+
+Hasil inti:
+1. `pendahuluan-heavy`
+   - before: `4767 chars` (`1192 tokens`)
+   - after: `3914 chars` (`979 tokens`)
+   - hemat: `17.87%` token
+2. `diskusi-medium`
+   - before: `1893 chars` (`474 tokens`)
+   - after: `1720 chars` (`430 tokens`)
+   - hemat: `9.28%` token
+
+Hasil efektif total (termasuk 1 baris catatan kompresi tambahan di `paper-mode-prompt`):
+1. `pendahuluan-heavy`: hemat `15.60%` token
+2. `diskusi-medium`: hemat `3.59%` token
+
+Status acceptance:
+1. Target `pendahuluan >= 15%`: **LULUS**
+2. Target `diskusi >= 3%`: **LULUS**
