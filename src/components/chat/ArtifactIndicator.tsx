@@ -66,9 +66,6 @@ export function ArtifactIndicator({
           </div>
 
           <p className="truncate text-sm font-semibold text-[var(--chat-foreground)]">{title}</p>
-          <p className="mt-0.5 text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-            Klik untuk buka di panel artifak
-          </p>
         </div>
 
         <span className="mt-1 inline-flex shrink-0 items-center gap-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)] transition-colors group-hover:text-[var(--chat-foreground)]">
