@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Download, EditPencil, MagicWand, Copy, Check, Expand, MoreVert, Xmark } from "iconoir-react"
+import { Download, EditPencil, Copy, Check, Expand, MoreVert, Xmark } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { RefrasaSquareIcon } from "./RefrasaSquareIcon"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -241,7 +242,7 @@ export function ArtifactToolbar({
                 )}
                 aria-label="Refrasa"
               >
-                <MagicWand className="h-3.5 w-3.5" />
+                <RefrasaSquareIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
               </Button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
@@ -306,7 +307,7 @@ export function ArtifactToolbar({
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onRefrasa}>
-                <MagicWand className="mr-2 h-4 w-4" />
+                <RefrasaSquareIcon className="mr-2 h-4 w-4" strokeWidth={1.5} />
                 Refrasa
               </DropdownMenuItem>
               <DropdownMenuSeparator />

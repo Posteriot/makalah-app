@@ -183,19 +183,19 @@ export function ChatSidebar({
 
       {/* Section header — Riwayat label with count badge */}
       {activePanel === "chat-history" && (
-        <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[var(--chat-sidebar)]">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
+        <div className="shrink-0 flex items-center justify-between border-b border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)] px-3 py-2.5 md:border-b-0">
+          <div className="flex items-center">
+            <span className="inline-flex h-8 items-center gap-2 rounded-md border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] pl-3 pr-1.5 text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
               Riwayat
-            </span>
-            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-sm bg-[var(--chat-success)] text-[10px] font-mono font-bold text-[var(--chat-background)]">
-              {conversations.length}
+              <span className="inline-flex h-5 min-w-6 items-center justify-center rounded-md border border-[color:var(--chat-success)] bg-[var(--chat-success)] px-1.5 text-[10px] font-mono font-bold text-[var(--chat-background)]">
+                {conversations.length}
+              </span>
             </span>
           </div>
           {/* Mobile: SidebarCollapse to close drawer */}
           <button
             onClick={onCloseMobile}
-            className="md:hidden text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-150"
+            className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
             aria-label="Close sidebar"
           >
             <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />

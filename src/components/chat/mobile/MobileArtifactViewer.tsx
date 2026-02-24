@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Xmark, EditPencil, Copy, Check, MagicWand, Download, Page, WarningTriangle, ViewColumns2, Trash } from "iconoir-react"
+import { Xmark, EditPencil, Copy, Check, Download, Page, WarningTriangle, ViewColumns2, Trash } from "iconoir-react"
 import {
   Tooltip,
   TooltipTrigger,
@@ -17,6 +17,7 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { cn } from "@/lib/utils"
 import type { RefrasaIssue } from "@/lib/refrasa/types"
 import { MobileRefrasaIssuesSheet } from "./MobileRefrasaIssuesSheet"
+import { RefrasaSquareIcon } from "../RefrasaSquareIcon"
 
 interface MobileArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
@@ -169,7 +170,7 @@ export function MobileArtifactViewer({
                   className="rounded-action p-2 text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
                   aria-label="Refrasa"
                 >
-                  <MagicWand className="h-4 w-4" strokeWidth={1.5} />
+                  <RefrasaSquareIcon className="h-4 w-4" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="font-mono text-xs">Refrasa</TooltipContent>

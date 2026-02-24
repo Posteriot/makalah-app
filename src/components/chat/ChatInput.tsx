@@ -164,7 +164,7 @@ export function ChatInput({
                                 aria-label="Message input"
                             />
                         </div>
-                        <div className="col-span-3 mt-0.5 flex items-center justify-between border-t border-[color:var(--chat-border)] pt-1">
+                        <div className="col-span-3 mt-0.5 flex items-center justify-between pt-1">
                             <div className="flex-none">
                                 <FileUploadButton
                                     conversationId={conversationId}

@@ -23,7 +23,6 @@ import {
   Download,
   Check,
   Copy,
-  MagicWand,
   WarningTriangle,
   NavArrowDown,
   OpenBook,
@@ -35,6 +34,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { ChartRenderer } from "./ChartRenderer"
+import { RefrasaSquareIcon } from "./RefrasaSquareIcon"
 import dynamic from "next/dynamic"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
@@ -601,7 +601,7 @@ export function FullsizeArtifactModal({
                         disabled={isRefrasaLoading || !canRefrasa}
                         className="h-7 px-2.5 font-mono text-[11px]"
                       >
-                        <MagicWand className="mr-1.5 h-3.5 w-3.5" />
+                        <RefrasaSquareIcon className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
                         Refrasa
                       </Button>
                     )}

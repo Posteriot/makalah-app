@@ -640,15 +640,7 @@ export function MessageBubble({
                     {isAssistant && !isEditing && (hasArtifactSignals || hasSources || hasQuickActions) && (
                         <div className="mt-3 space-y-3">
                             {hasArtifactSignals && (
-                                <section className="space-y-2" aria-label="Hasil artifak">
-                                    <div className="flex items-center gap-2">
-                                        <span className="shrink-0 whitespace-nowrap rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-accent)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-primary)]">
-                                            Hasil
-                                        </span>
-                                        <p className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-                                            Buka artifak untuk baca atau revisi.
-                                        </p>
-                                    </div>
+                                <section className="space-y-2 pt-2" aria-label="Hasil artifak">
                                     {artifactSignals.map((artifact) => (
                                         onArtifactSelect ? (
                                             <ArtifactIndicator
