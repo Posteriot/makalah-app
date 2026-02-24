@@ -31,6 +31,21 @@ export interface CuratedTraceStepData {
   meta?: CuratedTraceMeta
 }
 
+export interface PersistedCuratedTraceSnapshot {
+  version: 1
+  headline: string
+  traceMode: "curated"
+  completedAt: number
+  steps: Array<{
+    stepKey: CuratedTraceStepKey
+    label: string
+    status: CuratedTraceStepStatus
+    progress?: number
+    ts: number
+    meta?: CuratedTraceMeta
+  }>
+}
+
 export interface CuratedTraceDataPart {
   type: "data-reasoning-trace"
   id: string
@@ -43,6 +58,7 @@ interface InternalStep {
   label: string
   status: CuratedTraceStepStatus
   progress: number
+  ts: number
   meta?: CuratedTraceMeta
 }
 
@@ -57,6 +73,7 @@ export interface CuratedTraceController {
     sourceCount: number
     errorNote?: string
   }) => CuratedTraceDataPart[]
+  getPersistedSnapshot: () => PersistedCuratedTraceSnapshot
 }
 
 const STEP_ORDER: CuratedTraceStepKey[] = [
@@ -69,16 +86,71 @@ const STEP_ORDER: CuratedTraceStepKey[] = [
 ]
 
 const STEP_LABELS: Record<CuratedTraceStepKey, string> = {
-  "intent-analysis": "Memahami intent user",
-  "paper-context-check": "Cek konteks paper",
-  "search-decision": "Keputusan web search",
-  "source-validation": "Validasi sumber",
-  "response-compose": "Menyusun jawaban",
-  "tool-action": "Eksekusi tool",
+  "intent-analysis": "Memahami kebutuhan user",
+  "paper-context-check": "Memeriksa konteks paper aktif",
+  "search-decision": "Menentukan kebutuhan pencarian web",
+  "source-validation": "Memvalidasi sumber referensi",
+  "response-compose": "Menyusun jawaban final",
+  "tool-action": "Menjalankan aksi pendukung",
 }
 
 function nowTs() {
   return Date.now()
+}
+
+function lowerFirst(input: string) {
+  if (!input) return input
+  return input.charAt(0).toLowerCase() + input.slice(1)
+}
+
+function buildHeadlineFromSteps(steps: Record<CuratedTraceStepKey, InternalStep>): string {
+  const allSteps = Object.values(steps)
+  const running = allSteps.find((step) => step.status === "running")
+  if (running) return `Sedang ${lowerFirst(running.label)}...`
+
+  const errored = allSteps.find((step) => step.status === "error")
+  if (errored) return `Terjadi kendala saat ${lowerFirst(errored.label)}.`
+
+  const composeStep = steps["response-compose"]
+  if (composeStep.status === "done") return "Jawaban selesai disusun."
+  if (composeStep.status === "skipped") return "Proses penyusunan jawaban dihentikan."
+
+  const completedByProgress = allSteps
+    .filter((step) => step.status === "done")
+    .sort((a, b) => b.progress - a.progress)[0]
+
+  if (completedByProgress) return `${completedByProgress.label} selesai.`
+  return "Model sedang menyusun jawaban..."
+}
+
+function normalizeErrorNote(errorNote?: string) {
+  const value = (errorNote ?? "").trim().toLowerCase()
+  if (!value) return "Terjadi kendala saat memproses jawaban."
+
+  if (value.includes("websearch")) return "Terjadi kendala saat pencarian web."
+  if (value.includes("stream")) return "Terjadi kendala pada aliran respons."
+  if (value.includes("abort") || value.includes("stopped")) return "Proses dihentikan sebelum selesai."
+  return "Terjadi kendala saat memproses jawaban."
+}
+
+function buildPersistedSnapshot(steps: Record<CuratedTraceStepKey, InternalStep>): PersistedCuratedTraceSnapshot {
+  return {
+    version: 1,
+    headline: buildHeadlineFromSteps(steps),
+    traceMode: "curated",
+    completedAt: nowTs(),
+    steps: STEP_ORDER.map((key) => {
+      const step = steps[key]
+      return {
+        stepKey: step.key,
+        label: step.label,
+        status: step.status,
+        progress: step.progress,
+        ts: step.ts,
+        ...(step.meta ? { meta: step.meta } : {}),
+      }
+    }),
+  }
 }
 
 function buildEvent(traceId: string, step: InternalStep): CuratedTraceDataPart {
@@ -91,7 +163,7 @@ function buildEvent(traceId: string, step: InternalStep): CuratedTraceDataPart {
       label: step.label,
       status: step.status,
       progress: step.progress,
-      ts: nowTs(),
+      ts: step.ts,
       ...(step.meta ? { meta: step.meta } : {}),
     },
   }
@@ -110,6 +182,7 @@ function createSteps(options: {
       label: STEP_LABELS["intent-analysis"],
       status: "done",
       progress: 12,
+      ts: nowTs(),
       meta: { mode: options.mode },
     },
     "paper-context-check": {
@@ -118,8 +191,9 @@ function createSteps(options: {
       label: STEP_LABELS["paper-context-check"],
       status: "done",
       progress: 24,
+      ts: nowTs(),
       meta: {
-        ...(options.stage ? { stage: options.stage } : { note: "non-paper-turn" }),
+        ...(options.stage ? { stage: options.stage } : { note: "Turn ini tidak memakai paper workflow." }),
       },
     },
     "search-decision": {
@@ -128,7 +202,12 @@ function createSteps(options: {
       label: STEP_LABELS["search-decision"],
       status: "done",
       progress: 36,
-      meta: { note: options.webSearchEnabled ? "web-search-enabled" : "web-search-disabled" },
+      ts: nowTs(),
+      meta: {
+        note: options.webSearchEnabled
+          ? "Pencarian web diaktifkan untuk memperkuat jawaban."
+          : "Pencarian web tidak diperlukan untuk turn ini.",
+      },
     },
     "source-validation": {
       id: `${options.traceId}-source-validation`,
@@ -136,7 +215,8 @@ function createSteps(options: {
       label: STEP_LABELS["source-validation"],
       status: options.webSearchEnabled ? "pending" : "skipped",
       progress: options.webSearchEnabled ? 52 : 55,
-      meta: options.webSearchEnabled ? undefined : { note: "no-web-search" },
+      ts: nowTs(),
+      meta: options.webSearchEnabled ? undefined : { note: "Langkah validasi sumber dilewati karena tanpa pencarian web." },
     },
     "response-compose": {
       id: `${options.traceId}-response-compose`,
@@ -144,6 +224,7 @@ function createSteps(options: {
       label: STEP_LABELS["response-compose"],
       status: "running",
       progress: 62,
+      ts: nowTs(),
     },
     "tool-action": {
       id: `${options.traceId}-tool-action`,
@@ -151,7 +232,8 @@ function createSteps(options: {
       label: STEP_LABELS["tool-action"],
       status: "pending",
       progress: 70,
-      meta: { note: "no-tool-detected-yet" },
+      ts: nowTs(),
+      meta: { note: "Belum ada tool yang perlu dijalankan." },
     },
   }
 }
@@ -175,6 +257,7 @@ function updateStep(
 
   step.status = nextStatus
   step.progress = nextProgress
+  step.ts = nowTs()
   if (next.meta !== undefined) {
     step.meta = next.meta
   }
@@ -197,6 +280,13 @@ export function createCuratedTraceController(options: {
       markToolDone: () => [],
       markSourceDetected: () => [],
       finalize: () => [],
+      getPersistedSnapshot: () => ({
+        version: 1,
+        headline: "Jejak reasoning tidak aktif.",
+        traceMode: "curated",
+        completedAt: nowTs(),
+        steps: [],
+      }),
     }
   }
 
@@ -212,20 +302,20 @@ export function createCuratedTraceController(options: {
       updateStep(options.traceId, steps["tool-action"], {
         status: "running",
         progress: 78,
-        meta: { ...(toolName ? { toolName } : {}), note: "tool-running" },
+        meta: { ...(toolName ? { toolName } : {}), note: "Tool sedang dijalankan untuk membantu proses." },
       }),
     markToolDone: (toolName?: string) =>
       updateStep(options.traceId, steps["tool-action"], {
         status: "done",
         progress: 86,
-        meta: { ...(toolName ? { toolName } : {}), note: "tool-done" },
+        meta: { ...(toolName ? { toolName } : {}), note: "Tool selesai dijalankan." },
       }),
     markSourceDetected: () => {
       sourceSeenCount += 1
       return updateStep(options.traceId, steps["source-validation"], {
         status: "running",
         progress: 74,
-        meta: { sourceCount: sourceSeenCount, note: "source-detected" },
+        meta: { sourceCount: sourceSeenCount, note: "Sumber terdeteksi dan sedang diverifikasi." },
       })
     },
     finalize: ({ outcome, sourceCount, errorNote }) => {
@@ -237,7 +327,7 @@ export function createCuratedTraceController(options: {
             ...updateStep(options.traceId, steps["source-validation"], {
               status: "done",
               progress: 90,
-              meta: { sourceCount, note: "sources-validated" },
+              meta: { sourceCount, note: "Sumber yang dipakai sudah tervalidasi." },
             })
           )
         } else {
@@ -245,7 +335,7 @@ export function createCuratedTraceController(options: {
             ...updateStep(options.traceId, steps["source-validation"], {
               status: "skipped",
               progress: 90,
-              meta: { note: "no-sources-returned" },
+              meta: { note: "Tidak ada sumber valid yang bisa dipakai." },
             })
           )
         }
@@ -254,7 +344,7 @@ export function createCuratedTraceController(options: {
           ...updateStep(options.traceId, steps["source-validation"], {
             status: "skipped",
             progress: 90,
-            meta: { note: "no-web-search" },
+            meta: { note: "Validasi sumber dilewati karena pencarian web tidak aktif." },
           })
         )
       }
@@ -264,7 +354,7 @@ export function createCuratedTraceController(options: {
           ...updateStep(options.traceId, steps["tool-action"], {
             status: "skipped",
             progress: 92,
-            meta: { note: "no-tool-call" },
+            meta: { note: "Tidak ada tool tambahan yang diperlukan." },
           })
         )
       } else if (steps["tool-action"].status === "running") {
@@ -272,7 +362,7 @@ export function createCuratedTraceController(options: {
           ...updateStep(options.traceId, steps["tool-action"], {
             status: "done",
             progress: 92,
-            meta: { ...(steps["tool-action"].meta ?? {}), note: "tool-completed" },
+            meta: { ...(steps["tool-action"].meta ?? {}), note: "Eksekusi tool telah selesai." },
           })
         )
       }
@@ -291,7 +381,7 @@ export function createCuratedTraceController(options: {
           ...updateStep(options.traceId, steps["response-compose"], {
             status: "error",
             progress: 100,
-            meta: { note: errorNote ?? "stream-error" },
+            meta: { note: normalizeErrorNote(errorNote) },
           })
         )
       }
@@ -301,12 +391,13 @@ export function createCuratedTraceController(options: {
           ...updateStep(options.traceId, steps["response-compose"], {
             status: "skipped",
             progress: 100,
-            meta: { note: "stopped-by-user-or-stream-abort" },
+            meta: { note: "Proses dihentikan sebelum jawaban selesai." },
           })
         )
       }
 
       return events
     },
+    getPersistedSnapshot: () => buildPersistedSnapshot(steps),
   }
 }

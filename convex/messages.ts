@@ -2,6 +2,37 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireAuthUser, requireAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
 
+const reasoningTraceMetaValidator = v.object({
+    mode: v.optional(v.union(v.literal("normal"), v.literal("paper"), v.literal("websearch"))),
+    stage: v.optional(v.string()),
+    note: v.optional(v.string()),
+    sourceCount: v.optional(v.number()),
+    toolName: v.optional(v.string()),
+})
+
+const reasoningTraceStepValidator = v.object({
+    stepKey: v.string(),
+    label: v.string(),
+    status: v.union(
+        v.literal("pending"),
+        v.literal("running"),
+        v.literal("done"),
+        v.literal("skipped"),
+        v.literal("error")
+    ),
+    progress: v.optional(v.number()),
+    ts: v.number(),
+    meta: v.optional(reasoningTraceMetaValidator),
+})
+
+const reasoningTraceValidator = v.object({
+    version: v.number(),
+    headline: v.string(),
+    traceMode: v.literal("curated"),
+    completedAt: v.number(),
+    steps: v.array(reasoningTraceStepValidator),
+})
+
 // Get messages for conversation
 export const getMessages = query({
     args: { conversationId: v.id("conversations") },
@@ -70,6 +101,7 @@ export const createMessage = mutation({
             title: v.string(),
             publishedAt: v.optional(v.number()),
         }))),
+        reasoningTrace: v.optional(reasoningTraceValidator),
     },
     handler: async (ctx, args) => {
         await requireConversationOwner(ctx, args.conversationId)
