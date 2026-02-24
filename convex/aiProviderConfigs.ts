@@ -2,6 +2,10 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireRole } from "./permissions"
 
+const MIN_THINKING_BUDGET = 0
+const MAX_THINKING_BUDGET = 32768
+const REASONING_TRACE_MODES = new Set(["off", "curated"])
+
 /**
  * Get the currently active AI provider configuration
  * No auth required - used by chat API
@@ -27,6 +31,10 @@ export const getActiveConfig = query({
       fallbackWebSearchEngine: activeConfig.fallbackWebSearchEngine ?? "auto",
       fallbackWebSearchMaxResults: activeConfig.fallbackWebSearchMaxResults ?? 5,
       isRefrasaEnabled: activeConfig.isRefrasaEnabled ?? true,
+      reasoningEnabled: activeConfig.reasoningEnabled ?? true,
+      thinkingBudgetPrimary: activeConfig.thinkingBudgetPrimary ?? 256,
+      thinkingBudgetFallback: activeConfig.thinkingBudgetFallback ?? 128,
+      reasoningTraceMode: activeConfig.reasoningTraceMode ?? "curated",
     }
   },
 })
@@ -152,6 +160,10 @@ export const createConfig = mutation({
     temperature: v.number(),
     topP: v.optional(v.number()),
     maxTokens: v.optional(v.number()),
+    reasoningEnabled: v.optional(v.boolean()),
+    thinkingBudgetPrimary: v.optional(v.number()),
+    thinkingBudgetFallback: v.optional(v.number()),
+    reasoningTraceMode: v.optional(v.union(v.literal("off"), v.literal("curated"))),
     // Context window settings
     primaryContextWindow: v.optional(v.number()),
     fallbackContextWindow: v.optional(v.number()),
@@ -177,6 +189,21 @@ export const createConfig = mutation({
     ) {
       throw new Error("Max search results harus antara 1 dan 10")
     }
+    if (
+      args.thinkingBudgetPrimary !== undefined &&
+      (args.thinkingBudgetPrimary < MIN_THINKING_BUDGET || args.thinkingBudgetPrimary > MAX_THINKING_BUDGET)
+    ) {
+      throw new Error(`Thinking budget primary harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
+    }
+    if (
+      args.thinkingBudgetFallback !== undefined &&
+      (args.thinkingBudgetFallback < MIN_THINKING_BUDGET || args.thinkingBudgetFallback > MAX_THINKING_BUDGET)
+    ) {
+      throw new Error(`Thinking budget fallback harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
+    }
+    if (args.reasoningTraceMode !== undefined && !REASONING_TRACE_MODES.has(args.reasoningTraceMode)) {
+      throw new Error('Reasoning trace mode harus "off" atau "curated"')
+    }
 
     const now = Date.now()
 
@@ -196,6 +223,10 @@ export const createConfig = mutation({
       temperature: args.temperature,
       topP: args.topP,
       maxTokens: args.maxTokens,
+      reasoningEnabled: args.reasoningEnabled,
+      thinkingBudgetPrimary: args.thinkingBudgetPrimary,
+      thinkingBudgetFallback: args.thinkingBudgetFallback,
+      reasoningTraceMode: args.reasoningTraceMode,
       // Context window settings
       primaryContextWindow: args.primaryContextWindow,
       fallbackContextWindow: args.fallbackContextWindow,
@@ -244,6 +275,10 @@ export const updateConfig = mutation({
     temperature: v.optional(v.number()),
     topP: v.optional(v.number()),
     maxTokens: v.optional(v.number()),
+    reasoningEnabled: v.optional(v.boolean()),
+    thinkingBudgetPrimary: v.optional(v.number()),
+    thinkingBudgetFallback: v.optional(v.number()),
+    reasoningTraceMode: v.optional(v.union(v.literal("off"), v.literal("curated"))),
     // Context window settings
     primaryContextWindow: v.optional(v.number()),
     fallbackContextWindow: v.optional(v.number()),
@@ -289,6 +324,10 @@ export const updateConfig = mutation({
     const temperature = args.temperature ?? oldConfig.temperature
     const topP = args.topP ?? oldConfig.topP
     const maxTokens = args.maxTokens ?? oldConfig.maxTokens
+    const reasoningEnabled = args.reasoningEnabled ?? oldConfig.reasoningEnabled
+    const thinkingBudgetPrimary = args.thinkingBudgetPrimary ?? oldConfig.thinkingBudgetPrimary
+    const thinkingBudgetFallback = args.thinkingBudgetFallback ?? oldConfig.thinkingBudgetFallback
+    const reasoningTraceMode = args.reasoningTraceMode ?? oldConfig.reasoningTraceMode
     // Context window settings - use provided value or preserve old config value
     const primaryContextWindow =
       args.primaryContextWindow !== undefined ? args.primaryContextWindow : oldConfig.primaryContextWindow
@@ -317,6 +356,21 @@ export const updateConfig = mutation({
     ) {
       throw new Error("Max search results harus antara 1 dan 10")
     }
+    if (
+      thinkingBudgetPrimary !== undefined &&
+      (thinkingBudgetPrimary < MIN_THINKING_BUDGET || thinkingBudgetPrimary > MAX_THINKING_BUDGET)
+    ) {
+      throw new Error(`Thinking budget primary harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
+    }
+    if (
+      thinkingBudgetFallback !== undefined &&
+      (thinkingBudgetFallback < MIN_THINKING_BUDGET || thinkingBudgetFallback > MAX_THINKING_BUDGET)
+    ) {
+      throw new Error(`Thinking budget fallback harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
+    }
+    if (reasoningTraceMode !== undefined && !REASONING_TRACE_MODES.has(reasoningTraceMode)) {
+      throw new Error('Reasoning trace mode harus "off" atau "curated"')
+    }
 
     const now = Date.now()
     const newVersion = oldConfig.version + 1
@@ -338,6 +392,10 @@ export const updateConfig = mutation({
       temperature,
       topP,
       maxTokens,
+      reasoningEnabled,
+      thinkingBudgetPrimary,
+      thinkingBudgetFallback,
+      reasoningTraceMode,
       // Context window settings
       primaryContextWindow,
       fallbackContextWindow,
@@ -461,6 +519,14 @@ export const swapProviders = mutation({
       temperature: config.temperature,
       topP: config.topP,
       maxTokens: config.maxTokens,
+      // Keep global reasoning switches, swap slot-specific thinking budgets
+      reasoningEnabled: config.reasoningEnabled,
+      thinkingBudgetPrimary: config.thinkingBudgetFallback,
+      thinkingBudgetFallback: config.thinkingBudgetPrimary,
+      reasoningTraceMode: config.reasoningTraceMode,
+      // Swap context windows to follow swapped primary/fallback models
+      primaryContextWindow: config.fallbackContextWindow,
+      fallbackContextWindow: config.primaryContextWindow,
       // Swap web search enabled flags (they follow the provider)
       primaryWebSearchEnabled: config.fallbackWebSearchEnabled,
       fallbackWebSearchEnabled: config.primaryWebSearchEnabled,

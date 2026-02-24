@@ -38,6 +38,11 @@ const PROVIDER_OPTIONS = [
   { value: "openrouter", label: "OpenRouter" },
 ]
 
+const MIN_THINKING_BUDGET = 0
+const MAX_THINKING_BUDGET = 32768
+const DEFAULT_THINKING_BUDGET_PRIMARY = 256
+const DEFAULT_THINKING_BUDGET_FALLBACK = 128
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -55,6 +60,10 @@ interface AIProviderConfig {
   temperature: number
   topP?: number
   maxTokens?: number
+  reasoningEnabled?: boolean
+  thinkingBudgetPrimary?: number
+  thinkingBudgetFallback?: number
+  reasoningTraceMode?: "off" | "curated"
   primaryContextWindow?: number
   fallbackContextWindow?: number
   primaryWebSearchEnabled?: boolean
@@ -141,6 +150,16 @@ export function AIProviderConfigEditor({
   const [temperature, setTemperature] = useState(config?.temperature ?? 0.7)
   const [topP, setTopP] = useState<number | undefined>(config?.topP)
   const [maxTokens, setMaxTokens] = useState<number | undefined>(config?.maxTokens)
+  const [reasoningEnabled, setReasoningEnabled] = useState(config?.reasoningEnabled ?? true)
+  const [thinkingBudgetPrimary, setThinkingBudgetPrimary] = useState<number | undefined>(
+    config?.thinkingBudgetPrimary ?? DEFAULT_THINKING_BUDGET_PRIMARY
+  )
+  const [thinkingBudgetFallback, setThinkingBudgetFallback] = useState<number | undefined>(
+    config?.thinkingBudgetFallback ?? DEFAULT_THINKING_BUDGET_FALLBACK
+  )
+  const [reasoningTraceMode, setReasoningTraceMode] = useState<"off" | "curated">(
+    config?.reasoningTraceMode ?? "curated"
+  )
 
   // Context window settings
   const [primaryContextWindow, setPrimaryContextWindow] = useState<number | undefined>(config?.primaryContextWindow)
@@ -399,6 +418,20 @@ export function AIProviderConfigEditor({
       toast.error("Max Tokens harus lebih dari 0")
       return
     }
+    if (
+      thinkingBudgetPrimary !== undefined &&
+      (thinkingBudgetPrimary < MIN_THINKING_BUDGET || thinkingBudgetPrimary > MAX_THINKING_BUDGET)
+    ) {
+      toast.error(`Thinking Budget Primary harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
+      return
+    }
+    if (
+      thinkingBudgetFallback !== undefined &&
+      (thinkingBudgetFallback < MIN_THINKING_BUDGET || thinkingBudgetFallback > MAX_THINKING_BUDGET)
+    ) {
+      toast.error(`Thinking Budget Fallback harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
+      return
+    }
 
     if (fallbackWebSearchMaxResults < 1 || fallbackWebSearchMaxResults > 10) {
       toast.error("Max Search Results harus antara 1 dan 10")
@@ -416,6 +449,10 @@ export function AIProviderConfigEditor({
           temperature,
           topP,
           maxTokens,
+          reasoningEnabled,
+          thinkingBudgetPrimary,
+          thinkingBudgetFallback,
+          reasoningTraceMode,
         }
 
         if (name !== config.name) updateArgs.name = name
@@ -435,6 +472,18 @@ export function AIProviderConfigEditor({
         }
         if (fallbackContextWindow !== config.fallbackContextWindow) {
           updateArgs.fallbackContextWindow = fallbackContextWindow
+        }
+        if (reasoningEnabled !== (config.reasoningEnabled ?? true)) {
+          updateArgs.reasoningEnabled = reasoningEnabled
+        }
+        if (thinkingBudgetPrimary !== (config.thinkingBudgetPrimary ?? DEFAULT_THINKING_BUDGET_PRIMARY)) {
+          updateArgs.thinkingBudgetPrimary = thinkingBudgetPrimary
+        }
+        if (thinkingBudgetFallback !== (config.thinkingBudgetFallback ?? DEFAULT_THINKING_BUDGET_FALLBACK)) {
+          updateArgs.thinkingBudgetFallback = thinkingBudgetFallback
+        }
+        if (reasoningTraceMode !== (config.reasoningTraceMode ?? "curated")) {
+          updateArgs.reasoningTraceMode = reasoningTraceMode
         }
 
         if (primaryWebSearchEnabled !== (config.primaryWebSearchEnabled ?? true)) {
@@ -466,6 +515,10 @@ export function AIProviderConfigEditor({
           temperature,
           topP,
           maxTokens,
+          reasoningEnabled,
+          thinkingBudgetPrimary,
+          thinkingBudgetFallback,
+          reasoningTraceMode,
           primaryContextWindow,
           fallbackContextWindow,
           primaryWebSearchEnabled,
@@ -495,6 +548,10 @@ export function AIProviderConfigEditor({
       temperature !== config.temperature ||
       topP !== config.topP ||
       maxTokens !== config.maxTokens ||
+      reasoningEnabled !== (config.reasoningEnabled ?? true) ||
+      thinkingBudgetPrimary !== (config.thinkingBudgetPrimary ?? DEFAULT_THINKING_BUDGET_PRIMARY) ||
+      thinkingBudgetFallback !== (config.thinkingBudgetFallback ?? DEFAULT_THINKING_BUDGET_FALLBACK) ||
+      reasoningTraceMode !== (config.reasoningTraceMode ?? "curated") ||
       primaryContextWindow !== config.primaryContextWindow ||
       fallbackContextWindow !== config.fallbackContextWindow ||
       primaryWebSearchEnabled !== (config.primaryWebSearchEnabled ?? true) ||
@@ -981,6 +1038,84 @@ export function AIProviderConfigEditor({
                     disabled={isLoading}
                     className="rounded-action"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-action border-main border border-border p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h4 className="text-interface text-sm font-medium">Reasoning Settings</h4>
+                    <p className="text-interface text-[10px] text-muted-foreground">
+                      Kontrol mode thinking model dan trace mode user-facing.
+                    </p>
+                  </div>
+                  <Switch
+                    id="reasoningEnabled"
+                    checked={reasoningEnabled}
+                    onCheckedChange={setReasoningEnabled}
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="thinkingBudgetPrimary" className="text-interface text-xs">
+                      Thinking Budget Primary
+                    </Label>
+                    <Input
+                      id="thinkingBudgetPrimary"
+                      type="number"
+                      step="1"
+                      min={MIN_THINKING_BUDGET}
+                      max={MAX_THINKING_BUDGET}
+                      value={thinkingBudgetPrimary ?? ""}
+                      onChange={(e) =>
+                        setThinkingBudgetPrimary(e.target.value ? parseInt(e.target.value, 10) : undefined)
+                      }
+                      placeholder={`${DEFAULT_THINKING_BUDGET_PRIMARY}`}
+                      disabled={isLoading || !reasoningEnabled}
+                      className="rounded-action"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="thinkingBudgetFallback" className="text-interface text-xs">
+                      Thinking Budget Fallback
+                    </Label>
+                    <Input
+                      id="thinkingBudgetFallback"
+                      type="number"
+                      step="1"
+                      min={MIN_THINKING_BUDGET}
+                      max={MAX_THINKING_BUDGET}
+                      value={thinkingBudgetFallback ?? ""}
+                      onChange={(e) =>
+                        setThinkingBudgetFallback(e.target.value ? parseInt(e.target.value, 10) : undefined)
+                      }
+                      placeholder={`${DEFAULT_THINKING_BUDGET_FALLBACK}`}
+                      disabled={isLoading || !reasoningEnabled}
+                      className="rounded-action"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="reasoningTraceMode" className="text-interface text-xs">
+                      Reasoning Trace Mode
+                    </Label>
+                    <Select
+                      value={reasoningTraceMode}
+                      onValueChange={(value) => setReasoningTraceMode(value as "off" | "curated")}
+                      disabled={isLoading || !reasoningEnabled}
+                    >
+                      <SelectTrigger id="reasoningTraceMode" className="rounded-action">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="curated">Curated</SelectItem>
+                        <SelectItem value="off">Off</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
