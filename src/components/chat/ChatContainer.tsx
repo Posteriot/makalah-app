@@ -146,6 +146,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
           onMobileMenuClick={() => setIsMobileOpen(true)}
           onArtifactSelect={handleArtifactSelect}
           onShowArtifactList={() => setShowArtifactList(true)}
+          artifacts={artifacts}
         />
       </ChatLayout>
 

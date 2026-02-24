@@ -28,11 +28,24 @@ import { MobileProgressBar } from "./mobile/MobileProgressBar"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
+/** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
+interface ConversationArtifact {
+  _id: Id<"artifacts">
+  _creationTime: number
+  title: string
+  version: number
+  messageId?: Id<"messages">
+  parentId?: Id<"artifacts">
+  type: string
+}
+
 interface ChatWindowProps {
   conversationId: string | null
   onMobileMenuClick?: () => void
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
   onShowArtifactList?: () => void
+  /** All artifacts for this conversation (for persisted artifact signals after refresh) */
+  artifacts?: ConversationArtifact[]
 }
 
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
@@ -80,7 +93,7 @@ function consumePendingStarterPrompt(conversationId: string): string | null {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, onShowArtifactList }: ChatWindowProps) {
+export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, onShowArtifactList, artifacts: conversationArtifacts }: ChatWindowProps) {
   const router = useRouter()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
@@ -178,6 +191,47 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (!isPaperMode || permissionMessages.length === 0) return 0
     return getStageStartIndex(permissionMessages)
   }, [isPaperMode, permissionMessages, getStageStartIndex])
+
+  // Build message → artifact map for persisted artifact signals (survives page refresh)
+  // Matches artifacts to the assistant message they were created during, using temporal proximity
+  const messageArtifactMap = useMemo(() => {
+    const map = new Map<string, ConversationArtifact[]>()
+    if (!conversationArtifacts || !historyMessages || historyMessages.length === 0) return map
+
+    for (const artifact of conversationArtifacts) {
+      // Skip refrasa artifacts — they have their own display flow
+      if (artifact.type === "refrasa") continue
+
+      // Direct match by messageId (if set)
+      if (artifact.messageId) {
+        const existing = map.get(artifact.messageId) ?? []
+        existing.push(artifact)
+        map.set(artifact.messageId, existing)
+        continue
+      }
+
+      // Temporal matching: artifact was created between the previous message
+      // and this assistant message (during streaming)
+      const artifactTime = artifact._creationTime
+      for (let i = 0; i < historyMessages.length; i++) {
+        const msg = historyMessages[i]
+        if (msg.role !== "assistant") continue
+
+        const prevMsg = historyMessages[i - 1]
+        const prevTime = prevMsg?.createdAt ?? 0
+        const msgTime = msg.createdAt ?? Infinity
+
+        if (artifactTime > prevTime && artifactTime <= msgTime) {
+          const existing = map.get(msg._id) ?? []
+          existing.push(artifact)
+          map.set(msg._id, existing)
+          break
+        }
+      }
+    }
+
+    return map
+  }, [conversationArtifacts, historyMessages])
 
   // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
@@ -865,6 +919,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                       currentStageStartIndex={currentStageStartIndex}
                       allMessages={permissionMessages}
                       stageData={stageData}
+                      // Persisted artifact signals (survive page refresh)
+                      persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
                     />
                   </div>
                 )
@@ -877,7 +933,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 return atBottom ? "smooth" : false
               }}
               initialTopMostItemIndex={messages.length - 1}
-              style={{ height: "100%" }}
+              style={{ height: "100%", overflowX: "hidden" }}
               components={{
                 Header: () => <div className="pt-4" />,
                 Footer: () => (
