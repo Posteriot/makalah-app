@@ -26,12 +26,16 @@ For developer maintenance, scaling, and onboarding.
 
 ## Overview
 
-Hybrid CMS for all marketing pages and pricing configuration. Admin-only (superadmin/admin roles). Static fallback when CMS content is unpublished or absent.
+Hybrid CMS for marketing pages, chat empty state, and pricing configuration. Admin-only (superadmin/admin roles). Fallback behavior depends on each consumer component:
+- Home/About structured sections: if missing or unpublished, section is hidden (`return null`).
+- Chat empty state (`TemplateGrid` + `ChatWindow`): desktop selalu memakai mode strict CMS-only. Jika section `chat-empty-state` belum `isPublished`, logo + heading + deskripsi + link sidebar + template tidak dirender (kosong). Mobile tetap fallback text/logo/templates selama redesign mobile berlangsung.
+- Legal pages (`CmsPageWrapper`): fallback to static `children` content.
+- Pricing header/teaser: fallback to local constants for text when section is not published.
 
 ### Design Principles
 
-- **Publish toggle**: Every CMS record has `isPublished`. When `false`, frontend falls back to hardcoded static components.
-- **Zero downtime**: Static components always available. CMS enhances, never blocks.
+- **Publish toggle**: Every CMS record has `isPublished`; behavior when `false` is component-specific (hidden section, static children fallback, or local constant fallback).
+- **Graceful degradation**: Marketing pages remain renderable even when CMS data is incomplete; fallback is handled at wrapper/component level.
 - **Real-time**: Convex subscriptions auto-update frontend when admin saves.
 - **Image storage**: Convex file storage with CDN URLs. No external image hosts.
 - **DB as single source of truth for pricing**: All prices flow from `pricingPlans` table. Constants used only as fallback safety net.
@@ -42,8 +46,8 @@ Hybrid CMS for all marketing pages and pricing configuration. Admin-only (supera
 |-------|-----------|
 | Database | Convex (real-time, serverless) |
 | Admin UI | React + Tailwind CSS (client components) |
-| Rich Text | TipTap (ProseMirror) with StarterKit + Link + Image |
-| Image Upload | Convex Storage API (PUT to upload URL) |
+| Rich Text | TipTap (ProseMirror): `TipTapEditor` uses StarterKit + Link, `SectionBlockEditor`/`RichTextRenderer` use StarterKit + Link + Image |
+| Image Upload | Convex Storage API (upload URL + HTTP POST/PUT depending on component) |
 | Frontend | Next.js App Router (`useQuery` subscriptions) |
 
 ### CMS Route
@@ -90,7 +94,7 @@ The CMS uses a dedicated 4-column CSS Grid layout, completely separate from the 
 | `CmsActivityBar` | `src/components/cms/CmsActivityBar.tsx` | Vertical icon sidebar (48px). Defines `CmsPageId` type. Two groups: Content Pages + Global. |
 | `CmsSidebar` | `src/components/cms/CmsSidebar.tsx` | Dynamic section sidebar (280px default, min 180px, collapses at <100px). Defines `CmsSectionId` and sub-page types. "Content Manager" header is clickable — resets to main overview. |
 | `CmsTopBar` | `src/components/cms/CmsTopBar.tsx` | Top bar above content area. Expand sidebar toggle (when collapsed), theme toggle, Admin Dashboard link, user dropdown. |
-| `CmsMainOverview` | `src/components/cms/CmsMainOverview.tsx` | Main overview dashboard shown when no page is selected. Shows status summary for all 7 pages. Queries all CMS data sources. |
+| `CmsMainOverview` | `src/components/cms/CmsMainOverview.tsx` | Main overview dashboard shown when no page is selected. Shows status summary for all 8 pages. Queries all CMS data sources. |
 | `PanelResizer` | `src/components/ui/PanelResizer.tsx` | Draggable 2px divider for sidebar resize. Double-click resets to 280px. |
 
 ### Page & Section Type System
@@ -100,6 +104,7 @@ The CMS uses a dedicated 4-column CSS Grid layout, completely separate from the 
 | Page ID | Icon | Label | Sidebar Pattern |
 |---------|------|-------|-----------------|
 | `home` | `Home` | Home | Section list |
+| `chat` | `ChatBubble` | Chat | Section list |
 | `about` | `InfoCircle` | About | Section list |
 | `pricing` | `CreditCard` | Pricing | Section list |
 | `documentation` | `Book` | Dokumentasi | Drill-down (group → section list → detail) |
@@ -116,6 +121,7 @@ The CMS uses a dedicated 4-column CSS Grid layout, completely separate from the 
 | `features-workflow` | home | `FeatureShowcaseEditor` (sectionSlug="features-workflow") |
 | `features-refrasa` | home | `FeatureShowcaseEditor` (sectionSlug="features-refrasa") |
 | `pricing-teaser` | home | `PricingHeaderEditor` (sectionSlug="pricing-teaser") |
+| `chat-empty-state` | chat | `ChatEmptyStateEditor` |
 | `manifesto` | about | `ManifestoSectionEditor` |
 | `problems` | about | `ProblemsSectionEditor` |
 | `agents` | about | `AgentsSectionEditor` |
@@ -140,7 +146,7 @@ The sidebar uses 3 rendering functions + 2 specialized drill-down renderers:
 
 | Function | Used By | Behavior |
 |----------|---------|----------|
-| `renderSectionList()` | home, about, pricing | Simple flat list, highlights `activeSection` |
+| `renderSectionList()` | home, chat, about, pricing | Simple flat list, highlights `activeSection` |
 | `renderSubPageList()` | legal, global-layout | Generic typed list, highlights active sub-page |
 | `renderDrillDownList()` | (base for doc/blog) | Two-level: shows groups initially, then back-button when drilled in |
 | `renderDocDrillDown()` | documentation | Three-level: group list → back button + article list (from `listAllSections` query) → article editor |
@@ -152,13 +158,15 @@ Documentation and blog drill-downs query article/post data when a group/category
 
 ```
 Content Pages
-├── Home                    → CmsPageOverview (section list + pattern toggles)
+├── Home                    → CmsPageOverview (section list + published status)
 │   ├── Hero                → HeroSectionEditor
 │   ├── Benefits            → BenefitsSectionEditor
 │   ├── Fitur: Workflow     → FeatureShowcaseEditor
 │   ├── Fitur: Refrasa      → FeatureShowcaseEditor
 │   └── Pricing Teaser      → PricingHeaderEditor (sectionSlug="pricing-teaser")
-├── About                   → CmsPageOverview (section list + pattern toggles)
+├── Chat                    → CmsPageOverview (section list + published status)
+│   └── Empty State         → ChatEmptyStateEditor (sectionSlug="chat-empty-state")
+├── About                   → CmsPageOverview (section list + published status)
 │   ├── Manifesto           → ManifestoSectionEditor
 │   ├── Problems            → ProblemsSectionEditor
 │   ├── Agents              → AgentsSectionEditor
@@ -196,12 +204,12 @@ Six tables power the CMS. All defined in `convex/schema.ts`.
 
 ### 1. `pageContent` — Structured Sections
 
-**Purpose:** Home page sections (hero, benefits, features, pricing-teaser), about page sections (manifesto, problems, agents, career-contact), pricing page header, and per-page settings (background patterns for pricing, docs, legal, blog).
+**Purpose:** Home page sections (hero, benefits, features, pricing-teaser), chat page section (empty state), about page sections (manifesto, problems, agents, career-contact), pricing page header, and per-page settings (background patterns for pricing, docs, legal, blog).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `pageSlug` | `string` | Page identifier (`"home"`, `"about"`, `"pricing"`, `"docs"`, `"legal"`, `"blog"`) |
-| `sectionSlug` | `string` | Section identifier (`"hero"`, `"benefits"`, `"features-workflow"`, `"features-refrasa"`, `"pricing-teaser"`, `"manifesto"`, `"problems"`, `"agents"`, `"career-contact"`, `"pricing-page-header"`, `"docs-page-settings"`, `"legal-page-settings"`, `"blog-page-settings"`) |
+| `pageSlug` | `string` | Page identifier (`"home"`, `"chat"`, `"about"`, `"pricing"`, `"docs"`, `"legal"`, `"blog"`) |
+| `sectionSlug` | `string` | Section identifier (`"hero"`, `"benefits"`, `"features-workflow"`, `"features-refrasa"`, `"pricing-teaser"`, `"chat-empty-state"`, `"manifesto"`, `"problems"`, `"agents"`, `"career-contact"`, `"pricing-page-header"`, `"docs-page-settings"`, `"legal-page-settings"`, `"blog-page-settings"`) |
 | `sectionType` | `union` | `"hero"` \| `"benefits"` \| `"feature-showcase"` \| `"manifesto"` \| `"problems"` \| `"agents"` \| `"career-contact"` \| `"pricing-header"` \| `"page-header"` \| `"page-settings"` |
 | `title` | `string?` | Section heading |
 | `subtitle` | `string?` | Sub-heading |
@@ -304,7 +312,7 @@ Six tables power the CMS. All defined in `convex/schema.ts`.
 |-------|------|-------------|
 | `slug` | `string` | URL slug |
 | `title` | `string` | Post title |
-| `excerpt` | `string?` | Summary/preview text |
+| `excerpt` | `string` | Summary/preview text |
 | `author` | `string` | Author name |
 | `category` | `string` | Category (`"Update"`, `"Tutorial"`, `"Opini"`, `"Event"`) |
 | `readTime` | `string` | Read time label (e.g., "5 min read") |
@@ -312,7 +320,7 @@ Six tables power the CMS. All defined in `convex/schema.ts`.
 | `isPublished` | `boolean` | Publish toggle |
 | `publishedAt` | `number` | Publication timestamp |
 | `content` | `string?` | TipTap JSON for article body |
-| `blocks[]` | `array?` | Legacy structured blocks (auto-converted to TipTap in CMS editor) |
+| `blocks[]` | `array` | Legacy structured blocks (auto-converted to TipTap in CMS editor) |
 | `coverImageId` | `Id<"_storage">?` | Cover image |
 | `createdAt` | `number` | Creation timestamp |
 | `updatedAt` | `number` | Last update timestamp |
@@ -421,13 +429,13 @@ All public queries are unauthenticated (for frontend rendering).
 | Function | Type | Auth | Description |
 |----------|------|------|-------------|
 | `getPublishedSections()` | query | public | Published sections ordered by `order` |
-| `getSectionBySlug(slug)` | query | public | Single section by slug (published only) |
-| `listAllSections(requestorId)` | query | admin | All sections |
-| `getSectionBySlugAdmin(requestorId, slug)` | query | admin | Single section by slug (admin) |
 | `getDocImageUrl(storageId)` | query | public | Resolve doc image URL |
+| `listAllSections(requestorId)` | query | admin | All sections |
+| `getSectionBySlug(requestorId, slug)` | query | admin | Single section by slug (admin) |
 | `upsertSection(requestorId, ...)` | mutation | admin | Create/update (auto-generates `searchText`) |
 | `deleteSection(requestorId, id)` | mutation | admin | Delete section |
 | `generateDocUploadUrl(requestorId)` | mutation | admin | Get upload URL for doc images |
+| `getDocImageUrlMutation(storageId)` | mutation | public | Mutation wrapper for imperative image URL resolve |
 
 ---
 
@@ -437,12 +445,11 @@ Four patterns used depending on content type.
 
 ### Pattern 1: Wrapper Pattern (Structured Sections — Home Page)
 
-Used for home page sections. Three-component architecture per section.
+Used for home page sections. Two-layer architecture (wrapper + CMS renderer).
 
 ```
-XxxSection.tsx          ← "use client" wrapper with useQuery
-├── XxxStatic.tsx       ← Hardcoded fallback component
-└── XxxCMS.tsx          ← CMS-driven component
+XxxSection.tsx          ← "use client" wrapper with useQuery + publish gate
+└── XxxCMS.tsx          ← CMS-driven renderer (with field-level fallback where needed)
 ```
 
 **Logic flow:**
@@ -450,31 +457,31 @@ XxxSection.tsx          ← "use client" wrapper with useQuery
 ```
 useQuery(api.pageContent.getSection, { pageSlug, sectionSlug })
   ├── undefined (loading) → return null
-  ├── null or !isPublished → <XxxStatic />
+  ├── null or !isPublished → return null (section hidden)
   └── published → <XxxCMS content={section} />
 ```
 
 **Implementations:**
 
-| Section | Wrapper | Static | CMS |
-|---------|---------|--------|-----|
-| Hero | `hero/HeroSection.tsx` | `hero/HeroStatic.tsx` | `hero/HeroCMS.tsx` |
-| Benefits | `benefits/BenefitsSectionWrapper.tsx` | `benefits/BenefitsSection.tsx` (no items prop) | `benefits/BenefitsSection.tsx` (with items prop) |
-| Workflow Feature | `features/WorkflowFeatureSection.tsx` | `features/WorkflowFeatureStatic.tsx` | `features/WorkflowFeatureCMS.tsx` |
-| Refrasa Feature | `features/RefrasaFeatureSection.tsx` | `features/RefrasaFeatureStatic.tsx` | `features/RefrasaFeatureCMS.tsx` |
+| Section | Wrapper | Renderer | Behavior if missing/unpublished |
+|---------|---------|----------|-------------------------------|
+| Hero | `hero/HeroSection.tsx` | `hero/HeroCMS.tsx` | Hidden |
+| Benefits | `benefits/BenefitsSectionWrapper.tsx` | `benefits/BenefitsSection.tsx` | Hidden |
+| Workflow Feature | `features/WorkflowFeatureSection.tsx` | `features/WorkflowFeatureCMS.tsx` | Hidden |
+| Refrasa Feature | `features/RefrasaFeatureSection.tsx` | `features/RefrasaFeatureCMS.tsx` | Hidden |
 
-**Note on Benefits:** `BenefitsSection` is a single component that accepts optional `items` prop. Without items, it renders hardcoded defaults. With items from CMS, it renders CMS data. This is a shared-component variant of the Wrapper Pattern.
+**Note on Benefits:** `BenefitsSection` accepts optional `items`. If `items` is empty, child components render their own default list.
 
 ### Pattern 2: Wrapper Pattern (Structured Sections — About Page)
 
-Same three-component architecture, but components live in `src/components/about/`.
+Same wrapper + CMS renderer architecture, with components in `src/components/about/`.
 
-| Section | Wrapper | Static | CMS |
-|---------|---------|--------|-----|
-| Manifesto | `about/ManifestoSection.tsx` | `about/ManifestoSectionStatic.tsx` | `about/ManifestoSectionCMS.tsx` |
-| Problems | `about/ProblemsSection.tsx` | `about/ProblemsSectionStatic.tsx` | `about/ProblemsSectionCMS.tsx` |
-| Agents | `about/AgentsSection.tsx` | `about/AgentsSectionStatic.tsx` | `about/AgentsSectionCMS.tsx` |
-| Career & Contact | `about/CareerContactSection.tsx` | `about/CareerContactSectionStatic.tsx` | `about/CareerContactSectionCMS.tsx` |
+| Section | Wrapper | Renderer | Behavior if missing/unpublished |
+|---------|---------|----------|-------------------------------|
+| Manifesto | `about/ManifestoSection.tsx` | `about/ManifestoSectionCMS.tsx` | Hidden |
+| Problems | `about/ProblemsSection.tsx` | `about/ProblemsSectionCMS.tsx` | Hidden |
+| Agents | `about/AgentsSection.tsx` | `about/AgentsSectionCMS.tsx` | Hidden |
+| Career & Contact | `about/CareerContactSection.tsx` | `about/CareerContactSectionCMS.tsx` | Hidden |
 
 Exported via barrel file `src/components/about/index.ts`.
 
@@ -540,7 +547,7 @@ These editors share a common pattern: query existing data → populate form stat
 | Editor | Section | Key Fields |
 |--------|---------|------------|
 | `HeroSectionEditor` | hero | title, subtitle, badgeText, ctaText/Href, primaryImage + alt, headingImageDark/Light |
-| `BenefitsSectionEditor` | benefits | items[] (title + description + icon name) — fixed 4 items |
+| `BenefitsSectionEditor` | benefits | items[] (title + description) — starts with 4 empty items, can add/remove dynamically |
 | `FeatureShowcaseEditor` | features-workflow, features-refrasa | title, description, badgeText, items[] (dynamic), primaryImage (light), secondaryImage (dark) |
 | `ManifestoSectionEditor` | manifesto | badgeText, headingLines[] (3 lines), subheading, paragraphs[] (dynamic), terminalDark/Light images |
 | `ProblemsSectionEditor` | problems | badgeText, title, items[] (title + description, dynamic) |
@@ -646,8 +653,8 @@ All pricing flows from the `pricingPlans` Convex table. No frontend or payment e
 
 | Consumer | Query Used | Fallback |
 |----------|-----------|----------|
-| Home page pricing teaser | `pricingPlans.getActivePlans()` | — (no static fallback, shows skeleton) |
-| `/pricing` page | `pricingPlans.getActivePlans()` | — |
+| Home page pricing teaser | `pricingPlans.getActivePlans()` + `pageContent.getSection("home","pricing-teaser")` | Header text fallback ke konstanta lokal (`FALLBACK_BADGE`, `FALLBACK_TITLE`) |
+| `/pricing` page | `pricingPlans.getActivePlans()` + `pageContent.getSection("pricing","pricing-page-header")` | Header text fallback ke konstanta lokal (`FALLBACK_BADGE`, `FALLBACK_TITLE`, `FALLBACK_SUBTITLE`) |
 | `/subscription/plans` | `pricingPlans.getActivePlans()` | — |
 | `/subscription/overview` | `pricingPlans.getPlanBySlug()` | — |
 | `/checkout/bpp` | `billing.pricingHelpers.getBppCreditPackage()` | Constants in `billing/constants.ts` |
@@ -717,11 +724,12 @@ Reusable component for all CMS image uploads.
 2. File input dialog opens
 3. File selected → call generateUploadUrlFn mutation
 4. Mutation returns Convex storage upload URL
-5. PUT request to upload URL with file body
-6. Response: { storageId: "..." }
-7. Call onUpload(storageId)
-8. Parent component updates form state
-9. On form save → storageId saved to DB record
+5. POST request to upload URL with file body (`CmsImageUpload`)
+6. Validate HTTP response + parse JSON payload
+7. Response valid: `{ storageId: "..." }`
+8. Call onUpload(storageId)
+9. Parent component updates form state
+10. On form save → storageId saved to DB record
 ```
 
 **States:**
@@ -761,6 +769,7 @@ Feature sections render two `<img>` tags with CSS class switching:
 | Hero Mockup | `/images/hero-paper-session-mock.png` | — |
 | Hero Heading (dark theme) | `/heading-light-color.svg` | — |
 | Hero Heading (light theme) | `/heading-dark-color.svg` | — |
+| Manifesto Terminal | `/images/manifesto-terminal-dark.png` | `/images/manifesto-terminal-light.png` |
 | Blog Cover | Dynamic SVG via `createPlaceholderImageDataUri()` | — |
 
 ### Image Upload Endpoints Per CMS Area
@@ -792,16 +801,17 @@ Different CMS areas use different Convex endpoints for image storage:
 
 **File:** `src/components/admin/cms/TipTapEditor.tsx`
 
-**Extensions:** StarterKit (heading 1-3, bold, italic, lists, blockquote, code), Link, Image
+**Extensions:** StarterKit (heading 1-3, bold, italic, lists, blockquote, codeBlock), Link
 
 **Toolbar:**
 - Heading 1/2/3
 - Bold, Italic
 - Bullet list, Ordered list, Blockquote
-- Code inline
+- Code block
 - Link insertion (prompt dialog)
-- Image insertion (for documentation blocks — prompt for URL)
 - Undo/Redo
+
+**Note:** Inline image insertion for documentation lives in `src/components/admin/cms/blocks/SectionBlockEditor.tsx` (TipTap + Image extension + upload to Convex storage).
 
 **Props:**
 - `content` — JSON string from DB
@@ -812,7 +822,7 @@ Different CMS areas use different Convex endpoints for image storage:
 
 **File:** `src/components/marketing/RichTextRenderer.tsx`
 
-Read-only TipTap instance. Same extensions as editor. Applies prose styling via Tailwind classes on `EditorContent`:
+Read-only TipTap instance with StarterKit + Link + Image. Applies prose styling via Tailwind classes on `EditorContent`:
 - Headings: `text-narrative`, `tracking-tight`, `text-foreground`
 - Body: `text-interface`, `text-sm`, `text-muted-foreground`
 - Links: `text-primary`, `underline`
@@ -877,12 +887,17 @@ This ensures backward compatibility: existing published sections without the new
 | Documentation | OFF | ON | OFF |
 | Blog | OFF | ON | OFF |
 | Legal | OFF | ON | OFF |
-| Footer | OFF | OFF | ON (was hardcoded) |
-| Pricing | OFF | ON | OFF |
+| Footer | ON* | ON* | ON* |
+| Pricing | ON* | ON* | ON* |
+
+\* For Footer/Pricing, defaults apply when config/section exists and toggle fields are absent (`!== false`). If config/section record is absent, patterns are not rendered because components guard with `footerConfig != null` / `headerSection != null`.
 
 ### Overview Components with Pattern Toggles
 
-Each overview component (`CmsPageOverview`, `CmsPricingOverview`, `CmsDocOverview`, `CmsBlogOverview`, `CmsLegalOverview`) includes a "Background Patterns" section at the bottom with Switch toggles + `CmsSaveButton`. Pattern toggle state is synced from DB via `useEffect` and saved via `upsertSection` (pageContent) or `upsertConfig` (siteConfig).
+Pattern toggles are managed in:
+- `CmsPricingOverview`, `CmsDocOverview`, `CmsBlogOverview`, `CmsLegalOverview` (page-level settings).
+- Home/About section editors (`HeroSectionEditor`, `BenefitsSectionEditor`, `FeatureShowcaseEditor`, `ManifestoSectionEditor`, `ProblemsSectionEditor`, `AgentsSectionEditor`, `CareerContactEditor`) for per-section patterns.
+- `FooterConfigEditor` for footer patterns.
 
 ### Frontend Conditional Rendering
 
@@ -894,7 +909,7 @@ CMS variant components and page wrappers query their pattern settings and condit
 {content.showDottedPattern !== false && <DottedPattern spacing={24} ... />}
 ```
 
-**Static variants are NOT affected** — they always show all their original patterns as fallback.
+Most structured sections now use single CMS renderers (no separate `*Static.tsx` files). Fallback is handled by publish gates and field-level fallback values inside renderers.
 
 ---
 
@@ -910,11 +925,14 @@ Located in `convex/migrations/`. Run via `npx convex run migrations:<name>`.
 | `seedSiteConfig.ts` | Header nav + footer sections/links | Yes (per key) |
 | `seedPolicyContent.ts` | Additional policy content | Yes |
 | `seedDocumentationSections.ts` | Documentation sections with blocks | Yes |
-| `seedPricingPlans.ts` | Pricing tiers (gratis, bpp, pro) with credit packages | Yes (checks by slug) |
+| `seedPricingPlans.ts` | Pricing tiers (gratis, bpp, pro) with credit packages | Yes (aborts if table already has data) |
 
 **Note:** Blog posts are seeded via `blog.ts` functions (`seedBlogPosts`), not a separate migration file.
 
-All seed data is created with `isPublished: false` so static fallbacks remain active until admin explicitly publishes.
+Seed publish defaults vary by migration:
+- `seedHomeContent`, `seedAboutContent`, `seedRichTextPages`, `seedPolicyContent`: `isPublished: false`.
+- `seedDocumentationSections`: `isPublished: true`.
+- `seedPricingPlans` / `seedSiteConfig`: no `isPublished` field (different table models).
 
 ---
 
@@ -931,7 +949,7 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `src/components/cms/CmsSidebar.tsx` | Dynamic sidebar, defines `CmsSectionId` + sub-page types |
 | `src/components/cms/CmsTopBar.tsx` | Top bar (expand toggle, theme, dashboard link, user) |
 | `src/components/cms/CmsMainOverview.tsx` | Main overview dashboard (all pages status summary, shown when no page selected) |
-| `src/components/cms/CmsPageOverview.tsx` | Overview dashboard for Home/About pages (section list + published status + pattern toggles) |
+| `src/components/cms/CmsPageOverview.tsx` | Overview dashboard for Home/Chat/About pages (section list + published status) |
 | `src/components/cms/CmsPricingOverview.tsx` | Overview dashboard for Pricing page (plan list + pattern toggles) |
 | `src/components/cms/CmsDocOverview.tsx` | Overview dashboard for Documentation page (group list + pattern toggles) |
 | `src/components/cms/CmsBlogOverview.tsx` | Overview dashboard for Blog page (category counts + pattern toggles) |
@@ -952,13 +970,14 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `convex/blog.ts` | Blog post CRUD + cover image handling |
 | `convex/documentationSections.ts` | Documentation CRUD + searchText generation |
 | `convex/permissions.ts` | `requireRole()` admin check |
-| `convex/migrations/seed*.ts` | Seed data scripts |
+| `convex/migrations/*.ts` | Seed and update migration scripts |
 
 ### Admin Panel (Editors)
 
 | File | Responsibility |
 |------|---------------|
 | `src/components/admin/cms/HeroSectionEditor.tsx` | Hero section form |
+| `src/components/admin/cms/ChatEmptyStateEditor.tsx` | Chat empty state editor (logo, description lines, starter templates) |
 | `src/components/admin/cms/BenefitsSectionEditor.tsx` | Benefits items form |
 | `src/components/admin/cms/FeatureShowcaseEditor.tsx` | Workflow/Refrasa features form (reusable) |
 | `src/components/admin/cms/ManifestoSectionEditor.tsx` | Manifesto section form |
@@ -987,39 +1006,35 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 |------|---------------|
 | `src/components/marketing/hero/HeroSection.tsx` | Hero wrapper (CMS query + fallback) |
 | `src/components/marketing/hero/HeroCMS.tsx` | Hero CMS renderer |
-| `src/components/marketing/hero/HeroStatic.tsx` | Hero static fallback |
 | `src/components/marketing/hero/HeroHeadingSvg.tsx` | Static heading SVG component |
 | `src/components/marketing/benefits/BenefitsSectionWrapper.tsx` | Benefits wrapper |
-| `src/components/marketing/benefits/BenefitsSection.tsx` | Benefits renderer (shared static/CMS) |
+| `src/components/marketing/benefits/BenefitsSection.tsx` | Benefits renderer (supports optional CMS items + internal defaults) |
 | `src/components/marketing/features/WorkflowFeatureSection.tsx` | Workflow wrapper |
 | `src/components/marketing/features/WorkflowFeatureCMS.tsx` | Workflow CMS renderer |
-| `src/components/marketing/features/WorkflowFeatureStatic.tsx` | Workflow static fallback |
 | `src/components/marketing/features/RefrasaFeatureSection.tsx` | Refrasa wrapper |
 | `src/components/marketing/features/RefrasaFeatureCMS.tsx` | Refrasa CMS renderer |
-| `src/components/marketing/features/RefrasaFeatureStatic.tsx` | Refrasa static fallback |
 | `src/components/about/ManifestoSection.tsx` | Manifesto wrapper |
-| `src/components/about/ManifestoSectionStatic.tsx` | Manifesto static fallback |
 | `src/components/about/ManifestoSectionCMS.tsx` | Manifesto CMS renderer |
 | `src/components/about/ProblemsSection.tsx` | Problems wrapper |
-| `src/components/about/ProblemsSectionStatic.tsx` | Problems static fallback |
 | `src/components/about/ProblemsSectionCMS.tsx` | Problems CMS renderer |
 | `src/components/about/AgentsSection.tsx` | Agents wrapper |
-| `src/components/about/AgentsSectionStatic.tsx` | Agents static fallback |
 | `src/components/about/AgentsSectionCMS.tsx` | Agents CMS renderer |
 | `src/components/about/CareerContactSection.tsx` | Career-Contact wrapper |
-| `src/components/about/CareerContactSectionStatic.tsx` | Career-Contact static fallback |
 | `src/components/about/CareerContactSectionCMS.tsx` | Career-Contact CMS renderer |
 | `src/components/marketing/CmsPageWrapper.tsx` | Rich text page wrapper (queries legal-page-settings for patterns) |
 | `src/components/marketing/RichTextRenderer.tsx` | TipTap read-only renderer |
 | `src/components/marketing/SimplePolicyPage.tsx` | Static policy page layout (queries legal-page-settings for patterns) |
 | `src/components/marketing/blog/BlogLandingPage.tsx` | Blog landing page (queries blog-page-settings for patterns) |
+| `src/components/marketing/blog/BlogArticlePage.tsx` | Blog article page (post content + page settings) |
 | `src/components/marketing/documentation/DocumentationPage.tsx` | Documentation page (queries docs-page-settings for patterns) |
-| `src/components/marketing/SectionBackground.tsx` | Background pattern components (GridPattern, DottedPattern, DiagonalStripes) |
+| `src/components/marketing/SectionBackground/index.ts` | Background pattern exports (GridPattern, DottedPattern, DiagonalStripes) |
 | `src/components/marketing/pricing-teaser/PricingTeaser.tsx` | Home page pricing teaser (reads from DB) |
 | `src/components/marketing/pricing-teaser/TeaserCard.tsx` | Individual teaser card (with price masking) |
 | `src/components/marketing/pricing/PricingCard.tsx` | Full pricing page card (with price masking) |
 | `src/components/layout/header/GlobalHeader.tsx` | Header with inline CMS fallback |
 | `src/components/layout/footer/Footer.tsx` | Footer with inline CMS fallback + pattern toggles from siteConfig |
+| `src/components/chat/messages/TemplateGrid.tsx` | Chat empty-state renderer (`chat/chat-empty-state`): desktop strict CMS-only, unpublished state renders empty; mobile keeps fallback behavior |
+| `src/components/chat/ChatWindow.tsx` | Chat page container that mounts `TemplateGrid` in desktop strict mode and mobile fallback mode |
 
 ### Utilities
 
@@ -1039,9 +1054,11 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
 | `src/app/(marketing)/privacy/page.tsx` | CmsPageWrapper |
 | `src/app/(marketing)/security/page.tsx` | CmsPageWrapper |
 | `src/app/(marketing)/terms/page.tsx` | CmsPageWrapper |
-| `src/app/(marketing)/blog/page.tsx` | Direct query (getPublishedPosts) |
-| `src/app/(marketing)/blog/[slug]/page.tsx` | Direct query (getPostBySlug) |
-| `src/app/(marketing)/documentation/page.tsx` | Direct query (getPublishedSections) |
+| `src/app/(marketing)/blog/page.tsx` | Component route (`BlogLandingPage`) |
+| `src/app/(marketing)/blog/[slug]/page.tsx` | Component route (`BlogArticlePage`) |
+| `src/app/(marketing)/documentation/page.tsx` | Component route (`DocumentationPage`) |
+| `src/app/chat/page.tsx` | Chat empty-state and conversation page entry (`ChatContainer` with `conversationId=null`) |
+| `src/app/chat/[conversationId]/page.tsx` | Chat conversation route (`ChatContainer` with selected conversation) |
 | `src/app/(dashboard)/subscription/plans/page.tsx` | Inline (getActivePlans + price masking) |
 | `src/app/(dashboard)/subscription/overview/page.tsx` | Inline (getPlanBySlug for upgrade cards) |
 | `src/app/(onboarding)/checkout/bpp/page.tsx` | Inline (getBppCreditPackage + disabled guard) |
@@ -1070,9 +1087,8 @@ All seed data is created with `isPublished: false` so static fallbacks remain ac
    - `CmsShell.tsx` — Import editor + add routing in `renderEditor()` + add empty state
 
 5. **Frontend Rendering** (`src/components/marketing/`):
-   - Create `NewSectionStatic.tsx` (hardcoded fallback)
-   - Create `NewSectionCMS.tsx` (renders from DB)
-   - Create `NewSection.tsx` (wrapper with useQuery + fallback logic)
+   - Create `NewSectionCMS.tsx` (renders from DB, include field-level fallback values if needed)
+   - Create `NewSection.tsx` (wrapper with `useQuery`, publish gate, and section visibility behavior)
    - Import wrapper in page route
 
 6. **Seed Data** (`convex/migrations/`):
