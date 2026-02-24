@@ -12,7 +12,8 @@ interface GridPatternProps {
  * Creates a subtle grid pattern overlay.
  * Default: 48px cells with slate-400 lines at 15% opacity.
  *
- * Performance: Wrapped in React.memo.
+ * Uses rgba() instead of color-mix() to avoid CSS minifier stripping
+ * the space between color-stop value and position on mobile Safari.
  */
 export const GridPattern = memo(function GridPattern({
   className
@@ -21,7 +22,7 @@ export const GridPattern = memo(function GridPattern({
     <div
       className={cn(
         "absolute inset-0 pointer-events-none",
-        "bg-[linear-gradient(color-mix(in_oklab,var(--slate-400),transparent_85%)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--slate-400),transparent_85%)_1px,transparent_1px)]",
+        "bg-[linear-gradient(rgba(159,159,159,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(159,159,159,0.15)_1px,transparent_1px)]",
         "bg-[length:48px_48px]",
         className
       )}
