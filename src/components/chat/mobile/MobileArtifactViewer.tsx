@@ -9,6 +9,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip"
 import { ArtifactViewer, type ArtifactViewerRef } from "../ArtifactViewer"
+import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer"
 import type { Id } from "../../../../convex/_generated/dataModel"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
@@ -287,9 +288,44 @@ export function MobileArtifactViewer({
         </div>
       )}
 
-      {/* Content — ArtifactViewer fills remaining space */}
+      {/* Content area */}
       <div className="flex-1 overflow-hidden">
-        <ArtifactViewer ref={viewerRef} artifactId={artifactId} />
+        {isRefrasa && showCompare && sourceArtifact ? (
+          <div className="flex h-full flex-col">
+            {/* Top: Asli */}
+            <div className="flex-1 overflow-y-auto border-b border-[color:var(--chat-border)]">
+              <div className="px-4 pt-2 pb-1">
+                <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--chat-secondary-foreground)]">
+                  Asli
+                </span>
+              </div>
+              <div className="px-4 py-3">
+                <MarkdownRenderer
+                  markdown={sourceArtifact.content ?? ""}
+                  className="text-sm leading-relaxed text-[var(--chat-foreground)]"
+                  context="artifact"
+                />
+              </div>
+            </div>
+            {/* Bottom: Refrasa */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="px-4 pt-2 pb-1">
+                <span className="rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-info)] px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--chat-info-foreground)]">
+                  Refrasa
+                </span>
+              </div>
+              <div className="px-4 py-3">
+                <MarkdownRenderer
+                  markdown={artifact?.content ?? ""}
+                  className="text-sm leading-relaxed text-[var(--chat-foreground)]"
+                  context="artifact"
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <ArtifactViewer ref={viewerRef} artifactId={artifactId} />
+        )}
       </div>
     </div>
   )
