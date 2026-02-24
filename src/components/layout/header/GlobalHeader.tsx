@@ -105,6 +105,8 @@ export function GlobalHeader() {
     : NAV_LINKS
 
   const visibleNavLinks = baseNavLinks
+  const shouldOpenInNewTab = (href: string) =>
+    href === "/chat" || href.startsWith("/chat?")
 
   const isMobileMenuOpen = useMemo(() => {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
@@ -266,10 +268,13 @@ export function GlobalHeader() {
           <nav className="hidden md:flex items-center gap-4">
             {visibleNavLinks.map((link) => {
               const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+              const openInNewTab = shouldOpenInNewTab(link.href)
               return (
                 <Link
                   key={link.href}
                   href={link.href}
+                  target={openInNewTab ? "_blank" : undefined}
+                  rel={openInNewTab ? "noopener noreferrer" : undefined}
                   className={cn(
                     "relative rounded-action px-2.5 py-1.5 text-narrative text-xs uppercase",
                     "text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800",
@@ -397,10 +402,13 @@ export function GlobalHeader() {
           {/* Main Navigation Links */}
           {visibleNavLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+            const openInNewTab = shouldOpenInNewTab(link.href)
             return (
                 <Link
                   key={link.href}
                   href={link.href}
+                  target={openInNewTab ? "_blank" : undefined}
+                  rel={openInNewTab ? "noopener noreferrer" : undefined}
                   className={cn(
                     "flex min-h-11 items-center rounded-action px-3 py-2.5 text-[11px] text-narrative uppercase tracking-wider",
                     "text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800",
