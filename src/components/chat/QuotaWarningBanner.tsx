@@ -132,14 +132,14 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-4 py-2.5 border rounded-action text-sm",
+        "flex flex-wrap items-center gap-2 px-3 py-2.5 border rounded-action text-sm md:flex-nowrap md:gap-3 md:px-4",
         bannerStyles[bannerType],
         className
       )}
     >
       <Icon className={cn("h-4 w-4 flex-shrink-0", iconStyles[bannerType])} />
 
-      <p className="flex-1 font-mono text-xs">{message}</p>
+      <p className="flex-1 basis-full font-mono text-xs md:basis-auto">{message}</p>
 
       <Link
         href={actionHref}
@@ -154,7 +154,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
       {bannerType !== "depleted" && (
         <button
           onClick={handleDismiss}
-          className="p-1 rounded-action hover:bg-[var(--chat-muted)] flex-shrink-0"
+          className="p-1.5 -mr-1 rounded-action hover:bg-[var(--chat-muted)] flex-shrink-0"
           aria-label="Tutup"
         >
           <Xmark className="h-4 w-4" />
