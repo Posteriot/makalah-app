@@ -300,6 +300,10 @@ export default defineSchema({
     temperature: v.number(), // 0.0 - 2.0, default 0.7
     topP: v.optional(v.number()), // Optional: 0.0 - 1.0
     maxTokens: v.optional(v.number()), // Optional: max output tokens
+    reasoningEnabled: v.optional(v.boolean()), // Enable reasoning/thinking mode (default: true)
+    thinkingBudgetPrimary: v.optional(v.number()), // Reasoning budget for primary model
+    thinkingBudgetFallback: v.optional(v.number()), // Reasoning budget for fallback model
+    reasoningTraceMode: v.optional(v.union(v.literal("off"), v.literal("curated"))), // User-facing reasoning trace mode
 
     // ════════════════════════════════════════════════════════════════
     // Web Search Settings (Phase 4 - OpenRouter :online fallback)

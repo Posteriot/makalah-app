@@ -21,6 +21,10 @@ export interface AIProviderConfig {
   temperature: number
   topP?: number
   maxTokens?: number
+  reasoningEnabled: boolean // default: true
+  thinkingBudgetPrimary: number // default: 256
+  thinkingBudgetFallback: number // default: 128
+  reasoningTraceMode: "off" | "curated" // default: "curated"
   // Web search settings (with defaults from getActiveConfig)
   primaryWebSearchEnabled: boolean // default: true
   fallbackWebSearchEnabled: boolean // default: true
