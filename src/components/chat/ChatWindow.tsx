@@ -8,7 +8,7 @@ import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { Menu, WarningCircle, Refresh, MoreVert } from "iconoir-react"
+import { Menu, WarningCircle, Refresh, ChatPlusIn, FastArrowRightSquare, NavArrowDown } from "iconoir-react"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -21,8 +21,9 @@ import { PaperValidationPanel } from "../paper/PaperValidationPanel"
 import { useSession } from "@/lib/auth-client"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
-import { MobilePaperMiniBar } from "../paper/MobilePaperMiniBar"
-import { MobileActionSheet } from "./mobile/MobileActionSheet"
+import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
+import { MobilePaperSessionsSheet } from "./mobile/MobilePaperSessionsSheet"
+import { MobileProgressBar } from "./mobile/MobileProgressBar"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 interface ChatWindowProps {
@@ -86,7 +87,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
   const [isCreatingChat, setIsCreatingChat] = useState(false)
-  const [showActionSheet, setShowActionSheet] = useState(false)
+  const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
+  const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
   const [processUi, setProcessUi] = useState<{
     visible: boolean
     status: ProcessVisualStatus
@@ -693,7 +695,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
       <div className="md:hidden px-3 pt-[env(safe-area-inset-top,0px)] border-b border-[color:var(--chat-border)] bg-[var(--chat-background)]">
-        <div className="flex items-center gap-2 h-11">
+        <div className="flex items-center gap-1 h-11">
+          {/* Hamburger */}
           <button
             onClick={onMobileMenuClick}
             className="p-2 -ml-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
@@ -701,15 +704,34 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           >
             <Menu className="h-5 w-5" strokeWidth={1.5} />
           </button>
-          <span className="flex-1 truncate text-sm font-mono font-medium text-[var(--chat-foreground)]">
-            {conversation?.title || "Percakapan baru"}
-          </span>
+
+          {/* Tappable title — opens Edit/Delete sheet */}
           <button
-            onClick={() => setShowActionSheet(true)}
-            className="p-2 -mr-1 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
-            aria-label="Actions"
+            onClick={() => setShowEditDeleteSheet(true)}
+            className="flex-1 flex items-center gap-1 min-w-0 active:bg-[var(--chat-accent)] rounded-action px-1.5 py-1 transition-colors duration-50"
           >
-            <MoreVert className="h-5 w-5" strokeWidth={1.5} />
+            <span className="truncate text-sm font-sans font-medium text-[var(--chat-foreground)]">
+              {conversation?.title || "Percakapan baru"}
+            </span>
+            <NavArrowDown className="h-3 w-3 shrink-0 text-[var(--chat-muted-foreground)]" strokeWidth={1.5} />
+          </button>
+
+          {/* New chat */}
+          <button
+            onClick={() => router.push("/chat")}
+            className="p-2 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+            aria-label="Chat baru"
+          >
+            <ChatPlusIn className="h-5 w-5" strokeWidth={1.5} />
+          </button>
+
+          {/* Paper sessions sheet toggle */}
+          <button
+            onClick={() => setShowPaperSessionsSheet(true)}
+            className="-mr-1 p-2 shrink-0 rounded-action text-[var(--chat-muted-foreground)] active:bg-[var(--chat-accent)] transition-colors duration-50"
+            aria-label="Paper sessions"
+          >
+            <FastArrowRightSquare className="h-5 w-5" strokeWidth={1.5} />
           </button>
         </div>
       </div>
@@ -850,9 +872,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           message={processUi.message}
         />
 
-        {/* Mobile Paper Mini-bar */}
+        {/* Mobile Paper Progress Bar */}
         {isPaperMode && paperSession?.currentStage && (
-          <MobilePaperMiniBar
+          <MobileProgressBar
             currentStage={paperSession.currentStage as PaperStageId}
             stageStatus={stageStatus ?? "drafting"}
             stageData={stageData}
@@ -873,13 +895,19 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         />
       </div>
 
-      {/* Mobile Action Sheet */}
-      <MobileActionSheet
-        open={showActionSheet}
-        onOpenChange={setShowActionSheet}
+      {/* Mobile Edit/Delete Sheet */}
+      <MobileEditDeleteSheet
+        open={showEditDeleteSheet}
+        onOpenChange={setShowEditDeleteSheet}
         conversationId={safeConversationId}
-        onViewArtifacts={() => onShowArtifactList?.()}
-        onNewChat={() => router.push("/chat")}
+      />
+
+      {/* Mobile Paper Sessions Sheet */}
+      <MobilePaperSessionsSheet
+        open={showPaperSessionsSheet}
+        onOpenChange={setShowPaperSessionsSheet}
+        conversationId={safeConversationId}
+        onArtifactSelect={onArtifactSelect}
       />
     </div>
   )
