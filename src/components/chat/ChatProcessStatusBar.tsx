@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { ReasoningTracePanel, type ReasoningTraceStep } from "./ReasoningTracePanel"
 
 type ChatProcessStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 
@@ -9,6 +10,7 @@ interface ChatProcessStatusBarProps {
   status: ChatProcessStatus
   progress: number
   message: string
+  reasoningSteps?: ReasoningTraceStep[]
 }
 
 export function ChatProcessStatusBar({
@@ -16,6 +18,7 @@ export function ChatProcessStatusBar({
   status,
   progress,
   message,
+  reasoningSteps = [],
 }: ChatProcessStatusBarProps) {
   if (!visible) return null
 
@@ -51,6 +54,11 @@ export function ChatProcessStatusBar({
             style={{ width: `${safeProgress}%` }}
           />
         </div>
+
+        <ReasoningTracePanel
+          key={reasoningSteps[0]?.traceId ?? "reasoning-trace-empty"}
+          steps={reasoningSteps}
+        />
       </div>
     </div>
   )
