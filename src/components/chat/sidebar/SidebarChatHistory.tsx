@@ -209,11 +209,12 @@ export function SidebarChatHistory({
             const isExceedingMaxLength = isEditing && editValue.length > 50
 
             // Flat list — no border, no rounded, no shadow. Matches desktop exactly.
+            const isActive = currentConversationId === conv._id
             const itemClasses = cn(
               "group flex w-full items-center px-4 py-3.5 text-left transition-colors duration-150",
-              currentConversationId === conv._id
+              isActive
                 ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
-                : "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)] active:bg-[var(--chat-sidebar-accent)]"
+                : "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-sidebar-accent-foreground)]"
             )
 
             const renderContent = () => (
