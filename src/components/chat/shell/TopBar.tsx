@@ -147,7 +147,7 @@ export function TopBar({
                 <FastArrowRightSquare
                   className={cn(
                     "h-[20px] w-[20px]",
-                    !isPanelCollapsed && "rotate-180"
+                    isPanelCollapsed && "rotate-180"
                   )}
                 />
                 {hasArtifacts ? (

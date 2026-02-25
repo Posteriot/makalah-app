@@ -8,7 +8,7 @@ import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowRightSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
+import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowUpSquare, FastArrowDownSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
 import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
@@ -834,11 +834,20 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               <ChatPlusIn className="h-5 w-5" strokeWidth={1.5} />
             </button>
             <button
-              onClick={() => setShowPaperSessionsSheet(true)}
-              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
-              aria-label="Paper sessions"
+              onClick={() => setShowPaperSessionsSheet((prev) => !prev)}
+              className={
+                showPaperSessionsSheet
+                  ? "text-[var(--chat-foreground)] transition-colors duration-150"
+                  : "text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-150"
+              }
+              aria-label={showPaperSessionsSheet ? "Tutup paper sessions" : "Buka paper sessions"}
+              aria-pressed={showPaperSessionsSheet}
             >
-              <FastArrowRightSquare className="h-5 w-5" strokeWidth={1.5} />
+              {showPaperSessionsSheet ? (
+                <FastArrowDownSquare className="h-5 w-5" strokeWidth={1.5} />
+              ) : (
+                <FastArrowUpSquare className="h-5 w-5" strokeWidth={1.5} />
+              )}
             </button>
           </div>
         </div>
