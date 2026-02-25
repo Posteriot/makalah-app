@@ -255,6 +255,19 @@ function extractLiveThought(uiMessage: UIMessage): string | null {
   return lastThought
 }
 
+const TEMPLATE_LABELS = new Set([
+  "Memahami kebutuhan user",
+  "Memeriksa konteks paper aktif",
+  "Menentukan kebutuhan pencarian web",
+  "Memvalidasi sumber referensi",
+  "Menyusun jawaban final",
+  "Menjalankan aksi pendukung",
+])
+
+function isTemplateLabel(label: string): boolean {
+  return TEMPLATE_LABELS.has(label)
+}
+
 function extractReasoningHeadline(uiMessage: UIMessage, steps: ReasoningTraceStep[]): string | null {
   for (const part of uiMessage.parts ?? []) {
     if (!part || typeof part !== "object") continue
@@ -275,8 +288,16 @@ function extractReasoningHeadline(uiMessage: UIMessage, steps: ReasoningTraceSte
 
   if (steps.length === 0) return null
 
+  // Check if steps have actual reasoning (non-template labels)
+  const hasRealContent = steps.some((s) => !isTemplateLabel(s.label) || s.thought)
+
   const running = steps.find((step) => step.status === "running")
-  if (running) return `Sedang ${lowerFirst(running.label)}...`
+  if (running) {
+    // If label is template and we don't have real content yet, show generic
+    if (isTemplateLabel(running.label) && !hasRealContent) return "Berpikir..."
+    if (isTemplateLabel(running.label)) return "Berpikir..."
+    return running.label
+  }
 
   const errored = steps.find((step) => step.status === "error")
   if (errored) return `Terjadi kendala saat ${lowerFirst(errored.label)}.`

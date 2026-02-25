@@ -934,7 +934,7 @@ JSON schema:
                             : {}),
                         ts: Number.isFinite(step.ts) ? step.ts : Date.now(),
                         ...(typeof step.thought === "string" && step.thought.trim()
-                            ? { thought: sanitizeReasoningText(step.thought.trim().slice(0, 200), "Detail reasoning.") }
+                            ? { thought: (() => { const t = step.thought.trim(); return sanitizeReasoningText(t.length > 600 ? t.slice(0, 597) + "..." : t, "Detail reasoning."); })() }
                             : {}),
                         ...(sanitizedMeta && Object.keys(sanitizedMeta).length > 0 ? { meta: sanitizedMeta } : {}),
                     }
