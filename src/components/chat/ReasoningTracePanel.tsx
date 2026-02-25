@@ -12,6 +12,7 @@ export interface ReasoningTraceStep {
   status: ReasoningTraceStatus
   progress: number
   ts?: number
+  thought?: string
   meta?: {
     note?: string
     sourceCount?: number
@@ -26,6 +27,13 @@ interface ReasoningTracePanelProps {
   className?: string
 }
 
+/**
+ * Timeline panel dengan dot + vertical line (referensi: ChatGPT thinking UI).
+ *
+ * PENTING: Komponen ini render di dalam Sheet Portal (di luar [data-chat-scope]),
+ * jadi semua warna HARUS pakai global Tailwind tokens (bg-foreground, text-muted-foreground, dll),
+ * BUKAN --chat-* CSS variables.
+ */
 export function ReasoningTracePanel({ steps, className }: ReasoningTracePanelProps) {
   const orderedSteps = useMemo(
     () => steps.slice().sort((a, b) => (a.progress === b.progress ? (a.ts ?? 0) - (b.ts ?? 0) : a.progress - b.progress)),
@@ -35,19 +43,27 @@ export function ReasoningTracePanel({ steps, className }: ReasoningTracePanelPro
   if (orderedSteps.length === 0) return null
 
   return (
-    <div className={cn("space-y-2", className)}>
-      {orderedSteps.map((step) => {
+    <div className={cn("font-sans", className)}>
+      {orderedSteps.map((step, index) => {
         const tone = getTone(step.status)
         const detail = getDetail(step)
+        const isLast = index === orderedSteps.length - 1
         return (
-          <div key={`${step.traceId}-${step.stepKey}`} className="rounded-md border border-[color:var(--chat-border)]/70 px-3 py-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className={cn("text-xs font-mono", tone.textClass)}>{step.label}</span>
-              <span className={cn("text-[10px] font-mono uppercase", tone.badgeClass)}>{step.status}</span>
+          <div key={`${step.traceId}-${step.stepKey}`} className="flex gap-3">
+            {/* Dot + vertical line connector */}
+            <div className="relative flex w-3 shrink-0 flex-col items-center">
+              <span className={cn("mt-[7px] h-2 w-2 shrink-0 rounded-full", tone.dotClass)} />
+              {!isLast && (
+                <span className="absolute top-[15px] bottom-0 left-1/2 w-px -translate-x-1/2 bg-muted-foreground/25" />
+              )}
             </div>
-            {detail && (
-              <p className="mt-1 text-[11px] font-mono text-[var(--chat-muted-foreground)]">{detail}</p>
-            )}
+            {/* Step content */}
+            <div className={cn("pb-5", isLast && "pb-0")}>
+              <p className={cn("text-sm font-medium leading-snug", tone.textClass)}>{step.label}</p>
+              {detail && (
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{detail}</p>
+              )}
+            </div>
           </div>
         )
       })}
@@ -55,35 +71,47 @@ export function ReasoningTracePanel({ steps, className }: ReasoningTracePanelPro
   )
 }
 
+/**
+ * Warna tone — pakai global Tailwind tokens (bukan --chat-*).
+ * Pola warna mengikuti sidebar conversation list:
+ * - done: foreground/80 (seperti judul percakapan)
+ * - running: foreground (aktif/highlighted)
+ * - error: destructive
+ * - pending/skipped: muted-foreground
+ */
 function getTone(status: ReasoningTraceStatus) {
   if (status === "done") {
     return {
-      textClass: "text-[var(--chat-success)]",
-      badgeClass: "text-[var(--chat-success)]",
+      textClass: "text-foreground/80",
+      dotClass: "bg-foreground/80",
     }
   }
 
   if (status === "running") {
     return {
-      textClass: "text-[var(--chat-foreground)]",
-      badgeClass: "text-[var(--chat-secondary-foreground)]",
+      textClass: "text-foreground",
+      dotClass: "bg-foreground",
     }
   }
 
   if (status === "error") {
     return {
-      textClass: "text-[var(--chat-destructive)]",
-      badgeClass: "text-[var(--chat-destructive)]",
+      textClass: "text-destructive",
+      dotClass: "bg-destructive",
     }
   }
 
   return {
-    textClass: "text-[var(--chat-muted-foreground)]",
-    badgeClass: "text-[var(--chat-muted-foreground)]",
+    textClass: "text-muted-foreground",
+    dotClass: "bg-muted-foreground/60",
   }
 }
 
 function getDetail(step: ReasoningTraceStep): string | null {
+  if (step.thought) {
+    return step.thought
+  }
+
   if (step.meta?.sourceCount && step.meta.sourceCount > 0) {
     return `${step.meta.sourceCount} sumber tervalidasi`
   }

@@ -135,7 +135,7 @@ function parseReasoningMeta(meta: unknown): ReasoningTraceStep["meta"] | undefin
     mode?: unknown
   }
 
-  const parsed = {
+  const parsed: ReasoningTraceStep["meta"] = {
     ...(typeof value.note === "string" ? { note: value.note } : {}),
     ...(typeof value.sourceCount === "number" && Number.isFinite(value.sourceCount)
       ? { sourceCount: value.sourceCount }
@@ -143,7 +143,7 @@ function parseReasoningMeta(meta: unknown): ReasoningTraceStep["meta"] | undefin
     ...(typeof value.toolName === "string" ? { toolName: value.toolName } : {}),
     ...(typeof value.stage === "string" ? { stage: value.stage } : {}),
     ...(value.mode === "normal" || value.mode === "paper" || value.mode === "websearch"
-      ? { mode: value.mode }
+      ? { mode: value.mode as "normal" | "paper" | "websearch" }
       : {}),
   }
 
@@ -187,6 +187,9 @@ function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] 
       status: data.status as ReasoningTraceStatus,
       progress,
       ...(typeof data.ts === "number" && Number.isFinite(data.ts) ? { ts: data.ts } : {}),
+      ...(typeof (data as { thought?: unknown }).thought === "string"
+        ? { thought: (data as { thought?: unknown }).thought as string }
+        : {}),
     }
 
     const parsedMeta = parseReasoningMeta(data.meta)
@@ -219,6 +222,9 @@ function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] 
           progress,
           ...(typeof rawStep.ts === "number" && Number.isFinite(rawStep.ts) ? { ts: rawStep.ts } : {}),
           ...(parsedMeta ? { meta: parsedMeta } : {}),
+          ...(typeof (rawStep as { thought?: unknown }).thought === "string"
+            ? { thought: (rawStep as { thought?: unknown }).thought as string }
+            : {}),
         })
       }
     }
@@ -229,6 +235,24 @@ function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] 
     .filter((step): step is ReasoningTraceStep => Boolean(step))
 
   return ordered
+}
+
+function extractLiveThought(uiMessage: UIMessage): string | null {
+  let lastThought: string | null = null
+
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (dataPart.type !== "data-reasoning-thought") continue
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    const data = dataPart.data as { delta?: unknown }
+    if (typeof data.delta === "string" && data.delta.trim()) {
+      lastThought = data.delta.trim()
+    }
+  }
+
+  return lastThought
 }
 
 function extractReasoningHeadline(uiMessage: UIMessage, steps: ReasoningTraceStep[]): string | null {
@@ -285,14 +309,17 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     status: ProcessVisualStatus
     progress: number
     message: string
+    elapsedSeconds: number
   }>({
     visible: false,
     status: "ready",
     progress: 0,
     message: "",
+    elapsedSeconds: 0,
   })
   const processIntervalRef = useRef<number | null>(null)
   const processHideTimeoutRef = useRef<number | null>(null)
+  const processStartedAtRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
   const starterPromptAttemptedForConversationRef = useRef<string | null>(null)
@@ -562,7 +589,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     const assistants = [...messages].reverse().filter((msg) => msg.role === "assistant")
     for (const assistant of assistants) {
       const steps = extractReasoningTraceSteps(assistant)
-      const headline = extractReasoningHeadline(assistant, steps)
+      const liveThought = extractLiveThought(assistant)
+      const headline = liveThought || extractReasoningHeadline(assistant, steps)
       if (steps.length > 0 || headline) {
         return {
           steps,
@@ -595,52 +623,68 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (status === "submitted") {
       clearProcessTimers()
       stoppedManuallyRef.current = false
+      processStartedAtRef.current = Date.now()
       setProcessUi({
         visible: true,
         status: "submitted",
         progress: 8,
-        message: "Model mulai memproses...",
+        message: "",
+        elapsedSeconds: 0,
       })
     } else if (status === "streaming") {
       clearProcessTimers()
+      if (processStartedAtRef.current === null) {
+        processStartedAtRef.current = Date.now()
+      }
       setProcessUi((prev) => ({
         visible: true,
         status: "streaming",
         progress: Math.max(prev.progress, 16),
-        message: "Model sedang memproses...",
+        message: "",
+        elapsedSeconds: Math.max(prev.elapsedSeconds, 1),
       }))
       processIntervalRef.current = window.setInterval(() => {
         setProcessUi((prev) => {
           if (!prev.visible) return prev
           const nextProgress = Math.min(prev.progress + (prev.progress < 70 ? 4 : 2), 92)
-          return { ...prev, progress: nextProgress }
+          const elapsed = processStartedAtRef.current
+            ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
+            : Math.max(prev.elapsedSeconds, 1)
+          return { ...prev, progress: nextProgress, elapsedSeconds: elapsed }
         })
       }, 220)
     } else if (status === "ready" && hadGeneratingStatus) {
       clearProcessTimers()
       const wasStoppedManually = stoppedManuallyRef.current
+      const elapsed = processStartedAtRef.current
+        ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
+        : 1
       setProcessUi({
         visible: true,
         status: wasStoppedManually ? "stopped" : "ready",
         progress: 100,
         message: wasStoppedManually ? "Proses dihentikan" : "Respons selesai",
+        elapsedSeconds: elapsed,
       })
-      processHideTimeoutRef.current = window.setTimeout(() => {
-        setProcessUi((prev) => ({ ...prev, visible: false }))
-        stoppedManuallyRef.current = false
-      }, 900)
+      stoppedManuallyRef.current = false
+      processStartedAtRef.current = null
     } else if (status === "error" && hadGeneratingStatus) {
       clearProcessTimers()
+      const elapsed = processStartedAtRef.current
+        ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
+        : 1
       setProcessUi({
         visible: true,
         status: "error",
         progress: 100,
         message: "Terjadi kendala saat memproses jawaban",
+        elapsedSeconds: elapsed,
       })
       processHideTimeoutRef.current = window.setTimeout(() => {
         setProcessUi((prev) => ({ ...prev, visible: false }))
       }, 1500)
       stoppedManuallyRef.current = false
+      processStartedAtRef.current = null
     }
 
     previousStatusRef.current = status
@@ -1216,7 +1260,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           visible={processUi.visible}
           status={processUi.status}
           progress={processUi.progress}
-          message={processUi.message}
+          elapsedSeconds={processUi.elapsedSeconds}
           reasoningSteps={activeReasoningState.steps}
           reasoningHeadline={activeReasoningState.headline}
         />
