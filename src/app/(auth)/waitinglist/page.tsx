@@ -1,8 +1,13 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
-import { WaitlistForm } from "@/components/auth/WaitlistForm"
+
+const WaitlistForm = dynamic(
+  () => import("@/components/auth/WaitlistForm").then((mod) => mod.WaitlistForm),
+  { ssr: false }
+)
 
 export default function WaitingListPage() {
   const router = useRouter()
