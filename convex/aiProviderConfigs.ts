@@ -4,7 +4,7 @@ import { requireRole } from "./permissions"
 
 const MIN_THINKING_BUDGET = 0
 const MAX_THINKING_BUDGET = 32768
-const REASONING_TRACE_MODES = new Set(["off", "curated"])
+const REASONING_TRACE_MODES = new Set(["off", "curated", "transparent"])
 
 /**
  * Get the currently active AI provider configuration
@@ -163,7 +163,7 @@ export const createConfig = mutation({
     reasoningEnabled: v.optional(v.boolean()),
     thinkingBudgetPrimary: v.optional(v.number()),
     thinkingBudgetFallback: v.optional(v.number()),
-    reasoningTraceMode: v.optional(v.union(v.literal("off"), v.literal("curated"))),
+    reasoningTraceMode: v.optional(v.union(v.literal("off"), v.literal("curated"), v.literal("transparent"))),
     // Context window settings
     primaryContextWindow: v.optional(v.number()),
     fallbackContextWindow: v.optional(v.number()),
@@ -202,7 +202,7 @@ export const createConfig = mutation({
       throw new Error(`Thinking budget fallback harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
     }
     if (args.reasoningTraceMode !== undefined && !REASONING_TRACE_MODES.has(args.reasoningTraceMode)) {
-      throw new Error('Reasoning trace mode harus "off" atau "curated"')
+      throw new Error('Reasoning trace mode harus "off", "curated", atau "transparent"')
     }
 
     const now = Date.now()
@@ -278,7 +278,7 @@ export const updateConfig = mutation({
     reasoningEnabled: v.optional(v.boolean()),
     thinkingBudgetPrimary: v.optional(v.number()),
     thinkingBudgetFallback: v.optional(v.number()),
-    reasoningTraceMode: v.optional(v.union(v.literal("off"), v.literal("curated"))),
+    reasoningTraceMode: v.optional(v.union(v.literal("off"), v.literal("curated"), v.literal("transparent"))),
     // Context window settings
     primaryContextWindow: v.optional(v.number()),
     fallbackContextWindow: v.optional(v.number()),
@@ -369,7 +369,7 @@ export const updateConfig = mutation({
       throw new Error(`Thinking budget fallback harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
     }
     if (reasoningTraceMode !== undefined && !REASONING_TRACE_MODES.has(reasoningTraceMode)) {
-      throw new Error('Reasoning trace mode harus "off" atau "curated"')
+      throw new Error('Reasoning trace mode harus "off", "curated", atau "transparent"')
     }
 
     const now = Date.now()

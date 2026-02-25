@@ -22,13 +22,14 @@ const reasoningTraceStepValidator = v.object({
     ),
     progress: v.optional(v.number()),
     ts: v.number(),
+    thought: v.optional(v.string()),
     meta: v.optional(reasoningTraceMetaValidator),
 })
 
 const reasoningTraceValidator = v.object({
     version: v.number(),
     headline: v.string(),
-    traceMode: v.literal("curated"),
+    traceMode: v.union(v.literal("curated"), v.literal("transparent")),
     completedAt: v.number(),
     steps: v.array(reasoningTraceStepValidator),
 })
