@@ -100,7 +100,7 @@ export function TemplateGrid({
             alt="Makalah Logo"
             width={40}
             height={40}
-            className="block h-10 w-10 dark:hidden md:h-20 md:w-20"
+            className="block h-10 w-10 dark:hidden md:h-16 md:w-16"
           />
         ) : null}
         {darkModeLogoSrc ? (
@@ -110,7 +110,7 @@ export function TemplateGrid({
             alt="Makalah Logo"
             width={40}
             height={40}
-            className="hidden h-10 w-10 dark:block md:h-20 md:w-20"
+            className="hidden h-10 w-10 dark:block md:h-16 md:w-16"
           />
         ) : null}
       </div>
