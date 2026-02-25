@@ -81,10 +81,11 @@ export function ChatProcessStatusBar({
               )}
               disabled={!hasSteps}
             >
-              <span className="truncate font-sans text-sm leading-snug text-[var(--chat-secondary-foreground)]">
-                {narrativeHeadline ?? "Memproses..."}
+              <span className="animate-chat-thought-breathe flex min-w-0 items-baseline gap-1 truncate font-mono text-[11px] leading-snug text-[var(--chat-muted-foreground)]">
+                <span className="truncate">{narrativeHeadline ?? "Memproses"}</span>
+                <ThinkingDots />
               </span>
-              <span className="font-sans text-xs tabular-nums text-[var(--chat-muted-foreground)]">
+              <span className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--chat-muted-foreground)] opacity-50">
                 {safeProgress}%
               </span>
             </button>
@@ -116,17 +117,17 @@ export function ChatProcessStatusBar({
             disabled={!hasSteps}
           >
             <span className={cn(
-              "font-sans text-sm leading-snug",
+              "font-mono text-[11px] leading-snug",
               isError
                 ? "text-[var(--chat-destructive)]"
-                : "text-[var(--chat-muted-foreground)]"
+                : "text-[var(--chat-muted-foreground)] opacity-60"
             )}>
               {isError
                 ? `Ada kendala setelah ${formatDuration(durationSeconds)}`
                 : `Memproses ${formatDuration(durationSeconds)}`}
             </span>
             {hasSteps && (
-              <NavArrowRight className="ml-1 h-3.5 w-3.5 text-[var(--chat-muted-foreground)] transition-colors group-hover:text-[var(--chat-foreground)]" />
+              <NavArrowRight className="ml-1 h-3 w-3 text-[var(--chat-muted-foreground)] opacity-60 transition-colors group-hover:text-[var(--chat-foreground)] group-hover:opacity-100" />
             )}
           </button>
         )}
@@ -140,6 +141,23 @@ export function ChatProcessStatusBar({
         />
       )}
     </>
+  )
+}
+
+function ThinkingDots() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-px" aria-hidden="true">
+      {[1, 2, 3].map((n) => (
+        <span
+          key={n}
+          className={cn(
+            "inline-block h-[3px] w-[3px] rounded-full bg-[var(--chat-muted-foreground)]",
+            "animate-chat-thought-dot",
+            `chat-thought-dot-${n}`
+          )}
+        />
+      ))}
+    </span>
   )
 }
 

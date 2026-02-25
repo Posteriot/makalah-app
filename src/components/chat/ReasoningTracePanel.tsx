@@ -34,11 +34,32 @@ interface ReasoningTracePanelProps {
  * jadi semua warna HARUS pakai global Tailwind tokens (bg-foreground, text-muted-foreground, dll),
  * BUKAN --chat-* CSS variables.
  */
+const TEMPLATE_LABELS = new Set([
+  "Memahami kebutuhan user",
+  "Memeriksa konteks paper aktif",
+  "Menentukan kebutuhan pencarian web",
+  "Memvalidasi sumber referensi",
+  "Menyusun jawaban final",
+  "Menjalankan aksi pendukung",
+])
+
 export function ReasoningTracePanel({ steps, className }: ReasoningTracePanelProps) {
-  const orderedSteps = useMemo(
-    () => steps.slice().sort((a, b) => (a.progress === b.progress ? (a.ts ?? 0) - (b.ts ?? 0) : a.progress - b.progress)),
+  // Detect transparent mode: at least one step has non-template label or thought
+  const isTransparent = useMemo(
+    () => steps.some((s) => !TEMPLATE_LABELS.has(s.label) || s.thought),
     [steps]
   )
+
+  const orderedSteps = useMemo(() => {
+    const sorted = steps.slice().sort((a, b) =>
+      a.progress === b.progress ? (a.ts ?? 0) - (b.ts ?? 0) : a.progress - b.progress
+    )
+    // In transparent mode, hide steps with only template labels and no thought
+    if (isTransparent) {
+      return sorted.filter((s) => !TEMPLATE_LABELS.has(s.label) || s.thought)
+    }
+    return sorted
+  }, [steps, isTransparent])
 
   if (orderedSteps.length === 0) return null
 

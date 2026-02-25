@@ -1,6 +1,6 @@
 /**
  * Server-side sanitizer for model reasoning text.
- * Strips sensitive content before forwarding to client.
+ * Strips sensitive content and markdown formatting before forwarding to client.
  */
 
 const SENSITIVE_PATTERNS = [
@@ -13,6 +13,24 @@ const SENSITIVE_PATTERNS = [
   /\{[\s\S]{100,}\}/g,
 ]
 
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/_(.+?)_/g, "$1")
+    .replace(/~~(.+?)~~/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    .replace(/^>\s+/gm, "")
+    .replace(/\n{2,}/g, " ")
+    .replace(/\n/g, " ")
+    .trim()
+}
+
 export function sanitizeReasoningDelta(delta: string): string {
   if (!delta) return delta
 
@@ -21,7 +39,7 @@ export function sanitizeReasoningDelta(delta: string): string {
     sanitized = sanitized.replace(pattern, "")
   }
 
-  return sanitized.slice(0, 500)
+  return stripMarkdown(sanitized).slice(0, 500)
 }
 
 export function sanitizeStepThought(thought: string): string {
@@ -32,5 +50,6 @@ export function sanitizeStepThought(thought: string): string {
     sanitized = sanitized.replace(pattern, "")
   }
 
-  return sanitized.trim().slice(0, 200)
+  const clean = stripMarkdown(sanitized).trim()
+  return clean.length > 600 ? clean.slice(0, 597) + "..." : clean
 }

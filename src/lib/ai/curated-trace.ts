@@ -165,14 +165,18 @@ export function segmentReasoning(
   const stepThoughts = {} as Record<CuratedTraceStepKey, string | null>
   const stepLabels = {} as Record<CuratedTraceStepKey, string>
 
+  const { stripMarkdown } = require("./reasoning-sanitizer") as typeof import("./reasoning-sanitizer")
+
   for (const stepKey of STEP_ORDER) {
     const bucket = buckets[stepKey]
     if (bucket.length > 0) {
-      stepThoughts[stepKey] = bucket.slice(0, 2).join(" ").slice(0, 200)
-      stepLabels[stepKey] = bucket[0].slice(0, 80)
+      const rawThought = stripMarkdown(bucket.slice(0, 3).join(" "))
+      stepThoughts[stepKey] = rawThought.length > 600 ? rawThought.slice(0, 597) + "..." : rawThought
+      const rawLabel = stripMarkdown(bucket[0])
+      stepLabels[stepKey] = rawLabel.length > 200 ? rawLabel.slice(0, 197) + "..." : rawLabel
     } else {
       stepThoughts[stepKey] = null
-      stepLabels[stepKey] = STEP_LABELS[stepKey]
+      stepLabels[stepKey] = ""
     }
   }
 
@@ -425,7 +429,15 @@ export function createCuratedTraceController(options: {
         const thought = segmentation.stepThoughts[stepKey]
         const label = segmentation.stepLabels[stepKey]
 
-        step.label = label
+        if (!thought && !label) {
+          // No reasoning matched this step — mark as skipped in transparent mode
+          step.status = "skipped"
+          step.ts = nowTs()
+          events.push(buildEvent(options.traceId, step))
+          continue
+        }
+
+        if (label) step.label = label
         if (thought) {
           step.meta = { ...step.meta, note: sanitizeStepThought(thought) }
         }

@@ -198,3 +198,38 @@
     --chat-input-pad-x: 1rem;
   }
 }
+
+/* ==========================================================================
+ * Chat Reasoning Animations
+ * For thinking/reasoning status display in status bar
+ * ========================================================================== */
+
+@keyframes chat-thought-breathe {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.75; }
+}
+
+@keyframes chat-thought-dot {
+  0%, 80%, 100% { opacity: 0.2; }
+  40% { opacity: 0.8; }
+}
+
+[data-chat-scope] .animate-chat-thought-breathe {
+  animation: chat-thought-breathe 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+[data-chat-scope] .animate-chat-thought-dot {
+  animation: chat-thought-dot 1.4s ease-in-out infinite both;
+}
+
+[data-chat-scope] .chat-thought-dot-1 { animation-delay: 0s; }
+[data-chat-scope] .chat-thought-dot-2 { animation-delay: 0.2s; }
+[data-chat-scope] .chat-thought-dot-3 { animation-delay: 0.4s; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-chat-scope] .animate-chat-thought-breathe,
+  [data-chat-scope] .animate-chat-thought-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+}
