@@ -23,7 +23,7 @@ export function RefrasaFeatureCMS({ content }: RefrasaFeatureCMSProps) {
   return (
     <section
       id="fitur-refrasa"
-      className="relative isolate min-h-[100svh] overflow-hidden bg-[var(--section-bg-alt)]"
+      className="relative isolate min-h-[100svh] overflow-hidden bg-background"
     >
       {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
