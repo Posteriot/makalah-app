@@ -240,7 +240,9 @@ export function ChatLayout({
     return `${activityBar} ${sidebar} ${leftResizer} ${main} ${rightResizer} ${panel}`
   }
 
-  const isBothSidePanelsCollapsed = isSidebarCollapsed && !isArtifactPanelOpen
+  const chatInlinePadding = !isSidebarCollapsed && isArtifactPanelOpen
+    ? "max(3rem, calc((100% - var(--chat-main-content-max-width)) / 2))"
+    : "max(1rem, calc((100% - var(--chat-main-content-max-width)) / 2))"
 
   return (
     <div
@@ -270,7 +272,8 @@ export function ChatLayout({
         )}
         style={{
           gridTemplateColumns: getGridTemplateColumns(),
-          "--chat-input-pad-x": isBothSidePanelsCollapsed ? "10rem" : "5rem",
+          "--chat-main-content-max-width": "760px",
+          "--chat-input-pad-x": chatInlinePadding,
         } as React.CSSProperties}
       >
         {/* Column 1: Activity Bar */}
