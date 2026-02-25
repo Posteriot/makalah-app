@@ -7,7 +7,7 @@ const MIN_THINKING_BUDGET = 0
 const MAX_THINKING_BUDGET = 32768
 const TOOL_HEAVY_THINKING_CAP = 96
 
-export type ReasoningTraceMode = "off" | "curated"
+export type ReasoningTraceMode = "off" | "curated" | "transparent"
 export type ReasoningTarget = "primary" | "fallback"
 export type ReasoningExecutionProfile = "tool-heavy" | "narrative"
 
@@ -368,7 +368,7 @@ export function buildReasoningProviderOptions(options: {
     google: {
       thinkingConfig: {
         thinkingBudget: budget,
-        includeThoughts: false,
+        includeThoughts: options.settings.traceMode === "transparent",
       },
     },
   }
