@@ -16,18 +16,6 @@ type ChatEmptyStateEditorProps = {
   userId: Id<"users">
 }
 
-const DEFAULT_HEADING = "Mari berdiskusi!"
-const DEFAULT_DESCRIPTION_LINES = [
-  "Ingin berdiskusi mengenai riset atau langsung menulis paper?",
-  "Silakan ketik maksud di kolom percakapan,",
-  "atau buka riwayat percakapan terdahulu di",
-]
-const DEFAULT_TEMPLATE_LABEL = "Atau gunakan template berikut:"
-const DEFAULT_TEMPLATES = [
-  "Mari berdiskusi terlebih dahulu.",
-  "Mari berkolaborasi menyusun paper akademik.",
-]
-
 type EditorDraft = {
   logoLightId: Id<"_storage"> | null
   logoDarkId: Id<"_storage"> | null
@@ -49,27 +37,22 @@ export function ChatEmptyStateEditor({ userId }: ChatEmptyStateEditorProps) {
 
   const [draft, setDraft] = useState<Partial<EditorDraft>>({})
 
-  const baseLines =
-    section?.paragraphs && section.paragraphs.length > 0
-      ? section.paragraphs
-      : DEFAULT_DESCRIPTION_LINES
+  const baseLines = section?.paragraphs ?? []
   const baseTemplates =
-    section?.items && section.items.length > 0
-      ? section.items
-          .map((item) => item.title || item.description || "")
-          .filter((item) => item.trim().length > 0)
-      : DEFAULT_TEMPLATES
+    section?.items
+      ?.map((item) => item.title || item.description || "")
+      .filter((item) => item.trim().length > 0) ?? []
 
   // NOTE: For this section we map logo as:
   // - primaryImageId => light mode
   // - secondaryImageId => dark mode
   const logoLightId = draft.logoLightId ?? (section?.primaryImageId ?? null)
   const logoDarkId = draft.logoDarkId ?? (section?.secondaryImageId ?? null)
-  const heading = draft.heading ?? (section?.title ?? DEFAULT_HEADING)
+  const heading = draft.heading ?? (section?.title ?? "")
   const descriptionText = draft.descriptionText ?? baseLines.join("\n")
-  const sidebarLinkLabel = draft.sidebarLinkLabel ?? (section?.ctaText ?? "sidebar")
-  const templateLabel = draft.templateLabel ?? (section?.subtitle ?? DEFAULT_TEMPLATE_LABEL)
-  const templates = draft.templates ?? (baseTemplates.length > 0 ? baseTemplates : DEFAULT_TEMPLATES)
+  const sidebarLinkLabel = draft.sidebarLinkLabel ?? (section?.ctaText ?? "")
+  const templateLabel = draft.templateLabel ?? (section?.subtitle ?? "")
+  const templates = draft.templates ?? baseTemplates
   const isPublished = draft.isPublished ?? (section?.isPublished ?? false)
 
   function updateTemplate(index: number, value: string) {
@@ -164,7 +147,6 @@ export function ChatEmptyStateEditor({ userId }: ChatEmptyStateEditorProps) {
             userId={userId}
             label="Light Mode"
             aspectRatio="1/1"
-            fallbackPreviewUrl="/logo/makalah_logo_dark.svg"
           />
           <CmsImageUpload
             currentImageId={logoDarkId}
@@ -172,7 +154,6 @@ export function ChatEmptyStateEditor({ userId }: ChatEmptyStateEditorProps) {
             userId={userId}
             label="Dark Mode"
             aspectRatio="1/1"
-            fallbackPreviewUrl="/logo/makalah_logo_light.svg"
           />
         </div>
       </div>
