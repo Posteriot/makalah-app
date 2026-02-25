@@ -448,13 +448,7 @@
   }
 
   [data-auth-scope] .auth-section-right {
-    background:
-      radial-gradient(
-        120% 95% at 50% -15%,
-        color-mix(in oklch, var(--auth-border-strong) 26%, transparent) 0%,
-        transparent 72%
-      ),
-      var(--auth-surface-right);
+    background: var(--auth-surface-right);
     color: var(--auth-surface-right-foreground);
     padding: var(--auth-space-panel);
     display: flex;
