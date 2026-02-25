@@ -888,7 +888,7 @@ JSON schema:
         const sanitizeReasoningTraceForPersistence = (
             trace?: PersistedCuratedTraceSnapshot
         ): PersistedCuratedTraceSnapshot | undefined => {
-            if (!trace || trace.traceMode !== "curated") return undefined
+            if (!trace || (trace.traceMode !== "curated" && trace.traceMode !== "transparent")) return undefined
             const rawSteps = Array.isArray(trace.steps) ? trace.steps.slice(0, MAX_REASONING_TRACE_STEPS) : []
             const steps = rawSteps
                 .map((step) => {
@@ -933,6 +933,9 @@ JSON schema:
                             ? { progress: Math.max(0, Math.min(100, step.progress)) }
                             : {}),
                         ts: Number.isFinite(step.ts) ? step.ts : Date.now(),
+                        ...(typeof step.thought === "string" && step.thought.trim()
+                            ? { thought: sanitizeReasoningText(step.thought.trim().slice(0, 200), "Detail reasoning.") }
+                            : {}),
                         ...(sanitizedMeta && Object.keys(sanitizedMeta).length > 0 ? { meta: sanitizedMeta } : {}),
                     }
                 })
@@ -940,12 +943,12 @@ JSON schema:
             if (steps.length === 0) return undefined
 
             return {
-                version: 1,
+                version: trace.version === 2 ? 2 : 1,
                 headline: sanitizeReasoningText(
                     trace.headline || "Agen lagi memproses jawaban...",
                     "Agen lagi memproses jawaban."
                 ),
-                traceMode: "curated",
+                traceMode: trace.traceMode === "transparent" ? "transparent" : "curated",
                 completedAt: Number.isFinite(trace.completedAt) ? trace.completedAt : Date.now(),
                 steps,
             }
