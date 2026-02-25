@@ -63,7 +63,7 @@ interface AIProviderConfig {
   reasoningEnabled?: boolean
   thinkingBudgetPrimary?: number
   thinkingBudgetFallback?: number
-  reasoningTraceMode?: "off" | "curated"
+  reasoningTraceMode?: "off" | "curated" | "transparent"
   // Context window settings
   primaryContextWindow?: number
   fallbackContextWindow?: number
@@ -154,7 +154,7 @@ export function AIProviderFormDialog({
   const [reasoningEnabled, setReasoningEnabled] = useState(true)
   const [thinkingBudgetPrimary, setThinkingBudgetPrimary] = useState<number | undefined>(DEFAULT_THINKING_BUDGET_PRIMARY)
   const [thinkingBudgetFallback, setThinkingBudgetFallback] = useState<number | undefined>(DEFAULT_THINKING_BUDGET_FALLBACK)
-  const [reasoningTraceMode, setReasoningTraceMode] = useState<"off" | "curated">("curated")
+  const [reasoningTraceMode, setReasoningTraceMode] = useState<"off" | "curated" | "transparent">("curated")
 
   // Context window settings
   const [primaryContextWindow, setPrimaryContextWindow] = useState<number | undefined>(undefined)
@@ -1099,13 +1099,14 @@ export function AIProviderFormDialog({
                   <Label htmlFor="reasoningTraceMode">Reasoning Trace Mode</Label>
                   <Select
                     value={reasoningTraceMode}
-                    onValueChange={(value) => setReasoningTraceMode(value as "off" | "curated")}
+                    onValueChange={(value) => setReasoningTraceMode(value as "off" | "curated" | "transparent")}
                     disabled={isLoading || !reasoningEnabled}
                   >
                     <SelectTrigger id="reasoningTraceMode">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="transparent">Transparent</SelectItem>
                       <SelectItem value="curated">Curated</SelectItem>
                       <SelectItem value="off">Off</SelectItem>
                     </SelectContent>

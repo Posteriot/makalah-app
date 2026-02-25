@@ -63,7 +63,7 @@ interface AIProviderConfig {
   reasoningEnabled?: boolean
   thinkingBudgetPrimary?: number
   thinkingBudgetFallback?: number
-  reasoningTraceMode?: "off" | "curated"
+  reasoningTraceMode?: "off" | "curated" | "transparent"
   primaryContextWindow?: number
   fallbackContextWindow?: number
   primaryWebSearchEnabled?: boolean
@@ -157,7 +157,7 @@ export function AIProviderConfigEditor({
   const [thinkingBudgetFallback, setThinkingBudgetFallback] = useState<number | undefined>(
     config?.thinkingBudgetFallback ?? DEFAULT_THINKING_BUDGET_FALLBACK
   )
-  const [reasoningTraceMode, setReasoningTraceMode] = useState<"off" | "curated">(
+  const [reasoningTraceMode, setReasoningTraceMode] = useState<"off" | "curated" | "transparent">(
     config?.reasoningTraceMode ?? "curated"
   )
 
@@ -1104,13 +1104,14 @@ export function AIProviderConfigEditor({
                     </Label>
                     <Select
                       value={reasoningTraceMode}
-                      onValueChange={(value) => setReasoningTraceMode(value as "off" | "curated")}
+                      onValueChange={(value) => setReasoningTraceMode(value as "off" | "curated" | "transparent")}
                       disabled={isLoading || !reasoningEnabled}
                     >
                       <SelectTrigger id="reasoningTraceMode" className="rounded-action">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="transparent">Transparent</SelectItem>
                         <SelectItem value="curated">Curated</SelectItem>
                         <SelectItem value="off">Off</SelectItem>
                       </SelectContent>

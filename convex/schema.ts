@@ -124,11 +124,11 @@ export default defineSchema({
       title: v.string(),
       publishedAt: v.optional(v.number()),
     }))),
-    // Persistent curated reasoning trace (sanitized, never raw CoT)
+    // Persistent reasoning trace (sanitized)
     reasoningTrace: v.optional(v.object({
       version: v.number(),
       headline: v.string(),
-      traceMode: v.literal("curated"),
+      traceMode: v.union(v.literal("curated"), v.literal("transparent")),
       completedAt: v.number(),
       steps: v.array(v.object({
         stepKey: v.string(),
@@ -142,6 +142,7 @@ export default defineSchema({
         ),
         progress: v.optional(v.number()),
         ts: v.number(),
+        thought: v.optional(v.string()),
         meta: v.optional(v.object({
           mode: v.optional(v.union(v.literal("normal"), v.literal("paper"), v.literal("websearch"))),
           stage: v.optional(v.string()),
@@ -330,7 +331,7 @@ export default defineSchema({
     reasoningEnabled: v.optional(v.boolean()), // Enable reasoning/thinking mode (default: true)
     thinkingBudgetPrimary: v.optional(v.number()), // Reasoning budget for primary model
     thinkingBudgetFallback: v.optional(v.number()), // Reasoning budget for fallback model
-    reasoningTraceMode: v.optional(v.union(v.literal("off"), v.literal("curated"))), // User-facing reasoning trace mode
+    reasoningTraceMode: v.optional(v.union(v.literal("off"), v.literal("curated"), v.literal("transparent"))),
 
     // ════════════════════════════════════════════════════════════════
     // Web Search Settings (Phase 4 - OpenRouter :online fallback)
