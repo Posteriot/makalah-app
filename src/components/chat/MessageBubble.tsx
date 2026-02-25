@@ -498,8 +498,9 @@ export function MessageBubble({
                     // User: card style, max-width, text align left
                     isUser && [
                         "rounded-shell",
-                        "bg-[var(--chat-muted)]",
+                        isEditing ? "bg-[var(--chat-card)]" : "bg-[var(--chat-muted)]",
                         "border border-[color:var(--chat-border)]",
+                        "transition-colors",
                         "max-w-[85%]",
                         // Keep edit state wide for better readability and stable layout.
                         isEditing && "w-full",
@@ -558,7 +559,7 @@ export function MessageBubble({
 
                     {/* Message Content */}
                     {isEditing ? (
-                        <div ref={editAreaRef} className="flex flex-col gap-2">
+                        <div ref={editAreaRef} className="flex flex-col gap-1.5">
                             <textarea
                                 ref={textareaRef}
                                 value={editContent}
@@ -568,24 +569,24 @@ export function MessageBubble({
                                     e.target.style.height = e.target.scrollHeight + 'px'
                                 }}
                                 onKeyDown={handleKeyDown}
-                                className="w-full resize-none overflow-hidden rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-3 text-sm text-[var(--chat-foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
+                                className="w-full min-h-[1.5rem] resize-none overflow-hidden bg-transparent p-0 text-sm leading-relaxed text-[var(--chat-foreground)] focus-visible:outline-none"
                                 rows={1}
                                 aria-label="Edit message content"
                             />
-                            <div className="flex gap-2 justify-end">
+                            <div className="mt-0.5 flex items-center justify-end gap-1.5">
                                 <button
                                     onClick={handleCancel}
-                                    className="flex items-center gap-1.5 rounded-action px-3 py-1.5 text-xs font-mono text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
+                                    className="flex h-7 items-center gap-1 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2.5 text-[11px] font-mono text-[var(--chat-secondary-foreground)] transition-colors hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)] hover:text-[var(--chat-card-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
                                     aria-label="Batalkan edit"
                                 >
-                                    <Xmark className="h-3.5 w-3.5" /> Batal
+                                    <Xmark className="h-3 w-3" /> Batal
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="flex items-center gap-1.5 rounded-action border border-[color:var(--chat-primary)] bg-[var(--chat-primary)] px-3 py-1.5 text-xs font-mono font-medium text-[var(--chat-primary-foreground)] transition-colors hover:bg-[var(--chat-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
+                                    className="flex h-7 items-center gap-1 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2.5 text-[11px] font-mono font-semibold text-[var(--chat-secondary-foreground)] transition-colors hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)] hover:text-[var(--chat-card-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
                                     aria-label="Kirim pesan yang diedit"
                                 >
-                                    <Send className="h-3.5 w-3.5" /> Kirim
+                                    <Send className="h-3 w-3" /> Kirim
                                 </button>
                             </div>
                         </div>
