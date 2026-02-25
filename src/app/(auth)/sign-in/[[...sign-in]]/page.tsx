@@ -467,7 +467,6 @@ export default function SignInPage() {
         title={title}
         subtitle={subtitle}
         showBackButton
-        onBackClick={() => router.back()}
       >
         <div className="w-full space-y-5" aria-hidden="true">
           {!isWaitlistMode ? (
@@ -496,7 +495,6 @@ export default function SignInPage() {
       title={title}
       subtitle={subtitle}
       showBackButton
-      onBackClick={() => router.back()}
     >
       {/* --- Sign In Mode (default) --- */}
       {mode === "sign-in" && (

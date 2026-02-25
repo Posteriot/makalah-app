@@ -2,7 +2,6 @@
 
 import React from "react"
 import Image from "next/image"
-import Link from "next/link"
 import { NavArrowLeft, Xmark } from "iconoir-react"
 
 interface AuthWideCardProps {
@@ -43,7 +42,33 @@ export function AuthWideCard({
             onBackClick()
             return
         }
-        window.history.back()
+
+        const params = new URLSearchParams(window.location.search)
+        const redirectParam = params.get("redirect_url") ?? params.get("redirect")
+
+        if (redirectParam) {
+            if (redirectParam.startsWith("/")) {
+                window.location.href = redirectParam
+                return
+            }
+
+            try {
+                const parsed = new URL(redirectParam)
+                if (parsed.origin === window.location.origin) {
+                    window.location.href = `${parsed.pathname}${parsed.search}${parsed.hash}`
+                    return
+                }
+            } catch {
+                // Invalid redirect param, fallback to history.
+            }
+        }
+
+        if (window.history.length > 1) {
+            window.history.back()
+            return
+        }
+
+        window.location.href = "/"
     }
 
     function handleCloseClick() {
@@ -97,15 +122,15 @@ export function AuthWideCard({
                             <div className="relative flex w-full flex-1">
                                 <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
                                     <div className="flex w-full max-w-xl flex-col gap-8 md:gap-10">
-                                        <Link href="/" className="inline-flex w-fit items-center gap-2 group">
+                                        <div className="inline-flex w-fit items-center gap-2">
                                             <Image
                                                 src="/logo/logo-color-darkmode.png"
                                                 alt="Makalah"
                                                 width={56}
                                                 height={56}
-                                                className="h-12 w-12 shrink-0 transition-transform group-hover:scale-105 md:h-14 md:w-14"
+                                                className="h-12 w-12 shrink-0 md:h-14 md:w-14"
                                             />
-                                        </Link>
+                                        </div>
 
                                         <div className="max-w-[36ch] space-y-1.5 md:space-y-2">
                                             <h1 className="auth-hero-title">

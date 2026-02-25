@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Eye, EyeClosed, Mail, RefreshDouble } from "iconoir-react"
@@ -13,7 +13,6 @@ type SignUpMode = "sign-up" | "verify-email"
 
 export default function SignUpPage() {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const redirectParam =
     searchParams.get("redirect_url") ?? searchParams.get("redirect")
   const signInHref = redirectParam
@@ -281,7 +280,6 @@ export default function SignUpPage() {
         title="Ayo bergabung!"
         subtitle="Kolaborasi dengan AI, menyusun paper bermutu & akuntable"
         showBackButton
-        onBackClick={() => router.back()}
       >
         <div className="w-full space-y-5" aria-hidden="true">
           <div className="auth-cta opacity-80" />
@@ -308,7 +306,6 @@ export default function SignUpPage() {
       title="Ayo bergabung!"
       subtitle="Kolaborasi dengan AI, menyusun paper bermutu & akuntable"
       showBackButton
-      onBackClick={() => router.back()}
     >
       {mode === "verify-email" ? renderVerifyEmail() : renderSignUpForm()}
     </AuthWideCard>
