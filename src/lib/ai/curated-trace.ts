@@ -32,9 +32,9 @@ export interface CuratedTraceStepData {
 }
 
 export interface PersistedCuratedTraceSnapshot {
-  version: 1
+  version: 1 | 2
   headline: string
-  traceMode: "curated"
+  traceMode: "curated" | "transparent"
   completedAt: number
   steps: Array<{
     stepKey: CuratedTraceStepKey
@@ -42,6 +42,7 @@ export interface PersistedCuratedTraceSnapshot {
     status: CuratedTraceStepStatus
     progress?: number
     ts: number
+    thought?: string
     meta?: CuratedTraceMeta
   }>
 }
@@ -50,6 +51,16 @@ export interface CuratedTraceDataPart {
   type: "data-reasoning-trace"
   id: string
   data: CuratedTraceStepData
+}
+
+export interface ReasoningThoughtDataPart {
+  type: "data-reasoning-thought"
+  id: string
+  data: {
+    traceId: string
+    delta: string
+    ts: number
+  }
 }
 
 interface InternalStep {
@@ -68,6 +79,7 @@ export interface CuratedTraceController {
   markToolRunning: (toolName?: string) => CuratedTraceDataPart[]
   markToolDone: (toolName?: string) => CuratedTraceDataPart[]
   markSourceDetected: () => CuratedTraceDataPart[]
+  populateFromReasoning: (rawReasoning: string) => CuratedTraceDataPart[]
   finalize: (options: {
     outcome: "done" | "error" | "stopped"
     sourceCount: number
@@ -94,6 +106,83 @@ const STEP_LABELS: Record<CuratedTraceStepKey, string> = {
   "tool-action": "Menjalankan aksi pendukung",
 }
 
+const STEP_KEYWORDS: Record<CuratedTraceStepKey, RegExp[]> = {
+  "intent-analysis": [/user/i, /ingin/i, /minta/i, /butuh/i, /pertanyaan/i, /maksud/i, /memahami/i, /kebutuhan/i],
+  "paper-context-check": [/paper/i, /sesi/i, /stage/i, /tahap/i, /workflow/i, /makalah/i],
+  "search-decision": [/cari/i, /search/i, /web/i, /referensi/i, /sumber/i, /internet/i, /google/i],
+  "source-validation": [/validasi/i, /sumber/i, /kredibel/i, /sitasi/i, /jurnal/i, /verifikasi/i],
+  "tool-action": [/tool/i, /function/i, /panggil/i, /jalankan/i, /aksi/i, /simpan/i],
+  "response-compose": [/jawab/i, /susun/i, /tulis/i, /respons/i, /sampaikan/i, /rangkum/i],
+}
+
+function splitIntoSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+}
+
+function scoreStep(sentence: string, stepKey: CuratedTraceStepKey): number {
+  return STEP_KEYWORDS[stepKey].reduce(
+    (score, pattern) => score + (pattern.test(sentence) ? 1 : 0),
+    0
+  )
+}
+
+export interface ReasoningSegmentation {
+  stepThoughts: Record<CuratedTraceStepKey, string | null>
+  stepLabels: Record<CuratedTraceStepKey, string>
+  headline: string
+}
+
+export function segmentReasoning(
+  rawReasoning: string,
+  fallbackMode: "normal" | "paper" | "websearch" = "normal"
+): ReasoningSegmentation {
+  const sentences = splitIntoSentences(rawReasoning)
+  const buckets: Record<CuratedTraceStepKey, string[]> = {
+    "intent-analysis": [],
+    "paper-context-check": [],
+    "search-decision": [],
+    "source-validation": [],
+    "tool-action": [],
+    "response-compose": [],
+  }
+
+  for (const sentence of sentences) {
+    let bestStep: CuratedTraceStepKey = "intent-analysis"
+    let bestScore = 0
+    for (const stepKey of STEP_ORDER) {
+      const score = scoreStep(sentence, stepKey)
+      if (score > bestScore) {
+        bestScore = score
+        bestStep = stepKey
+      }
+    }
+    buckets[bestStep].push(sentence)
+  }
+
+  const stepThoughts = {} as Record<CuratedTraceStepKey, string | null>
+  const stepLabels = {} as Record<CuratedTraceStepKey, string>
+
+  for (const stepKey of STEP_ORDER) {
+    const bucket = buckets[stepKey]
+    if (bucket.length > 0) {
+      stepThoughts[stepKey] = bucket.slice(0, 2).join(" ").slice(0, 200)
+      stepLabels[stepKey] = bucket[0].slice(0, 80)
+    } else {
+      stepThoughts[stepKey] = null
+      stepLabels[stepKey] = STEP_LABELS[stepKey]
+    }
+  }
+
+  const headline = sentences.length > 0
+    ? sentences[sentences.length - 1].slice(0, 120)
+    : `Proses ${fallbackMode === "paper" ? "paper" : fallbackMode === "websearch" ? "pencarian" : "chat"} selesai.`
+
+  return { stepThoughts, stepLabels, headline }
+}
+
 function nowTs() {
   return Date.now()
 }
@@ -106,13 +195,13 @@ function lowerFirst(input: string) {
 function buildHeadlineFromSteps(steps: Record<CuratedTraceStepKey, InternalStep>): string {
   const allSteps = Object.values(steps)
   const running = allSteps.find((step) => step.status === "running")
-  if (running) return `Sedang ${lowerFirst(running.label)}...`
+  if (running) return `Agen lagi ${lowerFirst(running.label)}...`
 
   const errored = allSteps.find((step) => step.status === "error")
-  if (errored) return `Terjadi kendala saat ${lowerFirst(errored.label)}.`
+  if (errored) return `Agen ketemu kendala saat ${lowerFirst(errored.label)}.`
 
   const composeStep = steps["response-compose"]
-  if (composeStep.status === "done") return "Jawaban selesai disusun."
+  if (composeStep.status === "done") return "Agen sudah selesai nyusun jawaban."
   if (composeStep.status === "skipped") return "Proses penyusunan jawaban dihentikan."
 
   const completedByProgress = allSteps
@@ -120,7 +209,7 @@ function buildHeadlineFromSteps(steps: Record<CuratedTraceStepKey, InternalStep>
     .sort((a, b) => b.progress - a.progress)[0]
 
   if (completedByProgress) return `${completedByProgress.label} selesai.`
-  return "Model sedang menyusun jawaban..."
+  return "Agen lagi nyusun jawaban..."
 }
 
 function normalizeErrorNote(errorNote?: string) {
@@ -133,11 +222,15 @@ function normalizeErrorNote(errorNote?: string) {
   return "Terjadi kendala saat memproses jawaban."
 }
 
-function buildPersistedSnapshot(steps: Record<CuratedTraceStepKey, InternalStep>): PersistedCuratedTraceSnapshot {
+function buildPersistedSnapshot(
+  steps: Record<CuratedTraceStepKey, InternalStep>,
+  traceMode: "curated" | "transparent" = "curated"
+): PersistedCuratedTraceSnapshot {
+  const hasThoughts = traceMode === "transparent"
   return {
-    version: 1,
+    version: hasThoughts ? 2 : 1,
     headline: buildHeadlineFromSteps(steps),
-    traceMode: "curated",
+    traceMode,
     completedAt: nowTs(),
     steps: STEP_ORDER.map((key) => {
       const step = steps[key]
@@ -147,6 +240,7 @@ function buildPersistedSnapshot(steps: Record<CuratedTraceStepKey, InternalStep>
         status: step.status,
         progress: step.progress,
         ts: step.ts,
+        ...(step.meta?.note && hasThoughts ? { thought: step.meta.note } : {}),
         ...(step.meta ? { meta: step.meta } : {}),
       }
     }),
@@ -279,6 +373,7 @@ export function createCuratedTraceController(options: {
       markToolRunning: () => [],
       markToolDone: () => [],
       markSourceDetected: () => [],
+      populateFromReasoning: () => [],
       finalize: () => [],
       getPersistedSnapshot: () => ({
         version: 1,
@@ -317,6 +412,28 @@ export function createCuratedTraceController(options: {
         progress: 74,
         meta: { sourceCount: sourceSeenCount, note: "Sumber terdeteksi dan sedang diverifikasi." },
       })
+    },
+    populateFromReasoning: (rawReasoning: string) => {
+      if (!rawReasoning || rawReasoning.trim().length === 0) return []
+
+      const { sanitizeStepThought } = require("./reasoning-sanitizer") as typeof import("./reasoning-sanitizer")
+      const segmentation = segmentReasoning(rawReasoning, options.mode)
+      const events: CuratedTraceDataPart[] = []
+
+      for (const stepKey of STEP_ORDER) {
+        const step = steps[stepKey]
+        const thought = segmentation.stepThoughts[stepKey]
+        const label = segmentation.stepLabels[stepKey]
+
+        step.label = label
+        if (thought) {
+          step.meta = { ...step.meta, note: sanitizeStepThought(thought) }
+        }
+        step.ts = nowTs()
+        events.push(buildEvent(options.traceId, step))
+      }
+
+      return events
     },
     finalize: ({ outcome, sourceCount, errorNote }) => {
       const events: CuratedTraceDataPart[] = []
@@ -398,6 +515,9 @@ export function createCuratedTraceController(options: {
 
       return events
     },
-    getPersistedSnapshot: () => buildPersistedSnapshot(steps),
+    getPersistedSnapshot: () => {
+      const isTransparent = STEP_ORDER.some((key) => steps[key].label !== STEP_LABELS[key])
+      return buildPersistedSnapshot(steps, isTransparent ? "transparent" : "curated")
+    },
   }
 }
