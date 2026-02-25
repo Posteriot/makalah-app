@@ -408,6 +408,15 @@ const STAGE_LABELS = new Set(
 )
 const isStageLabel = (value: string) => STAGE_LABELS.has(normalizeStageLabel(value))
 
+function formatHostname(value: string): string {
+  try {
+    const url = new URL(value)
+    return url.hostname.replace(/^www\./i, "")
+  } catch {
+    return value.replace(/^www\./i, "")
+  }
+}
+
 function shouldRenderAsInlineCode(value: string): boolean {
   const trimmed = value.trim()
   if (!trimmed) return false
@@ -602,12 +611,31 @@ function renderInline(
           }
 
           if (selectedSources.length > 0) {
-            nodes.push(
-              <InlineCitationChip
-                key={`${keyPrefix}-cite-${partIndex++}`}
-                sources={selectedSources}
-              />,
-            )
+            if (context === "artifact") {
+              const primarySource = selectedSources[0]
+              const host = formatHostname(primarySource.url)
+              const label = selectedSources.length > 1
+                ? `${host} +${selectedSources.length - 1}`
+                : host
+              nodes.push(
+                <a
+                  key={`${keyPrefix}-cite-host-${partIndex++}`}
+                  href={primarySource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1 inline-block align-baseline whitespace-nowrap font-mono text-[0.92em] text-[var(--chat-info)] dark:text-[oklch(0.746_0.16_232.661)] hover:underline"
+                >
+                  ({label})
+                </a>,
+              )
+            } else {
+              nodes.push(
+                <InlineCitationChip
+                  key={`${keyPrefix}-cite-${partIndex++}`}
+                  sources={selectedSources}
+                />,
+              )
+            }
           }
           cursor += full.length
           continue
