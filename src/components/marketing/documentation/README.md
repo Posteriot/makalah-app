@@ -49,7 +49,7 @@ export default function Page() {
 - `page.tsx` hanya render `<DocumentationPage />`, tanpa layout tambahan.
 - `DocumentationPage` membungkus `DocumentationContent` di dalam `<Suspense>` dengan fallback `DocumentationLoading`.
 - Loading state: spinner `RefreshDouble` (`animate-spin`) + teks "Memuat dokumentasi..." (`min-h-screen`, centered).
-- Section wrapper: `relative isolate overflow-hidden bg-[color:var(--section-bg-alt)] pt-[var(--header-h)]`.
+- Section wrapper: `relative isolate overflow-hidden bg-background pt-[var(--header-h)]`.
 - Background: `DottedPattern` (spacing 24, tanpa radial mask, `opacity-100`, `z-0`).
 - Content container: `relative z-10 mx-auto w-full max-w-7xl px-4 lg:px-8`.
 - Grid: `grid-cols-1 gap-comfort pb-6 md:grid-cols-16`.

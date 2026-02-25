@@ -54,7 +54,7 @@ Dua route:
 ## Blog Landing Layout (BlogLandingPage.tsx)
 
 - Page wrapper: `bg-background text-foreground`.
-- Section wrapper: `relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]`.
+- Section wrapper: `relative isolate overflow-hidden bg-background`.
 - Background: `DottedPattern` (spacing 24, tanpa radial mask, opacity-100, z-0).
 - Content container: `max-w-7xl`, `px-4 md:px-8`, padding-top dynamic: `pt-[calc(var(--header-h)+16px)] md:pt-[calc(var(--header-h)+20px)]`.
 - Grid: `grid-cols-1 md:grid-cols-16`, `gap-comfort`.

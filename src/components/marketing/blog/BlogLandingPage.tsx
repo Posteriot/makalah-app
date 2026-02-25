@@ -104,7 +104,7 @@ export function BlogLandingPage() {
 
   return (
     <div className="bg-background text-foreground">
-      <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
+      <section className="relative isolate overflow-hidden bg-background">
         {/* Background patterns — conditional via CMS page-settings */}
         {pageSettings != null && pageSettings.showGridPattern !== false && <GridPattern className="z-0" />}
         {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
