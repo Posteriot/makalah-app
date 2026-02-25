@@ -211,7 +211,7 @@ export function SidebarChatHistory({
             // Flat list — no border, no rounded, no shadow. Matches desktop exactly.
             const isActive = currentConversationId === conv._id
             const itemClasses = cn(
-              "group flex w-full items-center px-4 py-3.5 text-left transition-colors duration-150",
+              "group flex w-full items-center px-4 py-2 text-left transition-colors duration-150",
               isActive
                 ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
                 : "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-sidebar-accent-foreground)]"
@@ -245,7 +245,7 @@ export function SidebarChatHistory({
                     ) : (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="block min-w-0 font-sans font-medium text-xs text-[var(--chat-sidebar-foreground)] truncate">
+                          <span className="block min-w-0 truncate font-sans text-xs font-medium leading-tight text-[var(--chat-sidebar-foreground)]">
                             {conv.title}
                           </span>
                         </TooltipTrigger>
@@ -269,7 +269,7 @@ export function SidebarChatHistory({
                     )}
                   </div>
                   {!isEditing && (
-                    <div className="mt-1 text-[11px] text-[var(--chat-muted-foreground)] font-mono">
+                    <div className="mt-0 text-[11px] leading-[1.15] text-[var(--chat-muted-foreground)] font-mono">
                       {formatRelativeTime(conv.lastMessageAt)}
                     </div>
                   )}
