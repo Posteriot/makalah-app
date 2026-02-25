@@ -10,37 +10,10 @@ export interface Template {
   message: string
 }
 
-const DEFAULT_TEMPLATES: Template[] = [
-  {
-    id: "starter-discussion",
-    label: "Mari berdiskusi terlebih dahulu.",
-    chipLabel: "Diskusi riset",
-    message: "Mari berdiskusi terlebih dahulu.",
-  },
-  {
-    id: "starter-paper",
-    label: "Mari berkolaborasi menyusun paper akademik.",
-    chipLabel: "Paper akademik",
-    message: "Mari berkolaborasi menyusun paper akademik.",
-  },
-]
-
-const DEFAULT_HEADING = "Mari berdiskusi!"
-const DEFAULT_DESCRIPTION_LINES = [
-  "Ingin berdiskusi mengenai riset atau langsung menulis paper?",
-  "Silakan ketik maksud di kolom percakapan,",
-  "atau buka riwayat percakapan terdahulu di",
-]
-const DEFAULT_TEMPLATE_LABEL = "Atau gunakan template berikut:"
-const DEFAULT_LIGHT_MODE_LOGO_SRC = "/logo/makalah_logo_dark.svg"
-const DEFAULT_DARK_MODE_LOGO_SRC = "/logo/makalah_logo_light.svg"
-const DEFAULT_SIDEBAR_LINK_LABEL = "sidebar"
-
 interface TemplateGridProps {
   onTemplateSelect: (template: Template) => void
   onSidebarLinkClick?: (e: React.MouseEvent<HTMLButtonElement>) => void
   disabled?: boolean
-  strictCmsMode?: boolean
   variant?: "default" | "mobile-chips"
 }
 
@@ -48,7 +21,6 @@ export function TemplateGrid({
   onTemplateSelect,
   onSidebarLinkClick,
   disabled = false,
-  strictCmsMode = false,
   variant = "default",
 }: TemplateGridProps) {
   const section = useQuery(api.pageContent.getSection, {
@@ -71,32 +43,10 @@ export function TemplateGrid({
       : "skip"
   )
 
-  const strictEnabled = strictCmsMode
-  const strictPublished = strictEnabled && isCmsPublished
-
-  const heading = strictEnabled
-    ? (strictPublished ? (section?.title?.trim() ?? "") : "")
-    : isCmsPublished && section?.title?.trim()
-      ? section.title.trim()
-      : DEFAULT_HEADING
-
-  const descriptionLines = strictEnabled
-    ? (strictPublished ? (section?.paragraphs ?? []) : [])
-    : isCmsPublished && section?.paragraphs && section.paragraphs.length > 0
-      ? section.paragraphs
-      : DEFAULT_DESCRIPTION_LINES
-
-  const templateLabel = strictEnabled
-    ? (strictPublished ? (section?.subtitle?.trim() ?? "") : "")
-    : isCmsPublished && section?.subtitle?.trim()
-      ? section.subtitle.trim()
-      : DEFAULT_TEMPLATE_LABEL
-
-  const sidebarLinkLabel = strictEnabled
-    ? (strictPublished ? (section?.ctaText?.trim() ?? "") : "")
-    : isCmsPublished && section?.ctaText?.trim()
-      ? section.ctaText.trim()
-      : DEFAULT_SIDEBAR_LINK_LABEL
+  const heading = isCmsPublished ? (section?.title?.trim() ?? "") : ""
+  const descriptionLines = isCmsPublished ? (section?.paragraphs ?? []) : []
+  const templateLabel = isCmsPublished ? (section?.subtitle?.trim() ?? "") : ""
+  const sidebarLinkLabel = isCmsPublished ? (section?.ctaText?.trim() ?? "") : ""
 
   const mappedCmsTemplates = section?.items
     ?.map((item, index) => {
@@ -111,28 +61,13 @@ export function TemplateGrid({
     })
     .filter((item): item is Template => item !== null) ?? []
 
-  const templates = strictEnabled
-    ? (strictPublished ? mappedCmsTemplates : [])
-    : isCmsPublished && mappedCmsTemplates.length > 0
-      ? mappedCmsTemplates
-      : DEFAULT_TEMPLATES
-
-  const safeDescriptionLines = strictEnabled
-    ? descriptionLines
-    : descriptionLines.length > 0
-      ? descriptionLines
-      : DEFAULT_DESCRIPTION_LINES
+  const templates = isCmsPublished ? mappedCmsTemplates : []
+  const safeDescriptionLines = descriptionLines
   const linesBeforeSidebar = safeDescriptionLines.slice(0, -1)
-  const sidebarLinePrefix = strictEnabled
-    ? (safeDescriptionLines.at(-1) ?? "")
-    : (safeDescriptionLines.at(-1) ?? DEFAULT_DESCRIPTION_LINES[2])
+  const sidebarLinePrefix = safeDescriptionLines.at(-1) ?? ""
 
-  const lightModeLogoSrc = strictEnabled
-    ? (strictPublished ? lightModeLogoUrl ?? darkModeLogoUrl : null)
-    : lightModeLogoUrl ?? DEFAULT_LIGHT_MODE_LOGO_SRC
-  const darkModeLogoSrc = strictEnabled
-    ? (strictPublished ? darkModeLogoUrl ?? lightModeLogoUrl : null)
-    : darkModeLogoUrl ?? DEFAULT_DARK_MODE_LOGO_SRC
+  const lightModeLogoSrc = isCmsPublished ? (lightModeLogoUrl ?? null) : null
+  const darkModeLogoSrc = isCmsPublished ? (darkModeLogoUrl ?? null) : null
 
   if (variant === "mobile-chips") {
     return (

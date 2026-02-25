@@ -28,7 +28,7 @@ For developer maintenance, scaling, and onboarding.
 
 Hybrid CMS for marketing pages, chat empty state, and pricing configuration. Admin-only (superadmin/admin roles). Fallback behavior depends on each consumer component:
 - Home/About structured sections: if missing or unpublished, section is hidden (`return null`).
-- Chat empty state (`TemplateGrid` + `ChatWindow`): desktop selalu memakai mode strict CMS-only. Jika section `chat-empty-state` belum `isPublished`, logo + heading + deskripsi + link sidebar + template tidak dirender (kosong). Mobile tetap fallback text/logo/templates selama redesign mobile berlangsung.
+- Chat empty state (`TemplateGrid` + `ChatWindow`): desktop dan mobile memakai mode strict CMS-only. Jika section `chat-empty-state` belum `isPublished`, logo + heading + deskripsi + link sidebar + template tidak dirender (kosong).
 - Legal pages (`CmsPageWrapper`): fallback to static `children` content.
 - Pricing header/teaser: fallback to local constants for text when section is not published.
 
@@ -1033,8 +1033,8 @@ Seed publish defaults vary by migration:
 | `src/components/marketing/pricing/PricingCard.tsx` | Full pricing page card (with price masking) |
 | `src/components/layout/header/GlobalHeader.tsx` | Header with inline CMS fallback |
 | `src/components/layout/footer/Footer.tsx` | Footer with inline CMS fallback + pattern toggles from siteConfig |
-| `src/components/chat/messages/TemplateGrid.tsx` | Chat empty-state renderer (`chat/chat-empty-state`): desktop strict CMS-only, unpublished state renders empty; mobile keeps fallback behavior |
-| `src/components/chat/ChatWindow.tsx` | Chat page container that mounts `TemplateGrid` in desktop strict mode and mobile fallback mode |
+| `src/components/chat/messages/TemplateGrid.tsx` | Chat empty-state renderer (`chat/chat-empty-state`): CMS-only untuk desktop+mobile, unpublished state renders empty |
+| `src/components/chat/ChatWindow.tsx` | Chat page container yang mount `TemplateGrid` untuk desktop+mobile tanpa fallback static |
 
 ### Utilities
 

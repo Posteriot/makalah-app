@@ -731,7 +731,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               }
               onSidebarLinkClick={handleSidebarLinkClick}
               disabled={isCreatingChat}
-              strictCmsMode
             />
           </div>
 
@@ -873,7 +872,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                   onTemplateSelect={handleTemplateSelect}
                   onSidebarLinkClick={handleSidebarLinkClick}
                   disabled={isLoading}
-                  strictCmsMode
                 />
               </div>
               <div className="md:hidden">
