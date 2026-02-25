@@ -977,7 +977,7 @@ Seed publish defaults vary by migration:
 | File | Responsibility |
 |------|---------------|
 | `src/components/admin/cms/HeroSectionEditor.tsx` | Hero section form |
-| `src/components/admin/cms/ChatEmptyStateEditor.tsx` | Chat empty state editor (logo, description lines, starter templates) |
+| `src/components/admin/cms/ChatEmptyStateEditor.tsx` | Chat empty state editor (logo, description lines, starter templates) tanpa default fallback konten/image |
 | `src/components/admin/cms/BenefitsSectionEditor.tsx` | Benefits items form |
 | `src/components/admin/cms/FeatureShowcaseEditor.tsx` | Workflow/Refrasa features form (reusable) |
 | `src/components/admin/cms/ManifestoSectionEditor.tsx` | Manifesto section form |
@@ -1035,6 +1035,7 @@ Seed publish defaults vary by migration:
 | `src/components/layout/footer/Footer.tsx` | Footer with inline CMS fallback + pattern toggles from siteConfig |
 | `src/components/chat/messages/TemplateGrid.tsx` | Chat empty-state renderer (`chat/chat-empty-state`): CMS-only untuk desktop+mobile, unpublished state renders empty |
 | `src/components/chat/ChatWindow.tsx` | Chat page container yang mount `TemplateGrid` untuk desktop+mobile tanpa fallback static |
+| `scripts/check-chat-empty-state-no-fallback.sh` | Guard `rg` untuk blok pola fallback/static di scope `chat-empty-state` (runtime + admin editor) |
 
 ### Utilities
 
