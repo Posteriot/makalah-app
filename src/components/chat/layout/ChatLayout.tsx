@@ -54,7 +54,7 @@ interface ChatLayoutProps {
 
 // Default dimensions
 const DEFAULT_SIDEBAR_WIDTH = 280
-const DEFAULT_PANEL_WIDTH = 360
+const DEFAULT_PANEL_WIDTH = 480
 const MIN_SIDEBAR_WIDTH = 180
 const MIN_PANEL_WIDTH = 280
 const COLLAPSE_THRESHOLD = 100
