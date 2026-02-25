@@ -942,8 +942,8 @@ JSON schema:
             return {
                 version: 1,
                 headline: sanitizeReasoningText(
-                    trace.headline || "Model sedang memproses jawaban...",
-                    "Model sedang memproses jawaban."
+                    trace.headline || "Agen lagi memproses jawaban...",
+                    "Agen lagi memproses jawaban."
                 ),
                 traceMode: "curated",
                 completedAt: Number.isFinite(trace.completedAt) ? trace.completedAt : Date.now(),
@@ -1266,7 +1266,8 @@ Aturan:
         let enableWebSearch = false
 
         const telemetryStartTime = Date.now()
-        const reasoningTraceEnabled = reasoningSettings.traceMode === "curated"
+        const reasoningTraceEnabled = reasoningSettings.traceMode === "curated" || reasoningSettings.traceMode === "transparent"
+        const isTransparentReasoning = reasoningSettings.traceMode === "transparent"
         const getTraceModeLabel = (isPaper: boolean, webSearch: boolean): "normal" | "paper" | "websearch" => {
             if (webSearch) return "websearch"
             if (isPaper) return "paper"
@@ -1281,6 +1282,45 @@ Aturan:
                 return typeof maybeChunk.toolName === "string" ? maybeChunk.toolName : undefined
             }
             return undefined
+        }
+
+        // Helper: accumulate reasoning deltas and emit progressive thought events
+        function createReasoningAccumulator(opts: {
+            traceId: string
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            writer: { write: (data: any) => void }
+            ensureStart: () => void
+            enabled: boolean
+        }) {
+            let buffer = ""
+            let chunkCount = 0
+            const { sanitizeReasoningDelta } = require("@/lib/ai/reasoning-sanitizer") as typeof import("@/lib/ai/reasoning-sanitizer")
+
+            return {
+                onReasoningDelta: (delta: string) => {
+                    if (!opts.enabled || !delta) return
+                    buffer += delta
+                    chunkCount += 1
+
+                    if (chunkCount % 3 === 0 || delta.length > 100) {
+                        const sanitized = sanitizeReasoningDelta(delta)
+                        if (sanitized.trim()) {
+                            opts.ensureStart()
+                            opts.writer.write({
+                                type: "data-reasoning-thought",
+                                id: `${opts.traceId}-thought-${chunkCount}`,
+                                data: {
+                                    traceId: opts.traceId,
+                                    delta: sanitized,
+                                    ts: Date.now(),
+                                },
+                            })
+                        }
+                    }
+                },
+                getFullReasoning: () => buffer,
+                hasReasoning: () => buffer.length > 0,
+            }
         }
 
         try {
@@ -1664,6 +1704,13 @@ TIPS PENCARIAN:
                             })
                         }
 
+                        const reasoningAccumulator = createReasoningAccumulator({
+                            traceId,
+                            writer,
+                            ensureStart,
+                            enabled: isTransparentReasoning,
+                        })
+
                         // Optimistis: tampilkan indikator "Mencari..." sejak awal stream (sebelum token ada).
                         ensureSearchStatusShown()
                         emitTrace(reasoningTrace.initialEvents)
@@ -1672,8 +1719,19 @@ TIPS PENCARIAN:
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendSources: true,
-                            sendReasoning: false,
+                            sendReasoning: isTransparentReasoning,
                         })) {
+                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
+                                if (chunk.type === "reasoning-delta") {
+                                    reasoningAccumulator.onReasoningDelta(
+                                        typeof (chunk as { delta?: unknown }).delta === "string"
+                                            ? (chunk as { delta?: unknown }).delta as string
+                                            : ""
+                                    )
+                                }
+                                continue
+                            }
+
                             if (chunk.type === "source-url") {
                                 hasAnySource = true
                                 sourceCount += 1
@@ -2014,6 +2072,12 @@ TIPS PENCARIAN:
                                         })
                                     }
 
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
+
                                     const doneTraceEvents = reasoningTrace.finalize({
                                         outcome: "done",
                                         sourceCount,
@@ -2104,6 +2168,11 @@ TIPS PENCARIAN:
                                 }
 
                                 if (!didFinalizeForPersist) {
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
                                     emitTrace(reasoningTrace.finalize({
                                         outcome: "done",
                                         sourceCount,
@@ -2195,13 +2264,31 @@ TIPS PENCARIAN:
                             }
                         }
 
+                        const reasoningAccumulator = createReasoningAccumulator({
+                            traceId,
+                            writer,
+                            ensureStart,
+                            enabled: isTransparentReasoning,
+                        })
+
                         emitTrace(reasoningTrace.initialEvents)
 
                         for await (const chunk of result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
-                            sendReasoning: false,
+                            sendReasoning: isTransparentReasoning,
                         })) {
+                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
+                                if (chunk.type === "reasoning-delta") {
+                                    reasoningAccumulator.onReasoningDelta(
+                                        typeof (chunk as { delta?: unknown }).delta === "string"
+                                            ? (chunk as { delta?: unknown }).delta as string
+                                            : ""
+                                    )
+                                }
+                                continue
+                            }
+
                             if (chunk.type === "source-url") {
                                 sourceCount += 1
                                 primaryReasoningSourceCount = sourceCount
@@ -2215,6 +2302,11 @@ TIPS PENCARIAN:
 
 
                             if (chunk.type === "finish") {
+                                if (reasoningAccumulator.hasReasoning()) {
+                                    emitTrace(reasoningTrace.populateFromReasoning(
+                                        reasoningAccumulator.getFullReasoning()
+                                    ))
+                                }
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "done",
                                     sourceCount,
@@ -2411,13 +2503,32 @@ TIPS PENCARIAN:
                             }
                         }
 
+                        const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
+                        const reasoningAccumulator = createReasoningAccumulator({
+                            traceId,
+                            writer,
+                            ensureStart,
+                            enabled: fallbackTransparent,
+                        })
+
                         emitTrace(reasoningTrace.initialEvents)
 
                         for await (const chunk of result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
-                            sendReasoning: false,
+                            sendReasoning: fallbackTransparent,
                         })) {
+                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
+                                if (chunk.type === "reasoning-delta") {
+                                    reasoningAccumulator.onReasoningDelta(
+                                        typeof (chunk as { delta?: unknown }).delta === "string"
+                                            ? (chunk as { delta?: unknown }).delta as string
+                                            : ""
+                                    )
+                                }
+                                continue
+                            }
+
                             if (chunk.type === "source-url") {
                                 sourceCount += 1
                                 fallbackReasoningSourceCount = sourceCount
@@ -2431,6 +2542,11 @@ TIPS PENCARIAN:
 
 
                             if (chunk.type === "finish") {
+                                if (reasoningAccumulator.hasReasoning()) {
+                                    emitTrace(reasoningTrace.populateFromReasoning(
+                                        reasoningAccumulator.getFullReasoning()
+                                    ))
+                                }
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "done",
                                     sourceCount,
@@ -2525,6 +2641,14 @@ TIPS PENCARIAN:
                             })
                         }
 
+                        const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
+                        const reasoningAccumulator = createReasoningAccumulator({
+                            traceId,
+                            writer,
+                            ensureStart,
+                            enabled: fallbackTransparent,
+                        })
+
                         // Show searching indicator immediately
                         ensureStart()
                         writer.write({
@@ -2546,8 +2670,19 @@ TIPS PENCARIAN:
                         for await (const chunk of result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
-                            sendReasoning: false,
+                            sendReasoning: fallbackTransparent,
                         })) {
+                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
+                                if (chunk.type === "reasoning-delta") {
+                                    reasoningAccumulator.onReasoningDelta(
+                                        typeof (chunk as { delta?: unknown }).delta === "string"
+                                            ? (chunk as { delta?: unknown }).delta as string
+                                            : ""
+                                    )
+                                }
+                                continue
+                            }
+
                             if (chunk.type === "source-url") {
                                 sourceCount += 1
                                 emitTrace(reasoningTrace.markSourceDetected())
@@ -2656,6 +2791,12 @@ TIPS PENCARIAN:
                                         data: { sources: persistedSources },
                                     })
 
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
+
                                     const doneTraceEvents = reasoningTrace.finalize({
                                         outcome: "done",
                                         sourceCount,
@@ -2694,6 +2835,12 @@ TIPS PENCARIAN:
                                     }
                                     // ───────────────────────────────────────────────────────────
                                 } else {
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
+
                                     const doneTraceEvents = reasoningTrace.finalize({
                                         outcome: "done",
                                         sourceCount,
@@ -2762,6 +2909,11 @@ TIPS PENCARIAN:
                                 // ═════════════════════════════════════════════
 
                                 if (!didFinalizeForPersist) {
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
                                     emitTrace(reasoningTrace.finalize({
                                         outcome: "done",
                                         sourceCount,
