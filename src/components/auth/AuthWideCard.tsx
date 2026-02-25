@@ -21,7 +21,7 @@ export function AuthWideCard({
     title,
     subtitle,
     customLeftContent,
-    showBackButton = false,
+    showBackButton = true,
     onBackClick,
     showCloseButton = false,
     onCloseClick,
@@ -31,97 +31,108 @@ export function AuthWideCard({
     const resolvedSubtitle = subtitle || "Susun Paper terbaikmu, tanpa ribet, tinggal ngobrol!"
     const firstCommaIndex = resolvedSubtitle.indexOf(",")
     const hasComma = firstCommaIndex >= 0
-    const subtitleLead = hasComma
-        ? resolvedSubtitle.slice(0, firstCommaIndex + 1)
+    const subtitleLineOne = hasComma
+        ? resolvedSubtitle.slice(0, firstCommaIndex + 1).trimEnd()
         : resolvedSubtitle
-    const subtitleEmphasis = hasComma
+    const subtitleLineTwo = hasComma
         ? resolvedSubtitle.slice(firstCommaIndex + 1).trimStart()
         : ""
 
-    return (
-        <div className="w-full max-w-4xl flex flex-col md:flex-row md:min-h-[520px] overflow-hidden rounded-lg border border-border bg-card shadow-none relative">
-            {showCloseButton && (
-                <button
-                    type="button"
-                    onClick={onCloseClick}
-                    className="absolute right-6 top-6 z-20 inline-flex h-8 w-8 items-center justify-center rounded-action border border-border/60 bg-[color:var(--slate-900)]/70 text-[color:var(--slate-100)] transition-colors hover:bg-[color:var(--slate-100)] hover:text-[color:var(--slate-900)] dark:bg-[color:var(--slate-100)]/90 dark:text-[color:var(--slate-900)] dark:hover:bg-[color:var(--slate-900)] dark:hover:text-[color:var(--slate-100)] focus-ring md:right-12 md:top-12"
-                    aria-label="Tutup"
-                >
-                    <Xmark className="h-4 w-4" />
-                </button>
-            )}
-            {/* Left Column: Branding & Personality */}
-            <div className="md:w-5/12 bg-slate-950 p-6 md:p-12 relative flex flex-col">
-                {/* Diagonal Stripes - Industrial Texture */}
-                <div
-                    className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]"
-                    style={{
-                        backgroundImage: 'repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 8px)'
-                    }}
-                    aria-hidden="true"
-                />
+    function handleBackClick() {
+        if (onBackClick) {
+            onBackClick()
+            return
+        }
+        window.history.back()
+    }
 
-                {customLeftContent ? (
-                    <div className="relative z-10 w-full h-full flex flex-col">
-                        {customLeftContent}
-                    </div>
-                ) : (
-                    /* Inner wrapper - height and alignment sync with auth form */
-                    <div className="relative z-10 w-full flex flex-col justify-between flex-grow">
-                        {/* Logo + Brand - Top, aligns with top edge of auth form */}
-                        <div className="flex items-center justify-between w-full">
-                            <Link href="/" className="inline-flex items-center gap-2 group w-fit">
-                                {/* Logo Icon */}
-                                <Image
-                                    src="/logo/logo-color-darkmode.png"
-                                    alt=""
-                                    width={32}
-                                    height={32}
-                                    className="h-8 w-8 shrink-0 transition-transform group-hover:scale-105"
-                                />
-                            </Link>
+    function handleCloseClick() {
+        if (onCloseClick) {
+            onCloseClick()
+            return
+        }
+        window.location.href = "/"
+    }
+
+    return (
+        <div className="flex min-h-0 w-full flex-1">
+            <div className="auth-split flex-1">
+                <div className="auth-section-left relative">
+                    <div className="auth-left-pattern-overlay" aria-hidden="true" />
+
+                    <div className="relative z-10 flex h-full w-full flex-col">
+                        <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3">
                             {showBackButton ? (
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        if (onBackClick) {
-                                            onBackClick()
-                                            return
-                                        }
-                                        window.history.back()
-                                    }}
-                                    className="inline-flex items-center gap-2 text-sm font-normal text-slate-300 transition-colors hover:text-slate-100 hover:underline focus-ring w-fit"
+                                    onClick={handleBackClick}
+                                    className="auth-back-button auth-focus-ring"
                                 >
-                                    <NavArrowLeft className="h-4 w-4" />
+                                    <NavArrowLeft className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                                     <span>Kembali</span>
                                 </button>
-                            ) : null}
+                            ) : (
+                                <span aria-hidden="true" />
+                            )}
+
+                            {showCloseButton ? (
+                                <button
+                                    type="button"
+                                    onClick={handleCloseClick}
+                                    className="auth-close-button auth-focus-ring"
+                                    aria-label="Tutup"
+                                >
+                                    <Xmark className="h-4 w-4" />
+                                </button>
+                            ) : (
+                                <span aria-hidden="true" />
+                            )}
                         </div>
 
-                        {/* Heading + Subheading - Bottom, aligns with bottom edge of auth form */}
-                        <div className="space-y-3 mt-6 md:space-y-4 md:mt-auto">
-                            <h1 className="font-sans text-2xl md:text-3xl font-medium text-foreground dark:text-slate-200 leading-[1.1]">
-                                {resolvedTitle}
-                            </h1>
-                            <p className="text-sm leading-relaxed max-w-[280px] font-mono">
-                                <span className="text-muted-foreground font-normal">
-                                    {subtitleLead}
-                                </span>{" "}
-                                {subtitleEmphasis && (
-                                    <span className="text-slate-50 font-normal">
-                                        {subtitleEmphasis}
-                                    </span>
-                                )}
-                            </p>
-                        </div>
+                        {customLeftContent ? (
+                            <div className="flex h-full w-full flex-1 flex-col pt-14 md:pt-16">
+                                {customLeftContent}
+                            </div>
+                        ) : (
+                            <div className="relative flex w-full flex-1">
+                                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
+                                    <div className="flex w-full max-w-xl flex-col gap-8 md:gap-10">
+                                        <Link href="/" className="inline-flex w-fit items-center gap-2 group">
+                                            <Image
+                                                src="/logo/logo-color-darkmode.png"
+                                                alt="Makalah"
+                                                width={56}
+                                                height={56}
+                                                className="h-12 w-12 shrink-0 transition-transform group-hover:scale-105 md:h-14 md:w-14"
+                                            />
+                                        </Link>
+
+                                        <div className="max-w-[36ch] space-y-1.5 md:space-y-2">
+                                            <h1 className="auth-hero-title">
+                                                {resolvedTitle}
+                                            </h1>
+                                            <p className="auth-hero-subtitle">
+                                                <span className="auth-hero-subtitle-line">
+                                                    {subtitleLineOne}
+                                                </span>
+                                                {subtitleLineTwo && (
+                                                    <span className="auth-hero-subtitle-line">
+                                                        {subtitleLineTwo}
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
+                </div>
 
-            {/* Right Column: Interaction (Auth Form) */}
-            <div className="md:w-7/12 p-8 md:p-12 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 relative min-h-[460px]">
-                <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
-                    {children}
+                <div className="auth-section-right">
+                    <div className="auth-form-wrap">
+                        {children}
+                    </div>
                 </div>
             </div>
         </div>

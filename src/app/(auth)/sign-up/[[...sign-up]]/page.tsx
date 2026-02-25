@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -29,6 +29,11 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [isClientReady, setIsClientReady] = useState(false)
+
+  useEffect(() => {
+    setIsClientReady(true)
+  }, [])
 
   function clearError() {
     if (error) setError("")
@@ -117,10 +122,10 @@ export default function SignUpPage() {
           type="button"
           onClick={handleGoogleSignUp}
           disabled={isLoading}
-          className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+          className="group auth-cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
         >
           <span
-            className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+            className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
             aria-hidden="true"
           />
           <span className="relative z-10 inline-flex items-center gap-2">
@@ -135,10 +140,10 @@ export default function SignUpPage() {
         </button>
 
         {/* Divider */}
-        <div className="flex items-center gap-4 w-full">
-          <div className="h-[0.5px] flex-1 bg-slate-400" />
-          <span className="text-muted-foreground font-mono text-xs uppercase tracking-wider">atau</span>
-          <div className="h-[0.5px] flex-1 bg-slate-400" />
+        <div className="auth-divider">
+          <div className="auth-divider-line" />
+          <span className="auth-divider-label">atau</span>
+          <div className="auth-divider-line" />
         </div>
 
         {/* Email + Password Form */}
@@ -153,7 +158,7 @@ export default function SignUpPage() {
               onChange={(e) => { setFirstName(e.target.value); clearError() }}
               placeholder="Nama depan"
               autoComplete="given-name"
-              className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+              className="auth-input"
             />
           </div>
 
@@ -167,7 +172,7 @@ export default function SignUpPage() {
               onChange={(e) => { setLastName(e.target.value); clearError() }}
               placeholder="Nama belakang"
               autoComplete="family-name"
-              className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+              className="auth-input"
             />
           </div>
 
@@ -180,7 +185,7 @@ export default function SignUpPage() {
               onChange={(e) => { setEmail(e.target.value); clearError() }}
               placeholder="Email"
               autoComplete="email"
-              className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+              className="auth-input"
             />
           </div>
 
@@ -194,12 +199,12 @@ export default function SignUpPage() {
                 onChange={(e) => { setPassword(e.target.value); clearError() }}
                 placeholder="Password"
                 autoComplete="new-password"
-                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                className="auth-input pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
+                className="auth-input-toggle"
                 aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
               >
                 {showPassword ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -208,7 +213,7 @@ export default function SignUpPage() {
           </div>
 
           {error && (
-            <div className="rounded-action border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono">
+            <div className="auth-feedback-error" role="alert">
               {error}
             </div>
           )}
@@ -217,10 +222,10 @@ export default function SignUpPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+            className="group auth-cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
           >
             <span
-              className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+              className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
               aria-hidden="true"
             />
             <span className="relative z-10 inline-flex items-center gap-2">
@@ -233,7 +238,7 @@ export default function SignUpPage() {
         {/* Footer */}
         <p className="text-muted-foreground text-xs font-sans text-center mt-4">
           Sudah punya akun?{" "}
-          <Link href={signInHref} className="text-slate-50 hover:text-slate-300 font-bold">
+          <Link href={signInHref} className="auth-link-strong">
             Masuk
           </Link>
         </p>
@@ -246,7 +251,11 @@ export default function SignUpPage() {
   function renderVerifyEmail() {
     return (
       <div className="text-center space-y-4 w-full">
-        <Mail className="h-12 w-12 text-primary mx-auto" />
+        <div className="mx-auto flex justify-center">
+          <span className="auth-icon-badge">
+            <Mail className="h-6 w-6" />
+          </span>
+        </div>
         <h3 className="text-narrative text-lg font-medium">Cek Email Kamu</h3>
         <p className="text-sm text-muted-foreground">
           Link verifikasi sudah dikirim ke{" "}
@@ -258,11 +267,39 @@ export default function SignUpPage() {
         </p>
         <Link
           href={signInHref}
-          className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+          className="auth-link"
         >
           Kembali ke masuk
         </Link>
       </div>
+    )
+  }
+
+  if (!isClientReady) {
+    return (
+      <AuthWideCard
+        title="Ayo bergabung!"
+        subtitle="Kolaborasi dengan AI, menyusun paper bermutu & akuntable"
+        showBackButton
+        onBackClick={() => router.back()}
+      >
+        <div className="w-full space-y-5" aria-hidden="true">
+          <div className="auth-cta opacity-80" />
+          <div className="auth-divider">
+            <div className="auth-divider-line" />
+            <span className="auth-divider-label">atau</span>
+            <div className="auth-divider-line" />
+          </div>
+          <div className="space-y-4">
+            <div className="auth-input opacity-65" />
+            <div className="auth-input opacity-65" />
+            <div className="auth-input opacity-65" />
+            <div className="auth-input opacity-65" />
+            <div className="auth-cta opacity-80" />
+          </div>
+          <div className="h-4 opacity-0" />
+        </div>
+      </AuthWideCard>
     )
   }
 

@@ -16,6 +16,8 @@ export default function WaitingListPage() {
     <AuthWideCard
       title="Daftar Waiting List"
       subtitle="Bergabunglah dengan waiting list, dan dapatkan akses eksklusif lebih awal!"
+      showBackButton
+      onBackClick={() => router.back()}
       showCloseButton
       onCloseClick={() => router.push("/")}
     >

@@ -3,8 +3,6 @@
 import { useState } from "react"
 import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
-import { Input } from "@/components/ui/input"
-import { SectionCTA } from "@/components/ui/section-cta"
 import { Mail, User, CheckCircle, WarningTriangle } from "iconoir-react"
 import { sendConfirmationEmail } from "@/app/(auth)/waitinglist/actions"
 
@@ -43,9 +41,7 @@ export function WaitlistForm() {
       await registerMutation({ firstName, lastName, email })
 
       // Send confirmation email (fire-and-forget)
-      sendConfirmationEmail(email, firstName).catch((err) => {
-        console.error("Failed to send confirmation email:", err)
-      })
+      void sendConfirmationEmail(email, firstName).catch(() => undefined)
 
       setFormState("success")
     } catch (err) {
@@ -61,9 +57,9 @@ export function WaitlistForm() {
   if (formState === "success") {
     return (
       <div className="w-full flex flex-col items-center justify-center py-6 text-center">
-        <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4">
-          <CheckCircle className="w-7 h-7 text-success" />
-        </div>
+        <span className="auth-icon-badge auth-icon-badge-success mb-4 h-14 w-14 rounded-full">
+          <CheckCircle className="w-7 h-7" />
+        </span>
 
         <h3 className="text-lg font-mono font-bold text-foreground mb-1 tracking-tight">
           Pendaftaran Berhasil!
@@ -77,8 +73,8 @@ export function WaitlistForm() {
           Email konfirmasi sudah dikirim. Saat giliran kamu tiba, tim kami akan mengirim email undangan berisi link pendaftaran.
         </p>
 
-        <div className="w-full rounded-action border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-2.5 text-left">
-          <WarningTriangle className="h-4 w-4 min-w-4 text-amber-500 mt-0.5" />
+        <div className="auth-feedback-warning w-full flex items-start gap-2.5 text-left">
+          <WarningTriangle className="h-4 w-4 min-w-4 mt-0.5" />
           <p className="text-interface text-xs leading-relaxed text-foreground">
             Periksa folder <span className="font-bold">Inbox/Primary</span>, <span className="font-bold">Spam</span>, <span className="font-bold">Update</span>, atau <span className="font-bold">Promosi</span> — email kami bisa masuk ke folder mana saja.
           </p>
@@ -92,7 +88,7 @@ export function WaitlistForm() {
       <div className="space-y-2">
         <div className="relative">
           <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
+          <input
             type="text"
             placeholder="Nama depan"
             value={firstName}
@@ -101,13 +97,13 @@ export function WaitlistForm() {
               setError(null)
             }}
             disabled={formState === "loading"}
-            className="pl-10 h-10 rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary"
+            className="auth-input pl-10"
             required
           />
         </div>
         <div className="relative">
           <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
+          <input
             type="text"
             placeholder="Nama belakang"
             value={lastName}
@@ -116,13 +112,13 @@ export function WaitlistForm() {
               setError(null)
             }}
             disabled={formState === "loading"}
-            className="pl-10 h-10 rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary"
+            className="auth-input pl-10"
             required
           />
         </div>
         <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
+          <input
             type="email"
             placeholder="Masukkan email kamu"
             value={email}
@@ -131,23 +127,29 @@ export function WaitlistForm() {
               setError(null)
             }}
             disabled={formState === "loading"}
-            className="pl-10 h-10 rounded-action border-border bg-background font-mono text-sm focus:ring-primary focus:border-primary"
+            className="auth-input pl-10"
             aria-invalid={!!error}
             required
           />
         </div>
         {error && (
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="auth-feedback-error" role="alert">{error}</p>
         )}
       </div>
 
-      <SectionCTA
+      <button
         type="submit"
-        isLoading={formState === "loading"}
-        className="w-full justify-center py-2.5"
+        disabled={formState === "loading"}
+        className="group auth-cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
       >
+        <span
+          className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+          aria-hidden="true"
+        />
+        <span className="relative z-10">
         {formState === "loading" ? "MENDAFTAR..." : "DAFTAR WAITING LIST"}
-      </SectionCTA>
+        </span>
+      </button>
 
       <p className="text-xs text-center text-muted-foreground font-sans">
         Dengan mendaftar, kamu akan menerima email undangan saat giliran kamu tiba.

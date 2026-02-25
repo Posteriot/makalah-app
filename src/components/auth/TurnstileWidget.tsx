@@ -16,6 +16,7 @@ type TurnstileWidgetProps = {
   siteKey: string
   onTokenChange: (token: string | null) => void
   resetCounter: number
+  theme?: "light" | "dark"
   className?: string
 }
 
@@ -27,10 +28,12 @@ export function TurnstileWidget({
   siteKey,
   onTokenChange,
   resetCounter,
+  theme = "dark",
   className,
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const widgetIdRef = useRef<string | null>(null)
+  const widgetThemeRef = useRef<"light" | "dark" | null>(null)
 
   const normalizeWidgetWidth = useCallback(() => {
     if (!containerRef.current) return
@@ -54,24 +57,35 @@ export function TurnstileWidget({
   }, [])
 
   const mountWidget = useCallback(() => {
-    if (!containerRef.current || !window.turnstile || widgetIdRef.current) {
+    if (!containerRef.current || !window.turnstile) {
       return
+    }
+
+    if (widgetIdRef.current && widgetThemeRef.current === theme) {
+      return
+    }
+
+    if (widgetIdRef.current && window.turnstile?.remove) {
+      window.turnstile.remove(widgetIdRef.current)
+      widgetIdRef.current = null
+      widgetThemeRef.current = null
     }
 
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
-      theme: "dark",
+      theme,
       size: "flexible",
       language: "id",
       callback: (token: string) => onTokenChange(token),
       "expired-callback": () => onTokenChange(null),
       "error-callback": () => onTokenChange(null),
     })
+    widgetThemeRef.current = theme
 
     window.requestAnimationFrame(() => {
       normalizeWidgetWidth()
     })
-  }, [normalizeWidgetWidth, onTokenChange, siteKey])
+  }, [normalizeWidgetWidth, onTokenChange, siteKey, theme])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -126,6 +140,7 @@ export function TurnstileWidget({
       if (widgetIdRef.current && window.turnstile?.remove) {
         window.turnstile.remove(widgetIdRef.current)
         widgetIdRef.current = null
+        widgetThemeRef.current = null
       }
     }
   }, [mountWidget])

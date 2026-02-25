@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { useTheme } from "next-themes"
 import { toast } from "sonner"
 import { Eye, EyeClosed, Mail, Lock, RefreshDouble } from "iconoir-react"
 import { signIn, authClient } from "@/lib/auth-client"
@@ -74,7 +75,9 @@ export default function SignInPage() {
     ? `/verify-2fa?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
     : "/verify-2fa"
   const callbackURL = getRedirectUrl(searchParams, "/")
+  const { resolvedTheme } = useTheme()
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
+  const turnstileTheme = resolvedTheme === "light" ? "light" : "dark"
   const requiresRecoveryCaptcha = Boolean(turnstileSiteKey)
   const initialOAuthErrorMessage =
     !resetToken ? getOAuthErrorMessage(oauthErrorCode) : ""
@@ -98,6 +101,11 @@ export default function SignInPage() {
   const [forgotPasswordCaptchaToken, setForgotPasswordCaptchaToken] = useState<string | null>(null)
   const [magicLinkCaptchaResetCounter, setMagicLinkCaptchaResetCounter] = useState(0)
   const [forgotPasswordCaptchaResetCounter, setForgotPasswordCaptchaResetCounter] = useState(0)
+  const [isClientReady, setIsClientReady] = useState(false)
+
+  useEffect(() => {
+    setIsClientReady(true)
+  }, [])
 
   useEffect(() => {
     if (verifiedEmail) {
@@ -288,7 +296,7 @@ export default function SignInPage() {
       return
     }
 
-    if (requiresRecoveryCaptcha && !magicLinkCaptchaToken) {
+    if (!magicLinkCaptchaToken) {
       setError("Selesaikan verifikasi keamanan terlebih dahulu.")
       return
     }
@@ -338,7 +346,7 @@ export default function SignInPage() {
       return
     }
 
-    if (requiresRecoveryCaptcha && !forgotPasswordCaptchaToken) {
+    if (!forgotPasswordCaptchaToken) {
       setError("Selesaikan verifikasi keamanan terlebih dahulu.")
       return
     }
@@ -453,6 +461,36 @@ export default function SignInPage() {
 
   const { title, subtitle } = titles[mode]
 
+  if (!isClientReady) {
+    return (
+      <AuthWideCard
+        title={title}
+        subtitle={subtitle}
+        showBackButton
+        onBackClick={() => router.back()}
+      >
+        <div className="w-full space-y-5" aria-hidden="true">
+          {!isWaitlistMode ? (
+            <>
+              <div className="auth-cta opacity-80" />
+              <div className="auth-divider">
+                <div className="auth-divider-line" />
+                <span className="auth-divider-label">atau</span>
+                <div className="auth-divider-line" />
+              </div>
+            </>
+          ) : null}
+          <div className="space-y-4">
+            <div className="auth-input opacity-65" />
+            <div className="auth-input opacity-65" />
+            <div className="auth-cta opacity-80" />
+          </div>
+          {!isWaitlistMode ? <div className="h-4 opacity-0" /> : null}
+        </div>
+      </AuthWideCard>
+    )
+  }
+
   return (
     <AuthWideCard
       title={title}
@@ -470,10 +508,10 @@ export default function SignInPage() {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
-                className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group auth-cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
               >
                 <span
-                  className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                  className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
                   aria-hidden="true"
                 />
                 <span className="relative z-10 inline-flex items-center gap-2">
@@ -488,10 +526,10 @@ export default function SignInPage() {
               </button>
 
               {/* Divider */}
-              <div className="flex items-center gap-4 w-full">
-                <div className="h-[0.5px] flex-1 bg-slate-400" />
-                <span className="text-muted-foreground font-mono text-xs uppercase tracking-wider">atau</span>
-                <div className="h-[0.5px] flex-1 bg-slate-400" />
+              <div className="auth-divider">
+                <div className="auth-divider-line" />
+                <span className="auth-divider-label">atau</span>
+                <div className="auth-divider-line" />
               </div>
             </>
           )}
@@ -507,7 +545,7 @@ export default function SignInPage() {
                 onChange={(e) => { setEmail(e.target.value); clearError() }}
                 placeholder="Email"
                 autoComplete="email"
-                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                className="auth-input"
               />
             </div>
 
@@ -521,12 +559,12 @@ export default function SignInPage() {
                   onChange={(e) => { setPassword(e.target.value); clearError() }}
                   placeholder="Password"
                   autoComplete="current-password"
-                  className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                  className="auth-input pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
+                  className="auth-input-toggle"
                   aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                 >
                   {showPassword ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -539,21 +577,21 @@ export default function SignInPage() {
               <button
                 type="button"
                 onClick={() => switchMode("forgot-password")}
-                className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+                className="auth-link"
               >
                 Lupa password?
               </button>
               <button
                 type="button"
                 onClick={() => switchMode("magic-link")}
-                className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+                className="auth-link"
               >
                 Masuk via Magic Link
               </button>
             </div>
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
+              <div className="auth-feedback-error" role="alert">
                 {errorCode === SIGNUP_DISABLED_ERROR_CODE ? (
                   <p className="whitespace-pre-line">
                     Akun Google ini belum terdaftar di Makalah.
@@ -563,7 +601,7 @@ export default function SignInPage() {
                         Silakan{" "}
                         <Link
                           href="/waitinglist"
-                          className="underline underline-offset-2 hover:text-slate-300 transition-colors"
+                          className="auth-link-on-feedback"
                         >
                           daftar waiting list
                         </Link>{" "}
@@ -574,7 +612,7 @@ export default function SignInPage() {
                         Silakan{" "}
                         <Link
                           href={signUpHref}
-                          className="underline underline-offset-2 hover:text-slate-300 transition-colors"
+                          className="auth-link-on-feedback"
                         >
                           daftar
                         </Link>{" "}
@@ -592,10 +630,10 @@ export default function SignInPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group auth-cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
             >
               <span
-                className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
                 aria-hidden="true"
               />
               <span className="relative z-10 inline-flex items-center gap-2">
@@ -609,7 +647,7 @@ export default function SignInPage() {
           {!isWaitlistMode && (
             <p className="text-muted-foreground text-xs font-sans text-center mt-4">
               Belum punya akun?{" "}
-              <Link href={signUpHref} className="text-slate-50 hover:text-slate-300 font-bold">
+              <Link href={signUpHref} className="auth-link-strong">
                 Daftar
               </Link>
             </p>
@@ -631,26 +669,27 @@ export default function SignInPage() {
                 onChange={(e) => { setEmail(e.target.value); clearError() }}
                 placeholder="Email"
                 autoComplete="email"
-                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                className="auth-input"
               />
             </div>
 
             {requiresRecoveryCaptcha ? (
               <div className="space-y-2">
-                <p className="text-[11px] font-mono text-muted-foreground">
+                <p className="auth-note">
                   Verifikasi keamanan diperlukan sebelum kirim magic link.
                 </p>
                 <TurnstileWidget
                   siteKey={turnstileSiteKey}
                   onTokenChange={setMagicLinkCaptchaToken}
                   resetCounter={magicLinkCaptchaResetCounter}
+                  theme={turnstileTheme}
                   className="mt-2 w-full"
                 />
               </div>
             ) : null}
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
+              <div className="auth-feedback-error" role="alert">
                 {error}
               </div>
             )}
@@ -658,10 +697,10 @@ export default function SignInPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group auth-cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
             >
               <span
-                className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
                 aria-hidden="true"
               />
               <span className="relative z-10 inline-flex items-center gap-2">
@@ -674,7 +713,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => switchMode("sign-in")}
-            className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+            className="auth-link w-full text-center"
           >
             Kembali ke masuk
           </button>
@@ -694,26 +733,27 @@ export default function SignInPage() {
                 onChange={(e) => { setEmail(e.target.value); clearError() }}
                 placeholder="Email"
                 autoComplete="email"
-                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                className="auth-input"
               />
             </div>
 
             {requiresRecoveryCaptcha ? (
               <div className="space-y-2">
-                <p className="text-[11px] font-mono text-muted-foreground">
+                <p className="auth-note">
                   Verifikasi keamanan diperlukan sebelum kirim link reset.
                 </p>
                 <TurnstileWidget
                   siteKey={turnstileSiteKey}
                   onTokenChange={setForgotPasswordCaptchaToken}
                   resetCounter={forgotPasswordCaptchaResetCounter}
+                  theme={turnstileTheme}
                   className="mt-2 w-full"
                 />
               </div>
             ) : null}
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
+              <div className="auth-feedback-error" role="alert">
                 {error}
               </div>
             )}
@@ -721,10 +761,10 @@ export default function SignInPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group auth-cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
             >
               <span
-                className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
                 aria-hidden="true"
               />
               <span className="relative z-10 inline-flex items-center gap-2">
@@ -737,7 +777,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => switchMode("sign-in")}
-            className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+            className="auth-link w-full text-center"
           >
             Kembali ke masuk
           </button>
@@ -758,12 +798,12 @@ export default function SignInPage() {
                   onChange={(e) => { setNewPassword(e.target.value); clearError() }}
                   placeholder="Password baru"
                   autoComplete="new-password"
-                  className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                  className="auth-input pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 inline-flex h-7 w-7 items-center justify-center text-muted-foreground dark:text-slate-300 transition-colors hover:text-foreground dark:hover:text-slate-100 focus:outline-none"
+                  className="auth-input-toggle"
                   aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                 >
                   {showPassword ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -780,12 +820,12 @@ export default function SignInPage() {
                 onChange={(e) => { setConfirmPassword(e.target.value); clearError() }}
                 placeholder="Konfirmasi password baru"
                 autoComplete="new-password"
-                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
+                className="auth-input"
               />
             </div>
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
+              <div className="auth-feedback-error" role="alert">
                 {error}
               </div>
             )}
@@ -793,10 +833,10 @@ export default function SignInPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group auth-cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
             >
               <span
-                className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
                 aria-hidden="true"
               />
               <span className="relative z-10 inline-flex items-center gap-2">
@@ -809,7 +849,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => switchMode("sign-in")}
-            className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+            className="auth-link w-full text-center"
           >
             Kembali ke masuk
           </button>
@@ -819,7 +859,11 @@ export default function SignInPage() {
       {/* --- Magic Link Sent --- */}
       {mode === "magic-link-sent" && (
         <div className="text-center space-y-4 w-full">
-          <Mail className="h-12 w-12 text-primary mx-auto" />
+          <div className="mx-auto flex justify-center">
+            <span className="auth-icon-badge">
+              <Mail className="h-6 w-6" />
+            </span>
+          </div>
           <h3 className="text-narrative text-lg font-medium">Cek Email Kamu</h3>
           <p className="text-sm text-muted-foreground">
             Link masuk sudah dikirim ke{" "}
@@ -829,7 +873,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => switchMode("sign-in")}
-            className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+            className="auth-link"
           >
             Kembali ke masuk
           </button>
@@ -839,7 +883,11 @@ export default function SignInPage() {
       {/* --- Reset Sent --- */}
       {mode === "reset-sent" && (
         <div className="text-center space-y-4 w-full">
-          <Mail className="h-12 w-12 text-primary mx-auto" />
+          <div className="mx-auto flex justify-center">
+            <span className="auth-icon-badge">
+              <Mail className="h-6 w-6" />
+            </span>
+          </div>
           <h3 className="text-narrative text-lg font-medium">Cek Email Kamu</h3>
           <p className="text-sm text-muted-foreground">
             Link reset password sudah dikirim ke{" "}
@@ -849,7 +897,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => switchMode("sign-in")}
-            className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+            className="auth-link"
           >
             Kembali ke masuk
           </button>
@@ -859,7 +907,11 @@ export default function SignInPage() {
       {/* --- Reset Success --- */}
       {mode === "reset-success" && (
         <div className="text-center space-y-4 w-full">
-          <Lock className="h-12 w-12 text-success mx-auto" />
+          <div className="mx-auto flex justify-center">
+            <span className="auth-icon-badge auth-icon-badge-success">
+              <Lock className="h-6 w-6" />
+            </span>
+          </div>
           <h3 className="text-narrative text-lg font-medium">Password Berhasil Diatur</h3>
           <p className="text-sm text-muted-foreground">
             Kamu sekarang bisa masuk dengan password baru.
@@ -867,10 +919,10 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => switchMode("sign-in")}
-            className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action h-10 px-6 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring"
+            className="group auth-cta relative inline-flex items-center justify-center gap-2 overflow-hidden px-6 auth-focus-ring"
           >
             <span
-              className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+              className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
               aria-hidden="true"
             />
             <span className="relative z-10">MASUK SEKARANG</span>
