@@ -177,6 +177,143 @@ Contoh data untuk tahap 'gagasan':
             },
         }),
 
+        compileDaftarPustaka: tool({
+            description: `Kompilasi referensi lintas stage (1-10) secara server-side untuk tahap daftar_pustaka.
+
+Tool ini punya 2 mode:
+1) preview  -> boleh dipakai di stage mana pun, TANPA persist ke stageData
+2) persist  -> hanya untuk finalisasi stage daftar_pustaka, hasil compile disimpan ke stageData
+
+Tool akan:
+- compile referensi dari stage yang sudah approved
+- skip stage invalidated/superseded karena rewind
+- persist hanya jika mode = persist`,
+            inputSchema: z.object({
+                mode: z.enum(["preview", "persist"]).optional().describe(
+                    "Mode kompilasi. Default: persist. Gunakan preview untuk audit cepat lintas stage."
+                ),
+                ringkasan: z.string().max(280).optional().describe(
+                    "Wajib jika mode=persist. Ringkasan hasil kompilasi daftar pustaka (max 280 karakter)."
+                ),
+                ringkasanDetail: z.string().max(1000).optional().describe(
+                    "Opsional. Detail proses kompilasi, duplikat yang digabung, dan referensi incomplete."
+                ),
+            }),
+            execute: async ({ mode, ringkasan, ringkasanDetail }) => {
+                try {
+                    const session = await retryQuery(
+                        () => fetchQuery(api.paperSessions.getByConversation, {
+                            conversationId: context.conversationId
+                        }, convexOptions),
+                        "paperSessions.getByConversation"
+                    );
+                    if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
+
+                    const stage = session.currentStage;
+                    const compileMode = mode ?? "persist";
+
+                    if (compileMode === "persist" && (!ringkasan || ringkasan.trim() === "")) {
+                        return {
+                            success: false,
+                            error: "compileDaftarPustaka mode persist butuh field ringkasan (max 280 karakter).",
+                        };
+                    }
+
+                    const compileResult = await retryMutation(
+                        () => fetchMutation(api.paperSessions.compileDaftarPustaka, {
+                            sessionId: session._id,
+                            mode: compileMode,
+                            includeWebSearchReferences: true,
+                        }, convexOptions),
+                        "paperSessions.compileDaftarPustaka"
+                    ) as {
+                        success: boolean;
+                        mode: "preview" | "persist";
+                        stage: string;
+                        compiled: {
+                            entries: Array<{
+                                title: string;
+                                authors?: string;
+                                year?: number;
+                                sourceStage?: string;
+                                isComplete?: boolean;
+                            }>;
+                            totalCount: number;
+                            incompleteCount: number;
+                            duplicatesMerged: number;
+                        };
+                        warnings?: string[];
+                    };
+
+                    if (compileMode === "preview") {
+                        const previewIncompleteSamples = compileResult.compiled.entries
+                            .filter((entry) => entry.isComplete === false)
+                            .slice(0, 5)
+                            .map((entry) => ({
+                                title: entry.title,
+                                authors: entry.authors,
+                                year: entry.year,
+                                sourceStage: entry.sourceStage,
+                            }));
+
+                        return {
+                            success: true,
+                            mode: "preview" as const,
+                            stage: compileResult.stage,
+                            message: "Preview kompilasi daftar pustaka berhasil.",
+                            totalCount: compileResult.compiled.totalCount,
+                            incompleteCount: compileResult.compiled.incompleteCount,
+                            duplicatesMerged: compileResult.compiled.duplicatesMerged,
+                            ...(previewIncompleteSamples.length > 0 ? { previewIncompleteSamples } : {}),
+                            ...(Array.isArray(compileResult.warnings) && compileResult.warnings.length > 0
+                                ? { warning: compileResult.warnings.join(" | ") }
+                                : {}),
+                        };
+                    }
+
+                    const mergedData = {
+                        ringkasan: ringkasan!,
+                        ...(ringkasanDetail ? { ringkasanDetail } : {}),
+                        ...compileResult.compiled,
+                    };
+
+                    const updateResult = await retryMutation(
+                        () => fetchMutation(api.paperSessions.updateStageData, {
+                            sessionId: session._id,
+                            stage,
+                            data: mergedData,
+                        }, convexOptions),
+                        "paperSessions.updateStageData"
+                    ) as { warning?: string };
+
+                    const warnings: string[] = [];
+                    if (Array.isArray(compileResult.warnings) && compileResult.warnings.length > 0) {
+                        warnings.push(...compileResult.warnings);
+                    }
+                    if (updateResult?.warning) {
+                        warnings.push(updateResult.warning);
+                    }
+
+                    return {
+                        success: true,
+                        mode: "persist" as const,
+                        stage,
+                        message: "Kompilasi daftar pustaka berhasil dan tersimpan ke stageData.",
+                        totalCount: compileResult.compiled.totalCount,
+                        incompleteCount: compileResult.compiled.incompleteCount,
+                        duplicatesMerged: compileResult.compiled.duplicatesMerged,
+                        ...(warnings.length > 0 ? { warning: warnings.join(" | ") } : {}),
+                    };
+                } catch (error) {
+                    console.error("Error in compileDaftarPustaka tool:", error);
+                    const errorMessage = error instanceof Error
+                        ? error.message
+                        : "Gagal compile daftar pustaka.";
+                    return { success: false, error: errorMessage };
+                }
+            },
+        }),
+
         submitStageForValidation: tool({
             description: "Kirim draf tahap saat ini ke user untuk divalidasi. Ini akan memunculkan panel persetujuan di UI user. AI akan berhenti ngetik setelah ini.",
             inputSchema: z.object({}),

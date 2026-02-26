@@ -24,6 +24,7 @@ import {
     isExplicitSaveSubmitRequest,
     isExplicitMoreSearchRequest,
     isUserConfirmation,
+    isCompileDaftarPustakaIntent,
     getLastAssistantMessage,
     PAPER_TOOLS_ONLY_NOTE,
     getResearchIncompleteNote,
@@ -1344,6 +1345,7 @@ Aturan:
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
             const forcePaperToolsMode = !!paperWorkflowReminder && !paperModePrompt
+            const compileDaftarPustakaIntent = isCompileDaftarPustakaIntent(lastUserContent)
 
             // ════════════════════════════════════════════════════════════════
             // ACTIVE STAGE OVERRIDE: Deterministic search decision
@@ -1356,7 +1358,13 @@ Aturan:
             let activeStageSearchReason = ""
             let activeStageSearchNote = ""
 
-            if (stagePolicy === "active" && paperSession && !forcePaperToolsMode) {
+            if (compileDaftarPustakaIntent && !!paperModePrompt) {
+                enableWebSearch = false
+                activeStageSearchReason = "compile_daftar_pustaka_intent"
+                activeStageSearchNote = getFunctionToolsModeNote("Compile daftar pustaka")
+
+                console.log("[SearchDecision] Compile intent override: enableWebSearch=false (function tools mode)")
+            } else if (stagePolicy === "active" && paperSession && !forcePaperToolsMode) {
                 // Layer 1: Task-based - check if research is incomplete
                 const { incomplete, requirement } = isStageResearchIncomplete(
                     paperSession.stageData as Record<string, unknown> | undefined,
