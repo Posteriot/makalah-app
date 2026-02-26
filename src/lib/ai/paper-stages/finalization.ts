@@ -486,6 +486,32 @@ Save 'Outline' (updateStageData) + createArtifact
 Jika user puas → submitStageForValidation()
 
 ===============================================================================
+⚠️ KONVENSI SECTION ID - WAJIB DIIKUTI!
+===============================================================================
+
+Level-1 section IDs (bab utama) HARUS menggunakan stage ID resmi berikut:
+- pendahuluan
+- tinjauan_literatur
+- metodologi
+- hasil
+- diskusi
+- kesimpulan
+- daftar_pustaka
+- lampiran
+
+Contoh BENAR:
+  { id: "pendahuluan", judul: "Pendahuluan", level: 1, parentId: null }
+  { id: "pendahuluan.latar", judul: "Latar Belakang", level: 2, parentId: "pendahuluan" }
+  { id: "tinjauan_literatur", judul: "Tinjauan Literatur", level: 1, parentId: null }
+
+Contoh SALAH:
+  { id: "bab1", judul: "Pendahuluan", level: 1 }  ← ID tidak match stage!
+  { id: "chapter_intro", judul: "Pendahuluan", level: 1 }  ← ID non-standar!
+
+Ini penting agar auto-check checklist berfungsi. Jika ID tidak match stage ID,
+section tersebut TIDAK akan otomatis di-centang saat stage di-approve.
+
+===============================================================================
 OUTPUT 'OUTLINE':
 ===============================================================================
 
