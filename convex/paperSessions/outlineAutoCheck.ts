@@ -124,3 +124,122 @@ export function resetAutoCheckedSections(
     completenessScore: calculateCompleteness(updated),
   }
 }
+
+// ============================================================================
+// EDIT VALIDATION & APPLICATION
+// ============================================================================
+
+export interface OutlineEdit {
+  action: "add" | "edit" | "remove"
+  sectionId: string
+  parentId?: string
+  judul?: string
+  estimatedWordCount?: number
+}
+
+export function validateOutlineEdit(
+  edit: OutlineEdit,
+  sections: OutlineSection[]
+): { valid: boolean; reason?: string } {
+  const sectionMap = new Map(sections.map(s => [s.id, s]))
+
+  if (edit.action === "add") {
+    if (!edit.parentId) return { valid: false, reason: "parentId wajib untuk action 'add'" }
+    const parent = sectionMap.get(edit.parentId)
+    if (!parent) return { valid: false, reason: `Parent section '${edit.parentId}' tidak ditemukan` }
+    const newLevel = (parent.level ?? 1) + 1
+    if (newLevel > 3) return { valid: false, reason: "Maksimum nesting level adalah 3" }
+    return { valid: true }
+  }
+
+  if (edit.action === "edit") {
+    const section = sectionMap.get(edit.sectionId)
+    if (!section) return { valid: false, reason: `Section '${edit.sectionId}' tidak ditemukan` }
+    if (!section.parentId) return { valid: false, reason: "Tidak bisa mengedit section level 1 (bab utama)" }
+    return { valid: true }
+  }
+
+  if (edit.action === "remove") {
+    const section = sectionMap.get(edit.sectionId)
+    if (!section) return { valid: false, reason: `Section '${edit.sectionId}' tidak ditemukan` }
+    if (!section.parentId) return { valid: false, reason: "Tidak bisa menghapus section level 1 (bab utama)" }
+    const hasChildren = sections.some(s => s.parentId === edit.sectionId)
+    if (hasChildren) return { valid: false, reason: "Section masih punya children, hapus children terlebih dahulu" }
+    return { valid: true }
+  }
+
+  return { valid: false, reason: `Unknown action: ${edit.action}` }
+}
+
+function recalculateTotalWordCount(sections: OutlineSection[]): number {
+  return sections.reduce((sum, s) => sum + (s.estimatedWordCount ?? 0), 0)
+}
+
+export function applyOutlineEdits(
+  sections: OutlineSection[],
+  edits: OutlineEdit[],
+  currentStage: string,
+  timestamp: number
+): {
+  sections: OutlineSection[]
+  updatedCount: number
+  completenessScore: number
+  totalWordCount: number
+  warnings: string[]
+} {
+  const warnings: string[] = []
+  let updated = [...sections]
+  let updatedCount = 0
+
+  for (const edit of edits) {
+    const validation = validateOutlineEdit(edit, updated)
+    if (!validation.valid) {
+      warnings.push(`${edit.action} '${edit.sectionId}': ${validation.reason}`)
+      continue
+    }
+
+    if (edit.action === "add") {
+      const parent = updated.find(s => s.id === edit.parentId)
+      const newLevel = (parent?.level ?? 1) + 1
+      const newSection: OutlineSection = {
+        id: edit.sectionId,
+        judul: edit.judul,
+        level: newLevel,
+        parentId: edit.parentId ?? null,
+        estimatedWordCount: edit.estimatedWordCount,
+        editHistory: [{ action: "add", timestamp, fromStage: currentStage }],
+      }
+      updated.push(newSection)
+      updatedCount++
+    }
+
+    if (edit.action === "edit") {
+      const idx = updated.findIndex(s => s.id === edit.sectionId)
+      if (idx !== -1) {
+        updated[idx] = {
+          ...updated[idx],
+          ...(edit.judul !== undefined ? { judul: edit.judul } : {}),
+          ...(edit.estimatedWordCount !== undefined ? { estimatedWordCount: edit.estimatedWordCount } : {}),
+          editHistory: [
+            ...(updated[idx].editHistory ?? []),
+            { action: "edit", timestamp, fromStage: currentStage },
+          ],
+        }
+        updatedCount++
+      }
+    }
+
+    if (edit.action === "remove") {
+      updated = updated.filter(s => s.id !== edit.sectionId)
+      updatedCount++
+    }
+  }
+
+  return {
+    sections: updated,
+    updatedCount,
+    completenessScore: calculateCompleteness(updated),
+    totalWordCount: recalculateTotalWordCount(updated),
+    warnings,
+  }
+}

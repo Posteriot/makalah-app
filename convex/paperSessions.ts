@@ -17,6 +17,8 @@ import {
 import {
     autoCheckOutlineSections,
     resetAutoCheckedSections,
+    applyOutlineEdits,
+    type OutlineEdit,
 } from "./paperSessions/outlineAutoCheck";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
@@ -1747,6 +1749,95 @@ export const rewindToStage = mutation({
             newStage: args.targetStage,
             invalidatedStages: stagesToInvalidate,
             invalidatedArtifactIds,
+        };
+    },
+});
+
+// ═══════════════════════════════════════════════════════════
+// LIVING OUTLINE: Mid-Course Edit
+// ═══════════════════════════════════════════════════════════
+
+const PRE_OUTLINE_STAGES = ["gagasan", "topik", "outline"];
+const MAX_EDITS_PER_CALL = 5;
+
+/**
+ * Apply outline edits (add/edit/remove subbab) from the sidebar UI.
+ * Guards:
+ *  - Must be past outline stage (outline must be approved)
+ *  - Outline sections must exist
+ *  - Max 5 edits per call
+ *  - Level 1 sections cannot be edited/removed
+ */
+export const updateOutlineSections = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        userId: v.id("users"),
+        edits: v.array(
+            v.object({
+                action: v.union(v.literal("add"), v.literal("edit"), v.literal("remove")),
+                sectionId: v.string(),
+                parentId: v.optional(v.string()),
+                judul: v.optional(v.string()),
+                estimatedWordCount: v.optional(v.number()),
+            })
+        ),
+    },
+    handler: async (ctx, args) => {
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        if (session.userId !== args.userId) throw new Error("Unauthorized");
+
+        // Guard: must be past outline stage
+        const currentStage = session.currentStage as string;
+        if (PRE_OUTLINE_STAGES.includes(currentStage)) {
+            throw new Error("Outline belum disetujui. Selesaikan stage outline terlebih dahulu.");
+        }
+
+        // Guard: outline data must exist
+        const outlineData = session.stageData?.outline as Record<string, unknown> | undefined;
+        const outlineSections = outlineData?.sections as Array<Record<string, unknown>> | undefined;
+        if (!outlineSections || outlineSections.length === 0) {
+            throw new Error("Outline sections tidak ditemukan.");
+        }
+
+        // Guard: max edits per call
+        if (args.edits.length === 0) {
+            throw new Error("Minimal 1 edit diperlukan.");
+        }
+        if (args.edits.length > MAX_EDITS_PER_CALL) {
+            throw new Error(`Maksimal ${MAX_EDITS_PER_CALL} edits per panggilan.`);
+        }
+
+        const now = Date.now();
+
+        const result = applyOutlineEdits(
+            outlineSections as unknown as Parameters<typeof applyOutlineEdits>[0],
+            args.edits as unknown as OutlineEdit[],
+            currentStage,
+            now
+        );
+
+        // Persist updated outline
+        const updatedStageData = { ...session.stageData } as Record<string, Record<string, unknown>>;
+        updatedStageData.outline = {
+            ...updatedStageData.outline,
+            sections: result.sections as unknown as Record<string, unknown>[],
+            completenessScore: result.completenessScore,
+            totalWordCount: result.totalWordCount,
+            lastEditedAt: now,
+            lastEditedFromStage: currentStage,
+        };
+
+        await ctx.db.patch(args.sessionId, {
+            stageData: updatedStageData,
+            updatedAt: now,
+        });
+
+        return {
+            updatedCount: result.updatedCount,
+            completenessScore: result.completenessScore,
+            totalWordCount: result.totalWordCount,
+            warnings: result.warnings,
         };
     },
 });
