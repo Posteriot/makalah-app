@@ -53,3 +53,69 @@ export function calculateCompleteness(sections: OutlineSection[]): number {
 export function recalculateTotalWordCount(sections: OutlineSection[]): number {
   return sections.reduce((sum, s) => sum + (s.estimatedWordCount ?? 0), 0)
 }
+
+// ============================================================================
+// AUTO-CHECK
+// ============================================================================
+
+const PRE_OUTLINE_STAGES = ["gagasan", "topik", "outline"]
+
+/**
+ * Auto-check outline sections when a stage is approved.
+ * Marks all child sections of the approved stage as "complete".
+ *
+ * - Skips pre-outline stages (gagasan, topik, outline)
+ * - Preserves existing user-checked sections (checkedBy: "user")
+ * - Marks level-1 parent as complete when ALL its children are complete
+ */
+export function autoCheckOutlineSections(
+  sections: OutlineSection[],
+  approvedStage: string,
+  timestamp: number
+): {
+  sections: OutlineSection[]
+  sectionsChecked: number
+  completenessScore: number
+} {
+  if (PRE_OUTLINE_STAGES.includes(approvedStage)) {
+    return { sections, sectionsChecked: 0, completenessScore: calculateCompleteness(sections) }
+  }
+
+  const childIds = new Set(
+    getSectionsForStage(approvedStage, sections).map(s => s.id)
+  )
+
+  if (childIds.size === 0) {
+    return { sections, sectionsChecked: 0, completenessScore: calculateCompleteness(sections) }
+  }
+
+  let checked = 0
+  const updated = sections.map(s => {
+    if (childIds.has(s.id)) {
+      if (s.checkedBy === "user") return s
+      checked++
+      return { ...s, status: "complete" as const, checkedAt: timestamp, checkedBy: "auto" as const }
+    }
+    return s
+  })
+
+  // Mark level-1 parent as complete when all children are complete
+  const level1Index = updated.findIndex(s => s.id === approvedStage && !s.parentId)
+  if (level1Index !== -1) {
+    const allChildrenComplete = updated
+      .filter(s => childIds.has(s.id))
+      .every(s => s.status === "complete")
+
+    if (allChildrenComplete && updated[level1Index].checkedBy !== "user") {
+      checked++
+      updated[level1Index] = {
+        ...updated[level1Index],
+        status: "complete" as const,
+        checkedAt: timestamp,
+        checkedBy: "auto" as const,
+      }
+    }
+  }
+
+  return { sections: updated, sectionsChecked: checked, completenessScore: calculateCompleteness(updated) }
+}

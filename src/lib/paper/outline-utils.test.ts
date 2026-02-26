@@ -4,6 +4,7 @@ import {
   getSectionsForStage,
   calculateCompleteness,
   recalculateTotalWordCount,
+  autoCheckOutlineSections,
 } from "./outline-utils"
 import type { OutlineSection } from "./stage-types"
 
@@ -117,5 +118,78 @@ describe("recalculateTotalWordCount", () => {
 
   it("returns 0 for empty array", () => {
     expect(recalculateTotalWordCount([])).toBe(0)
+  })
+})
+
+// ============================================================================
+// autoCheckOutlineSections
+// ============================================================================
+
+describe("autoCheckOutlineSections", () => {
+  it("marks matching child sections as complete with auto checker", () => {
+    const now = 1700000000000
+    const result = autoCheckOutlineSections(SAMPLE_SECTIONS, "pendahuluan", now)
+
+    const latar = result.sections.find(s => s.id === "pendahuluan.latar")
+    const rumusan = result.sections.find(s => s.id === "pendahuluan.rumusan")
+    expect(latar?.status).toBe("complete")
+    expect(latar?.checkedAt).toBe(now)
+    expect(latar?.checkedBy).toBe("auto")
+    expect(rumusan?.status).toBe("complete")
+    expect(rumusan?.checkedBy).toBe("auto")
+  })
+
+  it("does not modify sections of other stages", () => {
+    const now = 1700000000000
+    const result = autoCheckOutlineSections(SAMPLE_SECTIONS, "pendahuluan", now)
+
+    const metodDesain = result.sections.find(s => s.id === "metodologi.desain")
+    expect(metodDesain?.status).toBeUndefined()
+    expect(metodDesain?.checkedAt).toBeUndefined()
+  })
+
+  it("recalculates completenessScore", () => {
+    const now = 1700000000000
+    const result = autoCheckOutlineSections(SAMPLE_SECTIONS, "pendahuluan", now)
+    expect(result.completenessScore).toBeGreaterThan(0)
+  })
+
+  it("skips pre-outline stages", () => {
+    const now = 1700000000000
+    const result = autoCheckOutlineSections(SAMPLE_SECTIONS, "gagasan", now)
+
+    expect(result.sectionsChecked).toBe(0)
+    expect(result.sections).toEqual(SAMPLE_SECTIONS)
+  })
+
+  it("skips stages with no matching sections", () => {
+    const now = 1700000000000
+    const result = autoCheckOutlineSections(SAMPLE_SECTIONS, "abstrak", now)
+
+    expect(result.sectionsChecked).toBe(0)
+  })
+
+  it("marks level-1 parent as complete when all children are complete", () => {
+    const now = 1700000000000
+    const result = autoCheckOutlineSections(SAMPLE_SECTIONS, "pendahuluan", now)
+
+    const parent = result.sections.find(s => s.id === "pendahuluan")
+    expect(parent?.status).toBe("complete")
+    expect(parent?.checkedAt).toBe(now)
+    expect(parent?.checkedBy).toBe("auto")
+  })
+
+  it("preserves user-checked sections", () => {
+    const existingChecked = SAMPLE_SECTIONS.map(s =>
+      s.id === "pendahuluan.latar"
+        ? { ...s, status: "complete" as const, checkedAt: 1600000000000, checkedBy: "user" as const }
+        : s
+    )
+    const now = 1700000000000
+    const result = autoCheckOutlineSections(existingChecked, "pendahuluan", now)
+
+    const latar = result.sections.find(s => s.id === "pendahuluan.latar")
+    expect(latar?.checkedBy).toBe("user")
+    expect(latar?.checkedAt).toBe(1600000000000)
   })
 })
