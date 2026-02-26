@@ -5,6 +5,7 @@ import { AdminOverviewContent } from "./AdminOverviewContent"
 import { StyleConstitutionManager } from "./StyleConstitutionManager"
 import { SystemHealthPanel } from "./SystemHealthPanel"
 import { SystemPromptsManager } from "./SystemPromptsManager"
+import { StageSkillsManager } from "./StageSkillsManager"
 import { UserList } from "./UserList"
 import { WaitlistEntries } from "./WaitlistEntries"
 import { WaitlistSettings } from "./WaitlistSettings"
@@ -53,6 +54,12 @@ export function AdminContentSection({
           <div className="space-y-6">
             <SystemHealthPanel userId={userId} />
             <SystemPromptsManager userId={userId} />
+          </div>
+        )}
+
+        {activeTab === "stage-skills" && (
+          <div className="space-y-6">
+            <StageSkillsManager userId={userId} />
           </div>
         )}
 

@@ -14,17 +14,20 @@ Define an executable and academically defensible methodology aligned with resear
 
 ## Input Context
 Read approved topic, outline, and relevant methodological references.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:
 - google_search (active mode)
 - updateStageData
 - createArtifact
+- compileDaftarPustaka (mode: preview; use for cross-stage bibliography audit without persistence)
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Method claims without clear rationale
 - Stage jumping
-- Submit without ringkasan
+- compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
+- Submission is forbidden when ringkasan is missing
 
 ## Output Contract
 Required:

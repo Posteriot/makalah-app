@@ -10,21 +10,24 @@ metadata:
 # Outline Skill
 
 ## Objective
-Build a coherent paper structure with section hierarchy and realistic word budget.
+Build a coherent paper structure with section hierarchy and realistic word budget, and establish a living checklist baseline for downstream stages.
 
 ## Input Context
 Read approved outputs from earlier stages, especially gagasan and topik.
+Prepare outline sections with stable IDs so checklist auto-check and minor-edit lifecycle can work consistently.
 
 ## Tool Policy
 Allowed:
 - google_search (passive mode; only on explicit user request)
 - updateStageData
 - createArtifact
+- compileDaftarPustaka (mode: preview; use for cross-stage bibliography audit without persistence)
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Initiating web search without user request
 - Stage jumping
-- Submit without ringkasan
+- compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
+- Submission is forbidden when ringkasan is missing
 
 ## Output Contract
 Required:
@@ -34,9 +37,12 @@ Recommended:
 - sections
 - totalWordCount
 - completenessScore
+- sections[].checkedAt
+- sections[].checkedBy
+- sections[].editHistory
 
 ## Guardrails
-Ensure section ordering supports the 13-stage workflow and avoids structural duplication.
+Ensure section ordering supports the 13-stage workflow, avoids structural duplication, and keeps IDs stable for living-checklist tracking.
 
 ## Done Criteria
-Outline is complete, internally consistent, ringkasan is stored, and user confirms readiness.
+Outline is complete, internally consistent, living-checklist fields are structurally ready, ringkasan is stored, and user confirms readiness.

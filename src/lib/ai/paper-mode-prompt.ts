@@ -3,6 +3,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants";
 import { getStageInstructions, formatStageData, formatArtifactSummaries } from "./paper-stages";
+import { resolveStageInstructions } from "./stage-skill-resolver";
 
 type StageStatus = "drafting" | "pending_validation" | "approved" | "revision";
 
@@ -43,10 +44,20 @@ INSTRUKSI PENTING:
  * Generate paper mode system prompt if conversation has active paper session.
  * Simplified approach: goal-oriented instructions + inline revision context.
  */
+export type PaperModePromptContext = {
+    prompt: string;
+    skillResolverFallback: boolean;
+    stageInstructionSource: "skill" | "fallback" | "none";
+    activeSkillId?: string;
+    activeSkillVersion?: number;
+    fallbackReason?: string;
+};
+
 export const getPaperModeSystemPrompt = async (
     conversationId: Id<"conversations">,
-    convexToken?: string
-) => {
+    convexToken?: string,
+    requestId?: string
+): Promise<PaperModePromptContext> => {
     try {
         const convexOptions = convexToken ? { token: convexToken } : undefined;
         const session = await fetchQuery(
@@ -54,14 +65,27 @@ export const getPaperModeSystemPrompt = async (
             { conversationId },
             convexOptions
         );
-        if (!session) return "";
+        if (!session) {
+            return {
+                prompt: "",
+                skillResolverFallback: false,
+                stageInstructionSource: "none",
+            };
+        }
 
         const stage = session.currentStage as PaperStageId | "completed";
         const status = session.stageStatus as StageStatus;
         const stageLabel = getStageLabel(stage);
 
-        // Get stage-specific instructions
-        const stageInstructions = getStageInstructions(stage);
+        // Resolve stage-specific instructions: active skill first, then hardcoded fallback.
+        const fallbackStageInstructions = getStageInstructions(stage);
+        const stageInstructionsResolution = await resolveStageInstructions({
+            stage,
+            fallbackInstructions: fallbackStageInstructions,
+            convexToken,
+            requestId,
+        });
+        const stageInstructions = stageInstructionsResolution.instructions;
 
         // Format stageData into readable context
         const formattedData = formatStageData(session.stageData, stage);
@@ -136,7 +160,8 @@ export const getPaperModeSystemPrompt = async (
             // Continue without invalidated artifacts context
         }
 
-        return `
+        return {
+            prompt: `
 ---
 [PAPER WRITING MODE]
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
@@ -172,9 +197,19 @@ Catatan kompresi konteks aktif: refs maks 5, sitasi maks 5, ringkasan detail han
 ${formattedData}
 ${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
 ---
-`;
+`,
+            skillResolverFallback: stageInstructionsResolution.skillResolverFallback,
+            stageInstructionSource: stageInstructionsResolution.source,
+            activeSkillId: stageInstructionsResolution.skillId,
+            activeSkillVersion: stageInstructionsResolution.version,
+            fallbackReason: stageInstructionsResolution.fallbackReason,
+        };
     } catch (error) {
         console.error("Error fetching paper session for prompt:", error);
-        return "";
+        return {
+            prompt: "",
+            skillResolverFallback: false,
+            stageInstructionSource: "none",
+        };
     }
 };

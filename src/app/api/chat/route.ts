@@ -16,6 +16,7 @@ import { createPaperTools } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
+import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
 import { type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
     isStageResearchIncomplete,
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
         // 2. Parse request (AI SDK v5/v6 format)
         const body = await req.json()
         const { messages, conversationId, fileIds } = body
+        const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
         // 3. Get Convex User ID
         const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
@@ -231,15 +233,22 @@ export async function POST(req: Request) {
         const systemPrompt = await getSystemPrompt()
 
         // Task Group 3: Fetch paper mode system prompt if paper session exists
-        const paperModePrompt = await getPaperModeSystemPrompt(
+        const paperModeContext = await getPaperModeSystemPrompt(
             currentConversationId as Id<"conversations">,
-            convexToken
+            convexToken,
+            requestId
         )
+        const paperModePrompt = paperModeContext.prompt
+        const skillResolverFallback = paperModeContext.skillResolverFallback
         const paperSession = paperModePrompt
             ? await fetchQueryWithToken(api.paperSessions.getByConversation, {
                 conversationId: currentConversationId as Id<"conversations">,
             })
             : null
+        const paperStageScope =
+            paperSession && paperSession.currentStage !== "completed"
+                ? (paperSession.currentStage as PaperStageId)
+                : undefined
 
         // Update billing context with paper session info
         if (paperSession) {
@@ -279,24 +288,6 @@ export async function POST(req: Request) {
             ]
             return patterns.some((pattern) => pattern.test(normalized))
         }
-
-        const ACTIVE_SEARCH_STAGES: PaperStageId[] = [
-            "gagasan",
-            "topik",
-            "pendahuluan",
-            "tinjauan_literatur",
-            "metodologi",
-            "diskusi",
-        ]
-        const PASSIVE_SEARCH_STAGES: PaperStageId[] = [
-            "outline",
-            "abstrak",
-            "hasil",
-            "kesimpulan",
-            "daftar_pustaka",
-            "lampiran",
-            "judul",
-        ]
 
         const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
             if (!stage || stage === "completed") return "none"
@@ -414,6 +405,16 @@ export async function POST(req: Request) {
         // ════════════════════════════════════════════════════════════════
         const MAX_CHAT_HISTORY_PAIRS = 20 // 20 pairs = 40 messages max
         const isPaperMode = !!paperModePrompt
+        const skillTelemetryContext = isPaperMode
+            ? {
+                skillResolverFallback,
+                stageScope: paperStageScope,
+                stageInstructionSource: paperModeContext.stageInstructionSource,
+                activeSkillId: paperModeContext.activeSkillId,
+                activeSkillVersion: paperModeContext.activeSkillVersion,
+                fallbackReason: paperModeContext.fallbackReason,
+            }
+            : {}
 
         let trimmedModelMessages = modelMessages
         if (isPaperMode && modelMessages.length > MAX_CHAT_HISTORY_PAIRS * 2) {
@@ -1629,6 +1630,7 @@ TIPS PENCARIAN:
                                 latencyMs: Date.now() - telemetryStartTime,
                                 inputTokens: usage?.inputTokens,
                                 outputTokens: usage?.outputTokens,
+                                ...skillTelemetryContext,
                             })
                             // ═════════════════════════════════════════════════
 
@@ -2172,6 +2174,7 @@ TIPS PENCARIAN:
                                         latencyMs: Date.now() - telemetryStartTime,
                                         inputTokens: finishUsage?.inputTokens,
                                         outputTokens: finishUsage?.outputTokens,
+                                        ...skillTelemetryContext,
                                     })
                                     // ═════════════════════════════════════════════
                                 } catch (err) {
@@ -2372,6 +2375,7 @@ TIPS PENCARIAN:
                 errorType: primaryErrorInfo.errorType,
                 errorMessage: primaryErrorInfo.errorMessage,
                 latencyMs: Date.now() - telemetryStartTime,
+                ...skillTelemetryContext,
             })
             // ════════════════════════════════════════════
 
@@ -2475,6 +2479,7 @@ TIPS PENCARIAN:
                                 latencyMs: Date.now() - telemetryStartTime,
                                 inputTokens: usage?.inputTokens,
                                 outputTokens: usage?.outputTokens,
+                                ...skillTelemetryContext,
                             })
                             // ═════════════════════════════════════════════════
                         }
@@ -2916,6 +2921,7 @@ TIPS PENCARIAN:
                                     latencyMs: Date.now() - telemetryStartTime,
                                     inputTokens: finishUsage?.inputTokens,
                                     outputTokens: finishUsage?.outputTokens,
+                                    ...skillTelemetryContext,
                                 })
                                 // ═════════════════════════════════════════════
 

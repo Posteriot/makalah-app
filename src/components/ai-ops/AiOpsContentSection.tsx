@@ -19,6 +19,9 @@ import { ToolHealthPanel } from "./panels/ToolHealthPanel"
 import { LatencyDistributionPanel } from "./panels/LatencyDistributionPanel"
 import { RecentFailuresPanel } from "./panels/RecentFailuresPanel"
 import { FailoverTimelinePanel } from "./panels/FailoverTimelinePanel"
+import { SkillRuntimeOverviewPanel } from "./panels/SkillRuntimeOverviewPanel"
+import { SkillRuntimeTracePanel } from "./panels/SkillRuntimeTracePanel"
+import { SkillMonitorSummaryPanel } from "./panels/SkillMonitorSummaryPanel"
 
 type Period = "1h" | "24h" | "7d"
 
@@ -44,6 +47,7 @@ export function AiOpsContentSection({
   const HeaderIcon = currentTab.headerIcon
 
   const isModelTab = activeTab.startsWith("model.")
+  const isSkillMonitorTab = activeTab === "skill.monitor"
   const isOverview = activeTab === "overview"
 
   // ── Paper workflow queries (skip when not on relevant tab) ──
@@ -105,6 +109,21 @@ export function AiOpsContentSection({
       ? { requestorUserId: userId, period }
       : "skip"
   )
+  const skillRuntimeOverview = useQuery(
+    api.aiTelemetry.getSkillRuntimeOverview,
+    isSkillMonitorTab || isOverview
+      ? {
+        requestorUserId: userId,
+        period,
+      }
+      : "skip"
+  )
+  const skillRuntimeTrace = useQuery(
+    api.aiTelemetry.getSkillRuntimeTrace,
+    isSkillMonitorTab
+      ? { requestorUserId: userId, period, limit: 60 }
+      : "skip"
+  )
 
   return (
     <main className="col-span-1 pt-4 md:col-span-12">
@@ -121,7 +140,7 @@ export function AiOpsContentSection({
             </p>
           </div>
 
-          {isModelTab && (
+          {(isModelTab || isSkillMonitorTab || isOverview) && (
             <div className="flex items-center gap-1 rounded-[8px] border border-border p-0.5">
               {PERIOD_OPTIONS.map((opt) => (
                 <button
@@ -143,15 +162,17 @@ export function AiOpsContentSection({
 
         {activeTab === "overview" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <MemoryHealthPanel data={memoryHealth} />
               <WorkflowProgressPanel data={workflowProgress} />
               <ArtifactSyncPanel data={artifactSync} />
+              <SkillMonitorSummaryPanel data={skillRuntimeOverview ?? undefined} />
             </div>
             <InsightBanner
               memoryHealth={memoryHealth}
               workflowProgress={workflowProgress}
               artifactSync={artifactSync}
+              skillRuntime={skillRuntimeOverview ?? undefined}
             />
           </div>
         )}
@@ -189,6 +210,13 @@ export function AiOpsContentSection({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <RecentFailuresPanel data={recentFailures ?? undefined} />
             <FailoverTimelinePanel data={failoverTimeline ?? undefined} />
+          </div>
+        )}
+
+        {activeTab === "skill.monitor" && (
+          <div className="space-y-4">
+            <SkillRuntimeOverviewPanel data={skillRuntimeOverview ?? undefined} />
+            <SkillRuntimeTracePanel data={skillRuntimeTrace ?? undefined} />
           </div>
         )}
       </div>
