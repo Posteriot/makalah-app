@@ -35,6 +35,117 @@ const STAGE_OPTIONS = [
 ] as const
 
 type StageScope = typeof STAGE_OPTIONS[number]["value"]
+type SearchPolicy = "active" | "passive"
+
+const ACTIVE_SEARCH_STAGES: StageScope[] = [
+  "gagasan",
+  "topik",
+  "pendahuluan",
+  "tinjauan_literatur",
+  "metodologi",
+  "diskusi",
+]
+
+function getDefaultSearchPolicy(stageScope: StageScope): SearchPolicy {
+  return ACTIVE_SEARCH_STAGES.includes(stageScope) ? "active" : "passive"
+}
+
+function normalizeQuotedValue(value: string): string {
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith("\"") && trimmed.endsWith("\""))
+    || (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+  return trimmed
+}
+
+function parseSkillMarkdown(raw: string): {
+  body: string
+  name?: string
+  description?: string
+  metadataInternal?: string
+  metadataStageScope?: string
+  metadataSearchPolicy?: SearchPolicy
+} {
+  const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/)
+  if (!match) {
+    return { body: raw }
+  }
+
+  const frontmatter = match[1]
+  const body = match[2] ?? ""
+  const parsed: {
+    body: string
+    name?: string
+    description?: string
+    metadataInternal?: string
+    metadataStageScope?: string
+    metadataSearchPolicy?: SearchPolicy
+  } = { body }
+
+  let inMetadata = false
+  for (const line of frontmatter.split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+
+    if (trimmed === "metadata:") {
+      inMetadata = true
+      continue
+    }
+
+    if (inMetadata && line.startsWith("  ")) {
+      const separatorIndex = trimmed.indexOf(":")
+      if (separatorIndex <= 0) continue
+      const key = trimmed.slice(0, separatorIndex).trim()
+      const value = normalizeQuotedValue(trimmed.slice(separatorIndex + 1))
+
+      if (key === "internal") parsed.metadataInternal = value
+      if (key === "stageScope") parsed.metadataStageScope = value
+      if (key === "searchPolicy" && (value === "active" || value === "passive")) {
+        parsed.metadataSearchPolicy = value
+      }
+      continue
+    }
+
+    inMetadata = false
+
+    if (trimmed.startsWith("name:")) {
+      parsed.name = normalizeQuotedValue(trimmed.slice("name:".length))
+      continue
+    }
+
+    if (trimmed.startsWith("description:")) {
+      parsed.description = normalizeQuotedValue(trimmed.slice("description:".length))
+    }
+  }
+
+  return parsed
+}
+
+function buildSkillMarkdown(input: {
+  name: string
+  description: string
+  stageScope: StageScope
+  metadataInternal: string
+  metadataSearchPolicy: SearchPolicy
+  body: string
+}): string {
+  const normalizedBody = parseSkillMarkdown(input.body).body.trim()
+  return [
+    "---",
+    `name: ${input.name.trim()}`,
+    `description: ${input.description.trim()}`,
+    "metadata:",
+    `  internal: "${input.metadataInternal.trim() || "true"}"`,
+    `  stageScope: ${input.stageScope}`,
+    `  searchPolicy: ${input.metadataSearchPolicy}`,
+    "---",
+    "",
+    normalizedBody,
+  ].join("\n")
+}
 
 export interface StageSkillRow {
   skillId: string
@@ -65,6 +176,8 @@ export function StageSkillFormDialog({
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [contentBody, setContentBody] = useState("")
+  const [metadataInternal, setMetadataInternal] = useState("true")
+  const [metadataSearchPolicy, setMetadataSearchPolicy] = useState<SearchPolicy>("active")
   const [changeNote, setChangeNote] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -72,14 +185,22 @@ export function StageSkillFormDialog({
     if (!open) return
 
     if (initialSkill) {
-      setStageScope(initialSkill.stageScope)
-      setName(initialSkill.name)
-      setDescription(initialSkill.description)
-      setContentBody(
+      const baseContent =
         initialSkill.latestDraftContent?.trim()
-          || initialSkill.activeContent?.trim()
-          || initialSkill.latestPublishedContent?.trim()
-          || ""
+        || initialSkill.activeContent?.trim()
+        || initialSkill.latestPublishedContent?.trim()
+        || ""
+      const parsed = parseSkillMarkdown(baseContent)
+
+      setStageScope(initialSkill.stageScope)
+      setName(parsed.name?.trim() || initialSkill.name)
+      setDescription(parsed.description?.trim() || initialSkill.description)
+      setContentBody(
+        parsed.body.trim()
+      )
+      setMetadataInternal(parsed.metadataInternal || "true")
+      setMetadataSearchPolicy(
+        parsed.metadataSearchPolicy || getDefaultSearchPolicy(initialSkill.stageScope)
       )
       setChangeNote("")
     } else {
@@ -87,6 +208,8 @@ export function StageSkillFormDialog({
       setName("")
       setDescription("")
       setContentBody("")
+      setMetadataInternal("true")
+      setMetadataSearchPolicy(getDefaultSearchPolicy("gagasan"))
       setChangeNote("")
     }
   }, [initialSkill, open])
@@ -96,18 +219,35 @@ export function StageSkillFormDialog({
     return !!name.trim() && !!description.trim() && !!contentBody.trim() && !isSubmitting
   }, [name, description, contentBody, isSubmitting])
 
+  useEffect(() => {
+    if (isEditing) return
+    setMetadataSearchPolicy(getDefaultSearchPolicy(stageScope))
+  }, [isEditing, stageScope])
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!canSubmit) return
 
     setIsSubmitting(true)
     try {
+      const normalizedName = name.trim()
+      const normalizedDescription = description.trim()
+      const normalizedContentBody = contentBody.trim()
+      const fullSkillMarkdown = buildSkillMarkdown({
+        name: normalizedName,
+        description: normalizedDescription,
+        stageScope,
+        metadataInternal,
+        metadataSearchPolicy,
+        body: normalizedContentBody,
+      })
+
       const result = await createOrUpdateDraft({
         requestorUserId: userId,
         stageScope,
-        name: name.trim(),
-        description: description.trim(),
-        contentBody: contentBody.trim(),
+        name: normalizedName,
+        description: normalizedDescription,
+        contentBody: fullSkillMarkdown,
         changeNote: changeNote.trim() || undefined,
       })
       toast.success(result.message ?? "Draft stage skill tersimpan.")
@@ -173,6 +313,45 @@ export function StageSkillFormDialog({
             />
           </div>
 
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="metadata-internal">Metadata Internal</Label>
+              <select
+                id="metadata-internal"
+                value={metadataInternal}
+                onChange={(event) => setMetadataInternal(event.target.value)}
+                disabled={isSubmitting}
+                className="focus-ring h-10 w-full rounded-action border border-border bg-background px-3 text-sm"
+              >
+                <option value="true">"true"</option>
+                <option value="false">"false"</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="metadata-stage-scope">Metadata Stage Scope</Label>
+              <Input
+                id="metadata-stage-scope"
+                value={stageScope}
+                disabled
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="metadata-search-policy">Metadata Search Policy</Label>
+              <select
+                id="metadata-search-policy"
+                value={metadataSearchPolicy}
+                onChange={(event) => setMetadataSearchPolicy(event.target.value as SearchPolicy)}
+                disabled={isSubmitting}
+                className="focus-ring h-10 w-full rounded-action border border-border bg-background px-3 text-sm"
+              >
+                <option value="active">active</option>
+                <option value="passive">passive</option>
+              </select>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="skill-content">Skill Content</Label>
             <Textarea
@@ -181,9 +360,12 @@ export function StageSkillFormDialog({
               onChange={(event) => setContentBody(event.target.value)}
               rows={18}
               className="font-mono text-sm"
-              placeholder="Write SKILL.md body in English..."
+              placeholder="Write skill body section (without frontmatter) in English..."
               disabled={isSubmitting}
             />
+            <p className="text-narrative text-xs text-muted-foreground">
+              Frontmatter (`name`, `description`, `metadata`) akan dibentuk otomatis saat simpan.
+            </p>
           </div>
 
           <div className="space-y-2">
