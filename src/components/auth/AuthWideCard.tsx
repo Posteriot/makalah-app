@@ -2,6 +2,7 @@
 
 import React from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { NavArrowLeft, Xmark } from "iconoir-react"
 
 interface AuthWideCardProps {
@@ -122,7 +123,7 @@ export function AuthWideCard({
                             <div className="relative flex w-full flex-1">
                                 <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
                                     <div className="flex w-full max-w-xl flex-col gap-8 md:gap-10">
-                                        <div className="inline-flex w-fit items-center gap-2">
+                                        <Link href="/" className="auth-logo-link auth-focus-ring inline-flex w-fit items-center gap-2" aria-label="Kembali ke beranda">
                                             <Image
                                                 src="/logo/logo-color-darkmode.png"
                                                 alt="Makalah"
@@ -130,7 +131,7 @@ export function AuthWideCard({
                                                 height={56}
                                                 className="h-12 w-12 shrink-0 md:h-14 md:w-14"
                                             />
-                                        </div>
+                                        </Link>
 
                                         <div className="max-w-[36ch] space-y-1.5 md:space-y-2">
                                             <h1 className="auth-hero-title">
