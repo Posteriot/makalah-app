@@ -50,6 +50,7 @@ Referensi:
 1. V1 tetap pakai pola `SKILL.md` supaya mudah dipahami tim dan portable.
 2. Runtime produksi Makalah AI tetap pakai **Skill Registry Internal** (database + admin panel), bukan load file langsung dari filesystem saat inferensi.
 3. Struktur isi skill dipaksa konsisten antar stage agar aman untuk editor admin.
+4. Language policy wajib: seluruh konten skill (`name`, `description`, heading, instruction body) harus full English.
 
 ## 3.2 Format Berkas Referensi Skill (Git/Repo)
 
@@ -65,7 +66,7 @@ Format `SKILL.md` yang dipakai:
 ```md
 ---
 name: stage-<stage-id>
-description: Instruksi stage <stage-id> untuk workflow paper Makalah AI. Gunakan saat currentStage = <stage-id>.
+description: Stage instruction for <stage-id> in Makalah AI paper workflow. Use when currentStage = <stage-id>.
 metadata:
   internal: true
 ---
@@ -73,28 +74,29 @@ metadata:
 Skill Stage: <Label Stage>
 
 ## Objective
-Tujuan tahap dan outcome yang harus dicapai.
+Define the stage goal and the expected outcome.
 
 ## Input Context
-Konteks minimum yang harus dibaca sebelum menjawab.
+List the minimum context that must be read before responding.
 
 ## Tool Policy
-Aturan tool yang boleh/tidak boleh dipakai.
+Define allowed and disallowed tools for this stage.
 
 ## Output Contract
-Field output yang wajib ada untuk stage ini.
+Define required output fields for this stage.
 
 ## Guardrails
-Larangan yang tidak boleh dilanggar.
+List hard constraints that must never be violated.
 
 ## Done Criteria
-Kondisi tahap dianggap siap submit validasi.
+Define conditions that make this stage ready for validation.
 ```
 
 Catatan:
 1. `name` dan `description` wajib.
 2. `metadata.internal: true` direkomendasikan agar skill ini dianggap internal.
 3. Field lain di frontmatter tidak dijadikan ketergantungan runtime V1.
+4. Seluruh isi skill wajib full English; konten campuran/non-English ditolak oleh validator publish/activate.
 
 ---
 
@@ -182,18 +184,18 @@ Disallowed:
 - ...
 
 ## Output Contract
-- ringkasan: wajib, max 280
-- ringkasanDetail: opsional, max 1000
+- ringkasan: required, max 280
+- ringkasanDetail: optional, max 1000
 - ...
 
 ## Guardrails
-- Dilarang lompat stage
-- Dilarang submit tanpa konfirmasi user
+- Never jump across stages
+- Never submit without explicit user confirmation
 - ...
 
 ## Done Criteria
-- User eksplisit konfirmasi puas
-- Semua field wajib sudah ada
+- User gives explicit confirmation
+- All required fields are present
 ```
 
 ---
@@ -209,6 +211,10 @@ Validator minimum V1:
    - submit tanpa ringkasan
    - mencampur `google_search` dan function tools dalam satu request
 5. Panjang `content` tidak melewati batas context budget internal.
+6. Reject non-English content:
+   - gunakan language detector pada `description` + body text.
+   - jika confidence English di bawah threshold (mis. < 0.90), status validasi gagal.
+   - pengecualian hanya untuk proper noun, stage ID, nama tool/API, dan schema field keys.
 
 ---
 
@@ -217,31 +223,31 @@ Validator minimum V1:
 ```md
 ---
 name: stage-pendahuluan
-description: Instruksi tahap pendahuluan untuk workflow paper Makalah AI. Gunakan saat currentStage = pendahuluan.
+description: Stage instruction for pendahuluan in Makalah AI paper workflow. Use when currentStage = pendahuluan.
 metadata:
   internal: true
 ---
 
-Skill Stage: Pendahuluan
+Skill Stage: Introduction
 
 ## Objective
-Menyusun pendahuluan yang jelas: latar belakang, rumusan masalah, research gap, tujuan, signifikansi, dan hipotesis (jika relevan).
+Write a clear introduction section: background, problem statement, research gap, research objective, significance, and hypothesis when relevant.
 
 ## Input Context
-Baca ringkasan tahap sebelumnya, referensi tersimpan di stageData, dan feedback terbaru user.
+Read the previous stage summary, stored references in stageData, and the latest user feedback.
 
 ## Tool Policy
 Allowed:
-- google_search (saat butuh data/fakta terbaru)
+- google_search (when recent facts or evidence are required)
 - updateStageData
 - createArtifact
-- submitStageForValidation (hanya setelah user konfirmasi eksplisit)
+- submitStageForValidation (only after explicit user confirmation)
 Disallowed:
-- Lompat ke stage lain
-- Submit saat ringkasan belum tersedia
+- Jumping to another stage
+- Submitting when summary is missing
 
 ## Output Contract
-- ringkasan (wajib, max 280)
+- summary (required, max 280)
 - latarBelakang
 - rumusanMasalah
 - researchGapAnalysis
@@ -251,14 +257,14 @@ Disallowed:
 - sitasiAPA
 
 ## Guardrails
-- Jangan mengarang referensi.
-- Jangan gunakan domain sebagai author sitasi.
-- Jangan submit tanpa konfirmasi eksplisit user.
+- Never fabricate references.
+- Never use a domain name as citation author.
+- Never submit without explicit user confirmation.
 
 ## Done Criteria
-- User menyatakan isi tahap sudah sesuai.
-- Field wajib sudah tersimpan.
-- Siap dikirim ke validasi.
+- User confirms the stage content is acceptable.
+- Required fields are stored.
+- Stage is ready for validation.
 ```
 
 ---

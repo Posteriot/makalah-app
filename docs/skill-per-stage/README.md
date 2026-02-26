@@ -81,6 +81,7 @@ Implikasi: skill system baru wajib "nempel" ke arsitektur existing, bukan mengga
 4. Backward-compatible: jika skill DB gagal dimuat, fallback ke prompt hardcoded existing.
 5. Auditable: setiap perubahan prompt tercatat versi, author, timestamp, reason.
 6. V1 single-skill-per-stage: setiap stage hanya boleh punya satu skill aktif.
+7. Language policy: konten skill (frontmatter + body) wajib full English sebagai bahasa utama instruksi model.
 
 ---
 
@@ -217,6 +218,7 @@ Sebelum `activate`, jalankan validator:
 3. Tidak boleh memerintahkan kombinasi tool yang invalid dalam satu request (`google_search` + function tools).
 4. Panjang content di bawah batas aman context budget.
 5. Jika validator menemukan konflik dengan aturan prioritas runtime, aktivasi ditolak.
+6. Konten skill wajib full English; jika terdeteksi dominan non-English, publish/activate ditolak (`reject non-English content`).
 
 ---
 
@@ -313,6 +315,7 @@ Desain dianggap siap implementasi jika:
 4. Ada audit trail jelas untuk setiap perubahan prompt.
 5. Kegagalan baca skill DB tidak memblokir chat (graceful fallback).
 6. Aktivasi versi prompt hanya bisa dilakukan oleh role `superadmin` dan `admin`, dan pembatasan ini enforced di API/backend serta UI.
+7. Validator bahasa berjalan aktif dan menolak skill non-English sebelum publish/activate.
 
 ---
 
