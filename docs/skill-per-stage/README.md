@@ -158,7 +158,7 @@ flowchart LR
 5. Enforce data-level (V1):
    - `stageSkills.stageScope` dibuat unik (satu catalog skill per stage).
    - Aktivasi hanya lewat mutation khusus `activateStageSkillVersion`.
-6. Kontrak mutation aktivasi (atomik dalam satu mutation Convex):
+6. Kontrak authorization mutation skill (berlaku untuk create/edit/publish/activate/rollback):
    - Wajib cek authorization dengan `requireRole(db, requestorUserId, "admin")` (berlaku untuk `admin` dan `superadmin`).
    - Ambil active version saat ini untuk `skillId`.
    - Ubah active lama menjadi `published`.
@@ -247,7 +247,7 @@ Sebelum `activate`, jalankan validator:
 1. Tombol activate disabled jika validasi gagal.
 2. Tampilkan warning jika prompt terlalu panjang.
 3. Tampilkan warning jika ada kata/frasa forbidden (mis. instruksi bypass validation).
-4. Role yang boleh `activate`: `superadmin` dan `admin`.
+4. Role yang boleh `create`, `edit`, `publish`, `activate`, `rollback`: `superadmin` dan `admin`.
 
 ---
 
@@ -314,8 +314,9 @@ Desain dianggap siap implementasi jika:
 3. Guard existing (stage lock, approval, tool-routing constraint) tetap tidak berubah.
 4. Ada audit trail jelas untuk setiap perubahan prompt.
 5. Kegagalan baca skill DB tidak memblokir chat (graceful fallback).
-6. Aktivasi versi prompt hanya bisa dilakukan oleh role `superadmin` dan `admin`, dan pembatasan ini enforced di API/backend serta UI.
-7. Validator bahasa berjalan aktif dan menolak skill non-English sebelum publish/activate.
+6. Create/edit versi prompt hanya bisa dilakukan oleh role `superadmin` dan `admin`, dan pembatasan ini enforced di API/backend serta UI.
+7. Aktivasi versi prompt hanya bisa dilakukan oleh role `superadmin` dan `admin`, dan pembatasan ini enforced di API/backend serta UI.
+8. Validator bahasa berjalan aktif dan menolak skill non-English sebelum publish/activate.
 
 ---
 

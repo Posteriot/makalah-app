@@ -148,7 +148,8 @@ Mutation/query baru (nama contoh):
 5. `stageSkills.rollbackVersion`
 
 RBAC:
-1. Semua operasi publish/activate/rollback wajib `requireRole(db, requestorUserId, "admin")`.
+1. Semua operasi create/edit/publish/activate/rollback wajib `requireRole(db, requestorUserId, "admin")`.
+2. Karena hierarchy role, gate ini hanya mengizinkan `admin` dan `superadmin`.
 
 Kontrak data editor admin (selaras pola `systemPrompts` existing):
 1. Sumber data utama editor adalah field terstruktur: `name`, `description`, `stageScope`, `contentBody`.
@@ -301,9 +302,9 @@ Desain dianggap siap implementasi bila:
 2. Guard core (`stage lock`, `ringkasan required`, `tool routing constraints`) tetap tidak berubah.
 3. Fallback hardcoded berjalan saat skill store bermasalah.
 4. Publish/activate ditolak jika skill non-English.
-5. Aktivasi hanya untuk role `admin` dan `superadmin`.
+5. Create/edit/publish/activate/rollback hanya untuk role `admin` dan `superadmin`.
 6. Validasi `Output Contract` mengacu ke whitelist backend `convex/paperSessions.ts` sebelum aktivasi.
-7. Audit log tercatat untuk semua aksi penting (publish, activate, rollback, runtime_conflict).
+7. Audit log tercatat untuk semua aksi penting (create, edit, publish, activate, rollback, runtime_conflict).
 8. Event fallback/conflict juga tercatat di `systemAlerts` untuk monitoring admin panel.
 
 ---
