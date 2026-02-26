@@ -84,7 +84,7 @@ ALUR YANG DIHARAPKAN:
 
 Review semua stage yang punya referensi
       |
-Compile entries dari setiap stage
+Panggil compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail }) untuk kompilasi server-side
       |
 Deduplicate berdasarkan URL atau title+authors+year
       |
@@ -98,7 +98,7 @@ DISKUSI dengan user: "Ini hasil kompilasi referensi, ada yang perlu ditambah/dih
       |
 Revisi berdasarkan feedback user
       |
-Save 'Daftar Pustaka' (updateStageData) + createArtifact
+Save 'Daftar Pustaka' (compileDaftarPustaka mode persist + createArtifact)
       |
 Jika user puas → submitStageForValidation()
 
@@ -118,7 +118,8 @@ TOOLS & LARANGAN:
 ===============================================================================
 
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk verifikasi/enrichment referensi yang incomplete. AI TIDAK BOLEH inisiatif search di stage ini.
-- updateStageData({ ringkasan, ringkasanDetail, entries, totalCount, incompleteCount, duplicatesMerged })
+- compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail })  // WAJIB untuk kompilasi utama + persist entries/count
+- updateStageData({ ringkasan, ringkasanDetail, ... })  // opsional hanya untuk koreksi minor pasca-compile
 - createArtifact({ type: "citation", title: "Daftar Pustaka - [Judul Paper]", content: "[daftar referensi lengkap format APA]" })
 - submitStageForValidation()
 
@@ -128,7 +129,8 @@ CATATAN MODE TOOL:
 
 - X JANGAN tambah referensi baru yang tidak ada di stage sebelumnya (kecuali user minta eksplisit cari via search)
 - X JANGAN skip review dengan user - ini tahap penting untuk akurasi
-- X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+- X JANGAN compile manual entries di respons text tanpa memanggil compileDaftarPustaka
+- X JANGAN lupa field 'ringkasan' saat panggil compileDaftarPustaka/updateStageData - approval PASTI GAGAL!
 
 ===============================================================================
 ⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
