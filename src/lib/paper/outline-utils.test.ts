@@ -6,6 +6,7 @@ import {
   recalculateTotalWordCount,
   autoCheckOutlineSections,
   resetAutoCheckedSections,
+  validateOutlineEdit,
 } from "./outline-utils"
 import type { OutlineSection } from "./stage-types"
 
@@ -247,5 +248,95 @@ describe("resetAutoCheckedSections", () => {
     const result = resetAutoCheckedSections(checkedSections, ["pendahuluan", "tinjauan_literatur"])
     // Only pendahuluan.rumusan (user-checked) remains complete = 1 out of 7
     expect(result.completenessScore).toBeLessThan(50)
+  })
+})
+
+// ============================================================================
+// validateOutlineEdit
+// ============================================================================
+
+describe("validateOutlineEdit", () => {
+  it("accepts adding a level-2 section under existing level-1", () => {
+    const result = validateOutlineEdit(
+      { action: "add", sectionId: "pendahuluan.tujuan", parentId: "pendahuluan", judul: "Tujuan Penelitian" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(true)
+  })
+
+  it("rejects adding a section under non-existent parent", () => {
+    const result = validateOutlineEdit(
+      { action: "add", sectionId: "x.y", parentId: "nonexistent", judul: "Test" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(false)
+    expect(result.reason).toContain("tidak ditemukan")
+  })
+
+  it("rejects editing a level-1 section", () => {
+    const result = validateOutlineEdit(
+      { action: "edit", sectionId: "pendahuluan", judul: "Changed" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(false)
+    expect(result.reason).toContain("level 1")
+  })
+
+  it("accepts editing a level-2 section", () => {
+    const result = validateOutlineEdit(
+      { action: "edit", sectionId: "pendahuluan.latar", judul: "Latar Belakang Masalah" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(true)
+  })
+
+  it("rejects removing a level-1 section", () => {
+    const result = validateOutlineEdit(
+      { action: "remove", sectionId: "pendahuluan" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(false)
+  })
+
+  it("rejects removing a section that has children", () => {
+    const result = validateOutlineEdit(
+      { action: "remove", sectionId: "tinjauan_literatur.teori" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(false)
+    expect(result.reason).toContain("children")
+  })
+
+  it("accepts removing a leaf level-2 section", () => {
+    const result = validateOutlineEdit(
+      { action: "remove", sectionId: "pendahuluan.latar" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(true)
+  })
+
+  it("rejects editing non-existent section", () => {
+    const result = validateOutlineEdit(
+      { action: "edit", sectionId: "nonexistent", judul: "Test" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(false)
+  })
+
+  it("rejects adding without parentId", () => {
+    const result = validateOutlineEdit(
+      { action: "add", sectionId: "new", judul: "Test" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(false)
+  })
+
+  it("rejects nesting beyond level 3", () => {
+    const result = validateOutlineEdit(
+      { action: "add", sectionId: "deep", parentId: "tinjauan_literatur.teori.sub1", judul: "Too Deep" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(false)
+    expect(result.reason).toContain("level")
   })
 })

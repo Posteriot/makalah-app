@@ -164,3 +164,74 @@ export function resetAutoCheckedSections(
     completenessScore: calculateCompleteness(updated),
   }
 }
+
+// ============================================================================
+// EDIT VALIDATION
+// ============================================================================
+
+export interface OutlineEdit {
+  action: "add" | "edit" | "remove"
+  sectionId: string
+  parentId?: string
+  judul?: string
+  estimatedWordCount?: number
+}
+
+/**
+ * Validate a single outline edit operation.
+ *
+ * Rules:
+ * - Level 1 sections cannot be edited or removed
+ * - Add: parentId must exist, new section must be level 2 or 3
+ * - Edit: section must exist and be level 2 or 3
+ * - Remove: section must exist, be level 2 or 3, and have no children
+ */
+export function validateOutlineEdit(
+  edit: OutlineEdit,
+  sections: OutlineSection[]
+): { valid: boolean; reason?: string } {
+  const sectionMap = new Map(sections.map(s => [s.id, s]))
+
+  if (edit.action === "add") {
+    if (!edit.parentId) {
+      return { valid: false, reason: "parentId wajib untuk action 'add'" }
+    }
+    const parent = sectionMap.get(edit.parentId)
+    if (!parent) {
+      return { valid: false, reason: `Parent section '${edit.parentId}' tidak ditemukan` }
+    }
+    const newLevel = (parent.level ?? 1) + 1
+    if (newLevel > 3) {
+      return { valid: false, reason: "Maksimum nesting level adalah 3" }
+    }
+    return { valid: true }
+  }
+
+  if (edit.action === "edit") {
+    const section = sectionMap.get(edit.sectionId)
+    if (!section) {
+      return { valid: false, reason: `Section '${edit.sectionId}' tidak ditemukan` }
+    }
+    if (!section.parentId) {
+      return { valid: false, reason: "Tidak bisa mengedit section level 1 (bab utama)" }
+    }
+    return { valid: true }
+  }
+
+  if (edit.action === "remove") {
+    const section = sectionMap.get(edit.sectionId)
+    if (!section) {
+      return { valid: false, reason: `Section '${edit.sectionId}' tidak ditemukan` }
+    }
+    if (!section.parentId) {
+      return { valid: false, reason: "Tidak bisa menghapus section level 1 (bab utama)" }
+    }
+    const hasChildren = sections.some(s => s.parentId === edit.sectionId)
+    if (hasChildren) {
+      return { valid: false, reason: "Section masih punya children, hapus children terlebih dahulu" }
+    }
+    return { valid: true }
+  }
+
+  return { valid: false, reason: `Unknown action: ${edit.action}` }
+}
