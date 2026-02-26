@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowUpCircle, BadgeCheck } from "iconoir-react"
+import { ArrowUpCircle } from "iconoir-react"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
 import { CreditMeter } from "@/components/billing/CreditMeter"
@@ -24,16 +24,6 @@ interface StatusTabProps {
 export function StatusTab({ primaryEmail, convexUser, isConvexLoading }: StatusTabProps) {
   return (
     <>
-      <div className="mb-6">
-        <h3 className="flex items-center gap-2 text-narrative font-medium text-xl">
-          <BadgeCheck className="h-5 w-5 text-slate-800 dark:text-slate-200" />
-          Status Akun
-        </h3>
-        <p className="mt-1 text-narrative text-sm text-muted-foreground">
-          Ringkasan akses akun Anda di Makalah AI.
-        </p>
-      </div>
-
       {/* Email info card */}
       <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
         <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">Informasi Akun</div>

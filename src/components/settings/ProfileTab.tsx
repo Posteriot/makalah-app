@@ -78,16 +78,6 @@ export function ProfileTab({ convexUser, session, isLoading }: ProfileTabProps) 
 
   return (
     <>
-      <div className="mb-6">
-        <h3 className="flex items-center gap-2 text-narrative font-medium text-xl">
-          <UserIcon className="h-5 w-5 text-slate-800 dark:text-slate-200" />
-          Detail
-        </h3>
-        <p className="mt-1 text-narrative text-sm text-muted-foreground">
-          Atur nama dan avatar akun Anda.
-        </p>
-      </div>
-
       <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
         <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">Profil</div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800">
