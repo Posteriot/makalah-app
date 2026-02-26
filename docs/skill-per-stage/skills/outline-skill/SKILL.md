@@ -20,10 +20,12 @@ Allowed:
 - google_search (passive mode; only on explicit user request)
 - updateStageData
 - createArtifact
+- compileDaftarPustaka (mode: preview; use for cross-stage bibliography audit without persistence)
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Initiating web search without user request
 - Stage jumping
+- compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
 - Submit without ringkasan
 
 ## Output Contract

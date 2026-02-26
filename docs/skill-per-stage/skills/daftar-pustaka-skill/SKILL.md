@@ -20,10 +20,13 @@ Allowed:
 - google_search (passive mode; only on explicit user request)
 - updateStageData
 - createArtifact
+- compileDaftarPustaka (mode: preview|persist; persist is mandatory for final bibliography compilation)
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Placeholder bibliography entries
 - Stage jumping
+- Manual final bibliography compilation without compileDaftarPustaka (mode: persist)
+- compileDaftarPustaka (mode: persist) when ringkasan is missing
 - Submit without ringkasan
 
 ## Output Contract
@@ -37,7 +40,7 @@ Recommended:
 - duplicatesMerged
 
 ## Guardrails
-Use consistent citation formatting and avoid duplicates.
+Use consistent citation formatting and avoid duplicates. Final compilation must go through compileDaftarPustaka (mode: persist).
 
 ## Done Criteria
-Bibliography is complete and normalized, ringkasan is stored, and user confirms readiness.
+Bibliography is complete and normalized, compileDaftarPustaka (mode: persist) has been executed, ringkasan is stored, and user confirms readiness.

@@ -20,9 +20,11 @@ Allowed:
 - google_search (active mode; use when evidence or factual references are needed)
 - updateStageData
 - createArtifact
+- compileDaftarPustaka (mode: preview; use for cross-stage bibliography audit without persistence)
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Jumping to another stage
+- compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
 - Submitting without ringkasan
 - Calling function tools in the same turn after google_search
 - Fabricating references or factual claims

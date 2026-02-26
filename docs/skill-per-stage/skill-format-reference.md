@@ -53,6 +53,9 @@ Referensi:
 2. Runtime produksi Makalah AI tetap pakai **Skill Registry Internal** (database + admin panel), bukan load file langsung dari filesystem saat inferensi.
 3. Struktur isi skill dipaksa konsisten antar stage agar aman untuk editor admin.
 4. Language policy wajib: seluruh konten skill (`name`, `description`, heading, instruction body) harus full English.
+5. Runtime contract `compileDaftarPustaka mode preview|persist` adalah kontrak wajib:
+   - semua stage boleh memandu `mode: "preview"` untuk audit lintas stage.
+   - hanya `daftar-pustaka-skill` yang boleh memandu `mode: "persist"` untuk final compile.
 
 ## 3.2 Format Berkas Referensi Skill (Git/Repo)
 
@@ -176,6 +179,9 @@ Agar editor admin konsisten dan aman, body skill wajib memuat blok berikut:
 4. `Output Contract`
 5. `Guardrails`
 6. `Done Criteria`
+7. Aturan `compileDaftarPustaka` sesuai stage:
+   - non-`daftar_pustaka`: hanya `preview`, `persist` harus dinyatakan terlarang.
+   - `daftar_pustaka`: `persist` wajib untuk final compile + persist entries.
 
 Template ringkas:
 
@@ -224,6 +230,9 @@ Validator minimum V1:
    - gunakan language detector pada `description` + body text.
    - jika confidence English di bawah threshold (mis. < 0.90), status validasi gagal.
    - pengecualian hanya untuk proper noun, stage ID, nama tool/API, dan schema field keys.
+7. Enforce compile policy per stage:
+   - reject jika skill non-`daftar_pustaka` menginstruksikan `compileDaftarPustaka({ mode: "persist" })`.
+   - reject jika `daftar-pustaka-skill` tidak menginstruksikan `compileDaftarPustaka({ mode: "persist" })` sebagai jalur finalisasi utama.
 
 ---
 

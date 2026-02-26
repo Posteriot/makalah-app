@@ -13,6 +13,9 @@ Implementasi runtime terkait skill-driven flow untuk kompilasi referensi sudah b
 2. `preview` bisa dipakai lintas stage untuk audit referensi tanpa persist.
 3. `persist` dibatasi formal hanya di stage `daftar_pustaka`.
 4. Routing chat sudah ditambah compile-intent override agar request compile tidak terkunci mode web-search-only.
+5. Paket skill stage (`docs/skill-per-stage/skills/*/SKILL.md`) sudah diselaraskan:
+   - non-`daftar_pustaka` hanya boleh mengarahkan `compileDaftarPustaka` mode `preview`.
+   - `daftar-pustaka-skill` wajib mengarahkan mode `persist` untuk final compile.
 
 Dokumen rujukan implementasi:
 1. `docs/skill-per-stage/2026-02-26-implementation-plan-compile-daftar-pustaka-preview-persist.md`

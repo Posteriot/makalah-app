@@ -26,6 +26,7 @@ Internal behavior references:
 2. `src/app/api/chat/route.ts` (active/passive search policy and tool routing constraint)
 3. `src/lib/paper/stage-types.ts` (stage output key contracts)
 4. `convex/paperSessions.ts` (stage guard + ringkasan requirement)
+5. `compileDaftarPustaka` runtime behavior (preview lintas stage, persist khusus stage `daftar_pustaka`)
 
 ---
 
@@ -118,6 +119,16 @@ Common constraints are included in each skill:
 
 Result: **PASS**
 
+## 4.5 compileDaftarPustaka Mode Alignment
+
+Alignment with implemented runtime contract:
+1. Non-`daftar_pustaka` skills explicitly allow `compileDaftarPustaka (mode: preview)` for bibliography audit.
+2. Non-`daftar_pustaka` skills explicitly disallow `compileDaftarPustaka (mode: persist)`.
+3. `daftar-pustaka-skill` explicitly allows `compileDaftarPustaka (mode: preview|persist)`.
+4. `daftar-pustaka-skill` treats `mode: persist` as the required final compilation path.
+
+Result: **PASS**
+
 ---
 
 ## 5) Residual Risks
@@ -133,4 +144,3 @@ The stage skill package is valid for copy-paste implementation:
 1. Format: compliant with `skills.sh` style conventions.
 2. Stage behavior: aligned with current Makalah AI codebase contracts.
 3. Audit status: pass with no blocking issues.
-
