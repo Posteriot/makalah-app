@@ -79,6 +79,7 @@ import type * as migrations_upsertPrivacyPolicyGoogleOAuth from "../migrations/u
 import type * as pageContent from "../pageContent.js";
 import type * as paperSessions from "../paperSessions.js";
 import type * as paperSessions_constants from "../paperSessions/constants.js";
+import type * as paperSessions_daftarPustakaCompiler from "../paperSessions/daftarPustakaCompiler.js";
 import type * as paperSessions_types from "../paperSessions/types.js";
 import type * as papers from "../papers.js";
 import type * as permissions from "../permissions.js";
@@ -172,6 +173,7 @@ declare const fullApi: ApiFromModules<{
   pageContent: typeof pageContent;
   paperSessions: typeof paperSessions;
   "paperSessions/constants": typeof paperSessions_constants;
+  "paperSessions/daftarPustakaCompiler": typeof paperSessions_daftarPustakaCompiler;
   "paperSessions/types": typeof paperSessions_types;
   papers: typeof papers;
   permissions: typeof permissions;

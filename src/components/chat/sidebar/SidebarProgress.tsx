@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { useQuery } from "convex/react"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
@@ -13,7 +13,7 @@ import {
   type PaperStageId,
 } from "../../../../convex/paperSessions/constants"
 import { cn } from "@/lib/utils"
-import { GitBranch } from "iconoir-react"
+import { GitBranch, EditPencil, Plus, Xmark, FloppyDisk } from "iconoir-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { RewindConfirmationDialog } from "@/components/paper/RewindConfirmationDialog"
 import {
@@ -22,6 +22,8 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip"
 import { resolvePaperDisplayTitle } from "@/lib/paper/title-resolver"
+import type { OutlineSection } from "@/lib/paper/stage-types"
+import { getSectionsForStage } from "@/lib/paper/outline-utils"
 
 // ============================================================================
 // CONSTANTS
@@ -45,6 +47,14 @@ interface StageDataEntry {
   [key: string]: unknown
 }
 
+interface PendingEdit {
+  action: "add" | "edit" | "remove"
+  sectionId: string
+  parentId?: string
+  judul?: string
+  estimatedWordCount?: number
+}
+
 interface MilestoneItemProps {
   stageId: PaperStageId
   index: number
@@ -53,6 +63,12 @@ interface MilestoneItemProps {
   canRewind: boolean
   rewindReason?: string
   onRewindClick?: () => void
+  outlineSections?: OutlineSection[]
+  isCurrentStage?: boolean
+  editMode?: boolean
+  onEditSection?: (sectionId: string, judul: string) => void
+  onRemoveSection?: (sectionId: string) => void
+  onAddSection?: (parentId: string) => void
 }
 
 // ============================================================================
@@ -111,16 +127,38 @@ function MilestoneItem({
   canRewind,
   rewindReason,
   onRewindClick,
+  outlineSections,
+  isCurrentStage,
+  editMode,
+  onEditSection,
+  onRemoveSection,
+  onAddSection,
 }: MilestoneItemProps) {
+  const [expanded, setExpanded] = useState(isCurrentStage ?? false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
   const label = getStageLabel(stageId)
+  const hasSections = outlineSections && outlineSections.length > 0
 
-  // Status text based on state (matches mockup: English labels)
+  // Section stats
+  const completedCount = outlineSections?.filter(s => s.status === "complete").length ?? 0
+  const totalCount = outlineSections?.length ?? 0
+
+  // Status text based on state
   const statusText =
     state === "completed"
       ? "Selesai"
       : state === "current"
         ? "Sedang berjalan"
         : undefined
+
+  // Toggle expand on header click (only if has sections and not a rewind action)
+  const handleHeaderClick = useCallback(() => {
+    if (hasSections) {
+      setExpanded(prev => !prev)
+    }
+  }, [hasSections])
 
   // Milestone dot element - Teal family: dark (completed), light (current), muted (pending)
   const dotElement = (
@@ -163,7 +201,6 @@ function MilestoneItem({
         "flex gap-3 relative group",
         canRewind && "cursor-pointer"
       )}
-      onClick={canRewind ? onRewindClick : undefined}
     >
       {/* Milestone Dot & Line */}
       <div className="flex flex-col items-center">
@@ -193,19 +230,36 @@ function MilestoneItem({
         )}
       </div>
 
-      {/* Milestone Content — all text is slate, hierarchy via weight */}
-      <div className={cn("pb-4", isLast && "pb-0")}>
+      {/* Milestone Content */}
+      <div className={cn("pb-4 flex-1 min-w-0", isLast && "pb-0")}>
+        {/* Header row — clickable to expand/collapse when has sections */}
         <div
           className={cn(
-            "text-sm font-mono transition-colors",
-            state === "completed" && "font-semibold text-[var(--chat-foreground)]",
-            state === "current" && "font-semibold text-[var(--chat-foreground)]",
-            state === "pending" && "font-medium text-[var(--chat-muted-foreground)]",
-            canRewind && "group-hover:text-[var(--chat-foreground)]"
+            "flex items-center gap-1",
+            hasSections && !canRewind && "cursor-pointer"
           )}
+          onClick={canRewind ? onRewindClick : handleHeaderClick}
         >
-          {index + 1}. {label}
+          <div
+            className={cn(
+              "text-sm font-mono transition-colors flex-1",
+              state === "completed" && "font-semibold text-[var(--chat-foreground)]",
+              state === "current" && "font-semibold text-[var(--chat-foreground)]",
+              state === "pending" && "font-medium text-[var(--chat-muted-foreground)]",
+              canRewind && "group-hover:text-[var(--chat-foreground)]"
+            )}
+          >
+            {index + 1}. {label}
+          </div>
+          {/* Section count badge (collapsed) */}
+          {hasSections && !expanded && (
+            <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] shrink-0">
+              {completedCount}/{totalCount}
+            </span>
+          )}
         </div>
+
+        {/* Status text */}
         {statusText && (
           <div
             className={cn(
@@ -215,6 +269,81 @@ function MilestoneItem({
             )}
           >
             {statusText}
+          </div>
+        )}
+
+        {/* Outline sub-items (expanded) */}
+        {hasSections && expanded && (
+          <div className="mt-1.5 space-y-0.5">
+            {outlineSections!.map(section => (
+              <div
+                key={section.id}
+                className={cn(
+                  "flex items-center gap-1.5 text-xs font-mono group/section",
+                  section.status === "complete"
+                    ? "text-[var(--chat-foreground)]"
+                    : "text-[var(--chat-muted-foreground)]",
+                  (section.level ?? 2) >= 3 && "pl-3"
+                )}
+              >
+                <span className="shrink-0 w-3 text-center">
+                  {section.status === "complete" ? "✓" : "○"}
+                </span>
+                {editMode && editingId === section.id ? (
+                  <input
+                    ref={inputRef}
+                    className="flex-1 min-w-0 bg-transparent border-b border-[var(--chat-border)] outline-none text-xs font-mono px-0 py-0.5"
+                    value={editValue}
+                    onChange={e => setEditValue(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && editValue.trim()) {
+                        onEditSection?.(section.id, editValue.trim())
+                        setEditingId(null)
+                      }
+                      if (e.key === "Escape") {
+                        setEditingId(null)
+                      }
+                    }}
+                    onBlur={() => {
+                      if (editValue.trim() && editValue.trim() !== section.judul) {
+                        onEditSection?.(section.id, editValue.trim())
+                      }
+                      setEditingId(null)
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    className={cn("truncate flex-1", editMode && "cursor-text")}
+                    onClick={editMode ? () => {
+                      setEditingId(section.id)
+                      setEditValue(section.judul ?? "")
+                    } : undefined}
+                  >
+                    {section.judul}
+                  </span>
+                )}
+                {editMode && editingId !== section.id && (
+                  <button
+                    className="shrink-0 opacity-0 group-hover/section:opacity-100 text-[var(--chat-muted-foreground)] hover:text-[color:var(--destructive)] transition-opacity"
+                    onClick={() => onRemoveSection?.(section.id)}
+                    aria-label={`Hapus ${section.judul}`}
+                  >
+                    <Xmark className="w-3 h-3" strokeWidth={2} />
+                  </button>
+                )}
+              </div>
+            ))}
+            {/* Add section button in edit mode */}
+            {editMode && (
+              <button
+                className="flex items-center gap-1.5 text-xs font-mono text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors mt-1"
+                onClick={() => onAddSection?.(stageId)}
+              >
+                <Plus className="w-3 h-3" strokeWidth={2} />
+                <span>Tambah subbab</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -232,10 +361,12 @@ function MilestoneItem({
  * Displays a vertical timeline of the 13 paper writing stages.
  * Shows progress for the current conversation's paper session.
  * Supports rewind to previous stages (max 2 stages back).
+ * Shows outline sub-items with expand/collapse when outline exists.
  *
  * Components:
  * - Header: Title "Progress", subtitle (paper name), progress bar with percentage
  * - Milestone timeline: 13 stages with states (completed, current, pending)
+ * - Outline sub-items: checkmark status per outline section within each stage
  * - Rewind: Click completed stages to rewind (with confirmation dialog)
  * - Empty state: "No active paper session" if no paper in conversation
  */
@@ -250,6 +381,7 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     currentStage,
     stageData,
     rewindToStage,
+    updateOutlineSections,
     isLoading,
   } = usePaperSession(conversationId as Id<"conversations"> | undefined)
 
@@ -257,6 +389,12 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     api.conversations.getConversation,
     conversationId ? { conversationId: conversationId as Id<"conversations"> } : "skip"
   )
+
+  // Outline edit mode state
+  const [editMode, setEditMode] = useState(false)
+  const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+  const addCounter = useRef(0)
 
   // Rewind dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -308,6 +446,63 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
       setTargetStageForRewind(null)
     }
     setDialogOpen(open)
+  }, [])
+
+  // Outline edit handlers
+  const handleEditSection = useCallback((sectionId: string, judul: string) => {
+    setPendingEdits(prev => {
+      // Replace existing edit for same section, or add new
+      const existing = prev.findIndex(e => e.sectionId === sectionId && e.action === "edit")
+      if (existing !== -1) {
+        const updated = [...prev]
+        updated[existing] = { ...updated[existing], judul }
+        return updated
+      }
+      return [...prev, { action: "edit" as const, sectionId, judul }]
+    })
+  }, [])
+
+  const handleRemoveSection = useCallback((sectionId: string) => {
+    setPendingEdits(prev => {
+      // If this section was added in this batch, just remove the add
+      const addIdx = prev.findIndex(e => e.sectionId === sectionId && e.action === "add")
+      if (addIdx !== -1) {
+        return prev.filter((_, i) => i !== addIdx)
+      }
+      // Remove any pending edits for this section, then add remove
+      return [
+        ...prev.filter(e => e.sectionId !== sectionId),
+        { action: "remove" as const, sectionId },
+      ]
+    })
+  }, [])
+
+  const handleAddSection = useCallback((parentId: string) => {
+    addCounter.current++
+    const newId = `${parentId}.new_${addCounter.current}`
+    setPendingEdits(prev => [
+      ...prev,
+      { action: "add" as const, sectionId: newId, parentId, judul: "Subbab baru" },
+    ])
+  }, [])
+
+  const handleSaveEdits = useCallback(async () => {
+    if (!user?._id || pendingEdits.length === 0) return
+    setIsSaving(true)
+    try {
+      await updateOutlineSections(user._id, pendingEdits)
+      setPendingEdits([])
+      setEditMode(false)
+    } catch (err) {
+      console.error("Failed to save outline edits:", err)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [user?._id, pendingEdits, updateOutlineSections])
+
+  const handleCancelEdits = useCallback(() => {
+    setPendingEdits([])
+    setEditMode(false)
   }, [])
 
   // Initial state before any conversation is selected
@@ -366,6 +561,16 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     conversationTitle: conversation?.title,
   })
 
+  // Extract outline sections for sub-item display
+  const outlineData = stageData?.outline as Record<string, unknown> | undefined
+  const allOutlineSections = (outlineData?.sections ?? []) as OutlineSection[]
+
+  // Can edit outline: must be past outline stage and outline must exist
+  const PRE_OUTLINE = ["gagasan", "topik", "outline"]
+  const canEditOutline = allOutlineSections.length > 0
+    && !PRE_OUTLINE.includes(currentStage as string)
+    && currentStage !== "completed"
+
   // Determine state for each milestone
   const getMilestoneState = (stageId: PaperStageId): MilestoneState => {
     const stageIndex = STAGE_ORDER.indexOf(stageId)
@@ -398,7 +603,25 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
       <div className="flex flex-col h-full">
         {/* Header - Mechanical Grace: .border-hairline */}
         <div className="p-4 border-b border-[color:var(--chat-sidebar-border)]">
-          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)] mb-1">Progress</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">Progress</div>
+            {canEditOutline && !editMode && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="p-0.5 text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
+                    onClick={() => setEditMode(true)}
+                    aria-label="Edit outline"
+                  >
+                    <EditPencil className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="font-mono text-xs">
+                  Edit subbab outline
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
           <div className="text-xs font-mono text-[var(--chat-muted-foreground)] truncate mb-3">
             {paperTitle}
           </div>
@@ -422,6 +645,32 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
           {STAGE_ORDER.map((stageId, index) => {
             const state = getMilestoneState(stageId)
             const rewindInfo = getRewindInfo(stageId, index)
+            let sectionsForStage = allOutlineSections.length > 0
+              ? getSectionsForStage(stageId, allOutlineSections)
+              : undefined
+
+            // In edit mode, merge pending edits into display
+            if (editMode && sectionsForStage) {
+              const removedIds = new Set(pendingEdits.filter(e => e.action === "remove").map(e => e.sectionId))
+              sectionsForStage = sectionsForStage
+                .filter(s => !removedIds.has(s.id))
+                .map(s => {
+                  const editForSection = pendingEdits.find(e => e.sectionId === s.id && e.action === "edit")
+                  return editForSection ? { ...s, judul: editForSection.judul } : s
+                })
+              // Add pending "add" sections for this stage
+              const addsForStage = pendingEdits.filter(
+                e => e.action === "add" && e.parentId === stageId
+              )
+              for (const add of addsForStage) {
+                sectionsForStage.push({
+                  id: add.sectionId,
+                  judul: add.judul,
+                  level: 2,
+                  parentId: stageId,
+                })
+              }
+            }
 
             return (
               <MilestoneItem
@@ -430,13 +679,45 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
                 index={index}
                 state={state}
                 isLast={index === STAGE_ORDER.length - 1}
-                canRewind={state === "completed" && rewindInfo.canRewind}
+                canRewind={!editMode && state === "completed" && rewindInfo.canRewind}
                 rewindReason={rewindInfo.reason}
                 onRewindClick={() => handleStageClick(stageId, index)}
+                outlineSections={sectionsForStage && sectionsForStage.length > 0 ? sectionsForStage : undefined}
+                isCurrentStage={state === "current"}
+                editMode={editMode}
+                onEditSection={handleEditSection}
+                onRemoveSection={handleRemoveSection}
+                onAddSection={handleAddSection}
               />
             )
           })}
         </div>
+
+        {/* Edit mode: Save/Cancel bar */}
+        {editMode && (
+          <div className="p-3 border-t border-[color:var(--chat-sidebar-border)] flex items-center gap-2">
+            <button
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-action text-xs font-mono font-semibold transition-colors",
+                pendingEdits.length > 0
+                  ? "bg-[var(--chat-success)] text-white hover:opacity-90"
+                  : "bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)] cursor-not-allowed"
+              )}
+              onClick={handleSaveEdits}
+              disabled={pendingEdits.length === 0 || isSaving}
+            >
+              <FloppyDisk className="w-3.5 h-3.5" strokeWidth={1.5} />
+              {isSaving ? "Menyimpan..." : `Simpan (${pendingEdits.length})`}
+            </button>
+            <button
+              className="px-3 py-1.5 rounded-action text-xs font-mono text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] border border-[var(--chat-border)] transition-colors"
+              onClick={handleCancelEdits}
+              disabled={isSaving}
+            >
+              Batal
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Rewind Confirmation Dialog */}

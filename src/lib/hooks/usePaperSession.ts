@@ -106,6 +106,7 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
     const updateWorkingTitleMutation = useMutation(api.paperSessions.updateWorkingTitle);
     const markStageAsDirtyMutation = useMutation(api.paperSessions.markStageAsDirty);
     const rewindToStageMutation = useMutation(api.paperSessions.rewindToStage);
+    const updateOutlineSectionsMutation = useMutation(api.paperSessions.updateOutlineSections);
     const createMessageMutation = useMutation(api.messages.createMessage);
 
     const isPaperMode = !!session;
@@ -194,6 +195,25 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
         }
     };
 
+    // Living Outline: Apply outline edits (add/edit/remove subbab)
+    const updateOutlineSections = async (
+        userId: Id<"users">,
+        edits: Array<{
+            action: "add" | "edit" | "remove";
+            sectionId: string;
+            parentId?: string;
+            judul?: string;
+            estimatedWordCount?: number;
+        }>
+    ) => {
+        if (!session) return;
+        return await updateOutlineSectionsMutation({
+            sessionId: session._id,
+            userId,
+            edits,
+        });
+    };
+
     // Helper to calculate current stage start index from messages
     // Wrapped in useCallback for memoization
     const getStageStartIndex = useCallback(
@@ -238,6 +258,8 @@ export const usePaperSession = (conversationId?: Id<"conversations">) => {
         markStageAsDirty,
         // Rewind Feature
         rewindToStage,
+        // Living Outline
+        updateOutlineSections,
         getStageStartIndex,
         checkMessageInCurrentStage,
         isLoading: session === undefined,

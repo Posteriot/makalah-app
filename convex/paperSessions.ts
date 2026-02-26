@@ -9,6 +9,17 @@ import {
     requirePaperSessionOwner,
     getConversationIfOwner,
 } from "./authHelpers";
+import {
+    compileDaftarPustakaFromStages,
+    DAFTAR_PUSTAKA_SOURCE_STAGES,
+    type DaftarPustakaCompileCandidate,
+} from "./paperSessions/daftarPustakaCompiler";
+import {
+    autoCheckOutlineSections,
+    resetAutoCheckedSections,
+    applyOutlineEdits,
+    type OutlineEdit,
+} from "./paperSessions/outlineAutoCheck";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
 const MAX_WORKING_TITLE_LENGTH = 80;
@@ -348,6 +359,97 @@ function validateReferensiUrls(data: Record<string, unknown>): {
         }
     }
     return null;
+}
+
+const DAFTAR_PUSTAKA_SOURCE_FIELDS = [
+    "referensiAwal",
+    "referensiPendukung",
+    "sitasiAPA",
+    "referensi",
+    "sitasiTambahan",
+] as const;
+
+function parseYearValue(value: unknown): number | undefined {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+    if (typeof value === "string") {
+        const match = value.match(/\b(19|20)\d{2}\b/);
+        if (match) {
+            return Number.parseInt(match[0], 10);
+        }
+    }
+    return undefined;
+}
+
+function extractDaftarPustakaCandidatesFromStageData(
+    stageData: Record<string, unknown>,
+    includeWebSearchReferences: boolean
+): DaftarPustakaCompileCandidate[] {
+    const candidates: DaftarPustakaCompileCandidate[] = [];
+
+    for (const field of DAFTAR_PUSTAKA_SOURCE_FIELDS) {
+        const value = stageData[field];
+        if (!Array.isArray(value)) continue;
+
+        for (const item of value) {
+            if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+            const record = item as Record<string, unknown>;
+
+            const title = typeof record.title === "string" ? record.title : undefined;
+            const authors = typeof record.authors === "string" ? record.authors : undefined;
+            const year = parseYearValue(record.year);
+            const url = typeof record.url === "string" ? record.url : undefined;
+            const publishedAt = typeof record.publishedAt === "number" ? record.publishedAt : undefined;
+            const doi = typeof record.doi === "string" ? record.doi : undefined;
+            const inTextCitation = typeof record.inTextCitation === "string" ? record.inTextCitation : undefined;
+            const fullReference = typeof record.fullReference === "string" ? record.fullReference : undefined;
+
+            if (!title && !url && !doi && !inTextCitation && !fullReference) continue;
+
+            candidates.push({
+                ...(title ? { title } : {}),
+                ...(authors ? { authors } : {}),
+                ...(typeof year === "number" ? { year } : {}),
+                ...(url ? { url } : {}),
+                ...(typeof publishedAt === "number" ? { publishedAt } : {}),
+                ...(doi ? { doi } : {}),
+                ...(inTextCitation ? { inTextCitation } : {}),
+                ...(fullReference ? { fullReference } : {}),
+            });
+        }
+    }
+
+    if (includeWebSearchReferences && Array.isArray(stageData.webSearchReferences)) {
+        for (const item of stageData.webSearchReferences) {
+            if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+            const record = item as Record<string, unknown>;
+            const title = typeof record.title === "string" ? record.title : undefined;
+            const url = typeof record.url === "string" ? record.url : undefined;
+            const publishedAt = typeof record.publishedAt === "number" ? record.publishedAt : undefined;
+
+            if (!title && !url) continue;
+            candidates.push({
+                ...(title ? { title } : {}),
+                ...(url ? { url } : {}),
+                ...(typeof publishedAt === "number" ? { publishedAt } : {}),
+            });
+        }
+    }
+
+    return candidates;
+}
+
+function isStageInvalidatedByLatestRewind(
+    stageId: string,
+    stageValidatedAt: number | undefined,
+    latestRewind: { createdAt: number; invalidatedStages?: string[] } | null
+): boolean {
+    if (!latestRewind) return false;
+    const invalidatedStages = latestRewind.invalidatedStages ?? [];
+    if (!invalidatedStages.includes(stageId)) return false;
+    if (typeof stageValidatedAt !== "number") return true;
+    return stageValidatedAt <= latestRewind.createdAt;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -803,6 +905,112 @@ export const appendSearchReferences = mutation({
 });
 
 /**
+ * Compile daftar pustaka entries from approved stages (1-10), server-side.
+ * Result is intended to be persisted via updateStageData in stage daftar_pustaka.
+ */
+export const compileDaftarPustaka = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        includeWebSearchReferences: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
+
+        if (session.currentStage !== "daftar_pustaka") {
+            throw new Error(
+                `compileDaftarPustaka hanya bisa dipanggil di stage daftar_pustaka. Stage aktif: ${session.currentStage}`
+            );
+        }
+
+        if (session.stageStatus === "pending_validation") {
+            throw new Error(
+                "compileDaftarPustaka gagal: Stage sedang pending validation. Minta revisi dulu jika ingin compile ulang."
+            );
+        }
+
+        const includeWebSearchReferences = args.includeWebSearchReferences ?? true;
+        const stageDataRecord = (session.stageData ?? {}) as Record<string, Record<string, unknown>>;
+
+        const latestRewindRecord = await ctx.db
+            .query("rewindHistory")
+            .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+            .order("desc")
+            .first();
+
+        const latestRewind = latestRewindRecord
+            ? {
+                createdAt: latestRewindRecord.createdAt,
+                invalidatedStages: latestRewindRecord.invalidatedStages,
+            }
+            : null;
+
+        const stages = DAFTAR_PUSTAKA_SOURCE_STAGES.map((stageId) => {
+            const stageData = stageDataRecord[stageId] ?? {};
+            const validatedAt = typeof stageData.validatedAt === "number"
+                ? stageData.validatedAt
+                : undefined;
+
+            const invalidatedByRewind = isStageInvalidatedByLatestRewind(
+                stageId,
+                validatedAt,
+                latestRewind
+            );
+
+            return {
+                stage: stageId,
+                validatedAt,
+                invalidatedByRewind,
+                references: extractDaftarPustakaCandidatesFromStageData(
+                    stageData,
+                    includeWebSearchReferences
+                ),
+            };
+        });
+
+        const result = compileDaftarPustakaFromStages({ stages });
+
+        if (result.compiled.totalCount === 0) {
+            throw new Error(
+                "compileDaftarPustaka gagal: Tidak ada referensi dari stage yang sudah approved."
+            );
+        }
+
+        const warnings: string[] = [];
+        if (result.stats.skippedStageCount > 0) {
+            warnings.push(
+                `${result.stats.skippedStageCount} stage dilewati (belum approved atau invalidated oleh rewind).`
+            );
+        }
+        if (result.compiled.incompleteCount > 0) {
+            warnings.push(
+                `${result.compiled.incompleteCount} referensi terdeteksi incomplete (metadata minimum belum cukup).`
+            );
+        }
+
+        console.log(
+            `[compileDaftarPustaka] session=${args.sessionId} ` +
+            `raw=${result.stats.rawCount} unique=${result.compiled.totalCount} ` +
+            `duplicatesMerged=${result.compiled.duplicatesMerged} incomplete=${result.compiled.incompleteCount} ` +
+            `approvedStages=${result.stats.approvedStageCount} skippedStages=${result.stats.skippedStageCount}`
+        );
+
+        if (warnings.length > 0) {
+            console.warn(
+                `[compileDaftarPustaka] warnings session=${args.sessionId}: ${warnings.join(" | ")}`
+            );
+        }
+
+        return {
+            success: true,
+            stage: "daftar_pustaka" as const,
+            compiled: result.compiled,
+            stats: result.stats,
+            ...(warnings.length > 0 ? { warnings } : {}),
+        };
+    },
+});
+
+/**
  * Submit draf tahap saat ini untuk validasi user.
  *
  * GUARD: Akan throw error jika ringkasan belum diisi.
@@ -918,6 +1126,37 @@ export const approveStage = mutation({
                 ...updatedStageData[currentStage],
                 validatedAt: now,
             };
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // Living Outline Checklist: Auto-check sections on stage approval
+        // ════════════════════════════════════════════════════════════════
+        const outlineForAutoCheck = updatedStageData.outline as Record<string, unknown> | undefined;
+        const outlineSections = outlineForAutoCheck?.sections as Array<Record<string, unknown>> | undefined;
+
+        if (outlineSections && outlineSections.length > 0) {
+            try {
+                const autoCheckResult = autoCheckOutlineSections(
+                    outlineSections as unknown as Parameters<typeof autoCheckOutlineSections>[0],
+                    currentStage,
+                    now
+                );
+
+                if (autoCheckResult.sectionsChecked > 0) {
+                    updatedStageData.outline = {
+                        ...updatedStageData.outline,
+                        sections: autoCheckResult.sections as unknown as Record<string, unknown>[],
+                        completenessScore: autoCheckResult.completenessScore,
+                        lastEditedAt: now,
+                        lastEditedFromStage: currentStage,
+                    };
+                    console.log(
+                        `[autoCheckOutline] stage=${currentStage} sections_checked=${autoCheckResult.sectionsChecked} new_completeness=${autoCheckResult.completenessScore}%`
+                    );
+                }
+            } catch (err) {
+                console.warn(`[autoCheckOutline] SKIPPED: Error during auto-check for session=${args.sessionId}`, err);
+            }
         }
 
         const nextStage = getNextStage(currentStage);
@@ -1438,6 +1677,36 @@ export const rewindToStage = mutation({
         // Clear validatedAt for invalidated stages
         const updatedStageData = clearValidatedAt(stageData, stagesToInvalidate);
 
+        // ════════════════════════════════════════════════════════════════
+        // Living Outline Checklist: Reset auto-checked sections on rewind
+        // ════════════════════════════════════════════════════════════════
+        const outlineForReset = updatedStageData.outline as Record<string, unknown> | undefined;
+        const outlineSectionsForReset = outlineForReset?.sections as Array<Record<string, unknown>> | undefined;
+
+        if (outlineSectionsForReset && outlineSectionsForReset.length > 0) {
+            try {
+                const resetResult = resetAutoCheckedSections(
+                    outlineSectionsForReset as unknown as Parameters<typeof resetAutoCheckedSections>[0],
+                    stagesToInvalidate
+                );
+
+                if (resetResult.sectionsReset > 0) {
+                    updatedStageData.outline = {
+                        ...updatedStageData.outline,
+                        sections: resetResult.sections as unknown as Record<string, unknown>[],
+                        completenessScore: resetResult.completenessScore,
+                        lastEditedAt: now,
+                        lastEditedFromStage: args.targetStage,
+                    };
+                    console.log(
+                        `[resetOutlineOnRewind] target=${args.targetStage} sections_reset=${resetResult.sectionsReset} new_completeness=${resetResult.completenessScore}%`
+                    );
+                }
+            } catch (err) {
+                console.warn(`[resetOutlineOnRewind] SKIPPED: Error during reset for session=${args.sessionId}`, err);
+            }
+        }
+
         // Mark paperMemoryDigest entries as superseded
         const updatedDigest = markDigestAsSuperseded(
             session.paperMemoryDigest as Array<{ stage: string; decision: string; timestamp: number; superseded?: boolean }> | undefined,
@@ -1480,6 +1749,111 @@ export const rewindToStage = mutation({
             newStage: args.targetStage,
             invalidatedStages: stagesToInvalidate,
             invalidatedArtifactIds,
+        };
+    },
+});
+
+// ═══════════════════════════════════════════════════════════
+// LIVING OUTLINE: Mid-Course Edit
+// ═══════════════════════════════════════════════════════════
+
+const PRE_OUTLINE_STAGES = ["gagasan", "topik", "outline"];
+const MAX_EDITS_PER_CALL = 5;
+
+/**
+ * Apply outline edits (add/edit/remove subbab) from the sidebar UI.
+ * Guards:
+ *  - Must be past outline stage (outline must be approved)
+ *  - Outline sections must exist
+ *  - Max 5 edits per call
+ *  - Level 1 sections cannot be edited/removed
+ */
+export const updateOutlineSections = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        userId: v.id("users"),
+        edits: v.array(
+            v.object({
+                action: v.union(v.literal("add"), v.literal("edit"), v.literal("remove")),
+                sectionId: v.string(),
+                parentId: v.optional(v.string()),
+                judul: v.optional(v.string()),
+                estimatedWordCount: v.optional(v.number()),
+            })
+        ),
+    },
+    handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        if (session.userId !== args.userId) throw new Error("Unauthorized");
+
+        // Guard: input length limits
+        const MAX_SECTION_ID_LENGTH = 100;
+        const MAX_JUDUL_LENGTH = 200;
+        for (const edit of args.edits) {
+            if (edit.sectionId.length > MAX_SECTION_ID_LENGTH) {
+                throw new Error(`sectionId terlalu panjang (max ${MAX_SECTION_ID_LENGTH} karakter)`);
+            }
+            if (edit.judul && edit.judul.length > MAX_JUDUL_LENGTH) {
+                throw new Error(`judul terlalu panjang (max ${MAX_JUDUL_LENGTH} karakter)`);
+            }
+            if (edit.parentId && edit.parentId.length > MAX_SECTION_ID_LENGTH) {
+                throw new Error(`parentId terlalu panjang (max ${MAX_SECTION_ID_LENGTH} karakter)`);
+            }
+        }
+
+        // Guard: must be past outline stage
+        const currentStage = session.currentStage as string;
+        if (PRE_OUTLINE_STAGES.includes(currentStage)) {
+            throw new Error("Outline belum disetujui. Selesaikan stage outline terlebih dahulu.");
+        }
+
+        // Guard: outline data must exist
+        const outlineData = session.stageData?.outline as Record<string, unknown> | undefined;
+        const outlineSections = outlineData?.sections as Array<Record<string, unknown>> | undefined;
+        if (!outlineSections || outlineSections.length === 0) {
+            throw new Error("Outline sections tidak ditemukan.");
+        }
+
+        // Guard: max edits per call
+        if (args.edits.length === 0) {
+            throw new Error("Minimal 1 edit diperlukan.");
+        }
+        if (args.edits.length > MAX_EDITS_PER_CALL) {
+            throw new Error(`Maksimal ${MAX_EDITS_PER_CALL} edits per panggilan.`);
+        }
+
+        const now = Date.now();
+
+        const result = applyOutlineEdits(
+            outlineSections as unknown as Parameters<typeof applyOutlineEdits>[0],
+            args.edits as unknown as OutlineEdit[],
+            currentStage,
+            now
+        );
+
+        // Persist updated outline
+        const updatedStageData = { ...session.stageData } as Record<string, Record<string, unknown>>;
+        updatedStageData.outline = {
+            ...updatedStageData.outline,
+            sections: result.sections as unknown as Record<string, unknown>[],
+            completenessScore: result.completenessScore,
+            totalWordCount: result.totalWordCount,
+            lastEditedAt: now,
+            lastEditedFromStage: currentStage,
+        };
+
+        await ctx.db.patch(args.sessionId, {
+            stageData: updatedStageData,
+            updatedAt: now,
+        });
+
+        return {
+            updatedCount: result.updatedCount,
+            completenessScore: result.completenessScore,
+            totalWordCount: result.totalWordCount,
+            warnings: result.warnings,
         };
     },
 });
