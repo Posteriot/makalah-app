@@ -114,7 +114,7 @@ export function AiOpsContentSection({
     isSkillMonitorTab || isOverview
       ? {
         requestorUserId: userId,
-        period: isOverview ? "24h" : period,
+        period,
       }
       : "skip"
   )
@@ -140,7 +140,7 @@ export function AiOpsContentSection({
             </p>
           </div>
 
-          {(isModelTab || isSkillMonitorTab) && (
+          {(isModelTab || isSkillMonitorTab || isOverview) && (
             <div className="flex items-center gap-1 rounded-[8px] border border-border p-0.5">
               {PERIOD_OPTIONS.map((opt) => (
                 <button
