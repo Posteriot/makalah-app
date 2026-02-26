@@ -21,7 +21,7 @@ export const GridPattern = memo(function GridPattern({
   return (
     <div
       className={cn(
-        "absolute inset-0 pointer-events-none",
+        "absolute inset-0 min-h-[100svh] md:min-h-full pointer-events-none border-b border-[rgba(159,159,159,0.15)]",
         "bg-[linear-gradient(rgba(159,159,159,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(159,159,159,0.15)_1px,transparent_1px)]",
         "bg-[length:48px_48px]",
         className

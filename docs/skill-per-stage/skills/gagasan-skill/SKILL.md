@@ -2,7 +2,7 @@
 name: gagasan-skill
 description: Stage instruction for gagasan in Makalah AI paper workflow. Use when currentStage = gagasan.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: gagasan
   searchPolicy: active
 ---

@@ -18,6 +18,7 @@ import type * as artifacts from "../artifacts.js";
 import type * as auth from "../auth.js";
 import type * as authEmails from "../authEmails.js";
 import type * as authHelpers from "../authHelpers.js";
+import type * as authOrigins from "../authOrigins.js";
 import type * as authRecovery from "../authRecovery.js";
 import type * as billing_constants from "../billing/constants.js";
 import type * as billing_credits from "../billing/credits.js";
@@ -110,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authEmails: typeof authEmails;
   authHelpers: typeof authHelpers;
+  authOrigins: typeof authOrigins;
   authRecovery: typeof authRecovery;
   "billing/constants": typeof billing_constants;
   "billing/credits": typeof billing_credits;

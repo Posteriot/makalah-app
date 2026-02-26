@@ -419,6 +419,16 @@
     color: var(--auth-surface-left-foreground);
   }
 
+  [data-auth-scope] .auth-logo-link {
+    color: inherit;
+    transition: opacity 180ms ease, transform 180ms ease;
+  }
+
+  [data-auth-scope] .auth-logo-link:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+  }
+
   [data-auth-scope] .auth-close-button {
     display: inline-flex;
     min-height: 2.75rem;

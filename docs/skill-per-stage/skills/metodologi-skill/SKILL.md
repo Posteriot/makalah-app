@@ -2,7 +2,7 @@
 name: metodologi-skill
 description: Stage instruction for metodologi in Makalah AI paper workflow. Use when currentStage = metodologi.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: metodologi
   searchPolicy: active
 ---

@@ -2,7 +2,7 @@
 name: hasil-skill
 description: Stage instruction for hasil in Makalah AI paper workflow. Use when currentStage = hasil.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: hasil
   searchPolicy: passive
 ---

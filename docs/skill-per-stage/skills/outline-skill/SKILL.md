@@ -2,7 +2,7 @@
 name: outline-skill
 description: Stage instruction for outline in Makalah AI paper workflow. Use when currentStage = outline.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: outline
   searchPolicy: passive
 ---

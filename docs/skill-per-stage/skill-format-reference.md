@@ -40,6 +40,8 @@ Instructions for the agent to follow when this skill is activated.
 Referensi:
 1. https://skills.sh/docs
 2. https://github.com/vercel-labs/skills
+3. https://github.com/anthropics/skills
+4. https://agentskills.io/specification
 
 ---
 
@@ -68,7 +70,7 @@ Format `SKILL.md` yang dipakai:
 name: <stage-id>-skill
 description: Stage instruction for <stage-id> in Makalah AI paper workflow. Use when currentStage = <stage-id>.
 metadata:
-  internal: true
+  internal: "true"
 ---
 
 Skill Stage: <Label Stage>
@@ -94,9 +96,16 @@ Define conditions that make this stage ready for validation.
 
 Catatan:
 1. `name` dan `description` wajib.
-2. `metadata.internal: true` direkomendasikan agar skill ini dianggap internal.
+2. Untuk kompatibilitas Agent Skills spec, nilai `metadata` harus string-to-string map. Gunakan `metadata.internal: "true"` (bukan boolean).
 3. Field lain di frontmatter tidak dijadikan ketergantungan runtime V1.
 4. Seluruh isi skill wajib full English; konten campuran/non-English ditolak oleh validator publish/activate.
+5. Direktori `scripts/`, `references/`, dan `assets/` opsional. Gunakan hanya jika ada kebutuhan nyata di stage terkait.
+
+## 3.3 Catatan Kompatibilitas Agent Skills (Anthropic-style)
+
+1. Skill tanpa `scripts/` tetap valid, selama `SKILL.md` valid.
+2. Skill dengan `scripts/` valid untuk workflow yang butuh otomasi executable (contoh: `docx` di repo Anthropic).
+3. Untuk stage Makalah AI saat ini, baseline tetap `SKILL.md` only; `scripts/` ditambahkan per stage jika dibutuhkan secara operasional.
 
 ---
 
@@ -225,7 +234,7 @@ Validator minimum V1:
 name: pendahuluan-skill
 description: Stage instruction for pendahuluan in Makalah AI paper workflow. Use when currentStage = pendahuluan.
 metadata:
-  internal: true
+  internal: "true"
 ---
 
 Skill Stage: Introduction
@@ -281,4 +290,6 @@ Disallowed:
 
 1. `skills.sh` docs: https://skills.sh/docs
 2. `vercel-labs/skills` README: https://github.com/vercel-labs/skills
-3. Design utama skill-per-stage: [README.md](/Users/eriksupit/Desktop/makalahapp/docs/skill-per-stage/README.md)
+3. `anthropics/skills` README: https://github.com/anthropics/skills
+4. Agent Skills specification: https://agentskills.io/specification
+5. Design utama skill-per-stage: [README.md](/Users/eriksupit/Desktop/makalahapp/docs/skill-per-stage/README.md)

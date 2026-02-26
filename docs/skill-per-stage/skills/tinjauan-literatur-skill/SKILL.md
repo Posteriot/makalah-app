@@ -2,7 +2,7 @@
 name: tinjauan-literatur-skill
 description: Stage instruction for tinjauan_literatur in Makalah AI paper workflow. Use when currentStage = tinjauan_literatur.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: tinjauan_literatur
   searchPolicy: active
 ---
