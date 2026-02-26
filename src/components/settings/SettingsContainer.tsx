@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect, useCallback } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { SidebarExpand, SidebarCollapse } from "iconoir-react"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
 import { SettingsContentSection } from "./SettingsContentSection"
@@ -10,6 +10,7 @@ import { type SettingsTabId, resolveSettingsTab } from "./settingsConfig"
 
 export function SettingsContainer() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const tabParam = resolveSettingsTab(searchParams.get("tab"))
   const [activeTab, setActiveTab] = useState<SettingsTabId>(tabParam)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -17,6 +18,11 @@ export function SettingsContainer() {
   useEffect(() => {
     setActiveTab(tabParam)
   }, [tabParam])
+
+  const handleTabChange = useCallback((tab: SettingsTabId) => {
+    setActiveTab(tab)
+    router.replace(`/settings?tab=${tab}`, { scroll: false })
+  }, [router])
 
   return (
     <div className="admin-container relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-background">
@@ -38,7 +44,7 @@ export function SettingsContainer() {
         </div>
 
         <div className="grid grid-cols-1 gap-comfort pb-2 md:grid-cols-16">
-          <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          <SettingsSidebar activeTab={activeTab} onTabChange={handleTabChange} />
           <SettingsContentSection activeTab={activeTab} />
         </div>
       </div>
@@ -47,7 +53,7 @@ export function SettingsContainer() {
         open={sidebarOpen}
         onOpenChange={setSidebarOpen}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
       />
     </div>
   )

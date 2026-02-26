@@ -16,7 +16,7 @@ export function SettingsContentSection({ activeTab }: SettingsContentSectionProp
   const { user: convexUser, isLoading: isConvexLoading } = useCurrentUser()
 
   const currentTab = findSettingsTabConfig(activeTab) ?? SETTINGS_SIDEBAR_ITEMS[0]
-  const HeaderIcon = currentTab.headerIcon
+  const HeaderIcon = currentTab.icon
   const primaryEmail = convexUser?.email ?? session?.user?.email ?? ""
 
   return (

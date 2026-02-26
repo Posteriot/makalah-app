@@ -13,7 +13,6 @@ export interface SettingsSidebarItem {
   icon: IconoirIcon
   headerTitle: string
   headerDescription: string
-  headerIcon: IconoirIcon
 }
 
 export const SETTINGS_SIDEBAR_ITEMS: SettingsSidebarItem[] = [
@@ -23,7 +22,6 @@ export const SETTINGS_SIDEBAR_ITEMS: SettingsSidebarItem[] = [
     icon: UserIcon,
     headerTitle: "Profil",
     headerDescription: "Atur nama dan avatar akun Anda.",
-    headerIcon: UserIcon,
   },
   {
     id: "security",
@@ -31,7 +29,6 @@ export const SETTINGS_SIDEBAR_ITEMS: SettingsSidebarItem[] = [
     icon: Shield,
     headerTitle: "Keamanan",
     headerDescription: "Update password dan kontrol sesi.",
-    headerIcon: Shield,
   },
   {
     id: "status",
@@ -39,7 +36,6 @@ export const SETTINGS_SIDEBAR_ITEMS: SettingsSidebarItem[] = [
     icon: BadgeCheck,
     headerTitle: "Status Akun",
     headerDescription: "Ringkasan akses akun Anda di Makalah AI.",
-    headerIcon: BadgeCheck,
   },
 ]
 

@@ -1,3 +1,5 @@
+"use client"
+
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { SETTINGS_SIDEBAR_ITEMS, type SettingsTabId } from "./settingsConfig"
