@@ -1783,9 +1783,25 @@ export const updateOutlineSections = mutation({
         ),
     },
     handler: async (ctx, args) => {
+        await requireAuthUserId(ctx, args.userId);
         const session = await ctx.db.get(args.sessionId);
         if (!session) throw new Error("Session not found");
         if (session.userId !== args.userId) throw new Error("Unauthorized");
+
+        // Guard: input length limits
+        const MAX_SECTION_ID_LENGTH = 100;
+        const MAX_JUDUL_LENGTH = 200;
+        for (const edit of args.edits) {
+            if (edit.sectionId.length > MAX_SECTION_ID_LENGTH) {
+                throw new Error(`sectionId terlalu panjang (max ${MAX_SECTION_ID_LENGTH} karakter)`);
+            }
+            if (edit.judul && edit.judul.length > MAX_JUDUL_LENGTH) {
+                throw new Error(`judul terlalu panjang (max ${MAX_JUDUL_LENGTH} karakter)`);
+            }
+            if (edit.parentId && edit.parentId.length > MAX_SECTION_ID_LENGTH) {
+                throw new Error(`parentId terlalu panjang (max ${MAX_SECTION_ID_LENGTH} karakter)`);
+            }
+        }
 
         // Guard: must be past outline stage
         const currentStage = session.currentStage as string;

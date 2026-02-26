@@ -339,4 +339,13 @@ describe("validateOutlineEdit", () => {
     expect(result.valid).toBe(false)
     expect(result.reason).toContain("level")
   })
+
+  it("rejects adding a section with duplicate sectionId", () => {
+    const result = validateOutlineEdit(
+      { action: "add", sectionId: "pendahuluan.latar", parentId: "pendahuluan", judul: "Duplikat" },
+      SAMPLE_SECTIONS
+    )
+    expect(result.valid).toBe(false)
+    expect(result.reason).toContain("sudah ada")
+  })
 })

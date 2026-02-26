@@ -144,6 +144,7 @@ export function validateOutlineEdit(
   const sectionMap = new Map(sections.map(s => [s.id, s]))
 
   if (edit.action === "add") {
+    if (sectionMap.has(edit.sectionId)) return { valid: false, reason: `Section '${edit.sectionId}' sudah ada` }
     if (!edit.parentId) return { valid: false, reason: "parentId wajib untuk action 'add'" }
     const parent = sectionMap.get(edit.parentId)
     if (!parent) return { valid: false, reason: `Parent section '${edit.parentId}' tidak ditemukan` }
