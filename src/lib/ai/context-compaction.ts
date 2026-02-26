@@ -12,20 +12,7 @@
 
 import { generateText } from "ai"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
-// Prompt functions - will be extracted to compaction-prompts.ts when that module is created
-function getPaperMidStageSummaryPrompt(stageLabel: string): string {
-    return `Kamu adalah asisten ringkasan konteks untuk penulisan makalah akademik.
-Ringkas percakapan berikut menjadi poin-poin utama yang relevan untuk tahap "${stageLabel}".
-Fokus pada: keputusan yang diambil, data penting, dan konteks yang diperlukan.
-Maksimal 3-5 poin. Gunakan bahasa Indonesia.`
-}
-
-function getGeneralChatSummaryPrompt(): string {
-    return `Kamu adalah asisten ringkasan konteks.
-Ringkas percakapan berikut menjadi poin-poin utama.
-Fokus pada: topik yang dibahas, keputusan yang diambil, dan informasi penting.
-Maksimal 3-5 poin. Gunakan bahasa Indonesia.`
-}
+import { getPaperMidStageSummaryPrompt, getGeneralChatSummaryPrompt } from "./compaction-prompts"
 
 // ════════════════════════════════════════════════════════════════
 // Types
