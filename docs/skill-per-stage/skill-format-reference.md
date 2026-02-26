@@ -56,6 +56,10 @@ Referensi:
 5. Runtime contract `compileDaftarPustaka mode preview|persist` adalah kontrak wajib:
    - semua stage boleh memandu `mode: "preview"` untuk audit lintas stage.
    - hanya `daftar-pustaka-skill` yang boleh memandu `mode: "persist"` untuk final compile.
+6. Living Outline Checklist contract wajib diperlakukan sebagai runtime behavior yang sudah tersedia di repository lineage:
+   - outline section dapat membawa status `checkedAt`, `checkedBy`, dan `editHistory`.
+   - outline data dapat membawa `lastEditedAt` dan `lastEditedFromStage`.
+   - skill `outline` dan stage lanjutan harus membaca konteks checklist ini saat tersedia.
 
 ## 3.2 Format Berkas Referensi Skill (Git/Repo)
 
@@ -182,6 +186,9 @@ Agar editor admin konsisten dan aman, body skill wajib memuat blok berikut:
 7. Aturan `compileDaftarPustaka` sesuai stage:
    - non-`daftar_pustaka`: hanya `preview`, `persist` harus dinyatakan terlarang.
    - `daftar_pustaka`: `persist` wajib untuk final compile + persist entries.
+8. Aturan Living Outline:
+   - `outline-skill` wajib menyebut checklist lifecycle (auto-check, rewind reset, minor edit).
+   - skill stage setelah `outline` wajib menyebut pembacaan status checklist outline di `Input Context`.
 
 Template ringkas:
 
@@ -233,6 +240,9 @@ Validator minimum V1:
 7. Enforce compile policy per stage:
    - reject jika skill non-`daftar_pustaka` menginstruksikan `compileDaftarPustaka({ mode: "persist" })`.
    - reject jika `daftar-pustaka-skill` tidak menginstruksikan `compileDaftarPustaka({ mode: "persist" })` sebagai jalur finalisasi utama.
+8. Enforce living-outline policy:
+   - reject jika `outline-skill` tidak memuat instruksi membaca/menjaga fields checklist (`checkedAt`, `checkedBy`, `editHistory`).
+   - reject jika skill stage pasca-`outline` tidak memuat instruksi membaca status checklist outline.
 
 ---
 

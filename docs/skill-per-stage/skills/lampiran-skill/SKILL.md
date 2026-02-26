@@ -14,6 +14,7 @@ Prepare appendix materials that support the paper without bloating main sections
 
 ## Input Context
 Read approved outputs and identify supplementary materials required by the user.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:

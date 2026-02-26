@@ -14,6 +14,7 @@ Write a strong introduction with background, problem statement, research gap, ob
 
 ## Input Context
 Read approved context from earlier stages and latest user feedback.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:

@@ -27,6 +27,7 @@ Internal behavior references:
 3. `src/lib/paper/stage-types.ts` (stage output key contracts)
 4. `convex/paperSessions.ts` (stage guard + ringkasan requirement)
 5. `compileDaftarPustaka` runtime behavior (preview lintas stage, persist khusus stage `daftar_pustaka`)
+6. Living Outline Checklist implementation lineage (`outline-utils`, `outlineAutoCheck`, `updateOutlineSections`, `SidebarProgress` inline edit)
 
 ---
 
@@ -133,8 +134,9 @@ Result: **PASS**
 
 ## 5) Residual Risks
 
-1. Language policy is enforced at document level; runtime validator must still be implemented to reject non-English skill content.
-2. Skill quality can still drift if future edits bypass codebase-aware review.
+1. Living outline features are verified in repository lineage commits, but branch-level adoption must ensure target runtime branch actually contains those commits.
+2. Language policy is enforced at document level; runtime validator must still be implemented to reject non-English skill content.
+3. Skill quality can still drift if future edits bypass codebase-aware review.
 
 ---
 
@@ -144,3 +146,9 @@ The stage skill package is valid for copy-paste implementation:
 1. Format: compliant with `skills.sh` style conventions.
 2. Stage behavior: aligned with current Makalah AI codebase contracts.
 3. Audit status: pass with no blocking issues.
+
+Living outline verification evidence (repository lineage):
+1. `8e9fe61`, `1594893`, `7fb7f16`, `82efd2c` (outline helper lifecycle).
+2. `34b2098`, `16f4bab`, `16e05e4` (Convex mutation integration and rewind reset).
+3. `bd87920` (hook exposure for `updateOutlineSections`).
+4. `2545d70`, `9655189` (SidebarProgress sub-items and inline edit UI).

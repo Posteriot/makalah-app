@@ -14,6 +14,7 @@ Interpret findings, compare them with literature, and explain implications and l
 
 ## Input Context
 Read approved hasil output, relevant references, and user feedback.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:

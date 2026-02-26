@@ -14,6 +14,7 @@ Build a literature review that establishes theoretical framing, gap analysis, an
 
 ## Input Context
 Read stage summaries, existing references, and user constraints.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:

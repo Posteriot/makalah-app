@@ -14,6 +14,7 @@ Finalize title options and choose the strongest final title aligned with approve
 
 ## Input Context
 Read approved summaries from all prior stages and final user positioning.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:

@@ -14,6 +14,7 @@ Present results clearly using user-provided or approved data representation.
 
 ## Input Context
 Read approved methodology and prior stage outputs.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:

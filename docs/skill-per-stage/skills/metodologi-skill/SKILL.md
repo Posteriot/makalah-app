@@ -14,6 +14,7 @@ Define an executable and academically defensible methodology aligned with resear
 
 ## Input Context
 Read approved topic, outline, and relevant methodological references.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:

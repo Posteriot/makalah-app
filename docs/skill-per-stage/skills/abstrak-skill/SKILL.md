@@ -14,6 +14,7 @@ Produce a concise abstract that accurately compiles approved context without int
 
 ## Input Context
 Read approved summaries and structured context from prior stages.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:

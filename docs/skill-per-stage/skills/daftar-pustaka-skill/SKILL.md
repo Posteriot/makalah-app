@@ -14,6 +14,7 @@ Compile a clean and complete reference list from approved citations and verified
 
 ## Input Context
 Read references used in prior stages and source metadata from stageData.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:
