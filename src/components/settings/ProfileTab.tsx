@@ -5,7 +5,6 @@ import { useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import Image from "next/image"
 import { toast } from "sonner"
-import { User as UserIcon } from "iconoir-react"
 import type { Doc } from "@convex/_generated/dataModel"
 
 interface ProfileTabProps {
