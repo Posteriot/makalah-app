@@ -39,7 +39,7 @@ export const DottedPattern = memo(function DottedPattern({
   return (
     <div
       className={cn(
-        "absolute inset-0 pointer-events-none z-[1]",
+        "absolute inset-0 min-h-[100svh] md:min-h-full pointer-events-none z-[1]",
         // Dark mode: white dots
         "dark:[background-image:radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)]",
         // Light mode: dark dots
