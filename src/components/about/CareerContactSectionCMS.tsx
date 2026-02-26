@@ -76,7 +76,7 @@ export function CareerContactSectionCMS({ content }: CareerContactSectionCMSProp
   }))
 
   return (
-    <section className="relative isolate overflow-hidden bg-background" id="karier-kontak">
+    <section className="relative isolate flex min-h-[100svh] flex-col justify-center overflow-hidden bg-background" id="karier-kontak">
       {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
       {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
