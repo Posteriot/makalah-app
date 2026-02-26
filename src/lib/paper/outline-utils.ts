@@ -119,3 +119,48 @@ export function autoCheckOutlineSections(
 
   return { sections: updated, sectionsChecked: checked, completenessScore: calculateCompleteness(updated) }
 }
+
+// ============================================================================
+// REWIND RESET
+// ============================================================================
+
+/**
+ * Reset auto-checked outline sections for invalidated stages (during rewind).
+ * Preserves user-checked sections (checkedBy: "user").
+ */
+export function resetAutoCheckedSections(
+  sections: OutlineSection[],
+  invalidatedStages: string[]
+): {
+  sections: OutlineSection[]
+  sectionsReset: number
+  completenessScore: number
+} {
+  const invalidatedSet = new Set(invalidatedStages)
+  let resetCount = 0
+
+  const updated = sections.map(s => {
+    const rootStage = getRootStageId(s.id, sections)
+    const belongsToInvalidated = rootStage
+      ? invalidatedSet.has(rootStage)
+      : invalidatedSet.has(s.id)
+
+    if (!belongsToInvalidated) return s
+    if (s.checkedBy === "user") return s
+
+    if (s.checkedBy === "auto") {
+      resetCount++
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { status, checkedAt, checkedBy, ...rest } = s
+      return rest as OutlineSection
+    }
+
+    return s
+  })
+
+  return {
+    sections: updated,
+    sectionsReset: resetCount,
+    completenessScore: calculateCompleteness(updated),
+  }
+}

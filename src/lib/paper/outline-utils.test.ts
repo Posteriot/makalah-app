@@ -5,6 +5,7 @@ import {
   calculateCompleteness,
   recalculateTotalWordCount,
   autoCheckOutlineSections,
+  resetAutoCheckedSections,
 } from "./outline-utils"
 import type { OutlineSection } from "./stage-types"
 
@@ -191,5 +192,60 @@ describe("autoCheckOutlineSections", () => {
     const latar = result.sections.find(s => s.id === "pendahuluan.latar")
     expect(latar?.checkedBy).toBe("user")
     expect(latar?.checkedAt).toBe(1600000000000)
+  })
+})
+
+// ============================================================================
+// resetAutoCheckedSections
+// ============================================================================
+
+describe("resetAutoCheckedSections", () => {
+  const checkedSections: OutlineSection[] = [
+    { id: "pendahuluan", judul: "Pendahuluan", level: 1, parentId: null, status: "complete", checkedAt: 1700000000000, checkedBy: "auto" },
+    { id: "pendahuluan.latar", judul: "Latar Belakang", level: 2, parentId: "pendahuluan", status: "complete", checkedAt: 1700000000000, checkedBy: "auto", estimatedWordCount: 300 },
+    { id: "pendahuluan.rumusan", judul: "Rumusan Masalah", level: 2, parentId: "pendahuluan", status: "complete", checkedAt: 1600000000000, checkedBy: "user", estimatedWordCount: 200 },
+    { id: "tinjauan_literatur", judul: "Tinjauan Literatur", level: 1, parentId: null, status: "complete", checkedAt: 1700000000000, checkedBy: "auto" },
+    { id: "tinjauan_literatur.teori", judul: "Kerangka Teori", level: 2, parentId: "tinjauan_literatur", status: "complete", checkedAt: 1700000000000, checkedBy: "auto", estimatedWordCount: 500 },
+    { id: "metodologi", judul: "Metodologi", level: 1, parentId: null },
+    { id: "metodologi.desain", judul: "Desain Penelitian", level: 2, parentId: "metodologi", estimatedWordCount: 400 },
+  ]
+
+  it("resets auto-checked sections for invalidated stages", () => {
+    const result = resetAutoCheckedSections(checkedSections, ["tinjauan_literatur"])
+
+    const tl = result.sections.find(s => s.id === "tinjauan_literatur")
+    expect(tl?.status).toBeUndefined()
+    expect(tl?.checkedAt).toBeUndefined()
+    expect(tl?.checkedBy).toBeUndefined()
+
+    const teori = result.sections.find(s => s.id === "tinjauan_literatur.teori")
+    expect(teori?.status).toBeUndefined()
+    expect(teori?.checkedAt).toBeUndefined()
+  })
+
+  it("preserves user-checked sections during reset", () => {
+    const result = resetAutoCheckedSections(checkedSections, ["pendahuluan"])
+
+    const rumusan = result.sections.find(s => s.id === "pendahuluan.rumusan")
+    expect(rumusan?.status).toBe("complete")
+    expect(rumusan?.checkedBy).toBe("user")
+
+    const latar = result.sections.find(s => s.id === "pendahuluan.latar")
+    expect(latar?.status).toBeUndefined()
+    expect(latar?.checkedBy).toBeUndefined()
+  })
+
+  it("does not touch sections of non-invalidated stages", () => {
+    const result = resetAutoCheckedSections(checkedSections, ["tinjauan_literatur"])
+
+    const latar = result.sections.find(s => s.id === "pendahuluan.latar")
+    expect(latar?.status).toBe("complete")
+    expect(latar?.checkedBy).toBe("auto")
+  })
+
+  it("recalculates completenessScore", () => {
+    const result = resetAutoCheckedSections(checkedSections, ["pendahuluan", "tinjauan_literatur"])
+    // Only pendahuluan.rumusan (user-checked) remains complete = 1 out of 7
+    expect(result.completenessScore).toBeLessThan(50)
   })
 })
