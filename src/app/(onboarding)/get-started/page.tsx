@@ -37,10 +37,6 @@ function toSafeInternalPath(path?: string): string | null {
   return path
 }
 
-function maskPrice(price: string): string {
-  return price.replace(/\d/g, "0")
-}
-
 function GetStartedPlanCard({
   plan,
   isNavigating,
@@ -81,7 +77,7 @@ function GetStartedPlanCard({
         </h3>
 
         <p className="text-interface text-3xl font-medium tracking-tight tabular-nums text-foreground text-center mb-6">
-          {plan.isDisabled ? maskPrice(plan.price) : plan.price}
+          {plan.price}
           {plan.unit && (
             <span className="text-interface text-sm font-normal text-muted-foreground ml-1">
               {plan.unit}

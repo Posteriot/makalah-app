@@ -74,10 +74,6 @@ function PricingCTA({
 // Main PricingCard Component
 // ════════════════════════════════════════════════════════════════
 
-function maskPrice(price: string): string {
-  return price.replace(/\d/g, "0")
-}
-
 export function PricingCard({ plan, isWaitlistMode }: { plan: PricingPlan; isWaitlistMode?: boolean }) {
   const isDisabledByWaitlist = isWaitlistMode && plan.slug !== "gratis"
   return (
@@ -114,7 +110,7 @@ export function PricingCard({ plan, isWaitlistMode }: { plan: PricingPlan; isWai
 
         {/* Price */}
         <p className="text-interface text-3xl md:text-3xl font-medium tracking-tight tabular-nums text-foreground text-center mb-6">
-          {(plan.isDisabled || isDisabledByWaitlist) ? maskPrice(plan.price) : plan.price}
+          {plan.price}
           {plan.unit && (
             <span className="text-interface text-sm font-normal text-muted-foreground ml-1">
               {plan.unit}

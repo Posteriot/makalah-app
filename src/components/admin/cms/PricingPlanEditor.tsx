@@ -321,8 +321,8 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
           <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Credit Packages
           </span>
-          {creditPackages.map((pkg, index) => (
-            <div key={index} className="rounded-action border border-border p-4 space-y-3">
+          {creditPackages.map((pkg, index) => ({ pkg, originalIndex: index })).filter(({ pkg }) => pkg.type === "paper").map(({ pkg, originalIndex }) => (
+            <div key={originalIndex} className="rounded-action border border-border p-4 space-y-3">
               <span className="text-interface text-sm font-medium text-foreground">
                 {pkg.type}
               </span>
@@ -333,7 +333,7 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
                   </label>
                   <Input
                     value={pkg.label}
-                    onChange={(e) => updatePackage(index, "label", e.target.value)}
+                    onChange={(e) => updatePackage(originalIndex, "label", e.target.value)}
                   />
                 </div>
                 <div>
@@ -343,7 +343,7 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
                   <Input
                     type="number"
                     value={pkg.priceIDR}
-                    onChange={(e) => updatePackage(index, "priceIDR", Number(e.target.value))}
+                    onChange={(e) => updatePackage(originalIndex, "priceIDR", Number(e.target.value))}
                   />
                 </div>
                 <div>
@@ -353,7 +353,7 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
                   <Input
                     type="number"
                     value={pkg.credits}
-                    onChange={(e) => updatePackage(index, "credits", Number(e.target.value))}
+                    onChange={(e) => updatePackage(originalIndex, "credits", Number(e.target.value))}
                   />
                 </div>
                 <div>
@@ -363,7 +363,7 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
                   <Input
                     type="number"
                     value={pkg.tokens}
-                    onChange={(e) => updatePackage(index, "tokens", Number(e.target.value))}
+                    onChange={(e) => updatePackage(originalIndex, "tokens", Number(e.target.value))}
                   />
                 </div>
               </div>
@@ -373,7 +373,7 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
                 </label>
                 <Input
                   value={pkg.description ?? ""}
-                  onChange={(e) => updatePackage(index, "description", e.target.value)}
+                  onChange={(e) => updatePackage(originalIndex, "description", e.target.value)}
                 />
               </div>
             </div>

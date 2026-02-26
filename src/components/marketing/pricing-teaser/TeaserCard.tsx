@@ -1,10 +1,6 @@
 import { cn } from "@/lib/utils"
 import type { TeaserPlan } from "./types"
 
-function maskPrice(price: string): string {
-  return price.replace(/\d/g, "0")
-}
-
 /**
  * TeaserCard - Individual pricing card
  * Styling mengikuti BentoBenefitsGrid (bento design tokens)
@@ -46,7 +42,7 @@ export function TeaserCard({ plan, isWaitlistMode }: { plan: TeaserPlan; isWaitl
 
         {/* Price */}
         <p className="text-interface text-3xl md:text-3xl font-medium tracking-tight tabular-nums text-foreground text-center mb-6">
-          {effectiveDisabled ? maskPrice(plan.price) : plan.price}
+          {plan.price}
           {plan.unit && (
             <span className="text-interface text-sm font-normal text-muted-foreground ml-1">
               {plan.unit}

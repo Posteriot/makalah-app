@@ -13,10 +13,6 @@ import { getEffectiveTier } from "@/lib/utils/subscription"
 const PRO_CHECKOUT_ROUTE = "/checkout/pro?from=plans"
 const TOPUP_ROUTE = "/subscription/topup?from=plans"
 
-function maskPrice(price: string): string {
-  return price.replace(/\d/g, "0")
-}
-
 export default function PlansHubPage() {
   const { user, isLoading: userLoading } = useCurrentUser()
   const router = useRouter()
@@ -163,7 +159,7 @@ export default function PlansHubPage() {
                   {plan.name}
                 </h3>
                 <p className="text-interface mb-6 text-center text-3xl font-medium tracking-tight tabular-nums text-foreground">
-                  {isEffectiveDisabled ? maskPrice(plan.price) : plan.price}
+                  {plan.price}
                   {plan.unit && (
                     <span className="text-interface ml-1 text-sm font-normal text-muted-foreground">
                       {plan.unit}
