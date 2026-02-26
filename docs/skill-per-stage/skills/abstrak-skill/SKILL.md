@@ -2,7 +2,7 @@
 name: abstrak-skill
 description: Stage instruction for abstrak in Makalah AI paper workflow. Use when currentStage = abstrak.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: abstrak
   searchPolicy: passive
 ---

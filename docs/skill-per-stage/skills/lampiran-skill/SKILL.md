@@ -2,7 +2,7 @@
 name: lampiran-skill
 description: Stage instruction for lampiran in Makalah AI paper workflow. Use when currentStage = lampiran.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: lampiran
   searchPolicy: passive
 ---

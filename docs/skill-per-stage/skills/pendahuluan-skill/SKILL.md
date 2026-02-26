@@ -2,7 +2,7 @@
 name: pendahuluan-skill
 description: Stage instruction for pendahuluan in Makalah AI paper workflow. Use when currentStage = pendahuluan.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: pendahuluan
   searchPolicy: active
 ---

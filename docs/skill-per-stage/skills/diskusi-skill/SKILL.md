@@ -2,7 +2,7 @@
 name: diskusi-skill
 description: Stage instruction for diskusi in Makalah AI paper workflow. Use when currentStage = diskusi.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: diskusi
   searchPolicy: active
 ---
