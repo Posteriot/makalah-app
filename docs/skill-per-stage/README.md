@@ -6,6 +6,20 @@ Scope: Arsitektur prompt/skill untuk paper workflow 13 tahap + manajemen via adm
 
 ---
 
+## Update Implementasi Terkait Skill (26 Februari 2026)
+
+Implementasi runtime terkait skill-driven flow untuk kompilasi referensi sudah berjalan:
+1. Tool `compileDaftarPustaka` sudah support mode `preview|persist`.
+2. `preview` bisa dipakai lintas stage untuk audit referensi tanpa persist.
+3. `persist` dibatasi formal hanya di stage `daftar_pustaka`.
+4. Routing chat sudah ditambah compile-intent override agar request compile tidak terkunci mode web-search-only.
+
+Dokumen rujukan implementasi:
+1. `docs/skill-per-stage/2026-02-26-implementation-plan-compile-daftar-pustaka-preview-persist.md`
+2. `docs/skill-per-stage/2026-02-26-execution-log-compile-daftar-pustaka.md`
+
+---
+
 ## 1) Latar Belakang Berpikir
 
 Makalah AI saat ini sudah punya fondasi workflow 13 tahap yang kuat: ada stage lock, validasi user per tahap, guard backend, dan tool-calling terkontrol. Namun, instruksi perilaku AI per tahap masih dominan hardcoded di kode (`paper-stages/*`, `paper-mode-prompt.ts`).
