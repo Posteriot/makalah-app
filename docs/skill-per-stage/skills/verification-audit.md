@@ -26,6 +26,8 @@ Internal behavior references:
 2. `src/app/api/chat/route.ts` (active/passive search policy and tool routing constraint)
 3. `src/lib/paper/stage-types.ts` (stage output key contracts)
 4. `convex/paperSessions.ts` (stage guard + ringkasan requirement)
+5. `compileDaftarPustaka` runtime behavior (preview lintas stage, persist khusus stage `daftar_pustaka`)
+6. Living Outline Checklist implementation lineage (`outline-utils`, `outlineAutoCheck`, `updateOutlineSections`, `SidebarProgress` inline edit)
 
 ---
 
@@ -118,12 +120,23 @@ Common constraints are included in each skill:
 
 Result: **PASS**
 
+## 4.5 compileDaftarPustaka Mode Alignment
+
+Alignment with implemented runtime contract:
+1. Non-`daftar_pustaka` skills explicitly allow `compileDaftarPustaka (mode: preview)` for bibliography audit.
+2. Non-`daftar_pustaka` skills explicitly disallow `compileDaftarPustaka (mode: persist)`.
+3. `daftar-pustaka-skill` explicitly allows `compileDaftarPustaka (mode: preview|persist)`.
+4. `daftar-pustaka-skill` treats `mode: persist` as the required final compilation path.
+
+Result: **PASS**
+
 ---
 
 ## 5) Residual Risks
 
-1. Language policy is enforced at document level; runtime validator must still be implemented to reject non-English skill content.
-2. Skill quality can still drift if future edits bypass codebase-aware review.
+1. Living outline features are verified in repository lineage commits. **Branch gate SATISFIED** — all 10 living-outline commits are confirmed ancestors of HEAD on `feature/skill-based-paper-workflow` (verified 26 Feb 2026 via `git merge-base --is-ancestor`).
+2. Language policy is enforced at document level; runtime validator must still be implemented to reject non-English skill content.
+3. Skill quality can still drift if future edits bypass codebase-aware review.
 
 ---
 
@@ -134,3 +147,8 @@ The stage skill package is valid for copy-paste implementation:
 2. Stage behavior: aligned with current Makalah AI codebase contracts.
 3. Audit status: pass with no blocking issues.
 
+Living outline verification evidence (repository lineage):
+1. `8e9fe61`, `1594893`, `7fb7f16`, `82efd2c` (outline helper lifecycle).
+2. `34b2098`, `16f4bab`, `16e05e4` (Convex mutation integration and rewind reset).
+3. `bd87920` (hook exposure for `updateOutlineSections`).
+4. `2545d70`, `9655189` (SidebarProgress sub-items and inline edit UI).

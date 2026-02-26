@@ -14,17 +14,20 @@ Finalize title options and choose the strongest final title aligned with approve
 
 ## Input Context
 Read approved summaries from all prior stages and final user positioning.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:
 - google_search (passive mode; only on explicit user request)
 - updateStageData
 - createArtifact
+- compileDaftarPustaka (mode: preview; use for cross-stage bibliography audit without persistence)
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Titles not grounded in approved content
 - Stage jumping
-- Submit without ringkasan
+- compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
+- Submission is forbidden when ringkasan is missing
 
 ## Output Contract
 Required:

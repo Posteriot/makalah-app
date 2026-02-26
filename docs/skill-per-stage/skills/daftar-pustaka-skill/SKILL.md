@@ -14,17 +14,22 @@ Compile a clean and complete reference list from approved citations and verified
 
 ## Input Context
 Read references used in prior stages and source metadata from stageData.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:
 - google_search (passive mode; only on explicit user request)
 - updateStageData
 - createArtifact
+- compileDaftarPustaka (mode: preview for cross-stage audit)
+- compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail? }) for final bibliography compilation
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Placeholder bibliography entries
 - Stage jumping
-- Submit without ringkasan
+- Manual final bibliography compilation without compileDaftarPustaka (mode: persist)
+- compileDaftarPustaka (mode: persist) when ringkasan is missing
+- Submission is forbidden when ringkasan is missing
 
 ## Output Contract
 Required:
@@ -37,7 +42,7 @@ Recommended:
 - duplicatesMerged
 
 ## Guardrails
-Use consistent citation formatting and avoid duplicates.
+Use consistent citation formatting and avoid duplicates. Final compilation must go through compileDaftarPustaka (mode: persist).
 
 ## Done Criteria
-Bibliography is complete and normalized, ringkasan is stored, and user confirms readiness.
+Bibliography is complete and normalized, compileDaftarPustaka (mode: persist) has been executed, ringkasan is stored, and user confirms readiness.

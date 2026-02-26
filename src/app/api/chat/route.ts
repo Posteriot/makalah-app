@@ -16,6 +16,7 @@ import { createPaperTools } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
+import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
 import { type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
     isStageResearchIncomplete,
@@ -34,6 +35,7 @@ import {
     checkContextBudget,
     getContextWindow,
 } from "@/lib/ai/context-budget"
+import { runCompactionChain, type CompactableMessage } from "@/lib/ai/context-compaction"
 import {
     checkQuotaBeforeOperation,
     recordUsageAfterOperation,
@@ -83,6 +85,7 @@ export async function POST(req: Request) {
         // 2. Parse request (AI SDK v5/v6 format)
         const body = await req.json()
         const { messages, conversationId, fileIds } = body
+        const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
         // 3. Get Convex User ID
         const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
@@ -231,15 +234,22 @@ export async function POST(req: Request) {
         const systemPrompt = await getSystemPrompt()
 
         // Task Group 3: Fetch paper mode system prompt if paper session exists
-        const paperModePrompt = await getPaperModeSystemPrompt(
+        const paperModeContext = await getPaperModeSystemPrompt(
             currentConversationId as Id<"conversations">,
-            convexToken
+            convexToken,
+            requestId
         )
+        const paperModePrompt = paperModeContext.prompt
+        const skillResolverFallback = paperModeContext.skillResolverFallback
         const paperSession = paperModePrompt
             ? await fetchQueryWithToken(api.paperSessions.getByConversation, {
                 conversationId: currentConversationId as Id<"conversations">,
             })
             : null
+        const paperStageScope =
+            paperSession && paperSession.currentStage !== "completed"
+                ? (paperSession.currentStage as PaperStageId)
+                : undefined
 
         // Update billing context with paper session info
         if (paperSession) {
@@ -279,24 +289,6 @@ export async function POST(req: Request) {
             ]
             return patterns.some((pattern) => pattern.test(normalized))
         }
-
-        const ACTIVE_SEARCH_STAGES: PaperStageId[] = [
-            "gagasan",
-            "topik",
-            "pendahuluan",
-            "tinjauan_literatur",
-            "metodologi",
-            "diskusi",
-        ]
-        const PASSIVE_SEARCH_STAGES: PaperStageId[] = [
-            "outline",
-            "abstrak",
-            "hasil",
-            "kesimpulan",
-            "daftar_pustaka",
-            "lampiran",
-            "judul",
-        ]
 
         const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
             if (!stage || stage === "completed") return "none"
@@ -411,9 +403,21 @@ export async function POST(req: Request) {
 
         // ════════════════════════════════════════════════════════════════
         // Phase 2 Task 2.1.1: Message Trimming (Paper Mode Only)
+        // Legacy: Superseded by context compaction chain (P1-P4).
+        // TODO: Remove after compaction chain is validated in production.
         // ════════════════════════════════════════════════════════════════
         const MAX_CHAT_HISTORY_PAIRS = 20 // 20 pairs = 40 messages max
         const isPaperMode = !!paperModePrompt
+        const skillTelemetryContext = isPaperMode
+            ? {
+                skillResolverFallback,
+                stageScope: paperStageScope,
+                stageInstructionSource: paperModeContext.stageInstructionSource,
+                activeSkillId: paperModeContext.activeSkillId,
+                activeSkillVersion: paperModeContext.activeSkillVersion,
+                fallbackReason: paperModeContext.fallbackReason,
+            }
+            : {}
 
         let trimmedModelMessages = modelMessages
         if (isPaperMode && modelMessages.length > MAX_CHAT_HISTORY_PAIRS * 2) {
@@ -510,9 +514,42 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             `[Context Budget] ${budget.totalTokens.toLocaleString()} tokens estimated (${usagePercent}% of ${budget.threshold.toLocaleString()} threshold) | ${fullMessagesBase.length} messages | model: ${modelNames.primary.model}, window: ${contextWindow.toLocaleString()}`
         )
 
-        if (budget.shouldPrune) {
+        // ════════════════════════════════════════════════════════════════
+        // Context Compaction Layer — threshold-based priority chain
+        // Runs BEFORE brute prune. Brute prune remains as safety net.
+        // ════════════════════════════════════════════════════════════════
+        let effectiveBudget = budget
+        if (budget.shouldCompact) {
+            const compactionResult = await runCompactionChain(
+                fullMessagesBase as CompactableMessage[],
+                {
+                    contextWindow,
+                    compactionThreshold: budget.compactionThreshold,
+                    isPaperMode,
+                    paperSession: paperSession ? {
+                        currentStage: (paperSession as { currentStage: string }).currentStage,
+                        stageMessageBoundaries: (paperSession as { stageMessageBoundaries?: { stage: string; firstMessageId: string; lastMessageId: string; messageCount: number }[] }).stageMessageBoundaries,
+                        paperMemoryDigest: (paperSession as { paperMemoryDigest?: { stage: string; decision: string; timestamp: number; superseded?: boolean }[] }).paperMemoryDigest,
+                    } : null,
+                    getModel: async () => getGatewayModel(),
+                },
+                (msg) => (msg as { id?: string }).id || undefined,
+            )
+
+            fullMessagesBase.length = 0
+            fullMessagesBase.push(...compactionResult.messages as typeof fullMessagesBase[number][])
+
+            // Re-estimate after compaction — use post-compaction budget for prune decision
+            const postCompactionChars = estimateModelMessageChars(fullMessagesBase)
+            effectiveBudget = checkContextBudget(postCompactionChars, contextWindow)
+            console.info(
+                `[Context Compaction] Post-compaction: ${effectiveBudget.totalTokens.toLocaleString()} tokens (${Math.round((effectiveBudget.totalTokens / effectiveBudget.compactionThreshold) * 100)}% of compaction threshold) | resolved at ${compactionResult.resolvedAtPriority}`
+            )
+        }
+
+        if (effectiveBudget.shouldPrune) {
             console.warn(
-                `[Context Budget] Pruning: ${budget.totalTokens} tokens > ${budget.threshold} threshold. Messages: ${fullMessagesBase.length}`
+                `[Context Budget] Pruning: ${effectiveBudget.totalTokens} tokens > ${effectiveBudget.threshold} threshold. Messages: ${fullMessagesBase.length}`
             )
             // Keep system messages at the front, prune only conversation messages
             const systemMessages = fullMessagesBase.filter(m => m.role === "system")
@@ -525,9 +562,9 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             fullMessagesBase.push(...systemMessages, ...prunedConversation)
         }
 
-        if (budget.shouldWarn && !budget.shouldPrune) {
+        if (effectiveBudget.shouldWarn && !effectiveBudget.shouldPrune) {
             console.info(
-                `[Context Budget] Warning: ${budget.totalTokens} tokens approaching threshold ${budget.threshold}.`
+                `[Context Budget] Warning: ${effectiveBudget.totalTokens} tokens approaching threshold ${effectiveBudget.threshold}.`
             )
         }
 
@@ -1629,6 +1666,7 @@ TIPS PENCARIAN:
                                 latencyMs: Date.now() - telemetryStartTime,
                                 inputTokens: usage?.inputTokens,
                                 outputTokens: usage?.outputTokens,
+                                ...skillTelemetryContext,
                             })
                             // ═════════════════════════════════════════════════
 
@@ -2172,6 +2210,7 @@ TIPS PENCARIAN:
                                         latencyMs: Date.now() - telemetryStartTime,
                                         inputTokens: finishUsage?.inputTokens,
                                         outputTokens: finishUsage?.outputTokens,
+                                        ...skillTelemetryContext,
                                     })
                                     // ═════════════════════════════════════════════
                                 } catch (err) {
@@ -2372,6 +2411,7 @@ TIPS PENCARIAN:
                 errorType: primaryErrorInfo.errorType,
                 errorMessage: primaryErrorInfo.errorMessage,
                 latencyMs: Date.now() - telemetryStartTime,
+                ...skillTelemetryContext,
             })
             // ════════════════════════════════════════════
 
@@ -2475,6 +2515,7 @@ TIPS PENCARIAN:
                                 latencyMs: Date.now() - telemetryStartTime,
                                 inputTokens: usage?.inputTokens,
                                 outputTokens: usage?.outputTokens,
+                                ...skillTelemetryContext,
                             })
                             // ═════════════════════════════════════════════════
                         }
@@ -2916,6 +2957,7 @@ TIPS PENCARIAN:
                                     latencyMs: Date.now() - telemetryStartTime,
                                     inputTokens: finishUsage?.inputTokens,
                                     outputTokens: finishUsage?.outputTokens,
+                                    ...skillTelemetryContext,
                                 })
                                 // ═════════════════════════════════════════════
 

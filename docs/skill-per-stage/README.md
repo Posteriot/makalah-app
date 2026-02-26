@@ -13,10 +13,22 @@ Implementasi runtime terkait skill-driven flow untuk kompilasi referensi sudah b
 2. `preview` bisa dipakai lintas stage untuk audit referensi tanpa persist.
 3. `persist` dibatasi formal hanya di stage `daftar_pustaka`.
 4. Routing chat sudah ditambah compile-intent override agar request compile tidak terkunci mode web-search-only.
+5. Paket skill stage (`docs/skill-per-stage/skills/*/SKILL.md`) sudah diselaraskan:
+   - non-`daftar_pustaka` hanya boleh mengarahkan `compileDaftarPustaka` mode `preview`.
+   - `daftar-pustaka-skill` wajib mengarahkan mode `persist` untuk final compile.
+6. Living Outline Checklist capability sudah tersedia di codebase lineage (auto-check, reset on rewind, inline edit, dan mutation edit outline), dan dokumen skill sudah menyesuaikan kontrak ini.
 
 Dokumen rujukan implementasi:
 1. `docs/skill-per-stage/2026-02-26-implementation-plan-compile-daftar-pustaka-preview-persist.md`
 2. `docs/skill-per-stage/2026-02-26-execution-log-compile-daftar-pustaka.md`
+3. `docs/plans/2026-02-26-living-outline-checklist.md`
+
+Verifikasi codebase (living outline):
+1. `src/lib/paper/outline-utils.ts` (helper: `autoCheckOutlineSections`, `resetAutoCheckedSections`, `validateOutlineEdit`) pada lineage commit `8e9fe61`, `1594893`, `7fb7f16`, `82efd2c`.
+2. `convex/paperSessions.ts` (integrasi `approveStage`, `rewindToStage`, dan mutation `updateOutlineSections`) pada lineage commit `34b2098`, `16f4bab`, `16e05e4`.
+3. `src/lib/hooks/usePaperSession.ts` (expose `updateOutlineSections`) pada lineage commit `bd87920`.
+4. `src/components/chat/sidebar/SidebarProgress.tsx` (outline sub-items + inline edit UI) pada lineage commit `2545d70`, `9655189`.
+5. Gate rollout: **SATISFIED** — semua 10 commit living-outline sudah menjadi ancestor HEAD branch `feature/skill-based-paper-workflow` (verified 26 Feb 2026 via `git merge-base --is-ancestor`).
 
 ---
 

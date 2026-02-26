@@ -1,6 +1,7 @@
 import { fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
 import type { Id } from "../../../convex/_generated/dataModel"
+import type { PaperStageId } from "../../../convex/paperSessions/constants"
 
 type TelemetryParams = {
   token: string
@@ -18,6 +19,12 @@ type TelemetryParams = {
   latencyMs: number
   inputTokens?: number
   outputTokens?: number
+  skillResolverFallback?: boolean
+  stageScope?: PaperStageId
+  stageInstructionSource?: "skill" | "fallback" | "none"
+  activeSkillId?: string
+  activeSkillVersion?: number
+  fallbackReason?: string
 }
 
 /**
