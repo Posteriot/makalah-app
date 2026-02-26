@@ -31,12 +31,6 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "@/components/ui/tooltip"
 
 interface SidebarChatHistoryProps {
   conversations: Array<{
@@ -201,128 +195,110 @@ export function SidebarChatHistory({
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto px-1 pb-2 scrollbar-thin">
-        <TooltipProvider delayDuration={300}>
-          {conversations.map((conv) => {
-            const paperSession = paperSessionMap.get(conv._id)
-            const isEditing = editingId === conv._id
-            const isExceedingMaxLength = isEditing && editValue.length > 50
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
+        {conversations.map((conv) => {
+          const paperSession = paperSessionMap.get(conv._id)
+          const isEditing = editingId === conv._id
+          const isExceedingMaxLength = isEditing && editValue.length > 50
 
-            // Shared classes for both Link and div
-            const itemClasses = cn(
-              "group mx-1 my-0.5 flex w-[calc(100%-0.5rem)] items-center rounded-action border px-2.5 py-2 text-left transition-colors",
-              "border-transparent",
-              currentConversationId === conv._id
-                ? "border-[color:var(--chat-border)] bg-[var(--chat-accent)] shadow-[inset_0_1px_0_var(--chat-border)]"
-                : "hover:bg-[var(--chat-sidebar-accent)]"
-            )
+          // Flat list — no border, no rounded, no shadow. Matches desktop exactly.
+          const isActive = currentConversationId === conv._id
+          const itemClasses = cn(
+            "group flex w-full items-center px-4 py-2 text-left transition-colors duration-150",
+            isActive
+              ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
+              : "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-sidebar-accent-foreground)]"
+          )
 
-            // Content yang sama untuk edit mode dan normal mode
-            const renderContent = () => (
-              <>
-                <div className="flex-1 min-w-0">
-                  <div
-                    className={cn(
-                      "",
-                      isEditing
-                        ? "flex items-center gap-2"
-                        : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
-                    )}
-                  >
-                    {isEditing ? (
-                      <Input
-                        ref={editInputRef}
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={handleEditKeyDown}
-                        onBlur={handleSaveEdit}
-                        disabled={isUpdating}
-                        className={`h-5 text-xs px-1 py-0 font-medium ${
-                          isExceedingMaxLength
-                            ? "border-[color:var(--chat-destructive)] focus-visible:ring-[var(--chat-destructive)]"
-                            : ""
-                        }`}
-                        aria-invalid={isExceedingMaxLength}
-                      />
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span
-                            className="block min-w-0 font-sans font-medium text-xs truncate"
-                          >
-                            {conv.title}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="top"
-                          align="start"
-                          sideOffset={4}
-                          className="max-w-[280px] font-mono text-xs"
-                        >
-                          {conv.title}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {paperSession && !isEditing && (
-                      <PaperSessionBadge
-                        stageNumber={getStageNumber(
-                          paperSession.currentStage as PaperStageId | "completed"
-                        )}
-                        className="justify-self-end shrink-0"
-                      />
-                    )}
-                  </div>
-                  {!isEditing && (
-                    <div className="text-[11px] text-[var(--chat-muted-foreground)] font-mono">
-                      {formatRelativeTime(conv.lastMessageAt)}
-                    </div>
+          const renderContent = () => (
+            <>
+              <div className="flex-1 min-w-0">
+                <div
+                  className={cn(
+                    isEditing
+                      ? "flex items-center gap-2"
+                      : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
+                  )}
+                >
+                  {isEditing ? (
+                    <Input
+                      ref={editInputRef}
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={handleEditKeyDown}
+                      onBlur={handleSaveEdit}
+                      disabled={isUpdating}
+                      className={`h-5 text-xs px-1 py-0 font-medium ${
+                        isExceedingMaxLength
+                          ? "border-[color:var(--chat-destructive)] focus-visible:ring-[var(--chat-destructive)]"
+                          : ""
+                      }`}
+                      aria-invalid={isExceedingMaxLength}
+                    />
+                  ) : (
+                    <span className="block min-w-0 truncate font-sans text-xs font-medium leading-tight text-[var(--chat-sidebar-foreground)]">
+                      {conv.title}
+                    </span>
+                  )}
+                  {paperSession && !isEditing && (
+                    <PaperSessionBadge
+                      stageNumber={getStageNumber(
+                        paperSession.currentStage as PaperStageId | "completed"
+                      )}
+                      className="justify-self-end shrink-0"
+                    />
                   )}
                 </div>
-                {/* Loading indicator saat updating */}
-                {isEditing && isUpdating && (
-                  <RefreshDouble className="h-4 w-4 animate-spin text-[var(--chat-muted-foreground)]" />
+                {!isEditing && (
+                  <div className="mt-0 text-[11px] leading-[1.15] text-[var(--chat-muted-foreground)] font-mono">
+                    {formatRelativeTime(conv.lastMessageAt)}
+                  </div>
                 )}
-              </>
-            )
+              </div>
+              {/* Loading indicator saat updating */}
+              {isEditing && isUpdating && (
+                <RefreshDouble className="h-4 w-4 animate-spin text-[var(--chat-muted-foreground)]" />
+              )}
+            </>
+          )
 
-            return (
-              <ContextMenu key={conv._id}>
-                <ContextMenuTrigger asChild>
-                  {isEditing ? (
-                    // Saat editing: gunakan div, BUKAN Link
-                    <div className={itemClasses}>{renderContent()}</div>
-                  ) : (
-                    // Saat tidak editing: gunakan Link untuk navigasi
-                    <Link
-                      href={`/chat/${conv._id}`}
-                      onClick={() => onCloseMobile?.()}
-                      className={itemClasses}
-                      aria-label={`Select conversation: ${conv.title}`}
-                    >
-                      {renderContent()}
-                    </Link>
-                  )}
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                  <ContextMenuItem
-                    onClick={() => handleStartEdit(conv._id, conv.title)}
+          return (
+            <ContextMenu key={conv._id}>
+              <ContextMenuTrigger asChild>
+                {isEditing ? (
+                  // Saat editing: gunakan div, BUKAN Link
+                  <div className={itemClasses}>{renderContent()}</div>
+                ) : (
+                  // Saat tidak editing: gunakan Link untuk navigasi
+                  <Link
+                    href={`/chat/${conv._id}`}
+                    onClick={() => onCloseMobile?.()}
+                    className={itemClasses}
+                    aria-label={`Select conversation: ${conv.title}`}
                   >
-                    <EditPencil className="h-4 w-4 mr-2" />
-                    Edit Judul
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem
-                    onClick={() => handleDeleteClick(conv._id, conv.title)}
-                    className="text-[var(--chat-destructive)] focus:text-[var(--chat-destructive)]"
-                  >
-                    <Trash className="h-4 w-4 mr-2" />
-                    Hapus
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
-            )
-          })}
-        </TooltipProvider>
+                    {renderContent()}
+                  </Link>
+                )}
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem
+                  onClick={() => handleStartEdit(conv._id, conv.title)}
+                >
+                  <EditPencil className="h-4 w-4 mr-2" />
+                  Edit Judul
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onClick={() => handleDeleteClick(conv._id, conv.title)}
+                  className="text-[var(--chat-destructive)] focus:text-[var(--chat-destructive)]"
+                >
+                  <Trash className="h-4 w-4 mr-2" />
+                  Hapus
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          )
+        })}
       </div>
 
       {/* Delete Confirmation Dialog */}

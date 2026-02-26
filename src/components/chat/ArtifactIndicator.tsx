@@ -28,7 +28,7 @@ export function ArtifactIndicator({
       type="button"
       onClick={() => onSelect(artifactId)}
       className={cn(
-        "group w-full cursor-pointer rounded-action border px-3 py-2.5 text-left transition-colors duration-150",
+        "group w-full cursor-pointer rounded-lg border px-3 py-2.5 text-left transition-colors duration-150",
         "border-[color:var(--chat-border)] bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-border)]",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
       )}
@@ -37,43 +37,35 @@ export function ArtifactIndicator({
     >
       <div className="flex items-start gap-3">
         <span
-          className={cn(
-            "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-action border",
-            isUpdated
-              ? "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
-              : "border-[color:var(--chat-info)] bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
-          )}
+          className="flex h-5 w-5 shrink-0 items-center justify-center text-[var(--chat-muted-foreground)]"
           aria-hidden="true"
         >
-          {isUpdated ? <EditPencil className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+          {isUpdated ? <EditPencil className="h-4 w-4" /> : <CheckCircle className="h-5 w-5" />}
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-badge border border-[color:var(--chat-primary)] bg-[var(--chat-primary)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-primary-foreground)]">
-              Hasil Artifak
+            <span className="rounded-md border border-[color:var(--chat-muted-foreground)] bg-[var(--chat-card)] px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]">
+              Artifak
             </span>
-            <span
-              className={cn(
-                "rounded-badge border px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
-                isUpdated
-                  ? "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
-                  : "border-[color:var(--chat-success)] bg-[var(--chat-success)] text-[var(--chat-success-foreground)]"
-              )}
-            >
-              {isUpdated ? "Revisi" : "Baru"}
-            </span>
+            {isUpdated && (
+              <span
+                className={cn(
+                  "rounded-md border px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
+                  "border-[color:var(--chat-border)] bg-[var(--chat-card)] text-[var(--chat-muted-foreground)]"
+                )}
+              >
+                Revisi
+              </span>
+            )}
             {typeof version === "number" && Number.isFinite(version) && (
-              <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
+              <span className="rounded-md border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
                 v{version}
               </span>
             )}
           </div>
 
           <p className="truncate text-sm font-semibold text-[var(--chat-foreground)]">{title}</p>
-          <p className="mt-0.5 text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-            Klik untuk buka di panel artifak
-          </p>
         </div>
 
         <span className="mt-1 inline-flex shrink-0 items-center gap-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)] transition-colors group-hover:text-[var(--chat-foreground)]">

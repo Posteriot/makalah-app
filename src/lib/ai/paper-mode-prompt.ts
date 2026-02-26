@@ -147,6 +147,8 @@ ATURAN UMUM:
 - ⚠️ WAJIB gunakan google_search untuk SEMUA referensi dan data faktual - TIDAK BOLEH di-hallucinate
 - Jika memakai google_search, lakukan di turn terpisah: turn ini hanya untuk pencarian + rangkum temuan. Jangan panggil updateStageData/createArtifact/submitStageForValidation di turn yang sama.
 - Simpan progres dengan updateStageData() setelah diskusi matang
+- Untuk audit referensi lintas stage, Anda BOLEH memanggil compileDaftarPustaka({ mode: "preview" }) di stage mana pun. Mode ini tidak menyimpan ke DB.
+- Finalisasi daftar pustaka WAJIB pakai compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail? }) dan hanya valid saat stage aktif = daftar_pustaka.
 - Buat artifact dengan createArtifact() untuk output yang sudah disepakati
 - Untuk artifact, WAJIB pakai referensi yang sudah tersimpan di stageData (lihat konteks di bawah)
 - DILARANG membuat referensi baru tanpa websearch terlebih dahulu
@@ -166,6 +168,7 @@ ATURAN UMUM:
 ${stageInstructions}
 
 KONTEKS TAHAP SELESAI & CHECKLIST:
+Catatan kompresi konteks aktif: refs maks 5, sitasi maks 5, ringkasan detail hanya 3 tahap selesai terakhir.
 ${formattedData}
 ${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
 ---

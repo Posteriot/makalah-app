@@ -70,7 +70,7 @@ export function ManifestoSectionCMS({ content }: ManifestoSectionCMSProps) {
   return (
     <section
       ref={sectionRef}
-      className="relative isolate min-h-[100svh] overflow-hidden bg-background"
+      className="relative isolate box-border h-[100svh] overflow-hidden bg-background md:h-auto md:min-h-[100svh]"
       style={{ paddingTop: "var(--header-h)" }}
       id="manifesto"
     >
@@ -78,11 +78,11 @@ export function ManifestoSectionCMS({ content }: ManifestoSectionCMSProps) {
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-75" />}
       {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-40" />}
 
-      <div className="relative z-[1] mx-auto flex min-h-[100svh] w-full max-w-[var(--container-max-width)] items-center px-4 py-10 md:px-6 md:py-20">
+      <div className="relative z-[1] mx-auto flex h-full w-full max-w-[var(--container-max-width)] items-center px-4 py-6 md:min-h-[100svh] md:px-6 md:py-20">
         <div className="grid grid-cols-1 gap-comfort lg:grid-cols-16 lg:gap-16">
           <div className="flex flex-col items-start justify-center text-left lg:col-span-7">
             <SectionBadge>{badgeText}</SectionBadge>
-            <h1 className="text-interface mt-6 text-5xl font-medium leading-[0.82] tracking-[-0.06em] text-foreground md:text-5xl lg:text-7xl">
+            <h1 className="text-interface mt-4 text-4xl font-medium leading-[0.82] tracking-[-0.06em] text-foreground md:mt-6 md:text-5xl lg:text-7xl">
               {headingLines.map((line) => (
                 <span key={line} className="block">{line}</span>
               ))}
@@ -91,7 +91,7 @@ export function ManifestoSectionCMS({ content }: ManifestoSectionCMSProps) {
               {subheading}
             </p>
 
-            <div className="mt-6 w-full lg:hidden">
+            <div className="mt-4 w-full lg:hidden">
               <ManifestoMobileAccordion
                 heading={mobileHeading}
                 paragraphs={mobileParagraphs}

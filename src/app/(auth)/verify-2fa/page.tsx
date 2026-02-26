@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
-import { Lock, RefreshDouble, Key } from "iconoir-react"
+import { Lock, RefreshDouble } from "iconoir-react"
 import { signIn } from "@/lib/auth-client"
 import {
   getPending2FA,
@@ -46,7 +46,6 @@ function Verify2FAPage() {
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState("")
   const [resendCooldown, setResendCooldown] = useState(0)
-  const [mode, setMode] = useState<"otp" | "backup">("otp")
   const hasSentInitialOtp = useRef(false)
   const boxRefs = useRef<(HTMLInputElement | null)[]>(Array(OTP_LENGTH).fill(null))
 
@@ -269,37 +268,6 @@ function Verify2FAPage() {
     submitOtp(code.trim())
   }
 
-  async function handleBackupCode(e: React.FormEvent) {
-    e.preventDefault()
-    setError("")
-
-    const pending = getPending2FA()
-    if (!pending) {
-      router.replace(signInHref)
-      return
-    }
-
-    const trimmedCode = code.trim()
-    if (!trimmedCode) {
-      setError("Masukkan backup code.")
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      // Use BetterAuth's built-in backup code verification via twoFactor.verifyBackupCode
-      // This requires a sign-in first to get trustDevice token, but since cross-domain
-      // is broken for this flow, we use the bypass approach with backup code as well.
-      // For now, backup codes go through the same OTP verify endpoint pattern.
-      // TODO: Implement backup code verification if needed
-      setError("Backup code belum didukung. Gunakan kode OTP dari email.")
-      setIsLoading(false)
-    } catch {
-      toast.error("Terjadi kesalahan.")
-      setIsLoading(false)
-    }
-  }
-
   function handleCancel() {
     clearPending2FA()
     router.replace(signInHref)
@@ -313,132 +281,54 @@ function Verify2FAPage() {
       onBackClick={handleCancel}
     >
       <div className="w-full space-y-5">
-        {mode === "otp" ? (
-          <form onSubmit={handleVerifyOtp} className="space-y-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="h-12 w-12 rounded-action bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                <Lock className="h-6 w-6 text-foreground" />
-              </div>
-              {isSending ? (
-                <p className="text-xs font-mono text-muted-foreground text-center">
-                  Mengirim kode verifikasi...
-                </p>
-              ) : null}
-            </div>
-
-            <div className="w-full max-w-[22rem] mx-auto space-y-5">
-              <div>
-                <label className="sr-only">Kode OTP</label>
-                <div className="grid grid-cols-6 gap-2.5" onPaste={handleBoxPaste}>
-                  {digits.map((digit, i) => (
-                    <input
-                      key={i}
-                      ref={(el) => { boxRefs.current[i] = el }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleBoxChange(i, e.target.value)}
-                      onKeyDown={(e) => handleBoxKeyDown(i, e)}
-                      onFocus={(e) => e.target.select()}
-                      autoFocus={i === 0}
-                      autoComplete={i === 0 ? "one-time-code" : "off"}
-                      className="h-12 w-full rounded-action border border-slate-300 dark:border-slate-600 bg-background dark:bg-slate-900 font-mono text-xl text-center text-foreground dark:text-slate-100 transition-all focus:outline-none focus:ring-2 focus:ring-sky-400/40 focus:border-sky-400 dark:focus:ring-sky-500/40 dark:focus:border-sky-500"
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {error && (
-                <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
-                  <p>{error}</p>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading || code.length !== 6}
-                className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 mt-2 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span
-                  className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
-                  aria-hidden="true"
-                />
-                <span className="relative z-10 inline-flex items-center gap-2">
-                  {isLoading ? (
-                    <RefreshDouble className="h-4 w-4 animate-spin" />
-                  ) : null}
-                  VERIFIKASI
-                </span>
-              </button>
-
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={handleResendOtp}
-                  disabled={resendCooldown > 0 || isSending}
-                  className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {resendCooldown > 0
-                    ? `Kirim ulang (${resendCooldown}s)`
-                    : "Kirim ulang kode"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetOtpBoxes()
-                    setError("")
-                    setMode("backup")
-                  }}
-                  className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Gunakan backup code
-                </button>
-              </div>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleBackupCode} className="space-y-4">
-            <div className="flex flex-col items-center gap-3 mb-2">
-              <div className="h-12 w-12 rounded-action bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                <Key className="h-6 w-6 text-foreground" />
-              </div>
-              <p className="text-xs font-mono text-muted-foreground text-center">
-                Masukkan salah satu backup code yang kamu simpan.
+        <form onSubmit={handleVerifyOtp} className="space-y-6">
+          <div className="flex flex-col items-center gap-4">
+            <span className="auth-icon-badge">
+              <Lock className="h-6 w-6" />
+            </span>
+            {isSending ? (
+              <p className="auth-link text-center">
+                Mengirim kode verifikasi...
               </p>
-            </div>
+            ) : null}
+          </div>
 
+          <div className="w-full max-w-[22rem] mx-auto space-y-5">
             <div>
-              <label htmlFor="backup-code" className="sr-only">
-                Backup Code
-              </label>
-              <input
-                id="backup-code"
-                type="text"
-                value={code}
-                onChange={(e) => {
-                  setCode(e.target.value)
-                  if (error) setError("")
-                }}
-                placeholder="Backup code"
-                autoFocus
-                className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 font-mono text-sm text-foreground dark:text-slate-100 placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
-              />
+              <label className="sr-only">Kode OTP</label>
+              <div className="grid grid-cols-6 gap-2.5" onPaste={handleBoxPaste}>
+                {digits.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => { boxRefs.current[i] = el }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleBoxChange(i, e.target.value)}
+                    onKeyDown={(e) => handleBoxKeyDown(i, e)}
+                    onFocus={(e) => e.target.select()}
+                    autoFocus={i === 0}
+                    autoComplete={i === 0 ? "one-time-code" : "off"}
+                    className="auth-otp-input"
+                  />
+                ))}
+              </div>
             </div>
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/60 px-3 py-2 text-xs text-slate-100 font-mono">
+              <div className="auth-feedback-error" role="alert">
                 <p>{error}</p>
               </div>
             )}
 
             <button
               type="submit"
-              disabled={isLoading || !code.trim()}
-              className="group relative overflow-hidden inline-flex w-full items-center justify-center gap-2 rounded-action h-10 px-4 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading || code.length !== 6}
+              className="group auth-cta relative mt-2 inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
             >
               <span
-                className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+                className="auth-btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
                 aria-hidden="true"
               />
               <span className="relative z-10 inline-flex items-center gap-2">
@@ -449,24 +339,25 @@ function Verify2FAPage() {
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                resetOtpBoxes()
-                setError("")
-                setMode("otp")
-              }}
-              className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors w-full text-center"
-            >
-              Kembali ke kode OTP
-            </button>
-          </form>
-        )}
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendCooldown > 0 || isSending}
+                className="auth-link disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {resendCooldown > 0
+                  ? `Kirim ulang (${resendCooldown}s)`
+                  : "Kirim ulang kode"}
+              </button>
+            </div>
+          </div>
+        </form>
 
         <button
           type="button"
           onClick={handleCancel}
-          className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+          className="auth-link w-full text-center"
         >
           Batalkan dan kembali ke halaman masuk
         </button>

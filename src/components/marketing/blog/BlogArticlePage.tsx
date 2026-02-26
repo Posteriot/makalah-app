@@ -219,7 +219,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
   if (post === undefined) {
     return (
       <div className="bg-background text-foreground">
-        <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
+        <section className="relative isolate overflow-hidden bg-background">
           {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(var(--header-h)+16px)] md:px-8 md:pb-12 md:pt-[calc(var(--header-h)+20px)]">
             <div className="h-16 w-48 animate-pulse rounded-action border-hairline bg-card/40 dark:bg-slate-800/45" />
@@ -235,7 +235,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
   if (post === null) {
     return (
       <div className="bg-background text-foreground">
-        <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
+        <section className="relative isolate overflow-hidden bg-background">
           {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
           <div className="relative z-10 mx-auto w-full max-w-5xl px-4 pb-10 pt-[calc(var(--header-h)+20px)] md:px-8 md:pt-[calc(var(--header-h)+24px)]">
             <div className="rounded-shell border-hairline bg-card/90 p-8 text-center backdrop-blur-[1px] dark:bg-slate-800/90 md:p-12">
@@ -260,7 +260,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
   if (!post.isPublished) {
     return (
       <div className="bg-background text-foreground">
-        <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
+        <section className="relative isolate overflow-hidden bg-background">
           {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
           <div className="relative z-10 mx-auto w-full max-w-5xl px-4 pb-10 pt-[calc(var(--header-h)+20px)] md:px-8 md:pt-[calc(var(--header-h)+24px)]">
             <div className="rounded-shell border-hairline bg-card/90 p-8 text-center backdrop-blur-[1px] dark:bg-slate-800/90 md:p-12">
@@ -284,7 +284,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
 
   return (
     <div className="bg-background text-foreground">
-      <section className="relative isolate overflow-hidden border-b border-hairline bg-[color:var(--section-bg-alt)]">
+      <section className="relative isolate overflow-hidden bg-background">
         {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-10 pt-[calc(var(--header-h)+16px)] md:px-8 md:pb-14 md:pt-[calc(var(--header-h)+20px)]">

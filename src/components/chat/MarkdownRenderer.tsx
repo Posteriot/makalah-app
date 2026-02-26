@@ -2,9 +2,8 @@
 
 import { Fragment, type ReactNode } from "react"
 import dynamic from "next/dynamic"
-import { toast } from "sonner"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { InlineCitationChip } from "./InlineCitationChip"
+import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
 
 const MermaidRenderer = dynamic(
   () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
@@ -15,7 +14,7 @@ interface MarkdownRendererProps {
   markdown: string
   className?: string
   sources?: CitationSource[]
-  /** "chat" = bare URLs render as clickable links (default); "artifact" = BareUrlCopyBadge */
+  /** "chat" and "artifact" both render URLs as clickable links */
   context?: "chat" | "artifact"
 }
 
@@ -23,6 +22,10 @@ type CitationSource = {
   url: string
   title: string
   publishedAt?: number | null
+}
+
+type RenderInlineOptions = {
+  disableBareUrlAutolink?: boolean
 }
 
 type Block =
@@ -399,47 +402,54 @@ function sanitizeHref(href: string | undefined): string | undefined {
 
 const BARE_URL_REGEX = /\bhttps?:\/\/[^\s<>()\[\]{}"']+/g
 const linkClassName = "underline underline-offset-2 text-[var(--chat-info)] dark:text-[oklch(0.746_0.16_232.661)] hover:opacity-80 [overflow-wrap:anywhere] break-all"
+const normalizeStageLabel = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ")
+const STAGE_LABELS = new Set(
+  STAGE_ORDER.map((stage) => normalizeStageLabel(getStageLabel(stage as PaperStageId))),
+)
+const isStageLabel = (value: string) => STAGE_LABELS.has(normalizeStageLabel(value))
 
-function BareUrlCopyBadge({ url }: { url: string }) {
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success("URL referensi disalin")
-    } catch {
-      toast.error("Gagal menyalin URL referensi")
-    }
+function formatHostname(value: string): string {
+  try {
+    const url = new URL(value)
+    return url.hostname.replace(/^www\./i, "")
+  } catch {
+    return value.replace(/^www\./i, "")
   }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="mx-0.5 inline-flex items-center rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-2 py-0.5 font-mono text-xs font-normal text-[var(--chat-secondary-foreground)] transition-colors hover:bg-[var(--chat-accent)]"
-        >
-          URL Referensi
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top">
-        <p>Klik untuk salin URL</p>
-      </TooltipContent>
-    </Tooltip>
-  )
 }
 
-function renderInline(text: string, keyPrefix: string, sources?: CitationSource[], context?: "chat" | "artifact"): ReactNode[] {
+function shouldRenderAsInlineCode(_value: string): boolean {
+  // All inline backticks render as plain text — no code box styling.
+  // Paper-writing context makes monospace/bordered code tokens look out of place.
+  return false
+}
+
+function renderInline(
+  text: string,
+  keyPrefix: string,
+  sources?: CitationSource[],
+  context?: "chat" | "artifact",
+  options?: RenderInlineOptions,
+): ReactNode[] {
   const nodes: ReactNode[] = []
   let cursor = 0
   let partIndex = 0
 
+  const pushPlainText = (value: string) => {
+    if (!value) return
+    nodes.push(<Fragment key={`${keyPrefix}-t-${partIndex++}`}>{value}</Fragment>)
+  }
+
   const pushText = (value: string) => {
     if (!value) return
+    if (options?.disableBareUrlAutolink) {
+      pushPlainText(value)
+      return
+    }
     BARE_URL_REGEX.lastIndex = 0
     const matches = Array.from(value.matchAll(BARE_URL_REGEX))
 
     if (matches.length === 0) {
-      nodes.push(<Fragment key={`${keyPrefix}-t-${partIndex++}`}>{value}</Fragment>)
+      pushPlainText(value)
       return
     }
 
@@ -467,45 +477,26 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       const textEnd = hasBracketWrapper ? leftBoundary - 1 : startIndex
 
       if (textEnd > localCursor) {
-        nodes.push(
-          <Fragment key={`${keyPrefix}-t-${partIndex++}`}>
-            {value.slice(localCursor, textEnd)}
-          </Fragment>,
-        )
+        pushPlainText(value.slice(localCursor, textEnd))
       }
 
-      if (context === "artifact") {
-        // Artifact: render as copy badge
-        nodes.push(
-          <BareUrlCopyBadge
-            key={`${keyPrefix}-url-${partIndex++}`}
-            url={rawUrl}
-          />,
-        )
-      } else {
-        // Chat (default): render as clickable link
-        nodes.push(
-          <a
-            key={`${keyPrefix}-url-${partIndex++}`}
-            href={rawUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={linkClassName}
-          >
-            {rawUrl}
-          </a>,
-        )
-      }
+      nodes.push(
+        <a
+          key={`${keyPrefix}-url-${partIndex++}`}
+          href={rawUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={linkClassName}
+        >
+          {rawUrl}
+        </a>,
+      )
 
       localCursor = hasBracketWrapper ? rightBoundary + 1 : endIndex
     }
 
     if (localCursor < value.length) {
-      nodes.push(
-        <Fragment key={`${keyPrefix}-t-${partIndex++}`}>
-          {value.slice(localCursor)}
-        </Fragment>,
-      )
+      pushPlainText(value.slice(localCursor))
     }
   }
 
@@ -539,7 +530,18 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
         break
       }
       const inner = text.slice(cursor + 1, end)
-      if (context !== "artifact" && /^https?:\/\//.test(inner)) {
+      const trimmedInner = inner.trim()
+      if (!trimmedInner) {
+        cursor = end + 1
+        continue
+      }
+      if (isStageLabel(trimmedInner)) {
+        nodes.push(
+          <Fragment key={`${keyPrefix}-stagecode-${partIndex++}`}>
+            {trimmedInner}
+          </Fragment>,
+        )
+      } else if (context !== "artifact" && /^https?:\/\//.test(inner)) {
         nodes.push(
           <a
             key={`${keyPrefix}-codeurl-${partIndex++}`}
@@ -550,6 +552,12 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
           >
             {inner}
           </a>,
+        )
+      } else if (!shouldRenderAsInlineCode(inner)) {
+        nodes.push(
+          <Fragment key={`${keyPrefix}-codeplain-${partIndex++}`}>
+            {trimmedInner}
+          </Fragment>,
         )
       } else {
         nodes.push(
@@ -589,12 +597,31 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
           }
 
           if (selectedSources.length > 0) {
-            nodes.push(
-              <InlineCitationChip
-                key={`${keyPrefix}-cite-${partIndex++}`}
-                sources={selectedSources}
-              />,
-            )
+            if (context === "artifact") {
+              const primarySource = selectedSources[0]
+              const host = formatHostname(primarySource.url)
+              const label = selectedSources.length > 1
+                ? `${host} +${selectedSources.length - 1}`
+                : host
+              nodes.push(
+                <a
+                  key={`${keyPrefix}-cite-host-${partIndex++}`}
+                  href={primarySource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1 inline-block align-baseline whitespace-nowrap font-mono text-[0.92em] text-[var(--chat-info)] dark:text-[oklch(0.746_0.16_232.661)] hover:underline"
+                >
+                  ({label})
+                </a>,
+              )
+            } else {
+              nodes.push(
+                <InlineCitationChip
+                  key={`${keyPrefix}-cite-${partIndex++}`}
+                  sources={selectedSources}
+                />,
+              )
+            }
           }
           cursor += full.length
           continue
@@ -607,26 +634,17 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
         const bracketedBareUrl = sanitizeHref(bracketBody)
         const nextChar = text[closeBracket + 1]
         if (bracketedBareUrl && nextChar !== "(") {
-          if (context === "artifact") {
-            nodes.push(
-              <BareUrlCopyBadge
-                key={`${keyPrefix}-url-${partIndex++}`}
-                url={bracketedBareUrl}
-              />,
-            )
-          } else {
-            nodes.push(
-              <a
-                key={`${keyPrefix}-url-${partIndex++}`}
-                href={bracketedBareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={linkClassName}
-              >
-                {bracketedBareUrl}
-              </a>,
-            )
-          }
+          nodes.push(
+            <a
+              key={`${keyPrefix}-url-${partIndex++}`}
+              href={bracketedBareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClassName}
+            >
+              {bracketedBareUrl}
+            </a>,
+          )
           cursor = closeBracket + 1
           continue
         }
@@ -642,7 +660,13 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
       const label = text.slice(cursor + 1, closeBracket)
       const hrefRaw = text.slice(openParen + 1, closeParen)
       const href = sanitizeHref(hrefRaw)
-      const children = renderInline(label, `${keyPrefix}-link-${partIndex}`, sources, context)
+      const children = renderInline(
+        label,
+        `${keyPrefix}-link-${partIndex}`,
+        sources,
+        context,
+        { disableBareUrlAutolink: true },
+      )
 
       if (href) {
         nodes.push(
@@ -651,7 +675,7 @@ function renderInline(text: string, keyPrefix: string, sources?: CitationSource[
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:opacity-80 [overflow-wrap:anywhere] break-all"
+            className={linkClassName}
           >
             {children}
           </a>,
@@ -915,7 +939,7 @@ function renderBlocks(
 export function MarkdownRenderer({ markdown, className, sources, context }: MarkdownRendererProps) {
   const blocks = groupOutlineLists(parseBlocks(markdown))
   const hasCitationMarkers = /\[\d+(?:\s*,\s*\d+)*\]/.test(markdown)
-  const shouldAppendFallbackChip = !!sources && sources.length > 0 && !hasCitationMarkers
+  const shouldAppendFallbackChip = context !== "artifact" && !!sources && sources.length > 0 && !hasCitationMarkers
   return (
     <div className={`[overflow-wrap:anywhere] break-words ${className ?? ""}`}>
       {renderBlocks(blocks, "md", sources, { appendFallbackChip: shouldAppendFallbackChip }, context)}

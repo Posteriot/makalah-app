@@ -180,7 +180,7 @@ export function AgentsSectionCMS({ content }: AgentsSectionCMSProps) {
 
   return (
     <section
-      className="relative flex flex-col overflow-hidden bg-background md:h-[100svh] md:justify-center"
+      className="relative flex min-h-[100svh] flex-col justify-center overflow-hidden bg-background"
       id="agents"
     >
       {content.showGridPattern !== false && <GridPattern className="z-0" />}

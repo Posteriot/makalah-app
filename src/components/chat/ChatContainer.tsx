@@ -10,6 +10,9 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { useCleanupEmptyConversations } from "@/lib/hooks/useCleanupEmptyConversations"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useArtifactTabs } from "@/lib/hooks/useArtifactTabs"
+import { MobileArtifactList } from "./mobile/MobileArtifactList"
+import { MobileArtifactViewer } from "./mobile/MobileArtifactViewer"
+import { MobileRefrasaViewer } from "./mobile/MobileRefrasaViewer"
 
 interface ChatContainerProps {
   conversationId: string | null
@@ -41,6 +44,9 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   useCleanupEmptyConversations(conversationId === null ? user?._id : null)
 
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [showArtifactList, setShowArtifactList] = useState(false)
+  const [mobileArtifactId, setMobileArtifactId] = useState<Id<"artifacts"> | null>(null)
+  const [mobileRefrasaId, setMobileRefrasaId] = useState<Id<"artifacts"> | null>(null)
   const isValidConvexId = (value: string | null): value is string =>
     typeof value === "string" && /^[a-z0-9]{32}$/.test(value)
   const safeConversationId = isValidConvexId(conversationId)
@@ -81,15 +87,18 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     }
   }, [artifacts, artifactTabs, updateArtifactTabTitle])
 
-  // Handler when artifact is created or selected — opens a tab
+  // Handler when artifact is created or selected — opens a tab (desktop) or overlay (mobile)
   const handleArtifactSelect = (artifactId: Id<"artifacts">) => {
-    // Look up artifact data from the query to get real title and type
-    const artifact = artifacts?.find((a) => a._id === artifactId)
-    openArtifactTab({
-      id: artifactId,
-      title: artifact?.title ?? "Loading...",
-      type: artifact?.type ?? "section",
-    })
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setMobileArtifactId(artifactId)
+    } else {
+      const artifact = artifacts?.find((a) => a._id === artifactId)
+      openArtifactTab({
+        id: artifactId,
+        title: artifact?.title ?? "Loading...",
+        type: artifact?.type ?? "section",
+      })
+    }
   }
 
   // Toggle artifact panel — close all tabs when open, open most recent when closed
@@ -107,35 +116,70 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   }
 
   return (
-    <ChatLayout
-      conversationId={conversationId}
-      isArtifactPanelOpen={artifactPanelOpen}
-      onArtifactPanelToggle={toggleArtifactPanel}
-      onArtifactSelect={handleArtifactSelect}
-      activeArtifactId={activeArtifactTabId}
-      artifactCount={artifactCount}
-      mobileSidebarOpen={isMobileOpen}
-      onMobileSidebarOpenChange={setIsMobileOpen}
-      artifactPanel={
-        <ArtifactPanel
-          key={conversationId ?? "no-conversation"}
-          conversationId={safeConversationId}
-          isOpen={artifactPanelOpen}
-          onToggle={toggleArtifactPanel}
-          openTabs={artifactTabs}
-          activeTabId={activeArtifactTabId}
-          onTabChange={setActiveArtifactTab}
-          onTabClose={closeArtifactTab}
-          onOpenTab={openArtifactTab}
-        />
-      }
-    >
-      <ChatWindow
-        key={conversationId}
+    <>
+      <ChatLayout
         conversationId={conversationId}
-        onMobileMenuClick={() => setIsMobileOpen(true)}
+        isArtifactPanelOpen={artifactPanelOpen}
+        onArtifactPanelToggle={toggleArtifactPanel}
         onArtifactSelect={handleArtifactSelect}
-      />
-    </ChatLayout>
+        activeArtifactId={activeArtifactTabId}
+        artifactCount={artifactCount}
+        mobileSidebarOpen={isMobileOpen}
+        onMobileSidebarOpenChange={setIsMobileOpen}
+        artifactPanel={
+          <ArtifactPanel
+            key={conversationId ?? "no-conversation"}
+            conversationId={safeConversationId}
+            isOpen={artifactPanelOpen}
+            onToggle={toggleArtifactPanel}
+            openTabs={artifactTabs}
+            activeTabId={activeArtifactTabId}
+            onTabChange={setActiveArtifactTab}
+            onTabClose={closeArtifactTab}
+            onOpenTab={openArtifactTab}
+          />
+        }
+      >
+        <ChatWindow
+          key={conversationId}
+          conversationId={conversationId}
+          onMobileMenuClick={() => setIsMobileOpen(true)}
+          onArtifactSelect={handleArtifactSelect}
+          onShowArtifactList={() => setShowArtifactList(true)}
+          artifacts={artifacts}
+        />
+      </ChatLayout>
+
+      {/* Mobile overlays */}
+      {showArtifactList && (
+        <div className="md:hidden">
+          <MobileArtifactList
+            artifacts={artifacts ?? []}
+            onSelect={(id) => {
+              setShowArtifactList(false)
+              setMobileArtifactId(id)
+            }}
+            onBack={() => setShowArtifactList(false)}
+          />
+        </div>
+      )}
+
+      {mobileArtifactId && (
+        <MobileArtifactViewer
+          artifactId={mobileArtifactId}
+          onClose={() => setMobileArtifactId(null)}
+          onRefrasa={(artifactId) => setMobileRefrasaId(artifactId)}
+          onOpenArtifact={(artifactId) => setMobileArtifactId(artifactId)}
+        />
+      )}
+
+      {mobileRefrasaId && user?._id && (
+        <MobileRefrasaViewer
+          artifactId={mobileRefrasaId}
+          userId={user._id}
+          onClose={() => setMobileRefrasaId(null)}
+        />
+      )}
+    </>
   )
 }

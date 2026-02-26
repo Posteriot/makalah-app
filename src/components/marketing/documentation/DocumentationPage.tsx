@@ -184,7 +184,7 @@ function DocumentationContent() {
   }, [orderedSections, currentIndex, activeSection])
 
   return (
-    <div className="relative isolate overflow-hidden bg-[color:var(--section-bg-alt)] pt-[var(--header-h)]">
+    <div className="relative isolate overflow-hidden bg-background pt-[var(--header-h)]">
       {/* Background patterns — conditional via CMS when page-settings published */}
       {pageSettings != null && pageSettings.showGridPattern !== false && <GridPattern className="z-0" />}
       {pageSettings != null && pageSettings.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />}

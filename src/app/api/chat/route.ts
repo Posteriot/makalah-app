@@ -24,6 +24,7 @@ import {
     isExplicitSaveSubmitRequest,
     isExplicitMoreSearchRequest,
     isUserConfirmation,
+    isCompileDaftarPustakaIntent,
     getLastAssistantMessage,
     PAPER_TOOLS_ONLY_NOTE,
     getResearchIncompleteNote,
@@ -41,6 +42,7 @@ import {
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { enforceArtifactSourcesPolicy } from "@/lib/ai/artifact-sources-policy"
+import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 
 export async function POST(req: Request) {
     try {
@@ -472,11 +474,14 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             getOpenRouterModel,
             getGoogleSearchTool,
             getProviderSettings,
+            getReasoningSettings,
+            buildReasoningProviderOptions,
             getModelNames,
             getWebSearchConfig,
         } = await import("@/lib/ai/streaming")
         const { streamText } = await import("ai")
         const providerSettings = await getProviderSettings()
+        const reasoningSettings = await getReasoningSettings()
         const modelNames = await getModelNames()
         const samplingOptions = {
             temperature: providerSettings.temperature,
@@ -802,10 +807,159 @@ JSON schema:
         }
 
         // Helper for saving assistant message with dynamic model from config
+        const MAX_REASONING_TRACE_STEPS = 8
+        const MAX_REASONING_TEXT_LENGTH = 240
+        const ALLOWED_REASONING_STEP_KEYS = new Set([
+            "intent-analysis",
+            "paper-context-check",
+            "search-decision",
+            "source-validation",
+            "response-compose",
+            "tool-action",
+        ])
+        const ALLOWED_REASONING_STATUSES = new Set([
+            "pending",
+            "running",
+            "done",
+            "skipped",
+            "error",
+        ])
+        const FORBIDDEN_REASONING_PATTERNS = [
+            /system\s+prompt/i,
+            /developer\s+prompt/i,
+            /chain[-\s]?of[-\s]?thought/i,
+            /\bcot\b/i,
+            /api[\s_-]?key/i,
+            /bearer\s+[a-z0-9._-]+/i,
+            /\btoken\b/i,
+            /\bsecret\b/i,
+            /\bpassword\b/i,
+            /\bcredential\b/i,
+            /internal\s+policy/i,
+            /tool\s+schema/i,
+        ]
+
+        const truncateReasoningText = (value: string) => value.slice(0, MAX_REASONING_TEXT_LENGTH)
+        const collapseSpaces = (value: string) => value.replace(/\s+/g, " ").trim()
+
+        const containsForbiddenReasoningText = (value: string) =>
+            FORBIDDEN_REASONING_PATTERNS.some((pattern) => pattern.test(value))
+
+        const sanitizeReasoningText = (value: string, fallback: string) => {
+            const withoutCodeFence = value
+                .replace(/```[\s\S]*?```/g, " ")
+                .replace(/`([^`]+)`/g, "$1")
+            const cleaned = collapseSpaces(withoutCodeFence)
+            if (!cleaned) return fallback
+            if (containsForbiddenReasoningText(cleaned)) return fallback
+            return truncateReasoningText(cleaned)
+        }
+
+        const normalizeLegacyReasoningNote = (note: string) => {
+            const normalized = collapseSpaces(note).toLowerCase()
+            if (!normalized) return note
+
+            if (normalized === "web-search-enabled") return "Pencarian web diaktifkan untuk memperkuat jawaban."
+            if (normalized === "web-search-disabled") return "Pencarian web tidak diperlukan untuk turn ini."
+            if (normalized === "no-web-search") return "Langkah validasi sumber dilewati karena tanpa pencarian web."
+            if (normalized === "source-detected") return "Sumber terdeteksi dan sedang diverifikasi."
+            if (normalized === "sources-validated") return "Sumber yang dipakai sudah tervalidasi."
+            if (normalized === "no-sources-returned") return "Tidak ada sumber valid yang bisa dipakai."
+            if (normalized === "tool-running") return "Tool sedang dijalankan untuk membantu proses."
+            if (normalized === "tool-done" || normalized === "tool-completed") return "Tool selesai dijalankan."
+            if (normalized === "no-tool-detected-yet" || normalized === "no-tool-call") return "Tidak ada tool tambahan yang diperlukan."
+            if (normalized === "stream-error") return "Terjadi kendala pada aliran respons."
+            if (normalized === "stopped-by-user-or-stream-abort") return "Proses dihentikan sebelum jawaban selesai."
+
+            return note
+        }
+
+        const sanitizeReasoningMode = (mode: unknown): "normal" | "paper" | "websearch" | undefined => {
+            if (mode === "normal" || mode === "paper" || mode === "websearch") return mode
+            return undefined
+        }
+
+        const sanitizeReasoningStatus = (status: unknown): "pending" | "running" | "done" | "skipped" | "error" => {
+            if (typeof status === "string" && ALLOWED_REASONING_STATUSES.has(status)) {
+                return status as "pending" | "running" | "done" | "skipped" | "error"
+            }
+            return "pending"
+        }
+
+        const sanitizeReasoningTraceForPersistence = (
+            trace?: PersistedCuratedTraceSnapshot
+        ): PersistedCuratedTraceSnapshot | undefined => {
+            if (!trace || (trace.traceMode !== "curated" && trace.traceMode !== "transparent")) return undefined
+            const rawSteps = Array.isArray(trace.steps) ? trace.steps.slice(0, MAX_REASONING_TRACE_STEPS) : []
+            const steps = rawSteps
+                .map((step) => {
+                    if (!step || typeof step !== "object") return null
+                    if (typeof step.stepKey !== "string" || !ALLOWED_REASONING_STEP_KEYS.has(step.stepKey)) return null
+
+                    const sanitizedMeta = step.meta
+                        ? {
+                            ...(sanitizeReasoningMode(step.meta.mode)
+                                ? { mode: sanitizeReasoningMode(step.meta.mode) }
+                                : {}),
+                            ...(step.meta.stage
+                                ? { stage: sanitizeReasoningText(step.meta.stage, "Tahap tidak tersedia.") }
+                                : {}),
+                            ...(step.meta.note
+                                ? {
+                                    note: sanitizeReasoningText(
+                                        normalizeLegacyReasoningNote(step.meta.note),
+                                        "Detail aktivitas disederhanakan demi keamanan."
+                                    ),
+                                }
+                                : {}),
+                            ...(typeof step.meta.sourceCount === "number" && Number.isFinite(step.meta.sourceCount)
+                                ? { sourceCount: Math.max(0, Math.floor(step.meta.sourceCount)) }
+                                : {}),
+                            ...(step.meta.toolName
+                                ? {
+                                    toolName: sanitizeReasoningText(
+                                        step.meta.toolName.replace(/[^a-zA-Z0-9:_-]/g, " "),
+                                        "tool"
+                                    ),
+                                }
+                                : {}),
+                        }
+                        : undefined
+
+                    return {
+                        stepKey: step.stepKey,
+                        label: sanitizeReasoningText(step.label, "Langkah reasoning"),
+                        status: sanitizeReasoningStatus(step.status),
+                        ...(typeof step.progress === "number" && Number.isFinite(step.progress)
+                            ? { progress: Math.max(0, Math.min(100, step.progress)) }
+                            : {}),
+                        ts: Number.isFinite(step.ts) ? step.ts : Date.now(),
+                        ...(typeof step.thought === "string" && step.thought.trim()
+                            ? { thought: (() => { const t = step.thought.trim(); return sanitizeReasoningText(t.length > 600 ? t.slice(0, 597) + "..." : t, "Detail reasoning."); })() }
+                            : {}),
+                        ...(sanitizedMeta && Object.keys(sanitizedMeta).length > 0 ? { meta: sanitizedMeta } : {}),
+                    }
+                })
+                .filter((step): step is NonNullable<typeof step> => Boolean(step))
+            if (steps.length === 0) return undefined
+
+            return {
+                version: trace.version === 2 ? 2 : 1,
+                headline: sanitizeReasoningText(
+                    trace.headline || "Agen lagi memproses jawaban...",
+                    "Agen lagi memproses jawaban."
+                ),
+                traceMode: trace.traceMode === "transparent" ? "transparent" : "curated",
+                completedAt: Number.isFinite(trace.completedAt) ? trace.completedAt : Date.now(),
+                steps,
+            }
+        }
+
         const saveAssistantMessage = async (
             content: string,
             sources?: { url: string; title: string; publishedAt?: number | null }[],
-            usedModel?: string // Model name from config (primary or fallback)
+            usedModel?: string, // Model name from config (primary or fallback)
+            reasoningTrace?: PersistedCuratedTraceSnapshot
         ) => {
             const normalizedSources = sources
                 ?.map((source) => ({
@@ -825,6 +979,7 @@ JSON schema:
                         model: usedModel ?? modelNames.primary.model, // From database config
                     },
                     sources: normalizedSources && normalizedSources.length > 0 ? normalizedSources : undefined,
+                    reasoningTrace: sanitizeReasoningTraceForPersistence(reasoningTrace),
                 }),
                 "messages.createMessage(assistant)"
             )
@@ -1115,6 +1270,62 @@ Aturan:
         let enableWebSearch = false
 
         const telemetryStartTime = Date.now()
+        const reasoningTraceEnabled = reasoningSettings.traceMode === "curated" || reasoningSettings.traceMode === "transparent"
+        const isTransparentReasoning = reasoningSettings.traceMode === "transparent"
+        const getTraceModeLabel = (isPaper: boolean, webSearch: boolean): "normal" | "paper" | "websearch" => {
+            if (webSearch) return "websearch"
+            if (isPaper) return "paper"
+            return "normal"
+        }
+
+        const getToolNameFromChunk = (chunk: unknown): string | undefined => {
+            if (!chunk || typeof chunk !== "object" || !("type" in chunk)) return undefined
+            const maybeChunk = chunk as { type?: unknown; toolName?: unknown }
+            const type = typeof maybeChunk.type === "string" ? maybeChunk.type : ""
+            if (type === "tool-input-start" || type === "tool-call" || type === "tool-result") {
+                return typeof maybeChunk.toolName === "string" ? maybeChunk.toolName : undefined
+            }
+            return undefined
+        }
+
+        // Helper: accumulate reasoning deltas and emit progressive thought events
+        function createReasoningAccumulator(opts: {
+            traceId: string
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            writer: { write: (data: any) => void }
+            ensureStart: () => void
+            enabled: boolean
+        }) {
+            let buffer = ""
+            let chunkCount = 0
+            const { sanitizeReasoningDelta } = require("@/lib/ai/reasoning-sanitizer") as typeof import("@/lib/ai/reasoning-sanitizer")
+
+            return {
+                onReasoningDelta: (delta: string) => {
+                    if (!opts.enabled || !delta) return
+                    buffer += delta
+                    chunkCount += 1
+
+                    if (chunkCount % 3 === 0 || delta.length > 100) {
+                        const sanitized = sanitizeReasoningDelta(delta)
+                        if (sanitized.trim()) {
+                            opts.ensureStart()
+                            opts.writer.write({
+                                type: "data-reasoning-thought",
+                                id: `${opts.traceId}-thought-${chunkCount}`,
+                                data: {
+                                    traceId: opts.traceId,
+                                    delta: sanitized,
+                                    ts: Date.now(),
+                                },
+                            })
+                        }
+                    }
+                },
+                getFullReasoning: () => buffer,
+                hasReasoning: () => buffer.length > 0,
+            }
+        }
 
         try {
             const model = await getGatewayModel()
@@ -1134,6 +1345,7 @@ Aturan:
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
             const forcePaperToolsMode = !!paperWorkflowReminder && !paperModePrompt
+            const compileDaftarPustakaIntent = isCompileDaftarPustakaIntent(lastUserContent)
 
             // ════════════════════════════════════════════════════════════════
             // ACTIVE STAGE OVERRIDE: Deterministic search decision
@@ -1146,7 +1358,13 @@ Aturan:
             let activeStageSearchReason = ""
             let activeStageSearchNote = ""
 
-            if (stagePolicy === "active" && paperSession && !forcePaperToolsMode) {
+            if (compileDaftarPustakaIntent && !!paperModePrompt) {
+                enableWebSearch = false
+                activeStageSearchReason = "compile_daftar_pustaka_intent"
+                activeStageSearchNote = getFunctionToolsModeNote("Compile daftar pustaka")
+
+                console.log("[SearchDecision] Compile intent override: enableWebSearch=false (function tools mode)")
+            } else if (stagePolicy === "active" && paperSession && !forcePaperToolsMode) {
                 // Layer 1: Task-based - check if research is incomplete
                 const { incomplete, requirement } = isStageResearchIncomplete(
                     paperSession.stageData as Record<string, unknown> | undefined,
@@ -1258,6 +1476,12 @@ Aturan:
                 && paperSession?.stageStatus === "drafting"
                 && hasStageRingkasan(paperSession)
 
+            const primaryReasoningProviderOptions = buildReasoningProviderOptions({
+                settings: reasoningSettings,
+                target: "primary",
+                profile: enableWebSearch || shouldForceSubmitValidation ? "tool-heavy" : "narrative",
+            })
+
             const webSearchBehaviorSystemNote = `⚠️ MODE PENCARIAN WEB AKTIF - BACA INI DENGAN TELITI!
 
 CONSTRAINT TEKNIS PENTING:
@@ -1304,11 +1528,20 @@ TIPS PENCARIAN:
             // Web search mode: limit to 1 step to prevent AI from trying to call
             // function tools (which don't exist in web search mode) after search
             const maxToolSteps = enableWebSearch ? 1 : 5
+            let primaryReasoningTraceController: ReturnType<typeof createCuratedTraceController> | null = null
+            let primaryReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
+            let primaryReasoningSourceCount = 0
+
+            const capturePrimaryReasoningSnapshot = () => {
+                if (!primaryReasoningTraceController?.enabled) return
+                primaryReasoningTraceSnapshot = primaryReasoningTraceController.getPersistedSnapshot()
+            }
 
             const result = streamText({
                 model,
                 messages: fullMessagesGateway,
                 tools: gatewayTools,
+                ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
                 toolChoice: shouldForceSubmitValidation
                     ? { type: "tool", toolName: "submitStageForValidation" }
                     : undefined,
@@ -1347,7 +1580,24 @@ TIPS PENCARIAN:
                                 })
                             }
 
-                            await saveAssistantMessage(text, sources, modelNames.primary.model)
+                            const persistedReasoningTrace = (() => {
+                                if (!reasoningTraceEnabled) return undefined
+                                if (primaryReasoningTraceSnapshot) return primaryReasoningTraceSnapshot
+                                if (!primaryReasoningTraceController?.enabled) return undefined
+                                primaryReasoningTraceController.finalize({
+                                    outcome: "done",
+                                    sourceCount: primaryReasoningSourceCount,
+                                })
+                                capturePrimaryReasoningSnapshot()
+                                return primaryReasoningTraceSnapshot
+                            })()
+
+                            await saveAssistantMessage(
+                                text,
+                                sources,
+                                modelNames.primary.model,
+                                persistedReasoningTrace
+                            )
 
                             // ═══ BILLING: Record token usage ═══
                             if (usage) {
@@ -1406,11 +1656,21 @@ TIPS PENCARIAN:
 	                const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
 	                const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
 	                const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
+                    const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
+                    const reasoningTrace = createCuratedTraceController({
+                        enabled: reasoningTraceEnabled,
+                        traceId,
+                        mode: getTraceModeLabel(!!paperModePrompt, true),
+                        stage: currentStage && currentStage !== "completed" ? currentStage : undefined,
+                        webSearchEnabled: true,
+                    })
+                    primaryReasoningTraceController = reasoningTrace
 
 	                const stream = createUIMessageStream({
 	                    execute: async ({ writer }) => {
 	                        let started = false
 	                        let hasAnySource = false
+                        let sourceCount = 0
                         let searchStatusClosed = false
                         let streamedText = ""
                         let lastProviderMetadata: unknown = null
@@ -1419,6 +1679,16 @@ TIPS PENCARIAN:
                             if (started) return
                             started = true
                             writer.write({ type: "start", messageId })
+                        }
+
+                        const emitTrace = (events: ReturnType<typeof reasoningTrace.markToolRunning>) => {
+                            if (!reasoningTrace.enabled) return
+                            capturePrimaryReasoningSnapshot()
+                            if (events.length === 0) return
+                            ensureStart()
+                            for (const event of events) {
+                                writer.write(event)
+                            }
                         }
 
                         const ensureSearchStatusShown = () => {
@@ -1445,17 +1715,46 @@ TIPS PENCARIAN:
                             })
                         }
 
+                        const reasoningAccumulator = createReasoningAccumulator({
+                            traceId,
+                            writer,
+                            ensureStart,
+                            enabled: isTransparentReasoning,
+                        })
+
                         // Optimistis: tampilkan indikator "Mencari..." sejak awal stream (sebelum token ada).
                         ensureSearchStatusShown()
+                        emitTrace(reasoningTrace.initialEvents)
 
                         for await (const chunk of result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendSources: true,
+                            sendReasoning: isTransparentReasoning,
                         })) {
+                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
+                                if (chunk.type === "reasoning-delta") {
+                                    reasoningAccumulator.onReasoningDelta(
+                                        typeof (chunk as { delta?: unknown }).delta === "string"
+                                            ? (chunk as { delta?: unknown }).delta as string
+                                            : ""
+                                    )
+                                }
+                                continue
+                            }
+
                             if (chunk.type === "source-url") {
                                 hasAnySource = true
+                                sourceCount += 1
+                                primaryReasoningSourceCount = sourceCount
+                                emitTrace(reasoningTrace.markSourceDetected())
                             }
+
+                            if (chunk.type === "tool-input-start") {
+                                const toolName = getToolNameFromChunk(chunk)
+                                emitTrace(reasoningTrace.markToolRunning(toolName))
+                            }
+
 
                             if (
                                 "providerMetadata" in chunk &&
@@ -1472,6 +1771,7 @@ TIPS PENCARIAN:
 
                             if (chunk.type === "finish") {
                                 closeSearchStatus(hasAnySource ? "done" : "off")
+                                let didFinalizeForPersist = false
 
                                 type SourceWithChunk = {
                                     url: string
@@ -1783,7 +2083,28 @@ TIPS PENCARIAN:
                                         })
                                     }
 
-                                    await saveAssistantMessage(textWithInlineCitations, persistedSources, modelNames.primary.model)
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
+
+                                    const doneTraceEvents = reasoningTrace.finalize({
+                                        outcome: "done",
+                                        sourceCount,
+                                    })
+                                    emitTrace(doneTraceEvents)
+                                    didFinalizeForPersist = true
+                                    const persistedReasoningTrace = reasoningTrace.enabled
+                                        ? reasoningTrace.getPersistedSnapshot()
+                                        : undefined
+
+                                    await saveAssistantMessage(
+                                        textWithInlineCitations,
+                                        persistedSources,
+                                        modelNames.primary.model,
+                                        persistedReasoningTrace
+                                    )
 
                                     // ──── Auto-persist search references to paper stageData ────
                                     if (paperSession && persistedSources && persistedSources.length > 0) {
@@ -1857,22 +2178,51 @@ TIPS PENCARIAN:
                                     console.error("[Chat API] Failed to compute inline citations:", err)
                                 }
 
+                                if (!didFinalizeForPersist) {
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
+                                    emitTrace(reasoningTrace.finalize({
+                                        outcome: "done",
+                                        sourceCount,
+                                    }))
+                                }
                                 writer.write(chunk)
                                 break
                             }
 
                             if (chunk.type === "error") {
                                 closeSearchStatus("error")
+                                emitTrace(reasoningTrace.finalize({
+                                    outcome: "error",
+                                    sourceCount,
+                                    errorNote: "primary-websearch-stream-error",
+                                }))
                                 writer.write(chunk)
                                 break
                             }
 
                             if (chunk.type === "abort") {
                                 closeSearchStatus(hasAnySource ? "done" : "off")
+                                const stoppedTraceEvents = reasoningTrace.finalize({
+                                    outcome: "stopped",
+                                    sourceCount,
+                                })
+                                emitTrace(stoppedTraceEvents)
+                                const persistedReasoningTrace = reasoningTrace.enabled
+                                    ? reasoningTrace.getPersistedSnapshot()
+                                    : undefined
                                 // Save partial message on abort to prevent data loss
                                 if (streamedText.trim()) {
                                     try {
-                                        await saveAssistantMessage(streamedText, undefined, modelNames.primary.model)
+                                        await saveAssistantMessage(
+                                            streamedText,
+                                            undefined,
+                                            modelNames.primary.model,
+                                            persistedReasoningTrace
+                                        )
                                         console.log("[Chat API] Saved partial message on stream abort")
                                     } catch (err) {
                                         console.error("[Chat API] Failed to save partial message on abort:", err)
@@ -1892,7 +2242,117 @@ TIPS PENCARIAN:
                 return createUIMessageStreamResponse({ stream })
             }
 
-            return result.toUIMessageStreamResponse()
+            {
+                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
+                const reasoningTrace = createCuratedTraceController({
+                    enabled: reasoningTraceEnabled,
+                    traceId,
+                    mode: getTraceModeLabel(!!paperModePrompt, false),
+                    stage: currentStage && currentStage !== "completed" ? currentStage : undefined,
+                    webSearchEnabled: false,
+                })
+                primaryReasoningTraceController = reasoningTrace
+
+                const stream = createUIMessageStream({
+                    execute: async ({ writer }) => {
+                        let started = false
+                        let sourceCount = 0
+
+                        const ensureStart = () => {
+                            if (started) return
+                            started = true
+                            writer.write({ type: "start", messageId })
+                        }
+
+                        const emitTrace = (events: ReturnType<typeof reasoningTrace.markToolRunning>) => {
+                            if (!reasoningTrace.enabled) return
+                            capturePrimaryReasoningSnapshot()
+                            if (events.length === 0) return
+                            ensureStart()
+                            for (const event of events) {
+                                writer.write(event)
+                            }
+                        }
+
+                        const reasoningAccumulator = createReasoningAccumulator({
+                            traceId,
+                            writer,
+                            ensureStart,
+                            enabled: isTransparentReasoning,
+                        })
+
+                        emitTrace(reasoningTrace.initialEvents)
+
+                        for await (const chunk of result.toUIMessageStream({
+                            sendStart: false,
+                            generateMessageId: () => messageId,
+                            sendReasoning: isTransparentReasoning,
+                        })) {
+                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
+                                if (chunk.type === "reasoning-delta") {
+                                    reasoningAccumulator.onReasoningDelta(
+                                        typeof (chunk as { delta?: unknown }).delta === "string"
+                                            ? (chunk as { delta?: unknown }).delta as string
+                                            : ""
+                                    )
+                                }
+                                continue
+                            }
+
+                            if (chunk.type === "source-url") {
+                                sourceCount += 1
+                                primaryReasoningSourceCount = sourceCount
+                                emitTrace(reasoningTrace.markSourceDetected())
+                            }
+
+                            if (chunk.type === "tool-input-start") {
+                                const toolName = getToolNameFromChunk(chunk)
+                                emitTrace(reasoningTrace.markToolRunning(toolName))
+                            }
+
+
+                            if (chunk.type === "finish") {
+                                if (reasoningAccumulator.hasReasoning()) {
+                                    emitTrace(reasoningTrace.populateFromReasoning(
+                                        reasoningAccumulator.getFullReasoning()
+                                    ))
+                                }
+                                emitTrace(reasoningTrace.finalize({
+                                    outcome: "done",
+                                    sourceCount,
+                                }))
+                                writer.write(chunk)
+                                break
+                            }
+
+                            if (chunk.type === "error") {
+                                emitTrace(reasoningTrace.finalize({
+                                    outcome: "error",
+                                    sourceCount,
+                                    errorNote: "primary-stream-error",
+                                }))
+                                writer.write(chunk)
+                                break
+                            }
+
+                            if (chunk.type === "abort") {
+                                emitTrace(reasoningTrace.finalize({
+                                    outcome: "stopped",
+                                    sourceCount,
+                                }))
+                                writer.write(chunk)
+                                break
+                            }
+
+                            ensureStart()
+                            writer.write(chunk)
+                        }
+                    },
+                })
+
+                return createUIMessageStreamResponse({ stream })
+            }
         } catch (error) {
             console.error("Gateway stream failed, trying fallback:", error)
 
@@ -1930,18 +2390,50 @@ TIPS PENCARIAN:
                 && webSearchConfig.fallbackEnabled
                 && modelNames.fallback.provider === "openrouter"
 
+            const fallbackReasoningProviderOptions = buildReasoningProviderOptions({
+                settings: reasoningSettings,
+                target: "fallback",
+                profile: fallbackEnableWebSearch ? "tool-heavy" : "narrative",
+            })
+
             // Task 2.6: Helper to run fallback WITHOUT web search (for error recovery)
             const runFallbackWithoutSearch = async () => {
+                let fallbackReasoningTraceController: ReturnType<typeof createCuratedTraceController> | null = null
+                let fallbackReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
+                let fallbackReasoningSourceCount = 0
+                const captureFallbackReasoningSnapshot = () => {
+                    if (!fallbackReasoningTraceController?.enabled) return
+                    fallbackReasoningTraceSnapshot = fallbackReasoningTraceController.getPersistedSnapshot()
+                }
+
                 const fallbackModel = await getOpenRouterModel({ enableWebSearch: false })
                 const result = streamText({
                     model: fallbackModel,
                     messages: fullMessagesBase,
                     tools,
+                    ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     stopWhen: stepCountIs(5),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
                         if (text) {
-                            await saveAssistantMessage(text, undefined, modelNames.fallback.model)
+                            const persistedReasoningTrace = (() => {
+                                if (!reasoningTraceEnabled) return undefined
+                                if (fallbackReasoningTraceSnapshot) return fallbackReasoningTraceSnapshot
+                                if (!fallbackReasoningTraceController?.enabled) return undefined
+                                fallbackReasoningTraceController.finalize({
+                                    outcome: "done",
+                                    sourceCount: fallbackReasoningSourceCount,
+                                })
+                                captureFallbackReasoningSnapshot()
+                                return fallbackReasoningTraceSnapshot
+                            })()
+
+                            await saveAssistantMessage(
+                                text,
+                                undefined,
+                                modelNames.fallback.model,
+                                persistedReasoningTrace
+                            )
                             const minPairsForFinalTitle = Number.parseInt(
                                 process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                                 10
@@ -1988,7 +2480,118 @@ TIPS PENCARIAN:
                         }
                     },
                 })
-                return result.toUIMessageStreamResponse()
+                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
+                const reasoningTrace = createCuratedTraceController({
+                    enabled: reasoningTraceEnabled,
+                    traceId,
+                    mode: getTraceModeLabel(!!paperModePrompt, false),
+                    stage: paperSession?.currentStage && paperSession.currentStage !== "completed"
+                        ? paperSession.currentStage
+                        : undefined,
+                    webSearchEnabled: false,
+                })
+                fallbackReasoningTraceController = reasoningTrace
+
+                const stream = createUIMessageStream({
+                    execute: async ({ writer }) => {
+                        let started = false
+                        let sourceCount = 0
+
+                        const ensureStart = () => {
+                            if (started) return
+                            started = true
+                            writer.write({ type: "start", messageId })
+                        }
+
+                        const emitTrace = (events: ReturnType<typeof reasoningTrace.markToolRunning>) => {
+                            if (!reasoningTrace.enabled) return
+                            captureFallbackReasoningSnapshot()
+                            if (events.length === 0) return
+                            ensureStart()
+                            for (const event of events) {
+                                writer.write(event)
+                            }
+                        }
+
+                        const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
+                        const reasoningAccumulator = createReasoningAccumulator({
+                            traceId,
+                            writer,
+                            ensureStart,
+                            enabled: fallbackTransparent,
+                        })
+
+                        emitTrace(reasoningTrace.initialEvents)
+
+                        for await (const chunk of result.toUIMessageStream({
+                            sendStart: false,
+                            generateMessageId: () => messageId,
+                            sendReasoning: fallbackTransparent,
+                        })) {
+                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
+                                if (chunk.type === "reasoning-delta") {
+                                    reasoningAccumulator.onReasoningDelta(
+                                        typeof (chunk as { delta?: unknown }).delta === "string"
+                                            ? (chunk as { delta?: unknown }).delta as string
+                                            : ""
+                                    )
+                                }
+                                continue
+                            }
+
+                            if (chunk.type === "source-url") {
+                                sourceCount += 1
+                                fallbackReasoningSourceCount = sourceCount
+                                emitTrace(reasoningTrace.markSourceDetected())
+                            }
+
+                            if (chunk.type === "tool-input-start") {
+                                const toolName = getToolNameFromChunk(chunk)
+                                emitTrace(reasoningTrace.markToolRunning(toolName))
+                            }
+
+
+                            if (chunk.type === "finish") {
+                                if (reasoningAccumulator.hasReasoning()) {
+                                    emitTrace(reasoningTrace.populateFromReasoning(
+                                        reasoningAccumulator.getFullReasoning()
+                                    ))
+                                }
+                                emitTrace(reasoningTrace.finalize({
+                                    outcome: "done",
+                                    sourceCount,
+                                }))
+                                writer.write(chunk)
+                                break
+                            }
+
+                            if (chunk.type === "error") {
+                                emitTrace(reasoningTrace.finalize({
+                                    outcome: "error",
+                                    sourceCount,
+                                    errorNote: "fallback-stream-error",
+                                }))
+                                writer.write(chunk)
+                                break
+                            }
+
+                            if (chunk.type === "abort") {
+                                emitTrace(reasoningTrace.finalize({
+                                    outcome: "stopped",
+                                    sourceCount,
+                                }))
+                                writer.write(chunk)
+                                break
+                            }
+
+                            ensureStart()
+                            writer.write(chunk)
+                        }
+                    },
+                })
+
+                return createUIMessageStreamResponse({ stream })
             }
 
             // Task 2.2: Non-web-search fallback (unchanged behavior)
@@ -2005,10 +2608,21 @@ TIPS PENCARIAN:
                 const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
                 const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
                 const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
+                const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
+                const reasoningTrace = createCuratedTraceController({
+                    enabled: reasoningTraceEnabled,
+                    traceId,
+                    mode: getTraceModeLabel(!!paperModePrompt, true),
+                    stage: paperSession?.currentStage && paperSession.currentStage !== "completed"
+                        ? paperSession.currentStage
+                        : undefined,
+                    webSearchEnabled: true,
+                })
 
                 const stream = createUIMessageStream({
                     execute: async ({ writer }) => {
                         let started = false
+                        let sourceCount = 0
                         let searchStatusClosed = false
                         let streamedText = ""
                         let lastProviderMetadata: unknown = null
@@ -2017,6 +2631,14 @@ TIPS PENCARIAN:
                             if (started) return
                             started = true
                             writer.write({ type: "start", messageId })
+                        }
+
+                        const emitTrace = (events: ReturnType<typeof reasoningTrace.markToolRunning>) => {
+                            if (!reasoningTrace.enabled || events.length === 0) return
+                            ensureStart()
+                            for (const event of events) {
+                                writer.write(event)
+                            }
                         }
 
                         const closeSearchStatus = (finalStatus: "done" | "off" | "error") => {
@@ -2030,6 +2652,14 @@ TIPS PENCARIAN:
                             })
                         }
 
+                        const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
+                        const reasoningAccumulator = createReasoningAccumulator({
+                            traceId,
+                            writer,
+                            ensureStart,
+                            enabled: fallbackTransparent,
+                        })
+
                         // Show searching indicator immediately
                         ensureStart()
                         writer.write({
@@ -2037,19 +2667,44 @@ TIPS PENCARIAN:
                             id: searchStatusId,
                             data: { status: "searching" },
                         })
+                        emitTrace(reasoningTrace.initialEvents)
 
                         // Stream from OpenRouter with :online
                         const result = streamText({
                             model: fallbackModel,
                             messages: fullMessagesBase,
                             // Note: :online handles search internally, no tools needed
+                            ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                             ...samplingOptions,
                         })
 
                         for await (const chunk of result.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
+                            sendReasoning: fallbackTransparent,
                         })) {
+                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
+                                if (chunk.type === "reasoning-delta") {
+                                    reasoningAccumulator.onReasoningDelta(
+                                        typeof (chunk as { delta?: unknown }).delta === "string"
+                                            ? (chunk as { delta?: unknown }).delta as string
+                                            : ""
+                                    )
+                                }
+                                continue
+                            }
+
+                            if (chunk.type === "source-url") {
+                                sourceCount += 1
+                                emitTrace(reasoningTrace.markSourceDetected())
+                            }
+
+                            if (chunk.type === "tool-input-start") {
+                                const toolName = getToolNameFromChunk(chunk)
+                                emitTrace(reasoningTrace.markToolRunning(toolName))
+                            }
+
+
                             // Capture provider metadata from chunks
                             if (
                                 "providerMetadata" in chunk &&
@@ -2065,6 +2720,8 @@ TIPS PENCARIAN:
                             }
 
                             if (chunk.type === "finish") {
+                                let persistedReasoningTrace: PersistedCuratedTraceSnapshot | undefined
+                                let didFinalizeForPersist = false
                                 // Task 2.3: Extract OpenRouter annotations from response
                                 const providerMetadataFromResult = await (async () => {
                                     try {
@@ -2091,6 +2748,7 @@ TIPS PENCARIAN:
                                 }
 
                                 const hasAnyCitations = normalizedCitations.length > 0
+                                sourceCount = Math.max(sourceCount, normalizedCitations.length)
                                 closeSearchStatus(hasAnyCitations ? "done" : "off")
 
                                 // Task 2.4: Insert inline citation markers
@@ -2144,11 +2802,28 @@ TIPS PENCARIAN:
                                         data: { sources: persistedSources },
                                     })
 
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
+
+                                    const doneTraceEvents = reasoningTrace.finalize({
+                                        outcome: "done",
+                                        sourceCount,
+                                    })
+                                    emitTrace(doneTraceEvents)
+                                    didFinalizeForPersist = true
+                                    persistedReasoningTrace = reasoningTrace.enabled
+                                        ? reasoningTrace.getPersistedSnapshot()
+                                        : undefined
+
                                     // Task 2.5: Save to database with fallback metadata
                                     await saveAssistantMessage(
                                         textWithCitations,
                                         persistedSources,
-                                        `${modelNames.fallback.model}:online`
+                                        `${modelNames.fallback.model}:online`,
+                                        persistedReasoningTrace
                                     )
 
                                     // ──── Auto-persist search references to paper stageData ────
@@ -2171,11 +2846,28 @@ TIPS PENCARIAN:
                                     }
                                     // ───────────────────────────────────────────────────────────
                                 } else {
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
+
+                                    const doneTraceEvents = reasoningTrace.finalize({
+                                        outcome: "done",
+                                        sourceCount,
+                                    })
+                                    emitTrace(doneTraceEvents)
+                                    didFinalizeForPersist = true
+                                    persistedReasoningTrace = reasoningTrace.enabled
+                                        ? reasoningTrace.getPersistedSnapshot()
+                                        : undefined
+
                                     // No citations - save without sources
                                     await saveAssistantMessage(
                                         textWithCitations,
                                         undefined,
-                                        `${modelNames.fallback.model}:online`
+                                        `${modelNames.fallback.model}:online`,
+                                        persistedReasoningTrace
                                     )
                                 }
 
@@ -2227,18 +2919,38 @@ TIPS PENCARIAN:
                                 })
                                 // ═════════════════════════════════════════════
 
+                                if (!didFinalizeForPersist) {
+                                    if (reasoningAccumulator.hasReasoning()) {
+                                        emitTrace(reasoningTrace.populateFromReasoning(
+                                            reasoningAccumulator.getFullReasoning()
+                                        ))
+                                    }
+                                    emitTrace(reasoningTrace.finalize({
+                                        outcome: "done",
+                                        sourceCount,
+                                    }))
+                                }
                                 writer.write(chunk)
                                 break
                             }
 
                             if (chunk.type === "error") {
                                 closeSearchStatus("error")
+                                emitTrace(reasoningTrace.finalize({
+                                    outcome: "error",
+                                    sourceCount,
+                                    errorNote: "fallback-websearch-stream-error",
+                                }))
                                 writer.write(chunk)
                                 break
                             }
 
                             if (chunk.type === "abort") {
                                 closeSearchStatus("off")
+                                emitTrace(reasoningTrace.finalize({
+                                    outcome: "stopped",
+                                    sourceCount,
+                                }))
                                 writer.write(chunk)
                                 break
                             }

@@ -59,8 +59,8 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
     return (
         <div
             className={cn(
-                // Container - centered card style like mockup
-                "max-w-[80%] mx-auto my-4",
+                // Container - full width on mobile, centered card on desktop
+                "mx-4 my-4 md:mx-auto md:max-w-[80%]",
                 "bg-[var(--chat-card)] border border-[color:var(--chat-border)] rounded-lg",
                 "shadow-none",
                 "animate-in fade-in slide-in-from-bottom-4 duration-500"
@@ -80,8 +80,8 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
             <div
                 className={cn(
                     "p-4",
-                    // Switch to column layout in revision mode
-                    showRevisionForm ? "flex flex-col gap-3" : "flex items-center justify-between gap-4"
+                    // Always column on mobile; row on desktop (unless revision mode)
+                    showRevisionForm ? "flex flex-col gap-3" : "flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4"
                 )}
             >
                 {/* Header Section */}
@@ -110,14 +110,14 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
 
                 {/* Action Buttons - Inline mode */}
                 {!showRevisionForm && (
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex gap-2 md:flex-shrink-0">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setShowRevisionForm(true)}
                             disabled={isSubmitting || isLoading}
                             className={cn(
-                                "gap-2 h-9 px-4 rounded-action",
+                                "gap-2 h-9 px-4 rounded-action flex-1 md:flex-initial",
                                 "border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
                                 "hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
                             )}
@@ -130,13 +130,14 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             onClick={handleApprove}
                             disabled={isSubmitting || isLoading}
                             className={cn(
-                                "gap-2 h-9 px-4 rounded-action",
+                                "gap-2 h-9 px-4 rounded-action flex-1 md:flex-initial",
                                 "bg-[var(--chat-success)] hover:brightness-110",
                                 "text-[var(--chat-success-foreground)] border-none"
                             )}
                         >
                             <Check className="h-3.5 w-3.5" />
-                            <span>Setujui & Lanjutkan</span>
+                            <span className="hidden md:inline">Setujui & Lanjutkan</span>
+                            <span className="md:hidden">Setujui</span>
                         </Button>
                     </div>
                 )}

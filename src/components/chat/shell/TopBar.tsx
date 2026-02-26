@@ -94,27 +94,22 @@ export function TopBar({
         </div>
 
         {/* Right: Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-1">
           {/* Theme Toggle */}
           {!isLoading && user && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={toggleTheme}
-                  className={cn(
-                    "flex items-center justify-center",
-                    "w-8 h-8 rounded-action",
-                    "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
-                    "transition-colors duration-150"
-                  )}
-                  aria-label="Toggle theme"
-                >
-                  <SunLight className="h-4 w-4 hidden dark:block" />
-                  <HalfMoon className="h-4 w-4 block dark:hidden" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="font-mono text-xs">Toggle theme</TooltipContent>
-            </Tooltip>
+            <button
+              onClick={toggleTheme}
+              className={cn(
+                "flex items-center justify-center",
+                "w-8 h-8 rounded-action",
+                "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]",
+                "transition-colors duration-150"
+              )}
+              aria-label="Toggle theme"
+            >
+              <SunLight className="h-4 w-4 hidden dark:block" />
+              <HalfMoon className="h-4 w-4 block dark:hidden" />
+            </button>
           )}
 
           {/* Artifact Panel Toggle */}
@@ -147,7 +142,7 @@ export function TopBar({
                 <FastArrowRightSquare
                   className={cn(
                     "h-[20px] w-[20px]",
-                    !isPanelCollapsed && "rotate-180"
+                    isPanelCollapsed && "rotate-180"
                   )}
                 />
                 {hasArtifacts ? (
@@ -171,7 +166,11 @@ export function TopBar({
           </Tooltip>
 
           {/* User Dropdown / Settings entry */}
-          <UserDropdown variant="compact" />
+          <UserDropdown
+            variant="compact"
+            compactLabel="first-name"
+            compactTriggerClassName="h-7 max-w-[116px] border-transparent bg-transparent px-1 text-xs hover:bg-transparent dark:hover:bg-transparent"
+          />
         </div>
       </div>
     </TooltipProvider>

@@ -1,8 +1,13 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
-import { WaitlistForm } from "@/components/auth/WaitlistForm"
+
+const WaitlistForm = dynamic(
+  () => import("@/components/auth/WaitlistForm").then((mod) => mod.WaitlistForm),
+  { ssr: false }
+)
 
 export default function WaitingListPage() {
   const router = useRouter()
@@ -11,6 +16,7 @@ export default function WaitingListPage() {
     <AuthWideCard
       title="Daftar Waiting List"
       subtitle="Bergabunglah dengan waiting list, dan dapatkan akses eksklusif lebih awal!"
+      showBackButton
       showCloseButton
       onCloseClick={() => router.push("/")}
     >

@@ -8,7 +8,6 @@ import {
   Dashboard,
   Clock,
   ArrowUpCircle,
-  CreditCard,
   NavArrowRight,
   SidebarExpand,
   SidebarCollapse,
@@ -63,7 +62,7 @@ function SidebarNav({
   return (
     <nav className="space-y-6">
       <div>
-        <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+        <h3 className="text-signal text-[10px] font-bold text-muted-foreground">
           SUBSCRIPTION
         </h3>
         <ul className="mt-3 space-y-1">
@@ -96,15 +95,15 @@ function SidebarNav({
                   href={item.href}
                   onClick={onSelect}
                   className={cn(
-                    "font-mono flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition-colors",
+                    "text-interface flex w-full items-center gap-3 rounded-action px-3 py-2 text-sm transition-colors",
                     isActive
-                      ? "bg-slate-800 text-slate-100 dark:bg-slate-200 dark:text-slate-900"
-                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-200 hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+                      ? "bg-slate-900/60 text-slate-100 dark:bg-slate-200/10 dark:text-slate-100"
+                      : "text-muted-foreground hover:bg-slate-200 hover:text-slate-900 dark:hover:bg-slate-500 dark:hover:text-slate-50"
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="flex-1 truncate text-left">{item.label}</span>
-                  {isActive && <NavArrowRight className="h-4 w-4 shrink-0" />}
+                  {isActive ? <NavArrowRight className="h-4 w-4 shrink-0" /> : null}
                 </Link>
               </li>
             )
@@ -126,7 +125,7 @@ export default function SubscriptionLayout({
   const tier = getEffectiveTier(user?.role, user?.subscriptionStatus)
 
   return (
-    <div className="subscription-container relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[color:var(--section-bg-alt)]">
+    <div className="subscription-container relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-background">
       <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-6 lg:px-8">
@@ -136,7 +135,7 @@ export default function SubscriptionLayout({
               type="button"
               onClick={() => setSidebarOpen((open) => !open)}
               aria-label={sidebarOpen ? "Tutup menu subskripsi" : "Buka menu subskripsi"}
-              className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-action p-1 text-slate-700 dark:text-slate-300 transition-colors hover:text-slate-900 dark:hover:text-slate-100"
+              className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-action p-1 text-foreground transition-colors hover:text-foreground/70"
             >
               {sidebarOpen ? (
                 <SidebarCollapse className="h-7 w-7" strokeWidth={1.5} />
@@ -153,7 +152,7 @@ export default function SubscriptionLayout({
         )}>
           {tier !== "gratis" && (
             <aside className="hidden md:col-span-4 md:block">
-              <div className="mt-4 rounded-shell border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+              <div className="mt-4 rounded-shell border-hairline bg-card/90 p-comfort backdrop-blur-[1px] dark:bg-slate-900">
                 <SidebarNav pathname={pathname} tier={tier} />
               </div>
             </aside>
@@ -172,8 +171,8 @@ export default function SubscriptionLayout({
 
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="right" className="w-72 p-0">
-          <SheetHeader className="border-b border-slate-200 dark:border-slate-700 px-5 py-4 pr-12">
-            <SheetTitle className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
+          <SheetHeader className="border-b border-border px-5 py-4 pr-12">
+            <SheetTitle className="text-interface font-mono text-sm font-medium text-foreground">
               Subscription Menu
             </SheetTitle>
           </SheetHeader>

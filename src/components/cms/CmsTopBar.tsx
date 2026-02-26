@@ -127,7 +127,7 @@ export function CmsTopBar({
           )}
 
           {/* User Dropdown */}
-          <UserDropdown variant="compact" />
+          <UserDropdown variant="compact" compactLabel="first-name" />
         </div>
       </div>
     </TooltipProvider>

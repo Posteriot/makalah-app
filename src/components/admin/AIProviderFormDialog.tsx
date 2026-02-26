@@ -42,6 +42,11 @@ const PROVIDER_OPTIONS = [
   { value: "openrouter", label: "OpenRouter" },
 ]
 
+const MIN_THINKING_BUDGET = 0
+const MAX_THINKING_BUDGET = 32768
+const DEFAULT_THINKING_BUDGET_PRIMARY = 256
+const DEFAULT_THINKING_BUDGET_FALLBACK = 128
+
 interface AIProviderConfig {
   _id: Id<"aiProviderConfigs">
   name: string
@@ -55,6 +60,10 @@ interface AIProviderConfig {
   temperature: number
   topP?: number
   maxTokens?: number
+  reasoningEnabled?: boolean
+  thinkingBudgetPrimary?: number
+  thinkingBudgetFallback?: number
+  reasoningTraceMode?: "off" | "curated" | "transparent"
   // Context window settings
   primaryContextWindow?: number
   fallbackContextWindow?: number
@@ -142,6 +151,10 @@ export function AIProviderFormDialog({
   const [temperature, setTemperature] = useState(0.7)
   const [topP, setTopP] = useState<number | undefined>(undefined)
   const [maxTokens, setMaxTokens] = useState<number | undefined>(undefined)
+  const [reasoningEnabled, setReasoningEnabled] = useState(true)
+  const [thinkingBudgetPrimary, setThinkingBudgetPrimary] = useState<number | undefined>(DEFAULT_THINKING_BUDGET_PRIMARY)
+  const [thinkingBudgetFallback, setThinkingBudgetFallback] = useState<number | undefined>(DEFAULT_THINKING_BUDGET_FALLBACK)
+  const [reasoningTraceMode, setReasoningTraceMode] = useState<"off" | "curated" | "transparent">("curated")
 
   // Context window settings
   const [primaryContextWindow, setPrimaryContextWindow] = useState<number | undefined>(undefined)
@@ -190,6 +203,10 @@ export function AIProviderFormDialog({
         setTemperature(config.temperature)
         setTopP(config.topP)
         setMaxTokens(config.maxTokens)
+        setReasoningEnabled(config.reasoningEnabled ?? true)
+        setThinkingBudgetPrimary(config.thinkingBudgetPrimary ?? DEFAULT_THINKING_BUDGET_PRIMARY)
+        setThinkingBudgetFallback(config.thinkingBudgetFallback ?? DEFAULT_THINKING_BUDGET_FALLBACK)
+        setReasoningTraceMode(config.reasoningTraceMode ?? "curated")
         // Context window settings
         setPrimaryContextWindow(config.primaryContextWindow)
         setFallbackContextWindow(config.fallbackContextWindow)
@@ -220,6 +237,10 @@ export function AIProviderFormDialog({
         setTemperature(0.7)
         setTopP(undefined)
         setMaxTokens(undefined)
+        setReasoningEnabled(true)
+        setThinkingBudgetPrimary(DEFAULT_THINKING_BUDGET_PRIMARY)
+        setThinkingBudgetFallback(DEFAULT_THINKING_BUDGET_FALLBACK)
+        setReasoningTraceMode("curated")
         // Context window defaults
         setPrimaryContextWindow(undefined)
         setFallbackContextWindow(undefined)
@@ -454,6 +475,20 @@ export function AIProviderFormDialog({
       toast.error("Max Tokens harus lebih dari 0")
       return
     }
+    if (
+      thinkingBudgetPrimary !== undefined &&
+      (thinkingBudgetPrimary < MIN_THINKING_BUDGET || thinkingBudgetPrimary > MAX_THINKING_BUDGET)
+    ) {
+      toast.error(`Thinking Budget Primary harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
+      return
+    }
+    if (
+      thinkingBudgetFallback !== undefined &&
+      (thinkingBudgetFallback < MIN_THINKING_BUDGET || thinkingBudgetFallback > MAX_THINKING_BUDGET)
+    ) {
+      toast.error(`Thinking Budget Fallback harus antara ${MIN_THINKING_BUDGET} dan ${MAX_THINKING_BUDGET}`)
+      return
+    }
 
     if (fallbackWebSearchMaxResults < 1 || fallbackWebSearchMaxResults > 10) {
       toast.error("Max Search Results harus antara 1 dan 10")
@@ -472,6 +507,10 @@ export function AIProviderFormDialog({
           temperature,
           topP,
           maxTokens,
+          reasoningEnabled,
+          thinkingBudgetPrimary,
+          thinkingBudgetFallback,
+          reasoningTraceMode,
         }
 
         // Only update fields that changed
@@ -494,6 +533,18 @@ export function AIProviderFormDialog({
         }
         if (fallbackContextWindow !== config.fallbackContextWindow) {
           updateArgs.fallbackContextWindow = fallbackContextWindow
+        }
+        if (reasoningEnabled !== (config.reasoningEnabled ?? true)) {
+          updateArgs.reasoningEnabled = reasoningEnabled
+        }
+        if (thinkingBudgetPrimary !== (config.thinkingBudgetPrimary ?? DEFAULT_THINKING_BUDGET_PRIMARY)) {
+          updateArgs.thinkingBudgetPrimary = thinkingBudgetPrimary
+        }
+        if (thinkingBudgetFallback !== (config.thinkingBudgetFallback ?? DEFAULT_THINKING_BUDGET_FALLBACK)) {
+          updateArgs.thinkingBudgetFallback = thinkingBudgetFallback
+        }
+        if (reasoningTraceMode !== (config.reasoningTraceMode ?? "curated")) {
+          updateArgs.reasoningTraceMode = reasoningTraceMode
         }
 
         // Web search settings
@@ -527,6 +578,10 @@ export function AIProviderFormDialog({
           temperature,
           topP,
           maxTokens,
+          reasoningEnabled,
+          thinkingBudgetPrimary,
+          thinkingBudgetFallback,
+          reasoningTraceMode,
           // Context window settings
           primaryContextWindow,
           fallbackContextWindow,
@@ -558,6 +613,10 @@ export function AIProviderFormDialog({
     temperature !== config.temperature ||
     topP !== config.topP ||
     maxTokens !== config.maxTokens ||
+    reasoningEnabled !== (config.reasoningEnabled ?? true) ||
+    thinkingBudgetPrimary !== (config.thinkingBudgetPrimary ?? DEFAULT_THINKING_BUDGET_PRIMARY) ||
+    thinkingBudgetFallback !== (config.thinkingBudgetFallback ?? DEFAULT_THINKING_BUDGET_FALLBACK) ||
+    reasoningTraceMode !== (config.reasoningTraceMode ?? "curated") ||
     primaryContextWindow !== config.primaryContextWindow ||
     fallbackContextWindow !== config.fallbackContextWindow ||
     primaryWebSearchEnabled !== (config.primaryWebSearchEnabled ?? true) ||
@@ -982,6 +1041,77 @@ export function AIProviderFormDialog({
                   placeholder="Opsional"
                   disabled={isLoading}
                 />
+              </div>
+            </div>
+
+            <div className="space-y-4 rounded-md border p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-medium">Reasoning Settings</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Toggle reasoning/thinking model dan trace mode user-facing.
+                  </p>
+                </div>
+                <Switch
+                  id="reasoningEnabled"
+                  checked={reasoningEnabled}
+                  onCheckedChange={setReasoningEnabled}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="thinkingBudgetPrimary">Thinking Budget Primary</Label>
+                  <Input
+                    id="thinkingBudgetPrimary"
+                    type="number"
+                    step="1"
+                    min={MIN_THINKING_BUDGET}
+                    max={MAX_THINKING_BUDGET}
+                    value={thinkingBudgetPrimary ?? ""}
+                    onChange={(e) =>
+                      setThinkingBudgetPrimary(e.target.value ? parseInt(e.target.value, 10) : undefined)
+                    }
+                    placeholder={`${DEFAULT_THINKING_BUDGET_PRIMARY}`}
+                    disabled={isLoading || !reasoningEnabled}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="thinkingBudgetFallback">Thinking Budget Fallback</Label>
+                  <Input
+                    id="thinkingBudgetFallback"
+                    type="number"
+                    step="1"
+                    min={MIN_THINKING_BUDGET}
+                    max={MAX_THINKING_BUDGET}
+                    value={thinkingBudgetFallback ?? ""}
+                    onChange={(e) =>
+                      setThinkingBudgetFallback(e.target.value ? parseInt(e.target.value, 10) : undefined)
+                    }
+                    placeholder={`${DEFAULT_THINKING_BUDGET_FALLBACK}`}
+                    disabled={isLoading || !reasoningEnabled}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reasoningTraceMode">Reasoning Trace Mode</Label>
+                  <Select
+                    value={reasoningTraceMode}
+                    onValueChange={(value) => setReasoningTraceMode(value as "off" | "curated" | "transparent")}
+                    disabled={isLoading || !reasoningEnabled}
+                  >
+                    <SelectTrigger id="reasoningTraceMode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="transparent">Transparent</SelectItem>
+                      <SelectItem value="curated">Curated</SelectItem>
+                      <SelectItem value="off">Off</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

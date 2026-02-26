@@ -3,20 +3,14 @@ import { internal } from "./_generated/api"
 import { createAuth } from "./auth"
 import { hashOtp } from "./twoFactorOtp"
 import { sendTwoFactorOtpEmail } from "./authEmails"
+import { getAllowedCorsOrigin } from "./authOrigins"
 
-// Trusted origins (same as auth.ts)
-const siteUrl = process.env.SITE_URL!
-const trustedOrigins = [
-  siteUrl,
-  "https://www.makalah.ai",
-  "https://dev.makalah.ai",
-  "http://localhost:3000",
-  "http://localhost:3001",
-]
+type AuthUserWithTwoFactor = {
+  twoFactorEnabled?: boolean
+}
 
 function getCorsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get("origin") ?? ""
-  const allowed = trustedOrigins.includes(origin) ? origin : trustedOrigins[0]
+  const allowed = getAllowedCorsOrigin(request)
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -57,12 +51,10 @@ export const sendOtp = httpAction(async (ctx, request) => {
 
     // Look up BetterAuth user — verify email exists and 2FA is enabled
     const auth = createAuth(ctx)
-    const userResult = await auth.api.getSession({ headers: new Headers() }).catch(() => null)
-    // We can't use getSession here (no auth). Use internal adapter to find user by email.
-    const internalAdapter = (auth as unknown as { options: { database: unknown } }).options
-    // Actually, use the adapter directly from the auth context
-    const authCtx = await (auth as any).$context
-    const foundUser = await authCtx.internalAdapter.findUserByEmail(email, { includeAccounts: true })
+    const authCtx = await auth.$context
+    const foundUser = await authCtx.internalAdapter.findUserByEmail(email, {
+      includeAccounts: false,
+    })
 
     if (!foundUser) {
       // Don't reveal whether email exists — still return success
@@ -72,13 +64,8 @@ export const sendOtp = httpAction(async (ctx, request) => {
       )
     }
 
-    // Check if 2FA is enabled for this user
-    const accounts = foundUser.accounts || []
-    const has2FA = accounts.some(
-      (a: { providerId: string }) => a.providerId === "credential"
-    )
     // Check twoFactorEnabled on the user record
-    const user = foundUser.user as Record<string, unknown>
+    const user = foundUser.user as typeof foundUser.user & AuthUserWithTwoFactor
     if (!user.twoFactorEnabled) {
       // Still return success to not leak info
       return new Response(
@@ -159,7 +146,7 @@ export const verifyOtp = httpAction(async (ctx, request) => {
 
     // OTP valid — create bypass token via BetterAuth verification table
     const auth = createAuth(ctx)
-    const authCtx = await (auth as any).$context
+    const authCtx = await auth.$context
     const bypassToken = `2fa-bypass-${generateBypassToken()}`
 
     // Find user to get userId

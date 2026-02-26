@@ -28,7 +28,7 @@ For developer maintenance, scaling, and onboarding.
 
 Hybrid CMS for marketing pages, chat empty state, and pricing configuration. Admin-only (superadmin/admin roles). Fallback behavior depends on each consumer component:
 - Home/About structured sections: if missing or unpublished, section is hidden (`return null`).
-- Chat empty state (`TemplateGrid` + `ChatWindow`): desktop selalu memakai mode strict CMS-only. Jika section `chat-empty-state` belum `isPublished`, logo + heading + deskripsi + link sidebar + template tidak dirender (kosong). Mobile tetap fallback text/logo/templates selama redesign mobile berlangsung.
+- Chat empty state (`TemplateGrid` + `ChatWindow`): desktop dan mobile memakai mode strict CMS-only. Jika section `chat-empty-state` belum `isPublished`, logo + heading + deskripsi + link sidebar + template tidak dirender (kosong).
 - Legal pages (`CmsPageWrapper`): fallback to static `children` content.
 - Pricing header/teaser: fallback to local constants for text when section is not published.
 
@@ -977,7 +977,7 @@ Seed publish defaults vary by migration:
 | File | Responsibility |
 |------|---------------|
 | `src/components/admin/cms/HeroSectionEditor.tsx` | Hero section form |
-| `src/components/admin/cms/ChatEmptyStateEditor.tsx` | Chat empty state editor (logo, description lines, starter templates) |
+| `src/components/admin/cms/ChatEmptyStateEditor.tsx` | Chat empty state editor (logo, description lines, starter templates) tanpa default fallback konten/image |
 | `src/components/admin/cms/BenefitsSectionEditor.tsx` | Benefits items form |
 | `src/components/admin/cms/FeatureShowcaseEditor.tsx` | Workflow/Refrasa features form (reusable) |
 | `src/components/admin/cms/ManifestoSectionEditor.tsx` | Manifesto section form |
@@ -1033,8 +1033,9 @@ Seed publish defaults vary by migration:
 | `src/components/marketing/pricing/PricingCard.tsx` | Full pricing page card (with price masking) |
 | `src/components/layout/header/GlobalHeader.tsx` | Header with inline CMS fallback |
 | `src/components/layout/footer/Footer.tsx` | Footer with inline CMS fallback + pattern toggles from siteConfig |
-| `src/components/chat/messages/TemplateGrid.tsx` | Chat empty-state renderer (`chat/chat-empty-state`): desktop strict CMS-only, unpublished state renders empty; mobile keeps fallback behavior |
-| `src/components/chat/ChatWindow.tsx` | Chat page container that mounts `TemplateGrid` in desktop strict mode and mobile fallback mode |
+| `src/components/chat/messages/TemplateGrid.tsx` | Chat empty-state renderer (`chat/chat-empty-state`): CMS-only untuk desktop+mobile, unpublished state renders empty |
+| `src/components/chat/ChatWindow.tsx` | Chat page container yang mount `TemplateGrid` untuk desktop+mobile tanpa fallback static |
+| `scripts/check-chat-empty-state-no-fallback.sh` | Guard `rg` untuk blok pola fallback/static di scope `chat-empty-state` (runtime + admin editor) |
 
 ### Utilities
 

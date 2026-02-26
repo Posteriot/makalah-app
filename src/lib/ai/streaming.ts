@@ -3,6 +3,28 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createGateway } from "@ai-sdk/gateway"
 import { configCache } from "./config-cache"
 
+const MIN_THINKING_BUDGET = 0
+const MAX_THINKING_BUDGET = 32768
+const TOOL_HEAVY_THINKING_CAP = 96
+
+export type ReasoningTraceMode = "off" | "curated" | "transparent"
+export type ReasoningTarget = "primary" | "fallback"
+export type ReasoningExecutionProfile = "tool-heavy" | "narrative"
+
+export interface ReasoningSlotSettings {
+  provider: string
+  model: string
+  supported: boolean
+  thinkingBudget: number
+}
+
+export interface ReasoningSettings {
+  enabled: boolean
+  traceMode: ReasoningTraceMode
+  primary: ReasoningSlotSettings
+  fallback: ReasoningSlotSettings
+}
+
 // Vercel AI SDK expects AI_GATEWAY_API_KEY for native gateway integration
 if (!process.env.AI_GATEWAY_API_KEY && process.env.VERCEL_AI_GATEWAY_API_KEY) {
   process.env.AI_GATEWAY_API_KEY = process.env.VERCEL_AI_GATEWAY_API_KEY
@@ -78,6 +100,12 @@ async function getProviderConfig() {
     temperature: config.temperature,
     topP: config.topP,
     maxTokens: config.maxTokens,
+    reasoning: {
+      enabled: config.reasoningEnabled,
+      traceMode: config.reasoningTraceMode,
+      thinkingBudgetPrimary: config.thinkingBudgetPrimary,
+      thinkingBudgetFallback: config.thinkingBudgetFallback,
+    },
     // Web search settings
     webSearch: {
       primaryEnabled: config.primaryWebSearchEnabled,
@@ -165,6 +193,19 @@ function createProviderModel(provider: string, model: string, apiKey: string) {
   } else {
     throw new Error(`Unknown provider: ${provider}`)
   }
+}
+
+function clampThinkingBudget(rawBudget: number): number {
+  if (!Number.isFinite(rawBudget)) return MIN_THINKING_BUDGET
+  return Math.max(
+    MIN_THINKING_BUDGET,
+    Math.min(MAX_THINKING_BUDGET, Math.round(rawBudget))
+  )
+}
+
+function supportsGeminiThinking(provider: string, model: string): boolean {
+  const normalizedModel = model.toLowerCase()
+  return provider === "vercel-gateway" && normalizedModel.includes("gemini")
 }
 
 /**
@@ -279,6 +320,61 @@ export async function getProviderSettings() {
 }
 
 /**
+ * Get reasoning settings from active config.
+ * Runtime only applies provider options when model/provider is compatible.
+ */
+export async function getReasoningSettings(): Promise<ReasoningSettings> {
+  const config = await getProviderConfig()
+  const primaryBudget = clampThinkingBudget(config.reasoning.thinkingBudgetPrimary)
+  const fallbackBudget = clampThinkingBudget(config.reasoning.thinkingBudgetFallback)
+
+  return {
+    enabled: config.reasoning.enabled,
+    traceMode: config.reasoning.traceMode,
+    primary: {
+      provider: config.primary.provider,
+      model: config.primary.model,
+      supported: supportsGeminiThinking(config.primary.provider, config.primary.model),
+      thinkingBudget: primaryBudget,
+    },
+    fallback: {
+      provider: config.fallback.provider,
+      model: config.fallback.model,
+      supported: supportsGeminiThinking(config.fallback.provider, config.fallback.model),
+      thinkingBudget: fallbackBudget,
+    },
+  }
+}
+
+/**
+ * Build providerOptions for reasoning/thinking.
+ * Uses Google thinkingConfig only when compatible.
+ */
+export function buildReasoningProviderOptions(options: {
+  settings: ReasoningSettings
+  target: ReasoningTarget
+  profile: ReasoningExecutionProfile
+}) {
+  const slot = options.target === "primary" ? options.settings.primary : options.settings.fallback
+  if (!options.settings.enabled || !slot.supported) {
+    return undefined
+  }
+
+  const narrativeBudget = clampThinkingBudget(slot.thinkingBudget)
+  const toolHeavyBudget = clampThinkingBudget(Math.min(narrativeBudget, TOOL_HEAVY_THINKING_CAP))
+  const budget = options.profile === "tool-heavy" ? toolHeavyBudget : narrativeBudget
+
+  return {
+    google: {
+      thinkingConfig: {
+        thinkingBudget: budget,
+        includeThoughts: options.settings.traceMode === "transparent",
+      },
+    },
+  }
+}
+
+/**
  * Get model names from active config (for metadata/logging).
  * Returns provider and model strings, not model instances.
  */
@@ -292,6 +388,12 @@ export async function getModelNames() {
     fallback: {
       provider: config.fallback.provider,
       model: config.fallback.model,
+    },
+    reasoning: {
+      enabled: config.reasoning.enabled,
+      traceMode: config.reasoning.traceMode,
+      thinkingBudgetPrimary: config.reasoning.thinkingBudgetPrimary,
+      thinkingBudgetFallback: config.reasoning.thinkingBudgetFallback,
     },
     primaryContextWindow: config.primaryContextWindow,
     fallbackContextWindow: config.fallbackContextWindow,

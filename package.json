@@ -14,7 +14,8 @@
     "convex:deploy": "npm run convex -- deploy",
     "convex:dashboard": "npm run convex -- dashboard",
     "lint": "eslint",
-    "test": "vitest run"
+    "check:chat-empty-state:no-fallback": "bash scripts/check-chat-empty-state-no-fallback.sh",
+    "test": "npm run check:chat-empty-state:no-fallback && vitest run"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^2.0.24",

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
-import { Eye, EyeClosed, Shield, Lock } from "iconoir-react"
+import { Eye, EyeClosed, Lock } from "iconoir-react"
 
 interface SecurityTabProps {
   session: { user: { id: string; name: string | null; email: string; image?: string | null; emailVerified: boolean; createdAt: Date; updatedAt: Date }; session: { id: string; userId: string; expiresAt: Date; token: string } } | null
@@ -217,16 +217,6 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
 
   return (
     <>
-      <div className="mb-6">
-        <h3 className="flex items-center gap-2 text-narrative font-medium text-xl">
-          <Shield className="h-5 w-5 text-slate-800 dark:text-slate-200" />
-          Keamanan
-        </h3>
-        <p className="mt-1 text-narrative text-sm text-muted-foreground">
-          Update password dan kontrol sesi.
-        </p>
-      </div>
-
       <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
         <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">Password</div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800">
@@ -469,7 +459,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
       {hasPassword && (
         <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
           <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">
-            Verifikasi 2 Langkah
+            Verifikasi 2 Langkah (2FA)
           </div>
           <div className="p-4 bg-slate-50 dark:bg-slate-800">
             {/* Status row */}
@@ -508,8 +498,8 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
             {/* Description */}
             <p className="mt-2 text-narrative text-xs text-muted-foreground">
               {is2FAEnabled
-                ? "Setiap kali masuk dengan email dan password, kode verifikasi akan dikirim ke email kamu. Fitur ini aktif secara default untuk keamanan akunmu."
-                : "Verifikasi 2 langkah sedang nonaktif. Kami sangat menyarankan untuk mengaktifkannya kembali demi keamanan akunmu."}
+                ? "Two-factor authentication (2FA) aktif. Setiap kali masuk dengan email dan password, kode verifikasi akan dikirim ke email kamu sebagai lapisan keamanan tambahan."
+                : "Two-factor authentication (2FA) sedang nonaktif. Kami sangat menyarankan untuk mengaktifkannya kembali demi keamanan akunmu."}
             </p>
 
             {/* Password input for enable/disable */}

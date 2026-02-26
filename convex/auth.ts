@@ -6,6 +6,7 @@ import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { magicLink, twoFactor } from "better-auth/plugins";
 import { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
+import { getTrustedOrigins } from "./authOrigins";
 import {
   sendVerificationEmail,
   sendMagicLinkEmail,
@@ -20,16 +21,6 @@ import { twoFactorCrossDomainBypass } from "./twoFactorBypass";
 // CONVEX_SITE_URL = Convex HTTP actions URL (built-in) — where BetterAuth API runs
 const siteUrl = process.env.SITE_URL!;
 const convexSiteUrl = process.env.CONVEX_SITE_URL!;
-
-// Allow production domains + local dev origins (single Convex deployment shared by all)
-const trustedOrigins = [
-  siteUrl,
-  "https://makalah.ai",
-  "https://www.makalah.ai",
-  "https://dev.makalah.ai",
-  "http://localhost:3000",
-  "http://localhost:3001",
-];
 
 // Create the BetterAuth component client
 export const authComponent = createClient<DataModel>(components.betterAuth, {
@@ -48,7 +39,7 @@ async function sendSignupSuccessEmailSafely(email: string): Promise<void> {
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   ({
     baseURL: convexSiteUrl,
-    trustedOrigins,
+    trustedOrigins: (request) => getTrustedOrigins(request),
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,

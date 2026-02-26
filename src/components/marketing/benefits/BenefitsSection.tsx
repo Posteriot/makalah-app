@@ -32,7 +32,7 @@ type BenefitsSectionProps = {
 export function BenefitsSection({ items, showGridPattern, showDiagonalStripes, showDottedPattern }: BenefitsSectionProps) {
   return (
     <section
-      className="relative isolate h-[100svh] min-h-[100svh] overflow-hidden bg-[var(--section-bg-alt)]"
+      className="relative isolate h-[100svh] min-h-[100svh] overflow-hidden bg-background"
       id="kenapa-makalah-ai"
     >
       {/* Background patterns */}

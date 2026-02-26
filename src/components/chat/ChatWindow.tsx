@@ -7,8 +7,10 @@ import { useRouter } from "next/navigation"
 import { MessageBubble } from "./MessageBubble"
 import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
+import type { ReasoningTraceStep, ReasoningTraceStatus } from "./ReasoningTracePanel"
 import { useMessages } from "@/lib/hooks/useMessages"
-import { Menu, WarningCircle, Refresh } from "iconoir-react"
+import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowUpSquare, FastArrowDownSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
+import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -21,11 +23,30 @@ import { PaperValidationPanel } from "../paper/PaperValidationPanel"
 import { useSession } from "@/lib/auth-client"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
+import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
+import { MobilePaperSessionsSheet } from "./mobile/MobilePaperSessionsSheet"
+import { MobileProgressBar } from "./mobile/MobileProgressBar"
+import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
+import type { PaperStageId } from "../../../convex/paperSessions/constants"
+
+/** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
+interface ConversationArtifact {
+  _id: Id<"artifacts">
+  _creationTime: number
+  title: string
+  version: number
+  messageId?: Id<"messages">
+  parentId?: Id<"artifacts">
+  type: string
+}
 
 interface ChatWindowProps {
   conversationId: string | null
   onMobileMenuClick?: () => void
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  onShowArtifactList?: () => void
+  /** All artifacts for this conversation (for persisted artifact signals after refresh) */
+  artifacts?: ConversationArtifact[]
 }
 
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
@@ -72,7 +93,225 @@ function consumePendingStarterPrompt(conversationId: string): string | null {
   }
 }
 
-export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect }: ChatWindowProps) {
+const REASONING_STEP_ORDER = [
+  "intent-analysis",
+  "paper-context-check",
+  "search-decision",
+  "source-validation",
+  "response-compose",
+  "tool-action",
+] as const
+
+const REASONING_STATUS_SET = new Set<ReasoningTraceStatus>([
+  "pending",
+  "running",
+  "done",
+  "skipped",
+  "error",
+])
+
+interface PersistedReasoningTraceStepRaw {
+  stepKey?: unknown
+  label?: unknown
+  status?: unknown
+  progress?: unknown
+  ts?: unknown
+  meta?: unknown
+}
+
+interface PersistedReasoningTraceRaw {
+  headline?: unknown
+  steps?: unknown
+}
+
+function parseReasoningMeta(meta: unknown): ReasoningTraceStep["meta"] | undefined {
+  if (!meta || typeof meta !== "object") return undefined
+
+  const value = meta as {
+    note?: unknown
+    sourceCount?: unknown
+    toolName?: unknown
+    stage?: unknown
+    mode?: unknown
+  }
+
+  const parsed: ReasoningTraceStep["meta"] = {
+    ...(typeof value.note === "string" ? { note: value.note } : {}),
+    ...(typeof value.sourceCount === "number" && Number.isFinite(value.sourceCount)
+      ? { sourceCount: value.sourceCount }
+      : {}),
+    ...(typeof value.toolName === "string" ? { toolName: value.toolName } : {}),
+    ...(typeof value.stage === "string" ? { stage: value.stage } : {}),
+    ...(value.mode === "normal" || value.mode === "paper" || value.mode === "websearch"
+      ? { mode: value.mode as "normal" | "paper" | "websearch" }
+      : {}),
+  }
+
+  return Object.keys(parsed).length > 0 ? parsed : undefined
+}
+
+function extractReasoningTraceSteps(uiMessage: UIMessage): ReasoningTraceStep[] {
+  const byStepKey = new Map<string, ReasoningTraceStep>()
+
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+
+    const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+    if (maybeDataPart.type !== "data-reasoning-trace") continue
+    if (!maybeDataPart.data || typeof maybeDataPart.data !== "object") continue
+
+    const data = maybeDataPart.data as {
+      traceId?: unknown
+      stepKey?: unknown
+      label?: unknown
+      status?: unknown
+      progress?: unknown
+      ts?: unknown
+      meta?: unknown
+    }
+
+    if (typeof data.traceId !== "string") continue
+    if (typeof data.stepKey !== "string") continue
+    if (typeof data.label !== "string") continue
+    if (typeof data.status !== "string" || !REASONING_STATUS_SET.has(data.status as ReasoningTraceStatus)) continue
+
+    const progress =
+      typeof data.progress === "number" && Number.isFinite(data.progress)
+        ? Math.max(0, Math.min(100, Math.round(data.progress)))
+        : 0
+
+    const parsedStep: ReasoningTraceStep = {
+      traceId: data.traceId,
+      stepKey: data.stepKey,
+      label: data.label,
+      status: data.status as ReasoningTraceStatus,
+      progress,
+      ...(typeof data.ts === "number" && Number.isFinite(data.ts) ? { ts: data.ts } : {}),
+      ...(typeof (data as { thought?: unknown }).thought === "string"
+        ? { thought: (data as { thought?: unknown }).thought as string }
+        : {}),
+    }
+
+    const parsedMeta = parseReasoningMeta(data.meta)
+    if (parsedMeta) parsedStep.meta = parsedMeta
+
+    byStepKey.set(data.stepKey, parsedStep)
+  }
+
+  if (byStepKey.size === 0) {
+    const persistedTrace = (uiMessage as unknown as { reasoningTrace?: PersistedReasoningTraceRaw }).reasoningTrace
+    if (persistedTrace && typeof persistedTrace === "object" && Array.isArray(persistedTrace.steps)) {
+      for (const rawStep of persistedTrace.steps as PersistedReasoningTraceStepRaw[]) {
+        if (!rawStep || typeof rawStep !== "object") continue
+        if (typeof rawStep.stepKey !== "string") continue
+        if (typeof rawStep.label !== "string") continue
+        if (typeof rawStep.status !== "string") continue
+        if (!REASONING_STATUS_SET.has(rawStep.status as ReasoningTraceStatus)) continue
+
+        const progress =
+          typeof rawStep.progress === "number" && Number.isFinite(rawStep.progress)
+            ? Math.max(0, Math.min(100, Math.round(rawStep.progress)))
+            : 0
+        const parsedMeta = parseReasoningMeta(rawStep.meta)
+
+        byStepKey.set(rawStep.stepKey, {
+          traceId: uiMessage.id,
+          stepKey: rawStep.stepKey,
+          label: rawStep.label,
+          status: rawStep.status as ReasoningTraceStatus,
+          progress,
+          ...(typeof rawStep.ts === "number" && Number.isFinite(rawStep.ts) ? { ts: rawStep.ts } : {}),
+          ...(parsedMeta ? { meta: parsedMeta } : {}),
+          ...(typeof (rawStep as { thought?: unknown }).thought === "string"
+            ? { thought: (rawStep as { thought?: unknown }).thought as string }
+            : {}),
+        })
+      }
+    }
+  }
+
+  const ordered = REASONING_STEP_ORDER
+    .map((stepKey) => byStepKey.get(stepKey))
+    .filter((step): step is ReasoningTraceStep => Boolean(step))
+
+  return ordered
+}
+
+function extractLiveThought(uiMessage: UIMessage): string | null {
+  let lastThought: string | null = null
+
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (dataPart.type !== "data-reasoning-thought") continue
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    const data = dataPart.data as { delta?: unknown }
+    if (typeof data.delta === "string" && data.delta.trim()) {
+      lastThought = data.delta.trim()
+    }
+  }
+
+  return lastThought
+}
+
+const TEMPLATE_LABELS = new Set([
+  "Memahami kebutuhan user",
+  "Memeriksa konteks paper aktif",
+  "Menentukan kebutuhan pencarian web",
+  "Memvalidasi sumber referensi",
+  "Menyusun jawaban final",
+  "Menjalankan aksi pendukung",
+])
+
+function isTemplateLabel(label: string): boolean {
+  return TEMPLATE_LABELS.has(label)
+}
+
+function extractReasoningHeadline(uiMessage: UIMessage, steps: ReasoningTraceStep[]): string | null {
+  for (const part of uiMessage.parts ?? []) {
+    if (!part || typeof part !== "object") continue
+    const dataPart = part as { type?: unknown; data?: unknown }
+    if (dataPart.type !== "data-reasoning-headline") continue
+    if (!dataPart.data || typeof dataPart.data !== "object") continue
+
+    const data = dataPart.data as { text?: unknown }
+    if (typeof data.text === "string" && data.text.trim()) {
+      return data.text.trim()
+    }
+  }
+
+  const persistedTrace = (uiMessage as unknown as { reasoningTrace?: PersistedReasoningTraceRaw }).reasoningTrace
+  if (persistedTrace && typeof persistedTrace.headline === "string" && persistedTrace.headline.trim()) {
+    return persistedTrace.headline.trim()
+  }
+
+  if (steps.length === 0) return null
+
+  // Check if steps have actual reasoning (non-template labels)
+  const hasRealContent = steps.some((s) => !isTemplateLabel(s.label) || s.thought)
+
+  const running = steps.find((step) => step.status === "running")
+  if (running) {
+    // If label is template and we don't have real content yet, show generic
+    if (isTemplateLabel(running.label) && !hasRealContent) return "Berpikir..."
+    if (isTemplateLabel(running.label)) return "Berpikir..."
+    return running.label
+  }
+
+  const errored = steps.find((step) => step.status === "error")
+  if (errored) return `Terjadi kendala saat ${lowerFirst(errored.label)}.`
+
+  return "Selesai menyusun jawaban."
+}
+
+function lowerFirst(input: string) {
+  if (!input) return input
+  return input.charAt(0).toLowerCase() + input.slice(1)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, onShowArtifactList, artifacts: conversationArtifacts }: ChatWindowProps) {
   const router = useRouter()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
@@ -82,24 +321,32 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
   const [isCreatingChat, setIsCreatingChat] = useState(false)
+  const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
+  const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
+  const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
+  const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [processUi, setProcessUi] = useState<{
     visible: boolean
     status: ProcessVisualStatus
     progress: number
     message: string
+    elapsedSeconds: number
   }>({
     visible: false,
     status: "ready",
     progress: 0,
     message: "",
+    elapsedSeconds: 0,
   })
   const processIntervalRef = useRef<number | null>(null)
   const processHideTimeoutRef = useRef<number | null>(null)
+  const processStartedAtRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
   const starterPromptAttemptedForConversationRef = useRef<string | null>(null)
 
   const { data: session } = useSession()
+  const { resolvedTheme, setTheme } = useTheme()
   const userId = useQuery(api.chatHelpers.getUserId, session?.user?.id ? { betterAuthUserId: session.user.id } : "skip")
   const createConversation = useMutation(api.conversations.createConversation)
 
@@ -120,6 +367,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     approveStage,
     requestRevision,
     markStageAsDirty,
+    rewindToStage,
     getStageStartIndex,
   } = usePaperSession(safeConversationId ?? undefined)
 
@@ -164,6 +412,47 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (!isPaperMode || permissionMessages.length === 0) return 0
     return getStageStartIndex(permissionMessages)
   }, [isPaperMode, permissionMessages, getStageStartIndex])
+
+  // Build message → artifact map for persisted artifact signals (survives page refresh)
+  // Matches artifacts to the assistant message they were created during, using temporal proximity
+  const messageArtifactMap = useMemo(() => {
+    const map = new Map<string, ConversationArtifact[]>()
+    if (!conversationArtifacts || !historyMessages || historyMessages.length === 0) return map
+
+    for (const artifact of conversationArtifacts) {
+      // Skip refrasa artifacts — they have their own display flow
+      if (artifact.type === "refrasa") continue
+
+      // Direct match by messageId (if set)
+      if (artifact.messageId) {
+        const existing = map.get(artifact.messageId) ?? []
+        existing.push(artifact)
+        map.set(artifact.messageId, existing)
+        continue
+      }
+
+      // Temporal matching: artifact was created between the previous message
+      // and this assistant message (during streaming)
+      const artifactTime = artifact._creationTime
+      for (let i = 0; i < historyMessages.length; i++) {
+        const msg = historyMessages[i]
+        if (msg.role !== "assistant") continue
+
+        const prevMsg = historyMessages[i - 1]
+        const prevTime = prevMsg?.createdAt ?? 0
+        const msgTime = msg.createdAt ?? Infinity
+
+        if (artifactTime > prevTime && artifactTime <= msgTime) {
+          const existing = map.get(msg._id) ?? []
+          existing.push(artifact)
+          map.set(msg._id, existing)
+          break
+        }
+      }
+    }
+
+    return map
+  }, [conversationArtifacts, historyMessages])
 
   // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
@@ -259,15 +548,52 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       historyMessages &&
       syncedConversationRef.current !== conversationId
     ) {
-      const mappedMessages = historyMessages.map(msg => ({
-        id: msg._id,
-        role: msg.role as "user" | "assistant" | "system" | "data",
-        content: msg.content,
-        parts: [{ type: 'text', text: msg.content } as const],
-        annotations: msg.fileIds ? [{ type: 'file_ids', fileIds: msg.fileIds }] : undefined,
+      const mappedMessages = historyMessages.map((msg) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sources: (msg as any).sources,
-      })) as unknown as UIMessage[]
+        const rawReasoningTrace = (msg as any).reasoningTrace as PersistedReasoningTraceRaw | undefined
+        const reasoningTrace =
+          rawReasoningTrace &&
+          typeof rawReasoningTrace === "object" &&
+          Array.isArray(rawReasoningTrace.steps)
+            ? rawReasoningTrace
+            : undefined
+
+        const traceId = `persisted-${msg._id}`
+        const persistedTraceParts = reasoningTrace
+          ? (reasoningTrace.steps as PersistedReasoningTraceStepRaw[])
+              .filter((step) => step && typeof step === "object")
+              .map((step) => ({
+                type: "data-reasoning-trace",
+                id: `${traceId}-${typeof step.stepKey === "string" ? step.stepKey : "step"}`,
+                data: {
+                  traceId,
+                  stepKey: typeof step.stepKey === "string" ? step.stepKey : "unknown-step",
+                  label: typeof step.label === "string" ? step.label : "Langkah reasoning",
+                  status:
+                    typeof step.status === "string" && REASONING_STATUS_SET.has(step.status as ReasoningTraceStatus)
+                      ? step.status
+                      : "pending",
+                  progress:
+                    typeof step.progress === "number" && Number.isFinite(step.progress)
+                      ? Math.max(0, Math.min(100, Math.round(step.progress)))
+                      : 0,
+                  ...(typeof step.ts === "number" && Number.isFinite(step.ts) ? { ts: step.ts } : {}),
+                  ...(step.meta && typeof step.meta === "object" ? { meta: step.meta } : {}),
+                },
+              }))
+          : []
+
+        return {
+          id: msg._id,
+          role: msg.role as "user" | "assistant" | "system" | "data",
+          content: msg.content,
+          parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts],
+          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds }] : undefined,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sources: (msg as any).sources,
+          ...(reasoningTrace ? { reasoningTrace } : {}),
+        }
+      }) as unknown as UIMessage[]
 
       setMessages(mappedMessages)
       syncedConversationRef.current = conversationId
@@ -280,6 +606,25 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
+  const activeReasoningState = useMemo(() => {
+    const assistants = [...messages].reverse().filter((msg) => msg.role === "assistant")
+    for (const assistant of assistants) {
+      const steps = extractReasoningTraceSteps(assistant)
+      const liveThought = extractLiveThought(assistant)
+      const headline = liveThought || extractReasoningHeadline(assistant, steps)
+      if (steps.length > 0 || headline) {
+        return {
+          steps,
+          headline,
+        }
+      }
+    }
+
+    return {
+      steps: [] as ReasoningTraceStep[],
+      headline: null as string | null,
+    }
+  }, [messages])
 
   const clearProcessTimers = useCallback(() => {
     if (processIntervalRef.current !== null) {
@@ -299,52 +644,68 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (status === "submitted") {
       clearProcessTimers()
       stoppedManuallyRef.current = false
+      processStartedAtRef.current = Date.now()
       setProcessUi({
         visible: true,
         status: "submitted",
         progress: 8,
-        message: "Menyiapkan respons...",
+        message: "",
+        elapsedSeconds: 0,
       })
     } else if (status === "streaming") {
       clearProcessTimers()
+      if (processStartedAtRef.current === null) {
+        processStartedAtRef.current = Date.now()
+      }
       setProcessUi((prev) => ({
         visible: true,
         status: "streaming",
         progress: Math.max(prev.progress, 16),
-        message: "Agen menyusun jawaban...",
+        message: "",
+        elapsedSeconds: Math.max(prev.elapsedSeconds, 1),
       }))
       processIntervalRef.current = window.setInterval(() => {
         setProcessUi((prev) => {
           if (!prev.visible) return prev
           const nextProgress = Math.min(prev.progress + (prev.progress < 70 ? 4 : 2), 92)
-          return { ...prev, progress: nextProgress }
+          const elapsed = processStartedAtRef.current
+            ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
+            : Math.max(prev.elapsedSeconds, 1)
+          return { ...prev, progress: nextProgress, elapsedSeconds: elapsed }
         })
       }, 220)
     } else if (status === "ready" && hadGeneratingStatus) {
       clearProcessTimers()
       const wasStoppedManually = stoppedManuallyRef.current
+      const elapsed = processStartedAtRef.current
+        ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
+        : 1
       setProcessUi({
         visible: true,
         status: wasStoppedManually ? "stopped" : "ready",
         progress: 100,
         message: wasStoppedManually ? "Proses dihentikan" : "Respons selesai",
+        elapsedSeconds: elapsed,
       })
-      processHideTimeoutRef.current = window.setTimeout(() => {
-        setProcessUi((prev) => ({ ...prev, visible: false }))
-        stoppedManuallyRef.current = false
-      }, 900)
+      stoppedManuallyRef.current = false
+      processStartedAtRef.current = null
     } else if (status === "error" && hadGeneratingStatus) {
       clearProcessTimers()
+      const elapsed = processStartedAtRef.current
+        ? Math.max(1, Math.round((Date.now() - processStartedAtRef.current) / 1000))
+        : 1
       setProcessUi({
         visible: true,
         status: "error",
         progress: 100,
         message: "Terjadi kendala saat memproses jawaban",
+        elapsedSeconds: elapsed,
       })
       processHideTimeoutRef.current = window.setTimeout(() => {
         setProcessUi((prev) => ({ ...prev, visible: false }))
       }, 1500)
       stoppedManuallyRef.current = false
+      processStartedAtRef.current = null
     }
 
     previousStatusRef.current = status
@@ -576,33 +937,87 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     onMobileMenuClick?.()
   }
 
+  // Mobile rewind handler — opens confirmation dialog
+  const handleMobileRewindRequest = useCallback((targetStage: PaperStageId) => {
+    setPendingRewindTarget(targetStage)
+  }, [])
+
+  const handleRewindConfirm = useCallback(async () => {
+    if (!pendingRewindTarget || !userId) return
+    setIsRewindSubmitting(true)
+    try {
+      const result = await rewindToStage(userId, pendingRewindTarget)
+      if (result.success) {
+        toast.success("Berhasil kembali ke tahap sebelumnya.")
+      } else {
+        const errorMsg = "error" in result && typeof result.error === "string" ? result.error : "Gagal melakukan rewind."
+        toast.error(errorMsg)
+      }
+    } catch (error) {
+      console.error("Rewind failed:", error)
+      toast.error("Gagal melakukan rewind.")
+    } finally {
+      setIsRewindSubmitting(false)
+      setPendingRewindTarget(null)
+    }
+  }, [pendingRewindTarget, userId, rewindToStage])
+
   // Landing page empty state (no conversation selected)
   // ChatInput is persistent — always visible at bottom, even in start state
   if (!conversationId) {
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Mobile Header */}
-        <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="font-semibold">Makalah Chat</span>
-          <div className="w-9" />
-        </div>
-
-        {/* Empty State Content — fills available space above ChatInput */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="hidden md:block">
+        {/* Mobile: Same content as desktop, adapted layout */}
+        <div className="md:hidden flex-1 flex flex-col min-h-0">
+          {/* Header: sidebar expand + theme toggle */}
+          <div className="shrink-0 flex items-center justify-between h-11 px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)]">
+            <button
+              onClick={onMobileMenuClick}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Open sidebar"
+            >
+              <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Toggle theme"
+            >
+              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
+            </button>
+          </div>
+          {/* TemplateGrid — scrollable so it shrinks when keyboard opens */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-6">
             <TemplateGrid
               onTemplateSelect={(template) =>
                 void handleStarterPromptClick(template.message)
               }
               onSidebarLinkClick={handleSidebarLinkClick}
               disabled={isCreatingChat}
-              strictCmsMode
             />
           </div>
-          <div className="md:hidden">
+          {/* ChatInput — shrink-0 so it stays visible above keyboard */}
+          <ChatInput
+            input={input}
+            onInputChange={handleInputChange}
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!input.trim()) return
+              await handleStartNewChat(input.trim())
+            }}
+            isLoading={isCreatingChat}
+            isGenerating={false}
+            conversationId={conversationId}
+            uploadedFileIds={uploadedFileIds}
+            onFileUploaded={handleFileUploaded}
+          />
+        </div>
+
+        {/* Desktop: Existing empty state (unchanged) */}
+        <div className="hidden md:flex flex-1 flex-col h-full overflow-hidden">
+          {/* Empty State Content — fills available space above ChatInput */}
+          <div className="flex-1 flex items-center justify-center p-6">
             <TemplateGrid
               onTemplateSelect={(template) =>
                 void handleStarterPromptClick(template.message)
@@ -611,23 +1026,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               disabled={isCreatingChat}
             />
           </div>
-        </div>
 
-        {/* Persistent ChatInput — always visible, even in start state */}
-        <ChatInput
-          input={input}
-          onInputChange={handleInputChange}
-          onSubmit={async (e) => {
-            e.preventDefault()
-            if (!input.trim()) return
-            await handleStartNewChat(input.trim())
-          }}
-          isLoading={isCreatingChat}
-          isGenerating={false}
-          conversationId={conversationId}
-          uploadedFileIds={uploadedFileIds}
-          onFileUploaded={handleFileUploaded}
-        />
+          {/* Persistent ChatInput — always visible, even in start state */}
+          <ChatInput
+            input={input}
+            onInputChange={handleInputChange}
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!input.trim()) return
+              await handleStartNewChat(input.trim())
+            }}
+            isLoading={isCreatingChat}
+            isGenerating={false}
+            conversationId={conversationId}
+            uploadedFileIds={uploadedFileIds}
+            onFileUploaded={handleFileUploaded}
+          />
+        </div>
       </div>
     )
   }
@@ -636,19 +1051,31 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   if (conversationNotFound) {
     return (
       <div className="flex-1 flex flex-col h-full">
-        <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="font-semibold">Makalah Chat</span>
-          <div className="w-9" />
+        <div className="md:hidden px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)] bg-[var(--chat-background)]">
+          <div className="flex items-center justify-between h-11">
+            <button
+              onClick={onMobileMenuClick}
+              className="shrink-0 text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Open sidebar"
+            >
+              <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="shrink-0 text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Toggle theme"
+            >
+              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-[var(--chat-muted-foreground)]">
             {/* Mechanical Grace: Rose error color */}
             <WarningCircle className="h-12 w-12 mx-auto mb-4 text-[var(--chat-destructive)]" />
-            <p className="mb-2 font-mono">Percakapan tidak ditemukan</p>
-            <p className="text-sm opacity-75 font-mono">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
+            <p className="mb-2 font-sans">Percakapan tidak ditemukan</p>
+            <p className="text-sm opacity-75 font-sans">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
           </div>
         </div>
       </div>
@@ -658,11 +1085,65 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
-      <div className="md:hidden p-4 border-b border-[color:var(--chat-border)] flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={onMobileMenuClick} aria-label="Open mobile menu">
-          <Menu className="h-5 w-5" />
-        </Button>
-        <span className="font-semibold">Makalah Chat</span>
+      <div className="md:hidden px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)] bg-[var(--chat-background)]">
+        <div className="flex items-center h-11">
+          {/* Left group: sidebar + theme */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onMobileMenuClick}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Open sidebar"
+            >
+              <SidebarExpand className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Toggle theme"
+            >
+              <SunLight className="h-5 w-5 hidden dark:block" strokeWidth={1.5} />
+              <HalfMoon className="h-5 w-5 block dark:hidden" strokeWidth={1.5} />
+            </button>
+          </div>
+
+          {/* Tappable title — centered, opens Edit/Delete sheet */}
+          <button
+            onClick={() => setShowEditDeleteSheet(true)}
+            className="flex-1 flex items-center justify-center gap-1 min-w-0 active:bg-[var(--chat-accent)] rounded-action px-1.5 py-1 transition-colors duration-50"
+          >
+            <span className="truncate text-sm font-sans font-medium text-[var(--chat-foreground)]">
+              {conversation?.title || "Percakapan baru"}
+            </span>
+            <NavArrowDown className="h-3 w-3 shrink-0 text-[var(--chat-muted-foreground)]" strokeWidth={1.5} />
+          </button>
+
+          {/* Right group: new chat + paper sessions */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => router.push("/chat")}
+              className="text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-50"
+              aria-label="Chat baru"
+            >
+              <ChatPlusIn className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setShowPaperSessionsSheet((prev) => !prev)}
+              className={
+                showPaperSessionsSheet
+                  ? "text-[var(--chat-foreground)] transition-colors duration-150"
+                  : "text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-150"
+              }
+              aria-label={showPaperSessionsSheet ? "Tutup paper sessions" : "Buka paper sessions"}
+              aria-pressed={showPaperSessionsSheet}
+            >
+              {showPaperSessionsSheet ? (
+                <FastArrowDownSquare className="h-5 w-5" strokeWidth={1.5} />
+              ) : (
+                <FastArrowUpSquare className="h-5 w-5" strokeWidth={1.5} />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Quota Warning Banner */}
@@ -693,7 +1174,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                   onTemplateSelect={handleTemplateSelect}
                   onSidebarLinkClick={handleSidebarLinkClick}
                   disabled={isLoading}
-                  strictCmsMode
                 />
               </div>
               <div className="md:hidden">
@@ -739,6 +1219,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                       currentStageStartIndex={currentStageStartIndex}
                       allMessages={permissionMessages}
                       stageData={stageData}
+                      // Persisted artifact signals (survive page refresh)
+                      persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
                     />
                   </div>
                 )
@@ -751,8 +1233,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 return atBottom ? "smooth" : false
               }}
               initialTopMostItemIndex={messages.length - 1}
-              style={{ height: "100%" }}
+              style={{ height: "100%", overflowX: "hidden" }}
               components={{
+                Header: () => <div className="pt-4" />,
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
@@ -798,8 +1281,20 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           visible={processUi.visible}
           status={processUi.status}
           progress={processUi.progress}
-          message={processUi.message}
+          elapsedSeconds={processUi.elapsedSeconds}
+          reasoningSteps={activeReasoningState.steps}
+          reasoningHeadline={activeReasoningState.headline}
         />
+
+        {/* Mobile Paper Progress Bar */}
+        {isPaperMode && paperSession?.currentStage && (
+          <MobileProgressBar
+            currentStage={paperSession.currentStage as PaperStageId}
+            stageStatus={stageStatus ?? "drafting"}
+            stageData={stageData}
+            onRewindRequest={handleMobileRewindRequest}
+          />
+        )}
 
         {/* Input Area */}
         <ChatInput
@@ -814,6 +1309,38 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           onFileUploaded={handleFileUploaded}
         />
       </div>
+
+      {/* Mobile Edit/Delete Sheet */}
+      <MobileEditDeleteSheet
+        open={showEditDeleteSheet}
+        onOpenChange={setShowEditDeleteSheet}
+        conversationId={safeConversationId}
+      />
+
+      {/* Mobile Paper Sessions Sheet */}
+      <MobilePaperSessionsSheet
+        open={showPaperSessionsSheet}
+        onOpenChange={setShowPaperSessionsSheet}
+        conversationId={safeConversationId}
+        onArtifactSelect={onArtifactSelect}
+      />
+
+      {/* Rewind Confirmation Dialog (mobile progress bar) */}
+      {isPaperMode && paperSession?.currentStage && (
+        <RewindConfirmationDialog
+          open={pendingRewindTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPendingRewindTarget(null)
+              setIsRewindSubmitting(false)
+            }
+          }}
+          targetStage={pendingRewindTarget}
+          currentStage={paperSession.currentStage}
+          onConfirm={handleRewindConfirm}
+          isSubmitting={isRewindSubmitting}
+        />
+      )}
     </div>
   )
 }
