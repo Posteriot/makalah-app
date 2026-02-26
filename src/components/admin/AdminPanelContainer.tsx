@@ -29,7 +29,7 @@ export function AdminPanelContainer({
   }, [tabParam])
 
   return (
-    <div className="admin-container relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[color:var(--section-bg-alt)]">
+    <div className="admin-container relative isolate left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-hidden bg-background">
       <DottedPattern spacing={24} withRadialMask={false} className="z-0 opacity-100" />
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-6 lg:px-8">
         <div className="md:hidden flex justify-end py-3">
