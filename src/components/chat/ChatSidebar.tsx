@@ -1,8 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft, Settings, SidebarCollapse } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, SidebarCollapse } from "iconoir-react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import Link from "next/link"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
@@ -11,6 +12,7 @@ import { SidebarPaperSessions } from "./sidebar/SidebarPaperSessions"
 import { SidebarProgress } from "./sidebar/SidebarProgress"
 import type { PanelType } from "./shell/ActivityBar"
 import { CreditMeter } from "@/components/billing/CreditMeter"
+import { UserDropdown } from "@/components/layout/header/UserDropdown"
 
 /**
  * ChatSidebar Props
@@ -124,7 +126,7 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "h-full w-full overflow-hidden border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)]",
+        "h-full w-full overflow-visible md:overflow-hidden border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)]",
         "flex flex-col",
         className
       )}
@@ -184,7 +186,28 @@ export function ChatSidebar({
       {/* Section header — Riwayat label with count badge */}
       {activePanel === "chat-history" && (
         <div className="shrink-0 flex items-center justify-between bg-[var(--chat-accent)] px-3 py-2.5">
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/"
+              aria-label="Home"
+              className="md:hidden inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--chat-sidebar-foreground)] transition-opacity hover:opacity-80"
+              onClick={() => onCloseMobile?.()}
+            >
+              <Image
+                src="/logo/makalah_logo_light.svg"
+                alt="Makalah"
+                width={20}
+                height={20}
+                className="hidden dark:block"
+              />
+              <Image
+                src="/logo/makalah_logo_dark.svg"
+                alt="Makalah"
+                width={20}
+                height={20}
+                className="block dark:hidden"
+              />
+            </Link>
             <span className="inline-flex h-8 items-center gap-2 rounded-md border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] pl-3 pr-1.5 text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
               Riwayat
               <span className="inline-flex h-5 min-w-6 items-center justify-center rounded-md border border-[color:var(--chat-success)] bg-[var(--chat-success)] px-1.5 text-[10px] font-mono font-bold text-[var(--chat-background)]">
@@ -213,16 +236,15 @@ export function ChatSidebar({
         onClick={() => router.push("/subscription/overview")}
       />
 
-      {/* Mobile-only: Settings link */}
+      {/* Mobile-only: User dropdown (replaces single Settings link) */}
       <div className="md:hidden px-4 py-3 border-t border-[color:var(--chat-sidebar-border)]">
-        <Link
-          href="/settings"
-          className="flex items-center gap-2 text-xs font-sans text-[var(--chat-muted-foreground)] active:text-[var(--chat-sidebar-foreground)] active:bg-[var(--chat-sidebar-accent)] transition-colors duration-150"
-          onClick={() => onCloseMobile?.()}
-        >
-          <Settings className="h-4 w-4" />
-          Atur Akun
-        </Link>
+        <UserDropdown
+          variant="compact"
+          compactLabel="first-name"
+          compactFill
+          placement="top-start"
+          onActionComplete={onCloseMobile}
+        />
       </div>
     </aside>
   )

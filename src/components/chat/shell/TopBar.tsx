@@ -166,7 +166,11 @@ export function TopBar({
           </Tooltip>
 
           {/* User Dropdown / Settings entry */}
-          <UserDropdown variant="compact" />
+          <UserDropdown
+            variant="compact"
+            compactLabel="first-name"
+            compactTriggerClassName="h-7 max-w-[116px] border-transparent bg-transparent px-1 text-xs hover:bg-transparent dark:hover:bg-transparent"
+          />
         </div>
       </div>
     </TooltipProvider>

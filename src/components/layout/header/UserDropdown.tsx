@@ -18,11 +18,28 @@ import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface UserDropdownProps {
-  /** "default" = full name + chevron (marketing/dashboard), "compact" = icon only (chat) */
+  /** "default" = text + chevron (marketing/dashboard), "compact" = compact trigger */
   variant?: "default" | "compact"
+  /** Compact trigger label mode */
+  compactLabel?: "icon-only" | "first-name"
+  /** Additional classes for compact trigger only */
+  compactTriggerClassName?: string
+  /** Stretch compact trigger to parent width (used in mobile sidebar footer) */
+  compactFill?: boolean
+  /** Dropdown placement relative to trigger */
+  placement?: "bottom-end" | "top-start" | "top-end"
+  /** Optional callback after menu action completes (e.g., close mobile sheet) */
+  onActionComplete?: () => void
 }
 
-export function UserDropdown({ variant = "default" }: UserDropdownProps) {
+export function UserDropdown({
+  variant = "default",
+  compactLabel = "icon-only",
+  compactTriggerClassName,
+  compactFill = false,
+  placement = "bottom-end",
+  onActionComplete,
+}: UserDropdownProps) {
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -35,6 +52,8 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
   // Prevent hydration mismatch: server always renders skeleton,
   // client also renders skeleton on first paint, then swaps after mount.
   useEffect(() => {
+    // Intentionally set after mount so initial client paint matches SSR skeleton.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMounted(true)
   }, [])
 
@@ -75,20 +94,32 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
   // Both server and client render the same skeleton initially → no hydration mismatch.
   if (!hasMounted || !stableSession) {
     return variant === "compact"
-      ? <Skeleton className="w-8 h-8 rounded-full" />
+      ? compactLabel === "first-name"
+        ? <Skeleton className={cn("rounded-action", compactFill ? "h-11 w-full" : "h-8 w-[132px]")} />
+        : <Skeleton className="w-8 h-8 rounded-full" />
       : <Skeleton className="h-[30px] w-[100px] rounded-action" />
   }
 
   const firstName = convexUser?.firstName || stableSession?.user?.name?.split(" ")[0] || "User"
-  const lastName = convexUser?.lastName || stableSession?.user?.name?.split(" ").slice(1).join(" ") || ""
-  const fullName = `${firstName} ${lastName}`.trim()
 
   // isAdmin berdasarkan ROLE untuk menampilkan Admin Panel link
   const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
 
+  const closeAfterAction = () => {
+    setIsOpen(false)
+    onActionComplete?.()
+  }
+
+  const menuPositionClass = (() => {
+    if (placement === "top-start") return "left-0 bottom-full mb-2"
+    if (placement === "top-end") return "right-0 bottom-full mb-2"
+    return "right-0 top-full mt-2"
+  })()
+
   const handleSignOut = async () => {
     if (isSigningOut) return
     setIsSigningOut(true)
+    closeAfterAction()
 
     // Clear browser cookie first — crossDomainClient clears localStorage
     // in its init hook (before POST), which can unmount this component.
@@ -109,25 +140,57 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
     <div className="relative" ref={dropdownRef}>
       {/* Trigger */}
       {variant === "compact" ? (
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className={cn(
-            "relative flex items-center justify-center",
-            "w-8 h-8 rounded-full",
-            "text-muted-foreground hover:text-foreground hover:bg-accent/80",
-            "transition-colors duration-150",
-            isOpen && "text-foreground bg-accent/80"
-          )}
-          aria-expanded={isOpen}
-          aria-haspopup="true"
-          aria-label="User menu"
-        >
-          <User className="h-[18px] w-[18px]" />
-          <span
-            className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[color:var(--section-bg-alt)]"
-            aria-hidden="true"
-          />
-        </button>
+        compactLabel === "first-name" ? (
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className={cn(
+              "group relative inline-flex items-center gap-2 rounded-action border border-border bg-popover px-2.5",
+              "text-sm font-medium text-foreground transition-colors duration-150 focus-ring",
+              "hover:bg-accent",
+              compactFill ? "min-h-11 w-full py-2 justify-start" : "h-8 max-w-[156px] py-1",
+              isOpen && "bg-accent",
+              compactTriggerClassName
+            )}
+            aria-expanded={isOpen}
+            aria-haspopup="true"
+            aria-label="User menu"
+          >
+            <span className="relative inline-flex h-5 w-5 items-center justify-center text-foreground">
+              <User className="h-4 w-4" />
+              <span
+                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-500"
+                aria-hidden="true"
+              />
+            </span>
+            <span className={cn("truncate text-left", compactFill ? "max-w-[96px]" : "max-w-[90px]")}>{firstName}</span>
+            <NavArrowDown
+              className={cn(
+                "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
+                isOpen && "rotate-180"
+              )}
+            />
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className={cn(
+              "relative flex items-center justify-center",
+              "w-8 h-8 rounded-full",
+              "text-muted-foreground hover:text-foreground hover:bg-accent/80",
+              "transition-colors duration-150",
+              isOpen && "text-foreground bg-accent/80"
+            )}
+            aria-expanded={isOpen}
+            aria-haspopup="true"
+            aria-label="User menu"
+          >
+            <User className="h-[18px] w-[18px]" />
+            <span
+              className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[color:var(--section-bg-alt)]"
+              aria-hidden="true"
+            />
+          </button>
+        )
       ) : (
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -162,7 +225,7 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
 
           {/* Name (hidden on mobile) */}
           <span className="relative z-10 hidden sm:block text-sm font-medium text-narrative max-w-[120px] truncate">
-            {fullName}
+            {firstName}
           </span>
 
           {/* Chevron */}
@@ -177,10 +240,10 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-border bg-popover shadow-md z-drawer py-2 px-2">
+        <div className={cn("absolute w-48 rounded-md border border-border bg-popover shadow-md z-drawer py-2 px-2", menuPositionClass)}>
           <Link
             href="/settings"
-            onClick={() => setIsOpen(false)}
+            onClick={closeAfterAction}
             className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors w-full rounded-action"
           >
             <User className="icon-interface" />
@@ -190,7 +253,7 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
           {/* Subscription Link */}
           <Link
             href="/subscription/overview"
-            onClick={() => setIsOpen(false)}
+            onClick={closeAfterAction}
             className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors rounded-action"
           >
             <CreditCard className="icon-interface" />
@@ -202,7 +265,7 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
             <>
               <Link
                 href="/dashboard"
-                onClick={() => setIsOpen(false)}
+                onClick={closeAfterAction}
                 className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
               >
                 <Settings className="icon-interface" />
@@ -210,7 +273,7 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
               </Link>
               <Link
                 href="/cms"
-                onClick={() => setIsOpen(false)}
+                onClick={closeAfterAction}
                 className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
               >
                 <Journal className="icon-interface" />
@@ -218,7 +281,7 @@ export function UserDropdown({ variant = "default" }: UserDropdownProps) {
               </Link>
               <Link
                 href="/ai-ops"
-                onClick={() => setIsOpen(false)}
+                onClick={closeAfterAction}
                 className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
               >
                 <Activity className="icon-interface" />
