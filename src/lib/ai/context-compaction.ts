@@ -88,7 +88,7 @@ export function stripChitchat(messages: CompactableMessage[]): CompactableMessag
 // P2/P4: Compact Completed Stages
 // ════════════════════════════════════════════════════════════════
 
-function excludeStageMessages(
+export function excludeStageMessages(
     messages: CompactableMessage[],
     boundary: StageMessageBoundary,
     messageIdExtractor: (msg: CompactableMessage) => string | undefined
@@ -117,7 +117,7 @@ function excludeStageMessages(
     })
 }
 
-function buildStageDigestMessage(
+export function buildStageDigestMessage(
     digest: PaperMemoryEntry[],
     compactedStages: string[]
 ): CompactableMessage | null {
