@@ -1,7 +1,7 @@
 # Implementation Plan: `compileDaftarPustaka` Mode `preview|persist`
 
 Tanggal: 26 Februari 2026  
-Status: Implemented (branch `feat/compile-daftar-pustaka`, commit `d3a6069`)  
+Status: Implemented (branch `scope/compile-daftar-pustaka-only`, cherry-pick dari `d3a6069`)  
 Scope: Evolusi tool tunggal `compileDaftarPustaka` agar mendukung dua mode:
 1. `preview` (boleh di semua stage, non-persist)
 2. `persist` (hanya di stage `daftar_pustaka`, simpan ke `stageData.daftar_pustaka`)
@@ -32,6 +32,9 @@ Ringkasan hasil eksekusi:
    - `persist` ditolak di stage non-`daftar_pustaka` (guard aktif)
 7. Catatan environment:
    - sempat ada mismatch Convex karena `convex dev` berjalan dari worktree lain; setelah diarahkan ke worktree ini, validator `mode` berjalan normal.
+8. Hardening PR branch:
+   - file compiler yang sempat hilang (`convex/paperSessions/daftarPustakaCompiler.ts` + test) sudah ditambahkan.
+   - `npm run build` dan `npx tsc --noEmit` terverifikasi pass setelah sinkronisasi.
 
 ---
 

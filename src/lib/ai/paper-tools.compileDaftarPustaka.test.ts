@@ -21,13 +21,24 @@ type MockSession = {
   currentStage: string
 }
 
-const getCompileTool = () => {
+type CompileToolExecute = (input: Record<string, unknown>) => Promise<Record<string, unknown>>
+
+const getCompileToolExecute = (): CompileToolExecute => {
   const tools = createPaperTools({
     userId: "user_1" as never,
     conversationId: "conv_1" as never,
-  }) as Record<string, { execute: (input: Record<string, unknown>) => Promise<Record<string, unknown>> }>
+  }) as unknown as {
+    compileDaftarPustaka?: {
+      execute?: CompileToolExecute
+    }
+  }
 
-  return tools.compileDaftarPustaka
+  const execute = tools.compileDaftarPustaka?.execute
+  if (!execute) {
+    throw new Error("compileDaftarPustaka tool tidak punya execute handler")
+  }
+
+  return execute
 }
 
 describe("createPaperTools.compileDaftarPustaka", () => {
@@ -64,7 +75,7 @@ describe("createPaperTools.compileDaftarPustaka", () => {
       warnings: ["preview kosong"],
     })
 
-    const result = await getCompileTool().execute({ mode: "preview" })
+    const result = await getCompileToolExecute()({ mode: "preview" })
 
     expect(result.success).toBe(true)
     expect(result.mode).toBe("preview")
@@ -110,7 +121,7 @@ describe("createPaperTools.compileDaftarPustaka", () => {
       })
       .mockResolvedValueOnce({})
 
-    const result = await getCompileTool().execute({
+    const result = await getCompileToolExecute()({
       ringkasan: "Total 1 referensi lengkap",
       ringkasanDetail: "Tidak ada duplikat",
     })
@@ -149,7 +160,7 @@ describe("createPaperTools.compileDaftarPustaka", () => {
       currentStage: "daftar_pustaka",
     } as MockSession)
 
-    const result = await getCompileTool().execute({ mode: "persist" })
+    const result = await getCompileToolExecute()({ mode: "persist" })
 
     expect(result.success).toBe(false)
     expect(result.error).toContain("butuh field ringkasan")

@@ -14,6 +14,8 @@ Referensi plan:
 
 Deliverables:
 - `convex/paperSessions.ts`
+- `convex/paperSessions/daftarPustakaCompiler.ts`
+- `convex/paperSessions/daftarPustakaCompiler.test.ts`
 - `src/lib/ai/paper-tools.ts`
 - `src/app/api/chat/route.ts`
 - `src/lib/ai/paper-search-helpers.ts`
@@ -21,6 +23,7 @@ Deliverables:
 - `src/lib/ai/paper-stages/finalization.ts`
 - `src/lib/ai/paper-tools.compileDaftarPustaka.test.ts`
 - `src/lib/ai/chat-route-compile-intent.test.ts`
+- `vitest.config.ts`
 
 Checklist:
 - [x] Mutation compile mendukung `mode: preview|persist` (default `persist`).
@@ -31,15 +34,21 @@ Checklist:
 - [x] Stage/global prompt sinkron dengan kontrak mode baru.
 - [x] Unit test mode behavior + compile-intent pass.
 - [x] Build pass.
+- [x] Typecheck pass.
+- [x] Test discovery untuk `.worktrees/**` diexclude agar tidak false positive.
 
 Evidence:
-- Commit implementasi: `d3a6069`.
+- Commit implementasi sumber: `d3a6069` (cherry-pick di branch PR: `16f37a3`).
+- Hardening PR branch: file compiler yang hilang ditambahkan + konfigurasi vitest diexclude dari `.worktrees/**`.
 - Manual test pass:
   - preview sukses di stage non-`daftar_pustaka` (screenshot `Screen Shot 2026-02-26 at 21.16.53.png`)
   - persist ditolak di stage non-`daftar_pustaka` (screenshot `Screen Shot 2026-02-26 at 21.19.27.png`)
 - Catatan insiden runtime:
   - error `mode` sempat muncul karena `convex dev` aktif dari worktree lain (validator lama).
   - setelah diarahkan ke worktree ini, behavior kembali sesuai implementasi.
+- Verifikasi ulang branch PR:
+  - `npx tsc --noEmit` pass
+  - `npm run build` pass
 
 ---
 
@@ -144,7 +153,7 @@ Checklist:
 
 ## Task 7 — Validasi End-to-End
 
-Status: Partial (otomatis done, manual pending)
+Status: Partial (otomatis done, manual stage 11 + rewind pending)
 
 Checklist otomatis:
 - [x] Build setelah implementasi: `npm run build` pass.
