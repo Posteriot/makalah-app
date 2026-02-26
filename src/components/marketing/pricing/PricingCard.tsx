@@ -1,7 +1,9 @@
 "use client"
 
 import { useSession } from "@/lib/auth-client"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { cn } from "@/lib/utils"
+import { resolvePricingEntryHref } from "@/lib/utils/pricingEntryRouting"
 import { SectionCTA } from "@/components/ui/section-cta"
 
 export type PricingPlan = {
@@ -28,14 +30,17 @@ function PricingCTA({
   plan: PricingPlan
 }) {
   const { data: session } = useSession()
+  const { user } = useCurrentUser()
   const isSignedIn = !!session
 
   const getHref = (): string => {
-    const dest = plan.ctaHref || "/"
-    if (!isSignedIn) {
-      return `/sign-up?redirect_url=${encodeURIComponent(dest)}`
-    }
-    return dest
+    return resolvePricingEntryHref({
+      planSlug: plan.slug,
+      ctaHref: plan.ctaHref,
+      isSignedIn,
+      role: user?.role,
+      subscriptionStatus: user?.subscriptionStatus,
+    })
   }
 
   // Disabled state (e.g., Pro coming soon)

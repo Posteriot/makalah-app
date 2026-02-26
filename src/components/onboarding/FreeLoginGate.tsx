@@ -34,6 +34,12 @@ export function FreeLoginGate() {
     if (isUserLoading || !user) return
     if (!isFreeTierForLoginGate(user.role, user.subscriptionStatus)) return
 
+    // Never override explicit checkout intent.
+    if (pathname.startsWith("/checkout/")) {
+      redirectingRef.current = false
+      return
+    }
+
     if (pathname === "/get-started") {
       if (!hasSeenFreeLoginGateForSession(session)) {
         markFreeLoginGateSeenForSession(session)

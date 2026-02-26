@@ -121,7 +121,12 @@ export default function CheckoutPROPage() {
 
 function CheckoutPROContent() {
   const { user, isLoading: userLoading } = useCurrentUser()
-  const { hasCompletedOnboarding, completeOnboarding } = useOnboardingStatus()
+  const {
+    hasCompletedOnboarding,
+    completeOnboarding,
+    isLoading: isOnboardingLoading,
+    isAuthenticated,
+  } = useOnboardingStatus()
   const onboardingCompletedRef = useRef(false)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -141,13 +146,13 @@ function CheckoutPROContent() {
   }, [proPlan?.isDisabled, router])
 
   useEffect(() => {
-    if (!hasCompletedOnboarding && !onboardingCompletedRef.current) {
+    if (!isOnboardingLoading && isAuthenticated && !hasCompletedOnboarding && !onboardingCompletedRef.current) {
       onboardingCompletedRef.current = true
       void completeOnboarding().catch((error) => {
         console.error("[CheckoutPRO] completeOnboarding failed:", error)
       })
     }
-  }, [hasCompletedOnboarding, completeOnboarding])
+  }, [hasCompletedOnboarding, completeOnboarding, isOnboardingLoading, isAuthenticated])
 
   useEffect(() => {
     const prevHtmlOverflow = document.documentElement.style.overflow
@@ -170,6 +175,10 @@ function CheckoutPROContent() {
 
   const creditBalance = useQuery(
     api.billing.credits.getCreditBalance,
+    user?._id ? { userId: user._id } : "skip"
+  )
+  const subscriptionStatus = useQuery(
+    api.billing.subscriptions.checkSubscriptionStatus,
     user?._id ? { userId: user._id } : "skip"
   )
 
@@ -269,21 +278,72 @@ function CheckoutPROContent() {
   }
 
   const currentTier = getEffectiveTier(user.role, user.subscriptionStatus)
+  if (currentTier === "pro" && subscriptionStatus === undefined) {
+    return (
+      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+        <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+      </section>
+    )
+  }
+
+  const hasActiveProSubscription = currentTier === "pro" &&
+    !!subscriptionStatus?.hasSubscription &&
+    subscriptionStatus.status === "active" &&
+    !subscriptionStatus.isExpired
+  const subscriptionPeriodEndLabel = subscriptionStatus?.currentPeriodEnd
+    ? new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+    : "-"
   const currentCredits = creditBalance?.remainingCredits ?? 0
   const pricing = proPricing ?? { priceIDR: 200_000, label: "Pro Bulanan" }
   const paymentState = paymentStatus?.status || paymentResult?.status
 
-  if (currentTier === "pro" || currentTier === "unlimited") {
+  if (currentTier === "unlimited") {
     return (
       <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
         <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
         <div className="relative z-10 flex h-full items-center justify-center px-4">
           <div className={cn("w-full max-w-xl space-y-3 p-4 text-center", shellPanelClass)}>
             <BackToSubscriptionButton onClick={handleBackToSubscription} />
-            <p className="text-narrative text-base text-foreground">Akses Pro sudah aktif.</p>
+            <p className="text-narrative text-base text-foreground">Akun lo sudah berada di tier Unlimited, checkout Pro tidak diperlukan.</p>
             <Link href="/subscription/plans" className="text-interface text-xs text-primary hover:underline">
               Kembali ke halaman paket
             </Link>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (hasActiveProSubscription) {
+    return (
+      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+        <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+        <div className="relative z-10 flex h-full items-center justify-center px-4">
+          <div className={cn("w-full max-w-xl space-y-3 p-4 text-center", shellPanelClass)}>
+            <BackToSubscriptionButton onClick={handleBackToSubscription} />
+            <p className="text-interface text-base font-medium text-foreground">Langganan Pro lo masih aktif.</p>
+            <p className="text-narrative text-sm text-muted-foreground">
+              Berlaku sampai {subscriptionPeriodEndLabel}.
+              {subscriptionStatus?.isPendingCancel ? " Status saat ini: akan berakhir di akhir periode." : ""}
+            </p>
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-center">
+              <Link
+                href="/subscription/plans"
+                className="focus-ring inline-flex items-center justify-center gap-2 rounded-action border border-border/70 px-3 py-2 text-interface text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Kelola Langganan
+              </Link>
+              <Link
+                href="/checkout/bpp?from=overview"
+                className="focus-ring inline-flex items-center justify-center gap-2 rounded-action bg-slate-900 px-3 py-2 text-interface text-xs font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                Top Up Kredit
+              </Link>
+            </div>
           </div>
         </div>
       </section>
