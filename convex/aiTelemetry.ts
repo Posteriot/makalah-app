@@ -344,6 +344,47 @@ export const getRecentFailures = query({
 })
 
 /**
+ * Conversation-level telemetry trace for debugging stage-skill resolver behavior.
+ * Admin/superadmin only.
+ */
+export const getConversationTrace = query({
+  args: {
+    requestorUserId: v.id("users"),
+    conversationId: v.id("conversations"),
+    limit: v.optional(v.number()),
+  },
+  handler: async ({ db }, { requestorUserId, conversationId, limit = 100 }) => {
+    await requireRole(db, requestorUserId, "admin")
+
+    // Note: no by_conversation index yet, so scan recent records and filter in memory.
+    const recent = await db
+      .query("aiTelemetry")
+      .withIndex("by_created")
+      .order("desc")
+      .take(Math.max(limit * 5, 500))
+
+    const filtered = recent
+      .filter((item) => item.conversationId === conversationId)
+      .slice(0, limit)
+
+    return filtered.map((item) => ({
+      _id: item._id,
+      createdAt: item.createdAt,
+      mode: item.mode,
+      toolUsed: item.toolUsed,
+      success: item.success,
+      provider: item.provider,
+      model: item.model,
+      failoverUsed: item.failoverUsed,
+      latencyMs: item.latencyMs,
+      skillResolverFallback: item.skillResolverFallback ?? null,
+      errorType: item.errorType ?? null,
+      errorMessage: item.errorMessage ?? null,
+    }))
+  },
+})
+
+/**
  * Failover events within a period, sorted by time.
  * Admin/superadmin only.
  */
