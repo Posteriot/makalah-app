@@ -134,7 +134,7 @@ Result: **PASS**
 
 ## 5) Residual Risks
 
-1. Living outline features are verified in repository lineage commits, but branch-level adoption must ensure target runtime branch actually contains those commits.
+1. Living outline features are verified in repository lineage commits. **Branch gate SATISFIED** — all 10 living-outline commits are confirmed ancestors of HEAD on `feature/skill-based-paper-workflow` (verified 26 Feb 2026 via `git merge-base --is-ancestor`).
 2. Language policy is enforced at document level; runtime validator must still be implemented to reject non-English skill content.
 3. Skill quality can still drift if future edits bypass codebase-aware review.
 

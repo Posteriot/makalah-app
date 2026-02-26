@@ -28,7 +28,7 @@ Verifikasi codebase (living outline):
 2. `convex/paperSessions.ts` (integrasi `approveStage`, `rewindToStage`, dan mutation `updateOutlineSections`) pada lineage commit `34b2098`, `16f4bab`, `16e05e4`.
 3. `src/lib/hooks/usePaperSession.ts` (expose `updateOutlineSections`) pada lineage commit `bd87920`.
 4. `src/components/chat/sidebar/SidebarProgress.tsx` (outline sub-items + inline edit UI) pada lineage commit `2545d70`, `9655189`.
-5. Gate rollout: branch runtime target wajib memastikan lineage commit living-outline sudah ter-merge.
+5. Gate rollout: **SATISFIED** — semua 10 commit living-outline sudah menjadi ancestor HEAD branch `feature/skill-based-paper-workflow` (verified 26 Feb 2026 via `git merge-base --is-ancestor`).
 
 ---
 
