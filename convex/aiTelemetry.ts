@@ -77,6 +77,7 @@ type SkillRuntimeRecord = {
   failoverUsed: boolean
   latencyMs: number
   skillResolverFallback?: boolean
+  isSkillRuntime?: boolean
   errorType?: string
   errorMessage?: string
 }
@@ -124,8 +125,16 @@ export const log = mutation({
     skillResolverFallback: v.optional(v.boolean()),
   },
   handler: async ({ db }, args) => {
+    const isSkillRuntime = isSkillRuntimeRecord({
+      mode: args.mode,
+      stageInstructionSource: args.stageInstructionSource,
+      stageScope: args.stageScope,
+      skillResolverFallback: args.skillResolverFallback,
+    })
+
     const id = await db.insert("aiTelemetry", {
       ...args,
+      isSkillRuntime,
       createdAt: Date.now(),
     })
 
@@ -470,12 +479,13 @@ export const getSkillRuntimeOverview = query({
     await requireRole(db, requestorUserId, "admin")
 
     const cutoff = Date.now() - periodToMs(period)
-    const records = await db
+    const skillRecords = await db
       .query("aiTelemetry")
-      .withIndex("by_created", (q) => q.gte("createdAt", cutoff))
+      .withIndex("by_skill_runtime_created", (q) =>
+        q.eq("isSkillRuntime", true).gte("createdAt", cutoff)
+      )
       .collect()
 
-    const skillRecords = records.filter(isSkillRuntimeRecord)
     const totalRequests = skillRecords.length
     const fallbackCount = skillRecords.filter((item) => item.skillResolverFallback === true).length
     const skillAppliedCount = skillRecords.filter((item) => item.stageInstructionSource === "skill").length
@@ -547,38 +557,39 @@ export const getSkillRuntimeTrace = query({
     await requireRole(db, requestorUserId, "admin")
 
     const cutoff = Date.now() - periodToMs(period)
-    const scanLimit = Math.max(limit * 8, 500)
     let rows: SkillRuntimeRecord[] = []
 
     if (conversationId) {
       const byConversation = await db
         .query("aiTelemetry")
-        .withIndex("by_conversation_created", (q) => q.eq("conversationId", conversationId))
+        .withIndex("by_conversation_skill_runtime_created", (q) =>
+          q.eq("conversationId", conversationId).eq("isSkillRuntime", true).gte("createdAt", cutoff)
+        )
         .order("desc")
-        .take(scanLimit)
+        .take(limit)
       rows = byConversation as unknown as SkillRuntimeRecord[]
     } else if (stageScope) {
       const byStage = await db
         .query("aiTelemetry")
-        .withIndex("by_stage_created", (q) => q.eq("stageScope", stageScope))
+        .withIndex("by_stage_skill_runtime_created", (q) =>
+          q.eq("stageScope", stageScope).eq("isSkillRuntime", true).gte("createdAt", cutoff)
+        )
         .order("desc")
-        .take(scanLimit)
+        .take(limit)
       rows = byStage as unknown as SkillRuntimeRecord[]
     } else {
       const byCreated = await db
         .query("aiTelemetry")
-        .withIndex("by_created", (q) => q.gte("createdAt", cutoff))
+        .withIndex("by_skill_runtime_created", (q) =>
+          q.eq("isSkillRuntime", true).gte("createdAt", cutoff)
+        )
         .order("desc")
-        .take(scanLimit)
+        .take(limit)
       rows = byCreated as unknown as SkillRuntimeRecord[]
     }
 
     const filtered = rows
-      .filter((record) => record.createdAt >= cutoff)
-      .filter((record) => isSkillRuntimeRecord(record))
-      .filter((record) => (stageScope ? record.stageScope === stageScope : true))
       .filter((record) => (onlyFallback ? record.skillResolverFallback === true : true))
-      .slice(0, limit)
 
     return filtered.map((record) => ({
       _id: record._id,

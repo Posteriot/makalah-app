@@ -1067,11 +1067,15 @@ export default defineSchema({
     inputTokens: v.optional(v.number()),
     outputTokens: v.optional(v.number()),
     skillResolverFallback: v.optional(v.boolean()),
+    isSkillRuntime: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_created", ["createdAt"])
+    .index("by_skill_runtime_created", ["isSkillRuntime", "createdAt"])
     .index("by_conversation_created", ["conversationId", "createdAt"])
+    .index("by_conversation_skill_runtime_created", ["conversationId", "isSkillRuntime", "createdAt"])
     .index("by_stage_created", ["stageScope", "createdAt"])
+    .index("by_stage_skill_runtime_created", ["stageScope", "isSkillRuntime", "createdAt"])
     .index("by_provider", ["provider", "createdAt"])
     .index("by_tool", ["toolUsed", "createdAt"])
     .index("by_success", ["success", "createdAt"]),
