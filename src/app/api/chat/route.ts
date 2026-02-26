@@ -245,6 +245,10 @@ export async function POST(req: Request) {
                 conversationId: currentConversationId as Id<"conversations">,
             })
             : null
+        const paperStageScope =
+            paperSession && paperSession.currentStage !== "completed"
+                ? (paperSession.currentStage as PaperStageId)
+                : undefined
 
         // Update billing context with paper session info
         if (paperSession) {
@@ -401,6 +405,16 @@ export async function POST(req: Request) {
         // ════════════════════════════════════════════════════════════════
         const MAX_CHAT_HISTORY_PAIRS = 20 // 20 pairs = 40 messages max
         const isPaperMode = !!paperModePrompt
+        const skillTelemetryContext = isPaperMode
+            ? {
+                skillResolverFallback,
+                stageScope: paperStageScope,
+                stageInstructionSource: paperModeContext.stageInstructionSource,
+                activeSkillId: paperModeContext.activeSkillId,
+                activeSkillVersion: paperModeContext.activeSkillVersion,
+                fallbackReason: paperModeContext.fallbackReason,
+            }
+            : {}
 
         let trimmedModelMessages = modelMessages
         if (isPaperMode && modelMessages.length > MAX_CHAT_HISTORY_PAIRS * 2) {
@@ -1616,7 +1630,7 @@ TIPS PENCARIAN:
                                 latencyMs: Date.now() - telemetryStartTime,
                                 inputTokens: usage?.inputTokens,
                                 outputTokens: usage?.outputTokens,
-                                skillResolverFallback,
+                                ...skillTelemetryContext,
                             })
                             // ═════════════════════════════════════════════════
 
@@ -2160,7 +2174,7 @@ TIPS PENCARIAN:
                                         latencyMs: Date.now() - telemetryStartTime,
                                         inputTokens: finishUsage?.inputTokens,
                                         outputTokens: finishUsage?.outputTokens,
-                                        skillResolverFallback,
+                                        ...skillTelemetryContext,
                                     })
                                     // ═════════════════════════════════════════════
                                 } catch (err) {
@@ -2361,7 +2375,7 @@ TIPS PENCARIAN:
                 errorType: primaryErrorInfo.errorType,
                 errorMessage: primaryErrorInfo.errorMessage,
                 latencyMs: Date.now() - telemetryStartTime,
-                skillResolverFallback,
+                ...skillTelemetryContext,
             })
             // ════════════════════════════════════════════
 
@@ -2465,7 +2479,7 @@ TIPS PENCARIAN:
                                 latencyMs: Date.now() - telemetryStartTime,
                                 inputTokens: usage?.inputTokens,
                                 outputTokens: usage?.outputTokens,
-                                skillResolverFallback,
+                                ...skillTelemetryContext,
                             })
                             // ═════════════════════════════════════════════════
                         }
@@ -2907,7 +2921,7 @@ TIPS PENCARIAN:
                                     latencyMs: Date.now() - telemetryStartTime,
                                     inputTokens: finishUsage?.inputTokens,
                                     outputTokens: finishUsage?.outputTokens,
-                                    skillResolverFallback,
+                                    ...skillTelemetryContext,
                                 })
                                 // ═════════════════════════════════════════════
 

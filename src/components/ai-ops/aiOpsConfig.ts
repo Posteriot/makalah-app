@@ -43,6 +43,14 @@ export const AI_OPS_SIDEBAR_ITEMS: AiOpsSidebarItem[] = [
     headerIcon: Dashboard,
   },
   {
+    id: "skill.monitor",
+    label: "Skill Monitor",
+    icon: Brain,
+    headerTitle: "Skill Runtime Monitoring",
+    headerDescription: "Pantau skill aktif vs fallback pada workflow 13 stage",
+    headerIcon: Brain,
+  },
+  {
     id: "paper",
     label: "Paper Workflow",
     icon: Page,
@@ -116,6 +124,7 @@ export const AI_OPS_SIDEBAR_ITEMS: AiOpsSidebarItem[] = [
 
 export type AiOpsTabId =
   | "overview"
+  | "skill.monitor"
   | "paper.sessions"
   | "paper.memory"
   | "paper.artifacts"

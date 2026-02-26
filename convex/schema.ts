@@ -1031,6 +1031,29 @@ export default defineSchema({
   aiTelemetry: defineTable({
     userId: v.id("users"),
     conversationId: v.optional(v.id("conversations")),
+    stageScope: v.optional(v.union(
+      v.literal("gagasan"),
+      v.literal("topik"),
+      v.literal("outline"),
+      v.literal("abstrak"),
+      v.literal("pendahuluan"),
+      v.literal("tinjauan_literatur"),
+      v.literal("metodologi"),
+      v.literal("hasil"),
+      v.literal("diskusi"),
+      v.literal("kesimpulan"),
+      v.literal("daftar_pustaka"),
+      v.literal("lampiran"),
+      v.literal("judul"),
+    )),
+    stageInstructionSource: v.optional(v.union(
+      v.literal("skill"),
+      v.literal("fallback"),
+      v.literal("none"),
+    )),
+    activeSkillId: v.optional(v.string()),
+    activeSkillVersion: v.optional(v.number()),
+    fallbackReason: v.optional(v.string()),
     provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter")),
     model: v.string(),
     isPrimaryProvider: v.boolean(),
@@ -1047,6 +1070,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_created", ["createdAt"])
+    .index("by_conversation_created", ["conversationId", "createdAt"])
+    .index("by_stage_created", ["stageScope", "createdAt"])
     .index("by_provider", ["provider", "createdAt"])
     .index("by_tool", ["toolUsed", "createdAt"])
     .index("by_success", ["success", "createdAt"]),
