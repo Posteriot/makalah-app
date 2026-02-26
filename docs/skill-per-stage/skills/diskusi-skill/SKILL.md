@@ -14,17 +14,20 @@ Interpret findings, compare them with literature, and explain implications and l
 
 ## Input Context
 Read approved hasil output, relevant references, and user feedback.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:
 - google_search (active mode)
 - updateStageData
 - createArtifact
+- compileDaftarPustaka (mode: preview; use for cross-stage bibliography audit without persistence)
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Unsupported interpretation claims
 - Stage jumping
-- Submit without ringkasan
+- compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
+- Submission is forbidden when ringkasan is missing
 
 ## Output Contract
 Required:

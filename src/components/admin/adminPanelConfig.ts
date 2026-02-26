@@ -65,6 +65,14 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
     headerIcon: Page,
   },
   {
+    id: "stage-skills",
+    label: "Stage Skills",
+    icon: Page,
+    headerTitle: "Stage Skills",
+    headerDescription: "Kelola skill prompt per stage paper workflow",
+    headerIcon: Page,
+  },
+  {
     id: "providers",
     label: "AI Providers",
     icon: Cpu,
@@ -131,6 +139,7 @@ export type AdminTabId =
   | "overview"
   | "users"
   | "prompts"
+  | "stage-skills"
   | "providers"
   | "refrasa"
   | "waitlist"

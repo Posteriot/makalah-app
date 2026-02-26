@@ -28,10 +28,24 @@ interface ArtifactSyncData {
   invalidatedPending: number
 }
 
+interface SkillRuntimeOverviewData {
+  totalRequests: number
+  skillAppliedCount: number
+  fallbackCount: number
+  fallbackRate: number
+  topFallbackReasons: Array<{ reason: string; count: number }>
+}
+
+function formatReason(reason: string): string {
+  if (reason === "unknown") return "Unknown"
+  return reason.replace(/_/g, " ")
+}
+
 function generateInsights(
   memory: MemoryHealthData | undefined,
   workflow: WorkflowProgressData | undefined,
-  artifacts: ArtifactSyncData | undefined
+  artifacts: ArtifactSyncData | undefined,
+  skillRuntime: SkillRuntimeOverviewData | undefined
 ): Insight[] {
   const insights: Insight[] = []
 
@@ -74,6 +88,21 @@ function generateInsights(
     }
   }
 
+  if (skillRuntime && skillRuntime.totalRequests > 0) {
+    if (skillRuntime.fallbackRate > 0.2) {
+      const topReason = skillRuntime.topFallbackReasons[0]
+      insights.push({
+        severity: "warning",
+        message: `Fallback skill monitor tinggi (${(skillRuntime.fallbackRate * 100).toFixed(1)}%).${topReason ? ` Penyebab utama: ${formatReason(topReason.reason)}.` : ""}`,
+      })
+    } else if (skillRuntime.fallbackCount > 0) {
+      insights.push({
+        severity: "info",
+        message: `${skillRuntime.fallbackCount} runtime memakai fallback. Monitor detail ada di tab Skill Monitor.`,
+      })
+    }
+  }
+
   return insights
 }
 
@@ -94,12 +123,19 @@ export function InsightBanner({
   memoryHealth,
   workflowProgress,
   artifactSync,
+  skillRuntime,
 }: {
   memoryHealth: MemoryHealthData | undefined
   workflowProgress: WorkflowProgressData | undefined
   artifactSync: ArtifactSyncData | undefined
+  skillRuntime?: SkillRuntimeOverviewData | undefined
 }) {
-  const insights = generateInsights(memoryHealth, workflowProgress, artifactSync)
+  const insights = generateInsights(
+    memoryHealth,
+    workflowProgress,
+    artifactSync,
+    skillRuntime
+  )
 
   if (insights.length === 0) return null
 

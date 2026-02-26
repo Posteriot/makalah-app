@@ -14,17 +14,20 @@ Build a literature review that establishes theoretical framing, gap analysis, an
 
 ## Input Context
 Read stage summaries, existing references, and user constraints.
+Read living outline checklist status when available (checkedAt/checkedBy/editHistory) to keep stage output aligned with approved outline progress.
 
 ## Tool Policy
 Allowed:
 - google_search (active mode)
 - updateStageData
 - createArtifact
+- compileDaftarPustaka (mode: preview; use for cross-stage bibliography audit without persistence)
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Fabricated literature entries
 - Stage jumping
-- Submit without ringkasan
+- compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
+- Submission is forbidden when ringkasan is missing
 
 ## Output Contract
 Required:

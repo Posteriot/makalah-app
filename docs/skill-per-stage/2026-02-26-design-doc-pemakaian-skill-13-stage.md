@@ -6,6 +6,27 @@ Scope: Integrasi runtime skill package ke paper workflow 13 tahap di Makalah AI
 
 ---
 
+## Update Implementasi Runtime (26 Februari 2026)
+
+Runtime `compileDaftarPustaka` sudah implemented dengan kontrak final:
+1. `mode: "preview"` boleh dipanggil lintas stage untuk audit referensi tanpa persist.
+2. `mode: "persist"` hanya valid saat `currentStage = daftar_pustaka`.
+3. Chat route sudah memiliki compile-intent override agar request compile tidak terkunci `google_search`-only mode.
+4. Skill design harus menganggap kontrak ini sebagai fixed runtime behavior (bukan draft usulan).
+5. Living Outline Checklist sudah terimplementasi di codebase lineage:
+   - auto-check saat stage approval,
+   - reset auto-check saat rewind,
+   - mutation `updateOutlineSections` untuk minor edit,
+   - inline edit UI di SidebarProgress.
+6. Skill design harus menganggap kontrak living-outline sebagai fixed behavior untuk stage `outline` dan stage lanjutan.
+
+Referensi implementasi:
+1. `docs/skill-per-stage/2026-02-26-implementation-plan-compile-daftar-pustaka-preview-persist.md`
+2. `docs/skill-per-stage/2026-02-26-execution-log-compile-daftar-pustaka.md`
+3. `docs/plans/2026-02-26-living-outline-checklist.md`
+
+---
+
 ## 1) Ringkasan
 
 Dokumen ini menjelaskan desain implementasi untuk memakai paket skill per stage (`docs/skill-per-stage/skills/*/SKILL.md`) ke runtime chat paper workflow 13 tahap.
@@ -37,6 +58,7 @@ Sementara itu, fondasi workflow sudah kuat:
 2. Update stage dibatasi oleh `currentStage` di `convex/paperSessions.ts`.
 3. Submit/approve mewajibkan `ringkasan`.
 4. Tool routing memisahkan `google_search` dari function tools dalam satu request (`src/app/api/chat/route.ts`).
+5. Outline sudah menjadi checklist hidup: status section dapat auto-check/auto-reset dan diedit secara terkontrol (`outline-utils`, `updateOutlineSections`, `SidebarProgress`).
 
 Jadi desain ini harus menambahkan fleksibilitas prompt tanpa mengubah aturan inti workflow.
 
@@ -181,6 +203,7 @@ Output prompt akhir tetap menyertakan:
 `src/app/api/chat/route.ts` tetap jadi sumber keputusan mode:
 1. active stages: `gagasan, topik, pendahuluan, tinjauan_literatur, metodologi, diskusi`
 2. passive stages: `outline, abstrak, hasil, kesimpulan, daftar_pustaka, lampiran, judul`
+3. compile intent (`compileDaftarPustaka`) memaksa function-tools mode agar compile bisa dieksekusi saat user memintanya.
 
 Skill tidak boleh override router.
 Jika skill bertentangan dengan router:
@@ -218,21 +241,28 @@ Jika salah satu gagal:
 
 ## 9) Stage Contract Matrix (Runtime Reference)
 
-| Stage | Skill ID | Search Policy | Output Keys (minimum) |
-| --- | --- | --- | --- |
-| gagasan | gagasan-skill | active | ringkasan, ideKasar, analisis, angle, novelty, referensiAwal |
-| topik | topik-skill | active | ringkasan, definitif, angleSpesifik, argumentasiKebaruan, researchGap, referensiPendukung |
-| outline | outline-skill | passive | ringkasan, sections, totalWordCount, completenessScore |
-| abstrak | abstrak-skill | passive | ringkasan, ringkasanPenelitian, keywords, wordCount |
-| pendahuluan | pendahuluan-skill | active | ringkasan, latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, sitasiAPA |
-| tinjauan_literatur | tinjauan-literatur-skill | active | ringkasan, kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi |
-| metodologi | metodologi-skill | active | ringkasan, pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, alatInstrumen, etikaPenelitian |
-| hasil | hasil-skill | passive | ringkasan, temuanUtama, metodePenyajian, dataPoints |
-| diskusi | diskusi-skill | active | ringkasan, interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang |
-| kesimpulan | kesimpulan-skill | passive | ringkasan, ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan |
-| daftar_pustaka | daftar-pustaka-skill | passive | ringkasan, entries, totalCount, incompleteCount, duplicatesMerged |
-| lampiran | lampiran-skill | passive | ringkasan, items, tidakAdaLampiran, alasanTidakAda |
-| judul | judul-skill | passive | ringkasan, opsiJudul, judulTerpilih, alasanPemilihan |
+| Stage | Skill ID | Search Policy | compileDaftarPustaka Policy | Living Outline Context | Output Keys (minimum) |
+| --- | --- | --- | --- | --- |
+| gagasan | gagasan-skill | active | `preview` allowed, `persist` disallowed | not required | ringkasan, ideKasar, analisis, angle, novelty, referensiAwal |
+| topik | topik-skill | active | `preview` allowed, `persist` disallowed | not required | ringkasan, definitif, angleSpesifik, argumentasiKebaruan, researchGap, referensiPendukung |
+| outline | outline-skill | passive | `preview` allowed, `persist` disallowed | mandatory source of checklist state | ringkasan, sections, totalWordCount, completenessScore |
+| abstrak | abstrak-skill | passive | `preview` allowed, `persist` disallowed | read checklist when available | ringkasan, ringkasanPenelitian, keywords, wordCount |
+| pendahuluan | pendahuluan-skill | active | `preview` allowed, `persist` disallowed | read checklist for related outline sections | ringkasan, latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, sitasiAPA |
+| tinjauan_literatur | tinjauan-literatur-skill | active | `preview` allowed, `persist` disallowed | read checklist for related outline sections | ringkasan, kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi |
+| metodologi | metodologi-skill | active | `preview` allowed, `persist` disallowed | read checklist for related outline sections | ringkasan, pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, alatInstrumen, etikaPenelitian |
+| hasil | hasil-skill | passive | `preview` allowed, `persist` disallowed | read checklist for related outline sections | ringkasan, temuanUtama, metodePenyajian, dataPoints |
+| diskusi | diskusi-skill | active | `preview` allowed, `persist` disallowed | read checklist for related outline sections | ringkasan, interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang |
+| kesimpulan | kesimpulan-skill | passive | `preview` allowed, `persist` disallowed | read checklist for related outline sections | ringkasan, ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan |
+| daftar_pustaka | daftar-pustaka-skill | passive | `preview` allowed, `persist` mandatory for final compile | read checklist for section coverage before final compile | ringkasan, entries, totalCount, incompleteCount, duplicatesMerged |
+| lampiran | lampiran-skill | passive | `preview` allowed, `persist` disallowed | read checklist for attachment relevance | ringkasan, items, tidakAdaLampiran, alasanTidakAda |
+| judul | judul-skill | passive | `preview` allowed, `persist` disallowed | read checklist for final scope alignment | ringkasan, opsiJudul, judulTerpilih, alasanPemilihan |
+
+Verifikasi codebase (living outline) pada repository lineage:
+1. `src/lib/paper/outline-utils.ts` dan `src/lib/paper/outline-utils.test.ts` (`8e9fe61`, `1594893`, `7fb7f16`, `82efd2c`).
+2. `convex/paperSessions.ts` + `convex/paperSessions/outlineAutoCheck.ts` (`34b2098`, `16f4bab`, `16e05e4`).
+3. `src/lib/hooks/usePaperSession.ts` (`bd87920`).
+4. `src/components/chat/sidebar/SidebarProgress.tsx` (`2545d70`, `9655189`).
+5. Branch gate: **SATISFIED** — semua 10 commit living-outline sudah menjadi ancestor HEAD branch `feature/skill-based-paper-workflow` (verified 26 Feb 2026 via `git merge-base --is-ancestor`).
 
 ---
 
