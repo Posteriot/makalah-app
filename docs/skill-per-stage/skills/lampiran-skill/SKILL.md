@@ -27,7 +27,7 @@ Disallowed:
 - Unnecessary appendix inflation
 - Stage jumping
 - compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
-- Submit without ringkasan
+- Submission is forbidden when ringkasan is missing
 
 ## Output Contract
 Required:

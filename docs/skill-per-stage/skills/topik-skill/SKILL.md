@@ -25,7 +25,7 @@ Allowed:
 Disallowed:
 - Stage jumping
 - compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
-- Submit without ringkasan
+- Submission is forbidden when ringkasan is missing
 - Function-tool calls in the same turn after google_search
 - Unsupported topic claims without evidence
 

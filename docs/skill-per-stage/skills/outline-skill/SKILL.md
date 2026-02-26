@@ -27,7 +27,7 @@ Disallowed:
 - Initiating web search without user request
 - Stage jumping
 - compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
-- Submit without ringkasan
+- Submission is forbidden when ringkasan is missing
 
 ## Output Contract
 Required:
@@ -40,8 +40,6 @@ Recommended:
 - sections[].checkedAt
 - sections[].checkedBy
 - sections[].editHistory
-- lastEditedAt
-- lastEditedFromStage
 
 ## Guardrails
 Ensure section ordering supports the 13-stage workflow, avoids structural duplication, and keeps IDs stable for living-checklist tracking.

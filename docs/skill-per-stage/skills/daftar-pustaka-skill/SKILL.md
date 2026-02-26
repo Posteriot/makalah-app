@@ -21,14 +21,15 @@ Allowed:
 - google_search (passive mode; only on explicit user request)
 - updateStageData
 - createArtifact
-- compileDaftarPustaka (mode: preview|persist; persist is mandatory for final bibliography compilation)
+- compileDaftarPustaka (mode: preview for cross-stage audit)
+- compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail? }) for final bibliography compilation
 - submitStageForValidation (only after explicit user confirmation)
 Disallowed:
 - Placeholder bibliography entries
 - Stage jumping
 - Manual final bibliography compilation without compileDaftarPustaka (mode: persist)
 - compileDaftarPustaka (mode: persist) when ringkasan is missing
-- Submit without ringkasan
+- Submission is forbidden when ringkasan is missing
 
 ## Output Contract
 Required:
