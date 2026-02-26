@@ -2,7 +2,7 @@
 name: topik-skill
 description: Stage instruction for topik in Makalah AI paper workflow. Use when currentStage = topik.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: topik
   searchPolicy: active
 ---

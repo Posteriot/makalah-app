@@ -59,7 +59,7 @@ export function PricingTeaser() {
 
   return (
     <section
-      className="relative min-h-[100svh] md:h-[100svh] flex flex-col justify-center overflow-hidden bg-background"
+      className="relative flex min-h-[calc(100svh-var(--header-h))] flex-col justify-center overflow-hidden bg-background md:h-[100svh] md:min-h-[100svh]"
       id="pemakaian-harga"
     >
       {/* Background patterns — conditional via CMS when published */}
@@ -67,7 +67,7 @@ export function PricingTeaser() {
       {headerSection != null && headerSection.showDiagonalStripes !== false && <DiagonalStripes className="opacity-70" />}
       {headerSection != null && headerSection.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
 
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-6 md:px-8 md:py-10">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--header-h))] w-full max-w-7xl flex-col justify-center px-4 py-6 md:block md:min-h-0 md:px-8 md:py-10">
         <div className="grid grid-cols-16 gap-comfort content-center">
           {/* Section Header */}
           <div className="col-span-16 md:col-span-12 md:col-start-3 flex flex-col items-start gap-3 md:gap-4 mb-4 md:mb-8">

@@ -2,7 +2,7 @@
 name: daftar-pustaka-skill
 description: Stage instruction for daftar_pustaka in Makalah AI paper workflow. Use when currentStage = daftar_pustaka.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: daftar_pustaka
   searchPolicy: passive
 ---

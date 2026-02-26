@@ -2,7 +2,7 @@
 name: kesimpulan-skill
 description: Stage instruction for kesimpulan in Makalah AI paper workflow. Use when currentStage = kesimpulan.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: kesimpulan
   searchPolicy: passive
 ---

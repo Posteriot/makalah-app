@@ -1,10 +1,10 @@
 export function TeaserSkeleton() {
   return (
     <section
-      className="relative min-h-[100svh] md:h-[100svh] flex flex-col justify-center overflow-hidden bg-background"
+      className="relative flex min-h-[calc(100svh-var(--header-h))] flex-col justify-center overflow-hidden bg-background md:h-[100svh] md:min-h-[100svh]"
       id="pemakaian-harga"
     >
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-6 md:px-8 md:py-10">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--header-h))] w-full max-w-7xl flex-col justify-center px-4 py-6 md:block md:min-h-0 md:px-8 md:py-10">
         {/* Section Header Skeleton */}
         <div className="text-left mb-12">
           <div className="inline-flex items-center gap-2.5 bg-muted rounded-full px-4 py-2 mb-6">

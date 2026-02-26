@@ -2,7 +2,7 @@
 name: judul-skill
 description: Stage instruction for judul in Makalah AI paper workflow. Use when currentStage = judul.
 metadata:
-  internal: true
+  internal: "true"
   stageScope: judul
   searchPolicy: passive
 ---
