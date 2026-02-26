@@ -15,7 +15,7 @@ Scope: Implementasi end-to-end skill registry internal, runtime resolver, admin 
 | `compileDaftarPustaka` mode `preview|persist` | `SATISFIED` | `convex/paperSessions.ts`, `src/lib/ai/paper-tools.ts`, `src/app/api/chat/route.ts` |
 | Dokumen format skill + 13 skill package | `SATISFIED` | `docs/skill-per-stage/skill-format-reference.md`, `docs/skill-per-stage/skills/*/SKILL.md` |
 | Admin pattern yang bisa direuse (system prompt manager) | `SATISFIED` | `convex/systemPrompts.ts`, `src/components/admin/SystemPromptsManager.tsx` |
-| Living outline checklist | `VERIFY_IN_TASK_0` | referensi dokumen ada di `docs/plans/2026-02-26-living-outline-checklist.md`; validasi final ke code dilakukan di Task 0 |
+| Living outline checklist | `SATISFIED` | sudah tersedia dan jadi kontrak runtime; referensi detail implementasi di `docs/plans/2026-02-26-living-outline-checklist.md` |
 
 Catatan: implementation plan ini mengasumsikan kontrak `compileDaftarPustaka preview|persist` adalah behavior final dan harus dipertahankan.
 
@@ -77,13 +77,13 @@ Prinsip prioritas:
 ### Subtask
 1. Verifikasi branch sinkron dan daftar perubahan non-scope.
 2. Verifikasi kontrak existing `compileDaftarPustaka` (`preview|persist`) tetap hijau.
-3. Verifikasi status living outline checklist ke codebase (jika belum ada di branch ini, tandai sebagai dependency merge).
+3. Re-konfirmasi kontrak living outline checklist ke codebase sebagai baseline `SATISFIED`.
 4. Catat baseline build/test sebagai pembanding regresi.
 
 ### Checklist verifikasi pekerjaan
 - [ ] `git status` dan `git log --oneline -n 20` terdokumentasi.
 - [ ] Kontrak compile tool terbukti ada di `paper-tools.ts` + `paperSessions.ts`.
-- [ ] Status living outline ditulis eksplisit: `SATISFIED` atau `PENDING MERGE` (dengan bukti file).
+- [ ] Status living outline terkonfirmasi `SATISFIED` (dengan bukti file/lineage).
 - [ ] Baseline `npm run build` tercatat.
 
 ### Checklist verifikasi hasil
@@ -136,6 +136,7 @@ Prinsip prioritas:
 2. Mutation:
    - `createStageSkill`
    - `createDraftVersion`
+   - `createOrUpdateDraft` (wrapper untuk route admin agar naming selaras dokumen desain)
    - `publishVersion`
    - `activateVersion`
    - `rollbackVersion`
@@ -150,6 +151,7 @@ Prinsip prioritas:
 - [ ] Semua mutation lifecycle memeriksa role admin.
 - [ ] Tidak ada lebih dari satu version `active` per `skillId`.
 - [ ] Rollback menghasilkan active version yang deterministik.
+- [ ] Kontrak naming mutation admin terdokumentasi jelas (`createOrUpdateDraft` -> delegasi ke `createStageSkill`/`createDraftVersion`).
 
 ### Checklist verifikasi hasil
 - [ ] Role `user` tidak bisa create/edit/activate skill.
@@ -173,19 +175,34 @@ Prinsip prioritas:
    - `daftar-pustaka-skill` wajib memuat jalur `mode: "persist"`.
 3. Validasi policy living outline:
    - `outline-skill` wajib memuat lifecycle checklist.
-   - stage pasca-outline wajib memuat instruksi membaca status checklist outline.
+   - stage pasca-outline wajib memuat instruksi membaca status checklist outline (granular per stage, termasuk coverage check sebelum final compile di `daftar_pustaka`).
 4. Validasi bahasa:
    - reject publish/activate kalau konten bukan English dominan.
    - exception: proper noun, nama stage, nama tool/API, field schema.
+5. Validasi output contract keys terhadap backend whitelist:
+   - parse daftar field pada section `Output Contract`.
+   - reject jika ada key di luar whitelist backend (`STAGE_KEY_WHITELIST` dari domain `paperSessions`).
+6. Validasi forbidden phrases umum:
+   - reject instruksi yang mencoba bypass stage lock.
+   - reject instruksi yang memaksa bypass policy tool routing (`google_search` vs function tools).
+   - reject instruksi yang mengarahkan submit/approve tanpa syarat ringkasan/konfirmasi user.
+7. Validasi Stage Contract Matrix:
+   - enforce search policy active/passive per stage.
+   - enforce living-outline context requirement sesuai matriks stage.
 
 ### Checklist verifikasi pekerjaan
 - [ ] Validator dipanggil di `publishVersion` dan `activateVersion`.
 - [ ] Error message jelas (menyebut rule yang gagal).
 - [ ] Rule English gate aktif (hard reject).
+- [ ] Rule output key whitelist aktif (hard reject untuk key tidak dikenal).
+- [ ] Rule forbidden phrases aktif.
+- [ ] Rule Stage Contract Matrix aktif.
 
 ### Checklist verifikasi hasil
 - [ ] Skill non-English tidak bisa diaktifkan.
 - [ ] Skill yang melanggar compile policy ditolak sebelum runtime.
+- [ ] Skill yang mendefinisikan output key di luar whitelist ditolak sebelum runtime.
+- [ ] Skill yang berisi instruksi bypass guard runtime ditolak sebelum runtime.
 
 ---
 
@@ -205,12 +222,14 @@ Prinsip prioritas:
    - jika gagal/empty: fallback ke `getStageInstructions(stage)`.
 3. Tambah observability runtime:
    - source instruksi (`skill` vs `fallback`) di log metadata.
+   - emit telemetry flag spesifik `skillResolverFallback: true|false` per request.
 4. Pastikan compile policy instruksi global existing tetap ikut tersisip.
 
 ### Checklist verifikasi pekerjaan
 - [ ] `paper-mode-prompt.ts` tidak hardcoded-only lagi.
 - [ ] Fallback ke hardcoded tetap tersedia dan aman.
 - [ ] Error fetch skill tidak memutus alur chat.
+- [ ] Telemetry `skillResolverFallback` tercatat dan bisa diaudit.
 
 ### Checklist verifikasi hasil
 - [ ] Saat skill active ada, prompt stage pakai skill version aktif.
@@ -250,20 +269,27 @@ Prinsip prioritas:
 
 ### Target file
 1. `convex/stageSkills.ts`
-2. `convex/systemAlerts.ts` (opsional integrasi)
+2. `convex/systemAlerts.ts` (mandatory integrasi)
 3. `src/app/api/chat/route.ts` / `paper-mode-prompt.ts` (emit event)
+4. `convex/aiTelemetry.ts` (opsional lokasi agregasi metrik jika dipakai)
 
 ### Subtask
 1. Tambah event audit `runtime_conflict` saat instruksi skill bertentangan dengan policy router/tool guard.
 2. Simpan metadata konflik (stage, skillId, rule, timestamp).
-3. (Opsional V1.1) kirim alert ke `systemAlerts` untuk monitoring admin.
+3. Wajib kirim alert ke `systemAlerts` untuk monitoring admin (AC mandatory).
+4. Standarkan payload alert minimal:
+   - `type: "skill_runtime_conflict"`
+   - `severity`, `stage`, `skillId`, `rule`, `requestId`.
+5. Tautkan event fallback resolver (`skillResolverFallback`) ke telemetry agar mudah triase.
 
 ### Checklist verifikasi pekerjaan
 - [ ] Konflik runtime terdokumentasi di audit log.
 - [ ] Tidak ada kebijakan tool-routing yang ter-bypass oleh skill.
+- [ ] Event konflik otomatis membuat `systemAlerts` record.
 
 ### Checklist verifikasi hasil
 - [ ] Tim ops bisa lacak skill yang bikin konflik perilaku.
+- [ ] Alert konflik terlihat di panel operasional admin.
 
 ---
 
@@ -280,19 +306,29 @@ Prinsip prioritas:
    - missing mandatory sections.
    - non-English reject.
    - compile policy reject.
+   - output key whitelist reject.
+   - forbidden phrases reject.
+   - Stage Contract Matrix reject.
 2. Unit test Convex lifecycle:
    - create/edit/publish/activate/rollback.
    - role gate admin vs user.
 3. Integration test prompt composer:
    - skill active -> source `skill`.
    - no skill -> fallback hardcoded.
+   - telemetry flag `skillResolverFallback` terisi benar.
+4. QA gate pre-activation (wajib sebelum rollout):
+   - dry-run validasi untuk seluruh 13 skill stage.
+   - sampled conversation replay lintas minimal 3 skenario: normal flow, search-heavy flow, rewind flow.
 
 ### Checklist verifikasi pekerjaan
 - [ ] Seluruh test baru pass.
 - [ ] Tidak ada regresi test compile daftar pustaka existing.
+- [ ] Laporan dry-run 13 stage tersimpan sebagai evidence.
+- [ ] Laporan sampled replay tersimpan sebagai evidence.
 
 ### Checklist verifikasi hasil
 - [ ] Perubahan runtime skill tervalidasi otomatis untuk edge case utama.
+- [ ] Skill tidak diaktifkan sebelum QA gate pre-activation lulus.
 
 ---
 
@@ -306,6 +342,8 @@ Prinsip prioritas:
    - phase 3: finalisasi (`daftar_pustaka`, `lampiran`, `judul`).
 3. Monitor audit log + system alert selama canary.
 4. Siapkan rollback cepat ke fallback hardcoded per stage.
+5. Gate rollout:
+   - phase berikutnya hanya boleh jalan jika QA gate pre-activation (Task 7) lulus.
 
 ### Checklist verifikasi pekerjaan
 - [ ] 13 skill sudah tersimpan dan tervalidasi.
@@ -325,11 +363,28 @@ Prinsip prioritas:
 3. Prompt runtime memakai skill aktif per stage, dengan fallback otomatis ke hardcoded saat skill unavailable.
 4. Policy tool routing existing tetap enforced; skill tidak bisa override.
 5. Kontrak `compileDaftarPustaka` `preview|persist` tetap utuh setelah integrasi skill.
-6. Semua test baru dan test regresi kritikal lulus.
+6. Publish/activate wajib gagal jika `Output Contract` memuat key di luar `STAGE_KEY_WHITELIST`.
+7. Event `runtime_conflict` wajib masuk audit log dan `systemAlerts`.
+8. Semua test baru, test regresi kritikal, dan QA gate pre-activation lulus.
 
 ---
 
-## 6) Rencana Eksekusi yang Direkomendasikan
+## 6) Traceability AC -> Task
+
+| Acceptance Criteria | Task yang menutup |
+|---|---|
+| AC1. RBAC admin/superadmin only | Task 2, Task 5, Task 7 |
+| AC2. Reject non-English skill | Task 3, Task 7 |
+| AC3. Skill-active-first + fallback | Task 4, Task 7 |
+| AC4. Tool routing tidak bisa dioverride skill | Task 3, Task 6, Task 7 |
+| AC5. Kontrak compileDaftarPustaka tetap utuh | Task 0, Task 4, Task 7 |
+| AC6. Output key whitelist enforcement | Task 3, Task 7 |
+| AC7. runtime_conflict wajib audit + systemAlerts | Task 6, Task 7 |
+| AC8. Test + QA gate pre-activation wajib lulus | Task 7, Task 8 |
+
+---
+
+## 7) Rencana Eksekusi yang Direkomendasikan
 
 Urutan eksekusi terbaik:
 1. Task 0 -> 1 -> 2 -> 3 (fondasi data + validator).
@@ -341,7 +396,7 @@ Alasan: menghindari UI lebih dulu sebelum guard backend dan validator benar-bena
 
 ---
 
-## 7) Risiko Utama dan Mitigasi
+## 8) Risiko Utama dan Mitigasi
 
 1. Risiko: skill aktif rusak memutus kualitas output stage.
    - Mitigasi: fallback hardcoded + audit log + rollback version.
@@ -354,10 +409,11 @@ Alasan: menghindari UI lebih dulu sebelum guard backend dan validator benar-bena
 
 ---
 
-## 8) Definition of Done
+## 9) Definition of Done
 
 1. Data model skill lifecycle live di Convex dengan audit trail lengkap.
 2. Runtime `paper-mode-prompt` sudah `skill-active-first` dan fallback aman.
 3. Admin panel sudah bisa create/edit/publish/activate/rollback skill dengan gate role formal.
-4. Validator format + policy + English gate aktif pada publish/activate.
-5. 13 stage skill sudah bisa di-backfill dan diaktifkan bertahap dengan checklist verifikasi lulus.
+4. Validator format + policy + English gate + output key whitelist + forbidden phrases + stage contract matrix aktif pada publish/activate.
+5. Event `runtime_conflict` masuk audit log dan `systemAlerts` secara otomatis.
+6. 13 stage skill sudah bisa di-backfill dan diaktifkan bertahap setelah QA gate pre-activation lulus.
