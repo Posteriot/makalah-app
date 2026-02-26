@@ -213,6 +213,70 @@ export default defineSchema({
     .index("by_root", ["rootId", "version"]) // Query version history
     .index("by_createdAt", ["createdAt"]), // List all by date
 
+  // Stage Skills - skill registry per paper workflow stage
+  stageSkills: defineTable({
+    skillId: v.string(), // e.g., "gagasan-skill"
+    stageScope: v.union(
+      v.literal("gagasan"),
+      v.literal("topik"),
+      v.literal("outline"),
+      v.literal("abstrak"),
+      v.literal("pendahuluan"),
+      v.literal("tinjauan_literatur"),
+      v.literal("metodologi"),
+      v.literal("hasil"),
+      v.literal("diskusi"),
+      v.literal("kesimpulan"),
+      v.literal("daftar_pustaka"),
+      v.literal("lampiran"),
+      v.literal("judul")
+    ),
+    name: v.string(),
+    description: v.string(),
+    allowedTools: v.array(v.string()),
+    isEnabled: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_skillId", ["skillId"])
+    .index("by_stageScope", ["stageScope"])
+    .index("by_updatedAt", ["updatedAt"]),
+
+  stageSkillVersions: defineTable({
+    skillRefId: v.id("stageSkills"),
+    skillId: v.string(),
+    version: v.number(),
+    content: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("active"),
+      v.literal("archived")
+    ),
+    changeNote: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    publishedAt: v.optional(v.number()),
+    activatedAt: v.optional(v.number()),
+  })
+    .index("by_skillRefId", ["skillRefId", "version"])
+    .index("by_skillRefId_status", ["skillRefId", "status", "updatedAt"])
+    .index("by_skillId_status", ["skillId", "status", "updatedAt"]),
+
+  stageSkillAuditLogs: defineTable({
+    skillRefId: v.optional(v.id("stageSkills")),
+    skillId: v.string(),
+    version: v.optional(v.number()),
+    action: v.string(), // create|draft_saved|publish|activate|rollback|runtime_conflict
+    actorId: v.optional(v.id("users")),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_skillId_createdAt", ["skillId", "createdAt"])
+    .index("by_action_createdAt", ["action", "createdAt"]),
+
   // Artifacts - Standalone deliverable content from AI (non-conversational)
   artifacts: defineTable({
     conversationId: v.id("conversations"),
@@ -979,6 +1043,7 @@ export default defineSchema({
     latencyMs: v.number(),
     inputTokens: v.optional(v.number()),
     outputTokens: v.optional(v.number()),
+    skillResolverFallback: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_created", ["createdAt"])

@@ -49,6 +49,7 @@ export const log = mutation({
     latencyMs: v.number(),
     inputTokens: v.optional(v.number()),
     outputTokens: v.optional(v.number()),
+    skillResolverFallback: v.optional(v.boolean()),
   },
   handler: async ({ db }, args) => {
     const id = await db.insert("aiTelemetry", {

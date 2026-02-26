@@ -18,6 +18,7 @@ type TelemetryParams = {
   latencyMs: number
   inputTokens?: number
   outputTokens?: number
+  skillResolverFallback?: boolean
 }
 
 /**
