@@ -23,7 +23,7 @@ export const DiagonalStripes = memo(function DiagonalStripes({
   return (
     <div
       className={cn(
-        "absolute inset-0 pointer-events-none z-0",
+        "absolute inset-0 min-h-[100svh] md:min-h-full pointer-events-none z-0",
         // Dark mode: light stripes
         "dark:[background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.12)_0,rgba(255,255,255,0.12)_1px,transparent_1px,transparent_8px)]",
         // Light mode: dark stripes
