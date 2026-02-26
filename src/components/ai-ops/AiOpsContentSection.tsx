@@ -21,6 +21,7 @@ import { RecentFailuresPanel } from "./panels/RecentFailuresPanel"
 import { FailoverTimelinePanel } from "./panels/FailoverTimelinePanel"
 import { SkillRuntimeOverviewPanel } from "./panels/SkillRuntimeOverviewPanel"
 import { SkillRuntimeTracePanel } from "./panels/SkillRuntimeTracePanel"
+import { SkillMonitorSummaryPanel } from "./panels/SkillMonitorSummaryPanel"
 
 type Period = "1h" | "24h" | "7d"
 
@@ -110,8 +111,11 @@ export function AiOpsContentSection({
   )
   const skillRuntimeOverview = useQuery(
     api.aiTelemetry.getSkillRuntimeOverview,
-    isSkillMonitorTab
-      ? { requestorUserId: userId, period }
+    isSkillMonitorTab || isOverview
+      ? {
+        requestorUserId: userId,
+        period: isOverview ? "24h" : period,
+      }
       : "skip"
   )
   const skillRuntimeTrace = useQuery(
@@ -158,15 +162,17 @@ export function AiOpsContentSection({
 
         {activeTab === "overview" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <MemoryHealthPanel data={memoryHealth} />
               <WorkflowProgressPanel data={workflowProgress} />
               <ArtifactSyncPanel data={artifactSync} />
+              <SkillMonitorSummaryPanel data={skillRuntimeOverview ?? undefined} />
             </div>
             <InsightBanner
               memoryHealth={memoryHealth}
               workflowProgress={workflowProgress}
               artifactSync={artifactSync}
+              skillRuntime={skillRuntimeOverview ?? undefined}
             />
           </div>
         )}
