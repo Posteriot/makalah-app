@@ -120,7 +120,10 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
             Kelola draft, publish, activation, dan rollback skill untuk 13 stage paper workflow.
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
+        <Button
+          onClick={openCreateDialog}
+          className="focus-ring inline-flex h-8 items-center gap-1.5 rounded-action bg-slate-900 px-3 py-1.5 text-xs font-mono font-medium text-slate-100 transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+        >
           <Plus className="mr-2 h-4 w-4" />
           Buat/Edit Draft
         </Button>
@@ -153,6 +156,7 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
                   type="button"
                   size="sm"
                   variant="outline"
+                  className="focus-ring border-main border border-border bg-background text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
                   onClick={() => openEditDialog(skill)}
                   disabled={isSubmitting}
                 >
@@ -164,6 +168,7 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
                   type="button"
                   size="sm"
                   variant="outline"
+                  className="focus-ring border-main border border-border bg-background text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
                   onClick={() => openHistoryDialog(skill.skillId)}
                   disabled={isSubmitting}
                 >
@@ -175,6 +180,7 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
                   type="button"
                   size="sm"
                   variant="outline"
+                  className="focus-ring border-main border border-border bg-background text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800"
                   onClick={() => handlePublishDraft(skill)}
                   disabled={isSubmitting || !skill.latestDraftVersion}
                 >
@@ -184,6 +190,8 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
+                  className="focus-ring border-main border border-border bg-background text-emerald-600 transition-colors hover:bg-slate-200 dark:text-emerald-400 dark:hover:bg-slate-800"
                   onClick={() => handleActivatePublished(skill)}
                   disabled={isSubmitting || !skill.latestPublishedVersion}
                 >
@@ -193,7 +201,12 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
                 <Button
                   type="button"
                   size="sm"
-                  variant="secondary"
+                  variant="outline"
+                  className={
+                    skill.isEnabled
+                      ? "focus-ring border-main border border-border bg-background text-rose-600 transition-colors hover:bg-rose-500/10 dark:text-rose-400"
+                      : "focus-ring border-main border border-border bg-background text-emerald-600 transition-colors hover:bg-slate-200 dark:text-emerald-400 dark:hover:bg-slate-800"
+                  }
                   onClick={() => handleToggleEnabled(skill)}
                   disabled={isSubmitting}
                 >
