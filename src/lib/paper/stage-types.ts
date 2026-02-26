@@ -243,6 +243,13 @@ export interface OutlineSection {
   parentId?: string | null
   estimatedWordCount?: number
   status?: "complete" | "partial" | "empty"
+  checkedAt?: number
+  checkedBy?: "auto" | "user"
+  editHistory?: Array<{
+    action: "add" | "edit" | "remove"
+    timestamp: number
+    fromStage: string
+  }>
 }
 
 export interface OutlineData {
@@ -255,4 +262,6 @@ export interface OutlineData {
   artifactId?: string
   validatedAt?: number
   revisionCount?: number
+  lastEditedAt?: number
+  lastEditedFromStage?: string
 }
