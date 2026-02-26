@@ -1068,6 +1068,42 @@ export const approveStage = mutation({
         const updatedDigest = [...existingDigest, newDigestEntry];
 
         // ════════════════════════════════════════════════════════════════
+        // Context Compaction: Record stage message boundaries
+        // ════════════════════════════════════════════════════════════════
+        const existingBoundaries = session.stageMessageBoundaries || [];
+
+        // Find the last recorded boundary to know where this stage starts
+        const lastBoundaryMessageId = existingBoundaries.length > 0
+            ? existingBoundaries[existingBoundaries.length - 1].lastMessageId
+            : null;
+
+        // Query all messages for this conversation, ordered by creation
+        const allMessages = await ctx.db
+            .query("messages")
+            .withIndex("by_conversation", (q) => q.eq("conversationId", session.conversationId))
+            .collect();
+
+        // Determine stage message range
+        let stageMessages;
+        if (lastBoundaryMessageId) {
+            const lastIdx = allMessages.findIndex(m => String(m._id) === lastBoundaryMessageId);
+            stageMessages = lastIdx >= 0 ? allMessages.slice(lastIdx + 1) : allMessages;
+        } else {
+            stageMessages = allMessages;
+        }
+
+        let updatedBoundaries = existingBoundaries;
+        if (stageMessages.length > 0) {
+            const newBoundary = {
+                stage: currentStage,
+                firstMessageId: String(stageMessages[0]._id),
+                lastMessageId: String(stageMessages[stageMessages.length - 1]._id),
+                messageCount: stageMessages.length,
+            };
+            updatedBoundaries = [...existingBoundaries, newBoundary];
+        }
+
+        // ════════════════════════════════════════════════════════════════
         // Phase 3 Task 3.3.1: Update Estimated Content Tracking
         // ════════════════════════════════════════════════════════════════
         const estimatedTokens = Math.ceil(totalContentChars / 4);
@@ -1079,6 +1115,7 @@ export const approveStage = mutation({
             updatedAt: now,
             isDirty: false, // Reset dirty flag on approve
             paperMemoryDigest: updatedDigest,
+            stageMessageBoundaries: updatedBoundaries,
             estimatedContentChars: totalContentChars,
             estimatedTokenUsage: estimatedTokens,
             ...(nextStage === "completed" ? { completedAt: now } : {}),

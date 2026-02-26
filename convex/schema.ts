@@ -600,6 +600,17 @@ export default defineSchema({
     isDirty: v.optional(v.boolean()), // True when chat edited/regenerated after stageData update
 
     // ════════════════════════════════════════════════════════════════
+    // Context Compaction: Stage Message Boundaries
+    // Records which messages belong to which stage for selective compaction
+    // ════════════════════════════════════════════════════════════════
+    stageMessageBoundaries: v.optional(v.array(v.object({
+      stage: v.string(),
+      firstMessageId: v.string(),
+      lastMessageId: v.string(),
+      messageCount: v.number(),
+    }))),
+
+    // ════════════════════════════════════════════════════════════════
     // Phase 3 Task 3.2.1: Paper Memory Digest (Optional)
     // ════════════════════════════════════════════════════════════════
     paperMemoryDigest: v.optional(v.array(v.object({

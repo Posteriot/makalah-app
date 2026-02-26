@@ -69,6 +69,35 @@ describe("Context Budget", () => {
     });
   });
 
+  describe("compaction threshold", () => {
+    it("should flag shouldCompact at 85% threshold", () => {
+      // 128k * 0.85 = 108800 tokens = 435200 chars
+      // At 436000 chars = 109000 tokens, both compact (108800) and prune (102400) thresholds exceeded
+      const result = checkContextBudget(436000, 128_000);
+      expect(result.shouldCompact).toBe(true);
+      expect(result.shouldPrune).toBe(true);
+    });
+
+    it("should NOT flag shouldCompact when under 85%", () => {
+      // 400000 chars = 100000 tokens, under compact (108800) AND under prune (102400)
+      const result = checkContextBudget(400_000, 128_000);
+      expect(result.shouldCompact).toBe(false);
+    });
+
+    it("should flag shouldPrune but NOT shouldCompact between 80% and 85%", () => {
+      // 420000 chars = 105000 tokens
+      // Above prune threshold (102400) but below compact threshold (108800)
+      const result = checkContextBudget(420_000, 128_000);
+      expect(result.shouldCompact).toBe(false);
+      expect(result.shouldPrune).toBe(true);
+    });
+
+    it("should expose compactionThreshold in result", () => {
+      const result = checkContextBudget(100, 128_000);
+      expect(result.compactionThreshold).toBe(Math.floor(128_000 * 0.85));
+    });
+  });
+
   describe("pruneMessages", () => {
     it("should prune keeping last N messages", () => {
       const messages = [

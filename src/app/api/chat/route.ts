@@ -35,6 +35,7 @@ import {
     checkContextBudget,
     getContextWindow,
 } from "@/lib/ai/context-budget"
+import { runCompactionChain, type CompactableMessage } from "@/lib/ai/context-compaction"
 import {
     checkQuotaBeforeOperation,
     recordUsageAfterOperation,
@@ -402,6 +403,8 @@ export async function POST(req: Request) {
 
         // ════════════════════════════════════════════════════════════════
         // Phase 2 Task 2.1.1: Message Trimming (Paper Mode Only)
+        // Legacy: Superseded by context compaction chain (P1-P4).
+        // TODO: Remove after compaction chain is validated in production.
         // ════════════════════════════════════════════════════════════════
         const MAX_CHAT_HISTORY_PAIRS = 20 // 20 pairs = 40 messages max
         const isPaperMode = !!paperModePrompt
@@ -511,9 +514,42 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             `[Context Budget] ${budget.totalTokens.toLocaleString()} tokens estimated (${usagePercent}% of ${budget.threshold.toLocaleString()} threshold) | ${fullMessagesBase.length} messages | model: ${modelNames.primary.model}, window: ${contextWindow.toLocaleString()}`
         )
 
-        if (budget.shouldPrune) {
+        // ════════════════════════════════════════════════════════════════
+        // Context Compaction Layer — threshold-based priority chain
+        // Runs BEFORE brute prune. Brute prune remains as safety net.
+        // ════════════════════════════════════════════════════════════════
+        let effectiveBudget = budget
+        if (budget.shouldCompact) {
+            const compactionResult = await runCompactionChain(
+                fullMessagesBase as CompactableMessage[],
+                {
+                    contextWindow,
+                    compactionThreshold: budget.compactionThreshold,
+                    isPaperMode,
+                    paperSession: paperSession ? {
+                        currentStage: (paperSession as { currentStage: string }).currentStage,
+                        stageMessageBoundaries: (paperSession as { stageMessageBoundaries?: { stage: string; firstMessageId: string; lastMessageId: string; messageCount: number }[] }).stageMessageBoundaries,
+                        paperMemoryDigest: (paperSession as { paperMemoryDigest?: { stage: string; decision: string; timestamp: number; superseded?: boolean }[] }).paperMemoryDigest,
+                    } : null,
+                    getModel: async () => getGatewayModel(),
+                },
+                (msg) => (msg as { id?: string }).id || undefined,
+            )
+
+            fullMessagesBase.length = 0
+            fullMessagesBase.push(...compactionResult.messages as typeof fullMessagesBase[number][])
+
+            // Re-estimate after compaction — use post-compaction budget for prune decision
+            const postCompactionChars = estimateModelMessageChars(fullMessagesBase)
+            effectiveBudget = checkContextBudget(postCompactionChars, contextWindow)
+            console.info(
+                `[Context Compaction] Post-compaction: ${effectiveBudget.totalTokens.toLocaleString()} tokens (${Math.round((effectiveBudget.totalTokens / effectiveBudget.compactionThreshold) * 100)}% of compaction threshold) | resolved at ${compactionResult.resolvedAtPriority}`
+            )
+        }
+
+        if (effectiveBudget.shouldPrune) {
             console.warn(
-                `[Context Budget] Pruning: ${budget.totalTokens} tokens > ${budget.threshold} threshold. Messages: ${fullMessagesBase.length}`
+                `[Context Budget] Pruning: ${effectiveBudget.totalTokens} tokens > ${effectiveBudget.threshold} threshold. Messages: ${fullMessagesBase.length}`
             )
             // Keep system messages at the front, prune only conversation messages
             const systemMessages = fullMessagesBase.filter(m => m.role === "system")
@@ -526,9 +562,9 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             fullMessagesBase.push(...systemMessages, ...prunedConversation)
         }
 
-        if (budget.shouldWarn && !budget.shouldPrune) {
+        if (effectiveBudget.shouldWarn && !effectiveBudget.shouldPrune) {
             console.info(
-                `[Context Budget] Warning: ${budget.totalTokens} tokens approaching threshold ${budget.threshold}.`
+                `[Context Budget] Warning: ${effectiveBudget.totalTokens} tokens approaching threshold ${effectiveBudget.threshold}.`
             )
         }
 

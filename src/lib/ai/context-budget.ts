@@ -8,6 +8,7 @@
  * Falls back to 128K if not configured.
  */
 
+const DEFAULT_COMPACTION_RATIO = 0.85
 const DEFAULT_THRESHOLD_RATIO = 0.8
 const DEFAULT_WARN_RATIO = 0.6
 const DEFAULT_KEEP_LAST_N = 50
@@ -25,7 +26,9 @@ export function getContextWindow(configuredWindow: number | undefined): number {
 export interface ContextBudgetResult {
   totalTokens: number
   threshold: number
+  compactionThreshold: number
   contextWindow: number
+  shouldCompact: boolean
   shouldPrune: boolean
   shouldWarn: boolean
 }
@@ -35,6 +38,7 @@ export function checkContextBudget(
   contextWindow: number,
   thresholdRatio = DEFAULT_THRESHOLD_RATIO
 ): ContextBudgetResult {
+  const compactionThreshold = Math.floor(contextWindow * DEFAULT_COMPACTION_RATIO)
   const threshold = Math.floor(contextWindow * thresholdRatio)
   const warnThreshold = Math.floor(contextWindow * DEFAULT_WARN_RATIO)
   const totalTokens = Math.ceil(totalChars / CHARS_PER_TOKEN)
@@ -42,7 +46,9 @@ export function checkContextBudget(
   return {
     totalTokens,
     threshold,
+    compactionThreshold,
     contextWindow,
+    shouldCompact: totalTokens > compactionThreshold,
     shouldPrune: totalTokens > threshold,
     shouldWarn: totalTokens > warnThreshold,
   }
