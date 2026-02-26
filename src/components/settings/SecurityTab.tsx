@@ -459,7 +459,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
       {hasPassword && (
         <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
           <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">
-            Verifikasi 2 Langkah
+            Verifikasi 2 Langkah (2FA)
           </div>
           <div className="p-4 bg-slate-50 dark:bg-slate-800">
             {/* Status row */}
@@ -498,8 +498,8 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
             {/* Description */}
             <p className="mt-2 text-narrative text-xs text-muted-foreground">
               {is2FAEnabled
-                ? "Setiap kali masuk dengan email dan password, kode verifikasi akan dikirim ke email kamu. Fitur ini aktif secara default untuk keamanan akunmu."
-                : "Verifikasi 2 langkah sedang nonaktif. Kami sangat menyarankan untuk mengaktifkannya kembali demi keamanan akunmu."}
+                ? "Two-factor authentication (2FA) aktif. Setiap kali masuk dengan email dan password, kode verifikasi akan dikirim ke email kamu sebagai lapisan keamanan tambahan."
+                : "Two-factor authentication (2FA) sedang nonaktif. Kami sangat menyarankan untuk mengaktifkannya kembali demi keamanan akunmu."}
             </p>
 
             {/* Password input for enable/disable */}
