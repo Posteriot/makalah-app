@@ -122,7 +122,12 @@ export default function CheckoutBPPPage() {
 
 function CheckoutBPPContent() {
   const { user, isLoading: userLoading } = useCurrentUser()
-  const { hasCompletedOnboarding, completeOnboarding } = useOnboardingStatus()
+  const {
+    hasCompletedOnboarding,
+    completeOnboarding,
+    isLoading: isOnboardingLoading,
+    isAuthenticated,
+  } = useOnboardingStatus()
   const onboardingCompletedRef = useRef(false)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -147,13 +152,13 @@ function CheckoutBPPContent() {
 
   // Auto-complete onboarding when user lands on checkout page
   useEffect(() => {
-    if (!hasCompletedOnboarding && !onboardingCompletedRef.current) {
+    if (!isOnboardingLoading && isAuthenticated && !hasCompletedOnboarding && !onboardingCompletedRef.current) {
       onboardingCompletedRef.current = true
       void completeOnboarding().catch((error) => {
         console.error("[CheckoutBPP] completeOnboarding failed:", error)
       })
     }
-  }, [hasCompletedOnboarding, completeOnboarding])
+  }, [hasCompletedOnboarding, completeOnboarding, isOnboardingLoading, isAuthenticated])
 
   // Keep checkout viewport fixed like /get-started (no page scroll).
   useEffect(() => {

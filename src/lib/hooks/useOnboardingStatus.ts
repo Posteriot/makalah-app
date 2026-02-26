@@ -17,15 +17,20 @@ import { useCallback } from "react"
 export function useOnboardingStatus() {
   const status = useQuery(api.users.getOnboardingStatus)
   const completeOnboardingMutation = useMutation(api.users.completeOnboarding)
+  const isLoading = status === undefined
+  const isAuthenticated = status?.isAuthenticated ?? false
+  const hasCompletedOnboarding = status?.hasCompleted ?? false
 
   const completeOnboarding = useCallback(async () => {
+    // Guard against auth race: mutation can be invoked before Convex identity is ready.
+    if (!isAuthenticated) return
     await completeOnboardingMutation()
-  }, [completeOnboardingMutation])
+  }, [completeOnboardingMutation, isAuthenticated])
 
   return {
-    isLoading: status === undefined,
-    isAuthenticated: status?.isAuthenticated ?? false,
-    hasCompletedOnboarding: status?.hasCompleted ?? false,
+    isLoading,
+    isAuthenticated,
+    hasCompletedOnboarding,
     completeOnboarding,
   }
 }

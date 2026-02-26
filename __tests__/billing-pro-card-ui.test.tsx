@@ -64,7 +64,19 @@ const MOCK_FREE_USER = {
   email: "test@example.com",
 }
 
-function setupCheckoutQueryMock() {
+type CheckoutQueryMockOptions = {
+  remainingCredits?: number
+  subscriptionStatusResponse?: Record<string, unknown>
+}
+
+function setupCheckoutQueryMock(options?: CheckoutQueryMockOptions) {
+  let userScopedQueryCount = 0
+  const remainingCredits = options?.remainingCredits ?? 0
+  const subscriptionStatusResponse = options?.subscriptionStatusResponse ?? {
+    hasSubscription: false,
+    status: null,
+  }
+
   mockUseQuery.mockImplementation((_queryRef: unknown, args: unknown) => {
     if (args === "skip") return undefined
 
@@ -84,7 +96,11 @@ function setupCheckoutQueryMock() {
     }
 
     if (typeof args === "object" && args !== null && "userId" in args) {
-      return { remainingCredits: 0 }
+      if (userScopedQueryCount === 0) {
+        userScopedQueryCount += 1
+        return { remainingCredits }
+      }
+      return subscriptionStatusResponse
     }
 
     if (typeof args === "object" && args !== null && "paymentId" in args) {
@@ -106,6 +122,8 @@ describe("Billing - PRO checkout flow", () => {
 
     mockUseOnboardingStatus.mockReturnValue({
       hasCompletedOnboarding: true,
+      isLoading: false,
+      isAuthenticated: true,
       completeOnboarding: vi.fn().mockResolvedValue(undefined),
     })
 
@@ -164,5 +182,114 @@ describe("Billing - PRO checkout flow", () => {
         }),
       })
     })
+  })
+
+  it("tidak memanggil completeOnboarding saat auth onboarding belum siap", async () => {
+    const completeOnboarding = vi.fn().mockResolvedValue(undefined)
+    mockUseOnboardingStatus.mockReturnValue({
+      hasCompletedOnboarding: false,
+      isLoading: true,
+      isAuthenticated: false,
+      completeOnboarding,
+    })
+
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+    render(<CheckoutPROPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Checkout Pro")).toBeInTheDocument()
+    })
+    expect(completeOnboarding).not.toHaveBeenCalled()
+  })
+
+  it("memanggil completeOnboarding sekali saat auth onboarding siap", async () => {
+    const completeOnboarding = vi.fn().mockResolvedValue(undefined)
+    mockUseOnboardingStatus.mockReturnValue({
+      hasCompletedOnboarding: false,
+      isLoading: false,
+      isAuthenticated: true,
+      completeOnboarding,
+    })
+
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+    render(<CheckoutPROPage />)
+
+    await waitFor(() => {
+      expect(completeOnboarding).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it("user pro dengan subscription aktif melihat state informasional tanpa tombol bayar", async () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        ...MOCK_FREE_USER,
+        subscriptionStatus: "pro",
+      },
+      isLoading: false,
+    })
+
+    setupCheckoutQueryMock({
+      remainingCredits: 120,
+      subscriptionStatusResponse: {
+        hasSubscription: true,
+        status: "active",
+        isExpired: false,
+        currentPeriodEnd: Date.now() + 7 * 24 * 60 * 60 * 1000,
+        isPendingCancel: false,
+      },
+    })
+
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+    render(<CheckoutPROPage />)
+
+    expect(screen.getByText("Langganan Pro lo masih aktif.")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Top Up Kredit" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^Bayar$/i })).not.toBeInTheDocument()
+  })
+
+  it("source of truth status aktif tetap dari query subscription meskipun tier user belum sinkron", async () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        ...MOCK_FREE_USER,
+        subscriptionStatus: "free",
+      },
+      isLoading: false,
+    })
+
+    setupCheckoutQueryMock({
+      remainingCredits: 80,
+      subscriptionStatusResponse: {
+        hasSubscription: true,
+        status: "active",
+        isExpired: false,
+        currentPeriodEnd: Date.now() + 14 * 24 * 60 * 60 * 1000,
+        isPendingCancel: false,
+      },
+    })
+
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+    render(<CheckoutPROPage />)
+
+    expect(screen.getByText("Langganan Pro lo masih aktif.")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^Bayar$/i })).not.toBeInTheDocument()
+  })
+
+  it("user unlimited tidak bisa lanjut checkout pro", async () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        ...MOCK_FREE_USER,
+        role: "admin",
+        subscriptionStatus: "unlimited",
+      },
+      isLoading: false,
+    })
+
+    setupCheckoutQueryMock()
+
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+    render(<CheckoutPROPage />)
+
+    expect(screen.getByText("Akun lo sudah berada di tier Unlimited, checkout Pro tidak diperlukan.")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^Bayar$/i })).not.toBeInTheDocument()
   })
 })

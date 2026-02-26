@@ -50,15 +50,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // 3. Guard: reject if already Pro, admin, or superadmin
+    // 3. Guard: reject unlimited/admin/superadmin only
     if (
-      convexUser.subscriptionStatus === "pro" ||
       convexUser.subscriptionStatus === "unlimited" ||
       convexUser.role === "admin" ||
       convexUser.role === "superadmin"
     ) {
       return NextResponse.json(
-        { error: "Kamu sudah memiliki akses Pro atau lebih tinggi." },
+        { error: "Tier akun lo tidak dapat menggunakan checkout Pro ini." },
         { status: 400 }
       )
     }
@@ -71,8 +70,17 @@ export async function POST(req: NextRequest) {
     )
     if (activeSubscription) {
       return NextResponse.json(
-        { error: "Kamu sudah memiliki langganan aktif." },
-        { status: 400 }
+        {
+          error: "Kamu sudah memiliki langganan aktif.",
+          code: "ACTIVE_SUBSCRIPTION",
+          subscription: {
+            id: activeSubscription._id,
+            status: activeSubscription.status,
+            currentPeriodEnd: activeSubscription.currentPeriodEnd,
+            cancelAtPeriodEnd: activeSubscription.cancelAtPeriodEnd === true,
+          },
+        },
+        { status: 409 }
       )
     }
 
