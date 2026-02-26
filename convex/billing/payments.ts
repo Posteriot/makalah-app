@@ -1,6 +1,6 @@
 /**
  * Payment Records Management
- * Track Xendit payment transactions
+ * Track payment transactions (provider-agnostic)
  */
 
 import { v } from "convex/values"
@@ -15,14 +15,15 @@ function isInternalKeyValid(internalKey?: string) {
 
 /**
  * Create a new payment record
- * Called when initiating a Xendit payment request
+ * Called when initiating a payment request
  */
 export const createPayment = mutation({
   args: {
     userId: v.id("users"),
     sessionId: v.optional(v.id("paperSessions")),
-    xenditPaymentRequestId: v.string(),
-    xenditReferenceId: v.string(),
+    providerName: v.union(v.literal("xendit"), v.literal("midtrans")),
+    providerPaymentId: v.string(),
+    providerReferenceId: v.string(),
     amount: v.number(),
     paymentMethod: v.union(
       v.literal("QRIS"),
@@ -62,8 +63,9 @@ export const createPayment = mutation({
     const paymentId = await ctx.db.insert("payments", {
       userId: args.userId,
       sessionId: args.sessionId,
-      xenditPaymentRequestId: args.xenditPaymentRequestId,
-      xenditReferenceId: args.xenditReferenceId,
+      providerName: args.providerName,
+      providerPaymentId: args.providerPaymentId,
+      providerReferenceId: args.providerReferenceId,
       amount: args.amount,
       currency: "IDR",
       paymentMethod: args.paymentMethod,
@@ -84,11 +86,11 @@ export const createPayment = mutation({
 })
 
 /**
- * Update payment status after Xendit webhook
+ * Update payment status after provider webhook
  */
 export const updatePaymentStatus = mutation({
   args: {
-    xenditPaymentRequestId: v.string(),
+    providerPaymentId: v.string(),
     status: v.union(
       v.literal("PENDING"),
       v.literal("SUCCEEDED"),
@@ -104,16 +106,16 @@ export const updatePaymentStatus = mutation({
     if (!isInternalKeyValid(args.internalKey)) {
       throw new Error("Unauthorized")
     }
-    // Find payment by Xendit ID
+    // Find payment by provider ID
     const payment = await ctx.db
       .query("payments")
-      .withIndex("by_xendit_id", (q) =>
-        q.eq("xenditPaymentRequestId", args.xenditPaymentRequestId)
+      .withIndex("by_provider_id", (q) =>
+        q.eq("providerPaymentId", args.providerPaymentId)
       )
       .first()
 
     if (!payment) {
-      throw new Error(`Payment not found: ${args.xenditPaymentRequestId}`)
+      throw new Error(`Payment not found: ${args.providerPaymentId}`)
     }
 
     // Update status
@@ -137,20 +139,20 @@ export const updatePaymentStatus = mutation({
 })
 
 /**
- * Get payment by Xendit reference ID
+ * Get payment by provider reference ID
  * Used for reconciliation
  */
-export const getPaymentByReference = query({
+export const getPaymentByProviderReference = query({
   args: {
     userId: v.id("users"),
-    xenditReferenceId: v.string(),
+    providerReferenceId: v.string(),
   },
   handler: async (ctx, args) => {
     await requireAuthUserId(ctx, args.userId)
     const payment = await ctx.db
       .query("payments")
-      .withIndex("by_reference", (q) =>
-        q.eq("xenditReferenceId", args.xenditReferenceId)
+      .withIndex("by_provider_reference", (q) =>
+        q.eq("providerReferenceId", args.providerReferenceId)
       )
       .first()
     if (!payment || payment.userId !== args.userId) {
@@ -161,19 +163,19 @@ export const getPaymentByReference = query({
 })
 
 /**
- * Get payment by Xendit payment request ID
+ * Get payment by provider payment ID
  */
-export const getPaymentByXenditId = query({
+export const getPaymentByProviderId = query({
   args: {
-    xenditPaymentRequestId: v.string(),
+    providerPaymentId: v.string(),
     internalKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     if (isInternalKeyValid(args.internalKey)) {
       return await ctx.db
         .query("payments")
-        .withIndex("by_xendit_id", (q) =>
-          q.eq("xenditPaymentRequestId", args.xenditPaymentRequestId)
+        .withIndex("by_provider_id", (q) =>
+          q.eq("providerPaymentId", args.providerPaymentId)
         )
         .first()
     }
@@ -181,8 +183,8 @@ export const getPaymentByXenditId = query({
     const authUser = await requireAuthUser(ctx)
     const payment = await ctx.db
       .query("payments")
-      .withIndex("by_xendit_id", (q) =>
-        q.eq("xenditPaymentRequestId", args.xenditPaymentRequestId)
+      .withIndex("by_provider_id", (q) =>
+        q.eq("providerPaymentId", args.providerPaymentId)
       )
       .first()
     if (!payment || payment.userId !== authUser._id) {
