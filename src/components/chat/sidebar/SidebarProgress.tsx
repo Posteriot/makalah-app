@@ -22,6 +22,8 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip"
 import { resolvePaperDisplayTitle } from "@/lib/paper/title-resolver"
+import type { OutlineSection } from "@/lib/paper/stage-types"
+import { getSectionsForStage } from "@/lib/paper/outline-utils"
 
 // ============================================================================
 // CONSTANTS
@@ -53,6 +55,8 @@ interface MilestoneItemProps {
   canRewind: boolean
   rewindReason?: string
   onRewindClick?: () => void
+  outlineSections?: OutlineSection[]
+  isCurrentStage?: boolean
 }
 
 // ============================================================================
@@ -111,16 +115,31 @@ function MilestoneItem({
   canRewind,
   rewindReason,
   onRewindClick,
+  outlineSections,
+  isCurrentStage,
 }: MilestoneItemProps) {
+  const [expanded, setExpanded] = useState(isCurrentStage ?? false)
   const label = getStageLabel(stageId)
+  const hasSections = outlineSections && outlineSections.length > 0
 
-  // Status text based on state (matches mockup: English labels)
+  // Section stats
+  const completedCount = outlineSections?.filter(s => s.status === "complete").length ?? 0
+  const totalCount = outlineSections?.length ?? 0
+
+  // Status text based on state
   const statusText =
     state === "completed"
       ? "Selesai"
       : state === "current"
         ? "Sedang berjalan"
         : undefined
+
+  // Toggle expand on header click (only if has sections and not a rewind action)
+  const handleHeaderClick = useCallback(() => {
+    if (hasSections) {
+      setExpanded(prev => !prev)
+    }
+  }, [hasSections])
 
   // Milestone dot element - Teal family: dark (completed), light (current), muted (pending)
   const dotElement = (
@@ -163,7 +182,6 @@ function MilestoneItem({
         "flex gap-3 relative group",
         canRewind && "cursor-pointer"
       )}
-      onClick={canRewind ? onRewindClick : undefined}
     >
       {/* Milestone Dot & Line */}
       <div className="flex flex-col items-center">
@@ -193,19 +211,36 @@ function MilestoneItem({
         )}
       </div>
 
-      {/* Milestone Content — all text is slate, hierarchy via weight */}
-      <div className={cn("pb-4", isLast && "pb-0")}>
+      {/* Milestone Content */}
+      <div className={cn("pb-4 flex-1 min-w-0", isLast && "pb-0")}>
+        {/* Header row — clickable to expand/collapse when has sections */}
         <div
           className={cn(
-            "text-sm font-mono transition-colors",
-            state === "completed" && "font-semibold text-[var(--chat-foreground)]",
-            state === "current" && "font-semibold text-[var(--chat-foreground)]",
-            state === "pending" && "font-medium text-[var(--chat-muted-foreground)]",
-            canRewind && "group-hover:text-[var(--chat-foreground)]"
+            "flex items-center gap-1",
+            hasSections && !canRewind && "cursor-pointer"
           )}
+          onClick={canRewind ? onRewindClick : handleHeaderClick}
         >
-          {index + 1}. {label}
+          <div
+            className={cn(
+              "text-sm font-mono transition-colors flex-1",
+              state === "completed" && "font-semibold text-[var(--chat-foreground)]",
+              state === "current" && "font-semibold text-[var(--chat-foreground)]",
+              state === "pending" && "font-medium text-[var(--chat-muted-foreground)]",
+              canRewind && "group-hover:text-[var(--chat-foreground)]"
+            )}
+          >
+            {index + 1}. {label}
+          </div>
+          {/* Section count badge (collapsed) */}
+          {hasSections && !expanded && (
+            <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] shrink-0">
+              {completedCount}/{totalCount}
+            </span>
+          )}
         </div>
+
+        {/* Status text */}
         {statusText && (
           <div
             className={cn(
@@ -215,6 +250,29 @@ function MilestoneItem({
             )}
           >
             {statusText}
+          </div>
+        )}
+
+        {/* Outline sub-items (expanded) */}
+        {hasSections && expanded && (
+          <div className="mt-1.5 space-y-0.5">
+            {outlineSections!.map(section => (
+              <div
+                key={section.id}
+                className={cn(
+                  "flex items-center gap-1.5 text-xs font-mono",
+                  section.status === "complete"
+                    ? "text-[var(--chat-foreground)]"
+                    : "text-[var(--chat-muted-foreground)]",
+                  (section.level ?? 2) >= 3 && "pl-3"
+                )}
+              >
+                <span className="shrink-0 w-3 text-center">
+                  {section.status === "complete" ? "✓" : "○"}
+                </span>
+                <span className="truncate">{section.judul}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -232,10 +290,12 @@ function MilestoneItem({
  * Displays a vertical timeline of the 13 paper writing stages.
  * Shows progress for the current conversation's paper session.
  * Supports rewind to previous stages (max 2 stages back).
+ * Shows outline sub-items with expand/collapse when outline exists.
  *
  * Components:
  * - Header: Title "Progress", subtitle (paper name), progress bar with percentage
  * - Milestone timeline: 13 stages with states (completed, current, pending)
+ * - Outline sub-items: checkmark status per outline section within each stage
  * - Rewind: Click completed stages to rewind (with confirmation dialog)
  * - Empty state: "No active paper session" if no paper in conversation
  */
@@ -366,6 +426,10 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
     conversationTitle: conversation?.title,
   })
 
+  // Extract outline sections for sub-item display
+  const outlineData = stageData?.outline as Record<string, unknown> | undefined
+  const allOutlineSections = (outlineData?.sections ?? []) as OutlineSection[]
+
   // Determine state for each milestone
   const getMilestoneState = (stageId: PaperStageId): MilestoneState => {
     const stageIndex = STAGE_ORDER.indexOf(stageId)
@@ -422,6 +486,9 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
           {STAGE_ORDER.map((stageId, index) => {
             const state = getMilestoneState(stageId)
             const rewindInfo = getRewindInfo(stageId, index)
+            const sectionsForStage = allOutlineSections.length > 0
+              ? getSectionsForStage(stageId, allOutlineSections)
+              : undefined
 
             return (
               <MilestoneItem
@@ -433,6 +500,8 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
                 canRewind={state === "completed" && rewindInfo.canRewind}
                 rewindReason={rewindInfo.reason}
                 onRewindClick={() => handleStageClick(stageId, index)}
+                outlineSections={sectionsForStage && sectionsForStage.length > 0 ? sectionsForStage : undefined}
+                isCurrentStage={state === "current"}
               />
             )
           })}
