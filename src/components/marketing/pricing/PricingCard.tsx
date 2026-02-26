@@ -30,7 +30,7 @@ function PricingCTA({
   plan: PricingPlan
 }) {
   const { data: session } = useSession()
-  const { user } = useCurrentUser()
+  const { user, isLoading: isUserLoading } = useCurrentUser()
   const isSignedIn = !!session
 
   const getHref = (): string => {
@@ -38,6 +38,7 @@ function PricingCTA({
       planSlug: plan.slug,
       ctaHref: plan.ctaHref,
       isSignedIn,
+      isUserLoading,
       role: user?.role,
       subscriptionStatus: user?.subscriptionStatus,
     })

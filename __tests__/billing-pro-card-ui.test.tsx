@@ -247,6 +247,33 @@ describe("Billing - PRO checkout flow", () => {
     expect(screen.queryByRole("button", { name: /^Bayar$/i })).not.toBeInTheDocument()
   })
 
+  it("source of truth status aktif tetap dari query subscription meskipun tier user belum sinkron", async () => {
+    mockUseCurrentUser.mockReturnValue({
+      user: {
+        ...MOCK_FREE_USER,
+        subscriptionStatus: "free",
+      },
+      isLoading: false,
+    })
+
+    setupCheckoutQueryMock({
+      remainingCredits: 80,
+      subscriptionStatusResponse: {
+        hasSubscription: true,
+        status: "active",
+        isExpired: false,
+        currentPeriodEnd: Date.now() + 14 * 24 * 60 * 60 * 1000,
+        isPendingCancel: false,
+      },
+    })
+
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+    render(<CheckoutPROPage />)
+
+    expect(screen.getByText("Langganan Pro lo masih aktif.")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^Bayar$/i })).not.toBeInTheDocument()
+  })
+
   it("user unlimited tidak bisa lanjut checkout pro", async () => {
     mockUseCurrentUser.mockReturnValue({
       user: {

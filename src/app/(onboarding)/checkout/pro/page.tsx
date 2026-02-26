@@ -278,7 +278,7 @@ function CheckoutPROContent() {
   }
 
   const currentTier = getEffectiveTier(user.role, user.subscriptionStatus)
-  if (currentTier === "pro" && subscriptionStatus === undefined) {
+  if (subscriptionStatus === undefined) {
     return (
       <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
         <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
@@ -286,8 +286,7 @@ function CheckoutPROContent() {
     )
   }
 
-  const hasActiveProSubscription = currentTier === "pro" &&
-    !!subscriptionStatus?.hasSubscription &&
+  const hasActiveProSubscription = !!subscriptionStatus.hasSubscription &&
     subscriptionStatus.status === "active" &&
     !subscriptionStatus.isExpired
   const subscriptionPeriodEndLabel = subscriptionStatus?.currentPeriodEnd

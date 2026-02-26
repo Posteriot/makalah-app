@@ -10,6 +10,7 @@ type ResolvePricingEntryHrefArgs = {
   planSlug?: string
   ctaHref?: string
   isSignedIn: boolean
+  isUserLoading?: boolean
   role?: string
   subscriptionStatus?: string
 }
@@ -27,7 +28,7 @@ export function resolvePricingEntryHref(args: ResolvePricingEntryHrefArgs): stri
   if (args.planSlug === "bpp") {
     destination = PRICING_ENTRY_ROUTES.bppCheckout
   } else if (args.planSlug === "pro") {
-    destination = effectiveTier === "unlimited"
+    destination = effectiveTier === "unlimited" || (args.isSignedIn && args.isUserLoading)
       ? PRICING_ENTRY_ROUTES.unlimitedProFallback
       : PRICING_ENTRY_ROUTES.proCheckout
   }
