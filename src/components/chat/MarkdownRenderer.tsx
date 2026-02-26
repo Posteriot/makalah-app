@@ -417,23 +417,9 @@ function formatHostname(value: string): string {
   }
 }
 
-function shouldRenderAsInlineCode(value: string): boolean {
-  const trimmed = value.trim()
-  if (!trimmed) return false
-
-  // Multi-word natural language should stay as plain text.
-  if (/\s/.test(trimmed)) return false
-
-  // URL handling is covered separately in render logic.
-  if (/^https?:\/\//i.test(trimmed)) return false
-
-  // Likely code tokens: symbols, numbers, snake_case, kebab-case, camelCase/PascalCase.
-  if (/[()[\]{}<>/=:+*.,-]/.test(trimmed)) return true
-  if (/[0-9]/.test(trimmed)) return true
-  if (/[_-]/.test(trimmed)) return true
-  if (/[a-z][A-Z]|[A-Z][a-z]/.test(trimmed)) return true
-
-  // Plain single words like "empty" should not be styled as code.
+function shouldRenderAsInlineCode(_value: string): boolean {
+  // All inline backticks render as plain text — no code box styling.
+  // Paper-writing context makes monospace/bordered code tokens look out of place.
   return false
 }
 
