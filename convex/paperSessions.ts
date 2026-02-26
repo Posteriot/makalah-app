@@ -1675,6 +1675,36 @@ export const rewindToStage = mutation({
         // Clear validatedAt for invalidated stages
         const updatedStageData = clearValidatedAt(stageData, stagesToInvalidate);
 
+        // ════════════════════════════════════════════════════════════════
+        // Living Outline Checklist: Reset auto-checked sections on rewind
+        // ════════════════════════════════════════════════════════════════
+        const outlineForReset = updatedStageData.outline as Record<string, unknown> | undefined;
+        const outlineSectionsForReset = outlineForReset?.sections as Array<Record<string, unknown>> | undefined;
+
+        if (outlineSectionsForReset && outlineSectionsForReset.length > 0) {
+            try {
+                const resetResult = resetAutoCheckedSections(
+                    outlineSectionsForReset as unknown as Parameters<typeof resetAutoCheckedSections>[0],
+                    stagesToInvalidate
+                );
+
+                if (resetResult.sectionsReset > 0) {
+                    updatedStageData.outline = {
+                        ...updatedStageData.outline,
+                        sections: resetResult.sections as unknown as Record<string, unknown>[],
+                        completenessScore: resetResult.completenessScore,
+                        lastEditedAt: now,
+                        lastEditedFromStage: args.targetStage,
+                    };
+                    console.log(
+                        `[resetOutlineOnRewind] target=${args.targetStage} sections_reset=${resetResult.sectionsReset} new_completeness=${resetResult.completenessScore}%`
+                    );
+                }
+            } catch (err) {
+                console.warn(`[resetOutlineOnRewind] SKIPPED: Error during reset for session=${args.sessionId}`, err);
+            }
+        }
+
         // Mark paperMemoryDigest entries as superseded
         const updatedDigest = markDigestAsSuperseded(
             session.paperMemoryDigest as Array<{ stage: string; decision: string; timestamp: number; superseded?: boolean }> | undefined,
