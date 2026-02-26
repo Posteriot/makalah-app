@@ -177,6 +177,93 @@ Contoh data untuk tahap 'gagasan':
             },
         }),
 
+        compileDaftarPustaka: tool({
+            description: `Kompilasi referensi lintas stage (1-10) secara server-side untuk tahap daftar_pustaka.
+
+Tool ini WAJIB dipakai saat currentStage = daftar_pustaka agar dedup/merge referensi konsisten.
+Tool akan:
+1) compile referensi dari stage yang sudah approved
+2) skip stage invalidated/superseded karena rewind
+3) persist hasil compile ke stageData.daftar_pustaka via updateStageData`,
+            inputSchema: z.object({
+                ringkasan: z.string().max(280).describe(
+                    "WAJIB. Ringkasan hasil kompilasi daftar pustaka (max 280 karakter)."
+                ),
+                ringkasanDetail: z.string().max(1000).optional().describe(
+                    "Opsional. Detail proses kompilasi, duplikat yang digabung, dan referensi incomplete."
+                ),
+            }),
+            execute: async ({ ringkasan, ringkasanDetail }) => {
+                try {
+                    const session = await retryQuery(
+                        () => fetchQuery(api.paperSessions.getByConversation, {
+                            conversationId: context.conversationId
+                        }, convexOptions),
+                        "paperSessions.getByConversation"
+                    );
+                    if (!session) return { success: false, error: "Sesi paper tidak ditemukan." };
+
+                    const stage = session.currentStage;
+
+                    const compileResult = await retryMutation(
+                        () => fetchMutation(api.paperSessions.compileDaftarPustaka, {
+                            sessionId: session._id,
+                            includeWebSearchReferences: true,
+                        }, convexOptions),
+                        "paperSessions.compileDaftarPustaka"
+                    ) as {
+                        success: boolean;
+                        compiled: {
+                            entries: unknown[];
+                            totalCount: number;
+                            incompleteCount: number;
+                            duplicatesMerged: number;
+                        };
+                        warnings?: string[];
+                    };
+
+                    const mergedData = {
+                        ringkasan,
+                        ...(ringkasanDetail ? { ringkasanDetail } : {}),
+                        ...compileResult.compiled,
+                    };
+
+                    const updateResult = await retryMutation(
+                        () => fetchMutation(api.paperSessions.updateStageData, {
+                            sessionId: session._id,
+                            stage,
+                            data: mergedData,
+                        }, convexOptions),
+                        "paperSessions.updateStageData"
+                    ) as { warning?: string };
+
+                    const warnings: string[] = [];
+                    if (Array.isArray(compileResult.warnings) && compileResult.warnings.length > 0) {
+                        warnings.push(...compileResult.warnings);
+                    }
+                    if (updateResult?.warning) {
+                        warnings.push(updateResult.warning);
+                    }
+
+                    return {
+                        success: true,
+                        stage,
+                        message: "Kompilasi daftar pustaka berhasil dan tersimpan ke stageData.",
+                        totalCount: compileResult.compiled.totalCount,
+                        incompleteCount: compileResult.compiled.incompleteCount,
+                        duplicatesMerged: compileResult.compiled.duplicatesMerged,
+                        ...(warnings.length > 0 ? { warning: warnings.join(" | ") } : {}),
+                    };
+                } catch (error) {
+                    console.error("Error in compileDaftarPustaka tool:", error);
+                    const errorMessage = error instanceof Error
+                        ? error.message
+                        : "Gagal compile daftar pustaka.";
+                    return { success: false, error: errorMessage };
+                }
+            },
+        }),
+
         submitStageForValidation: tool({
             description: "Kirim draf tahap saat ini ke user untuk divalidasi. Ini akan memunculkan panel persetujuan di UI user. AI akan berhenti ngetik setelah ini.",
             inputSchema: z.object({}),

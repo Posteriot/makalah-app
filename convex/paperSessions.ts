@@ -9,6 +9,11 @@ import {
     requirePaperSessionOwner,
     getConversationIfOwner,
 } from "./authHelpers";
+import {
+    compileDaftarPustakaFromStages,
+    DAFTAR_PUSTAKA_SOURCE_STAGES,
+    type DaftarPustakaCompileCandidate,
+} from "./paperSessions/daftarPustakaCompiler";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
 const MAX_WORKING_TITLE_LENGTH = 80;
@@ -348,6 +353,97 @@ function validateReferensiUrls(data: Record<string, unknown>): {
         }
     }
     return null;
+}
+
+const DAFTAR_PUSTAKA_SOURCE_FIELDS = [
+    "referensiAwal",
+    "referensiPendukung",
+    "sitasiAPA",
+    "referensi",
+    "sitasiTambahan",
+] as const;
+
+function parseYearValue(value: unknown): number | undefined {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+    if (typeof value === "string") {
+        const match = value.match(/\b(19|20)\d{2}\b/);
+        if (match) {
+            return Number.parseInt(match[0], 10);
+        }
+    }
+    return undefined;
+}
+
+function extractDaftarPustakaCandidatesFromStageData(
+    stageData: Record<string, unknown>,
+    includeWebSearchReferences: boolean
+): DaftarPustakaCompileCandidate[] {
+    const candidates: DaftarPustakaCompileCandidate[] = [];
+
+    for (const field of DAFTAR_PUSTAKA_SOURCE_FIELDS) {
+        const value = stageData[field];
+        if (!Array.isArray(value)) continue;
+
+        for (const item of value) {
+            if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+            const record = item as Record<string, unknown>;
+
+            const title = typeof record.title === "string" ? record.title : undefined;
+            const authors = typeof record.authors === "string" ? record.authors : undefined;
+            const year = parseYearValue(record.year);
+            const url = typeof record.url === "string" ? record.url : undefined;
+            const publishedAt = typeof record.publishedAt === "number" ? record.publishedAt : undefined;
+            const doi = typeof record.doi === "string" ? record.doi : undefined;
+            const inTextCitation = typeof record.inTextCitation === "string" ? record.inTextCitation : undefined;
+            const fullReference = typeof record.fullReference === "string" ? record.fullReference : undefined;
+
+            if (!title && !url && !doi && !inTextCitation && !fullReference) continue;
+
+            candidates.push({
+                ...(title ? { title } : {}),
+                ...(authors ? { authors } : {}),
+                ...(typeof year === "number" ? { year } : {}),
+                ...(url ? { url } : {}),
+                ...(typeof publishedAt === "number" ? { publishedAt } : {}),
+                ...(doi ? { doi } : {}),
+                ...(inTextCitation ? { inTextCitation } : {}),
+                ...(fullReference ? { fullReference } : {}),
+            });
+        }
+    }
+
+    if (includeWebSearchReferences && Array.isArray(stageData.webSearchReferences)) {
+        for (const item of stageData.webSearchReferences) {
+            if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+            const record = item as Record<string, unknown>;
+            const title = typeof record.title === "string" ? record.title : undefined;
+            const url = typeof record.url === "string" ? record.url : undefined;
+            const publishedAt = typeof record.publishedAt === "number" ? record.publishedAt : undefined;
+
+            if (!title && !url) continue;
+            candidates.push({
+                ...(title ? { title } : {}),
+                ...(url ? { url } : {}),
+                ...(typeof publishedAt === "number" ? { publishedAt } : {}),
+            });
+        }
+    }
+
+    return candidates;
+}
+
+function isStageInvalidatedByLatestRewind(
+    stageId: string,
+    stageValidatedAt: number | undefined,
+    latestRewind: { createdAt: number; invalidatedStages?: string[] } | null
+): boolean {
+    if (!latestRewind) return false;
+    const invalidatedStages = latestRewind.invalidatedStages ?? [];
+    if (!invalidatedStages.includes(stageId)) return false;
+    if (typeof stageValidatedAt !== "number") return true;
+    return stageValidatedAt <= latestRewind.createdAt;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -799,6 +895,112 @@ export const appendSearchReferences = mutation({
             `[appendSearchReferences] Appended ${newRefs.length} refs to stage ${stage}` +
             (nativeField ? ` (also to ${nativeField})` : "")
         );
+    },
+});
+
+/**
+ * Compile daftar pustaka entries from approved stages (1-10), server-side.
+ * Result is intended to be persisted via updateStageData in stage daftar_pustaka.
+ */
+export const compileDaftarPustaka = mutation({
+    args: {
+        sessionId: v.id("paperSessions"),
+        includeWebSearchReferences: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        const { session } = await requirePaperSessionOwner(ctx, args.sessionId);
+
+        if (session.currentStage !== "daftar_pustaka") {
+            throw new Error(
+                `compileDaftarPustaka hanya bisa dipanggil di stage daftar_pustaka. Stage aktif: ${session.currentStage}`
+            );
+        }
+
+        if (session.stageStatus === "pending_validation") {
+            throw new Error(
+                "compileDaftarPustaka gagal: Stage sedang pending validation. Minta revisi dulu jika ingin compile ulang."
+            );
+        }
+
+        const includeWebSearchReferences = args.includeWebSearchReferences ?? true;
+        const stageDataRecord = (session.stageData ?? {}) as Record<string, Record<string, unknown>>;
+
+        const latestRewindRecord = await ctx.db
+            .query("rewindHistory")
+            .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+            .order("desc")
+            .first();
+
+        const latestRewind = latestRewindRecord
+            ? {
+                createdAt: latestRewindRecord.createdAt,
+                invalidatedStages: latestRewindRecord.invalidatedStages,
+            }
+            : null;
+
+        const stages = DAFTAR_PUSTAKA_SOURCE_STAGES.map((stageId) => {
+            const stageData = stageDataRecord[stageId] ?? {};
+            const validatedAt = typeof stageData.validatedAt === "number"
+                ? stageData.validatedAt
+                : undefined;
+
+            const invalidatedByRewind = isStageInvalidatedByLatestRewind(
+                stageId,
+                validatedAt,
+                latestRewind
+            );
+
+            return {
+                stage: stageId,
+                validatedAt,
+                invalidatedByRewind,
+                references: extractDaftarPustakaCandidatesFromStageData(
+                    stageData,
+                    includeWebSearchReferences
+                ),
+            };
+        });
+
+        const result = compileDaftarPustakaFromStages({ stages });
+
+        if (result.compiled.totalCount === 0) {
+            throw new Error(
+                "compileDaftarPustaka gagal: Tidak ada referensi dari stage yang sudah approved."
+            );
+        }
+
+        const warnings: string[] = [];
+        if (result.stats.skippedStageCount > 0) {
+            warnings.push(
+                `${result.stats.skippedStageCount} stage dilewati (belum approved atau invalidated oleh rewind).`
+            );
+        }
+        if (result.compiled.incompleteCount > 0) {
+            warnings.push(
+                `${result.compiled.incompleteCount} referensi terdeteksi incomplete (metadata minimum belum cukup).`
+            );
+        }
+
+        console.log(
+            `[compileDaftarPustaka] session=${args.sessionId} ` +
+            `raw=${result.stats.rawCount} unique=${result.compiled.totalCount} ` +
+            `duplicatesMerged=${result.compiled.duplicatesMerged} incomplete=${result.compiled.incompleteCount} ` +
+            `approvedStages=${result.stats.approvedStageCount} skippedStages=${result.stats.skippedStageCount}`
+        );
+
+        if (warnings.length > 0) {
+            console.warn(
+                `[compileDaftarPustaka] warnings session=${args.sessionId}: ${warnings.join(" | ")}`
+            );
+        }
+
+        return {
+            success: true,
+            stage: "daftar_pustaka" as const,
+            compiled: result.compiled,
+            stats: result.stats,
+            ...(warnings.length > 0 ? { warnings } : {}),
+        };
     },
 });
 
