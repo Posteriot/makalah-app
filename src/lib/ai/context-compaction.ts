@@ -103,9 +103,9 @@ function excludeStageMessages(
         if (msg.role === "system") return true
 
         const msgId = messageIdExtractor(msg)
-        if (!msgId) return true
 
         if (msgId === firstId) inRange = true
+        // Messages without ID within range are also excluded (e.g. tool calls)
         if (inRange && !passedRange) {
             if (msgId === lastId) {
                 passedRange = true

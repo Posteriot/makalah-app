@@ -517,6 +517,7 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
         // Context Compaction Layer — threshold-based priority chain
         // Runs BEFORE brute prune. Brute prune remains as safety net.
         // ════════════════════════════════════════════════════════════════
+        let effectiveBudget = budget
         if (budget.shouldCompact) {
             const compactionResult = await runCompactionChain(
                 fullMessagesBase as CompactableMessage[],
@@ -537,17 +538,17 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             fullMessagesBase.length = 0
             fullMessagesBase.push(...compactionResult.messages as typeof fullMessagesBase[number][])
 
-            // Re-estimate after compaction
+            // Re-estimate after compaction — use post-compaction budget for prune decision
             const postCompactionChars = estimateModelMessageChars(fullMessagesBase)
-            const postBudget = checkContextBudget(postCompactionChars, contextWindow)
+            effectiveBudget = checkContextBudget(postCompactionChars, contextWindow)
             console.info(
-                `[Context Compaction] Post-compaction: ${postBudget.totalTokens.toLocaleString()} tokens (${Math.round((postBudget.totalTokens / postBudget.compactionThreshold) * 100)}% of compaction threshold) | resolved at ${compactionResult.resolvedAtPriority}`
+                `[Context Compaction] Post-compaction: ${effectiveBudget.totalTokens.toLocaleString()} tokens (${Math.round((effectiveBudget.totalTokens / effectiveBudget.compactionThreshold) * 100)}% of compaction threshold) | resolved at ${compactionResult.resolvedAtPriority}`
             )
         }
 
-        if (budget.shouldPrune) {
+        if (effectiveBudget.shouldPrune) {
             console.warn(
-                `[Context Budget] Pruning: ${budget.totalTokens} tokens > ${budget.threshold} threshold. Messages: ${fullMessagesBase.length}`
+                `[Context Budget] Pruning: ${effectiveBudget.totalTokens} tokens > ${effectiveBudget.threshold} threshold. Messages: ${fullMessagesBase.length}`
             )
             // Keep system messages at the front, prune only conversation messages
             const systemMessages = fullMessagesBase.filter(m => m.role === "system")
@@ -560,9 +561,9 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             fullMessagesBase.push(...systemMessages, ...prunedConversation)
         }
 
-        if (budget.shouldWarn && !budget.shouldPrune) {
+        if (effectiveBudget.shouldWarn && !effectiveBudget.shouldPrune) {
             console.info(
-                `[Context Budget] Warning: ${budget.totalTokens} tokens approaching threshold ${budget.threshold}.`
+                `[Context Budget] Warning: ${effectiveBudget.totalTokens} tokens approaching threshold ${effectiveBudget.threshold}.`
             )
         }
 
