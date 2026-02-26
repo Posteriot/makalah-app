@@ -1,7 +1,7 @@
 # Design Doc: Living Outline Checklist
 
 Tanggal: 26 Februari 2026
-Status: Draft Implementable
+Status: **Implemented** (branch `feat/living-outline-checklist`)
 Scope: Outline sebagai living checklist yang mengiringi progress penulisan paper lintas stage, dengan auto-check saat stage approved dan mid-course edit terbatas
 
 ---

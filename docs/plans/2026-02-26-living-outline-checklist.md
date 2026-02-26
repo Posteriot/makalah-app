@@ -1,12 +1,34 @@
 # Living Outline Checklist Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **Status:** All 13 tasks completed. Branch `feat/living-outline-checklist`. 119 tests pass, 0 lint errors.
 
 **Goal:** Make the paper outline a living checklist that auto-checks sections on stage approval and allows mid-course minor edits, integrated into the SidebarProgress timeline.
 
 **Architecture:** Two-phase approach. Phase 1 adds auto-check side-effect to `approveStage` mutation + outline sub-items UI in SidebarProgress. Phase 2 adds `updateOutlineSections` mutation + inline edit UI. Helper functions in `outline-utils.ts` shared by both phases. Stage-ID Matching maps outline level-1 section IDs to stage IDs by convention.
 
 **Tech Stack:** Convex mutations (backend), React + TypeScript (frontend), Vitest (tests), Tailwind CSS 4 (styling)
+
+### Implementation Summary
+
+| Task | Commit | Description |
+|------|--------|-------------|
+| 1 | `268c40a` | Extend OutlineSection/OutlineData types |
+| 2 | `8e9fe61` | outline-utils helpers (getRootStageId, getSectionsForStage, calculateCompleteness) |
+| 3 | `1594893` | autoCheckOutlineSections helper |
+| 4 | `7fb7f16` | resetAutoCheckedSections helper |
+| 5 | `34b2098` | Integrate auto-check into approveStage |
+| 6 | `16f4bab` | Integrate reset into rewindToStage |
+| 7 | `2545d70` | SidebarProgress outline sub-items UI |
+| 8 | `2a38c4d` | Section ID convention in outline instructions |
+| 9 | `82efd2c` | validateOutlineEdit helper |
+| 10 | `16e05e4` | updateOutlineSections mutation + applyOutlineEdits |
+| 11 | `bd87920` | Expose updateOutlineSections in usePaperSession hook |
+| 12 | `9655189` | Inline edit UI in SidebarProgress |
+| 13 | — | Final integration test (all 119 tests pass) |
+
+### Known Limitation
+
+Pre-existing sessions (stages approved before this code was deployed) will not have auto-checked outline sections. This is by design — auto-check only runs on new `approveStage` calls. Self-heals when user rewinds + re-approves.
 
 ---
 
