@@ -14,6 +14,10 @@ import {
     DAFTAR_PUSTAKA_SOURCE_STAGES,
     type DaftarPustakaCompileCandidate,
 } from "./paperSessions/daftarPustakaCompiler";
+import {
+    autoCheckOutlineSections,
+    resetAutoCheckedSections,
+} from "./paperSessions/outlineAutoCheck";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
 const MAX_WORKING_TITLE_LENGTH = 80;
@@ -1120,6 +1124,37 @@ export const approveStage = mutation({
                 ...updatedStageData[currentStage],
                 validatedAt: now,
             };
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // Living Outline Checklist: Auto-check sections on stage approval
+        // ════════════════════════════════════════════════════════════════
+        const outlineForAutoCheck = updatedStageData.outline as Record<string, unknown> | undefined;
+        const outlineSections = outlineForAutoCheck?.sections as Array<Record<string, unknown>> | undefined;
+
+        if (outlineSections && outlineSections.length > 0) {
+            try {
+                const autoCheckResult = autoCheckOutlineSections(
+                    outlineSections as unknown as Parameters<typeof autoCheckOutlineSections>[0],
+                    currentStage,
+                    now
+                );
+
+                if (autoCheckResult.sectionsChecked > 0) {
+                    updatedStageData.outline = {
+                        ...updatedStageData.outline,
+                        sections: autoCheckResult.sections as unknown as Record<string, unknown>[],
+                        completenessScore: autoCheckResult.completenessScore,
+                        lastEditedAt: now,
+                        lastEditedFromStage: currentStage,
+                    };
+                    console.log(
+                        `[autoCheckOutline] stage=${currentStage} sections_checked=${autoCheckResult.sectionsChecked} new_completeness=${autoCheckResult.completenessScore}%`
+                    );
+                }
+            } catch (err) {
+                console.warn(`[autoCheckOutline] SKIPPED: Error during auto-check for session=${args.sessionId}`, err);
+            }
         }
 
         const nextStage = getNextStage(currentStage);
