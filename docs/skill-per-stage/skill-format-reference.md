@@ -57,7 +57,7 @@ Referensi:
 Direktori skill per stage (referensi authoring):
 
 ```text
-skill-stage-<stage-id>/
+<stage-id>-skill/
 └── SKILL.md
 ```
 
@@ -65,7 +65,7 @@ Format `SKILL.md` yang dipakai:
 
 ```md
 ---
-name: stage-<stage-id>
+name: <stage-id>-skill
 description: Stage instruction for <stage-id> in Makalah AI paper workflow. Use when currentStage = <stage-id>.
 metadata:
   internal: true
@@ -138,19 +138,19 @@ type StageSkillVersion = {
 ## 5) Mapping Nama Skill untuk 13 Tahap
 
 Naming convention V1:
-1. `stage-gagasan`
-2. `stage-topik`
-3. `stage-outline`
-4. `stage-abstrak`
-5. `stage-pendahuluan`
-6. `stage-tinjauan-literatur`
-7. `stage-metodologi`
-8. `stage-hasil`
-9. `stage-diskusi`
-10. `stage-kesimpulan`
-11. `stage-daftar-pustaka`
-12. `stage-lampiran`
-13. `stage-judul`
+1. `gagasan-skill`
+2. `topik-skill`
+3. `outline-skill`
+4. `abstrak-skill`
+5. `pendahuluan-skill`
+6. `tinjauan-literatur-skill`
+7. `metodologi-skill`
+8. `hasil-skill`
+9. `diskusi-skill`
+10. `kesimpulan-skill`
+11. `daftar-pustaka-skill`
+12. `lampiran-skill`
+13. `judul-skill`
 
 Aturan:
 1. Satu stage = satu skill aktif (V1).
@@ -222,7 +222,7 @@ Validator minimum V1:
 
 ```md
 ---
-name: stage-pendahuluan
+name: pendahuluan-skill
 description: Stage instruction for pendahuluan in Makalah AI paper workflow. Use when currentStage = pendahuluan.
 metadata:
   internal: true
