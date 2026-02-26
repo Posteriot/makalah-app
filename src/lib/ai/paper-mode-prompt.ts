@@ -15,6 +15,30 @@ interface InvalidatedArtifact {
     invalidatedByRewindToStage?: string;
 }
 
+interface PaperMemoryEntry {
+    stage: string;
+    decision: string;
+    timestamp: number;
+    superseded?: boolean;
+}
+
+/**
+ * Format paperMemoryDigest into a concise context block.
+ * Always injected — serves as "memory anchor" for AI across stages.
+ */
+function formatMemoryDigest(digest: PaperMemoryEntry[]): string {
+    if (!digest || digest.length === 0) return "";
+
+    const entries = digest
+        .filter(d => !d.superseded)
+        .map(d => `- ${getStageLabel(d.stage as PaperStageId)}: ${d.decision}`)
+        .join("\n");
+
+    if (!entries) return "";
+
+    return `\nMEMORY DIGEST (keputusan tersimpan per tahap — JANGAN kontradiksi):\n${entries}\n`;
+}
+
 /**
  * Format invalidated artifacts into AI context section
  * Returns empty string if no invalidated artifacts
@@ -59,6 +83,11 @@ export const getPaperModeSystemPrompt = async (
         const stage = session.currentStage as PaperStageId | "completed";
         const status = session.stageStatus as StageStatus;
         const stageLabel = getStageLabel(stage);
+
+        // Build memory digest
+        const memoryDigest = formatMemoryDigest(
+            (session as unknown as { paperMemoryDigest?: PaperMemoryEntry[] }).paperMemoryDigest || []
+        );
 
         // Get stage-specific instructions
         const stageInstructions = getStageInstructions(stage);
@@ -166,7 +195,7 @@ ATURAN UMUM:
 - Jika ragu antara domain vs author asli → JANGAN SITASI, cukup sebutkan informasinya tanpa citation mark
 
 ${stageInstructions}
-
+${memoryDigest}
 KONTEKS TAHAP SELESAI & CHECKLIST:
 Catatan kompresi konteks aktif: refs maks 5, sitasi maks 5, ringkasan detail hanya 3 tahap selesai terakhir.
 ${formattedData}
