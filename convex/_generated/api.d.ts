@@ -43,6 +43,7 @@ import type * as migrations_backfillCreditBalances from "../migrations/backfillC
 import type * as migrations_backfillProviderKeys from "../migrations/backfillProviderKeys.js";
 import type * as migrations_backfillWorkingTitle from "../migrations/backfillWorkingTitle.js";
 import type * as migrations_checkDocumentationOrdering from "../migrations/checkDocumentationOrdering.js";
+import type * as migrations_cleanupDuplicateSeedUser from "../migrations/cleanupDuplicateSeedUser.js";
 import type * as migrations_createContractAlignedSystemPrompt from "../migrations/createContractAlignedSystemPrompt.js";
 import type * as migrations_enableTwoFactorAllUsers from "../migrations/enableTwoFactorAllUsers.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
@@ -140,6 +141,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillProviderKeys": typeof migrations_backfillProviderKeys;
   "migrations/backfillWorkingTitle": typeof migrations_backfillWorkingTitle;
   "migrations/checkDocumentationOrdering": typeof migrations_checkDocumentationOrdering;
+  "migrations/cleanupDuplicateSeedUser": typeof migrations_cleanupDuplicateSeedUser;
   "migrations/createContractAlignedSystemPrompt": typeof migrations_createContractAlignedSystemPrompt;
   "migrations/enableTwoFactorAllUsers": typeof migrations_enableTwoFactorAllUsers;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
