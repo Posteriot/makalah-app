@@ -523,6 +523,29 @@ export function MessageBubble({
                         </div>
                     )}
 
+                    {/* Inline image attachments from native SDK */}
+                    {isUser && message.parts?.map((part, i) => {
+                        if (
+                            part.type === "file" &&
+                            "mediaType" in part &&
+                            typeof (part as Record<string, unknown>).mediaType === "string" &&
+                            ((part as Record<string, unknown>).mediaType as string).startsWith("image/")
+                        ) {
+                            const filePart = part as Record<string, unknown>
+                            return (
+                                <div key={`img-${i}`} className="mb-3">
+                                    <img
+                                        src={filePart.url as string}
+                                        alt={(filePart.filename as string) ?? "attachment"}
+                                        className="max-w-xs max-h-64 rounded-action border border-[color:var(--chat-border)]"
+                                        loading="lazy"
+                                    />
+                                </div>
+                            )
+                        }
+                        return null
+                    })}
+
                     {/* Process Indicators - fixed slot above assistant content to prevent jumping */}
                     {shouldShowProcessIndicators && (
                         <div className="mb-3 space-y-2">
