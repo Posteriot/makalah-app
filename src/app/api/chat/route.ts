@@ -390,7 +390,6 @@ export async function POST(req: Request) {
                 }
             }
         }
-
         // Convert UIMessages to model messages format
         const rawModelMessages = convertToModelMessages(messages)
 

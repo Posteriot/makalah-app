@@ -5,7 +5,7 @@
  * Handles slide content, speaker notes, and basic text structure
  */
 
-import { parseOffice } from "officeparser"
+import { parsePowerPoint } from "officeparser/dist/parsers/PowerPointParser"
 
 /**
  * Custom error types untuk PPTX extraction
@@ -34,8 +34,9 @@ export class PPTXExtractionError extends Error {
  */
 export async function extractTextFromPptx(blob: Blob): Promise<string> {
   try {
-    // Convert Blob to ArrayBuffer (required by officeparser)
+    // Convert Blob to ArrayBuffer lalu ke Buffer (parser PPTX bekerja di Node Buffer)
     const arrayBuffer = await blob.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
 
     // Validate buffer size
     if (arrayBuffer.byteLength === 0) {
@@ -45,9 +46,8 @@ export async function extractTextFromPptx(blob: Blob): Promise<string> {
       )
     }
 
-    // Extract text using officeparser
-    // parseOffice accepts ArrayBuffer directly; returns AST with toText() method
-    const ast = await parseOffice(arrayBuffer, {
+    // Extract text menggunakan parser PPTX spesifik untuk hindari import parser PDF.
+    const ast = await parsePowerPoint(buffer, {
       newlineDelimiter: "\n",
       putNotesAtLast: true,
     })

@@ -534,7 +534,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         api: "/api/chat",
         body: () => ({
           conversationId: safeConversationId,
-          fileIds: attachedFilesRef.current.map((f) => f.fileId),
         }),
       }),
     [safeConversationId]
@@ -622,6 +621,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
     // Include image attachments if present (from landing page file attach flow)
     const currentFiles = attachedFilesRef.current
+    const fileIds = currentFiles.map((f) => f.fileId)
+
     const currentImageDataUrls = imageDataUrlsRef.current
     const imageFileParts = currentFiles
       .filter((f) => f.type.startsWith("image/"))
@@ -637,11 +638,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     const docFiles = currentFiles.filter((f) => !f.type.startsWith("image/"))
 
     if (imageFileParts.length > 0) {
-      sendMessage({ text: pendingPrompt, files: imageFileParts })
+      sendMessage(
+        { text: pendingPrompt, files: imageFileParts },
+        { body: { fileIds } }
+      )
     } else {
-      sendMessage({ text: pendingPrompt })
+      sendMessage({ text: pendingPrompt }, { body: { fileIds } })
     }
-    // Document fileIds are sent via transport.body() function (ref pattern)
+    // Document fileIds are sent per request via sendMessage options body.
 
     // Annotate user message with file metadata for live badge rendering.
     // setTimeout needed: sendMessage is async — pushMessage happens in a microtask
@@ -1064,6 +1068,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (!input.trim() && attachedFiles.length === 0) return
     if (isLoading) return
 
+    const fileIds = attachedFiles.map((f) => f.fileId)
+
     setIsAwaitingAssistantStart(true)
     pendingScrollToBottomRef.current = true
 
@@ -1082,11 +1088,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     const docFiles = attachedFiles.filter((f) => !f.type.startsWith("image/"))
 
     if (imageFileParts.length > 0) {
-      sendMessage({ text: input || " ", files: imageFileParts })
+      sendMessage(
+        { text: input || " ", files: imageFileParts },
+        { body: { fileIds } }
+      )
     } else {
-      sendMessage({ text: input })
+      sendMessage({ text: input }, { body: { fileIds } })
     }
-    // Document fileIds are sent via transport.body() function (ref pattern)
+    // Document fileIds are sent per request via sendMessage options body.
 
     // Annotate user message with file metadata for live badge rendering.
     // setTimeout needed: sendMessage is async — pushMessage happens in a microtask.
