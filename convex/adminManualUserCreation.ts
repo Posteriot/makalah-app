@@ -1,35 +1,7 @@
 import { v } from "convex/values"
 import { mutation } from "./_generated/server"
 import { components } from "./_generated/api"
-
-function extractBetterAuthUserId(user: { id?: unknown; _id?: unknown }): string | null {
-  if (typeof user.id === "string" && user.id.length > 0) return user.id
-  if (typeof user._id === "string" && user._id.length > 0) return user._id
-  return null
-}
-
-async function assertBetterAuthUserMatchesEmail(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ctx: any,
-  betterAuthUserId: string,
-  email: string
-): Promise<void> {
-  const normalizedEmail = email.trim().toLowerCase()
-
-  const betterAuthUser = await ctx.runQuery(components.betterAuth.adapter.findOne, {
-    model: "user",
-    where: [{ field: "email", operator: "eq", value: normalizedEmail }],
-  }) as { id?: unknown; _id?: unknown; email?: unknown } | null
-
-  if (!betterAuthUser) {
-    throw new Error("BetterAuth user tidak ditemukan untuk email ini")
-  }
-
-  const resolvedBetterAuthUserId = extractBetterAuthUserId(betterAuthUser)
-  if (!resolvedBetterAuthUserId || resolvedBetterAuthUserId !== betterAuthUserId) {
-    throw new Error("betterAuthUserId tidak valid untuk email ini")
-  }
-}
+import { assertBetterAuthIdentityForEmail } from "./lib/betterAuthIdentityGuard"
 
 /**
  * Link an existing BetterAuth user to Convex users table.
@@ -51,7 +23,15 @@ export const linkBetterAuthUser = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await assertBetterAuthUserMatchesEmail(ctx, args.betterAuthUserId, args.email)
+    await assertBetterAuthIdentityForEmail({
+      betterAuthUserId: args.betterAuthUserId,
+      email: args.email,
+      findUserByEmail: async (normalizedEmail) =>
+        await ctx.runQuery(components.betterAuth.adapter.findOne, {
+          model: "user",
+          where: [{ field: "email", operator: "eq", value: normalizedEmail }],
+        }) as { id?: unknown; _id?: unknown; email?: unknown } | null,
+    })
 
     // Check if already linked
     const existing = await ctx.db

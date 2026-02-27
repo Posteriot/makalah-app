@@ -4,6 +4,7 @@ import type { DataModel } from "./_generated/dataModel"
 import { components, internal } from "./_generated/api"
 import { requireRole } from "./permissions"
 import { requireAuthUserId } from "./authHelpers"
+import { assertBetterAuthIdentityForEmail } from "./lib/betterAuthIdentityGuard"
 
 export type SubscriptionStatus = "free" | "pro" | "canceled" | "unlimited"
 export type UserRole = "superadmin" | "admin" | "user"
@@ -342,34 +343,6 @@ async function markWaitlistRegistered(
   return null
 }
 
-function extractBetterAuthUserId(user: { id?: unknown; _id?: unknown }): string | null {
-  if (typeof user.id === "string" && user.id.length > 0) return user.id
-  if (typeof user._id === "string" && user._id.length > 0) return user._id
-  return null
-}
-
-async function assertBetterAuthUserMatchesEmail(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ctx: any,
-  betterAuthUserId: string,
-  email: string
-): Promise<void> {
-  const normalizedEmail = email.trim().toLowerCase()
-
-  const betterAuthUser = await ctx.runQuery(components.betterAuth.adapter.findOne, {
-    model: "user",
-    where: [{ field: "email", operator: "eq", value: normalizedEmail }],
-  }) as { id?: unknown; _id?: unknown; email?: unknown } | null
-
-  if (!betterAuthUser) {
-    throw new Error("BetterAuth user tidak ditemukan untuk email ini")
-  }
-
-  const resolvedBetterAuthUserId = extractBetterAuthUserId(betterAuthUser)
-  if (!resolvedBetterAuthUserId || resolvedBetterAuthUserId !== betterAuthUserId) {
-    throw new Error("betterAuthUserId tidak valid untuk email ini")
-  }
-}
 /**
  * Create or link application user record after BetterAuth signup.
  * Called from the frontend after successful authentication.
@@ -391,7 +364,15 @@ export const createAppUser = mutationGeneric({
     if (!identity || identity.subject !== betterAuthUserId) {
       throw new Error("Unauthorized")
     }
-    await assertBetterAuthUserMatchesEmail(ctx, betterAuthUserId, email)
+    await assertBetterAuthIdentityForEmail({
+      betterAuthUserId,
+      email,
+      findUserByEmail: async (normalizedEmail) =>
+        await ctx.runQuery(components.betterAuth.adapter.findOne, {
+          model: "user",
+          where: [{ field: "email", operator: "eq", value: normalizedEmail }],
+        }) as { id?: unknown; _id?: unknown; email?: unknown } | null,
+    })
 
     // 1. Already linked by betterAuthUserId
     const alreadyLinked = await ctx.db
