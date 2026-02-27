@@ -6,13 +6,16 @@ import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { toast } from "sonner"
+import { AttachedFileMeta } from "@/lib/types/attached-file"
 
 interface FileUploadButtonProps {
     conversationId: string | null
-    onFileUploaded?: (fileId: Id<"files">) => void
+    onFileUploaded?: (file: AttachedFileMeta) => void
+    onImageDataUrl?: (fileId: Id<"files">, dataUrl: string) => void
 }
 
-export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadButtonProps) {
+export function FileUploadButton({ conversationId, onFileUploaded, onImageDataUrl }: FileUploadButtonProps) {
     const [isUploading, setIsUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -29,6 +32,7 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation", // pptx
             "text/plain",
             "image/jpeg",
             "image/png",
@@ -38,12 +42,12 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
         const maxSize = 10 * 1024 * 1024 // 10MB
 
         if (!allowedTypes.includes(file.type)) {
-            alert("Invalid file type. Please upload PDF, DOC, DOCX, XLSX, TXT, or Image.") // Fallback prompt
+            toast.error("Tipe file tidak didukung. Gunakan PDF, DOCX, XLSX, PPTX, TXT, atau gambar.")
             return
         }
 
         if (file.size > maxSize) {
-            alert("File too large. Max size is 10MB.")
+            toast.error("File terlalu besar. Maksimal 10MB.")
             return
         }
 
@@ -73,23 +77,37 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
                 conversationId: conversationId as Id<"conversations"> ?? undefined,
             })
 
-            // Trigger background text extraction (fire and forget)
-            fetch('/api/extract-file', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fileId }),
-            }).catch(() => {
-                // Tidak throw error - graceful degradation
-            })
-
-            if (onFileUploaded) {
-                onFileUploaded(fileId)
+            // For images: read as data URL for native multimodal
+            if (file.type.startsWith("image/")) {
+                const reader = new FileReader()
+                reader.onload = () => {
+                    onImageDataUrl?.(fileId, reader.result as string)
+                }
+                reader.readAsDataURL(file)
             }
 
-            alert("File uploaded successfully!")
+            // Trigger extraction ONLY for documents (not images)
+            if (!file.type.startsWith("image/")) {
+                fetch('/api/extract-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileId }),
+                }).catch(() => {
+                    // Graceful degradation
+                })
+            }
+
+            if (onFileUploaded) {
+                onFileUploaded({
+                    fileId,
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                })
+            }
 
         } catch {
-            alert("Upload failed. Please try again.")
+            toast.error("Upload gagal. Silakan coba lagi.")
         } finally {
             setIsUploading(false)
             if (fileInputRef.current) {
@@ -104,7 +122,7 @@ export function FileUploadButton({ conversationId, onFileUploaded }: FileUploadB
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept=".pdf,.doc,.docx,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.webp"
+                accept=".pdf,.doc,.docx,.xlsx,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp"
                 onChange={handleFileSelect}
                 disabled={isUploading}
             />
