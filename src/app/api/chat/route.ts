@@ -1417,6 +1417,10 @@ Aturan:
             }
         }
 
+        // Hoist for catch block accessibility (fallback provider needs these)
+        let shouldForceGetCurrentPaperState = false
+        let shouldForceSubmitValidation = false
+
         try {
             const model = await getGatewayModel()
 
@@ -1563,13 +1567,13 @@ Aturan:
                 console.log("[SearchDecision] Explicit sync override: forced getCurrentPaperState path")
             }
 
-            const shouldForceGetCurrentPaperState = !enableWebSearch
+            shouldForceGetCurrentPaperState = !enableWebSearch
                 && !!paperModePrompt
                 && explicitSyncRequest
 
             // For ACTIVE stages with explicit save request, force submit validation
             // Use isExplicitSaveSubmitRequest since isUserConfirmation is now scoped to else block
-            const shouldForceSubmitValidation = !enableWebSearch
+            shouldForceSubmitValidation = !enableWebSearch
                 && !!paperModePrompt
                 && !shouldForceGetCurrentPaperState
                 && (
@@ -1580,6 +1584,13 @@ Aturan:
                 )
                 && paperSession?.stageStatus === "drafting"
                 && hasStageRingkasan(paperSession)
+
+            const forcedToolTelemetryName = shouldForceGetCurrentPaperState
+                ? "getCurrentPaperState"
+                : undefined
+            const telemetrySkillContext = forcedToolTelemetryName
+                ? { ...skillTelemetryContext, fallbackReason: "explicit_sync_request" }
+                : skillTelemetryContext
 
             const primaryReasoningProviderOptions = buildReasoningProviderOptions({
                 settings: reasoningSettings,
@@ -1632,12 +1643,6 @@ TIPS PENCARIAN:
             const gatewayTools: ToolSet = enableWebSearch
                 ? ({ google_search: wrappedGoogleSearchTool } as unknown as ToolSet)
                 : tools
-            const forcedToolTelemetryName = shouldForceGetCurrentPaperState
-                ? "getCurrentPaperState"
-                : undefined
-            const telemetrySkillContext = forcedToolTelemetryName
-                ? { ...skillTelemetryContext, fallbackReason: "explicit_sync_request" }
-                : skillTelemetryContext
             const forcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
                     : undefined
@@ -1655,14 +1660,14 @@ TIPS PENCARIAN:
                     if (stepNumber === 0) {
                         return {
                             toolChoice: { type: "tool", toolName: "getCurrentPaperState" } as const,
-                            activeTools: ["getCurrentPaperState"],
+                            activeTools: ["getCurrentPaperState"] as string[],
                         }
                     }
 
                     if (stepNumber === 1) {
                         return {
                             toolChoice: "none" as const,
-                            activeTools: [],
+                            activeTools: [] as string[],
                         }
                     }
 
@@ -2517,13 +2522,13 @@ TIPS PENCARIAN:
                 model: modelNames.primary.model,
                 isPrimaryProvider: true,
                 failoverUsed: false,
-                toolUsed: enableWebSearch ? "google_search" : forcedToolTelemetryName,
+                toolUsed: enableWebSearch ? "google_search" : undefined,
                 mode: enableWebSearch ? "websearch" : (isPaperMode ? "paper" : "normal"),
                 success: false,
                 errorType: primaryErrorInfo.errorType,
                 errorMessage: primaryErrorInfo.errorMessage,
                 latencyMs: Date.now() - telemetryStartTime,
-                ...telemetrySkillContext,
+                ...skillTelemetryContext,
             })
             // ════════════════════════════════════════════
 
@@ -2568,14 +2573,14 @@ TIPS PENCARIAN:
                         if (stepNumber === 0) {
                             return {
                                 toolChoice: { type: "tool", toolName: "getCurrentPaperState" } as const,
-                                activeTools: ["getCurrentPaperState"],
+                                activeTools: ["getCurrentPaperState"] as string[],
                             }
                         }
 
                         if (stepNumber === 1) {
                             return {
                                 toolChoice: "none" as const,
-                                activeTools: [],
+                                activeTools: [] as string[],
                             }
                         }
 
@@ -2588,7 +2593,8 @@ TIPS PENCARIAN:
                     tools,
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
-                    prepareStep: fallbackDeterministicSyncPrepareStep,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    prepareStep: fallbackDeterministicSyncPrepareStep as any,
                     stopWhen: stepCountIs(fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
@@ -2656,13 +2662,13 @@ TIPS PENCARIAN:
                             model: modelNames.fallback.model,
                             isPrimaryProvider: false,
                             failoverUsed: true,
-                            toolUsed: forcedToolTelemetryName,
+                            toolUsed: undefined,
                             mode: isPaperMode ? "paper" : "normal",
                             success: true,
                             latencyMs: Date.now() - telemetryStartTime,
                             inputTokens: usage?.inputTokens,
                             outputTokens: usage?.outputTokens,
-                            ...telemetrySkillContext,
+                            ...skillTelemetryContext,
                         })
                         // ═════════════════════════════════════════════════
                     },
@@ -3103,7 +3109,7 @@ TIPS PENCARIAN:
                                     latencyMs: Date.now() - telemetryStartTime,
                                     inputTokens: finishUsage?.inputTokens,
                                     outputTokens: finishUsage?.outputTokens,
-                                    ...telemetrySkillContext,
+                                    ...skillTelemetryContext,
                                 })
                                 // ═════════════════════════════════════════════
 
