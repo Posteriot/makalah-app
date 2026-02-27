@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import mermaid from "mermaid"
 import DOMPurify from "dompurify"
 
@@ -24,17 +24,25 @@ interface MermaidRendererProps {
 }
 
 export function MermaidRenderer({ code }: MermaidRendererProps) {
-  const [svg, setSvg] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isDark, setIsDark] = useState(false)
-  const mountedRef = useRef(true)
+  const [renderState, setRenderState] = useState<{
+    key: string
+    svg: string | null
+    error: string | null
+  }>({
+    key: "",
+    svg: null,
+    error: null,
+  })
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document === "undefined") return false
+    return document.documentElement.classList.contains("dark")
+  })
+  const currentRenderKey = `${isDark ? "dark" : "default"}:${code}`
 
   useEffect(() => {
-    mountedRef.current = true
-    setIsDark(document.documentElement.classList.contains("dark"))
-
     const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains("dark"))
+      const nextIsDark = document.documentElement.classList.contains("dark")
+      setIsDark((prev) => (prev === nextIsDark ? prev : nextIsDark))
     })
     observer.observe(document.documentElement, {
       attributes: true,
@@ -42,19 +50,18 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
     })
 
     return () => {
-      mountedRef.current = false
       observer.disconnect()
     }
   }, [])
 
   useEffect(() => {
-    setSvg(null)
-    setError(null)
+    let cancelled = false
 
     initMermaid(isDark)
 
     renderCounter += 1
     const renderId = `mermaid-render-${renderCounter}-${Date.now()}`
+    const renderKey = `${isDark ? "dark" : "default"}:${code}`
 
     mermaid
       .render(renderId, code)
@@ -62,27 +69,37 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
         const tempEl = document.getElementById(renderId)
         if (tempEl) tempEl.remove()
 
-        if (!mountedRef.current) return
+        if (cancelled) return
 
         const sanitized = DOMPurify.sanitize(rawSvg, {
           USE_PROFILES: { svg: true, svgFilters: true },
           ADD_TAGS: ["foreignObject", "div", "span", "p", "br", "b", "i", "em", "strong", "ul", "li"],
           ADD_ATTR: ["xmlns", "class", "style", "transform", "x", "y", "width", "height", "requiredExtensions"],
         })
-        setSvg(sanitized)
-        setError(null)
+        setRenderState({
+          key: renderKey,
+          svg: sanitized,
+          error: null,
+        })
       })
       .catch((err) => {
         const tempEl = document.getElementById(renderId)
         if (tempEl) tempEl.remove()
 
-        if (!mountedRef.current) return
-        setError(String(err))
-        setSvg(null)
+        if (cancelled) return
+        setRenderState({
+          key: renderKey,
+          svg: null,
+          error: String(err),
+        })
       })
+
+    return () => {
+      cancelled = true
+    }
   }, [code, isDark])
 
-  if (error) {
+  if (renderState.key === currentRenderKey && renderState.error) {
     return (
       <pre className="my-2 overflow-x-auto rounded-action bg-[var(--chat-background)] p-3 text-xs leading-relaxed">
         <code>{code}</code>
@@ -90,7 +107,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
     )
   }
 
-  if (!svg) {
+  if (renderState.key !== currentRenderKey || !renderState.svg) {
     return (
       <div className="my-2 h-32 animate-pulse rounded-action bg-[var(--chat-muted)]" />
     )
@@ -99,7 +116,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
   return (
     <div
       className="my-2 overflow-x-auto [&_svg]:max-w-full"
-      dangerouslySetInnerHTML={{ __html: svg }}
+      dangerouslySetInnerHTML={{ __html: renderState.svg }}
     />
   )
 }
