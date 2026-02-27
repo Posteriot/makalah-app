@@ -12,6 +12,7 @@ import { useMessages } from "@/lib/hooks/useMessages"
 import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowUpSquare, FastArrowDownSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
 import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
+import { AttachedFileMeta } from "@/lib/types/attached-file"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
@@ -324,7 +325,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const wasGeneratingRef = useRef(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [input, setInput] = useState("")
-  const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFileMeta[]>([])
+  const [imageDataUrls, setImageDataUrls] = useState<Map<string, string>>(new Map())
   const [isCreatingChat, setIsCreatingChat] = useState(false)
   const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
   const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
@@ -461,17 +463,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
 
-  // Create transport with custom body for conversationId
+  // Ref to always read latest attachedFiles at request time (bypasses useChat stale transport bug)
+  const attachedFilesRef = useRef(attachedFiles)
+  attachedFilesRef.current = attachedFiles
+
+  // Create transport with lazy body function — evaluated fresh at each request
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: {
+        body: () => ({
           conversationId: safeConversationId,
-          fileIds: uploadedFileIds,
-        },
+          fileIds: attachedFilesRef.current
+            .filter((f) => !f.type.startsWith("image/"))
+            .map((f) => f.fileId),
+        }),
       }),
-    [safeConversationId, uploadedFileIds]
+    [safeConversationId]
   )
 
   type CreatedArtifact = { artifactId: Id<"artifacts">; title?: string }
@@ -814,8 +822,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     setInput(e.target.value)
   }
 
-  const handleFileUploaded = (fileId: Id<"files">) => {
-    setUploadedFileIds(prev => [...prev, fileId])
+  const handleFileAttached = (file: AttachedFileMeta) => {
+    setAttachedFiles((prev) => [...prev, file])
+  }
+
+  const handleFileRemoved = (fileId: Id<"files">) => {
+    setAttachedFiles((prev) => prev.filter((f) => f.fileId !== fileId))
+    setImageDataUrls((prev) => {
+      const next = new Map(prev)
+      next.delete(fileId)
+      return next
+    })
+  }
+
+  const handleImageDataUrl = (fileId: Id<"files">, dataUrl: string) => {
+    setImageDataUrls((prev) => new Map(prev).set(fileId, dataUrl))
   }
 
   const handleRegenerate = (options?: { markDirty?: boolean }) => {
@@ -896,12 +917,32 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
+    if (!input.trim() && attachedFiles.length === 0) return
+    if (isLoading) return
 
     pendingScrollToBottomRef.current = true
-    sendMessage({ text: input })
+
+    // Collect image FileUIParts for native multimodal
+    const imageFileParts = attachedFiles
+      .filter((f) => f.type.startsWith("image/"))
+      .map((f) => ({
+        type: "file" as const,
+        mediaType: f.type,
+        filename: f.name,
+        url: imageDataUrls.get(f.fileId) ?? "",
+      }))
+      .filter((f) => f.url !== "")
+
+    if (imageFileParts.length > 0) {
+      sendMessage({ text: input || " ", files: imageFileParts })
+    } else {
+      sendMessage({ text: input })
+    }
+    // Document fileIds are sent via transport.body() function (ref pattern)
+
     setInput("")
-    setUploadedFileIds([])
+    setAttachedFiles([])
+    setImageDataUrls(new Map())
   }
 
   const handleApprove = async () => {
@@ -1049,14 +1090,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             onInputChange={handleInputChange}
             onSubmit={async (e) => {
               e.preventDefault()
-              if (!input.trim()) return
+              if (!input.trim() && attachedFiles.length === 0) return
               await handleStartNewChat(input.trim())
             }}
             isLoading={isCreatingChat}
             isGenerating={false}
             conversationId={conversationId}
-            uploadedFileIds={uploadedFileIds}
-            onFileUploaded={handleFileUploaded}
+            attachedFiles={attachedFiles}
+            onFileAttached={handleFileAttached}
+            onFileRemoved={handleFileRemoved}
+            onImageDataUrl={handleImageDataUrl}
           />
         </div>
 
@@ -1079,14 +1122,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             onInputChange={handleInputChange}
             onSubmit={async (e) => {
               e.preventDefault()
-              if (!input.trim()) return
+              if (!input.trim() && attachedFiles.length === 0) return
               await handleStartNewChat(input.trim())
             }}
             isLoading={isCreatingChat}
             isGenerating={false}
             conversationId={conversationId}
-            uploadedFileIds={uploadedFileIds}
-            onFileUploaded={handleFileUploaded}
+            attachedFiles={attachedFiles}
+            onFileAttached={handleFileAttached}
+            onFileRemoved={handleFileRemoved}
+            onImageDataUrl={handleImageDataUrl}
           />
         </div>
       </div>
@@ -1342,8 +1387,10 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           isGenerating={isGenerating}
           onStop={handleStopGeneration}
           conversationId={conversationId}
-          uploadedFileIds={uploadedFileIds}
-          onFileUploaded={handleFileUploaded}
+          attachedFiles={attachedFiles}
+          onFileAttached={handleFileAttached}
+          onFileRemoved={handleFileRemoved}
+          onImageDataUrl={handleImageDataUrl}
         />
       </div>
 
