@@ -34,11 +34,12 @@ export class DOCXExtractionError extends Error {
  */
 export async function extractTextFromDocx(blob: Blob): Promise<string> {
   try {
-    // Convert Blob to ArrayBuffer (required by mammoth)
+    // Convert Blob to Buffer (mammoth v1 expects Node.js Buffer, not ArrayBuffer)
     const arrayBuffer = await blob.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
 
     // Validate buffer size
-    if (arrayBuffer.byteLength === 0) {
+    if (buffer.byteLength === 0) {
       throw new DOCXExtractionError(
         "DOCX file is empty (0 bytes)",
         "EMPTY_DOCX"
@@ -46,7 +47,7 @@ export async function extractTextFromDocx(blob: Blob): Promise<string> {
     }
 
     // Extract raw text using mammoth
-    const result = await mammoth.extractRawText({ arrayBuffer })
+    const result = await mammoth.extractRawText({ buffer })
 
     // Get extracted text
     const extractedText = result.value.trim()
