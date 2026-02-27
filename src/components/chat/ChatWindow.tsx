@@ -404,6 +404,35 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     safeConversationId ? safeConversationId : null
   )
 
+  // Collect all fileIds from history for file name lookup
+  const historyFileIds = useMemo(() => {
+    if (!historyMessages) return []
+    const ids = new Set<string>()
+    for (const msg of historyMessages) {
+      if (msg.fileIds) {
+        for (const fid of msg.fileIds) ids.add(fid)
+      }
+    }
+    return Array.from(ids)
+  }, [historyMessages])
+
+  const historyFiles = useQuery(
+    api.files.getFilesByIds,
+    userId && historyFileIds.length > 0
+      ? { userId, fileIds: historyFileIds as Id<"files">[] }
+      : "skip"
+  )
+
+  const fileNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    if (historyFiles) {
+      for (const f of historyFiles) {
+        if (f) map.set(f._id, f.name)
+      }
+    }
+    return map
+  }, [historyFiles])
+
   // Paper mode: Convert history messages to permission-compatible format
   const permissionMessages = useMemo(() => {
     if (!historyMessages) return []
@@ -570,10 +599,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       }))
       .filter((f) => f.url !== "")
 
-    // Capture doc file IDs before clearing state
-    const docFileIds = currentFiles
-      .filter((f) => !f.type.startsWith("image/"))
-      .map((f) => f.fileId)
+    // Capture doc files metadata before clearing state
+    const docFiles = currentFiles.filter((f) => !f.type.startsWith("image/"))
 
     if (imageFileParts.length > 0) {
       sendMessage({ text: pendingPrompt, files: imageFileParts })
@@ -582,10 +609,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
     // Document fileIds are sent via transport.body() function (ref pattern)
 
-    // Annotate user message with file IDs for live badge rendering.
+    // Annotate user message with file metadata for live badge rendering.
     // setTimeout needed: sendMessage is async — pushMessage happens in a microtask
     // AFTER our synchronous code finishes. setTimeout(0) runs after all microtasks.
-    if (docFileIds.length > 0) {
+    if (docFiles.length > 0) {
+      const fileIds = docFiles.map((f) => f.fileId)
+      const fileNames = docFiles.map((f) => f.name)
       setTimeout(() => {
         setMessages((prev) => {
           const lastIdx = prev.length - 1
@@ -593,7 +622,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             const updated = [...prev]
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const msg = updated[lastIdx] as any
-            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: docFileIds }]
+            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds, fileNames }]
             return updated
           }
           return prev
@@ -682,7 +711,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           role: msg.role as "user" | "assistant" | "system" | "data",
           content: msg.content,
           parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts],
-          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds }] : undefined,
+          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds, fileNames: msg.fileIds.map((fid: string) => fileNameMap.get(fid) ?? "file") }] : undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sources: (msg as any).sources,
           ...(reasoningTrace ? { reasoningTrace } : {}),
@@ -705,7 +734,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     ) {
       starterPromptPendingHistorySyncRef.current = null
     }
-  }, [conversationId, historyMessages, isHistoryLoading, setMessages])
+  }, [conversationId, historyMessages, isHistoryLoading, setMessages, fileNameMap])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
@@ -982,10 +1011,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       }))
       .filter((f) => f.url !== "")
 
-    // Capture doc file IDs before clearing state
-    const docFileIds = attachedFiles
-      .filter((f) => !f.type.startsWith("image/"))
-      .map((f) => f.fileId)
+    // Capture doc files metadata before clearing state
+    const docFiles = attachedFiles.filter((f) => !f.type.startsWith("image/"))
 
     if (imageFileParts.length > 0) {
       sendMessage({ text: input || " ", files: imageFileParts })
@@ -994,9 +1021,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
     // Document fileIds are sent via transport.body() function (ref pattern)
 
-    // Annotate user message with file IDs for live badge rendering.
+    // Annotate user message with file metadata for live badge rendering.
     // setTimeout needed: sendMessage is async — pushMessage happens in a microtask.
-    if (docFileIds.length > 0) {
+    if (docFiles.length > 0) {
+      const fileIds = docFiles.map((f) => f.fileId)
+      const fileNames = docFiles.map((f) => f.name)
       setTimeout(() => {
         setMessages((prev) => {
           const lastIdx = prev.length - 1
@@ -1004,7 +1033,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             const updated = [...prev]
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const msg = updated[lastIdx] as any
-            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: docFileIds }]
+            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds, fileNames }]
             return updated
           }
           return prev

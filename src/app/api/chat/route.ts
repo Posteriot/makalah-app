@@ -306,10 +306,28 @@ export async function POST(req: Request) {
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
         if (fileIds && fileIds.length > 0) {
-            const files = await fetchQueryWithToken(api.files.getFilesByIds, {
+            let files = await fetchQueryWithToken(api.files.getFilesByIds, {
                 userId: userId as Id<"users">,
                 fileIds: fileIds as Id<"files">[],
             })
+
+            // Wait for pending extractions (max 8 seconds, poll every 500ms)
+            const hasPending = files.some(
+                (f: { extractionStatus?: string }) => !f.extractionStatus || f.extractionStatus === "pending"
+            )
+            if (hasPending) {
+                for (let attempt = 0; attempt < 16; attempt++) {
+                    await new Promise((r) => setTimeout(r, 500))
+                    files = await fetchQueryWithToken(api.files.getFilesByIds, {
+                        userId: userId as Id<"users">,
+                        fileIds: fileIds as Id<"files">[],
+                    })
+                    const stillPending = files.some(
+                        (f: { extractionStatus?: string }) => !f.extractionStatus || f.extractionStatus === "pending"
+                    )
+                    if (!stillPending) break
+                }
+            }
 
             // Check if paper mode is active (use paperModePrompt as indicator)
             const isPaperModeForFiles = !!paperModePrompt
@@ -325,8 +343,8 @@ export async function POST(req: Request) {
                 fileContext += `[File: ${file.name}]\n`
 
                 if (!file.extractionStatus || file.extractionStatus === "pending") {
-                    // Task 6.6: Handle pending state
-                    fileContext += "⏳ File sedang diproses, belum bisa dibaca oleh AI.\n\n"
+                    // Extraction didn't complete within timeout
+                    fileContext += "⏳ File sedang diproses. Coba kirim ulang pesan dalam beberapa detik.\n\n"
                 } else if (file.extractionStatus === "success" && file.extractedText) {
                     // Task 6.2-6.3: Extract and format text
                     // Task 2.3.1: Apply per-file limit in paper mode
