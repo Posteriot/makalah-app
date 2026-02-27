@@ -61,7 +61,7 @@ export default defineSchema({
     lastLoginAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
     // Payment integration
-    xenditCustomerId: v.optional(v.string()), // Xendit customer reference
+    providerCustomerId: v.optional(v.string()), // Payment provider customer reference
     // Onboarding completion flag
     hasCompletedOnboarding: v.optional(v.boolean()), // true after first-time onboarding flow
     // Account linking UX: track if user has seen the linking toast

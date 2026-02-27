@@ -25,7 +25,7 @@ export default function PrivacyPage() {
                     <ul className="list-disc pl-5 space-y-2 text-narrative text-sm text-muted-foreground">
                         <li><strong>Data Profil</strong>: Nama dan alamat email saat Anda mendaftar (via Google atau formulir langsung).</li>
                         <li><strong>Konten Riset</strong>: Pesan chat, draf paper, dan file lampiran yang Anda unggah untuk diproses oleh AI.</li>
-                        <li><strong>Data Transaksi</strong>: Informasi transaksi pembayaran (melalui mitra Xendit) untuk pengelolaan langganan.</li>
+                        <li><strong>Data Transaksi</strong>: Informasi transaksi pembayaran (melalui mitra pembayaran resmi) untuk pengelolaan langganan.</li>
                         <li><strong>Data Teknis</strong>: Log aktivitas dasar untuk memastikan layanan tetap stabil dan aman.</li>
                     </ul>
                 </section>
@@ -46,7 +46,7 @@ export default function PrivacyPage() {
                     <p className="text-narrative text-sm leading-relaxed text-muted-foreground">Untuk memberikan hasil terbaik, data konten Anda diproses menggunakan:</p>
                     <ul className="list-disc pl-5 space-y-2 text-narrative text-sm text-muted-foreground">
                         <li><strong>Penyedia AI</strong>: Konten riset dikirimkan ke model AI (seperti Google Gemini atau OpenAI) untuk diolah menjadi draf paper.</li>
-                        <li><strong>Penyedia Pembayaran</strong>: Data transaksi diproses secara aman oleh Xendit sesuai standar PCI-DSS.</li>
+                        <li><strong>Penyedia Pembayaran</strong>: Data transaksi diproses secara aman oleh mitra pembayaran resmi sesuai standar PCI-DSS.</li>
                         <li><strong>Autentikasi</strong>: Kami menggunakan layanan pihak ketiga untuk akses masuk yang aman (OAuth).</li>
                     </ul>
                 </section>
