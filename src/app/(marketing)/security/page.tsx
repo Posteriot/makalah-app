@@ -44,7 +44,7 @@ export default function SecurityPage() {
                 <section className="space-y-3">
                     <h2 className="text-interface text-base font-medium text-foreground">4. Standar Pembayaran Global</h2>
                     <ul className="list-disc pl-5 space-y-2 text-narrative text-sm text-muted-foreground">
-                        <li><strong>Mitra Terverifikasi</strong>: Transaksi diproses melalui Xendit. Kami tidak pernah menyimpan data kartu kredit atau PIN Anda.</li>
+                        <li><strong>Mitra Terverifikasi</strong>: Transaksi diproses melalui mitra pembayaran resmi yang tersertifikasi PCI-DSS. Kami tidak pernah menyimpan data kartu kredit atau PIN Anda.</li>
                         <li><strong>Proteksi Webhook</strong>: Setiap transaksi diverifikasi ulang dengan token unik untuk mencegah manipulasi data.</li>
                     </ul>
                 </section>

@@ -43,8 +43,8 @@ export const createSubscription = mutation({
       v.literal("pro_monthly"),
       v.literal("pro_yearly")
     ),
-    xenditRecurringId: v.optional(v.string()),
-    xenditCustomerId: v.optional(v.string()),
+    providerRecurringId: v.optional(v.string()),
+    providerCustomerId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now()
@@ -67,8 +67,8 @@ export const createSubscription = mutation({
 
     const subscriptionId = await ctx.db.insert("subscriptions", {
       userId: args.userId,
-      xenditRecurringId: args.xenditRecurringId,
-      xenditCustomerId: args.xenditCustomerId,
+      providerRecurringId: args.providerRecurringId,
+      providerCustomerId: args.providerCustomerId,
       planType: args.planType,
       priceIDR: pricing.priceIDR,
       status: "active",
@@ -200,17 +200,17 @@ export const getActiveSubscription = query({
 })
 
 /**
- * Get subscription by Xendit recurring ID
+ * Get subscription by provider recurring ID
  */
-export const getSubscriptionByXenditId = query({
+export const getSubscriptionByProviderId = query({
   args: {
-    xenditRecurringId: v.string(),
+    providerRecurringId: v.string(),
   },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("subscriptions")
-      .withIndex("by_xendit_recurring", (q) =>
-        q.eq("xenditRecurringId", args.xenditRecurringId)
+      .withIndex("by_provider_recurring", (q) =>
+        q.eq("providerRecurringId", args.providerRecurringId)
       )
       .first()
   },
@@ -218,7 +218,7 @@ export const getSubscriptionByXenditId = query({
 
 /**
  * Renew subscription for next period
- * Called from Xendit webhook on successful recurring payment
+ * Called from payment webhook on successful recurring payment
  */
 export const renewSubscription = mutation({
   args: {

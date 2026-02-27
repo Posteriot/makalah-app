@@ -33,7 +33,7 @@ export default function TermsPage() {
                 <section className="space-y-3">
                     <h2 className="text-interface text-base font-medium text-foreground">4. Pembayaran dan Pembatalan</h2>
                     <p className="text-narrative text-sm leading-relaxed text-muted-foreground">
-                        Beberapa fitur memerlukan akses berbayar melalui mitra kami, Xendit. Pembelian bersifat final kecuali dinyatakan lain dalam kebijakan pengembalian dana kami. Anda bertanggung jawab untuk menjaga keamanan akun dan informasi pembayaran Anda.
+                        Beberapa fitur memerlukan akses berbayar melalui mitra pembayaran resmi kami. Pembelian bersifat final kecuali dinyatakan lain dalam kebijakan pengembalian dana kami. Anda bertanggung jawab untuk menjaga keamanan akun dan informasi pembayaran Anda.
                     </p>
                 </section>
 

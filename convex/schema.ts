@@ -61,7 +61,7 @@ export default defineSchema({
     lastLoginAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
     // Payment integration
-    xenditCustomerId: v.optional(v.string()), // Xendit customer reference
+    providerCustomerId: v.optional(v.string()), // Payment provider customer reference
     // Onboarding completion flag
     hasCompletedOnboarding: v.optional(v.boolean()), // true after first-time onboarding flow
     // Account linking UX: track if user has seen the linking toast
@@ -873,14 +873,15 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
-  // Payment records (Xendit transactions)
+  // Payment records (provider-agnostic)
   payments: defineTable({
     userId: v.id("users"),
     sessionId: v.optional(v.id("paperSessions")), // Untuk paper_completion payment
 
-    // Xendit reference
-    xenditPaymentRequestId: v.string(), // Xendit's payment request ID
-    xenditReferenceId: v.string(), // Our reference ID (untuk reconciliation)
+    // Provider reference
+    providerPaymentId: v.string(), // Provider's payment ID
+    providerReferenceId: v.string(), // Our reference ID sent to provider
+    providerName: v.union(v.literal("xendit"), v.literal("midtrans")),
 
     // Payment details
     amount: v.number(), // Amount in IDR
@@ -935,7 +936,7 @@ export default defineSchema({
 
     // Metadata
     description: v.optional(v.string()),
-    metadata: v.optional(v.any()), // Extra data from Xendit
+    metadata: v.optional(v.any()), // Extra data from provider webhook
 
     // Timestamps
     createdAt: v.number(),
@@ -946,8 +947,8 @@ export default defineSchema({
     idempotencyKey: v.string(),
   })
     .index("by_user", ["userId", "createdAt"])
-    .index("by_xendit_id", ["xenditPaymentRequestId"])
-    .index("by_reference", ["xenditReferenceId"])
+    .index("by_provider_id", ["providerPaymentId"])
+    .index("by_provider_reference", ["providerReferenceId"])
     .index("by_status", ["status", "createdAt"])
     .index("by_user_type", ["userId", "paymentType", "createdAt"]),
 
@@ -955,9 +956,9 @@ export default defineSchema({
   subscriptions: defineTable({
     userId: v.id("users"),
 
-    // Xendit recurring reference
-    xenditRecurringId: v.optional(v.string()), // Xendit recurring plan ID
-    xenditCustomerId: v.optional(v.string()), // Xendit customer ID
+    // Provider recurring reference
+    providerRecurringId: v.optional(v.string()), // Provider recurring plan ID
+    providerCustomerId: v.optional(v.string()), // Provider customer ID
 
     // Plan info
     planType: v.union(
@@ -992,7 +993,22 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_status", ["status", "nextBillingDate"])
-    .index("by_xendit_recurring", ["xenditRecurringId"]),
+    .index("by_provider_recurring", ["providerRecurringId"]),
+
+  // Payment provider configuration (admin-managed)
+  paymentProviderConfigs: defineTable({
+    activeProvider: v.union(v.literal("xendit"), v.literal("midtrans")),
+    enabledMethods: v.array(
+      v.union(v.literal("QRIS"), v.literal("VIRTUAL_ACCOUNT"), v.literal("EWALLET"))
+    ),
+    webhookUrl: v.optional(v.string()),
+    defaultExpiryMinutes: v.optional(v.number()),
+    isActive: v.boolean(),
+    updatedBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_active", ["isActive"]),
 
   // ════════════════════════════════════════════════════════════════
   // Waiting List - Pre-registration for early access

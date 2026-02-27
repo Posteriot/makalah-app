@@ -50,13 +50,20 @@ const EWALLET_CHANNELS = [
 
 type PaymentMethod = "qris" | "va" | "ewallet"
 
+const METHOD_ID_TO_ENABLED: Record<PaymentMethod, "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"> = {
+  qris: "QRIS",
+  va: "VIRTUAL_ACCOUNT",
+  ewallet: "EWALLET",
+}
+
 const shellPanelClass = "rounded-shell border border-border/70 bg-card/95"
 const sectionCardClass = "rounded-shell border border-border/60 bg-[color:var(--slate-100)] p-3 dark:bg-[color:var(--slate-800)]/70 md:p-4"
 
 interface PaymentResult {
   paymentId: string
   convexPaymentId?: string
-  xenditId: string
+  providerPaymentId: string
+  providerName: string
   status: string
   amount: number
   expiresAt: number
@@ -137,6 +144,8 @@ function CheckoutBPPContent() {
 
   const bppPlan = useQuery(api.pricingPlans.getPlanBySlug, { slug: "bpp" })
   const bppPackage = useQuery(api.billing.pricingHelpers.getBppCreditPackage, { packageType: "paper" })
+  const paymentConfig = useQuery(api.billing.paymentProviderConfigs.getActiveConfig)
+  const enabledMethods = paymentConfig?.enabledMethods ?? ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"]
 
   useEffect(() => {
     if (bppPlan?.isDisabled) {
@@ -438,7 +447,7 @@ function CheckoutBPPContent() {
             <div className={sectionCardClass}>
               <h2 className="text-narrative font-medium text-foreground mb-2">Metode Pembayaran</h2>
               <div className="space-y-2">
-                {PAYMENT_METHODS.map((method) => {
+                {PAYMENT_METHODS.filter((m) => enabledMethods.includes(METHOD_ID_TO_ENABLED[m.id])).map((method) => {
                   const Icon = method.icon
                   const isSelected = selectedMethod === method.id
 
@@ -606,7 +615,7 @@ function CheckoutBPPContent() {
                 </span>
               </button>
               <p className="text-narrative text-xs text-muted-foreground text-center mt-2">
-                Pembayaran diproses oleh Xendit. Aman dan terenkripsi.
+                Pembayaran diproses oleh {paymentConfig?.activeProvider === "midtrans" ? "Midtrans" : "Xendit"}. Aman dan terenkripsi.
               </p>
             </div>
           </div>

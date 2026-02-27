@@ -85,7 +85,7 @@ export async function GET(
       size: "A4",
       margin: 50,
       info: {
-        Title: `Kwitansi - ${payment.xenditReferenceId}`,
+        Title: `Kwitansi - ${payment.providerReferenceId}`,
         Author: "Makalah AI",
         Creator: "Makalah AI - pdfkit",
       },
@@ -116,7 +116,7 @@ export async function GET(
       doc.moveDown(0.5)
     }
 
-    addRow("No. Referensi", payment.xenditReferenceId)
+    addRow("No. Referensi", payment.providerReferenceId)
     addRow("Tanggal", formatDate(payment._creationTime))
     addRow("Nama", buyerName)
     addRow("Paket", payment.description || `Paket Paper — ${payment.credits ?? 300} kredit`)
@@ -139,7 +139,7 @@ export async function GET(
       doc.on("end", () => resolve(Buffer.concat(chunks)))
     })
 
-    const filename = `kwitansi-${payment.xenditReferenceId}.pdf`
+    const filename = `kwitansi-${payment.providerReferenceId}.pdf`
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {

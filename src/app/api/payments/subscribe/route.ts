@@ -1,23 +1,15 @@
 /**
  * Subscribe Payment API Route
- * Creates a Xendit payment request for Pro subscription
+ * Creates a payment request for Pro subscription via payment provider abstraction
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { isAuthenticated, getToken } from "@/lib/auth-server"
-import { fetchQuery, fetchMutation } from "convex/nextjs"
+import { fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
-import {
-  createQRISPayment,
-  createVAPayment,
-  createOVOPayment,
-  createGopayPayment,
-  type VAChannel,
-  type EWalletChannel,
-} from "@/lib/xendit/client"
+import { createPaymentViaProvider } from "@/lib/payment/create-payment"
 import { randomUUID } from "crypto"
-// DB pricing via pricingHelpers (no hardcoded constants)
 
 type PlanType = "pro_monthly"
 const PRO_PLAN_TYPE: PlanType = "pro_monthly"
@@ -25,8 +17,8 @@ const PRO_PLAN_TYPE: PlanType = "pro_monthly"
 interface SubscribeRequest {
   planType?: string
   paymentMethod: "qris" | "va" | "ewallet"
-  vaChannel?: VAChannel
-  ewalletChannel?: EWalletChannel
+  vaChannel?: string
+  ewalletChannel?: string
   mobileNumber?: string
 }
 
@@ -86,7 +78,6 @@ export async function POST(req: NextRequest) {
 
     // 5. Parse request body
     const body = (await req.json()) as SubscribeRequest
-    const { paymentMethod, vaChannel, ewalletChannel, mobileNumber } = body
     const planType: PlanType = PRO_PLAN_TYPE
 
     // Check if Pro tier is disabled
@@ -103,11 +94,11 @@ export async function POST(req: NextRequest) {
     const { priceIDR: amount, label: planLabel } = pricing
     const description = `${planLabel} — Makalah AI`
 
-    // 7. Generate unique reference ID and idempotency key
+    // 6. Generate unique reference ID and idempotency key
     const referenceId = `sub_${convexUser._id}_${Date.now()}`
     const idempotencyKey = randomUUID()
 
-    // 8. Check for duplicate (idempotency)
+    // 7. Check for duplicate (idempotency)
     const existing = await fetchQuery(api.billing.payments.checkIdempotency, { idempotencyKey }, convexOptions)
     if (existing.exists) {
       return NextResponse.json(
@@ -116,213 +107,35 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 9. Prepare metadata
-    const metadata = {
-      user_id: convexUser._id,
-      betterauth_user_id: convexUser.betterAuthUserId,
-      payment_type: "subscription_initial",
-    }
-
-    // 10. Create Xendit payment based on method
-    let xenditResponse
-    let paymentMethodType: "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"
-    let paymentChannel: string | undefined
-
+    // 8. Create payment via provider abstraction
     const appUrl = process.env.APP_URL || "http://localhost:3000"
 
-    switch (paymentMethod) {
-      case "qris":
-        xenditResponse = await createQRISPayment({
-          referenceId,
-          amount,
-          description,
-          metadata,
-          expiresMinutes: 30,
-        })
-        paymentMethodType = "QRIS"
-        break
-
-      case "va":
-        if (!vaChannel) {
-          return NextResponse.json(
-            { error: "Virtual Account channel wajib dipilih" },
-            { status: 400 }
-          )
-        }
-        xenditResponse = await createVAPayment({
-          referenceId,
-          amount,
-          channelCode: vaChannel,
-          customerName: `${convexUser.firstName || ""} ${convexUser.lastName || ""}`.trim() || "Makalah User",
-          description,
-          metadata,
-          expiresMinutes: 60 * 24, // 24 hours
-        })
-        paymentMethodType = "VIRTUAL_ACCOUNT"
-        paymentChannel = vaChannel
-        break
-
-      case "ewallet":
-        if (!ewalletChannel) {
-          return NextResponse.json(
-            { error: "E-Wallet channel wajib dipilih" },
-            { status: 400 }
-          )
-        }
-
-        // OVO requires mobile number, GoPay requires redirect URLs
-        if (ewalletChannel === "OVO") {
-          if (!mobileNumber) {
-            return NextResponse.json(
-              { error: "Nomor HP wajib diisi untuk pembayaran OVO" },
-              { status: 400 }
-            )
-          }
-          // Normalize mobile number to E.164 format
-          let normalizedNumber = mobileNumber.replace(/\s+/g, "").replace(/-/g, "")
-          if (normalizedNumber.startsWith("08")) {
-            normalizedNumber = "+62" + normalizedNumber.slice(1)
-          } else if (normalizedNumber.startsWith("8")) {
-            normalizedNumber = "+62" + normalizedNumber
-          } else if (!normalizedNumber.startsWith("+")) {
-            normalizedNumber = "+" + normalizedNumber
-          }
-
-          xenditResponse = await createOVOPayment({
-            referenceId,
-            amount,
-            mobileNumber: normalizedNumber,
-            description,
-            metadata,
-          })
-        } else if (ewalletChannel === "GOPAY") {
-          xenditResponse = await createGopayPayment({
-            referenceId,
-            amount,
-            successReturnUrl: `${appUrl}/checkout/pro?status=success`,
-            failureReturnUrl: `${appUrl}/checkout/pro?status=failed`,
-            cancelReturnUrl: `${appUrl}/checkout/pro`,
-            description,
-            metadata,
-          })
-        } else {
-          return NextResponse.json(
-            { error: "E-Wallet channel tidak didukung" },
-            { status: 400 }
-          )
-        }
-
-        paymentMethodType = "EWALLET"
-        paymentChannel = ewalletChannel
-        break
-
-      default:
-        return NextResponse.json(
-          { error: "Metode pembayaran tidak valid" },
-          { status: 400 }
-        )
-    }
-
-    // 11. Calculate expiry time
-    const expiresAt = xenditResponse.channel_properties?.expires_at
-      ? new Date(xenditResponse.channel_properties.expires_at).getTime()
-      : Date.now() + 30 * 60 * 1000 // 30 minutes default
-
-    // 12. Save payment to Convex
-    const paymentId = await fetchMutation(api.billing.payments.createPayment, {
+    const result = await createPaymentViaProvider({
       userId: convexUser._id as Id<"users">,
-      xenditPaymentRequestId: xenditResponse.payment_request_id,
-      xenditReferenceId: referenceId,
+      referenceId,
       amount,
-      paymentMethod: paymentMethodType,
-      paymentChannel,
-      paymentType: "subscription_initial",
-      planType,
       description,
+      paymentMethod: body.paymentMethod,
+      paymentType: "subscription_initial",
+      metadata: {
+        user_id: convexUser._id,
+        betterauth_user_id: convexUser.betterAuthUserId,
+        payment_type: "subscription_initial",
+      },
       idempotencyKey,
-      expiredAt: expiresAt,
-    }, convexOptions)
-
-    console.log("[Subscribe] Payment created:", {
-      paymentId,
-      xenditId: xenditResponse.payment_request_id,
-      method: paymentMethodType,
-      amount,
-      planType,
+      convexToken,
+      appUrl,
+      vaChannel: body.vaChannel,
+      ewalletChannel: body.ewalletChannel,
+      mobileNumber: body.mobileNumber,
+      customerName: `${convexUser.firstName || ""} ${convexUser.lastName || ""}`.trim() || "Makalah User",
+      planType: planType,
     })
 
-    // 13. Build response based on payment method
-    const responseData: {
-      paymentId: string
-      convexPaymentId: string
-      xenditId: string
-      status: string
-      amount: number
-      expiresAt: number
-      // Plan info
-      planType: string
-      planLabel: string
-      // QRIS specific
-      qrString?: string
-      qrCodeUrl?: string
-      // VA specific
-      vaNumber?: string
-      vaChannel?: string
-      // E-Wallet specific
-      redirectUrl?: string
-    } = {
-      paymentId,
-      convexPaymentId: paymentId,
-      xenditId: xenditResponse.payment_request_id,
-      status: xenditResponse.status,
-      amount,
-      expiresAt,
-      planType,
-      planLabel,
-    }
-
-    // Add method-specific data from actions array (API v2024-11-11)
-    if (paymentMethodType === "QRIS") {
-      // Get QR string from actions
-      const qrAction = xenditResponse.actions?.find(
-        (a) => a.type === "PRESENT_TO_CUSTOMER" && a.descriptor === "QR_STRING"
-      )
-      if (qrAction?.value) {
-        responseData.qrString = qrAction.value
-      }
-    }
-
-    if (paymentMethodType === "VIRTUAL_ACCOUNT") {
-      // Get VA number from actions
-      const vaAction = xenditResponse.actions?.find(
-        (a) => a.type === "PRESENT_TO_CUSTOMER" && a.descriptor === "VIRTUAL_ACCOUNT_NUMBER"
-      )
-      if (vaAction?.value) {
-        responseData.vaNumber = vaAction.value
-      }
-      responseData.vaChannel = xenditResponse.channel_code
-    }
-
-    if (paymentMethodType === "EWALLET") {
-      // Log actions for debugging
-      console.log("[Subscribe] E-Wallet actions:", JSON.stringify(xenditResponse.actions, null, 2))
-
-      // Get redirect URL from actions
-      const redirectAction = xenditResponse.actions?.find(
-        (a) => a.type === "REDIRECT_CUSTOMER" && (a.descriptor === "WEB_URL" || a.descriptor === "MOBILE_URL")
-      )
-      if (redirectAction?.value) {
-        responseData.redirectUrl = redirectAction.value
-      } else {
-        console.log("[Subscribe] No redirect URL found for E-Wallet. Channel:", paymentChannel)
-      }
-    }
-
-    return NextResponse.json(responseData)
+    return NextResponse.json({ ...result, planType, planLabel })
   } catch (error) {
     console.error("[Subscribe] Error:", error)
 
-    // Handle specific Xendit errors
     if (error instanceof Error) {
       return NextResponse.json(
         { error: error.message },

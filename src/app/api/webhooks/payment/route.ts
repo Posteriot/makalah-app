@@ -1,13 +1,15 @@
 /**
- * Xendit Webhook Handler
- * Processes payment status updates from Xendit
+ * Generic Payment Webhook Handler
+ * Processes payment status updates from any provider via the abstraction layer.
+ * Uses provider.verifyWebhook() instead of provider-specific verification.
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
-import { verifyWebhookToken } from "@/lib/xendit/client"
+import { getProvider } from "@/lib/payment/factory"
+import type { WebhookEvent } from "@/lib/payment/types"
 import {
   sendPaymentSuccessEmail,
   sendPaymentFailedEmail,
@@ -15,110 +17,50 @@ import {
 
 const internalKey = process.env.CONVEX_INTERNAL_KEY
 
-// Xendit v3 webhook event types
-type XenditEventType =
-  | "payment.capture"
-  | "payment.failed"
-  | "payment_request.expired"
-  | "recurring.cycle.succeeded"
-  | "recurring.cycle.failed"
-
-// Xendit v3 payment data from webhook
-interface XenditPaymentData {
-  payment_id: string
-  payment_request_id: string
-  reference_id: string
-  status: "PENDING" | "SUCCEEDED" | "FAILED" | "EXPIRED"
-  request_amount: number
-  currency: string
-  channel_code: string
-  capture_method?: string
-  captures?: Array<{
-    capture_id: string
-    capture_timestamp: string
-    capture_amount: number
-  }>
-  failure_code?: string
-  metadata?: {
-    user_id?: string
-    betterauth_user_id?: string
-    payment_type?: string
-  }
-}
-
-// Xendit v3 webhook payload structure
-interface XenditWebhookPayload {
-  event: XenditEventType
-  business_id: string
-  created: string
-  api_version: string
-  data: XenditPaymentData
-}
-
 export async function POST(req: NextRequest) {
   if (!internalKey) {
-    console.error("[Xendit Webhook] CONVEX_INTERNAL_KEY belum diset")
+    console.error("[Payment Webhook] CONVEX_INTERNAL_KEY belum diset")
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 })
   }
 
-  // 1. Verify webhook token
-  const callbackToken = req.headers.get("x-callback-token")
+  // 1. Get provider and verify webhook
+  const provider = await getProvider()
+  const event = await provider.verifyWebhook(req)
 
-  if (!verifyWebhookToken(callbackToken)) {
-    console.error("[Xendit Webhook] Invalid callback token")
+  if (!event) {
+    console.error("[Payment Webhook] Verification failed")
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  // 2. Parse payload
-  let payload: XenditWebhookPayload
-  try {
-    payload = await req.json()
-  } catch {
-    console.error("[Xendit Webhook] Invalid JSON payload")
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
-  }
-
-  const { event, data } = payload
-
-  console.log(`[Xendit Webhook] Received: ${event}`, {
-    paymentRequestId: data.payment_request_id,
-    referenceId: data.reference_id,
-    amount: data.request_amount,
-    status: data.status,
+  console.log(`[Payment Webhook] Received:`, {
+    providerPaymentId: event.providerPaymentId,
+    status: event.status,
+    amount: event.rawAmount,
   })
 
-  // 3. Handle event types
+  // 2. Handle based on status
   try {
-    switch (event) {
-      case "payment.capture":
-        await handlePaymentSuccess(data, internalKey)
+    switch (event.status) {
+      case "SUCCEEDED":
+        await handlePaymentSuccess(event, internalKey)
         break
 
-      case "payment.failed":
-        await handlePaymentFailed(data, internalKey)
+      case "FAILED":
+        await handlePaymentFailed(event, internalKey)
         break
 
-      case "payment_request.expired":
-        await handlePaymentExpired(data, internalKey)
-        break
-
-      case "recurring.cycle.succeeded":
-        await handleSubscriptionRenewal(data)
-        break
-
-      case "recurring.cycle.failed":
-        console.log(`[Xendit Webhook] Subscription renewal failed: ${data.payment_request_id}`)
-        // TODO: Handle subscription renewal failure (send email, etc.)
+      case "EXPIRED":
+        await handlePaymentExpired(event, internalKey)
         break
 
       default:
-        console.log(`[Xendit Webhook] Unhandled event type: ${event}`)
+        console.log(`[Payment Webhook] Unhandled status: ${event.status}`)
     }
 
     return NextResponse.json({ status: "processed" })
   } catch (error) {
-    console.error("[Xendit Webhook] Processing error:", error)
-    // Return 200 to prevent Xendit from retrying
+    console.error("[Payment Webhook] Processing error:", error)
+    // Return 200 to prevent provider from retrying
     // Log error for investigation
     return NextResponse.json({
       status: "error",
@@ -130,40 +72,39 @@ export async function POST(req: NextRequest) {
 /**
  * Handle successful payment
  */
-async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string) {
-  const xenditPrId = data.payment_request_id
+async function handlePaymentSuccess(event: WebhookEvent, internalKey: string) {
+  const providerPaymentId = event.providerPaymentId
 
   // 1. Get payment from database
-  const payment = await fetchQuery(api.billing.payments.getPaymentByXenditId, {
-    xenditPaymentRequestId: xenditPrId,
+  const payment = await fetchQuery(api.billing.payments.getPaymentByProviderId, {
+    providerPaymentId,
     internalKey,
   })
 
   if (!payment) {
-    console.error(`[Xendit] Payment not found in DB: ${xenditPrId}`)
+    console.error(`[Payment] Payment not found in DB: ${providerPaymentId}`)
     return
   }
 
   // 2. Prevent duplicate processing
   if (payment.status === "SUCCEEDED") {
-    console.log(`[Xendit] Payment already processed: ${xenditPrId}`)
+    console.log(`[Payment] Payment already processed: ${providerPaymentId}`)
     return
   }
 
   // 3. Update payment status
-  const captureTimestamp = data.captures?.[0]?.capture_timestamp
   const updateResult = await fetchMutation(api.billing.payments.updatePaymentStatus, {
-    xenditPaymentRequestId: xenditPrId,
+    providerPaymentId,
     status: "SUCCEEDED",
-    paidAt: captureTimestamp ? new Date(captureTimestamp).getTime() : Date.now(),
+    paidAt: event.paidAt ?? Date.now(),
     metadata: {
-      xenditStatus: data.status,
-      paymentMethod: data.channel_code,
+      providerStatus: event.status,
+      paymentMethod: event.channelCode,
     },
     internalKey,
   })
 
-  console.log(`[Xendit] Payment status updated:`, {
+  console.log(`[Payment] Payment status updated:`, {
     paymentId: updateResult.paymentId,
     previousStatus: updateResult.previousStatus,
     newStatus: updateResult.newStatus,
@@ -181,7 +122,7 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
       const packageType = payment.packageType ?? "paper"
 
       if (creditsToAdd === 0) {
-        console.warn(`[Xendit] Payment has no credits: ${xenditPrId}`)
+        console.warn(`[Payment] Payment has no credits: ${providerPaymentId}`)
         break
       }
 
@@ -197,7 +138,7 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
       newCredits = creditsToAdd
       newTotalCredits = creditResult.newTotalCredits
 
-      console.log(`[Xendit] Credits added:`, {
+      console.log(`[Payment] Credits added:`, {
         userId: payment.userId,
         credits: creditsToAdd,
         packageType,
@@ -208,7 +149,7 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
 
     case "paper_completion":
       // TODO: Unlock paper export
-      console.log(`[Xendit] Paper completion payment - unlock export`)
+      console.log(`[Payment] Paper completion payment - unlock export`)
       break
 
     case "subscription_initial": {
@@ -229,7 +170,7 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
         internalKey,
       })
 
-      console.log(`[Xendit] Subscription created:`, {
+      console.log(`[Payment] Subscription created:`, {
         userId: payment.userId,
         subscriptionId,
         planType,
@@ -255,15 +196,15 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
           internalKey,
         })
 
-        console.log(`[Xendit] Subscription renewed:`, { userId: payment.userId })
+        console.log(`[Payment] Subscription renewed:`, { userId: payment.userId })
       } else {
-        console.warn(`[Xendit] No active subscription for renewal: ${payment.userId}`)
+        console.warn(`[Payment] No active subscription for renewal: ${payment.userId}`)
       }
       break
     }
 
     default:
-      console.warn(`[Xendit] Unknown payment type: ${paymentType}`)
+      console.warn(`[Payment] Unknown payment type: ${paymentType}`)
   }
 
   // Set subscription plan label for email (from DB)
@@ -285,53 +226,52 @@ async function handlePaymentSuccess(data: XenditPaymentData, internalKey: string
     })
 
     if (user?.email) {
-      const captureTs = data.captures?.[0]?.capture_timestamp
       const emailResult = await sendPaymentSuccessEmail({
         to: user.email,
         userName: user.firstName || undefined,
-        amount: data.request_amount,
+        amount: event.rawAmount ?? payment.amount,
         credits: newCredits,
         newTotalCredits: newTotalCredits,
-        transactionId: xenditPrId,
-        paidAt: captureTs ? new Date(captureTs).getTime() : Date.now(),
+        transactionId: providerPaymentId,
+        paidAt: event.paidAt ?? Date.now(),
         subscriptionPlanLabel,
       })
 
-      console.log(`[Xendit] Email notification result:`, emailResult)
+      console.log(`[Payment] Email notification result:`, emailResult)
     } else {
-      console.warn(`[Xendit] User email not found for userId: ${payment.userId}`)
+      console.warn(`[Payment] User email not found for userId: ${payment.userId}`)
     }
   } catch (emailError) {
     // Email failure should not break webhook processing
-    console.error(`[Xendit] Email notification failed:`, emailError)
+    console.error(`[Payment] Email notification failed:`, emailError)
   }
 }
 
 /**
  * Handle failed payment
  */
-async function handlePaymentFailed(data: XenditPaymentData, internalKey: string) {
-  const xenditPrId = data.payment_request_id
+async function handlePaymentFailed(event: WebhookEvent, internalKey: string) {
+  const providerPaymentId = event.providerPaymentId
 
   // 1. Get payment to retrieve userId
-  const payment = await fetchQuery(api.billing.payments.getPaymentByXenditId, {
-    xenditPaymentRequestId: xenditPrId,
+  const payment = await fetchQuery(api.billing.payments.getPaymentByProviderId, {
+    providerPaymentId,
     internalKey,
   })
 
   // 2. Update payment status
   await fetchMutation(api.billing.payments.updatePaymentStatus, {
-    xenditPaymentRequestId: xenditPrId,
+    providerPaymentId,
     status: "FAILED",
     metadata: {
-      failureCode: data.failure_code,
-      xenditStatus: data.status,
+      failureCode: event.failureCode,
+      providerStatus: event.status,
     },
     internalKey,
   })
 
-  console.log(`[Xendit] Payment marked as failed: ${xenditPrId}`, {
-    failureCode: data.failure_code,
+  console.log(`[Payment] Payment marked as failed: ${providerPaymentId}`, {
+    failureCode: event.failureCode,
   })
 
   // 3. Send failure email
@@ -346,18 +286,18 @@ async function handlePaymentFailed(data: XenditPaymentData, internalKey: string)
         const emailResult = await sendPaymentFailedEmail({
           to: user.email,
           userName: user.firstName || undefined,
-          amount: data.request_amount,
-          failureReason: data.failure_code,
-          transactionId: xenditPrId,
+          amount: event.rawAmount ?? payment.amount,
+          failureReason: event.failureCode,
+          transactionId: providerPaymentId,
         })
 
-        console.log(`[Xendit] Failed email notification result:`, emailResult)
+        console.log(`[Payment] Failed email notification result:`, emailResult)
       } else {
-        console.warn(`[Xendit] User email not found for userId: ${payment.userId}`)
+        console.warn(`[Payment] User email not found for userId: ${payment.userId}`)
       }
     } catch (emailError) {
       // Email failure should not break webhook processing
-      console.error(`[Xendit] Failed email notification failed:`, emailError)
+      console.error(`[Payment] Failed email notification failed:`, emailError)
     }
   }
 }
@@ -365,35 +305,18 @@ async function handlePaymentFailed(data: XenditPaymentData, internalKey: string)
 /**
  * Handle expired payment
  */
-async function handlePaymentExpired(data: XenditPaymentData, internalKey: string) {
-  const xenditPrId = data.payment_request_id
+async function handlePaymentExpired(event: WebhookEvent, internalKey: string) {
+  const providerPaymentId = event.providerPaymentId
 
   // Update payment status
   await fetchMutation(api.billing.payments.updatePaymentStatus, {
-    xenditPaymentRequestId: xenditPrId,
+    providerPaymentId,
     status: "EXPIRED",
     metadata: {
-      xenditStatus: data.status,
+      providerStatus: event.status,
     },
     internalKey,
   })
 
-  console.log(`[Xendit] Payment marked as expired: ${xenditPrId}`)
-}
-
-/**
- * Handle subscription renewal
- */
-async function handleSubscriptionRenewal(data: XenditPaymentData) {
-  const userId = data.metadata?.user_id
-
-  if (!userId) {
-    console.error(`[Xendit] No user_id in subscription renewal metadata`)
-    return
-  }
-
-  // TODO: Reset monthly quota
-  // await fetchMutation(api.billing.quotas.resetMonthly, { userId, internalKey })
-
-  console.log(`[Xendit] Subscription renewed for user: ${userId}`)
+  console.log(`[Payment] Payment marked as expired: ${providerPaymentId}`)
 }
