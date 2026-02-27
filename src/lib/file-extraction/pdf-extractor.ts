@@ -102,37 +102,3 @@ export async function extractTextFromPdf(blob: Blob): Promise<string> {
     )
   }
 }
-
-/**
- * Validate if a blob is a valid PDF file
- *
- * @param blob - File blob to validate
- * @returns true if blob appears to be valid PDF, false otherwise
- */
-export function isValidPdfFile(blob: Blob): boolean {
-  // Check MIME type
-  const validMimeTypes = ["application/pdf"]
-
-  return validMimeTypes.includes(blob.type)
-}
-
-/**
- * Get user-friendly error message from PDFExtractionError
- *
- * @param error - PDFExtractionError instance
- * @returns User-friendly error message in Indonesian
- */
-export function getPdfErrorMessage(error: PDFExtractionError): string {
-  switch (error.code) {
-    case "PASSWORD_PROTECTED":
-      return "File PDF terproteksi password. Silakan unprotect terlebih dahulu."
-    case "CORRUPT_FILE":
-      return "File PDF rusak atau tidak valid. Silakan upload file yang valid."
-    case "EMPTY_PDF":
-      return "File PDF tidak mengandung teks yang bisa diekstrak (mungkin berisi gambar saja)."
-    case "PARSE_ERROR":
-      return "Gagal membaca file PDF. Format mungkin tidak didukung."
-    default:
-      return "Terjadi error saat membaca file PDF."
-  }
-}

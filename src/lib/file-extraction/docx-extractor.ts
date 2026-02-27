@@ -34,11 +34,12 @@ export class DOCXExtractionError extends Error {
  */
 export async function extractTextFromDocx(blob: Blob): Promise<string> {
   try {
-    // Convert Blob to ArrayBuffer (required by mammoth)
+    // Convert Blob to Buffer (mammoth v1 expects Node.js Buffer, not ArrayBuffer)
     const arrayBuffer = await blob.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
 
     // Validate buffer size
-    if (arrayBuffer.byteLength === 0) {
+    if (buffer.byteLength === 0) {
       throw new DOCXExtractionError(
         "DOCX file is empty (0 bytes)",
         "EMPTY_DOCX"
@@ -46,7 +47,7 @@ export async function extractTextFromDocx(blob: Blob): Promise<string> {
     }
 
     // Extract raw text using mammoth
-    const result = await mammoth.extractRawText({ arrayBuffer })
+    const result = await mammoth.extractRawText({ buffer })
 
     // Get extracted text
     const extractedText = result.value.trim()
@@ -100,42 +101,5 @@ export async function extractTextFromDocx(blob: Blob): Promise<string> {
       `Failed to parse DOCX: ${errorMessage}`,
       "PARSE_ERROR"
     )
-  }
-}
-
-/**
- * Validate if a blob is a valid DOCX file
- *
- * @param blob - File blob to validate
- * @returns true if blob appears to be valid DOCX, false otherwise
- */
-export function isValidDocxFile(blob: Blob): boolean {
-  // Check MIME type
-  const validMimeTypes = [
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-word.document.macroEnabled.12", // .docm
-  ]
-
-  return validMimeTypes.includes(blob.type)
-}
-
-/**
- * Get user-friendly error message from DOCXExtractionError
- *
- * @param error - DOCXExtractionError instance
- * @returns User-friendly error message in Indonesian
- */
-export function getDocxErrorMessage(error: DOCXExtractionError): string {
-  switch (error.code) {
-    case "CORRUPT_FILE":
-      return "File DOCX rusak atau tidak valid. Silakan upload file yang valid."
-    case "UNSUPPORTED_FORMAT":
-      return "Format file tidak didukung. Pastikan file adalah .docx yang valid."
-    case "EMPTY_DOCX":
-      return "File DOCX tidak mengandung teks yang bisa diekstrak."
-    case "PARSE_ERROR":
-      return "Gagal membaca file DOCX. Format mungkin tidak didukung."
-    default:
-      return "Terjadi error saat membaca file DOCX."
   }
 }

@@ -12,6 +12,7 @@ import { useMessages } from "@/lib/hooks/useMessages"
 import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowUpSquare, FastArrowDownSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
 import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
+import { AttachedFileMeta } from "@/lib/types/attached-file"
 import { useMutation, useQuery, useConvexAuth } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
@@ -353,7 +354,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [isAwaitingAssistantStart, setIsAwaitingAssistantStart] = useState(false)
   const [input, setInput] = useState("")
-  const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFileMeta[]>([])
+  const [imageDataUrls, setImageDataUrls] = useState<Map<string, string>>(new Map())
   const [isCreatingChat, setIsCreatingChat] = useState(false)
   const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
   const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
@@ -431,6 +433,35 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     safeConversationId ? safeConversationId : null
   )
 
+  // Collect all fileIds from history for file name lookup
+  const historyFileIds = useMemo(() => {
+    if (!historyMessages) return []
+    const ids = new Set<string>()
+    for (const msg of historyMessages) {
+      if (msg.fileIds) {
+        for (const fid of msg.fileIds) ids.add(fid)
+      }
+    }
+    return Array.from(ids)
+  }, [historyMessages])
+
+  const historyFiles = useQuery(
+    api.files.getFilesByIds,
+    userId && historyFileIds.length > 0
+      ? { userId, fileIds: historyFileIds as Id<"files">[] }
+      : "skip"
+  )
+
+  const fileNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    if (historyFiles) {
+      for (const f of historyFiles) {
+        if (f) map.set(f._id, f.name)
+      }
+    }
+    return map
+  }, [historyFiles])
+
   // Paper mode: Convert history messages to permission-compatible format
   const permissionMessages = useMemo(() => {
     if (!historyMessages) return []
@@ -490,17 +521,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
 
-  // Create transport with custom body for conversationId
+  // Refs to always read latest attachment state at request time (bypasses useChat stale transport bug)
+  const attachedFilesRef = useRef(attachedFiles)
+  attachedFilesRef.current = attachedFiles
+  const imageDataUrlsRef = useRef(imageDataUrls)
+  imageDataUrlsRef.current = imageDataUrls
+
+  // Create transport with lazy body function — evaluated fresh at each request
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: {
+        body: () => ({
           conversationId: safeConversationId,
-          fileIds: uploadedFileIds,
-        },
+          fileIds: attachedFilesRef.current.map((f) => f.fileId),
+        }),
       }),
-    [safeConversationId, uploadedFileIds]
+    [safeConversationId]
   )
 
   type CreatedArtifact = { artifactId: Id<"artifacts">; title?: string }
@@ -580,8 +617,57 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     starterPromptLastAttemptAtRef.current.set(conversationId, now)
     // Avoid syncing empty history snapshot while starter prompt is still optimistic in UI.
     starterPromptPendingHistorySyncRef.current = conversationId
-    sendMessageWithPendingIndicator(pendingPrompt)
-  }, [conversationId, historyMessages, isAuthenticated, isHistoryLoading, messages.length, sendMessageWithPendingIndicator, status])
+    setIsAwaitingAssistantStart(true)
+    pendingScrollToBottomRef.current = true
+
+    // Include image attachments if present (from landing page file attach flow)
+    const currentFiles = attachedFilesRef.current
+    const currentImageDataUrls = imageDataUrlsRef.current
+    const imageFileParts = currentFiles
+      .filter((f) => f.type.startsWith("image/"))
+      .map((f) => ({
+        type: "file" as const,
+        mediaType: f.type,
+        filename: f.name,
+        url: currentImageDataUrls.get(f.fileId) ?? "",
+      }))
+      .filter((f) => f.url !== "")
+
+    // Capture doc files metadata before clearing state
+    const docFiles = currentFiles.filter((f) => !f.type.startsWith("image/"))
+
+    if (imageFileParts.length > 0) {
+      sendMessage({ text: pendingPrompt, files: imageFileParts })
+    } else {
+      sendMessage({ text: pendingPrompt })
+    }
+    // Document fileIds are sent via transport.body() function (ref pattern)
+
+    // Annotate user message with file metadata for live badge rendering.
+    // setTimeout needed: sendMessage is async — pushMessage happens in a microtask
+    // AFTER our synchronous code finishes. setTimeout(0) runs after all microtasks.
+    if (currentFiles.length > 0) {
+      const allFileIds = currentFiles.map((f) => f.fileId)
+      const allFileNames = currentFiles.map((f) => f.name)
+      setTimeout(() => {
+        setMessages((prev) => {
+          const lastIdx = prev.length - 1
+          if (lastIdx >= 0 && prev[lastIdx].role === "user") {
+            const updated = [...prev]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const msg = updated[lastIdx] as any
+            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
+            return updated
+          }
+          return prev
+        })
+      }, 0)
+    }
+
+    // Clear attachments after send
+    setAttachedFiles([])
+    setImageDataUrls(new Map())
+  }, [conversationId, historyMessages, isAuthenticated, isHistoryLoading, messages.length, sendMessage, status])
 
   // Clear pending starter prompt only after we have concrete message data.
   useEffect(() => {
@@ -659,7 +745,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           role: msg.role as "user" | "assistant" | "system" | "data",
           content: msg.content,
           parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts],
-          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds }] : undefined,
+          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds, fileNames: msg.fileIds.map((fid: string) => fileNameMap.get(fid) ?? "") }] : undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sources: (msg as any).sources,
           ...(reasoningTrace ? { reasoningTrace } : {}),
@@ -682,7 +768,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     ) {
       starterPromptPendingHistorySyncRef.current = null
     }
-  }, [conversationId, historyMessages, isHistoryLoading, setMessages])
+  }, [conversationId, historyMessages, isHistoryLoading, setMessages, fileNameMap])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
@@ -878,8 +964,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     setInput(e.target.value)
   }
 
-  const handleFileUploaded = (fileId: Id<"files">) => {
-    setUploadedFileIds(prev => [...prev, fileId])
+  const handleFileAttached = (file: AttachedFileMeta) => {
+    setAttachedFiles((prev) => [...prev, file])
+  }
+
+  const handleFileRemoved = (fileId: Id<"files">) => {
+    setAttachedFiles((prev) => prev.filter((f) => f.fileId !== fileId))
+    setImageDataUrls((prev) => {
+      const next = new Map(prev)
+      next.delete(fileId)
+      return next
+    })
+  }
+
+  const handleImageDataUrl = (fileId: Id<"files">, dataUrl: string) => {
+    setImageDataUrls((prev) => new Map(prev).set(fileId, dataUrl))
   }
 
   const handleRegenerate = (options?: { markDirty?: boolean }) => {
@@ -962,11 +1061,56 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
+    if (!input.trim() && attachedFiles.length === 0) return
+    if (isLoading) return
 
-    sendMessageWithPendingIndicator(input)
+    setIsAwaitingAssistantStart(true)
+    pendingScrollToBottomRef.current = true
+
+    // Collect image FileUIParts for native multimodal
+    const imageFileParts = attachedFiles
+      .filter((f) => f.type.startsWith("image/"))
+      .map((f) => ({
+        type: "file" as const,
+        mediaType: f.type,
+        filename: f.name,
+        url: imageDataUrls.get(f.fileId) ?? "",
+      }))
+      .filter((f) => f.url !== "")
+
+    // Capture doc files metadata before clearing state
+    const docFiles = attachedFiles.filter((f) => !f.type.startsWith("image/"))
+
+    if (imageFileParts.length > 0) {
+      sendMessage({ text: input || " ", files: imageFileParts })
+    } else {
+      sendMessage({ text: input })
+    }
+    // Document fileIds are sent via transport.body() function (ref pattern)
+
+    // Annotate user message with file metadata for live badge rendering.
+    // setTimeout needed: sendMessage is async — pushMessage happens in a microtask.
+    if (attachedFiles.length > 0) {
+      const allFileIds = attachedFiles.map((f) => f.fileId)
+      const allFileNames = attachedFiles.map((f) => f.name)
+      setTimeout(() => {
+        setMessages((prev) => {
+          const lastIdx = prev.length - 1
+          if (lastIdx >= 0 && prev[lastIdx].role === "user") {
+            const updated = [...prev]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const msg = updated[lastIdx] as any
+            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
+            return updated
+          }
+          return prev
+        })
+      }, 0)
+    }
+
     setInput("")
-    setUploadedFileIds([])
+    setAttachedFiles([])
+    setImageDataUrls(new Map())
   }
 
   const handleApprove = async () => {
@@ -1113,14 +1257,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             onInputChange={handleInputChange}
             onSubmit={async (e) => {
               e.preventDefault()
-              if (!input.trim()) return
+              if (!input.trim() && attachedFiles.length === 0) return
               await handleStartNewChat(input.trim())
             }}
             isLoading={isCreatingChat}
             isGenerating={false}
             conversationId={conversationId}
-            uploadedFileIds={uploadedFileIds}
-            onFileUploaded={handleFileUploaded}
+            attachedFiles={attachedFiles}
+            onFileAttached={handleFileAttached}
+            onFileRemoved={handleFileRemoved}
+            onImageDataUrl={handleImageDataUrl}
           />
         </div>
 
@@ -1143,14 +1289,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             onInputChange={handleInputChange}
             onSubmit={async (e) => {
               e.preventDefault()
-              if (!input.trim()) return
+              if (!input.trim() && attachedFiles.length === 0) return
               await handleStartNewChat(input.trim())
             }}
             isLoading={isCreatingChat}
             isGenerating={false}
             conversationId={conversationId}
-            uploadedFileIds={uploadedFileIds}
-            onFileUploaded={handleFileUploaded}
+            attachedFiles={attachedFiles}
+            onFileAttached={handleFileAttached}
+            onFileRemoved={handleFileRemoved}
+            onImageDataUrl={handleImageDataUrl}
           />
         </div>
       </div>
@@ -1339,6 +1487,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                       stageData={stageData}
                       // Persisted artifact signals (survive page refresh)
                       persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
+                      // File name lookup for history messages
+                      fileNameMap={fileNameMap}
                     />
                   </div>
                 )
@@ -1423,8 +1573,10 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           isGenerating={hasPendingAssistantGeneration}
           onStop={handleStopGeneration}
           conversationId={conversationId}
-          uploadedFileIds={uploadedFileIds}
-          onFileUploaded={handleFileUploaded}
+          attachedFiles={attachedFiles}
+          onFileAttached={handleFileAttached}
+          onFileRemoved={handleFileRemoved}
+          onImageDataUrl={handleImageDataUrl}
         />
       </div>
 

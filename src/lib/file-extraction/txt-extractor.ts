@@ -33,20 +33,3 @@ export async function extractTextFromTxt(blob: Blob): Promise<string> {
     throw new Error("Failed to extract text from TXT file: Unknown error")
   }
 }
-
-/**
- * Validate if a blob is a valid text file
- *
- * @param blob - File blob to validate
- * @returns true if blob appears to be valid text, false otherwise
- */
-export function isValidTextFile(blob: Blob): boolean {
-  // Check MIME type
-  const validMimeTypes = [
-    "text/plain",
-    "text/txt",
-    "application/txt",
-  ]
-
-  return validMimeTypes.includes(blob.type)
-}

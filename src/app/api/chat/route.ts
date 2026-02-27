@@ -323,10 +323,28 @@ export async function POST(req: Request) {
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
         if (fileIds && fileIds.length > 0) {
-            const files = await fetchQueryWithToken(api.files.getFilesByIds, {
+            let files = await fetchQueryWithToken(api.files.getFilesByIds, {
                 userId: userId as Id<"users">,
                 fileIds: fileIds as Id<"files">[],
             })
+
+            // Wait for pending extractions (max 8 seconds, poll every 500ms)
+            const hasPending = files.some(
+                (f: { extractionStatus?: string }) => !f.extractionStatus || f.extractionStatus === "pending"
+            )
+            if (hasPending) {
+                for (let attempt = 0; attempt < 16; attempt++) {
+                    await new Promise((r) => setTimeout(r, 500))
+                    files = await fetchQueryWithToken(api.files.getFilesByIds, {
+                        userId: userId as Id<"users">,
+                        fileIds: fileIds as Id<"files">[],
+                    })
+                    const stillPending = files.some(
+                        (f: { extractionStatus?: string }) => !f.extractionStatus || f.extractionStatus === "pending"
+                    )
+                    if (!stillPending) break
+                }
+            }
 
             // Check if paper mode is active (use paperModePrompt as indicator)
             const isPaperModeForFiles = !!paperModePrompt
@@ -334,6 +352,9 @@ export async function POST(req: Request) {
 
             // Format file context based on extraction status
             for (const file of files) {
+                // Skip image files — they're sent via native multimodal, not text extraction
+                if (file.type?.startsWith("image/")) continue
+
                 // Check if we've exceeded total limit (paper mode only)
                 if (isPaperModeForFiles && totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL) {
                     break
@@ -342,8 +363,8 @@ export async function POST(req: Request) {
                 fileContext += `[File: ${file.name}]\n`
 
                 if (!file.extractionStatus || file.extractionStatus === "pending") {
-                    // Task 6.6: Handle pending state
-                    fileContext += "⏳ File sedang diproses, belum bisa dibaca oleh AI.\n\n"
+                    // Extraction didn't complete within timeout
+                    fileContext += "⏳ File sedang diproses. Coba kirim ulang pesan dalam beberapa detik.\n\n"
                 } else if (file.extractionStatus === "success" && file.extractedText) {
                     // Task 6.2-6.3: Extract and format text
                     // Task 2.3.1: Apply per-file limit in paper mode
@@ -385,29 +406,33 @@ export async function POST(req: Request) {
                     return null
                 }
 
-                // Handle content array - convert to string
+                // Handle content array - preserve text AND file parts
                 if (Array.isArray(msg.content)) {
-                    // Extract text content dari array
-                    const textParts = msg.content
-                        .filter((part): part is { type: "text"; text: string } =>
+                    // Keep text and file parts (images via native multimodal)
+                    const meaningfulParts = msg.content.filter(
+                        (part) =>
                             typeof part === "object" &&
                             part !== null &&
                             "type" in part &&
-                            part.type === "text" &&
-                            "text" in part &&
-                            typeof part.text === "string"
-                        )
-                        .map((part) => part.text)
+                            (part.type === "text" || part.type === "file")
+                    )
 
-                    // Jika tidak ada text parts, skip message ini
-                    if (textParts.length === 0) {
+                    if (meaningfulParts.length === 0) {
                         return null
                     }
 
-                    return {
-                        ...msg,
-                        content: textParts.join("\n"),
+                    // If only text parts, join as string (backward compat)
+                    const hasFileParts = meaningfulParts.some((p) => p.type === "file")
+                    if (!hasFileParts) {
+                        const textContent = meaningfulParts
+                            .filter((p): p is { type: "text"; text: string } => p.type === "text" && "text" in p && typeof p.text === "string")
+                            .map((p) => p.text)
+                            .join("\n")
+                        return { ...msg, content: textContent }
                     }
+
+                    // Mixed content (text + file) — keep as array for multimodal
+                    return { ...msg, content: meaningfulParts }
                 }
 
                 return msg

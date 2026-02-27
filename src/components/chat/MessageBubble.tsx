@@ -1,7 +1,7 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { Attachment, EditPencil, Xmark, Send, CheckCircle } from "iconoir-react"
+import { EditPencil, Xmark, Send, CheckCircle, Page, MediaImage } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
@@ -72,6 +72,8 @@ interface MessageBubbleProps {
     stageData?: Record<string, StageDataEntry>
     /** Persisted artifacts matched to this message (survives page refresh) */
     persistedArtifacts?: PersistedArtifact[]
+    /** File name lookup map (fileId → fileName) for history messages */
+    fileNameMap?: Map<string, string>
 }
 
 export function MessageBubble({
@@ -85,6 +87,7 @@ export function MessageBubble({
     allMessages = [],
     stageData,
     persistedArtifacts,
+    fileNameMap,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -366,9 +369,10 @@ export function MessageBubble({
         }
     }, [isEditing, content])
 
-    const annotations = (message as { annotations?: { type?: string; fileIds?: string[] }[] }).annotations
+    const annotations = (message as { annotations?: { type?: string; fileIds?: string[]; fileNames?: string[] }[] }).annotations
     const fileAnnotations = annotations?.find((annotation) => annotation.type === "file_ids")
     const fileIds = fileAnnotations?.fileIds ?? []
+    const fileNames = fileAnnotations?.fileNames ?? []
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     // Live signals from streaming take priority; persisted artifacts are fallback after refresh
@@ -513,15 +517,44 @@ export function MessageBubble({
                 <div className={cn(
                     isUser ? "px-4 py-3" : "py-1"
                 )}>
-                    {/* File Attachments Badge - Mockup: blue/teal badge */}
+                    {/* File Attachments Badge */}
                     {fileIds && fileIds.length > 0 && (
-                        <div className="mb-3">
-                            <span className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-badge bg-[var(--chat-accent)] text-[var(--chat-info)] border border-[color:var(--chat-info)]">
-                                <Attachment className="h-3 w-3" />
-                                <span>{fileIds.length} {fileIds.length === 1 ? "file" : "files"}</span>
-                            </span>
+                        <div className="mb-3 flex flex-wrap gap-1.5">
+                            {fileIds.map((fid: string, idx: number) => {
+                                const name = fileNames[idx] || fileNameMap?.get(fid) || "file"
+                                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(name)
+                                return (
+                                    <span key={fid} className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-badge bg-[var(--chat-accent)] text-[var(--chat-info)] border border-[color:var(--chat-info)]">
+                                        {isImage ? <MediaImage className="h-3 w-3 shrink-0" /> : <Page className="h-3 w-3 shrink-0" />}
+                                        <span className="truncate max-w-[180px]">{name}</span>
+                                    </span>
+                                )
+                            })}
                         </div>
                     )}
+
+                    {/* Inline image attachments from native SDK */}
+                    {isUser && message.parts?.map((part, i) => {
+                        if (
+                            part.type === "file" &&
+                            "mediaType" in part &&
+                            typeof (part as Record<string, unknown>).mediaType === "string" &&
+                            ((part as Record<string, unknown>).mediaType as string).startsWith("image/")
+                        ) {
+                            const filePart = part as Record<string, unknown>
+                            return (
+                                <div key={`img-${i}`} className="mb-3">
+                                    <img
+                                        src={filePart.url as string}
+                                        alt={(filePart.filename as string) ?? "attachment"}
+                                        className="max-w-xs max-h-64 rounded-action border border-[color:var(--chat-border)]"
+                                        loading="lazy"
+                                    />
+                                </div>
+                            )
+                        }
+                        return null
+                    })}
 
                     {/* Process Indicators - fixed slot above assistant content to prevent jumping */}
                     {shouldShowProcessIndicators && (

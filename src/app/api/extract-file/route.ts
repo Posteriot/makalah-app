@@ -23,6 +23,7 @@ import { extractTextFromPdf } from "@/lib/file-extraction/pdf-extractor"
 import { extractTextFromDocx } from "@/lib/file-extraction/docx-extractor"
 import { extractDataFromXlsx } from "@/lib/file-extraction/xlsx-extractor"
 import { extractTextFromImage } from "@/lib/file-extraction/image-ocr"
+import { extractTextFromPptx } from "@/lib/file-extraction/pptx-extractor"
 
 /**
  * Retry helper untuk network/API calls yang bisa transient error
@@ -57,7 +58,7 @@ async function retryWithBackoff<T>(
  */
 function detectFileType(
   mimeType: string
-): "txt" | "pdf" | "docx" | "xlsx" | "image" | "unsupported" {
+): "txt" | "pdf" | "docx" | "xlsx" | "pptx" | "image" | "unsupported" {
   if (
     mimeType === "text/plain" ||
     mimeType === "text/txt" ||
@@ -84,6 +85,18 @@ function detectFileType(
     mimeType === "application/xlsx"
   ) {
     return "xlsx"
+  }
+
+  if (mimeType === "text/csv") {
+    return "txt"
+  }
+
+  if (
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+    mimeType === "application/pptx"
+  ) {
+    return "pptx"
   }
 
   if (
@@ -186,7 +199,7 @@ export async function POST(request: NextRequest) {
 
     if (fileTypeCategory === "unsupported") {
       throw new Error(
-        `Unsupported file type: ${file.type}. Supported: TXT, PDF, DOCX, XLSX, Images.`
+        `Unsupported file type: ${file.type}. Supported: TXT, PDF, DOCX, XLSX, PPTX, Images.`
       )
     }
 
@@ -213,9 +226,13 @@ export async function POST(request: NextRequest) {
           )
           break
 
+        case "pptx":
+          extractedText = await retryWithBackoff(() => extractTextFromPptx(blob))
+          break
+
         case "image":
           extractedText = await retryWithBackoff(
-            () => extractTextFromImage(blob, file.name),
+            () => extractTextFromImage(blob),
             3,
             2000
           )
@@ -246,8 +263,6 @@ export async function POST(request: NextRequest) {
         extractionError instanceof Error
           ? extractionError.message
           : String(extractionError)
-
-      console.error("[File Extraction API] Extraction failed:", errorMessage)
 
       await fetchMutation(api.files.updateExtractionResult, {
         fileId: fileId as Id<"files">,

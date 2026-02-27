@@ -1,11 +1,12 @@
 "use client"
 
 import { useRef, useEffect, useState, useCallback } from "react"
-import { Send, Page, Expand, Xmark } from "iconoir-react"
+import { Send, Page, Expand, Xmark, MediaImage } from "iconoir-react"
 import { Pause as PauseSolid } from "iconoir-react/solid"
 import { FileUploadButton } from "./FileUploadButton"
 import { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
+import { AttachedFileMeta, formatFileSize, isImageType } from "@/lib/types/attached-file"
 
 interface ChatInputProps {
     input: string
@@ -15,8 +16,10 @@ interface ChatInputProps {
     isGenerating?: boolean
     onStop?: () => void
     conversationId: string | null
-    uploadedFileIds: Id<"files">[]
-    onFileUploaded: (fileId: Id<"files">) => void
+    attachedFiles: AttachedFileMeta[]
+    onFileAttached: (file: AttachedFileMeta) => void
+    onFileRemoved: (fileId: Id<"files">) => void
+    onImageDataUrl?: (fileId: Id<"files">, dataUrl: string) => void
 }
 
 // Max heights: desktop 200px, mobile 6 lines (~144px)
@@ -31,8 +34,10 @@ export function ChatInput({
     isGenerating = false,
     onStop,
     conversationId,
-    uploadedFileIds,
-    onFileUploaded
+    attachedFiles,
+    onFileAttached,
+    onFileRemoved,
+    onImageDataUrl
 }: ChatInputProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const mobileTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -93,13 +98,29 @@ export function ChatInput({
 
     // Shared file attachment chips
     const renderFileChips = () => {
-        if (uploadedFileIds.length === 0) return null
+        if (attachedFiles.length === 0) return null
         return (
             <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
-                {uploadedFileIds.map((id) => (
-                    <div key={id} className="flex items-center gap-2 bg-[var(--chat-muted)] p-2 rounded-badge text-xs font-mono text-[var(--chat-muted-foreground)] whitespace-nowrap">
-                        <Page className="h-3 w-3" />
-                        <span>File attached</span>
+                {attachedFiles.map((file) => (
+                    <div
+                        key={file.fileId}
+                        className="flex items-center gap-2 bg-[var(--chat-muted)] pl-2.5 pr-1.5 py-1.5 rounded-badge text-xs font-mono text-[var(--chat-muted-foreground)] whitespace-nowrap"
+                    >
+                        {isImageType(file.type) ? (
+                            <MediaImage className="h-3 w-3 shrink-0" />
+                        ) : (
+                            <Page className="h-3 w-3 shrink-0" />
+                        )}
+                        <span className="max-w-[120px] truncate">{file.name}</span>
+                        <span className="text-[10px] opacity-60">{formatFileSize(file.size)}</span>
+                        <button
+                            type="button"
+                            onClick={() => onFileRemoved(file.fileId)}
+                            className="ml-0.5 p-0.5 rounded hover:bg-[var(--chat-accent)] transition-colors"
+                            aria-label={`Remove ${file.name}`}
+                        >
+                            <Xmark className="h-3 w-3" />
+                        </button>
                     </div>
                 ))}
             </div>
@@ -143,7 +164,7 @@ export function ChatInput({
         return (
             <button
                 type="submit"
-                disabled={!input.trim() || isLoading}
+                disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
                 className={cn(
                     baseBtnClass,
                     "bg-transparent text-[var(--chat-muted-foreground)]",
@@ -184,7 +205,8 @@ export function ChatInput({
                             <div className="flex-none">
                                 <FileUploadButton
                                     conversationId={conversationId}
-                                    onFileUploaded={onFileUploaded}
+                                    onFileUploaded={onFileAttached}
+                                    onImageDataUrl={onImageDataUrl}
                                 />
                             </div>
                             {renderSendButton()}
@@ -214,7 +236,8 @@ export function ChatInput({
                         <div className="shrink-0 self-end">
                             <FileUploadButton
                                 conversationId={conversationId}
-                                onFileUploaded={onFileUploaded}
+                                onFileUploaded={onFileAttached}
+                                onImageDataUrl={onImageDataUrl}
                             />
                         </div>
 
@@ -320,7 +343,8 @@ export function ChatInput({
                         <div className="flex items-center justify-between px-3 py-2 border-t border-[color:var(--chat-border)] shrink-0">
                             <FileUploadButton
                                 conversationId={conversationId}
-                                onFileUploaded={onFileUploaded}
+                                onFileUploaded={onFileAttached}
+                                onImageDataUrl={onImageDataUrl}
                             />
                             {renderSendButton("sm")}
                         </div>

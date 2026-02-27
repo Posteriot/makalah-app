@@ -87,16 +87,13 @@ async function blobToBase64(blob: Blob): Promise<string> {
  * Extract text from an image using GPT-4o Vision via OpenRouter
  *
  * @param blob - Image blob from Convex storage
- * @param filename - Original filename (for context in prompt)
  * @returns Extracted text or image description
  * @throws ImageOCRError if OCR fails
  */
 export async function extractTextFromImage(
   blob: Blob,
-  filename: string = "image"
 ): Promise<string> {
   try {
-    void filename
     // Validate buffer size
     const arrayBuffer = await blob.arrayBuffer()
     if (arrayBuffer.byteLength === 0) {
@@ -206,60 +203,4 @@ export async function extractTextFromImage(
       "API_ERROR"
     )
   }
-}
-
-/**
- * Validate if a blob is a valid image file
- *
- * @param blob - File blob to validate
- * @returns true if blob appears to be valid image, false otherwise
- */
-export function isValidImageFile(blob: Blob): boolean {
-  // Check MIME type
-  const validMimeTypes = [
-    "image/png",
-    "image/jpeg",
-    "image/jpg",
-    "image/webp",
-    "image/gif",
-  ]
-
-  return validMimeTypes.includes(blob.type)
-}
-
-/**
- * Get user-friendly error message from ImageOCRError
- *
- * @param error - ImageOCRError instance
- * @returns User-friendly error message in Indonesian
- */
-export function getImageOcrErrorMessage(error: ImageOCRError): string {
-  switch (error.code) {
-    case "API_ERROR":
-      return "Gagal memproses gambar dengan AI. Silakan coba lagi."
-    case "RATE_LIMIT":
-      return "Batas penggunaan API tercapai. Silakan coba beberapa saat lagi."
-    case "INVALID_IMAGE":
-      return "Format gambar tidak valid atau tidak didukung."
-    case "NO_TEXT_FOUND":
-      return "Tidak ada teks yang dapat diekstrak dari gambar ini."
-    case "ENCODING_ERROR":
-      return "Gagal memproses gambar. File mungkin rusak."
-    default:
-      return "Terjadi error saat membaca gambar."
-  }
-}
-
-/**
- * Get fallback message when OCR fails but we want graceful degradation
- *
- * @param filename - Original filename
- * @param error - The error that occurred
- * @returns Fallback message for database storage
- */
-export function getOcrFallbackMessage(
-  filename: string,
-  error: ImageOCRError
-): string {
-  return `[OCR Failed for ${filename}] ${getImageOcrErrorMessage(error)}`
 }
