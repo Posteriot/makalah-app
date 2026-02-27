@@ -1,7 +1,7 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { Attachment, EditPencil, Xmark, Send, CheckCircle, Page } from "iconoir-react"
+import { EditPencil, Xmark, Send, CheckCircle, Page } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"

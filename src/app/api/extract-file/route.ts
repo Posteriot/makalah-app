@@ -145,9 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Auth check + Convex token
-    console.log(`[Extract-File Debug] fileId=${fileId} starting extraction`)
     const isAuthed = await isAuthenticated()
-    console.log(`[Extract-File Debug] isAuthed=${isAuthed}`)
     if (!isAuthed) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
@@ -197,7 +195,6 @@ export async function POST(request: NextRequest) {
     const blob = await response.blob()
 
     // 4. Detect file type
-    console.log(`[Extract-File Debug] file.name=${file.name} file.type=${file.type} blob.size=${blob.size}`)
     const fileTypeCategory = detectFileType(file.type)
 
     if (fileTypeCategory === "unsupported") {
@@ -235,7 +232,7 @@ export async function POST(request: NextRequest) {
 
         case "image":
           extractedText = await retryWithBackoff(
-            () => extractTextFromImage(blob, file.name),
+            () => extractTextFromImage(blob),
             3,
             2000
           )
@@ -266,8 +263,6 @@ export async function POST(request: NextRequest) {
         extractionError instanceof Error
           ? extractionError.message
           : String(extractionError)
-
-      console.error("[Extract-File Debug] Extraction FAILED:", errorMessage, "stack:", extractionError instanceof Error ? extractionError.stack : "no stack")
 
       await fetchMutation(api.files.updateExtractionResult, {
         fileId: fileId as Id<"files">,
