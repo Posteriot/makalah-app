@@ -463,9 +463,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   // 2. Initialize useChat with AI SDK v5/v6 API
   const editAndTruncate = useMutation(api.messages.editAndTruncateConversation)
 
-  // Ref to always read latest attachedFiles at request time (bypasses useChat stale transport bug)
+  // Refs to always read latest attachment state at request time (bypasses useChat stale transport bug)
   const attachedFilesRef = useRef(attachedFiles)
   attachedFilesRef.current = attachedFiles
+  const imageDataUrlsRef = useRef(imageDataUrls)
+  imageDataUrlsRef.current = imageDataUrls
 
   // Create transport with lazy body function — evaluated fresh at each request
   const transport = useMemo(
@@ -554,7 +556,30 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     // Avoid syncing empty history snapshot while starter prompt is still optimistic in UI.
     starterPromptPendingHistorySyncRef.current = conversationId
     pendingScrollToBottomRef.current = true
-    sendMessage({ text: pendingPrompt })
+
+    // Include image attachments if present (from landing page file attach flow)
+    const currentFiles = attachedFilesRef.current
+    const currentImageDataUrls = imageDataUrlsRef.current
+    const imageFileParts = currentFiles
+      .filter((f) => f.type.startsWith("image/"))
+      .map((f) => ({
+        type: "file" as const,
+        mediaType: f.type,
+        filename: f.name,
+        url: currentImageDataUrls.get(f.fileId) ?? "",
+      }))
+      .filter((f) => f.url !== "")
+
+    if (imageFileParts.length > 0) {
+      sendMessage({ text: pendingPrompt, files: imageFileParts })
+    } else {
+      sendMessage({ text: pendingPrompt })
+    }
+    // Document fileIds are sent via transport.body() function (ref pattern)
+
+    // Clear attachments after send
+    setAttachedFiles([])
+    setImageDataUrls(new Map())
   }, [conversationId, historyMessages, isAuthenticated, isHistoryLoading, messages.length, sendMessage, status])
 
   // Clear pending starter prompt only after we have concrete message data.
