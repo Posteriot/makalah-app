@@ -72,6 +72,8 @@ interface MessageBubbleProps {
     stageData?: Record<string, StageDataEntry>
     /** Persisted artifacts matched to this message (survives page refresh) */
     persistedArtifacts?: PersistedArtifact[]
+    /** File name lookup map (fileId → fileName) for history messages */
+    fileNameMap?: Map<string, string>
 }
 
 export function MessageBubble({
@@ -85,6 +87,7 @@ export function MessageBubble({
     allMessages = [],
     stageData,
     persistedArtifacts,
+    fileNameMap,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -518,7 +521,7 @@ export function MessageBubble({
                     {fileIds && fileIds.length > 0 && (
                         <div className="mb-3 flex flex-wrap gap-1.5">
                             {fileIds.map((fid: string, idx: number) => {
-                                const name = fileNames[idx] ?? "file"
+                                const name = fileNames[idx] || fileNameMap?.get(fid) || "file"
                                 return (
                                     <span key={fid} className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-badge bg-[var(--chat-accent)] text-[var(--chat-info)] border border-[color:var(--chat-info)]">
                                         <Page className="h-3 w-3 shrink-0" />

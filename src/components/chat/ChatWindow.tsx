@@ -1404,6 +1404,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                       stageData={stageData}
                       // Persisted artifact signals (survive page refresh)
                       persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
+                      // File name lookup for history messages
+                      fileNameMap={fileNameMap}
                     />
                   </div>
                 )
