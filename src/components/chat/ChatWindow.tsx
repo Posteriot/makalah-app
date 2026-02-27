@@ -711,7 +711,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           role: msg.role as "user" | "assistant" | "system" | "data",
           content: msg.content,
           parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts],
-          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds, fileNames: msg.fileIds.map((fid: string) => fileNameMap.get(fid) ?? "file") }] : undefined,
+          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds, fileNames: msg.fileIds.map((fid: string) => fileNameMap.get(fid) ?? "") }] : undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sources: (msg as any).sources,
           ...(reasoningTrace ? { reasoningTrace } : {}),
