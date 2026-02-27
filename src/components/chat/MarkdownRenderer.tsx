@@ -417,7 +417,7 @@ function formatHostname(value: string): string {
   }
 }
 
-function shouldRenderAsInlineCode(_value: string): boolean {
+function shouldRenderAsInlineCode(): boolean {
   // All inline backticks render as plain text — no code box styling.
   // Paper-writing context makes monospace/bordered code tokens look out of place.
   return false
@@ -553,7 +553,7 @@ function renderInline(
             {inner}
           </a>,
         )
-      } else if (!shouldRenderAsInlineCode(inner)) {
+      } else if (!shouldRenderAsInlineCode()) {
         nodes.push(
           <Fragment key={`${keyPrefix}-codeplain-${partIndex++}`}>
             {trimmedInner}

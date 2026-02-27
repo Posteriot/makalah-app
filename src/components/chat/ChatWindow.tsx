@@ -44,7 +44,6 @@ interface ChatWindowProps {
   conversationId: string | null
   onMobileMenuClick?: () => void
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
-  onShowArtifactList?: () => void
   /** All artifacts for this conversation (for persisted artifact signals after refresh) */
   artifacts?: ConversationArtifact[]
 }
@@ -55,7 +54,6 @@ const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
 interface PendingStarterPromptPayload {
   conversationId: string
   prompt: string
-  createdAt: number
 }
 
 function setPendingStarterPrompt(conversationId: string, prompt: string) {
@@ -63,12 +61,11 @@ function setPendingStarterPrompt(conversationId: string, prompt: string) {
   const payload: PendingStarterPromptPayload = {
     conversationId,
     prompt,
-    createdAt: Date.now(),
   }
   window.sessionStorage.setItem(PENDING_STARTER_PROMPT_KEY, JSON.stringify(payload))
 }
 
-function consumePendingStarterPrompt(conversationId: string): string | null {
+function readPendingStarterPrompt(conversationId: string): string | null {
   if (typeof window === "undefined") return null
 
   const raw = window.sessionStorage.getItem(PENDING_STARTER_PROMPT_KEY)
@@ -85,11 +82,25 @@ function consumePendingStarterPrompt(conversationId: string): string | null {
       return null
     }
 
-    window.sessionStorage.removeItem(PENDING_STARTER_PROMPT_KEY)
     return parsed.prompt.trim()
   } catch {
     window.sessionStorage.removeItem(PENDING_STARTER_PROMPT_KEY)
     return null
+  }
+}
+
+function clearPendingStarterPrompt(conversationId: string) {
+  if (typeof window === "undefined") return
+  const raw = window.sessionStorage.getItem(PENDING_STARTER_PROMPT_KEY)
+  if (!raw) return
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PendingStarterPromptPayload>
+    if (parsed.conversationId === conversationId) {
+      window.sessionStorage.removeItem(PENDING_STARTER_PROMPT_KEY)
+    }
+  } catch {
+    window.sessionStorage.removeItem(PENDING_STARTER_PROMPT_KEY)
   }
 }
 
@@ -288,13 +299,8 @@ function extractReasoningHeadline(uiMessage: UIMessage, steps: ReasoningTraceSte
 
   if (steps.length === 0) return null
 
-  // Check if steps have actual reasoning (non-template labels)
-  const hasRealContent = steps.some((s) => !isTemplateLabel(s.label) || s.thought)
-
   const running = steps.find((step) => step.status === "running")
   if (running) {
-    // If label is template and we don't have real content yet, show generic
-    if (isTemplateLabel(running.label) && !hasRealContent) return "Berpikir..."
     if (isTemplateLabel(running.label)) return "Berpikir..."
     return running.label
   }
@@ -310,8 +316,7 @@ function lowerFirst(input: string) {
   return input.charAt(0).toLowerCase() + input.slice(1)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, onShowArtifactList, artifacts: conversationArtifacts }: ChatWindowProps) {
+export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, artifacts: conversationArtifacts }: ChatWindowProps) {
   const router = useRouter()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
@@ -329,13 +334,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     visible: boolean
     status: ProcessVisualStatus
     progress: number
-    message: string
     elapsedSeconds: number
   }>({
     visible: false,
     status: "ready",
     progress: 0,
-    message: "",
     elapsedSeconds: 0,
   })
   const processIntervalRef = useRef<number | null>(null)
@@ -343,7 +346,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const processStartedAtRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
-  const starterPromptAttemptedForConversationRef = useRef<string | null>(null)
+  const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
+  const starterPromptPendingHistorySyncRef = useRef<string | null>(null)
 
   const { data: session } = useSession()
   const { resolvedTheme, setTheme } = useTheme()
@@ -529,15 +533,34 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (status !== "ready") return
     if (isHistoryLoading) return
     if (messages.length > 0) return
-    if (starterPromptAttemptedForConversationRef.current === conversationId) return
+    if ((historyMessages?.length ?? 0) > 0) return
 
-    starterPromptAttemptedForConversationRef.current = conversationId
-    const pendingPrompt = consumePendingStarterPrompt(conversationId)
+    const pendingPrompt = readPendingStarterPrompt(conversationId)
     if (!pendingPrompt) return
 
+    const now = Date.now()
+    const lastAttemptAt = starterPromptLastAttemptAtRef.current.get(conversationId) ?? 0
+    if (now - lastAttemptAt < 2000) return
+
+    starterPromptLastAttemptAtRef.current.set(conversationId, now)
+    // Avoid syncing empty history snapshot while starter prompt is still optimistic in UI.
+    starterPromptPendingHistorySyncRef.current = conversationId
     pendingScrollToBottomRef.current = true
     sendMessage({ text: pendingPrompt })
-  }, [conversationId, isAuthenticated, isHistoryLoading, messages.length, sendMessage, status])
+  }, [conversationId, historyMessages, isAuthenticated, isHistoryLoading, messages.length, sendMessage, status])
+
+  // Clear pending starter prompt only after we have concrete message data.
+  useEffect(() => {
+    if (!conversationId) return
+    const hasMessages = messages.length > 0 || (historyMessages?.length ?? 0) > 0
+    if (!hasMessages) return
+
+    clearPendingStarterPrompt(conversationId)
+    starterPromptLastAttemptAtRef.current.delete(conversationId)
+    if (starterPromptPendingHistorySyncRef.current === conversationId) {
+      starterPromptPendingHistorySyncRef.current = null
+    }
+  }, [conversationId, historyMessages, messages.length])
 
 
   // 3. Sync history messages to useChat state - only when conversation changes or history first loads
@@ -548,6 +571,20 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       historyMessages &&
       syncedConversationRef.current !== conversationId
     ) {
+      const hasPendingStarterPromptSync =
+        starterPromptPendingHistorySyncRef.current === conversationId
+
+      // Only call setMessages when there are actual messages to sync.
+      // For new conversations (0 messages), skip setMessages to avoid
+      // overwriting useChat state that auto-send effect (above) may have
+      // already populated via sendMessage in the same render commit.
+      if (historyMessages.length === 0) {
+        if (!hasPendingStarterPromptSync) {
+          syncedConversationRef.current = conversationId
+        }
+        return
+      }
+
       const mappedMessages = historyMessages.map((msg) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawReasoningTrace = (msg as any).reasoningTrace as PersistedReasoningTraceRaw | undefined
@@ -597,10 +634,19 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
       setMessages(mappedMessages)
       syncedConversationRef.current = conversationId
+      if (hasPendingStarterPromptSync) {
+        starterPromptPendingHistorySyncRef.current = null
+      }
     }
 
     if (conversationId !== syncedConversationRef.current && syncedConversationRef.current !== null) {
       syncedConversationRef.current = null
+    }
+    if (
+      conversationId !== starterPromptPendingHistorySyncRef.current &&
+      starterPromptPendingHistorySyncRef.current !== null
+    ) {
+      starterPromptPendingHistorySyncRef.current = null
     }
   }, [conversationId, historyMessages, isHistoryLoading, setMessages])
 
@@ -649,7 +695,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         visible: true,
         status: "submitted",
         progress: 8,
-        message: "",
         elapsedSeconds: 0,
       })
     } else if (status === "streaming") {
@@ -661,7 +706,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         visible: true,
         status: "streaming",
         progress: Math.max(prev.progress, 16),
-        message: "",
         elapsedSeconds: Math.max(prev.elapsedSeconds, 1),
       }))
       processIntervalRef.current = window.setInterval(() => {
@@ -684,7 +728,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         visible: true,
         status: wasStoppedManually ? "stopped" : "ready",
         progress: 100,
-        message: wasStoppedManually ? "Proses dihentikan" : "Respons selesai",
         elapsedSeconds: elapsed,
       })
       stoppedManuallyRef.current = false
@@ -698,7 +741,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         visible: true,
         status: "error",
         progress: 100,
-        message: "Terjadi kendala saat memproses jawaban",
         elapsedSeconds: elapsed,
       })
       processHideTimeoutRef.current = window.setTimeout(() => {
@@ -902,17 +944,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     setIsCreatingChat(true)
     try {
       const newId = await createConversation({ userId })
-      if (newId) {
-        if (normalizedPrompt) {
-          setPendingStarterPrompt(newId, normalizedPrompt)
-          setInput("")
-        }
-        router.push(`/chat/${newId}`)
+      if (!newId) {
+        setIsCreatingChat(false)
+        return
       }
+
+      if (normalizedPrompt) {
+        setPendingStarterPrompt(newId, normalizedPrompt)
+      }
+
+      // Keep navigation as the final state transition for this component path.
+      router.push(`/chat/${newId}`)
+      return
     } catch (error) {
       console.error("Failed to create conversation:", error)
       toast.error("Gagal membuat percakapan baru")
-    } finally {
       setIsCreatingChat(false)
     }
   }
@@ -1169,20 +1215,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           ) : messages.length === 0 ? (
             // Empty state with horizontal boundary in sync with ChatInput
             <div className="flex flex-col items-center justify-center h-full" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
-              <div className="hidden md:block">
-                <TemplateGrid
-                  onTemplateSelect={handleTemplateSelect}
-                  onSidebarLinkClick={handleSidebarLinkClick}
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="md:hidden">
-                <TemplateGrid
-                  onTemplateSelect={handleTemplateSelect}
-                  onSidebarLinkClick={handleSidebarLinkClick}
-                  disabled={isLoading}
-                />
-              </div>
+              <TemplateGrid
+                onTemplateSelect={handleTemplateSelect}
+                onSidebarLinkClick={handleSidebarLinkClick}
+                disabled={isLoading}
+              />
             </div>
           ) : (
             // Messages list

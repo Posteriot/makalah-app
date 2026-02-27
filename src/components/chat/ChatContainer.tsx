@@ -10,7 +10,6 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { useCleanupEmptyConversations } from "@/lib/hooks/useCleanupEmptyConversations"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useArtifactTabs } from "@/lib/hooks/useArtifactTabs"
-import { MobileArtifactList } from "./mobile/MobileArtifactList"
 import { MobileArtifactViewer } from "./mobile/MobileArtifactViewer"
 import { MobileRefrasaViewer } from "./mobile/MobileRefrasaViewer"
 
@@ -44,7 +43,6 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   useCleanupEmptyConversations(conversationId === null ? user?._id : null)
 
   const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [showArtifactList, setShowArtifactList] = useState(false)
   const [mobileArtifactId, setMobileArtifactId] = useState<Id<"artifacts"> | null>(null)
   const [mobileRefrasaId, setMobileRefrasaId] = useState<Id<"artifacts"> | null>(null)
   const isValidConvexId = (value: string | null): value is string =>
@@ -145,25 +143,11 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
           conversationId={conversationId}
           onMobileMenuClick={() => setIsMobileOpen(true)}
           onArtifactSelect={handleArtifactSelect}
-          onShowArtifactList={() => setShowArtifactList(true)}
           artifacts={artifacts}
         />
       </ChatLayout>
 
       {/* Mobile overlays */}
-      {showArtifactList && (
-        <div className="md:hidden">
-          <MobileArtifactList
-            artifacts={artifacts ?? []}
-            onSelect={(id) => {
-              setShowArtifactList(false)
-              setMobileArtifactId(id)
-            }}
-            onBack={() => setShowArtifactList(false)}
-          />
-        </div>
-      )}
-
       {mobileArtifactId && (
         <MobileArtifactViewer
           artifactId={mobileArtifactId}
