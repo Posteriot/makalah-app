@@ -754,6 +754,46 @@
   40% { opacity: 0.8; }
 }
 
+@keyframes chat-assistant-loader-orb {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+}
+
+@keyframes chat-assistant-loader-bar {
+  0% {
+    transform: translateX(-120%);
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(240%);
+    opacity: 0.25;
+  }
+}
+
+@keyframes chat-pause-ring {
+  0% {
+    transform: scale(0.86);
+    opacity: 0.2;
+  }
+  65% {
+    transform: scale(1.14);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
 [data-chat-scope] .animate-chat-thought-breathe {
   animation: chat-thought-breathe 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
@@ -765,10 +805,41 @@
 [data-chat-scope] .chat-thought-dot-1 { animation-delay: 0s; }
 [data-chat-scope] .chat-thought-dot-2 { animation-delay: 0.2s; }
 [data-chat-scope] .chat-thought-dot-3 { animation-delay: 0.4s; }
+[data-chat-scope] .animate-chat-assistant-loader-orb {
+  animation: chat-assistant-loader-orb 1.2s ease-in-out infinite;
+}
+[data-chat-scope] .animate-chat-assistant-loader-bar {
+  animation: chat-assistant-loader-bar 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+[data-chat-scope] .animate-chat-pause-ring {
+  animation: chat-pause-ring 1.35s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+[data-chat-scope] .chat-pause-hover-halo {
+  position: absolute;
+  inset: -7px;
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.96);
+  box-shadow:
+    0 0 0 3px color-mix(in oklch, var(--chat-info) 34%, transparent),
+    0 0 18px color-mix(in oklch, var(--chat-info) 50%, transparent);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+[data-chat-scope] .chat-pause-button:hover .chat-pause-hover-halo,
+[data-chat-scope] .chat-pause-button:focus-visible .chat-pause-hover-halo {
+  opacity: 1;
+  transform: scale(1);
+}
 
 @media (prefers-reduced-motion: reduce) {
   [data-chat-scope] .animate-chat-thought-breathe,
-  [data-chat-scope] .animate-chat-thought-dot {
+  [data-chat-scope] .animate-chat-thought-dot,
+  [data-chat-scope] .animate-chat-assistant-loader-orb,
+  [data-chat-scope] .animate-chat-assistant-loader-bar,
+  [data-chat-scope] .animate-chat-pause-ring {
     animation: none;
     opacity: 0.6;
   }

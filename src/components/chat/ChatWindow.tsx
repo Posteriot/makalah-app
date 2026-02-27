@@ -48,6 +48,16 @@ interface ChatWindowProps {
   artifacts?: ConversationArtifact[]
 }
 
+type ChatListRow =
+  | {
+    kind: "message"
+    message: UIMessage
+    index: number
+  }
+  | {
+    kind: "pending-indicator"
+  }
+
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
 
@@ -316,6 +326,24 @@ function lowerFirst(input: string) {
   return input.charAt(0).toLowerCase() + input.slice(1)
 }
 
+function PendingAssistantLaneIndicator() {
+  return (
+    <div
+      className="flex justify-start"
+      role="status"
+      aria-live="polite"
+      aria-label="Agen sedang menyusun respons"
+    >
+      <div className="flex items-center gap-2 text-[var(--chat-muted-foreground)]">
+        <span className="h-2.5 w-2.5 rounded-full bg-current animate-chat-assistant-loader-orb" />
+        <span className="relative h-[2px] w-28 overflow-hidden rounded-full bg-[var(--chat-muted)]">
+          <span className="absolute left-0 top-0 h-full w-12 rounded-full bg-current animate-chat-assistant-loader-bar" />
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, artifacts: conversationArtifacts }: ChatWindowProps) {
   const router = useRouter()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
@@ -323,6 +351,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const pendingScrollToBottomRef = useRef(false)
   const wasGeneratingRef = useRef(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
+  const [isAwaitingAssistantStart, setIsAwaitingAssistantStart] = useState(false)
   const [input, setInput] = useState("")
   const [uploadedFileIds, setUploadedFileIds] = useState<Id<"files">[]>([])
   const [isCreatingChat, setIsCreatingChat] = useState(false)
@@ -527,6 +556,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
   })
 
+  const sendMessageWithPendingIndicator = useCallback((text: string) => {
+    setIsAwaitingAssistantStart(true)
+    pendingScrollToBottomRef.current = true
+    sendMessage({ text })
+  }, [sendMessage])
+
   // Auto-send pending starter prompt after redirect from landing state.
   useEffect(() => {
     if (!conversationId || !isAuthenticated) return
@@ -545,9 +580,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     starterPromptLastAttemptAtRef.current.set(conversationId, now)
     // Avoid syncing empty history snapshot while starter prompt is still optimistic in UI.
     starterPromptPendingHistorySyncRef.current = conversationId
-    pendingScrollToBottomRef.current = true
-    sendMessage({ text: pendingPrompt })
-  }, [conversationId, historyMessages, isAuthenticated, isHistoryLoading, messages.length, sendMessage, status])
+    sendMessageWithPendingIndicator(pendingPrompt)
+  }, [conversationId, historyMessages, isAuthenticated, isHistoryLoading, messages.length, sendMessageWithPendingIndicator, status])
 
   // Clear pending starter prompt only after we have concrete message data.
   useEffect(() => {
@@ -652,6 +686,26 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
+  const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
+  const hasStandalonePendingIndicator =
+    hasPendingAssistantGeneration &&
+    messages.length > 0 &&
+    messages[messages.length - 1]?.role !== "assistant"
+
+  const chatRows = useMemo<ChatListRow[]>(() => {
+    const rows: ChatListRow[] = messages.map((message, index) => ({
+      kind: "message",
+      message,
+      index,
+    }))
+
+    if (hasStandalonePendingIndicator) {
+      rows.push({ kind: "pending-indicator" })
+    }
+
+    return rows
+  }, [messages, hasStandalonePendingIndicator])
+
   const activeReasoningState = useMemo(() => {
     const assistants = [...messages].reverse().filter((msg) => msg.role === "assistant")
     for (const assistant of assistants) {
@@ -682,6 +736,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       processHideTimeoutRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    if (status === "submitted" || status === "streaming") {
+      setIsAwaitingAssistantStart(false)
+      return
+    }
+    if (status === "ready" || status === "error") {
+      setIsAwaitingAssistantStart(false)
+    }
+  }, [status])
 
   useEffect(() => {
     const prevStatus = previousStatusRef.current
@@ -822,14 +886,17 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (isPaperMode && options?.markDirty !== false) {
       markStageAsDirty()
     }
+    setIsAwaitingAssistantStart(true)
+    pendingScrollToBottomRef.current = true
     regenerate()
   }
 
   const handleStopGeneration = useCallback(() => {
-    if (!isGenerating) return
+    if (!hasPendingAssistantGeneration) return
+    setIsAwaitingAssistantStart(false)
     stoppedManuallyRef.current = true
     stop()
-  }, [isGenerating, stop])
+  }, [hasPendingAssistantGeneration, stop])
 
   const handleEdit = async (messageId: string, newContent: string) => {
     if (!safeConversationId) return
@@ -881,8 +948,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         setMessages(truncatedMessages)
 
         // 4. Send the edited content as a new message - this triggers AI response
-        pendingScrollToBottomRef.current = true
-        sendMessage({ text: newContent })
+        sendMessageWithPendingIndicator(newContent)
       } else {
         // Edge case: message not found in local state (should not happen normally)
         toast.error("Pesan tidak ditemukan. Silakan refresh halaman.")
@@ -898,8 +964,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
-    pendingScrollToBottomRef.current = true
-    sendMessage({ text: input })
+    sendMessageWithPendingIndicator(input)
     setInput("")
     setUploadedFileIds([])
   }
@@ -909,7 +974,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     try {
       await approveStage(userId)
       // Auto-send message agar AI aware dan bisa lanjutkan ke tahap berikutnya
-      sendMessage({ text: `[Approved: ${stageLabel}] Lanjut ke tahap berikutnya.` })
+      sendMessageWithPendingIndicator(`[Approved: ${stageLabel}] Lanjut ke tahap berikutnya.`)
     } catch (error) {
       console.error("Failed to approve stage:", error)
       toast.error("Gagal menyetujui tahap.")
@@ -921,7 +986,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     try {
       await requestRevision(userId, feedback)
       // Bug fix 6.6.1: Send feedback as user message so AI can see it
-      sendMessage({ text: `[Revisi untuk ${stageLabel}]\n\n${feedback}` })
+      sendMessageWithPendingIndicator(`[Revisi untuk ${stageLabel}]\n\n${feedback}`)
       toast.info("Feedback revisi telah dikirim ke agen.")
     } catch (error) {
       console.error("Failed to request revision:", error)
@@ -933,8 +998,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const handleTemplateSelect = (template: Template) => {
     if (isLoading) return
 
-    pendingScrollToBottomRef.current = true
-    sendMessage({ text: template.message })
+    sendMessageWithPendingIndicator(template.message)
   }
 
   // Handler for starting new chat from empty state
@@ -1225,9 +1289,17 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             // Messages list
             <Virtuoso
               ref={virtuosoRef}
-              data={messages}
-              totalCount={messages.length}
-              itemContent={(index, message) => {
+              data={chatRows}
+              itemContent={(_, row) => {
+                if (row.kind === "pending-indicator") {
+                  return (
+                    <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
+                      <PendingAssistantLaneIndicator />
+                    </div>
+                  )
+                }
+
+                const { message, index } = row
                 const historyMsg = historyMessages && historyMessages[index]
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const persistedSources = (historyMsg && historyMsg.role === message.role) ? (historyMsg as any).sources : undefined
@@ -1237,9 +1309,18 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   sources: (message as any).sources || persistedSources
                 } as UIMessage
+                const shouldShowPendingIndicatorBeforeMessage =
+                  hasPendingAssistantGeneration &&
+                  index === messages.length - 1 &&
+                  message.role === "assistant"
 
                 return (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
+                    {shouldShowPendingIndicatorBeforeMessage && (
+                      <div className="pb-2">
+                        <PendingAssistantLaneIndicator />
+                      </div>
+                    )}
                     <MessageBubble
                       key={message.id}
                       message={displayMessage}
@@ -1266,10 +1347,10 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               atBottomThreshold={160}
               followOutput={(atBottom) => {
                 if (pendingScrollToBottomRef.current) return "auto"
-                if (isGenerating) return atBottom ? "auto" : false
+                if (hasPendingAssistantGeneration) return atBottom ? "auto" : false
                 return atBottom ? "smooth" : false
               }}
-              initialTopMostItemIndex={messages.length - 1}
+              initialTopMostItemIndex={chatRows.length - 1}
               style={{ height: "100%", overflowX: "hidden" }}
               components={{
                 Header: () => <div className="pt-4" />,
@@ -1339,7 +1420,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
           isLoading={isLoading}
-          isGenerating={isGenerating}
+          isGenerating={hasPendingAssistantGeneration}
           onStop={handleStopGeneration}
           conversationId={conversationId}
           uploadedFileIds={uploadedFileIds}
