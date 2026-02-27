@@ -67,7 +67,7 @@ const EWALLET_CHANNELS = [
   { code: "GOPAY", label: "GoPay" },
 ]
 
-const METHOD_ID_TO_ENABLED: Record<PaymentMethod, string> = {
+const METHOD_ID_TO_ENABLED: Record<PaymentMethod, "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"> = {
   qris: "QRIS",
   va: "VIRTUAL_ACCOUNT",
   ewallet: "EWALLET",
@@ -658,7 +658,7 @@ function CheckoutPROContent() {
                     </span>
                   </button>
                   <p className="text-narrative mt-2 text-center text-xs text-muted-foreground">
-                    Pembayaran diproses oleh {paymentConfig?.providerName === "midtrans" ? "Midtrans" : "Xendit"}. Aman dan terenkripsi.
+                    Pembayaran diproses oleh {paymentConfig?.activeProvider === "midtrans" ? "Midtrans" : "Xendit"}. Aman dan terenkripsi.
                   </p>
                 </div>
               </>

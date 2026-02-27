@@ -23,6 +23,7 @@ import type * as authRecovery from "../authRecovery.js";
 import type * as billing_constants from "../billing/constants.js";
 import type * as billing_credits from "../billing/credits.js";
 import type * as billing_index from "../billing/index.js";
+import type * as billing_paymentProviderConfigs from "../billing/paymentProviderConfigs.js";
 import type * as billing_payments from "../billing/payments.js";
 import type * as billing_pricingHelpers from "../billing/pricingHelpers.js";
 import type * as billing_quotas from "../billing/quotas.js";
@@ -120,6 +121,7 @@ declare const fullApi: ApiFromModules<{
   "billing/constants": typeof billing_constants;
   "billing/credits": typeof billing_credits;
   "billing/index": typeof billing_index;
+  "billing/paymentProviderConfigs": typeof billing_paymentProviderConfigs;
   "billing/payments": typeof billing_payments;
   "billing/pricingHelpers": typeof billing_pricingHelpers;
   "billing/quotas": typeof billing_quotas;

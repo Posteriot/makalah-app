@@ -50,7 +50,7 @@ const EWALLET_CHANNELS = [
 
 type PaymentMethod = "qris" | "va" | "ewallet"
 
-const METHOD_ID_TO_ENABLED: Record<PaymentMethod, string> = {
+const METHOD_ID_TO_ENABLED: Record<PaymentMethod, "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"> = {
   qris: "QRIS",
   va: "VIRTUAL_ACCOUNT",
   ewallet: "EWALLET",
