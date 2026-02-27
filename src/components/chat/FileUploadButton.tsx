@@ -29,10 +29,8 @@ export function FileUploadButton({ conversationId, onFileUploaded, onImageDataUr
         // CHAT-038: Validation
         const allowedTypes = [
             "application/pdf",
-            "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
-            "application/vnd.ms-excel", // xls
             "application/vnd.openxmlformats-officedocument.presentationml.presentation", // pptx
             "text/plain",
             "text/csv",
@@ -44,7 +42,7 @@ export function FileUploadButton({ conversationId, onFileUploaded, onImageDataUr
         const maxSize = 10 * 1024 * 1024 // 10MB
 
         if (!allowedTypes.includes(file.type)) {
-            toast.error("Tipe file tidak didukung. Gunakan PDF, DOCX, XLSX, PPTX, TXT, atau gambar.")
+            toast.error("Tipe file tidak didukung. Gunakan PDF, DOCX, XLSX, PPTX, TXT, CSV, atau gambar.")
             return
         }
 
@@ -124,7 +122,7 @@ export function FileUploadButton({ conversationId, onFileUploaded, onImageDataUr
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                accept=".pdf,.docx,.xlsx,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp"
                 onChange={handleFileSelect}
                 disabled={isUploading}
             />

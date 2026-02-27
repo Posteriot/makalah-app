@@ -82,7 +82,6 @@ function detectFileType(
   if (
     mimeType ===
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-    mimeType === "application/vnd.ms-excel" ||
     mimeType === "application/xlsx"
   ) {
     return "xlsx"
