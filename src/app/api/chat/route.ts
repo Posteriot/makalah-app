@@ -335,6 +335,9 @@ export async function POST(req: Request) {
 
             // Format file context based on extraction status
             for (const file of files) {
+                // Skip image files — they're sent via native multimodal, not text extraction
+                if (file.type?.startsWith("image/")) continue
+
                 // Check if we've exceeded total limit (paper mode only)
                 if (isPaperModeForFiles && totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL) {
                     break

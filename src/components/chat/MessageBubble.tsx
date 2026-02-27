@@ -1,7 +1,7 @@
 "use client"
 
 import { UIMessage } from "ai"
-import { EditPencil, Xmark, Send, CheckCircle, Page } from "iconoir-react"
+import { EditPencil, Xmark, Send, CheckCircle, Page, MediaImage } from "iconoir-react"
 import { QuickActions } from "./QuickActions"
 import { ArtifactIndicator } from "./ArtifactIndicator"
 import { ToolStateIndicator } from "./ToolStateIndicator"
@@ -522,9 +522,10 @@ export function MessageBubble({
                         <div className="mb-3 flex flex-wrap gap-1.5">
                             {fileIds.map((fid: string, idx: number) => {
                                 const name = fileNames[idx] || fileNameMap?.get(fid) || "file"
+                                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(name)
                                 return (
                                     <span key={fid} className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-badge bg-[var(--chat-accent)] text-[var(--chat-info)] border border-[color:var(--chat-info)]">
-                                        <Page className="h-3 w-3 shrink-0" />
+                                        {isImage ? <MediaImage className="h-3 w-3 shrink-0" /> : <Page className="h-3 w-3 shrink-0" />}
                                         <span className="truncate max-w-[180px]">{name}</span>
                                     </span>
                                 )

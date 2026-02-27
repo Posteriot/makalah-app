@@ -505,9 +505,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         api: "/api/chat",
         body: () => ({
           conversationId: safeConversationId,
-          fileIds: attachedFilesRef.current
-            .filter((f) => !f.type.startsWith("image/"))
-            .map((f) => f.fileId),
+          fileIds: attachedFilesRef.current.map((f) => f.fileId),
         }),
       }),
     [safeConversationId]
@@ -612,9 +610,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     // Annotate user message with file metadata for live badge rendering.
     // setTimeout needed: sendMessage is async — pushMessage happens in a microtask
     // AFTER our synchronous code finishes. setTimeout(0) runs after all microtasks.
-    if (docFiles.length > 0) {
-      const fileIds = docFiles.map((f) => f.fileId)
-      const fileNames = docFiles.map((f) => f.name)
+    if (currentFiles.length > 0) {
+      const allFileIds = currentFiles.map((f) => f.fileId)
+      const allFileNames = currentFiles.map((f) => f.name)
       setTimeout(() => {
         setMessages((prev) => {
           const lastIdx = prev.length - 1
@@ -622,7 +620,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             const updated = [...prev]
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const msg = updated[lastIdx] as any
-            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds, fileNames }]
+            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
             return updated
           }
           return prev
@@ -1023,9 +1021,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
     // Annotate user message with file metadata for live badge rendering.
     // setTimeout needed: sendMessage is async — pushMessage happens in a microtask.
-    if (docFiles.length > 0) {
-      const fileIds = docFiles.map((f) => f.fileId)
-      const fileNames = docFiles.map((f) => f.name)
+    if (attachedFiles.length > 0) {
+      const allFileIds = attachedFiles.map((f) => f.fileId)
+      const allFileNames = attachedFiles.map((f) => f.name)
       setTimeout(() => {
         setMessages((prev) => {
           const lastIdx = prev.length - 1
@@ -1033,7 +1031,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             const updated = [...prev]
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const msg = updated[lastIdx] as any
-            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds, fileNames }]
+            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
             return updated
           }
           return prev
