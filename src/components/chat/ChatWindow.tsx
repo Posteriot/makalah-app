@@ -570,12 +570,32 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       }))
       .filter((f) => f.url !== "")
 
+    // Capture doc file IDs before clearing state
+    const docFileIds = currentFiles
+      .filter((f) => !f.type.startsWith("image/"))
+      .map((f) => f.fileId)
+
     if (imageFileParts.length > 0) {
       sendMessage({ text: pendingPrompt, files: imageFileParts })
     } else {
       sendMessage({ text: pendingPrompt })
     }
     // Document fileIds are sent via transport.body() function (ref pattern)
+
+    // Annotate user message with file IDs for live badge rendering
+    if (docFileIds.length > 0) {
+      setMessages((prev) => {
+        const lastIdx = prev.length - 1
+        if (lastIdx >= 0 && prev[lastIdx].role === "user") {
+          const updated = [...prev]
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const msg = updated[lastIdx] as any
+          msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: docFileIds }]
+          return updated
+        }
+        return prev
+      })
+    }
 
     // Clear attachments after send
     setAttachedFiles([])
@@ -958,12 +978,33 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       }))
       .filter((f) => f.url !== "")
 
+    // Capture doc file IDs before clearing state
+    const docFileIds = attachedFiles
+      .filter((f) => !f.type.startsWith("image/"))
+      .map((f) => f.fileId)
+
     if (imageFileParts.length > 0) {
       sendMessage({ text: input || " ", files: imageFileParts })
     } else {
       sendMessage({ text: input })
     }
     // Document fileIds are sent via transport.body() function (ref pattern)
+
+    // Annotate user message with file IDs for live badge rendering
+    // (sendMessage pushes user message synchronously before streaming)
+    if (docFileIds.length > 0) {
+      setMessages((prev) => {
+        const lastIdx = prev.length - 1
+        if (lastIdx >= 0 && prev[lastIdx].role === "user") {
+          const updated = [...prev]
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const msg = updated[lastIdx] as any
+          msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: docFileIds }]
+          return updated
+        }
+        return prev
+      })
+    }
 
     setInput("")
     setAttachedFiles([])
