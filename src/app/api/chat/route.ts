@@ -368,29 +368,33 @@ export async function POST(req: Request) {
                     return null
                 }
 
-                // Handle content array - convert to string
+                // Handle content array - preserve text AND file parts
                 if (Array.isArray(msg.content)) {
-                    // Extract text content dari array
-                    const textParts = msg.content
-                        .filter((part): part is { type: "text"; text: string } =>
+                    // Keep text and file parts (images via native multimodal)
+                    const meaningfulParts = msg.content.filter(
+                        (part) =>
                             typeof part === "object" &&
                             part !== null &&
                             "type" in part &&
-                            part.type === "text" &&
-                            "text" in part &&
-                            typeof part.text === "string"
-                        )
-                        .map((part) => part.text)
+                            (part.type === "text" || part.type === "file")
+                    )
 
-                    // Jika tidak ada text parts, skip message ini
-                    if (textParts.length === 0) {
+                    if (meaningfulParts.length === 0) {
                         return null
                     }
 
-                    return {
-                        ...msg,
-                        content: textParts.join("\n"),
+                    // If only text parts, join as string (backward compat)
+                    const hasFileParts = meaningfulParts.some((p) => p.type === "file")
+                    if (!hasFileParts) {
+                        const textContent = meaningfulParts
+                            .filter((p): p is { type: "text"; text: string } => p.type === "text" && "text" in p && typeof p.text === "string")
+                            .map((p) => p.text)
+                            .join("\n")
+                        return { ...msg, content: textContent }
                     }
+
+                    // Mixed content (text + file) — keep as array for multimodal
+                    return { ...msg, content: meaningfulParts }
                 }
 
                 return msg
