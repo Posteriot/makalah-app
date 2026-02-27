@@ -5,6 +5,7 @@ import {
   Page,
   Cpu,
   EditPencil,
+  CreditCard,
   StatsReport,
   DesignNib,
   Clock,
@@ -89,6 +90,14 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
     headerIcon: EditPencil,
   },
   {
+    id: "payment",
+    label: "Payment Provider",
+    icon: CreditCard,
+    headerTitle: "Payment Provider",
+    headerDescription: "Konfigurasi provider pembayaran",
+    headerIcon: CreditCard,
+  },
+  {
     id: "waitlist",
     label: "Waitlist",
     icon: Clock,
@@ -142,6 +151,7 @@ export type AdminTabId =
   | "stage-skills"
   | "providers"
   | "refrasa"
+  | "payment"
   | "waitlist"
   | "waitlist.entries"
   | "waitlist.settings"

@@ -1,6 +1,7 @@
 import { StatsReport } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
 import { AIProviderManager } from "./AIProviderManager"
+import { PaymentProviderManager } from "./PaymentProviderManager"
 import { AdminOverviewContent } from "./AdminOverviewContent"
 import { StyleConstitutionManager } from "./StyleConstitutionManager"
 import { SystemHealthPanel } from "./SystemHealthPanel"
@@ -72,6 +73,12 @@ export function AdminContentSection({
         {activeTab === "refrasa" && (
           <div className="space-y-6">
             <StyleConstitutionManager userId={userId} />
+          </div>
+        )}
+
+        {activeTab === "payment" && (
+          <div className="space-y-6">
+            <PaymentProviderManager userId={userId} />
           </div>
         )}
 
