@@ -882,6 +882,9 @@ export default defineSchema({
     providerPaymentId: v.string(), // Provider's payment ID
     providerReferenceId: v.string(), // Our reference ID sent to provider
     providerName: v.union(v.literal("xendit"), v.literal("midtrans")),
+    // Legacy fields retained for migration compatibility/readability.
+    xenditPaymentRequestId: v.optional(v.string()),
+    xenditReferenceId: v.optional(v.string()),
 
     // Payment details
     amount: v.number(), // Amount in IDR
