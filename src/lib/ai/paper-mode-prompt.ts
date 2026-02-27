@@ -99,6 +99,7 @@ export const getPaperModeSystemPrompt = async (
 
         const stage = session.currentStage as PaperStageId | "completed";
         const status = session.stageStatus as StageStatus;
+        const isDirty = session.isDirty === true;
         const stageLabel = getStageLabel(stage);
 
         // Build memory digest
@@ -173,6 +174,10 @@ export const getPaperModeSystemPrompt = async (
         const pendingNote = status === "pending_validation"
             ? "\n⏳ MENUNGGU VALIDASI: Draf sudah dikirim. Tunggu user approve/revise sebelum lanjut.\n"
             : "";
+        const dirtyContextNote = `\n🔄 DIRTY CONTEXT: ${isDirty ? "true" : "false"}\n`;
+        const dirtySyncContractNote = status === "pending_validation" && isDirty
+            ? "\n⚠️ KONTRAK SINKRONISASI: Data stage belum sinkron. Jika user minta sinkron/lanjut dari state, WAJIB jelaskan bahwa update belum bisa final sebelum user minta Agen Makalah melakukan revisi dulu.\n"
+            : "";
 
         // Query invalidated artifacts (Rewind Feature)
         // Gracefully handle errors - don't break the prompt if query fails
@@ -194,7 +199,7 @@ export const getPaperModeSystemPrompt = async (
 ---
 [PAPER WRITING MODE]
 Tahap: ${stageLabel} (${stage}) | Status: ${status}
-${revisionNote}${pendingNote}${invalidatedArtifactsContext}
+${revisionNote}${pendingNote}${dirtyContextNote}${dirtySyncContractNote}${invalidatedArtifactsContext}
 ATURAN UMUM:
 - DISKUSI DULU sebelum drafting - jangan langsung generate output lengkap
 - Setelah diskusi matang, tulis paper utuh untuk tahap aktif sesuai konteks yang sudah disepakati
@@ -208,6 +213,7 @@ ATURAN UMUM:
 - DILARANG membuat referensi baru tanpa websearch terlebih dahulu
 - submitStageForValidation() HANYA setelah user EKSPLISIT konfirmasi puas
 - Jangan lompat ke tahap berikutnya sebelum currentStage berubah di database
+- Jika status pending_validation dan DIRTY CONTEXT = true, WAJIB nyatakan "data belum sinkron" dan arahkan user minta revisi dulu agar sinkronisasi/update draf bisa dilakukan
 
 ⚠️ FORMAT SITASI IN-TEXT (APA) — WAJIB DIPATUHI SETIAP TURN:
 - DILARANG KERAS memakai nama DOMAIN/WEBSITE sebagai author dalam sitasi
