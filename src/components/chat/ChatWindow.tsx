@@ -582,19 +582,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
     // Document fileIds are sent via transport.body() function (ref pattern)
 
-    // Annotate user message with file IDs for live badge rendering
+    // Annotate user message with file IDs for live badge rendering.
+    // setTimeout needed: sendMessage is async — pushMessage happens in a microtask
+    // AFTER our synchronous code finishes. setTimeout(0) runs after all microtasks.
     if (docFileIds.length > 0) {
-      setMessages((prev) => {
-        const lastIdx = prev.length - 1
-        if (lastIdx >= 0 && prev[lastIdx].role === "user") {
-          const updated = [...prev]
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const msg = updated[lastIdx] as any
-          msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: docFileIds }]
-          return updated
-        }
-        return prev
-      })
+      setTimeout(() => {
+        setMessages((prev) => {
+          const lastIdx = prev.length - 1
+          if (lastIdx >= 0 && prev[lastIdx].role === "user") {
+            const updated = [...prev]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const msg = updated[lastIdx] as any
+            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: docFileIds }]
+            return updated
+          }
+          return prev
+        })
+      }, 0)
     }
 
     // Clear attachments after send
@@ -990,20 +994,22 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
     // Document fileIds are sent via transport.body() function (ref pattern)
 
-    // Annotate user message with file IDs for live badge rendering
-    // (sendMessage pushes user message synchronously before streaming)
+    // Annotate user message with file IDs for live badge rendering.
+    // setTimeout needed: sendMessage is async — pushMessage happens in a microtask.
     if (docFileIds.length > 0) {
-      setMessages((prev) => {
-        const lastIdx = prev.length - 1
-        if (lastIdx >= 0 && prev[lastIdx].role === "user") {
-          const updated = [...prev]
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const msg = updated[lastIdx] as any
-          msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: docFileIds }]
-          return updated
-        }
-        return prev
-      })
+      setTimeout(() => {
+        setMessages((prev) => {
+          const lastIdx = prev.length - 1
+          if (lastIdx >= 0 && prev[lastIdx].role === "user") {
+            const updated = [...prev]
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const msg = updated[lastIdx] as any
+            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: docFileIds }]
+            return updated
+          }
+          return prev
+        })
+      }, 0)
     }
 
     setInput("")
