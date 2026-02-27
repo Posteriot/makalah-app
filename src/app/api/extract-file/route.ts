@@ -82,9 +82,14 @@ function detectFileType(
   if (
     mimeType ===
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    mimeType === "application/vnd.ms-excel" ||
     mimeType === "application/xlsx"
   ) {
     return "xlsx"
+  }
+
+  if (mimeType === "text/csv") {
+    return "txt"
   }
 
   if (
@@ -141,7 +146,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Auth check + Convex token
+    console.log(`[Extract-File Debug] fileId=${fileId} starting extraction`)
     const isAuthed = await isAuthenticated()
+    console.log(`[Extract-File Debug] isAuthed=${isAuthed}`)
     if (!isAuthed) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
@@ -191,6 +198,7 @@ export async function POST(request: NextRequest) {
     const blob = await response.blob()
 
     // 4. Detect file type
+    console.log(`[Extract-File Debug] file.name=${file.name} file.type=${file.type} blob.size=${blob.size}`)
     const fileTypeCategory = detectFileType(file.type)
 
     if (fileTypeCategory === "unsupported") {
@@ -260,7 +268,7 @@ export async function POST(request: NextRequest) {
           ? extractionError.message
           : String(extractionError)
 
-      console.error("[File Extraction API] Extraction failed:", errorMessage)
+      console.error("[Extract-File Debug] Extraction FAILED:", errorMessage, "stack:", extractionError instanceof Error ? extractionError.stack : "no stack")
 
       await fetchMutation(api.files.updateExtractionResult, {
         fileId: fileId as Id<"files">,
