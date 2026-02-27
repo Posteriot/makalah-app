@@ -1,17 +1,29 @@
 /**
  * Payment Provider Factory
  * Returns the active payment provider adapter based on configuration.
- * Resolution: env var PAYMENT_PROVIDER → default "xendit"
- * NOTE: DB config support added in Task 18 after paymentProviderConfigs table exists
+ * Resolution: DB config → env var PAYMENT_PROVIDER → default "xendit"
  */
 
+import { fetchQuery } from "convex/nextjs"
+import { api } from "@convex/_generated/api"
 import type { PaymentProvider, PaymentProviderName } from "./types"
 import { XenditAdapter } from "./adapters/xendit"
 import { MidtransAdapter } from "./adapters/midtrans"
 
 export async function getProvider(): Promise<PaymentProvider> {
-  const providerName: PaymentProviderName =
-    (process.env.PAYMENT_PROVIDER as PaymentProviderName) || "xendit"
+  let providerName: PaymentProviderName = "xendit"
+
+  try {
+    const config = await fetchQuery(
+      api.billing.paymentProviderConfigs.getActiveConfig,
+      {}
+    )
+    providerName = config.activeProvider as PaymentProviderName
+  } catch {
+    // DB unavailable — fall back to env var
+    providerName =
+      (process.env.PAYMENT_PROVIDER as PaymentProviderName) || "xendit"
+  }
 
   switch (providerName) {
     case "xendit":
