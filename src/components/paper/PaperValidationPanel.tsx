@@ -131,8 +131,11 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             disabled={isSubmitting || isLoading}
                             className={cn(
                                 "gap-2 h-9 px-4 rounded-action flex-1 md:flex-initial",
-                                "bg-[var(--chat-success)] hover:brightness-110",
-                                "text-[var(--chat-success-foreground)] border-none"
+                                "bg-[var(--chat-success)]",
+                                "text-[var(--chat-success-foreground)] border-none",
+                                "transition-[background-color,box-shadow] duration-150",
+                                "hover:bg-[color:color-mix(in_oklch,var(--chat-success)_88%,black)]",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-success)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--chat-card)]"
                             )}
                         >
                             <Check className="h-3.5 w-3.5" />
