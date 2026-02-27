@@ -17,7 +17,7 @@ import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
 import { PAPER_WORKFLOW_REMINDER } from "@/lib/ai/paper-workflow-reminder"
 import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
-import { type PaperStageId } from "../../../../convex/paperSessions/constants"
+import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
     isStageResearchIncomplete,
     aiIndicatedSearchIntent,
@@ -45,6 +45,7 @@ import {
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { enforceArtifactSourcesPolicy } from "@/lib/ai/artifact-sources-policy"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
+import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 
 export async function POST(req: Request) {
     try {
@@ -286,6 +287,22 @@ export async function POST(req: Request) {
                 /\bsumber\b/,
                 /\bdata terbaru\b/,
                 /\bberita terbaru\b/,
+            ]
+            return patterns.some((pattern) => pattern.test(normalized))
+        }
+
+        const isExplicitSyncRequest = (text: string) => {
+            if (!text.trim()) return false
+            if (isExplicitSearchRequest(text)) return false
+
+            const normalized = text.toLowerCase()
+            const patterns = [
+                /\bsinkron\b/,
+                /\bsinkronkan\b/,
+                /\bcek state\b/,
+                /\bstatus sesi\b/,
+                /\blanjut dari state\b/,
+                /\bstatus terbaru\b/,
             ]
             return patterns.some((pattern) => pattern.test(normalized))
         }
@@ -621,6 +638,43 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             const stageKey = session.currentStage
             const stageEntry = session.stageData[stageKey] as { ringkasan?: unknown } | undefined
             return typeof stageEntry?.ringkasan === "string" && stageEntry.ringkasan.trim().length > 0
+        }
+
+        const buildForcedSyncStatusMessage = (session: {
+            currentStage?: string
+            stageStatus?: string
+            isDirty?: boolean
+        } | null): string => {
+            const stageCode = session?.currentStage
+            const stageLabel = stageCode && stageCode !== "completed"
+                ? `${getStageLabel(stageCode as PaperStageId)} (${stageCode})`
+                : stageCode === "completed"
+                    ? "Semua tahap selesai (completed)"
+                    : "Tidak diketahui"
+            const stageStatus = session?.stageStatus ?? "unknown"
+            const dirty = session?.isDirty === true
+
+            const lines = [
+                "Status sesi berhasil disinkronkan.",
+                "",
+                `- Tahap aktif: ${stageLabel}`,
+                `- Status tahap: ${stageStatus}`,
+                `- Dirty context: ${dirty ? "true" : "false"}`,
+            ]
+
+            if (stageStatus === "pending_validation" && dirty) {
+                lines.push(
+                    "",
+                    "Data belum sinkron. Minta Agen Makalah melakukan revisi dulu agar sinkronisasi/update draf bisa dilanjutkan."
+                )
+            } else {
+                lines.push(
+                    "",
+                    "Sinkronisasi selesai. Lanjutkan instruksi berikutnya sesuai tahap aktif saat ini."
+                )
+            }
+
+            return lines.join("\n")
         }
 
         // Helper: detect if previous turns already have search results (sources)
@@ -1335,7 +1389,6 @@ Aturan:
         }) {
             let buffer = ""
             let chunkCount = 0
-            const { sanitizeReasoningDelta } = require("@/lib/ai/reasoning-sanitizer") as typeof import("@/lib/ai/reasoning-sanitizer")
 
             return {
                 onReasoningDelta: (delta: string) => {
@@ -1378,6 +1431,8 @@ Aturan:
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
             const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession) || hasRecentSourcesInDb
+            const explicitSyncRequest = !!paperModePrompt
+                && isExplicitSyncRequest(lastUserContent)
 
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
@@ -1500,10 +1555,23 @@ Aturan:
                     && stagePolicyAllowsSearch
                     && (webSearchDecision.enableWebSearch || explicitSearchFallback || explicitSearchRequest)
             }
+
+            if (explicitSyncRequest && !forcePaperToolsMode) {
+                enableWebSearch = false
+                activeStageSearchReason = "explicit_sync_request"
+                activeStageSearchNote = getFunctionToolsModeNote("Sinkronisasi status sesi")
+                console.log("[SearchDecision] Explicit sync override: forced getCurrentPaperState path")
+            }
+
+            const shouldForceGetCurrentPaperState = !enableWebSearch
+                && !!paperModePrompt
+                && explicitSyncRequest
+
             // For ACTIVE stages with explicit save request, force submit validation
             // Use isExplicitSaveSubmitRequest since isUserConfirmation is now scoped to else block
             const shouldForceSubmitValidation = !enableWebSearch
                 && !!paperModePrompt
+                && !shouldForceGetCurrentPaperState
                 && (
                     activeStageSearchReason === "explicit_save_request" ||
                     activeStageSearchReason === "ai_promised_save_user_confirms" ||
@@ -1516,7 +1584,9 @@ Aturan:
             const primaryReasoningProviderOptions = buildReasoningProviderOptions({
                 settings: reasoningSettings,
                 target: "primary",
-                profile: enableWebSearch || shouldForceSubmitValidation ? "tool-heavy" : "narrative",
+                profile: enableWebSearch || shouldForceSubmitValidation || shouldForceGetCurrentPaperState
+                    ? "tool-heavy"
+                    : "narrative",
             })
 
             const webSearchBehaviorSystemNote = `⚠️ MODE PENCARIAN WEB AKTIF - BACA INI DENGAN TELITI!
@@ -1562,9 +1632,43 @@ TIPS PENCARIAN:
             const gatewayTools: ToolSet = enableWebSearch
                 ? ({ google_search: wrappedGoogleSearchTool } as unknown as ToolSet)
                 : tools
+            const forcedToolTelemetryName = shouldForceGetCurrentPaperState
+                ? "getCurrentPaperState"
+                : undefined
+            const telemetrySkillContext = forcedToolTelemetryName
+                ? { ...skillTelemetryContext, fallbackReason: "explicit_sync_request" }
+                : skillTelemetryContext
+            const forcedToolChoice = shouldForceSubmitValidation
+                    ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
+                    : undefined
             // Web search mode: limit to 1 step to prevent AI from trying to call
             // function tools (which don't exist in web search mode) after search
-            const maxToolSteps = enableWebSearch ? 1 : 5
+            // Explicit sync mode: force 2-step flow
+            // step 0: force getCurrentPaperState, step 1: force plain answer (no tools)
+            const maxToolSteps = enableWebSearch
+                ? 1
+                : shouldForceGetCurrentPaperState
+                    ? 2
+                    : 5
+            const deterministicSyncPrepareStep = shouldForceGetCurrentPaperState
+                ? ({ stepNumber }: { stepNumber: number }) => {
+                    if (stepNumber === 0) {
+                        return {
+                            toolChoice: { type: "tool", toolName: "getCurrentPaperState" } as const,
+                            activeTools: ["getCurrentPaperState"],
+                        }
+                    }
+
+                    if (stepNumber === 1) {
+                        return {
+                            toolChoice: "none" as const,
+                            activeTools: [],
+                        }
+                    }
+
+                    return undefined
+                }
+                : undefined
             let primaryReasoningTraceController: ReturnType<typeof createCuratedTraceController> | null = null
             let primaryReasoningTraceSnapshot: PersistedCuratedTraceSnapshot | undefined
             let primaryReasoningSourceCount = 0
@@ -1579,9 +1683,8 @@ TIPS PENCARIAN:
                 messages: fullMessagesGateway,
                 tools: gatewayTools,
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
-                toolChoice: shouldForceSubmitValidation
-                    ? { type: "tool", toolName: "submitStageForValidation" }
-                    : undefined,
+                toolChoice: forcedToolChoice,
+                prepareStep: deterministicSyncPrepareStep,
                 stopWhen: stepCountIs(maxToolSteps),
                 ...samplingOptions,
                 onFinish: enableWebSearch
@@ -1609,14 +1712,20 @@ TIPS PENCARIAN:
                                 .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
                         }
 
-                        if (text) {
-                            if (sources && sources.length > 0) {
-                                sources = await enrichSourcesWithFetchedTitles(sources, {
-                                    concurrency: 4,
-                                    timeoutMs: 2500,
-                                })
-                            }
+                        const normalizedText = typeof text === "string" ? text.trim() : ""
+                        const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
+                        const persistedContent = shouldPersistForcedSyncFallback
+                            ? buildForcedSyncStatusMessage(paperSession)
+                            : normalizedText
 
+                        if (normalizedText.length > 0 && sources && sources.length > 0) {
+                            sources = await enrichSourcesWithFetchedTitles(sources, {
+                                concurrency: 4,
+                                timeoutMs: 2500,
+                            })
+                        }
+
+                        if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {
                                 if (!reasoningTraceEnabled) return undefined
                                 if (primaryReasoningTraceSnapshot) return primaryReasoningTraceSnapshot
@@ -1630,52 +1739,55 @@ TIPS PENCARIAN:
                             })()
 
                             await saveAssistantMessage(
-                                text,
-                                sources,
+                                persistedContent,
+                                normalizedText.length > 0 ? sources : undefined,
                                 modelNames.primary.model,
                                 persistedReasoningTrace
                             )
+                        }
 
-                            // ═══ BILLING: Record token usage ═══
-                            if (usage) {
-                                await recordUsageAfterOperation({
-                                    userId: billingContext.userId,
-                                    conversationId: currentConversationId as Id<"conversations">,
-                                    sessionId: paperSession?._id,
-                                    inputTokens: usage.inputTokens ?? 0,
-                                    outputTokens: usage.outputTokens ?? 0,
-                                    totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
-                                    model: modelNames.primary.model,
-                                    operationType: billingContext.operationType,
-                                    convexToken,
-                                }).catch(err => console.error("[Billing] Failed to record usage:", err))
-                            }
-                            // ═══════════════════════════════════
-
-                            // ═══ TELEMETRY: Primary non-websearch success ═══
-                            logAiTelemetry({
-                                token: convexToken,
-                                userId: userId as Id<"users">,
+                        // ═══ BILLING: Record token usage ═══
+                        if (usage) {
+                            await recordUsageAfterOperation({
+                                userId: billingContext.userId,
                                 conversationId: currentConversationId as Id<"conversations">,
-                                provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
+                                sessionId: paperSession?._id,
+                                inputTokens: usage.inputTokens ?? 0,
+                                outputTokens: usage.outputTokens ?? 0,
+                                totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
                                 model: modelNames.primary.model,
-                                isPrimaryProvider: true,
-                                failoverUsed: false,
-                                mode: isPaperMode ? "paper" : "normal",
-                                success: true,
-                                latencyMs: Date.now() - telemetryStartTime,
-                                inputTokens: usage?.inputTokens,
-                                outputTokens: usage?.outputTokens,
-                                ...skillTelemetryContext,
-                            })
-                            // ═════════════════════════════════════════════════
+                                operationType: billingContext.operationType,
+                                convexToken,
+                            }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                        }
+                        // ═══════════════════════════════════
 
+                        // ═══ TELEMETRY: Primary non-websearch success ═══
+                        logAiTelemetry({
+                            token: convexToken,
+                            userId: userId as Id<"users">,
+                            conversationId: currentConversationId as Id<"conversations">,
+                            provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
+                            model: modelNames.primary.model,
+                            isPrimaryProvider: true,
+                            failoverUsed: false,
+                            toolUsed: forcedToolTelemetryName,
+                            mode: isPaperMode ? "paper" : "normal",
+                            success: true,
+                            latencyMs: Date.now() - telemetryStartTime,
+                            inputTokens: usage?.inputTokens,
+                            outputTokens: usage?.outputTokens,
+                            ...telemetrySkillContext,
+                        })
+                        // ═════════════════════════════════════════════════
+
+                        if (normalizedText.length > 0) {
                             const minPairsForFinalTitle = Number.parseInt(
                                 process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                                 10
                             )
                             await maybeUpdateTitleFromAI({
-                                assistantText: text,
+                                assistantText: normalizedText,
                                 minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
                                     ? minPairsForFinalTitle
                                     : 3,
@@ -2210,7 +2322,7 @@ TIPS PENCARIAN:
                                         latencyMs: Date.now() - telemetryStartTime,
                                         inputTokens: finishUsage?.inputTokens,
                                         outputTokens: finishUsage?.outputTokens,
-                                        ...skillTelemetryContext,
+                                        ...telemetrySkillContext,
                                     })
                                     // ═════════════════════════════════════════════
                                 } catch (err) {
@@ -2405,13 +2517,13 @@ TIPS PENCARIAN:
                 model: modelNames.primary.model,
                 isPrimaryProvider: true,
                 failoverUsed: false,
-                toolUsed: enableWebSearch ? "google_search" : undefined,
+                toolUsed: enableWebSearch ? "google_search" : forcedToolTelemetryName,
                 mode: enableWebSearch ? "websearch" : (isPaperMode ? "paper" : "normal"),
                 success: false,
                 errorType: primaryErrorInfo.errorType,
                 errorMessage: primaryErrorInfo.errorMessage,
                 latencyMs: Date.now() - telemetryStartTime,
-                ...skillTelemetryContext,
+                ...telemetrySkillContext,
             })
             // ════════════════════════════════════════════
 
@@ -2447,15 +2559,46 @@ TIPS PENCARIAN:
                 }
 
                 const fallbackModel = await getOpenRouterModel({ enableWebSearch: false })
+                const fallbackForcedToolChoice = shouldForceSubmitValidation
+                    ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
+                    : undefined
+                const fallbackMaxToolSteps = shouldForceGetCurrentPaperState ? 2 : 5
+                const fallbackDeterministicSyncPrepareStep = shouldForceGetCurrentPaperState
+                    ? ({ stepNumber }: { stepNumber: number }) => {
+                        if (stepNumber === 0) {
+                            return {
+                                toolChoice: { type: "tool", toolName: "getCurrentPaperState" } as const,
+                                activeTools: ["getCurrentPaperState"],
+                            }
+                        }
+
+                        if (stepNumber === 1) {
+                            return {
+                                toolChoice: "none" as const,
+                                activeTools: [],
+                            }
+                        }
+
+                        return undefined
+                    }
+                    : undefined
                 const result = streamText({
                     model: fallbackModel,
                     messages: fullMessagesBase,
                     tools,
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
-                    stopWhen: stepCountIs(5),
+                    toolChoice: fallbackForcedToolChoice,
+                    prepareStep: fallbackDeterministicSyncPrepareStep,
+                    stopWhen: stepCountIs(fallbackMaxToolSteps),
                     ...samplingOptions,
                     onFinish: async ({ text, usage }) => {
-                        if (text) {
+                        const normalizedText = typeof text === "string" ? text.trim() : ""
+                        const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
+                        const persistedContent = shouldPersistForcedSyncFallback
+                            ? buildForcedSyncStatusMessage(paperSession)
+                            : normalizedText
+
+                        if (persistedContent.length > 0) {
                             const persistedReasoningTrace = (() => {
                                 if (!reasoningTraceEnabled) return undefined
                                 if (fallbackReasoningTraceSnapshot) return fallbackReasoningTraceSnapshot
@@ -2469,56 +2612,59 @@ TIPS PENCARIAN:
                             })()
 
                             await saveAssistantMessage(
-                                text,
+                                persistedContent,
                                 undefined,
                                 modelNames.fallback.model,
                                 persistedReasoningTrace
                             )
+                        }
+                        if (normalizedText.length > 0) {
                             const minPairsForFinalTitle = Number.parseInt(
                                 process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
                                 10
                             )
                             await maybeUpdateTitleFromAI({
-                                assistantText: text,
+                                assistantText: normalizedText,
                                 minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
                                     ? minPairsForFinalTitle
                                     : 3,
                             })
-
-                            // ═══ BILLING: Record token usage (fallback) ═══
-                            if (usage) {
-                                await recordUsageAfterOperation({
-                                    userId: billingContext.userId,
-                                    conversationId: currentConversationId as Id<"conversations">,
-                                    sessionId: paperSession?._id,
-                                    inputTokens: usage.inputTokens ?? 0,
-                                    outputTokens: usage.outputTokens ?? 0,
-                                    totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
-                                    model: modelNames.fallback.model,
-                                    operationType: billingContext.operationType,
-                                    convexToken,
-                                }).catch(err => console.error("[Billing] Failed to record usage:", err))
-                            }
-                            // ═══════════════════════════════════════════════
-
-                            // ═══ TELEMETRY: Fallback non-websearch success ═══
-                            logAiTelemetry({
-                                token: convexToken,
-                                userId: userId as Id<"users">,
-                                conversationId: currentConversationId as Id<"conversations">,
-                                provider: modelNames.fallback.provider as "vercel-gateway" | "openrouter",
-                                model: modelNames.fallback.model,
-                                isPrimaryProvider: false,
-                                failoverUsed: true,
-                                mode: isPaperMode ? "paper" : "normal",
-                                success: true,
-                                latencyMs: Date.now() - telemetryStartTime,
-                                inputTokens: usage?.inputTokens,
-                                outputTokens: usage?.outputTokens,
-                                ...skillTelemetryContext,
-                            })
-                            // ═════════════════════════════════════════════════
                         }
+
+                        // ═══ BILLING: Record token usage (fallback) ═══
+                        if (usage) {
+                            await recordUsageAfterOperation({
+                                userId: billingContext.userId,
+                                conversationId: currentConversationId as Id<"conversations">,
+                                sessionId: paperSession?._id,
+                                inputTokens: usage.inputTokens ?? 0,
+                                outputTokens: usage.outputTokens ?? 0,
+                                totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+                                model: modelNames.fallback.model,
+                                operationType: billingContext.operationType,
+                                convexToken,
+                            }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                        }
+                        // ═══════════════════════════════════════════════
+
+                        // ═══ TELEMETRY: Fallback non-websearch success ═══
+                        logAiTelemetry({
+                            token: convexToken,
+                            userId: userId as Id<"users">,
+                            conversationId: currentConversationId as Id<"conversations">,
+                            provider: modelNames.fallback.provider as "vercel-gateway" | "openrouter",
+                            model: modelNames.fallback.model,
+                            isPrimaryProvider: false,
+                            failoverUsed: true,
+                            toolUsed: forcedToolTelemetryName,
+                            mode: isPaperMode ? "paper" : "normal",
+                            success: true,
+                            latencyMs: Date.now() - telemetryStartTime,
+                            inputTokens: usage?.inputTokens,
+                            outputTokens: usage?.outputTokens,
+                            ...telemetrySkillContext,
+                        })
+                        // ═════════════════════════════════════════════════
                     },
                 })
                 const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
@@ -2957,7 +3103,7 @@ TIPS PENCARIAN:
                                     latencyMs: Date.now() - telemetryStartTime,
                                     inputTokens: finishUsage?.inputTokens,
                                     outputTokens: finishUsage?.outputTokens,
-                                    ...skillTelemetryContext,
+                                    ...telemetrySkillContext,
                                 })
                                 // ═════════════════════════════════════════════
 
