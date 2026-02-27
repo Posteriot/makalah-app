@@ -32,8 +32,10 @@ export function FileUploadButton({ conversationId, onFileUploaded, onImageDataUr
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
+            "application/vnd.ms-excel", // xls
             "application/vnd.openxmlformats-officedocument.presentationml.presentation", // pptx
             "text/plain",
+            "text/csv",
             "image/jpeg",
             "image/png",
             "image/gif",
@@ -122,7 +124,7 @@ export function FileUploadButton({ conversationId, onFileUploaded, onImageDataUr
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept=".pdf,.doc,.docx,.xlsx,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                 onChange={handleFileSelect}
                 disabled={isUploading}
             />
