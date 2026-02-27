@@ -129,13 +129,9 @@ export function ChatInput({
 
     // Shared send/stop button
     const renderSendButton = (size: "sm" | "md" = "md") => {
-        const btnClass = cn(
-            "flex items-center justify-center rounded-action bg-transparent transition-colors duration-150",
-            "text-[var(--chat-muted-foreground)]",
+        const baseBtnClass = cn(
+            "flex items-center justify-center rounded-action transition-colors duration-150",
             size === "sm" ? "w-8 h-8" : "w-9 h-9",
-            // Desktop: hover, Mobile: active
-            "hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]",
-            "active:bg-[var(--chat-accent)] active:text-[var(--chat-foreground)]"
         )
 
         if (isGenerating) {
@@ -143,10 +139,24 @@ export function ChatInput({
                 <button
                     type="button"
                     onClick={onStop}
-                    className={btnClass}
+                    className={cn(
+                        baseBtnClass,
+                        "chat-pause-button group",
+                        "relative border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] text-[var(--chat-foreground)] shadow-sm",
+                        "transition-[color,background-color,border-color,box-shadow,transform] duration-150",
+                        "hover:border-[color:var(--chat-info)] hover:bg-[var(--chat-info)] hover:text-[var(--chat-info-foreground)]",
+                        "hover:shadow-[0_0_0_3px_color-mix(in_oklch,var(--chat-info)_28%,transparent)]",
+                        "hover:-translate-y-px active:scale-95",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-info)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--chat-card)]"
+                    )}
                     aria-label="Stop generating response"
                 >
-                    <PauseSolid className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} />
+                    <span aria-hidden="true" className="chat-pause-hover-halo" />
+                    <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-[-3px] rounded-[10px] border border-[color:var(--chat-muted-foreground)]/60 animate-chat-pause-ring"
+                    />
+                    <PauseSolid className={cn("chat-pause-icon relative z-10 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110", size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4")} />
                 </button>
             )
         }
@@ -155,7 +165,13 @@ export function ChatInput({
             <button
                 type="submit"
                 disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
-                className={cn(btnClass, "disabled:opacity-30 disabled:cursor-not-allowed")}
+                className={cn(
+                    baseBtnClass,
+                    "bg-transparent text-[var(--chat-muted-foreground)]",
+                    "hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]",
+                    "active:bg-[var(--chat-accent)] active:text-[var(--chat-foreground)]",
+                    "disabled:opacity-30 disabled:cursor-not-allowed"
+                )}
                 aria-label="Send message"
             >
                 <Send className={size === "sm" ? "h-4 w-4" : "h-5 w-5"} />

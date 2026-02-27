@@ -67,13 +67,12 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
             )}
         >
             {isDirty && (
-                <div className="flex items-start gap-2 p-3 mx-4 mt-4 mb-0 bg-[var(--chat-warning)] border border-[color:var(--chat-warning)] rounded-action text-xs text-[var(--chat-warning-foreground)]">
-                    <WarningCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    <div>
-                        <span className="font-semibold">Percakapan berubah sejak data terakhir disimpan.</span>
-                        <span className="block mt-0.5 text-[var(--chat-muted-foreground)]">
-                            Sebaiknya minta AI sinkronkan data sebelum approve.
-                        </span>
+                <div className="mx-4 mt-4 mb-0 border-b border-[color:var(--chat-border)] pb-3">
+                    <div className="flex items-start gap-3 text-sm leading-relaxed">
+                        <WarningCircle className="mt-[2px] h-4 w-4 flex-shrink-0 text-[var(--chat-secondary-foreground)]" />
+                        <p className="min-w-0 flex-1 text-[var(--chat-foreground)] whitespace-normal break-words">
+                            Percakapan berubah sejak data terakhir disimpan. Minta Agen Makalah sinkronkan data sebelum approve.
+                        </p>
                     </div>
                 </div>
             )}
@@ -131,8 +130,11 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             disabled={isSubmitting || isLoading}
                             className={cn(
                                 "gap-2 h-9 px-4 rounded-action flex-1 md:flex-initial",
-                                "bg-[var(--chat-success)] hover:brightness-110",
-                                "text-[var(--chat-success-foreground)] border-none"
+                                "bg-[var(--chat-success)]",
+                                "text-[var(--chat-success-foreground)] border-none",
+                                "transition-[background-color,box-shadow] duration-150",
+                                "hover:bg-[color:color-mix(in_oklch,var(--chat-success)_88%,black)]",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-success)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--chat-card)]"
                             )}
                         >
                             <Check className="h-3.5 w-3.5" />
