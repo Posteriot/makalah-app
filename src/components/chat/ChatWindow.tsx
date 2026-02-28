@@ -534,8 +534,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         api: "/api/chat",
         body: () => ({
           conversationId: safeConversationId,
-          // Safety fallback: keep fileIds in transport body to avoid request-body merge edge cases.
-          fileIds: attachedFilesRef.current.map((f) => f.fileId),
         }),
       }),
     [safeConversationId]
@@ -639,6 +637,15 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     // Capture doc files metadata before clearing state
     const docFiles = currentFiles.filter((f) => !f.type.startsWith("image/"))
 
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[ATTACH-DIAG][starter] sending", {
+        attachedCount: currentFiles.length,
+        fileIds,
+        imageCount: imageFileParts.length,
+        docCount: docFiles.length,
+      })
+    }
+
     if (imageFileParts.length > 0) {
       sendMessage(
         { text: pendingPrompt, files: imageFileParts },
@@ -657,12 +664,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       const allFileNames = currentFiles.map((f) => f.name)
       setTimeout(() => {
         setMessages((prev) => {
-          const lastIdx = prev.length - 1
-          if (lastIdx >= 0 && prev[lastIdx].role === "user") {
+          const targetUserIdx = [...prev]
+            .map((msg, idx) => ({ msg, idx }))
+            .reverse()
+            .find(({ msg }) => msg.role === "user")?.idx ?? -1
+          if (targetUserIdx >= 0) {
             const updated = [...prev]
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const msg = updated[lastIdx] as any
-            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
+            const msg = updated[targetUserIdx] as any
+            const existingAnnotations = Array.isArray(msg.annotations) ? msg.annotations : []
+            const hasFileIdsAnnotation = existingAnnotations.some(
+              (annotation: { type?: string }) => annotation?.type === "file_ids"
+            )
+            if (!hasFileIdsAnnotation) {
+              msg.annotations = [...existingAnnotations, { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
+            }
             return updated
           }
           return prev
@@ -1089,6 +1105,15 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     // Capture doc files metadata before clearing state
     const docFiles = attachedFiles.filter((f) => !f.type.startsWith("image/"))
 
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[ATTACH-DIAG][submit] sending", {
+        attachedCount: attachedFiles.length,
+        fileIds,
+        imageCount: imageFileParts.length,
+        docCount: docFiles.length,
+      })
+    }
+
     if (imageFileParts.length > 0) {
       sendMessage(
         { text: input || " ", files: imageFileParts },
@@ -1106,12 +1131,21 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       const allFileNames = attachedFiles.map((f) => f.name)
       setTimeout(() => {
         setMessages((prev) => {
-          const lastIdx = prev.length - 1
-          if (lastIdx >= 0 && prev[lastIdx].role === "user") {
+          const targetUserIdx = [...prev]
+            .map((msg, idx) => ({ msg, idx }))
+            .reverse()
+            .find(({ msg }) => msg.role === "user")?.idx ?? -1
+          if (targetUserIdx >= 0) {
             const updated = [...prev]
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const msg = updated[lastIdx] as any
-            msg.annotations = [...(msg.annotations ?? []), { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
+            const msg = updated[targetUserIdx] as any
+            const existingAnnotations = Array.isArray(msg.annotations) ? msg.annotations : []
+            const hasFileIdsAnnotation = existingAnnotations.some(
+              (annotation: { type?: string }) => annotation?.type === "file_ids"
+            )
+            if (!hasFileIdsAnnotation) {
+              msg.annotations = [...existingAnnotations, { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
+            }
             return updated
           }
           return prev

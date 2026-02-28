@@ -87,6 +87,15 @@ export async function POST(req: Request) {
         const body = await req.json()
         const { messages, conversationId, fileIds } = body
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+        if (process.env.NODE_ENV !== "production") {
+            console.info("[ATTACH-DIAG][route] request body", {
+                conversationId,
+                fileIdsIsArray: Array.isArray(fileIds),
+                fileIdsLength: Array.isArray(fileIds) ? fileIds.length : null,
+                fileIdsPreview: Array.isArray(fileIds) ? fileIds.slice(0, 5) : null,
+                messageCount: Array.isArray(messages) ? messages.length : null,
+            })
+        }
 
         // 3. Get Convex User ID
         const userId = await fetchQueryWithToken(api.chatHelpers.getMyUserId, {})
@@ -389,6 +398,13 @@ export async function POST(req: Request) {
                     fileContext += `❌ File gagal diproses: ${errorMsg}\n\n`
                 }
             }
+        }
+        if (process.env.NODE_ENV !== "production") {
+            console.info("[ATTACH-DIAG][route] context result", {
+                fileIdsLength: Array.isArray(fileIds) ? fileIds.length : null,
+                fileContextLength: fileContext.length,
+                fileContextPreview: fileContext.slice(0, 180),
+            })
         }
         // Convert UIMessages to model messages format
         const rawModelMessages = convertToModelMessages(messages)
