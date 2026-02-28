@@ -10,6 +10,9 @@ describe("chat window unified send helper", () => {
     const source = read("src/components/chat/ChatWindow.tsx")
 
     expect(source).toContain("const sendUserMessageWithContext = useCallback")
+    expect(source).toContain("attachmentMode")
+    expect(source).toContain("replaceAttachmentContext")
+    expect(source).toContain("mode: \"inherit\" as const")
     expect(source).toContain("const sendMessageWithPendingIndicator = useCallback")
     expect(source).toContain("sendUserMessageWithContext({")
 
