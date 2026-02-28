@@ -47,6 +47,33 @@ File attachment menggunakan dua jalur berbeda tergantung tipe file:
 
 Libraries extraction (pdf-parse, mammoth, xlsx-populate, officeparser) membutuhkan full Node.js environment. Convex runtime tidak support native Node.js modules ini. Maka extraction diproses di Next.js API route yang berjalan di Node.js.
 
+## Conversation-Scoped Attachment Context (Durable)
+
+Mulai implementasi 2026-03-01, attachment tidak lagi hanya bergantung ke payload per-message dari client.
+
+Tambahan arsitektur:
+
+1. **Server state per conversation**
+- Table baru `conversationAttachmentContexts` menyimpan `activeFileIds` per `conversationId`.
+
+2. **Resolver `effectiveFileIds` di `/api/chat`**
+- Prioritas:
+  - `clearAttachmentContext: true` → kosongkan context.
+  - `fileIds` explicit non-empty → replace context aktif.
+  - selain itu (`inheritAttachmentContext !== false`) → inherit dari context aktif server.
+
+3. **Unified send pipeline di `ChatWindow`**
+- Semua jalur kirim user (submit normal, template, approve/revise, edit-resend, starter prompt) lewat helper tunggal.
+- Tidak ada lagi jalur text-only yang bypass attachment contract.
+
+4. **Composer sync dari server context**
+- Chip attachment di composer dihydrate dari context aktif server.
+- Attachment tetap aktif lintas turn dan lintas refresh sampai user clear context.
+
+5. **Hard guard send rule**
+- UI: tombol send aktif hanya jika ada teks (`input.trim().length > 0`).
+- Backend: jika ada attachment tapi teks kosong, route return `400`.
+
 ## Tipe File yang Didukung
 
 | Format | MIME Type | Library | Catatan |
