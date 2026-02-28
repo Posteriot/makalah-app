@@ -342,23 +342,13 @@ export function MessageBubble({
         // "Kirim" selalu trigger regeneration, bahkan jika konten tidak berubah
         // User mungkin ingin retry/regenerate AI response tanpa mengubah pesan
         const contentToSend = editContent.trim() || content // Fallback ke content original jika empty
-        const annotations = (message as {
-            annotations?: {
-                type?: string
-                fileIds?: string[]
-                fileNames?: string[]
-                fileSizes?: number[]
-                fileTypes?: string[]
-            }[]
-        }).annotations
-        const fileAnnotation = annotations?.find((annotation) => annotation.type === "file_ids")
         onEdit?.({
             messageId: message.id,
             newContent: contentToSend,
-            fileIds: fileAnnotation?.fileIds ?? [],
-            fileNames: fileAnnotation?.fileNames ?? [],
-            fileSizes: fileAnnotation?.fileSizes ?? [],
-            fileTypes: fileAnnotation?.fileTypes ?? [],
+            fileIds,
+            fileNames,
+            fileSizes,
+            fileTypes,
         })
         setIsEditing(false)
     }
@@ -407,10 +397,32 @@ export function MessageBubble({
         }[]
     }).annotations
     const fileAnnotations = annotations?.find((annotation) => annotation.type === "file_ids")
-    const fileIds = fileAnnotations?.fileIds ?? []
-    const fileNames = fileAnnotations?.fileNames ?? []
-    const fileSizes = fileAnnotations?.fileSizes ?? []
-    const fileTypes = fileAnnotations?.fileTypes ?? []
+    const persistedFileIds = (message as { fileIds?: string[] }).fileIds ?? []
+
+    const annotationFileIds = fileAnnotations?.fileIds ?? []
+    const annotationFileNames = fileAnnotations?.fileNames ?? []
+    const annotationFileSizes = fileAnnotations?.fileSizes ?? []
+    const annotationFileTypes = fileAnnotations?.fileTypes ?? []
+
+    const fileIds = persistedFileIds.length > 0 ? persistedFileIds : annotationFileIds
+    const fileNames = fileIds.map((fileId, index) => {
+        if (persistedFileIds.length > 0) {
+            return fileMetaMap?.get(fileId)?.name ?? fileNameMap?.get(fileId) ?? annotationFileNames[index] ?? "file"
+        }
+        return annotationFileNames[index] ?? fileMetaMap?.get(fileId)?.name ?? fileNameMap?.get(fileId) ?? "file"
+    })
+    const fileSizes = fileIds.map((fileId, index) => {
+        if (persistedFileIds.length > 0) {
+            return fileMetaMap?.get(fileId)?.size ?? annotationFileSizes[index] ?? -1
+        }
+        return annotationFileSizes[index] ?? fileMetaMap?.get(fileId)?.size ?? -1
+    })
+    const fileTypes = fileIds.map((fileId, index) => {
+        if (persistedFileIds.length > 0) {
+            return fileMetaMap?.get(fileId)?.type ?? annotationFileTypes[index] ?? ""
+        }
+        return annotationFileTypes[index] ?? fileMetaMap?.get(fileId)?.type ?? ""
+    })
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     // Live signals from streaming take priority; persisted artifacts are fallback after refresh

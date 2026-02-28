@@ -20,6 +20,7 @@ interface ChatInputProps {
     onFileAttached: (file: AttachedFileMeta) => void
     onFileRemoved: (fileId: Id<"files">) => void
     onImageDataUrl?: (fileId: Id<"files">, dataUrl: string) => void
+    onClearAttachmentContext?: () => void
 }
 
 // Max heights: desktop 200px, mobile 6 lines (~144px)
@@ -37,7 +38,8 @@ export function ChatInput({
     attachedFiles,
     onFileAttached,
     onFileRemoved,
-    onImageDataUrl
+    onImageDataUrl,
+    onClearAttachmentContext,
 }: ChatInputProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const mobileTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -187,6 +189,26 @@ export function ChatInput({
         )
     }
 
+    const renderClearAttachmentButton = (size: "sm" | "md" = "md") => {
+        if (!onClearAttachmentContext || attachedFiles.length === 0) return null
+
+        return (
+            <button
+                type="button"
+                onClick={onClearAttachmentContext}
+                className={cn(
+                    "inline-flex items-center rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] text-[var(--chat-muted-foreground)] transition-colors",
+                    "hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]",
+                    size === "sm" ? "h-8 px-2 text-[10px]" : "h-8 px-2.5 text-[11px]"
+                )}
+                aria-label="Clear attachment context"
+            >
+                <Xmark className="h-3 w-3" />
+                <span className="ml-1 font-mono">Clear</span>
+            </button>
+        )
+    }
+
     return (
         <>
             {/* ═══════════════════════════════════════════════
@@ -210,12 +232,13 @@ export function ChatInput({
                             />
                         </div>
                         <div className="col-span-3 mt-0.5 flex items-center justify-between pt-1">
-                            <div className="flex-none">
+                            <div className="flex items-center gap-2">
                                 <FileUploadButton
                                     conversationId={conversationId}
                                     onFileUploaded={onFileAttached}
                                     onImageDataUrl={onImageDataUrl}
                                 />
+                                {renderClearAttachmentButton()}
                             </div>
                             {renderSendButton()}
                         </div>
@@ -241,12 +264,13 @@ export function ChatInput({
                         {renderFileChips("px-2 pt-2")}
                         <div className="flex items-end gap-1 px-2 py-1.5">
                         {/* Left: Attach */}
-                        <div className="shrink-0 self-end">
+                        <div className="shrink-0 self-end flex items-center gap-1">
                             <FileUploadButton
                                 conversationId={conversationId}
                                 onFileUploaded={onFileAttached}
                                 onImageDataUrl={onImageDataUrl}
                             />
+                            {renderClearAttachmentButton("sm")}
                         </div>
 
                         {/* Center: Textarea or placeholder */}
@@ -350,11 +374,14 @@ export function ChatInput({
 
                         {/* Footer toolbar */}
                         <div className="flex items-center justify-between px-3 py-2 border-t border-[color:var(--chat-border)] shrink-0">
-                            <FileUploadButton
-                                conversationId={conversationId}
-                                onFileUploaded={onFileAttached}
-                                onImageDataUrl={onImageDataUrl}
-                            />
+                            <div className="flex items-center gap-2">
+                                <FileUploadButton
+                                    conversationId={conversationId}
+                                    onFileUploaded={onFileAttached}
+                                    onImageDataUrl={onImageDataUrl}
+                                />
+                                {renderClearAttachmentButton("sm")}
+                            </div>
                             {renderSendButton("sm")}
                         </div>
                     </form>
