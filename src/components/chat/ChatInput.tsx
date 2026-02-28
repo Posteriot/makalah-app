@@ -17,10 +17,13 @@ interface ChatInputProps {
     onStop?: () => void
     conversationId: string | null
     attachedFiles: AttachedFileMeta[]
+    contextFiles?: AttachedFileMeta[]
     onFileAttached: (file: AttachedFileMeta) => void
     onFileRemoved: (fileId: Id<"files">) => void
+    onContextFileRemoved?: (fileId: Id<"files">) => void
     onImageDataUrl?: (fileId: Id<"files">, dataUrl: string) => void
     onClearAttachmentContext?: () => void
+    hasActiveAttachmentContext?: boolean
 }
 
 // Max heights: desktop 200px, mobile 6 lines (~144px)
@@ -36,10 +39,13 @@ export function ChatInput({
     onStop,
     conversationId,
     attachedFiles,
+    contextFiles,
     onFileAttached,
     onFileRemoved,
+    onContextFileRemoved,
     onImageDataUrl,
     onClearAttachmentContext,
+    hasActiveAttachmentContext = false,
 }: ChatInputProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const mobileTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -98,41 +104,73 @@ export function ChatInput({
         setIsFullscreen(false)
     }, [onSubmit])
 
-    // Shared file attachment chips
-    const renderFileChips = (containerClassName?: string) => {
-        if (attachedFiles.length === 0) return null
-        return (
-            <div className={cn("flex flex-wrap gap-2", containerClassName)}>
-                {attachedFiles.map((file) => {
-                    const { baseName, extension } = splitFileName(file.name)
+    const displayedContextFiles = contextFiles ?? attachedFiles
 
-                    return (
-                        <div
-                            key={file.fileId}
-                            className="inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-accent)] py-1 pl-2.5 pr-1.5 text-xs font-mono text-[var(--chat-info)]"
-                            title={file.name}
+    // Shared context tray
+    const renderContextTray = (containerClassName?: string) => {
+        const hasContext = displayedContextFiles.length > 0 || hasActiveAttachmentContext
+        if (!hasContext) return null
+        return (
+            <div className={cn("space-y-2", containerClassName)}>
+                <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono uppercase tracking-wide text-[var(--chat-muted-foreground)]">
+                        Konteks
+                    </span>
+                    {onClearAttachmentContext && (
+                        <button
+                            type="button"
+                            onClick={onClearAttachmentContext}
+                            className="inline-flex h-6 items-center rounded-action border border-[color:var(--chat-border)] px-2 text-[10px] font-mono text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]"
+                            aria-label="Hapus semua"
                         >
-                            {isImageType(file.type) ? (
-                                <MediaImage className="h-3 w-3 shrink-0" />
-                            ) : (
-                                <Page className="h-3 w-3 shrink-0" />
-                            )}
-                            <span className="inline-flex min-w-0 items-baseline">
-                                <span className="max-w-[120px] truncate">{baseName}</span>
-                                {extension && <span className="shrink-0">{extension}</span>}
-                            </span>
-                            <span className="shrink-0 text-[10px] opacity-60">{formatFileSize(file.size)}</span>
-                            <button
-                                type="button"
-                                onClick={() => onFileRemoved(file.fileId)}
-                                className="ml-0.5 rounded p-0.5 transition-colors hover:bg-[color:var(--chat-info)]/15"
-                                aria-label={`Remove ${file.name}`}
-                            >
-                                <Xmark className="h-3 w-3" />
-                            </button>
-                        </div>
-                    )
-                })}
+                            Hapus semua
+                        </button>
+                    )}
+                </div>
+                {displayedContextFiles.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                        {displayedContextFiles.map((file) => {
+                            const { baseName, extension } = splitFileName(file.name)
+
+                            return (
+                                <div
+                                    key={file.fileId}
+                                    className="inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-accent)] py-1 pl-2.5 pr-1.5 text-xs font-mono text-[var(--chat-info)]"
+                                    title={file.name}
+                                >
+                                    {isImageType(file.type) ? (
+                                        <MediaImage className="h-3 w-3 shrink-0" />
+                                    ) : (
+                                        <Page className="h-3 w-3 shrink-0" />
+                                    )}
+                                    <span className="inline-flex min-w-0 items-baseline">
+                                        <span className="max-w-[120px] truncate">{baseName}</span>
+                                        {extension && <span className="shrink-0">{extension}</span>}
+                                    </span>
+                                    <span className="shrink-0 text-[10px] opacity-60">{formatFileSize(file.size)}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (onContextFileRemoved) {
+                                                onContextFileRemoved(file.fileId)
+                                                return
+                                            }
+                                            onFileRemoved(file.fileId)
+                                        }}
+                                        className="ml-0.5 rounded p-0.5 transition-colors hover:bg-[color:var(--chat-info)]/15"
+                                        aria-label={`Hapus file konteks ${file.name}`}
+                                    >
+                                        <Xmark className="h-3 w-3" />
+                                    </button>
+                                </div>
+                            )
+                        })}
+                    </div>
+                ) : (
+                    <p className="text-xs font-mono text-[var(--chat-muted-foreground)]">
+                        Konteks aktif tersimpan.
+                    </p>
+                )}
             </div>
         )
     }
@@ -189,26 +227,6 @@ export function ChatInput({
         )
     }
 
-    const renderClearAttachmentButton = (size: "sm" | "md" = "md") => {
-        if (!onClearAttachmentContext || attachedFiles.length === 0) return null
-
-        return (
-            <button
-                type="button"
-                onClick={onClearAttachmentContext}
-                className={cn(
-                    "inline-flex items-center rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] text-[var(--chat-muted-foreground)] transition-colors",
-                    "hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]",
-                    size === "sm" ? "h-8 px-2 text-[10px]" : "h-8 px-2.5 text-[11px]"
-                )}
-                aria-label="Clear attachment context"
-            >
-                <Xmark className="h-3 w-3" />
-                <span className="ml-1 font-mono">Clear</span>
-            </button>
-        )
-    }
-
     return (
         <>
             {/* ═══════════════════════════════════════════════
@@ -217,7 +235,7 @@ export function ChatInput({
             <div className="hidden md:block py-4 bg-transparent" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                 <form onSubmit={onSubmit} className="flex">
                     <div className="grid w-full grid-cols-[auto_1fr_auto] items-end gap-x-2 gap-y-1 rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] px-3 py-1.5">
-                        {renderFileChips("col-span-3 px-1 pt-1")}
+                        {renderContextTray("col-span-3 px-1 pt-1")}
                         <div className="col-span-3">
                             <textarea
                                 ref={textareaRef}
@@ -232,13 +250,12 @@ export function ChatInput({
                             />
                         </div>
                         <div className="col-span-3 mt-0.5 flex items-center justify-between pt-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center">
                                 <FileUploadButton
                                     conversationId={conversationId}
                                     onFileUploaded={onFileAttached}
                                     onImageDataUrl={onImageDataUrl}
                                 />
-                                {renderClearAttachmentButton()}
                             </div>
                             {renderSendButton()}
                         </div>
@@ -261,7 +278,7 @@ export function ChatInput({
                             "w-full rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] transition-all duration-150",
                         )}
                     >
-                        {renderFileChips("px-2 pt-2")}
+                        {renderContextTray("px-2 pt-2")}
                         <div className="flex items-end gap-1 px-2 py-1.5">
                         {/* Left: Attach */}
                         <div className="shrink-0 self-end flex items-center gap-1">
@@ -270,7 +287,6 @@ export function ChatInput({
                                 onFileUploaded={onFileAttached}
                                 onImageDataUrl={onImageDataUrl}
                             />
-                            {renderClearAttachmentButton("sm")}
                         </div>
 
                         {/* Center: Textarea or placeholder */}
@@ -360,7 +376,7 @@ export function ChatInput({
                     {/* Textarea fills remaining space */}
                     <form onSubmit={handleMobileSubmit} className="flex-1 flex flex-col min-h-0">
                         <div className="flex-1 px-4 py-3 overflow-y-auto">
-                            {renderFileChips("mb-3")}
+                            {renderContextTray("mb-3")}
                             <textarea
                                 ref={fullscreenTextareaRef}
                                 className="w-full h-full resize-none bg-transparent focus:outline-none text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)]"
@@ -380,7 +396,6 @@ export function ChatInput({
                                     onFileUploaded={onFileAttached}
                                     onImageDataUrl={onImageDataUrl}
                                 />
-                                {renderClearAttachmentButton("sm")}
                             </div>
                             {renderSendButton("sm")}
                         </div>

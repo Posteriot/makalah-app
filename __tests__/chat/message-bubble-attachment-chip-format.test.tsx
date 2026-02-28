@@ -9,6 +9,7 @@ describe("message bubble attachment chip format", () => {
         message={{
           id: "msg-user-1",
           role: "user",
+          attachmentMode: "explicit",
           parts: [{ type: "text", text: "Apa ini?" }],
           annotations: [
             {

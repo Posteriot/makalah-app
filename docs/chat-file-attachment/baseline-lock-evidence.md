@@ -51,6 +51,20 @@ Interpretasi:
   - context dikelola di tray `Konteks` dengan remove per file / hapus semua,
   - merge multi-file by default.
 
+## Final verification gate (2026-03-01)
+
+Targeted regression suite lulus:
+
+- `chat-effective-fileids-resolution`
+- `unified-send-helper`
+- `clear-attachment-context`
+- `attachment-resend-contract`
+- `message-bubble-attachment-chip-format`
+- `explicit-vs-inherit-bubble-visibility`
+- `multi-file-context-merge-regression`
+
+Build production lulus: `npm run build` (Next.js 16.1.6).
+
 ## Indikator diagnostik yang dikunci
 
 - `[ATTACH-DIAG][route] request body` menunjukkan:

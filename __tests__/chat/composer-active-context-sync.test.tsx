@@ -6,12 +6,13 @@ const read = (relativePath: string) =>
   readFileSync(path.join(process.cwd(), relativePath), "utf8")
 
 describe("composer active context sync", () => {
-  it("hydrates and syncs attachment composer from conversation attachment context", () => {
+  it("keeps active context on server while composer stays draft-only after send", () => {
     const source = read("src/components/chat/ChatWindow.tsx")
 
     expect(source).toContain("api.conversationAttachmentContexts.getByConversation")
     expect(source).toContain("const activeContextAttachments = useMemo")
-    expect(source).toContain("if (isAttachmentDraftDirty) return")
-    expect(source).toContain("setAttachedFiles(activeContextAttachments)")
+    expect(source).toContain("if (isAttachmentDraftDirty)")
+    expect(source).toContain("mode: \"inherit\" as const")
+    expect(source).toContain("setAttachedFiles([])")
   })
 })

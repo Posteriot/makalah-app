@@ -38,10 +38,12 @@ Scope: local + preview deployment
 2. Follow-up tanpa re-attach
 - Request body boleh tanpa `fileIds`, tapi diag `effective fileIdsLength` tetap > 0 (inherit).
 - Model tetap mengenali dokumen yang sama.
+- Bubble user follow-up **tidak** menampilkan chip attachment (mode `inherit`).
+- Tray `Konteks` di composer tetap menampilkan file aktif.
 
 3. Edit + resend
-- Request resend harus mempertahankan attachment metadata.
-- Chip tetap tampil setelah resend.
+- Jika message awal `explicit`, resend tetap `explicit` (chip tampil).
+- Jika message awal `inherit`, resend tetap `inherit` (chip tidak tampil).
 - Tidak ada split perilaku “text terkirim tapi attachment hilang”.
 
 4. Refresh halaman
@@ -49,7 +51,7 @@ Scope: local + preview deployment
 - Bubble history tetap render chip dari persisted `fileIds`.
 
 5. Clear attachment context
-- Tombol `Clear` di composer menghapus chip composer.
+- Tombol `Hapus semua` di tray `Konteks` menghapus seluruh file aktif.
 - Follow-up send berikutnya tidak membawa effective `fileIds`.
 
 6. Setelah clear

@@ -59,7 +59,8 @@ Tambahan arsitektur:
 2. **Resolver `effectiveFileIds` di `/api/chat`**
 - Prioritas:
   - `clearAttachmentContext: true` → kosongkan context.
-  - `fileIds` explicit non-empty → replace context aktif.
+  - `fileIds` explicit non-empty → merge dengan context aktif (append + dedupe).
+  - `replaceAttachmentContext: true` → replace context aktif penuh.
   - selain itu (`inheritAttachmentContext !== false`) → inherit dari context aktif server.
 
 3. **Unified send pipeline di `ChatWindow`**
@@ -67,8 +68,14 @@ Tambahan arsitektur:
 - Tidak ada lagi jalur text-only yang bypass attachment contract.
 
 4. **Composer sync dari server context**
-- Chip attachment di composer dihydrate dari context aktif server.
+- Tray `Konteks` di composer dihydrate dari context aktif server.
+- User bisa hapus satu file (`x`) atau hapus semua (`Hapus semua`).
 - Attachment tetap aktif lintas turn dan lintas refresh sampai user clear context.
+
+5. **Attachment mode per-message**
+- `messages.attachmentMode` disimpan sebagai `explicit` atau `inherit`.
+- Bubble chip hanya tampil untuk message user dengan mode `explicit`.
+- Follow-up inherit tetap membawa konteks file di server, tanpa spam chip di bubble.
 
 5. **Hard guard send rule**
 - UI: tombol send aktif hanya jika ada teks (`input.trim().length > 0`).
@@ -212,10 +219,10 @@ File names diambil dari:
 
 **File:** `src/components/chat/ChatInput.tsx`
 
-Preview attached files di atas input area:
-- Image preview: thumbnail `<img>` dengan overlay icon
-- Document preview: icon `Page` + nama file + ukuran file
-- Tombol remove (X) per file
+Tray `Konteks` berada di dalam composer:
+- Menampilkan file aktif (nama terpotong, ekstensi tetap terlihat, ukuran file).
+- Tombol `x` per file untuk partial remove.
+- Tombol `Hapus semua` untuk reset context conversation.
 
 ## File Map
 

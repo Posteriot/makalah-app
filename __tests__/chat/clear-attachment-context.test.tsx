@@ -34,10 +34,30 @@ describe("clear attachment context button", () => {
       />
     )
 
-    const clearButtons = screen.getAllByRole("button", { name: "Clear attachment context" })
+    const clearButtons = screen.getAllByRole("button", { name: "Hapus semua" })
     expect(clearButtons.length).toBeGreaterThan(0)
 
     await user.click(clearButtons[0])
     expect(onClearAttachmentContext).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows clear button when active context exists even if draft composer is empty", () => {
+    render(
+      <ChatInput
+        input="teks"
+        onInputChange={vi.fn()}
+        onSubmit={vi.fn()}
+        isLoading={false}
+        conversationId="conv-1"
+        attachedFiles={[]}
+        onFileAttached={vi.fn()}
+        onFileRemoved={vi.fn()}
+        onClearAttachmentContext={vi.fn()}
+        hasActiveAttachmentContext
+      />
+    )
+
+    const clearButtons = screen.getAllByRole("button", { name: "Hapus semua" })
+    expect(clearButtons.length).toBeGreaterThan(0)
   })
 })

@@ -64,6 +64,7 @@ interface MessageBubbleProps {
     onEdit?: (payload: {
         messageId: string
         newContent: string
+        attachmentMode: "explicit" | "inherit"
         fileIds: string[]
         fileNames: string[]
         fileSizes: number[]
@@ -345,10 +346,11 @@ export function MessageBubble({
         onEdit?.({
             messageId: message.id,
             newContent: contentToSend,
-            fileIds,
-            fileNames,
-            fileSizes,
-            fileTypes,
+            attachmentMode: resolvedAttachmentMode,
+            fileIds: resolvedAttachmentMode === "explicit" ? fileIds : [],
+            fileNames: resolvedAttachmentMode === "explicit" ? fileNames : [],
+            fileSizes: resolvedAttachmentMode === "explicit" ? fileSizes : [],
+            fileTypes: resolvedAttachmentMode === "explicit" ? fileTypes : [],
         })
         setIsEditing(false)
     }
@@ -423,6 +425,14 @@ export function MessageBubble({
         }
         return annotationFileTypes[index] ?? fileMetaMap?.get(fileId)?.type ?? ""
     })
+    const rawAttachmentMode = (message as { attachmentMode?: unknown }).attachmentMode
+    const resolvedAttachmentMode: "explicit" | "inherit" =
+        rawAttachmentMode === "inherit"
+            ? "inherit"
+            : rawAttachmentMode === "explicit"
+                ? "explicit"
+                : (fileIds.length > 0 ? "explicit" : "inherit")
+    const shouldRenderAttachmentChips = fileIds.length > 0 && resolvedAttachmentMode === "explicit"
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     // Live signals from streaming take priority; persisted artifacts are fallback after refresh
@@ -568,7 +578,7 @@ export function MessageBubble({
                     isUser ? "px-4 py-3" : "py-1"
                 )}>
                     {/* File Attachments Badge */}
-                    {fileIds && fileIds.length > 0 && (
+                    {shouldRenderAttachmentChips && (
                         <div className="mb-3 flex flex-wrap gap-1.5">
                             {fileIds.map((fid: string, idx: number) => {
                                 const fileMeta = fileMetaMap?.get(fid)
