@@ -534,6 +534,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         api: "/api/chat",
         body: () => ({
           conversationId: safeConversationId,
+          // Safety fallback: keep fileIds in transport body to avoid request-body merge edge cases.
+          fileIds: attachedFilesRef.current.map((f) => f.fileId),
         }),
       }),
     [safeConversationId]
