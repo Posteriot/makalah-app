@@ -14,6 +14,13 @@ const attachedDoc = {
   type: "application/pdf",
 } as AttachedFileMeta
 
+const attachedLongNameDoc = {
+  fileId: "file-2",
+  name: "Analisis+Performa+Sistem+Skalabilitas+Produksi+Tahap+Akhir+Versi+Final.pdf",
+  size: 1024,
+  type: "application/pdf",
+} as AttachedFileMeta
+
 const baseProps = {
   onInputChange: vi.fn(),
   onSubmit: vi.fn(),
@@ -56,5 +63,20 @@ describe("chat attachment send rule", () => {
     sendButtons.forEach((button) => {
       expect(button).toBeEnabled()
     })
+  })
+
+  it("keeps file extension and size visible for long attachment names", () => {
+    render(
+      <ChatInput
+        input="."
+        isLoading={false}
+        conversationId="conv-1"
+        attachedFiles={[attachedLongNameDoc]}
+        {...baseProps}
+      />
+    )
+
+    expect(screen.getAllByText(".pdf").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("1.0 KB").length).toBeGreaterThan(0)
   })
 })

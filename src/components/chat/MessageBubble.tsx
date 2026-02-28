@@ -17,6 +17,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { formatFileSize, isImageType, splitFileName } from "@/lib/types/attached-file"
 
 // Types for paper permission checking
 interface StageDataEntry {
@@ -74,6 +75,8 @@ interface MessageBubbleProps {
     persistedArtifacts?: PersistedArtifact[]
     /** File name lookup map (fileId → fileName) for history messages */
     fileNameMap?: Map<string, string>
+    /** File metadata lookup map (fileId → name/size/type) for history messages */
+    fileMetaMap?: Map<string, { name: string; size: number; type: string }>
 }
 
 export function MessageBubble({
@@ -88,6 +91,7 @@ export function MessageBubble({
     stageData,
     persistedArtifacts,
     fileNameMap,
+    fileMetaMap,
 }: MessageBubbleProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editContent, setEditContent] = useState("")
@@ -369,10 +373,20 @@ export function MessageBubble({
         }
     }, [isEditing, content])
 
-    const annotations = (message as { annotations?: { type?: string; fileIds?: string[]; fileNames?: string[] }[] }).annotations
+    const annotations = (message as {
+        annotations?: {
+            type?: string
+            fileIds?: string[]
+            fileNames?: string[]
+            fileSizes?: number[]
+            fileTypes?: string[]
+        }[]
+    }).annotations
     const fileAnnotations = annotations?.find((annotation) => annotation.type === "file_ids")
     const fileIds = fileAnnotations?.fileIds ?? []
     const fileNames = fileAnnotations?.fileNames ?? []
+    const fileSizes = fileAnnotations?.fileSizes ?? []
+    const fileTypes = fileAnnotations?.fileTypes ?? []
 
     // Extract artifact tool output dari AI SDK v5 UIMessage (ada di message.parts)
     // Live signals from streaming take priority; persisted artifacts are fallback after refresh
@@ -521,12 +535,28 @@ export function MessageBubble({
                     {fileIds && fileIds.length > 0 && (
                         <div className="mb-3 flex flex-wrap gap-1.5">
                             {fileIds.map((fid: string, idx: number) => {
-                                const name = fileNames[idx] || fileNameMap?.get(fid) || "file"
-                                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(name)
+                                const fileMeta = fileMetaMap?.get(fid)
+                                const name = fileNames[idx] || fileMeta?.name || fileNameMap?.get(fid) || "file"
+                                const size = typeof fileSizes[idx] === "number" && fileSizes[idx] > 0
+                                    ? fileSizes[idx]
+                                    : (typeof fileMeta?.size === "number" && fileMeta.size > 0 ? fileMeta.size : null)
+                                const fileType = fileTypes[idx] || fileMeta?.type || ""
+                                const isImage = (fileType ? isImageType(fileType) : false) || /\.(jpg|jpeg|png|gif|webp)$/i.test(name)
+                                const { baseName, extension } = splitFileName(name)
                                 return (
-                                    <span key={fid} className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-badge bg-[var(--chat-accent)] text-[var(--chat-info)] border border-[color:var(--chat-info)]">
+                                    <span
+                                        key={fid}
+                                        className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-accent)] py-1 pl-2.5 pr-1.5 text-xs font-mono text-[var(--chat-info)]"
+                                        title={name}
+                                    >
                                         {isImage ? <MediaImage className="h-3 w-3 shrink-0" /> : <Page className="h-3 w-3 shrink-0" />}
-                                        <span className="truncate max-w-[180px]">{name}</span>
+                                        <span className="inline-flex min-w-0 items-baseline">
+                                            <span className="max-w-[180px] truncate">{baseName}</span>
+                                            {extension && <span className="shrink-0">{extension}</span>}
+                                        </span>
+                                        {size !== null && (
+                                            <span className="shrink-0 text-[10px] opacity-60">{formatFileSize(size)}</span>
+                                        )}
                                     </span>
                                 )
                             })}

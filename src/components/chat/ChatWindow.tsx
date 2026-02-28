@@ -433,7 +433,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     safeConversationId ? safeConversationId : null
   )
 
-  // Collect all fileIds from history for file name lookup
+  // Collect all fileIds from history for file metadata lookup
   const historyFileIds = useMemo(() => {
     if (!historyMessages) return []
     const ids = new Set<string>()
@@ -452,15 +452,29 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       : "skip"
   )
 
-  const fileNameMap = useMemo(() => {
-    const map = new Map<string, string>()
+  const fileMetaMap = useMemo(() => {
+    const map = new Map<string, { name: string; size: number; type: string }>()
     if (historyFiles) {
       for (const f of historyFiles) {
-        if (f) map.set(f._id, f.name)
+        if (f) {
+          map.set(f._id, {
+            name: f.name,
+            size: f.size,
+            type: f.type,
+          })
+        }
       }
     }
     return map
   }, [historyFiles])
+
+  const fileNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const [fileId, meta] of fileMetaMap) {
+      map.set(fileId, meta.name)
+    }
+    return map
+  }, [fileMetaMap])
 
   // Paper mode: Convert history messages to permission-compatible format
   const permissionMessages = useMemo(() => {
@@ -662,6 +676,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (currentFiles.length > 0) {
       const allFileIds = currentFiles.map((f) => f.fileId)
       const allFileNames = currentFiles.map((f) => f.name)
+      const allFileSizes = currentFiles.map((f) => f.size)
+      const allFileTypes = currentFiles.map((f) => f.type)
       setTimeout(() => {
         setMessages((prev) => {
           const targetUserIdx = [...prev]
@@ -677,7 +693,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               (annotation: { type?: string }) => annotation?.type === "file_ids"
             )
             if (!hasFileIdsAnnotation) {
-              msg.annotations = [...existingAnnotations, { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
+              msg.annotations = [
+                ...existingAnnotations,
+                {
+                  type: "file_ids",
+                  fileIds: allFileIds,
+                  fileNames: allFileNames,
+                  fileSizes: allFileSizes,
+                  fileTypes: allFileTypes,
+                },
+              ]
             }
             return updated
           }
@@ -767,7 +792,17 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           role: msg.role as "user" | "assistant" | "system" | "data",
           content: msg.content,
           parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts],
-          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds, fileNames: msg.fileIds.map((fid: string) => fileNameMap.get(fid) ?? "") }] : undefined,
+          annotations: msg.fileIds
+            ? [
+                {
+                  type: "file_ids",
+                  fileIds: msg.fileIds,
+                  fileNames: msg.fileIds.map((fid: string) => fileMetaMap.get(fid)?.name ?? ""),
+                  fileSizes: msg.fileIds.map((fid: string) => fileMetaMap.get(fid)?.size ?? -1),
+                  fileTypes: msg.fileIds.map((fid: string) => fileMetaMap.get(fid)?.type ?? ""),
+                },
+              ]
+            : undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sources: (msg as any).sources,
           ...(reasoningTrace ? { reasoningTrace } : {}),
@@ -790,7 +825,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     ) {
       starterPromptPendingHistorySyncRef.current = null
     }
-  }, [conversationId, historyMessages, isHistoryLoading, setMessages, fileNameMap])
+  }, [conversationId, historyMessages, isHistoryLoading, setMessages, fileMetaMap])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
@@ -1129,6 +1164,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     if (attachedFiles.length > 0) {
       const allFileIds = attachedFiles.map((f) => f.fileId)
       const allFileNames = attachedFiles.map((f) => f.name)
+      const allFileSizes = attachedFiles.map((f) => f.size)
+      const allFileTypes = attachedFiles.map((f) => f.type)
       setTimeout(() => {
         setMessages((prev) => {
           const targetUserIdx = [...prev]
@@ -1144,7 +1181,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               (annotation: { type?: string }) => annotation?.type === "file_ids"
             )
             if (!hasFileIdsAnnotation) {
-              msg.annotations = [...existingAnnotations, { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
+              msg.annotations = [
+                ...existingAnnotations,
+                {
+                  type: "file_ids",
+                  fileIds: allFileIds,
+                  fileNames: allFileNames,
+                  fileSizes: allFileSizes,
+                  fileTypes: allFileTypes,
+                },
+              ]
             }
             return updated
           }
@@ -1534,6 +1580,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                       persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
                       // File name lookup for history messages
                       fileNameMap={fileNameMap}
+                      fileMetaMap={fileMetaMap}
                     />
                   </div>
                 )
