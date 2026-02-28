@@ -156,6 +156,16 @@ export default defineSchema({
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_conversation_role", ["conversationId", "role", "createdAt"]),
 
+  conversationAttachmentContexts: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+    activeFileIds: v.array(v.id("files")),
+    updatedAt: v.number(),
+    updatedByMessageId: v.optional(v.id("messages")),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_user_conversation", ["userId", "conversationId"]),
+
   files: defineTable({
     userId: v.id("users"),
     conversationId: v.optional(v.id("conversations")),
