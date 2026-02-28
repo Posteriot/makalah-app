@@ -90,6 +90,8 @@ export async function POST(req: Request) {
             messages,
             conversationId,
             fileIds: requestFileIds,
+            attachmentMode: requestedAttachmentMode,
+            replaceAttachmentContext,
             inheritAttachmentContext,
             clearAttachmentContext,
         } = body
@@ -100,6 +102,8 @@ export async function POST(req: Request) {
                 fileIdsIsArray: Array.isArray(requestFileIds),
                 fileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
                 fileIdsPreview: Array.isArray(requestFileIds) ? requestFileIds.slice(0, 5) : null,
+                requestedAttachmentMode,
+                replaceAttachmentContext: replaceAttachmentContext === true,
                 inheritAttachmentContext: inheritAttachmentContext !== false,
                 clearAttachmentContext: clearAttachmentContext === true,
                 messageCount: Array.isArray(messages) ? messages.length : null,
@@ -184,6 +188,7 @@ export async function POST(req: Request) {
         const attachmentResolution = resolveEffectiveFileIds({
             requestFileIds: Array.isArray(requestFileIds) ? requestFileIds : [],
             conversationContextFileIds: attachmentContext?.activeFileIds ?? [],
+            replaceAttachmentContext,
             inheritAttachmentContext,
             clearAttachmentContext,
         })
@@ -214,6 +219,7 @@ export async function POST(req: Request) {
                 contextFileIdsLength: attachmentContext?.activeFileIds?.length ?? 0,
                 effectiveFileIdsLength: effectiveFileIds.length,
                 effectiveFileIdsPreview: effectiveFileIds.slice(0, 5),
+                replaceAttachmentContext: replaceAttachmentContext === true,
             })
         }
 
@@ -285,12 +291,18 @@ export async function POST(req: Request) {
             }
 
             if (normalizedUserContent) {
+                const attachmentMode =
+                    requestedAttachmentMode === "explicit" || requestedAttachmentMode === "inherit"
+                        ? requestedAttachmentMode
+                        : (attachmentResolution.reason === "explicit" ? "explicit" : "inherit")
+
                 await retryMutation(
                     () => fetchMutationWithToken(api.messages.createMessage, {
                         conversationId: currentConversationId as Id<"conversations">,
                         role: "user",
                         content: userContent,
                         fileIds: effectiveFileIds.length > 0 ? effectiveFileIds : undefined,
+                        attachmentMode,
                     }),
                     "messages.createMessage(user)"
                 )
@@ -330,11 +342,18 @@ export async function POST(req: Request) {
                 lastUserMessage.parts?.find((p: { type: string; text?: string }) => p.type === "text")?.text ||
                 "")
             : ""
+        const normalizedLastUserContent =
+            typeof lastUserContent === "string" ? lastUserContent.trim() : ""
 
         let paperWorkflowReminder = ""
         if (!paperModePrompt && lastUserContent && hasPaperWritingIntent(lastUserContent)) {
             paperWorkflowReminder = PAPER_WORKFLOW_REMINDER
         }
+        const attachmentFirstResponseInstruction =
+            effectiveFileIds.length > 0 &&
+            (normalizedLastUserContent === "." || normalizedLastUserContent.length <= 2)
+                ? "Pengguna mengirim prompt sangat singkat sambil melampirkan file. Mulai jawaban dengan ringkasan isi file terlampir secara langsung, lalu lanjutkan jawaban sesuai konteks."
+                : ""
 
         const isExplicitSearchRequest = (text: string) => {
             const normalized = text.toLowerCase()
@@ -579,6 +598,9 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
                 : []),
             ...(fileContext
                 ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
+                : []),
+            ...(attachmentFirstResponseInstruction
+                ? [{ role: "system" as const, content: attachmentFirstResponseInstruction }]
                 : []),
             ...(sourcesContext
                 ? [{ role: "system" as const, content: sourcesContext }]

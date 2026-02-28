@@ -1,6 +1,7 @@
 export interface ResolveEffectiveFileIdsInput {
   requestFileIds?: string[] | null
   conversationContextFileIds?: string[] | null
+  replaceAttachmentContext?: boolean
   inheritAttachmentContext?: boolean
   clearAttachmentContext?: boolean
 }
@@ -26,6 +27,7 @@ export function resolveEffectiveFileIds(
 ): ResolveEffectiveFileIdsResult {
   const requestFileIds = dedupeFileIds(input.requestFileIds)
   const contextFileIds = dedupeFileIds(input.conversationContextFileIds)
+  const replaceAttachmentContext = input.replaceAttachmentContext === true
   const clearAttachmentContext = input.clearAttachmentContext === true
   const inheritAttachmentContext = input.inheritAttachmentContext !== false
 
@@ -39,8 +41,12 @@ export function resolveEffectiveFileIds(
   }
 
   if (requestFileIds.length > 0) {
+    const mergedFileIds = replaceAttachmentContext
+      ? requestFileIds
+      : dedupeFileIds([...contextFileIds, ...requestFileIds])
+
     return {
-      effectiveFileIds: requestFileIds,
+      effectiveFileIds: mergedFileIds,
       shouldUpsertContext: true,
       shouldClearContext: false,
       reason: "explicit",
