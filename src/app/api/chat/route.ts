@@ -46,6 +46,7 @@ import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { enforceArtifactSourcesPolicy } from "@/lib/ai/artifact-sources-policy"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
+import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 
 export async function POST(req: Request) {
     try {
@@ -85,14 +86,22 @@ export async function POST(req: Request) {
 
         // 2. Parse request (AI SDK v5/v6 format)
         const body = await req.json()
-        const { messages, conversationId, fileIds } = body
+        const {
+            messages,
+            conversationId,
+            fileIds: requestFileIds,
+            inheritAttachmentContext,
+            clearAttachmentContext,
+        } = body
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
         if (process.env.NODE_ENV !== "production") {
             console.info("[ATTACH-DIAG][route] request body", {
                 conversationId,
-                fileIdsIsArray: Array.isArray(fileIds),
-                fileIdsLength: Array.isArray(fileIds) ? fileIds.length : null,
-                fileIdsPreview: Array.isArray(fileIds) ? fileIds.slice(0, 5) : null,
+                fileIdsIsArray: Array.isArray(requestFileIds),
+                fileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
+                fileIdsPreview: Array.isArray(requestFileIds) ? requestFileIds.slice(0, 5) : null,
+                inheritAttachmentContext: inheritAttachmentContext !== false,
+                clearAttachmentContext: clearAttachmentContext === true,
                 messageCount: Array.isArray(messages) ? messages.length : null,
             })
         }
@@ -165,6 +174,49 @@ export async function POST(req: Request) {
             )
         }
 
+        const attachmentContext = await fetchQueryWithToken(
+            api.conversationAttachmentContexts.getByConversation,
+            {
+                conversationId: currentConversationId as Id<"conversations">,
+            }
+        )
+
+        const attachmentResolution = resolveEffectiveFileIds({
+            requestFileIds: Array.isArray(requestFileIds) ? requestFileIds : [],
+            conversationContextFileIds: attachmentContext?.activeFileIds ?? [],
+            inheritAttachmentContext,
+            clearAttachmentContext,
+        })
+
+        const effectiveFileIds = attachmentResolution.effectiveFileIds as Id<"files">[]
+
+        if (attachmentResolution.shouldClearContext) {
+            await retryMutation(
+                () => fetchMutationWithToken(api.conversationAttachmentContexts.clearByConversation, {
+                    conversationId: currentConversationId as Id<"conversations">,
+                }),
+                "conversationAttachmentContexts.clearByConversation"
+            )
+        } else if (attachmentResolution.shouldUpsertContext) {
+            await retryMutation(
+                () => fetchMutationWithToken(api.conversationAttachmentContexts.upsertByConversation, {
+                    conversationId: currentConversationId as Id<"conversations">,
+                    fileIds: effectiveFileIds,
+                }),
+                "conversationAttachmentContexts.upsertByConversation"
+            )
+        }
+
+        if (process.env.NODE_ENV !== "production") {
+            console.info("[ATTACH-DIAG][route] effective fileIds", {
+                reason: attachmentResolution.reason,
+                requestFileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
+                contextFileIdsLength: attachmentContext?.activeFileIds?.length ?? 0,
+                effectiveFileIdsLength: effectiveFileIds.length,
+                effectiveFileIdsPreview: effectiveFileIds.slice(0, 5),
+            })
+        }
+
         // Background Title Generation (Fire and Forget)
         if (isNewConversation && firstUserContent) {
             // We don't await this to avoid blocking the response
@@ -226,14 +278,19 @@ export async function POST(req: Request) {
             const userContent = lastMessage.content ||
                 lastMessage.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text ||
                 ""
+            const normalizedUserContent = typeof userContent === "string" ? userContent.trim() : ""
 
-            if (userContent) {
+            if (!normalizedUserContent && effectiveFileIds.length > 0) {
+                return new Response("Attachment membutuhkan teks pendamping minimal 1 karakter.", { status: 400 })
+            }
+
+            if (normalizedUserContent) {
                 await retryMutation(
                     () => fetchMutationWithToken(api.messages.createMessage, {
                         conversationId: currentConversationId as Id<"conversations">,
                         role: "user",
                         content: userContent,
-                        fileIds: fileIds ? (fileIds as Id<"files">[]) : undefined,
+                        fileIds: effectiveFileIds.length > 0 ? effectiveFileIds : undefined,
                     }),
                     "messages.createMessage(user)"
                 )
@@ -331,10 +388,10 @@ export async function POST(req: Request) {
 
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
-        if (fileIds && fileIds.length > 0) {
+        if (effectiveFileIds.length > 0) {
             let files = await fetchQueryWithToken(api.files.getFilesByIds, {
                 userId: userId as Id<"users">,
-                fileIds: fileIds as Id<"files">[],
+                fileIds: effectiveFileIds,
             })
 
             // Wait for pending extractions (max 8 seconds, poll every 500ms)
@@ -346,7 +403,7 @@ export async function POST(req: Request) {
                     await new Promise((r) => setTimeout(r, 500))
                     files = await fetchQueryWithToken(api.files.getFilesByIds, {
                         userId: userId as Id<"users">,
-                        fileIds: fileIds as Id<"files">[],
+                        fileIds: effectiveFileIds,
                     })
                     const stillPending = files.some(
                         (f: { extractionStatus?: string }) => !f.extractionStatus || f.extractionStatus === "pending"
@@ -401,7 +458,7 @@ export async function POST(req: Request) {
         }
         if (process.env.NODE_ENV !== "production") {
             console.info("[ATTACH-DIAG][route] context result", {
-                fileIdsLength: Array.isArray(fileIds) ? fileIds.length : null,
+                fileIdsLength: effectiveFileIds.length,
                 fileContextLength: fileContext.length,
                 fileContextPreview: fileContext.slice(0, 180),
             })
