@@ -61,7 +61,14 @@ interface PersistedArtifact {
 
 interface MessageBubbleProps {
     message: UIMessage
-    onEdit?: (messageId: string, newContent: string) => void
+    onEdit?: (payload: {
+        messageId: string
+        newContent: string
+        fileIds: string[]
+        fileNames: string[]
+        fileSizes: number[]
+        fileTypes: string[]
+    }) => void
     onArtifactSelect?: (artifactId: Id<"artifacts">) => void
     /** Keep process indicators visible until overall assistant response completes */
     persistProcessIndicators?: boolean
@@ -335,7 +342,24 @@ export function MessageBubble({
         // "Kirim" selalu trigger regeneration, bahkan jika konten tidak berubah
         // User mungkin ingin retry/regenerate AI response tanpa mengubah pesan
         const contentToSend = editContent.trim() || content // Fallback ke content original jika empty
-        onEdit?.(message.id, contentToSend)
+        const annotations = (message as {
+            annotations?: {
+                type?: string
+                fileIds?: string[]
+                fileNames?: string[]
+                fileSizes?: number[]
+                fileTypes?: string[]
+            }[]
+        }).annotations
+        const fileAnnotation = annotations?.find((annotation) => annotation.type === "file_ids")
+        onEdit?.({
+            messageId: message.id,
+            newContent: contentToSend,
+            fileIds: fileAnnotation?.fileIds ?? [],
+            fileNames: fileAnnotation?.fileNames ?? [],
+            fileSizes: fileAnnotation?.fileSizes ?? [],
+            fileTypes: fileAnnotation?.fileTypes ?? [],
+        })
         setIsEditing(false)
     }
 

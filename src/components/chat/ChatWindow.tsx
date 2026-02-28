@@ -1054,8 +1054,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     stop()
   }, [hasPendingAssistantGeneration, stop])
 
-  const handleEdit = async (messageId: string, newContent: string) => {
+  const handleEdit = async (payload: {
+    messageId: string
+    newContent: string
+    fileIds: string[]
+    fileNames: string[]
+    fileSizes: number[]
+    fileTypes: string[]
+  }) => {
     if (!safeConversationId) return
+    const { messageId, newContent, fileIds, fileNames, fileSizes, fileTypes } = payload
 
     // Resolve the actual Convex ID
     // Client-generated IDs (from sendMessage) are ~16 chars, mixed case
@@ -1104,7 +1112,85 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         setMessages(truncatedMessages)
 
         // 4. Send the edited content as a new message - this triggers AI response
-        sendMessageWithPendingIndicator(newContent)
+        const editedMessage = messages[messageIndex]
+        const imageFileParts = (editedMessage.parts ?? [])
+          .filter((part): part is {
+            type: "file"
+            mediaType: string
+            filename?: string
+            url: string
+          } => {
+            if (part.type !== "file") return false
+            const maybeFile = part as {
+              mediaType?: unknown
+              url?: unknown
+            }
+            return (
+              typeof maybeFile.mediaType === "string" &&
+              maybeFile.mediaType.startsWith("image/") &&
+              typeof maybeFile.url === "string" &&
+              maybeFile.url.length > 0
+            )
+          })
+          .map((part) => ({
+            type: "file" as const,
+            mediaType: part.mediaType,
+            filename: part.filename,
+            url: part.url,
+          }))
+
+        setIsAwaitingAssistantStart(true)
+        pendingScrollToBottomRef.current = true
+
+        if (imageFileParts.length > 0) {
+          sendMessage(
+            { text: newContent || " ", files: imageFileParts },
+            { body: { fileIds } }
+          )
+        } else {
+          sendMessage({ text: newContent }, { body: { fileIds } })
+        }
+
+        // Keep attachment chip visible for optimistic edited message while waiting history sync.
+        if (fileIds.length > 0) {
+          const fallbackFileNames = fileIds.map((fid) => fileMetaMap.get(fid)?.name ?? "")
+          const fallbackFileSizes = fileIds.map((fid) => fileMetaMap.get(fid)?.size ?? -1)
+          const fallbackFileTypes = fileIds.map((fid) => fileMetaMap.get(fid)?.type ?? "")
+          const allFileNames = fileNames.length === fileIds.length ? fileNames : fallbackFileNames
+          const allFileSizes = fileSizes.length === fileIds.length ? fileSizes : fallbackFileSizes
+          const allFileTypes = fileTypes.length === fileIds.length ? fileTypes : fallbackFileTypes
+
+          setTimeout(() => {
+            setMessages((prev) => {
+              const targetUserIdx = [...prev]
+                .map((msg, idx) => ({ msg, idx }))
+                .reverse()
+                .find(({ msg }) => msg.role === "user")?.idx ?? -1
+              if (targetUserIdx < 0) return prev
+
+              const updated = [...prev]
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const msg = updated[targetUserIdx] as any
+              const existingAnnotations = Array.isArray(msg.annotations) ? msg.annotations : []
+              const hasFileIdsAnnotation = existingAnnotations.some(
+                (annotation: { type?: string }) => annotation?.type === "file_ids"
+              )
+              if (!hasFileIdsAnnotation) {
+                msg.annotations = [
+                  ...existingAnnotations,
+                  {
+                    type: "file_ids",
+                    fileIds,
+                    fileNames: allFileNames,
+                    fileSizes: allFileSizes,
+                    fileTypes: allFileTypes,
+                  },
+                ]
+              }
+              return updated
+            })
+          }, 0)
+        }
       } else {
         // Edge case: message not found in local state (should not happen normally)
         toast.error("Pesan tidak ditemukan. Silakan refresh halaman.")

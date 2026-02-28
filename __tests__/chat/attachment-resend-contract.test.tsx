@@ -19,6 +19,8 @@ describe("attachment resend contract", () => {
               type: "file_ids",
               fileIds: ["file-1"],
               fileNames: ["dokumen.pdf"],
+              fileSizes: [1024],
+              fileTypes: ["application/pdf"],
             },
           ],
         } as never}
@@ -40,6 +42,8 @@ describe("attachment resend contract", () => {
       newContent: "Konten revisi",
       fileIds: ["file-1"],
       fileNames: ["dokumen.pdf"],
+      fileSizes: [1024],
+      fileTypes: ["application/pdf"],
     })
   })
 })
