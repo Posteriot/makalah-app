@@ -3,12 +3,19 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: [
     "pdf-parse",
-    "pdfjs-dist",
     "mammoth",
     "xlsx-populate",
     "officeparser",
-    "@napi-rs/canvas",
   ],
+  outputFileTracingIncludes: {
+    "/api/extract-file": [
+      "./node_modules/pdf-parse/**/*",
+      "./node_modules/pdfjs-dist/legacy/build/**/*",
+      "./node_modules/@napi-rs/canvas/**/*",
+      "./node_modules/@napi-rs/canvas-*/*",
+      "./node_modules/@napi-rs/canvas-*/**/*",
+    ],
+  },
   images: {
     remotePatterns: [
       {
