@@ -114,6 +114,7 @@ export default defineSchema({
     content: v.string(),
     createdAt: v.number(),
     fileIds: v.optional(v.array(v.id("files"))),
+    attachmentMode: v.optional(v.union(v.literal("explicit"), v.literal("inherit"))),
     metadata: v.optional(v.object({
       model: v.optional(v.string()),
       tokens: v.optional(v.number()),
