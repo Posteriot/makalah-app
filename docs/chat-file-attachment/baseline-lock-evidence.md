@@ -27,6 +27,30 @@ Interpretasi baseline:
 - pipeline extraction + injection **berfungsi** saat `fileIds` terkirim,
 - intermittency terjadi karena arsitektur masih dominan message-scoped, bukan conversation-scoped.
 
+## Bukti sesi terbaru (conversation context sudah aktif)
+
+Dari pengujian lokal terbaru:
+
+- Request explicit attach:
+  - `fileIdsLength: 1`
+  - `reason: 'explicit'`
+  - `effectiveFileIdsLength: 1`
+  - `fileContextLength: 32702`
+- Request follow-up tanpa kirim `fileIds`:
+  - `fileIdsIsArray: false`
+  - `reason: 'inherit'`
+  - `contextFileIdsLength: 1`
+  - `effectiveFileIdsLength: 1`
+  - `fileContextLength: 32702`
+
+Interpretasi:
+
+- pipeline inheritance server-side berfungsi,
+- fokus refactor berikutnya adalah UX contract:
+  - bubble chip hanya explicit,
+  - context dikelola di tray `Konteks` dengan remove per file / hapus semua,
+  - merge multi-file by default.
+
 ## Indikator diagnostik yang dikunci
 
 - `[ATTACH-DIAG][route] request body` menunjukkan:
