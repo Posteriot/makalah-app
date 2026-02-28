@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  serverExternalPackages: [
+    "pdf-parse",
+    "pdfjs-dist",
+    "mammoth",
+    "xlsx-populate",
+    "officeparser",
+    "@napi-rs/canvas",
+  ],
   images: {
     remotePatterns: [
       {

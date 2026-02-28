@@ -17,14 +17,6 @@ import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 
-// Import extractors (full Node.js environment - no restrictions)
-import { extractTextFromTxt } from "@/lib/file-extraction/txt-extractor"
-import { extractTextFromPdf } from "@/lib/file-extraction/pdf-extractor"
-import { extractTextFromDocx } from "@/lib/file-extraction/docx-extractor"
-import { extractDataFromXlsx } from "@/lib/file-extraction/xlsx-extractor"
-import { extractTextFromImage } from "@/lib/file-extraction/image-ocr"
-import { extractTextFromPptx } from "@/lib/file-extraction/pptx-extractor"
-
 /**
  * Retry helper untuk network/API calls yang bisa transient error
  */
@@ -208,35 +200,47 @@ export async function POST(request: NextRequest) {
 
     try {
       switch (fileTypeCategory) {
-        case "txt":
+        case "txt": {
+          const { extractTextFromTxt } = await import("@/lib/file-extraction/txt-extractor")
           extractedText = await retryWithBackoff(() => extractTextFromTxt(blob))
           break
+        }
 
-        case "pdf":
+        case "pdf": {
+          const { extractTextFromPdf } = await import("@/lib/file-extraction/pdf-extractor")
           extractedText = await retryWithBackoff(() => extractTextFromPdf(blob))
           break
+        }
 
-        case "docx":
+        case "docx": {
+          const { extractTextFromDocx } = await import("@/lib/file-extraction/docx-extractor")
           extractedText = await retryWithBackoff(() => extractTextFromDocx(blob))
           break
+        }
 
-        case "xlsx":
+        case "xlsx": {
+          const { extractDataFromXlsx } = await import("@/lib/file-extraction/xlsx-extractor")
           extractedText = await retryWithBackoff(() =>
             extractDataFromXlsx(blob, { maxSheets: 10, maxRows: 1000 })
           )
           break
+        }
 
-        case "pptx":
+        case "pptx": {
+          const { extractTextFromPptx } = await import("@/lib/file-extraction/pptx-extractor")
           extractedText = await retryWithBackoff(() => extractTextFromPptx(blob))
           break
+        }
 
-        case "image":
+        case "image": {
+          const { extractTextFromImage } = await import("@/lib/file-extraction/image-ocr")
           extractedText = await retryWithBackoff(
             () => extractTextFromImage(blob),
             3,
             2000
           )
           break
+        }
 
         default:
           throw new Error(`Unhandled file type: ${fileTypeCategory}`)
