@@ -164,7 +164,7 @@ export function ChatInput({
         return (
             <button
                 type="submit"
-                disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
+                disabled={input.trim().length === 0 || isLoading}
                 className={cn(
                     baseBtnClass,
                     "bg-transparent text-[var(--chat-muted-foreground)]",

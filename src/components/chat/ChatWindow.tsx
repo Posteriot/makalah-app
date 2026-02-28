@@ -1083,7 +1083,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!input.trim() && attachedFiles.length === 0) return
+    if (!input.trim()) return
     if (isLoading) return
 
     const fileIds = attachedFiles.map((f) => f.fileId)
