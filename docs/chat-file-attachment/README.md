@@ -81,6 +81,22 @@ Tambahan arsitektur:
 - UI: tombol send aktif hanya jika ada teks (`input.trim().length > 0`).
 - Backend: jika ada attachment tapi teks kosong, route return `400`.
 
+7. **Inline composer contract (`+ Konteks`)**
+- Area konteks berada di dalam composer yang sama dengan input pesan (bukan bar terpisah).
+- Kontrol utama:
+  - `+ Konteks`: upload file tambahan ke context conversation.
+  - `x` pada chip file: hapus 1 file dari context aktif.
+  - ikon `Trash` (`Hapus semua`): clear seluruh context aktif.
+- Attachment context diperlakukan sebagai state conversation-level, bukan sekadar draft per-message.
+
+8. **Edit-resend consistency contract**
+- Saat user edit pesan lama, alur resend harus konsisten dengan `attachmentMode` pesan yang diedit:
+  - jika mode pesan lama `explicit`: resend juga `explicit` dan membawa `fileIds` terkait.
+  - jika mode pesan lama `inherit`: resend tetap `inherit` (tanpa chip explicit baru).
+- Tujuan kontrak ini:
+  - mencegah hilangnya context file saat edit-resend.
+  - mencegah bubble chip muncul ganda pada follow-up yang seharusnya `inherit`.
+
 ## Attachment Health Monitoring (AI Ops)
 
 Monitoring attachment tersedia di `/ai-ops` (admin/superadmin) lewat tab:
@@ -242,9 +258,11 @@ File names diambil dari:
 **File:** `src/components/chat/ChatInput.tsx`
 
 Tray `Konteks` berada di dalam composer:
+- Selalu terlihat sebagai area konteks conversation-level.
 - Menampilkan file aktif (nama terpotong, ekstensi tetap terlihat, ukuran file).
+- Tombol upload inline bertuliskan `+ Konteks` (dengan tooltip upload context tambahan).
 - Tombol `x` per file untuk partial remove.
-- Tombol `Hapus semua` untuk reset context conversation.
+- Tombol `Hapus semua` (ikon delete) untuk reset context conversation.
 
 ## File Map
 
@@ -381,3 +399,16 @@ CSV diperlakukan sebagai plain text (MIME `text/csv` → routed ke `txt-extracto
 | `xlsx-populate` | ^1.21.1 | `xlsx-extractor.ts` |
 | `officeparser` | ^5.1.1 | `pptx-extractor.ts` |
 | `@openrouter/ai-sdk-provider` | (existing) | `image-ocr.ts` (fallback OCR) |
+
+## Dokumentasi Terkait
+
+| Dokumen | Fokus |
+|---------|-------|
+| `docs/chat-file-attachment/README.md` | Gambaran umum arsitektur attachment end-to-end |
+| `docs/chat-file-attachment/2026-03-01-attachment-inline-resend-consistency-implementation-plan.md` | Rencana awal inline + resend consistency |
+| `docs/chat-file-attachment/2026-03-01-conversation-scoped-attachment-context-design.md` | Desain context attachment level conversation |
+| `docs/chat-file-attachment/2026-03-01-conversation-scoped-attachment-context-implementation-plan.md` | Task implementasi context conversation |
+| `docs/chat-file-attachment/2026-03-02-attachment-health-monitoring-design.md` | Desain monitoring attachment health |
+| `docs/chat-file-attachment/2026-03-02-attachment-health-monitoring-implementation-plan.md` | Plan implementasi monitoring |
+| `docs/chat-file-attachment/2026-03-02-attachment-health-monitoring-runbook.md` | Runbook operasional investigasi |
+| `docs/chat-file-attachment/attachment-monitoring/README.md` | Ringkasan cepat monitoring, metrik, dan checklist verifikasi |
