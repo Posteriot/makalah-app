@@ -344,16 +344,45 @@ export async function POST(req: Request) {
             : ""
         const normalizedLastUserContent =
             typeof lastUserContent === "string" ? lastUserContent.trim() : ""
+        const normalizedLastUserContentLower = normalizedLastUserContent.toLowerCase()
 
         let paperWorkflowReminder = ""
         if (!paperModePrompt && lastUserContent && hasPaperWritingIntent(lastUserContent)) {
             paperWorkflowReminder = PAPER_WORKFLOW_REMINDER
         }
-        const attachmentFirstResponseInstruction =
+        const userMessageCount = Array.isArray(messages)
+            ? messages.filter((message: { role?: string }) => message?.role === "user").length
+            : 0
+        const isAttachmentProbePrompt = (() => {
+            if (!normalizedLastUserContentLower) return true
+            if (normalizedLastUserContentLower === "." || normalizedLastUserContentLower.length <= 2) return true
+
+            const probePatterns = [
+                /^apa ini\??$/,
+                /^ini apa\??$/,
+                /^jelaskan( isi)?( file| dokumen)?( ini)?\??$/,
+                /^ringkas(kan)?( isi)?( file| dokumen)?( ini)?\??$/,
+                /^analisis(kan)?( isi)?( file| dokumen)?( ini)?\??$/,
+                /^tolong jelaskan( ini)?\??$/,
+            ]
+            return probePatterns.some((pattern) => pattern.test(normalizedLastUserContentLower))
+        })()
+        const shouldForceAttachmentFirstResponse =
             effectiveFileIds.length > 0 &&
-            (normalizedLastUserContent === "." || normalizedLastUserContent.length <= 2)
-                ? "Pengguna mengirim prompt sangat singkat sambil melampirkan file. Mulai jawaban dengan ringkasan isi file terlampir secara langsung, lalu lanjutkan jawaban sesuai konteks."
-                : ""
+            requestedAttachmentMode === "explicit" &&
+            !paperModePrompt &&
+            (isAttachmentProbePrompt || (userMessageCount <= 1 && normalizedLastUserContent.length <= 64))
+        const attachmentFirstResponseInstruction = shouldForceAttachmentFirstResponse
+            ? "Pengguna baru saja melampirkan file secara eksplisit. Jawaban pertama WAJIB langsung mengulas isi file terlampir. DILARANG membuka dengan perkenalan umum, profil asisten, atau daftar kemampuan. Kalimat pertama harus langsung menjelaskan inti isi dokumen yang dilampirkan."
+            : ""
+        if (process.env.NODE_ENV !== "production") {
+            console.info("[ATTACH-DIAG][route] attachment-first-response", {
+                shouldForceAttachmentFirstResponse,
+                requestedAttachmentMode,
+                userMessageCount,
+                normalizedLastUserContent,
+            })
+        }
 
         const isExplicitSearchRequest = (text: string) => {
             const normalized = text.toLowerCase()
