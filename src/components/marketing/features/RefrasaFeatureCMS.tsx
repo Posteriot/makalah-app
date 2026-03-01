@@ -23,13 +23,13 @@ export function RefrasaFeatureCMS({ content }: RefrasaFeatureCMSProps) {
   return (
     <section
       id="fitur-refrasa"
-      className="relative isolate min-h-[100svh] overflow-hidden bg-background"
+      className="relative isolate bg-background md:min-h-[100svh] md:overflow-hidden"
     >
       {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
       {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-7xl items-center px-4 py-6 sm:py-8 md:px-8 md:py-20">
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl items-start px-4 py-8 sm:py-10 md:min-h-[100svh] md:items-center md:px-8 md:py-20">
         <div className="grid w-full grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-16">
           {/* Left — Text from CMS */}
           <div className="order-1 lg:col-span-6 lg:flex lg:h-full lg:flex-col lg:justify-center">

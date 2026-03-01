@@ -24,18 +24,18 @@ export function ManifestoMobileAccordion({
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange}>
       <div className="overflow-hidden rounded-shell border-main border-border bg-card/75 backdrop-blur-sm">
-        <div className="px-4 pt-4 pb-3">
-          <p className="text-interface text-base font-medium leading-snug text-foreground">
+        <div className={cn("px-4 pt-4", isOpen ? "pb-4" : "pb-3")}>
+          <p className="font-sans text-[15px] font-medium leading-snug text-foreground">
             {heading}
           </p>
         </div>
 
         <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-          <div className="space-y-4 border-t border-hairline px-4 py-4">
+          <div className="space-y-4 px-4 pb-4 pt-0">
             {paragraphs.map((paragraph, index) => (
               <p
                 key={index}
-                className="text-narrative text-base leading-relaxed text-[color:var(--slate-600)] dark:text-[color:var(--slate-50)]"
+                className="text-narrative text-[15px] leading-relaxed text-[color:var(--slate-600)] dark:text-[color:var(--slate-50)]"
               >
                 {paragraph}
               </p>
@@ -47,7 +47,7 @@ export function ManifestoMobileAccordion({
           <button
             className={cn(
               "group relative overflow-hidden flex w-full items-center justify-center border border-transparent border-t border-hairline px-4 py-3",
-              "text-signal text-[11px] font-bold",
+              "font-sans text-[11px] font-bold uppercase tracking-[0.1em]",
               "bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
               "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
               "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",

@@ -180,14 +180,14 @@ export function AgentsSectionCMS({ content }: AgentsSectionCMSProps) {
 
   return (
     <section
-      className="relative flex min-h-[100svh] flex-col justify-center overflow-hidden bg-background"
+      className="relative flex flex-col bg-background md:min-h-[100svh] md:justify-center md:overflow-hidden"
       id="agents"
     >
       {content.showGridPattern !== false && <GridPattern className="z-0" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-70" />}
       {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-8 md:px-8 md:py-10">
         <div className="grid grid-cols-16 content-center gap-comfort">
           <div className="col-span-16 mb-4 flex flex-col items-start gap-3 md:col-span-12 md:col-start-3 md:mb-8 md:gap-4">
             <SectionBadge>{badgeText}</SectionBadge>

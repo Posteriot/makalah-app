@@ -32,7 +32,7 @@ type BenefitsSectionProps = {
 export function BenefitsSection({ items, showGridPattern, showDiagonalStripes, showDottedPattern }: BenefitsSectionProps) {
   return (
     <section
-      className="relative isolate h-[100svh] min-h-[100svh] overflow-hidden bg-background"
+      className="relative isolate bg-background md:h-[100svh] md:min-h-[100svh] md:overflow-hidden"
       id="kenapa-makalah-ai"
     >
       {/* Background patterns */}
@@ -40,8 +40,8 @@ export function BenefitsSection({ items, showGridPattern, showDiagonalStripes, s
       {showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
       {showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 
-      <div className="relative z-10 mx-auto h-full w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
-        <div className="grid h-full grid-cols-16 content-center gap-comfort">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-8 md:h-full md:px-8 md:py-10">
+        <div className="grid grid-cols-16 gap-comfort md:h-full md:content-center">
           {/* Section Header */}
           <div className="col-span-16 md:col-span-12 md:col-start-3 flex flex-col gap-comfort">
             <BenefitsBadge />
