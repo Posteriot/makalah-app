@@ -22,6 +22,8 @@ import { FailoverTimelinePanel } from "./panels/FailoverTimelinePanel"
 import { SkillRuntimeOverviewPanel } from "./panels/SkillRuntimeOverviewPanel"
 import { SkillRuntimeTracePanel } from "./panels/SkillRuntimeTracePanel"
 import { SkillMonitorSummaryPanel } from "./panels/SkillMonitorSummaryPanel"
+import { AttachmentOverviewPanel } from "./panels/AttachmentOverviewPanel"
+import { AttachmentFailuresPanel } from "./panels/AttachmentFailuresPanel"
 
 type Period = "1h" | "24h" | "7d"
 
@@ -47,6 +49,7 @@ export function AiOpsContentSection({
   const HeaderIcon = currentTab.headerIcon
 
   const isModelTab = activeTab.startsWith("model.")
+  const isAttachmentTab = activeTab.startsWith("attachment.")
   const isSkillMonitorTab = activeTab === "skill.monitor"
   const isOverview = activeTab === "overview"
 
@@ -70,6 +73,30 @@ export function AiOpsContentSection({
   const droppedKeys = useQuery(
     api.aiOps.getDroppedKeysAggregation,
     activeTab === "paper.memory" ? {} : "skip"
+  )
+  const attachmentOverview = useQuery(
+    api.aiOps.getAttachmentHealthOverview,
+    activeTab === "attachment.overview"
+      ? { requestorUserId: userId, period }
+      : "skip"
+  )
+  const attachmentFormatBreakdown = useQuery(
+    api.aiOps.getAttachmentFormatBreakdown,
+    activeTab === "attachment.overview"
+      ? { requestorUserId: userId, period }
+      : "skip"
+  )
+  const attachmentEnvBreakdown = useQuery(
+    api.aiOps.getAttachmentEnvBreakdown,
+    activeTab === "attachment.overview"
+      ? { requestorUserId: userId, period }
+      : "skip"
+  )
+  const attachmentFailures = useQuery(
+    api.aiOps.getAttachmentRecentFailures,
+    activeTab === "attachment.failures"
+      ? { requestorUserId: userId, limit: 30 }
+      : "skip"
   )
 
   // ── Model health queries (skip when not on model tab) ──
@@ -140,7 +167,7 @@ export function AiOpsContentSection({
             </p>
           </div>
 
-          {(isModelTab || isSkillMonitorTab || isOverview) && (
+          {(isModelTab || isSkillMonitorTab || isOverview || isAttachmentTab) && (
             <div className="flex items-center gap-1 rounded-[8px] border border-border p-0.5">
               {PERIOD_OPTIONS.map((opt) => (
                 <button
@@ -211,6 +238,18 @@ export function AiOpsContentSection({
             <RecentFailuresPanel data={recentFailures ?? undefined} />
             <FailoverTimelinePanel data={failoverTimeline ?? undefined} />
           </div>
+        )}
+
+        {activeTab === "attachment.overview" && (
+          <AttachmentOverviewPanel
+            overview={attachmentOverview ?? undefined}
+            formatBreakdown={attachmentFormatBreakdown ?? undefined}
+            envBreakdown={attachmentEnvBreakdown ?? undefined}
+          />
+        )}
+
+        {activeTab === "attachment.failures" && (
+          <AttachmentFailuresPanel data={attachmentFailures ?? undefined} />
         )}
 
         {activeTab === "skill.monitor" && (

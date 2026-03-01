@@ -462,7 +462,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const historyFiles = useQuery(
     api.files.getFilesByIds,
-    userId && historyFileIds.length > 0
+    isAuthenticated && userId && historyFileIds.length > 0
       ? { userId, fileIds: historyFileIds as Id<"files">[] }
       : "skip"
   )
