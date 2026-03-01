@@ -8,17 +8,20 @@ const read = (relativePath: string) =>
   readFileSync(path.join(repoRoot, relativePath), "utf8")
 
 describe("attachment baseline smoke guards", () => {
-  it("chat submit still sends document fileIds through request body", () => {
+  it("chat window still maps replace-mode attachments to body.fileIds", () => {
     const chatWindow = read("src/components/chat/ChatWindow.tsx")
 
-    expect(chatWindow).toMatch(/sendMessage\(\{\s*text:\s*input\s*\},\s*\{\s*body:\s*\{\s*fileIds\s*\}\s*\}\s*\)/)
+    expect(chatWindow).toContain("body.fileIds = filesForContext.map((file) => file.fileId)")
+    expect(chatWindow).toContain("sendMessage({ text }, { body })")
   })
 
-  it("chat route still reads and processes fileIds context branch", () => {
+  it("chat route still resolves request fileIds into effective context branch", () => {
     const route = read("src/app/api/chat/route.ts")
 
-    expect(route).toContain("const { messages, conversationId, fileIds } = body")
-    expect(route).toContain("if (fileIds && fileIds.length > 0)")
+    expect(route).toContain("fileIds: requestFileIds")
+    expect(route).toContain("const attachmentResolution = resolveEffectiveFileIds({")
+    expect(route).toContain("const effectiveFileIds = attachmentResolution.effectiveFileIds")
+    expect(route).toContain("if (effectiveFileIds.length > 0)")
     expect(route).toContain("fileContextLength")
   })
 
