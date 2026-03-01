@@ -40,7 +40,7 @@ describe("konteks tray ui", () => {
       />
     )
 
-    expect(screen.getAllByText("Konteks").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("mock upload").length).toBeGreaterThan(0)
     expect(screen.getAllByRole("button", { name: "Hapus semua" }).length).toBeGreaterThan(0)
     expect(screen.getAllByLabelText(/Hapus file konteks/i).length).toBeGreaterThan(0)
   })

@@ -1,21 +1,34 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Attachment } from "iconoir-react"
+import { Plus } from "iconoir-react"
 import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { toast } from "sonner"
 import { AttachedFileMeta } from "@/lib/types/attached-file"
+import { cn } from "@/lib/utils"
 
 interface FileUploadButtonProps {
     conversationId: string | null
     onFileUploaded?: (file: AttachedFileMeta) => void
     onImageDataUrl?: (fileId: Id<"files">, dataUrl: string) => void
+    ariaLabel?: string
+    tooltipText?: string
+    className?: string
+    label?: string
 }
 
-export function FileUploadButton({ conversationId, onFileUploaded, onImageDataUrl }: FileUploadButtonProps) {
+export function FileUploadButton({
+    conversationId,
+    onFileUploaded,
+    onImageDataUrl,
+    ariaLabel = "Upload file tambahan konteks",
+    tooltipText = "Upload file tambahan konteks",
+    className,
+    label,
+}: FileUploadButtonProps) {
     const [isUploading, setIsUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -132,17 +145,25 @@ export function FileUploadButton({ conversationId, onFileUploaded, onImageDataUr
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="p-2 rounded-action text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)] transition-colors disabled:opacity-50"
-                        aria-label="Attach file"
+                        className={cn(
+                            label
+                                ? "inline-flex h-8 items-center gap-1.5 rounded-action border border-[color:var(--chat-border)] px-2.5 text-xs font-mono text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] transition-colors disabled:opacity-50"
+                                : "p-2 rounded-action text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)] transition-colors disabled:opacity-50",
+                            className
+                        )}
+                        aria-label={ariaLabel}
                     >
                         {isUploading ? (
-                            <span className="h-5 w-5 border-2 border-[color:var(--chat-muted-foreground)] border-t-transparent rounded-full animate-spin block" />
+                            <>
+                                <span className="h-5 w-5 border-2 border-[color:var(--chat-muted-foreground)] border-t-transparent rounded-full animate-spin block" />
+                                {label && <span>{label}</span>}
+                            </>
                         ) : (
-                            <Attachment className="h-5 w-5" />
+                            label ? <span>{label}</span> : <Plus className="h-5 w-5" />
                         )}
                     </button>
                 </TooltipTrigger>
-                <TooltipContent className="font-mono text-xs">Attach file</TooltipContent>
+                <TooltipContent className="font-mono text-xs">{tooltipText}</TooltipContent>
             </Tooltip>
         </>
     )
