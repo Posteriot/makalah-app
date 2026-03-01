@@ -47,6 +47,11 @@ import { enforceArtifactSourcesPolicy } from "@/lib/ai/artifact-sources-policy"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
+import {
+    classifyAttachmentHealth,
+    normalizeRequestedAttachmentMode,
+    resolveAttachmentRuntimeEnv,
+} from "@/lib/chat/attachment-health"
 
 export async function POST(req: Request) {
     try {
@@ -194,6 +199,13 @@ export async function POST(req: Request) {
         })
 
         const effectiveFileIds = attachmentResolution.effectiveFileIds as Id<"files">[]
+        const requestedAttachmentModeNormalized = normalizeRequestedAttachmentMode(requestedAttachmentMode)
+        const requestFileIdsLength = Array.isArray(requestFileIds) ? requestFileIds.length : 0
+        const hasAttachmentSignal =
+            requestFileIdsLength > 0 ||
+            effectiveFileIds.length > 0 ||
+            clearAttachmentContext === true ||
+            requestedAttachmentModeNormalized !== "none"
 
         if (attachmentResolution.shouldClearContext) {
             await retryMutation(
@@ -436,6 +448,12 @@ export async function POST(req: Request) {
 
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
+        let docFileCount = 0
+        let imageFileCount = 0
+        let docExtractionSuccessCount = 0
+        let docExtractionPendingCount = 0
+        let docExtractionFailedCount = 0
+        let docContextChars = 0
         if (effectiveFileIds.length > 0) {
             let files = await fetchQueryWithToken(api.files.getFilesByIds, {
                 userId: userId as Id<"users">,
@@ -466,8 +484,13 @@ export async function POST(req: Request) {
 
             // Format file context based on extraction status
             for (const file of files) {
-                // Skip image files — they're sent via native multimodal, not text extraction
-                if (file.type?.startsWith("image/")) continue
+                const isImageFile = file.type?.startsWith("image/")
+                if (isImageFile) {
+                    imageFileCount += 1
+                    continue
+                }
+
+                docFileCount += 1
 
                 // Check if we've exceeded total limit (paper mode only)
                 if (isPaperModeForFiles && totalCharsUsed >= MAX_FILE_CONTEXT_CHARS_TOTAL) {
@@ -478,6 +501,7 @@ export async function POST(req: Request) {
 
                 if (!file.extractionStatus || file.extractionStatus === "pending") {
                     // Extraction didn't complete within timeout
+                    docExtractionPendingCount += 1
                     fileContext += "⏳ File sedang diproses. Coba kirim ulang pesan dalam beberapa detik.\n\n"
                 } else if (file.extractionStatus === "success" && file.extractedText) {
                     // Task 6.2-6.3: Extract and format text
@@ -496,11 +520,16 @@ export async function POST(req: Request) {
                         totalCharsUsed += textToAdd.length
                     }
 
+                    docExtractionSuccessCount += 1
+                    docContextChars += textToAdd.length
                     fileContext += textToAdd + "\n\n"
                 } else if (file.extractionStatus === "failed") {
                     // Task 6.6: Handle failed state
+                    docExtractionFailedCount += 1
                     const errorMsg = file.extractionError || "Unknown error"
                     fileContext += `❌ File gagal diproses: ${errorMsg}\n\n`
+                } else {
+                    docExtractionFailedCount += 1
                 }
             }
         }
@@ -509,6 +538,50 @@ export async function POST(req: Request) {
                 fileIdsLength: effectiveFileIds.length,
                 fileContextLength: fileContext.length,
                 fileContextPreview: fileContext.slice(0, 180),
+            })
+        }
+
+        if (hasAttachmentSignal) {
+            const health = classifyAttachmentHealth({
+                effectiveFileIdsLength: effectiveFileIds.length,
+                docFileCount,
+                imageFileCount,
+                docExtractionSuccessCount,
+                docExtractionPendingCount,
+                docExtractionFailedCount,
+                docContextChars,
+            })
+            const runtimeEnv = resolveAttachmentRuntimeEnv({
+                vercel: process.env.VERCEL,
+                nodeEnv: process.env.NODE_ENV,
+            })
+
+            void retryMutation(
+                () =>
+                    fetchMutationWithToken(api.attachmentTelemetry.logAttachmentTelemetry, {
+                        requestId,
+                        userId: userId as Id<"users">,
+                        conversationId: currentConversationId as Id<"conversations">,
+                        runtimeEnv,
+                        requestedAttachmentMode: requestedAttachmentModeNormalized,
+                        resolutionReason: attachmentResolution.reason,
+                        requestFileIdsLength,
+                        effectiveFileIdsLength: effectiveFileIds.length,
+                        replaceAttachmentContext: replaceAttachmentContext === true,
+                        clearAttachmentContext: clearAttachmentContext === true,
+                        docFileCount,
+                        imageFileCount,
+                        docExtractionSuccessCount,
+                        docExtractionPendingCount,
+                        docExtractionFailedCount,
+                        docContextChars,
+                        attachmentFirstResponseForced: shouldForceAttachmentFirstResponse,
+                        healthStatus: health.healthStatus,
+                        failureReason: health.failureReason,
+                    }),
+                "attachmentTelemetry.logAttachmentTelemetry"
+            ).catch((telemetryError) => {
+                console.warn("[ATTACH-TELEMETRY] Failed to record attachment telemetry", telemetryError)
             })
         }
         // Convert UIMessages to model messages format

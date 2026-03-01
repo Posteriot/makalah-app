@@ -86,6 +86,33 @@ export const AI_OPS_SIDEBAR_ITEMS: AiOpsSidebarItem[] = [
     ],
   },
   {
+    id: "attachment",
+    label: "Attachment Health",
+    icon: Code,
+    headerTitle: "Attachment Health",
+    headerDescription: "Monitoring kesehatan parsing dan context injection attachment",
+    headerIcon: Code,
+    defaultChildId: "attachment.overview",
+    children: [
+      {
+        id: "attachment.overview",
+        label: "Ringkasan",
+        icon: StatsReport,
+        headerTitle: "Ringkasan Attachment",
+        headerDescription: "Statistik health attachment dan distribusi environment",
+        headerIcon: StatsReport,
+      },
+      {
+        id: "attachment.failures",
+        label: "Kegagalan",
+        icon: WarningTriangle,
+        headerTitle: "Kegagalan Attachment",
+        headerDescription: "Daftar request attachment yang degraded atau failed",
+        headerIcon: WarningTriangle,
+      },
+    ],
+  },
+  {
     id: "model",
     label: "Model Health",
     icon: Activity,
@@ -128,6 +155,8 @@ export type AiOpsTabId =
   | "paper.sessions"
   | "paper.memory"
   | "paper.artifacts"
+  | "attachment.overview"
+  | "attachment.failures"
   | "model.overview"
   | "model.tools"
   | "model.failures"

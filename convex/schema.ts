@@ -1120,6 +1120,50 @@ export default defineSchema({
     .index("by_provider", ["provider", "createdAt"])
     .index("by_tool", ["toolUsed", "createdAt"])
     .index("by_success", ["success", "createdAt"]),
+
+  // Attachment telemetry for AI Ops monitoring.
+  // Tracks attachment context readiness without storing raw extracted text.
+  attachmentTelemetry: defineTable({
+    requestId: v.string(),
+    userId: v.id("users"),
+    conversationId: v.id("conversations"),
+    runtimeEnv: v.union(v.literal("local"), v.literal("vercel"), v.literal("unknown")),
+    requestedAttachmentMode: v.union(
+      v.literal("explicit"),
+      v.literal("inherit"),
+      v.literal("none")
+    ),
+    resolutionReason: v.union(
+      v.literal("clear"),
+      v.literal("explicit"),
+      v.literal("inherit"),
+      v.literal("none")
+    ),
+    requestFileIdsLength: v.number(),
+    effectiveFileIdsLength: v.number(),
+    replaceAttachmentContext: v.boolean(),
+    clearAttachmentContext: v.boolean(),
+    docFileCount: v.number(),
+    imageFileCount: v.number(),
+    docExtractionSuccessCount: v.number(),
+    docExtractionPendingCount: v.number(),
+    docExtractionFailedCount: v.number(),
+    docContextChars: v.number(),
+    attachmentFirstResponseForced: v.boolean(),
+    healthStatus: v.union(
+      v.literal("healthy"),
+      v.literal("degraded"),
+      v.literal("failed"),
+      v.literal("processing"),
+      v.literal("unknown")
+    ),
+    failureReason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_created", ["createdAt"])
+    .index("by_health_created", ["healthStatus", "createdAt"])
+    .index("by_conversation_created", ["conversationId", "createdAt"])
+    .index("by_env_created", ["runtimeEnv", "createdAt"]),
   // ── CMS Tables ──────────────────────────────────────────
 
   pageContent: defineTable({

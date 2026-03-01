@@ -1,6 +1,13 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, type QueryCtx } from "./_generated/server";
 import { requireAuthUser } from "./authHelpers";
+import type { Id } from "./_generated/dataModel";
+import {
+  pickRecentAttachmentFailures,
+  summarizeAttachmentEnv,
+  summarizeAttachmentFormat,
+  summarizeAttachmentHealth,
+} from "./attachmentTelemetryAggregates";
 
 /**
  * AI Ops Dashboard backend queries.
@@ -12,6 +19,28 @@ function assertAdmin(role: string): void {
   if (role !== "admin" && role !== "superadmin") {
     throw new Error("Unauthorized: admin access required");
   }
+}
+
+function periodToMs(period: "1h" | "24h" | "7d"): number {
+  switch (period) {
+    case "1h":
+      return 60 * 60 * 1000;
+    case "24h":
+      return 24 * 60 * 60 * 1000;
+    case "7d":
+      return 7 * 24 * 60 * 60 * 1000;
+  }
+}
+
+async function requireAdminRequestor(
+  ctx: QueryCtx,
+  requestorUserId: Id<"users">
+) {
+  const authUser = await requireAuthUser(ctx);
+  if (authUser._id !== requestorUserId) {
+    throw new Error("Unauthorized");
+  }
+  assertAdmin(authUser.role);
 }
 
 /**
@@ -261,5 +290,107 @@ export const getDroppedKeysAggregation = query({
     // Sort by count desc
     return Array.from(aggregation.values())
       .sort((a, b) => b.count - a.count);
+  },
+});
+
+/**
+ * Attachment health overview for AI Ops dashboard.
+ */
+export const getAttachmentHealthOverview = query({
+  args: {
+    requestorUserId: v.id("users"),
+    period: v.union(v.literal("1h"), v.literal("24h"), v.literal("7d")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdminRequestor(ctx, args.requestorUserId);
+
+    const cutoff = Date.now() - periodToMs(args.period);
+    const records = await ctx.db
+      .query("attachmentTelemetry")
+      .withIndex("by_created", (q) => q.gte("createdAt", cutoff))
+      .collect();
+
+    return summarizeAttachmentHealth(records);
+  },
+});
+
+/**
+ * Recent degraded/failed attachment requests.
+ */
+export const getAttachmentRecentFailures = query({
+  args: {
+    requestorUserId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdminRequestor(ctx, args.requestorUserId);
+
+    const limit = args.limit ?? 20;
+    const samples = await ctx.db
+      .query("attachmentTelemetry")
+      .withIndex("by_created")
+      .order("desc")
+      .take(300);
+
+    return pickRecentAttachmentFailures(samples, limit)
+      .map((record) => ({
+        _id: record._id,
+        requestId: record.requestId,
+        conversationId: record.conversationId,
+        createdAt: record.createdAt,
+        runtimeEnv: record.runtimeEnv,
+        requestedAttachmentMode: record.requestedAttachmentMode,
+        resolutionReason: record.resolutionReason,
+        healthStatus: record.healthStatus,
+        failureReason: record.failureReason,
+        docFileCount: record.docFileCount,
+        imageFileCount: record.imageFileCount,
+        docExtractionSuccessCount: record.docExtractionSuccessCount,
+        docExtractionPendingCount: record.docExtractionPendingCount,
+        docExtractionFailedCount: record.docExtractionFailedCount,
+        docContextChars: record.docContextChars,
+      }));
+  },
+});
+
+/**
+ * Attachment format/category breakdown for selected period.
+ */
+export const getAttachmentFormatBreakdown = query({
+  args: {
+    requestorUserId: v.id("users"),
+    period: v.union(v.literal("1h"), v.literal("24h"), v.literal("7d")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdminRequestor(ctx, args.requestorUserId);
+
+    const cutoff = Date.now() - periodToMs(args.period);
+    const records = await ctx.db
+      .query("attachmentTelemetry")
+      .withIndex("by_created", (q) => q.gte("createdAt", cutoff))
+      .collect();
+
+    return summarizeAttachmentFormat(records);
+  },
+});
+
+/**
+ * Runtime environment breakdown (local vs vercel) for selected period.
+ */
+export const getAttachmentEnvBreakdown = query({
+  args: {
+    requestorUserId: v.id("users"),
+    period: v.union(v.literal("1h"), v.literal("24h"), v.literal("7d")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdminRequestor(ctx, args.requestorUserId);
+
+    const cutoff = Date.now() - periodToMs(args.period);
+    const records = await ctx.db
+      .query("attachmentTelemetry")
+      .withIndex("by_created", (q) => q.gte("createdAt", cutoff))
+      .collect();
+
+    return summarizeAttachmentEnv(records);
   },
 });

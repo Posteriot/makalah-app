@@ -15,6 +15,8 @@ import type * as aiProviderConfigs from "../aiProviderConfigs.js";
 import type * as aiTelemetry from "../aiTelemetry.js";
 import type * as appConfig from "../appConfig.js";
 import type * as artifacts from "../artifacts.js";
+import type * as attachmentTelemetry from "../attachmentTelemetry.js";
+import type * as attachmentTelemetryAggregates from "../attachmentTelemetryAggregates.js";
 import type * as auth from "../auth.js";
 import type * as authEmails from "../authEmails.js";
 import type * as authHelpers from "../authHelpers.js";
@@ -117,6 +119,8 @@ declare const fullApi: ApiFromModules<{
   aiTelemetry: typeof aiTelemetry;
   appConfig: typeof appConfig;
   artifacts: typeof artifacts;
+  attachmentTelemetry: typeof attachmentTelemetry;
+  attachmentTelemetryAggregates: typeof attachmentTelemetryAggregates;
   auth: typeof auth;
   authEmails: typeof authEmails;
   authHelpers: typeof authHelpers;

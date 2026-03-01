@@ -77,9 +77,31 @@ Tambahan arsitektur:
 - Bubble chip hanya tampil untuk message user dengan mode `explicit`.
 - Follow-up inherit tetap membawa konteks file di server, tanpa spam chip di bubble.
 
-5. **Hard guard send rule**
+6. **Hard guard send rule**
 - UI: tombol send aktif hanya jika ada teks (`input.trim().length > 0`).
 - Backend: jika ada attachment tapi teks kosong, route return `400`.
+
+## Attachment Health Monitoring (AI Ops)
+
+Monitoring attachment tersedia di `/ai-ops` (admin/superadmin) lewat tab:
+- `Attachment Health > Ringkasan`
+- `Attachment Health > Kegagalan`
+
+Sumber data:
+1. `src/app/api/chat/route.ts` mencatat telemetry attachment per request (best-effort, non-blocking).
+2. Tabel Convex `attachmentTelemetry` menyimpan metrik readiness attachment.
+3. Query agregasi di `convex/aiOps.ts` menyiapkan data panel AI Ops.
+
+Status health (file-only, dokumen + gambar):
+- `healthy`: file request siap dipakai model (dokumen sukses terinjeksi atau image-only).
+- `degraded`: ada file yang siap, tapi sebagian dokumen masih pending/gagal.
+- `failed`: file request tidak menghasilkan konteks dokumen usable.
+- `processing`: dokumen masih pending extractor (tanpa file lain yang sudah ready).
+- `unknown`: tidak ada file efektif pada request.
+
+Catatan:
+- Monitoring ini mengukur kesehatan pipeline attachment (bukan jaminan kualitas jawaban model 100%).
+- Telemetry tidak menyimpan raw `extractedText`.
 
 ## Tipe File yang Didukung
 
@@ -234,6 +256,8 @@ Tray `Konteks` berada di dalam composer:
 | `src/components/chat/ChatInput.tsx` | Input area dengan file preview |
 | `src/components/chat/ChatWindow.tsx` | Orchestrator: state management, transport, history sync |
 | `src/components/chat/MessageBubble.tsx` | Render file badges di pesan |
+| `src/components/ai-ops/panels/AttachmentOverviewPanel.tsx` | Panel ringkasan kesehatan attachment di AI Ops |
+| `src/components/ai-ops/panels/AttachmentFailuresPanel.tsx` | Panel daftar kegagalan attachment terbaru |
 
 ### Server Routes
 
@@ -241,6 +265,15 @@ Tray `Konteks` berada di dalam composer:
 |------|--------|
 | `src/app/api/extract-file/route.ts` | Text extraction API (auth → fetch → extract → save) |
 | `src/app/api/chat/route.ts` | Chat streaming + file context injection + extraction polling |
+
+### Monitoring Backend
+
+| File | Fungsi |
+|------|--------|
+| `convex/attachmentTelemetry.ts` | Mutation ingest telemetry attachment |
+| `convex/attachmentTelemetryAggregates.ts` | Helper agregasi health/failure/format/env |
+| `convex/aiOps.ts` | Query agregasi attachment untuk dashboard AI Ops |
+| `src/lib/chat/attachment-health.ts` | Classifier status health attachment |
 
 ### Extractors
 
