@@ -77,14 +77,14 @@ export function CareerContactSectionCMS({ content }: CareerContactSectionCMSProp
 
   return (
     <section
-      className="relative isolate flex min-h-[100svh] flex-col justify-center overflow-hidden bg-background scroll-mt-[var(--header-h)]"
+      className="relative isolate flex flex-col bg-background scroll-mt-[var(--header-h)] md:min-h-[100svh] md:justify-center md:overflow-hidden"
       id="karier-kontak"
     >
       {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
       {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--header-h))] w-full max-w-7xl flex-col justify-center px-4 py-6 md:block md:min-h-0 md:px-8 md:py-10">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-8 md:block md:min-h-0 md:px-8 md:py-10">
         <div className="grid grid-cols-1 gap-comfort md:grid-cols-16">
           <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:col-start-3 md:mb-12 md:gap-4">
             <SectionBadge>{badgeText}</SectionBadge>

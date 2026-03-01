@@ -21,12 +21,12 @@ export function ProblemsSectionCMS({ content }: ProblemsSectionCMSProps) {
   }))
 
   return (
-    <section className="relative isolate flex min-h-[100svh] flex-col justify-center overflow-hidden bg-background" id="problems">
+    <section className="relative isolate bg-background md:flex md:min-h-[100svh] md:flex-col md:justify-center md:overflow-hidden" id="problems">
       {content.showGridPattern !== false && <GridPattern className="z-0 opacity-80" />}
       {content.showDiagonalStripes !== false && <DiagonalStripes className="opacity-40" />}
       {content.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={true} />}
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-8 md:px-8 md:py-10">
         <div className="grid grid-cols-1 gap-comfort md:grid-cols-16">
           <div className="col-span-1 mb-8 flex flex-col items-start gap-3 md:col-span-12 md:col-start-3 md:mb-12 md:gap-4">
             <SectionBadge>{badgeText}</SectionBadge>
