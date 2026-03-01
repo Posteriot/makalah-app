@@ -92,6 +92,7 @@ export const createMessage = mutation({
         role: v.string(), // "user" | "assistant" | "system"
         content: v.string(),
         fileIds: v.optional(v.array(v.id("files"))),
+        attachmentMode: v.optional(v.union(v.literal("explicit"), v.literal("inherit"))),
         metadata: v.optional(v.object({
             model: v.optional(v.string()),
             tokens: v.optional(v.number()),

@@ -355,6 +355,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [isAwaitingAssistantStart, setIsAwaitingAssistantStart] = useState(false)
   const [input, setInput] = useState("")
   const [attachedFiles, setAttachedFiles] = useState<AttachedFileMeta[]>([])
+  const [isAttachmentDraftDirty, setIsAttachmentDraftDirty] = useState(false)
   const [imageDataUrls, setImageDataUrls] = useState<Map<string, string>>(new Map())
   const [isCreatingChat, setIsCreatingChat] = useState(false)
   const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
@@ -384,6 +385,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const { resolvedTheme, setTheme } = useTheme()
   const userId = useQuery(api.chatHelpers.getUserId, session?.user?.id ? { betterAuthUserId: session.user.id } : "skip")
   const createConversation = useMutation(api.conversations.createConversation)
+  const upsertAttachmentContextMutation = useMutation(api.conversationAttachmentContexts.upsertByConversation)
+  const clearAttachmentContextMutation = useMutation(api.conversationAttachmentContexts.clearByConversation)
 
   const isValidConvexId = (value: string | null): value is string =>
     typeof value === "string" && /^[a-z0-9]{32}$/.test(value)
@@ -433,17 +436,29 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     safeConversationId ? safeConversationId : null
   )
 
-  // Collect all fileIds from history for file name lookup
+  const activeAttachmentContext = useQuery(
+    api.conversationAttachmentContexts.getByConversation,
+    safeConversationId && isAuthenticated ? { conversationId: safeConversationId } : "skip"
+  )
+  const activeContextFileIds = useMemo(
+    () => activeAttachmentContext?.activeFileIds ?? [],
+    [activeAttachmentContext]
+  )
+
+  // Collect all fileIds from history for file metadata lookup
   const historyFileIds = useMemo(() => {
-    if (!historyMessages) return []
+    if (!historyMessages && activeContextFileIds.length === 0) return []
     const ids = new Set<string>()
-    for (const msg of historyMessages) {
+    for (const msg of historyMessages ?? []) {
       if (msg.fileIds) {
         for (const fid of msg.fileIds) ids.add(fid)
       }
     }
+    for (const fid of activeContextFileIds) {
+      ids.add(fid)
+    }
     return Array.from(ids)
-  }, [historyMessages])
+  }, [historyMessages, activeContextFileIds])
 
   const historyFiles = useQuery(
     api.files.getFilesByIds,
@@ -452,15 +467,50 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       : "skip"
   )
 
-  const fileNameMap = useMemo(() => {
-    const map = new Map<string, string>()
+  const fileMetaMap = useMemo(() => {
+    const map = new Map<string, { name: string; size: number; type: string }>()
     if (historyFiles) {
       for (const f of historyFiles) {
-        if (f) map.set(f._id, f.name)
+        if (f) {
+          map.set(f._id, {
+            name: f.name,
+            size: f.size,
+            type: f.type,
+          })
+        }
       }
     }
     return map
   }, [historyFiles])
+
+  const fileNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const [fileId, meta] of fileMetaMap) {
+      map.set(fileId, meta.name)
+    }
+    return map
+  }, [fileMetaMap])
+
+  const activeContextAttachments = useMemo(() => {
+    return activeContextFileIds
+      .map((fileId) => {
+        const meta = fileMetaMap.get(fileId)
+        if (!meta) return null
+        return {
+          fileId: fileId as Id<"files">,
+          name: meta.name,
+          size: meta.size,
+          type: meta.type,
+        } satisfies AttachedFileMeta
+      })
+      .filter((file): file is AttachedFileMeta => file !== null)
+  }, [activeContextFileIds, fileMetaMap])
+
+  useEffect(() => {
+    setIsAttachmentDraftDirty(false)
+    setAttachedFiles([])
+    setImageDataUrls(new Map())
+  }, [safeConversationId])
 
   // Paper mode: Convert history messages to permission-compatible format
   const permissionMessages = useMemo(() => {
@@ -592,11 +642,191 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     }
   })
 
-  const sendMessageWithPendingIndicator = useCallback((text: string) => {
+  type AttachmentSendMode = "inherit" | "replace" | "clear"
+
+  const annotateLatestUserMessage = useCallback((params: {
+    attachmentMode: "explicit" | "inherit"
+    files?: AttachedFileMeta[]
+  }) => {
+    const { attachmentMode, files = [] } = params
+    const allFileIds = files.map((file) => file.fileId)
+    const allFileNames = files.map((file) => file.name)
+    const allFileSizes = files.map((file) => file.size)
+    const allFileTypes = files.map((file) => file.type)
+
+    setTimeout(() => {
+      setMessages((prev) => {
+        const targetUserIdx = [...prev]
+          .map((msg, idx) => ({ msg, idx }))
+          .reverse()
+          .find(({ msg }) => msg.role === "user")?.idx ?? -1
+        if (targetUserIdx < 0) return prev
+
+        const updated = [...prev]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const msg = updated[targetUserIdx] as any
+        const existingAnnotations = Array.isArray(msg.annotations) ? msg.annotations : []
+        msg.attachmentMode = attachmentMode
+
+        if (attachmentMode === "inherit") {
+          msg.annotations = existingAnnotations.filter(
+            (annotation: { type?: string }) => annotation?.type !== "file_ids"
+          )
+          return updated
+        }
+
+        const hasFileIdsAnnotation = existingAnnotations.some(
+          (annotation: { type?: string }) => annotation?.type === "file_ids"
+        )
+        if (!hasFileIdsAnnotation && allFileIds.length > 0) {
+          msg.annotations = [
+            ...existingAnnotations,
+            {
+              type: "file_ids",
+              fileIds: allFileIds,
+              fileNames: allFileNames,
+              fileSizes: allFileSizes,
+              fileTypes: allFileTypes,
+            },
+          ]
+        }
+
+        return updated
+      })
+    }, 0)
+  }, [setMessages])
+
+  const buildImageFileParts = useCallback((files: AttachedFileMeta[]) => {
+    const currentImageDataUrls = imageDataUrlsRef.current
+
+    return files
+      .filter((file) => file.type.startsWith("image/"))
+      .map((file) => ({
+        type: "file" as const,
+        mediaType: file.type,
+        filename: file.name,
+        url: currentImageDataUrls.get(file.fileId) ?? "",
+      }))
+      .filter((file) => file.url !== "")
+  }, [])
+
+  const resolveComposerAttachmentIntent = useCallback(() => {
+    const draftFiles = attachedFilesRef.current
+    const draftFileIds = draftFiles.map((file) => file.fileId)
+
+    if (isAttachmentDraftDirty) {
+      if (draftFileIds.length === 0 && activeContextFileIds.length > 0) {
+        return {
+          mode: "clear" as const,
+          files: [] as AttachedFileMeta[],
+        }
+      }
+
+      return {
+        mode: "replace" as const,
+        files: draftFiles,
+      }
+    }
+
+    return {
+      mode: "inherit" as const,
+      files: activeContextAttachments,
+    }
+  }, [activeContextAttachments, activeContextFileIds, isAttachmentDraftDirty])
+
+  const sendUserMessageWithContext = useCallback((params: {
+    text: string
+    mode: AttachmentSendMode
+    replaceAttachmentContext?: boolean
+    filesForContext?: AttachedFileMeta[]
+    imageFileParts?: Array<{
+      type: "file"
+      mediaType: string
+      filename?: string
+      url: string
+    }>
+  }) => {
+    const {
+      text,
+      mode,
+      replaceAttachmentContext = false,
+      filesForContext = [],
+      imageFileParts = [],
+    } = params
+
     setIsAwaitingAssistantStart(true)
     pendingScrollToBottomRef.current = true
-    sendMessage({ text })
-  }, [sendMessage])
+
+    const body: {
+      fileIds?: Id<"files">[]
+      attachmentMode?: "explicit" | "inherit"
+      replaceAttachmentContext?: boolean
+      inheritAttachmentContext?: boolean
+      clearAttachmentContext?: boolean
+    } = {}
+
+    if (mode === "clear") {
+      body.attachmentMode = "inherit"
+      body.clearAttachmentContext = true
+      body.inheritAttachmentContext = false
+    } else if (mode === "replace") {
+      body.attachmentMode = "explicit"
+      body.fileIds = filesForContext.map((file) => file.fileId)
+      body.replaceAttachmentContext = replaceAttachmentContext
+      body.inheritAttachmentContext = false
+    } else {
+      body.attachmentMode = "inherit"
+      body.inheritAttachmentContext = true
+    }
+
+    if (imageFileParts.length > 0) {
+      sendMessage({ text, files: imageFileParts }, { body })
+    } else {
+      sendMessage({ text }, { body })
+    }
+
+    if (mode === "replace") {
+      annotateLatestUserMessage({
+        attachmentMode: "explicit",
+        files: filesForContext,
+      })
+      setIsAttachmentDraftDirty(false)
+      setAttachedFiles([])
+      setImageDataUrls(new Map())
+      return
+    }
+
+    if (mode === "clear") {
+      annotateLatestUserMessage({ attachmentMode: "inherit" })
+      setIsAttachmentDraftDirty(false)
+      setAttachedFiles([])
+      setImageDataUrls(new Map())
+      return
+    }
+
+    if (mode === "inherit") {
+      annotateLatestUserMessage({ attachmentMode: "inherit" })
+    }
+  }, [annotateLatestUserMessage, sendMessage])
+
+  const sendMessageWithPendingIndicator = useCallback((text: string) => {
+    const composerIntent = resolveComposerAttachmentIntent()
+    const imageFileParts =
+      composerIntent.mode === "replace"
+        ? buildImageFileParts(composerIntent.files)
+        : []
+
+    sendUserMessageWithContext({
+      text,
+      mode: composerIntent.mode,
+      filesForContext: composerIntent.files,
+      imageFileParts,
+    })
+  }, [
+    buildImageFileParts,
+    resolveComposerAttachmentIntent,
+    sendUserMessageWithContext,
+  ])
 
   // Auto-send pending starter prompt after redirect from landing state.
   useEffect(() => {
@@ -619,77 +849,39 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     setIsAwaitingAssistantStart(true)
     pendingScrollToBottomRef.current = true
 
-    // Include image attachments if present (from landing page file attach flow)
-    const currentFiles = attachedFilesRef.current
-    const fileIds = currentFiles.map((f) => f.fileId)
-
-    const currentImageDataUrls = imageDataUrlsRef.current
-    const imageFileParts = currentFiles
-      .filter((f) => f.type.startsWith("image/"))
-      .map((f) => ({
-        type: "file" as const,
-        mediaType: f.type,
-        filename: f.name,
-        url: currentImageDataUrls.get(f.fileId) ?? "",
-      }))
-      .filter((f) => f.url !== "")
-
-    // Capture doc files metadata before clearing state
-    const docFiles = currentFiles.filter((f) => !f.type.startsWith("image/"))
+    const composerIntent = resolveComposerAttachmentIntent()
+    const imageFileParts =
+      composerIntent.mode === "replace"
+        ? buildImageFileParts(composerIntent.files)
+        : []
 
     if (process.env.NODE_ENV !== "production") {
       console.info("[ATTACH-DIAG][starter] sending", {
-        attachedCount: currentFiles.length,
-        fileIds,
+        attachedCount: composerIntent.files.length,
+        fileIds: composerIntent.files.map((file) => file.fileId),
+        mode: composerIntent.mode,
         imageCount: imageFileParts.length,
-        docCount: docFiles.length,
+        docCount: composerIntent.files.filter((file) => !file.type.startsWith("image/")).length,
       })
     }
 
-    if (imageFileParts.length > 0) {
-      sendMessage(
-        { text: pendingPrompt, files: imageFileParts },
-        { body: { fileIds } }
-      )
-    } else {
-      sendMessage({ text: pendingPrompt }, { body: { fileIds } })
-    }
-    // Document fileIds are sent per request via sendMessage options body.
-
-    // Annotate user message with file metadata for live badge rendering.
-    // setTimeout needed: sendMessage is async — pushMessage happens in a microtask
-    // AFTER our synchronous code finishes. setTimeout(0) runs after all microtasks.
-    if (currentFiles.length > 0) {
-      const allFileIds = currentFiles.map((f) => f.fileId)
-      const allFileNames = currentFiles.map((f) => f.name)
-      setTimeout(() => {
-        setMessages((prev) => {
-          const targetUserIdx = [...prev]
-            .map((msg, idx) => ({ msg, idx }))
-            .reverse()
-            .find(({ msg }) => msg.role === "user")?.idx ?? -1
-          if (targetUserIdx >= 0) {
-            const updated = [...prev]
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const msg = updated[targetUserIdx] as any
-            const existingAnnotations = Array.isArray(msg.annotations) ? msg.annotations : []
-            const hasFileIdsAnnotation = existingAnnotations.some(
-              (annotation: { type?: string }) => annotation?.type === "file_ids"
-            )
-            if (!hasFileIdsAnnotation) {
-              msg.annotations = [...existingAnnotations, { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
-            }
-            return updated
-          }
-          return prev
-        })
-      }, 0)
-    }
-
-    // Clear attachments after send
-    setAttachedFiles([])
-    setImageDataUrls(new Map())
-  }, [conversationId, historyMessages, isAuthenticated, isHistoryLoading, messages.length, sendMessage, status])
+    sendUserMessageWithContext({
+      text: pendingPrompt,
+      mode: composerIntent.mode,
+      filesForContext: composerIntent.files,
+      imageFileParts,
+    })
+  }, [
+    buildImageFileParts,
+    conversationId,
+    historyMessages,
+    isAuthenticated,
+    isHistoryLoading,
+    messages.length,
+    resolveComposerAttachmentIntent,
+    sendUserMessageWithContext,
+    status,
+  ])
 
   // Clear pending starter prompt only after we have concrete message data.
   useEffect(() => {
@@ -766,8 +958,20 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           id: msg._id,
           role: msg.role as "user" | "assistant" | "system" | "data",
           content: msg.content,
+          fileIds: msg.fileIds,
+          attachmentMode: msg.attachmentMode,
           parts: [{ type: "text", text: msg.content } as const, ...persistedTraceParts],
-          annotations: msg.fileIds ? [{ type: "file_ids", fileIds: msg.fileIds, fileNames: msg.fileIds.map((fid: string) => fileNameMap.get(fid) ?? "") }] : undefined,
+          annotations: msg.fileIds
+            ? [
+                {
+                  type: "file_ids",
+                  fileIds: msg.fileIds,
+                  fileNames: msg.fileIds.map((fid: string) => fileMetaMap.get(fid)?.name ?? ""),
+                  fileSizes: msg.fileIds.map((fid: string) => fileMetaMap.get(fid)?.size ?? -1),
+                  fileTypes: msg.fileIds.map((fid: string) => fileMetaMap.get(fid)?.type ?? ""),
+                },
+              ]
+            : undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sources: (msg as any).sources,
           ...(reasoningTrace ? { reasoningTrace } : {}),
@@ -790,7 +994,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     ) {
       starterPromptPendingHistorySyncRef.current = null
     }
-  }, [conversationId, historyMessages, isHistoryLoading, setMessages, fileNameMap])
+  }, [conversationId, historyMessages, isHistoryLoading, setMessages, fileMetaMap])
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
@@ -987,10 +1191,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }
 
   const handleFileAttached = (file: AttachedFileMeta) => {
+    setIsAttachmentDraftDirty(true)
     setAttachedFiles((prev) => [...prev, file])
   }
 
   const handleFileRemoved = (fileId: Id<"files">) => {
+    setIsAttachmentDraftDirty(true)
     setAttachedFiles((prev) => prev.filter((f) => f.fileId !== fileId))
     setImageDataUrls((prev) => {
       const next = new Map(prev)
@@ -1002,6 +1208,72 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const handleImageDataUrl = (fileId: Id<"files">, dataUrl: string) => {
     setImageDataUrls((prev) => new Map(prev).set(fileId, dataUrl))
   }
+
+  const handleClearAttachmentContext = useCallback(async () => {
+    if (!safeConversationId) {
+      setIsAttachmentDraftDirty(false)
+      setAttachedFiles([])
+      setImageDataUrls(new Map())
+      return
+    }
+    try {
+      await clearAttachmentContextMutation({ conversationId: safeConversationId })
+      setIsAttachmentDraftDirty(false)
+      setAttachedFiles([])
+      setImageDataUrls(new Map())
+      toast.success("Attachment context dibersihkan.")
+    } catch (clearError) {
+      console.error("Failed to clear attachment context:", clearError)
+      toast.error("Gagal membersihkan attachment context.")
+    }
+  }, [clearAttachmentContextMutation, safeConversationId])
+
+  const handleContextFileRemoved = useCallback(async (fileId: Id<"files">) => {
+    if (isAttachmentDraftDirty) {
+      handleFileRemoved(fileId)
+      return
+    }
+
+    if (!safeConversationId) {
+      handleFileRemoved(fileId)
+      return
+    }
+
+    const remainingFileIds = activeContextAttachments
+      .filter((file) => file.fileId !== fileId)
+      .map((file) => file.fileId)
+
+    try {
+      if (remainingFileIds.length === 0) {
+        await clearAttachmentContextMutation({ conversationId: safeConversationId })
+        toast.success("Attachment context dibersihkan.")
+      } else {
+        await upsertAttachmentContextMutation({
+          conversationId: safeConversationId,
+          fileIds: remainingFileIds,
+        })
+        toast.success("File konteks dihapus.")
+      }
+
+      setIsAttachmentDraftDirty(false)
+      setAttachedFiles([])
+      setImageDataUrls((prev) => {
+        const next = new Map(prev)
+        next.delete(fileId)
+        return next
+      })
+    } catch (removeError) {
+      console.error("Failed to remove file from attachment context:", removeError)
+      toast.error("Gagal menghapus file konteks.")
+    }
+  }, [
+    activeContextAttachments,
+    clearAttachmentContextMutation,
+    handleFileRemoved,
+    isAttachmentDraftDirty,
+    safeConversationId,
+    upsertAttachmentContextMutation,
+  ])
 
   const handleRegenerate = (options?: { markDirty?: boolean }) => {
     if (isPaperMode && options?.markDirty !== false) {
@@ -1019,8 +1291,17 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     stop()
   }, [hasPendingAssistantGeneration, stop])
 
-  const handleEdit = async (messageId: string, newContent: string) => {
+  const handleEdit = async (payload: {
+    messageId: string
+    newContent: string
+    attachmentMode: "explicit" | "inherit"
+    fileIds: string[]
+    fileNames: string[]
+    fileSizes: number[]
+    fileTypes: string[]
+  }) => {
     if (!safeConversationId) return
+    const { messageId, newContent, attachmentMode, fileIds, fileNames, fileSizes, fileTypes } = payload
 
     // Resolve the actual Convex ID
     // Client-generated IDs (from sendMessage) are ~16 chars, mixed case
@@ -1069,7 +1350,59 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         setMessages(truncatedMessages)
 
         // 4. Send the edited content as a new message - this triggers AI response
-        sendMessageWithPendingIndicator(newContent)
+        const editedMessage = messages[messageIndex]
+        const imageFileParts = (editedMessage.parts ?? [])
+          .filter((part): part is {
+            type: "file"
+            mediaType: string
+            filename?: string
+            url: string
+          } => {
+            if (part.type !== "file") return false
+            const maybeFile = part as {
+              mediaType?: unknown
+              url?: unknown
+            }
+            return (
+              typeof maybeFile.mediaType === "string" &&
+              maybeFile.mediaType.startsWith("image/") &&
+              typeof maybeFile.url === "string" &&
+              maybeFile.url.length > 0
+            )
+          })
+          .map((part) => ({
+            type: "file" as const,
+            mediaType: part.mediaType,
+            filename: part.filename,
+            url: part.url,
+          }))
+
+        const fallbackFileNames = fileIds.map((fid) => fileMetaMap.get(fid)?.name ?? "")
+        const fallbackFileSizes = fileIds.map((fid) => fileMetaMap.get(fid)?.size ?? -1)
+        const fallbackFileTypes = fileIds.map((fid) => fileMetaMap.get(fid)?.type ?? "")
+        const allFileNames = fileNames.length === fileIds.length ? fileNames : fallbackFileNames
+        const allFileSizes = fileSizes.length === fileIds.length ? fileSizes : fallbackFileSizes
+        const allFileTypes = fileTypes.length === fileIds.length ? fileTypes : fallbackFileTypes
+        const editedAttachmentFiles = fileIds.map((fileId, index) => ({
+          fileId: fileId as Id<"files">,
+          name: allFileNames[index] ?? fileMetaMap.get(fileId)?.name ?? "file",
+          size: allFileSizes[index] ?? fileMetaMap.get(fileId)?.size ?? 0,
+          type: allFileTypes[index] ?? fileMetaMap.get(fileId)?.type ?? "application/octet-stream",
+        }))
+
+        if (attachmentMode === "explicit" && editedAttachmentFiles.length > 0) {
+          sendUserMessageWithContext({
+            text: newContent || ".",
+            mode: "replace",
+            filesForContext: editedAttachmentFiles,
+            imageFileParts,
+          })
+        } else {
+          sendUserMessageWithContext({
+            text: newContent || ".",
+            mode: "inherit",
+          })
+        }
       } else {
         // Edge case: message not found in local state (should not happen normally)
         toast.error("Pesan tidak ditemukan. Silakan refresh halaman.")
@@ -1083,79 +1416,32 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!input.trim() && attachedFiles.length === 0) return
+    if (!input.trim()) return
     if (isLoading) return
 
-    const fileIds = attachedFiles.map((f) => f.fileId)
-
-    setIsAwaitingAssistantStart(true)
-    pendingScrollToBottomRef.current = true
-
-    // Collect image FileUIParts for native multimodal
-    const imageFileParts = attachedFiles
-      .filter((f) => f.type.startsWith("image/"))
-      .map((f) => ({
-        type: "file" as const,
-        mediaType: f.type,
-        filename: f.name,
-        url: imageDataUrls.get(f.fileId) ?? "",
-      }))
-      .filter((f) => f.url !== "")
-
-    // Capture doc files metadata before clearing state
-    const docFiles = attachedFiles.filter((f) => !f.type.startsWith("image/"))
+    const composerIntent = resolveComposerAttachmentIntent()
+    const imageFileParts =
+      composerIntent.mode === "replace"
+        ? buildImageFileParts(composerIntent.files)
+        : []
 
     if (process.env.NODE_ENV !== "production") {
       console.info("[ATTACH-DIAG][submit] sending", {
-        attachedCount: attachedFiles.length,
-        fileIds,
+        attachedCount: composerIntent.files.length,
+        fileIds: composerIntent.files.map((file) => file.fileId),
+        mode: composerIntent.mode,
         imageCount: imageFileParts.length,
-        docCount: docFiles.length,
+        docCount: composerIntent.files.filter((file) => !file.type.startsWith("image/")).length,
       })
     }
 
-    if (imageFileParts.length > 0) {
-      sendMessage(
-        { text: input || " ", files: imageFileParts },
-        { body: { fileIds } }
-      )
-    } else {
-      sendMessage({ text: input }, { body: { fileIds } })
-    }
-    // Document fileIds are sent per request via sendMessage options body.
-
-    // Annotate user message with file metadata for live badge rendering.
-    // setTimeout needed: sendMessage is async — pushMessage happens in a microtask.
-    if (attachedFiles.length > 0) {
-      const allFileIds = attachedFiles.map((f) => f.fileId)
-      const allFileNames = attachedFiles.map((f) => f.name)
-      setTimeout(() => {
-        setMessages((prev) => {
-          const targetUserIdx = [...prev]
-            .map((msg, idx) => ({ msg, idx }))
-            .reverse()
-            .find(({ msg }) => msg.role === "user")?.idx ?? -1
-          if (targetUserIdx >= 0) {
-            const updated = [...prev]
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const msg = updated[targetUserIdx] as any
-            const existingAnnotations = Array.isArray(msg.annotations) ? msg.annotations : []
-            const hasFileIdsAnnotation = existingAnnotations.some(
-              (annotation: { type?: string }) => annotation?.type === "file_ids"
-            )
-            if (!hasFileIdsAnnotation) {
-              msg.annotations = [...existingAnnotations, { type: "file_ids", fileIds: allFileIds, fileNames: allFileNames }]
-            }
-            return updated
-          }
-          return prev
-        })
-      }, 0)
-    }
-
+    sendUserMessageWithContext({
+      text: input,
+      mode: composerIntent.mode,
+      filesForContext: composerIntent.files,
+      imageFileParts,
+    })
     setInput("")
-    setAttachedFiles([])
-    setImageDataUrls(new Map())
   }
 
   const handleApprove = async () => {
@@ -1302,7 +1588,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             onInputChange={handleInputChange}
             onSubmit={async (e) => {
               e.preventDefault()
-              if (!input.trim() && attachedFiles.length === 0) return
+              if (!input.trim()) return
               await handleStartNewChat(input.trim())
             }}
             isLoading={isCreatingChat}
@@ -1334,7 +1620,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             onInputChange={handleInputChange}
             onSubmit={async (e) => {
               e.preventDefault()
-              if (!input.trim() && attachedFiles.length === 0) return
+              if (!input.trim()) return
               await handleStartNewChat(input.trim())
             }}
             isLoading={isCreatingChat}
@@ -1534,6 +1820,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                       persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
                       // File name lookup for history messages
                       fileNameMap={fileNameMap}
+                      fileMetaMap={fileMetaMap}
                     />
                   </div>
                 )
@@ -1619,9 +1906,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           onStop={handleStopGeneration}
           conversationId={conversationId}
           attachedFiles={attachedFiles}
+          contextFiles={isAttachmentDraftDirty ? attachedFiles : activeContextAttachments}
           onFileAttached={handleFileAttached}
           onFileRemoved={handleFileRemoved}
+          onContextFileRemoved={handleContextFileRemoved}
           onImageDataUrl={handleImageDataUrl}
+          onClearAttachmentContext={handleClearAttachmentContext}
+          hasActiveAttachmentContext={activeContextFileIds.length > 0}
         />
       </div>
 

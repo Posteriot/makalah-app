@@ -46,6 +46,7 @@ import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { enforceArtifactSourcesPolicy } from "@/lib/ai/artifact-sources-policy"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
+import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 
 export async function POST(req: Request) {
     try {
@@ -85,14 +86,26 @@ export async function POST(req: Request) {
 
         // 2. Parse request (AI SDK v5/v6 format)
         const body = await req.json()
-        const { messages, conversationId, fileIds } = body
+        const {
+            messages,
+            conversationId,
+            fileIds: requestFileIds,
+            attachmentMode: requestedAttachmentMode,
+            replaceAttachmentContext,
+            inheritAttachmentContext,
+            clearAttachmentContext,
+        } = body
         const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
         if (process.env.NODE_ENV !== "production") {
             console.info("[ATTACH-DIAG][route] request body", {
                 conversationId,
-                fileIdsIsArray: Array.isArray(fileIds),
-                fileIdsLength: Array.isArray(fileIds) ? fileIds.length : null,
-                fileIdsPreview: Array.isArray(fileIds) ? fileIds.slice(0, 5) : null,
+                fileIdsIsArray: Array.isArray(requestFileIds),
+                fileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
+                fileIdsPreview: Array.isArray(requestFileIds) ? requestFileIds.slice(0, 5) : null,
+                requestedAttachmentMode,
+                replaceAttachmentContext: replaceAttachmentContext === true,
+                inheritAttachmentContext: inheritAttachmentContext !== false,
+                clearAttachmentContext: clearAttachmentContext === true,
                 messageCount: Array.isArray(messages) ? messages.length : null,
             })
         }
@@ -165,6 +178,51 @@ export async function POST(req: Request) {
             )
         }
 
+        const attachmentContext = await fetchQueryWithToken(
+            api.conversationAttachmentContexts.getByConversation,
+            {
+                conversationId: currentConversationId as Id<"conversations">,
+            }
+        )
+
+        const attachmentResolution = resolveEffectiveFileIds({
+            requestFileIds: Array.isArray(requestFileIds) ? requestFileIds : [],
+            conversationContextFileIds: attachmentContext?.activeFileIds ?? [],
+            replaceAttachmentContext,
+            inheritAttachmentContext,
+            clearAttachmentContext,
+        })
+
+        const effectiveFileIds = attachmentResolution.effectiveFileIds as Id<"files">[]
+
+        if (attachmentResolution.shouldClearContext) {
+            await retryMutation(
+                () => fetchMutationWithToken(api.conversationAttachmentContexts.clearByConversation, {
+                    conversationId: currentConversationId as Id<"conversations">,
+                }),
+                "conversationAttachmentContexts.clearByConversation"
+            )
+        } else if (attachmentResolution.shouldUpsertContext) {
+            await retryMutation(
+                () => fetchMutationWithToken(api.conversationAttachmentContexts.upsertByConversation, {
+                    conversationId: currentConversationId as Id<"conversations">,
+                    fileIds: effectiveFileIds,
+                }),
+                "conversationAttachmentContexts.upsertByConversation"
+            )
+        }
+
+        if (process.env.NODE_ENV !== "production") {
+            console.info("[ATTACH-DIAG][route] effective fileIds", {
+                reason: attachmentResolution.reason,
+                requestFileIdsLength: Array.isArray(requestFileIds) ? requestFileIds.length : null,
+                contextFileIdsLength: attachmentContext?.activeFileIds?.length ?? 0,
+                effectiveFileIdsLength: effectiveFileIds.length,
+                effectiveFileIdsPreview: effectiveFileIds.slice(0, 5),
+                replaceAttachmentContext: replaceAttachmentContext === true,
+            })
+        }
+
         // Background Title Generation (Fire and Forget)
         if (isNewConversation && firstUserContent) {
             // We don't await this to avoid blocking the response
@@ -226,14 +284,25 @@ export async function POST(req: Request) {
             const userContent = lastMessage.content ||
                 lastMessage.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text ||
                 ""
+            const normalizedUserContent = typeof userContent === "string" ? userContent.trim() : ""
 
-            if (userContent) {
+            if (!normalizedUserContent && effectiveFileIds.length > 0) {
+                return new Response("Attachment membutuhkan teks pendamping minimal 1 karakter.", { status: 400 })
+            }
+
+            if (normalizedUserContent) {
+                const attachmentMode =
+                    requestedAttachmentMode === "explicit" || requestedAttachmentMode === "inherit"
+                        ? requestedAttachmentMode
+                        : (attachmentResolution.reason === "explicit" ? "explicit" : "inherit")
+
                 await retryMutation(
                     () => fetchMutationWithToken(api.messages.createMessage, {
                         conversationId: currentConversationId as Id<"conversations">,
                         role: "user",
                         content: userContent,
-                        fileIds: fileIds ? (fileIds as Id<"files">[]) : undefined,
+                        fileIds: effectiveFileIds.length > 0 ? effectiveFileIds : undefined,
+                        attachmentMode,
                     }),
                     "messages.createMessage(user)"
                 )
@@ -273,10 +342,46 @@ export async function POST(req: Request) {
                 lastUserMessage.parts?.find((p: { type: string; text?: string }) => p.type === "text")?.text ||
                 "")
             : ""
+        const normalizedLastUserContent =
+            typeof lastUserContent === "string" ? lastUserContent.trim() : ""
+        const normalizedLastUserContentLower = normalizedLastUserContent.toLowerCase()
 
         let paperWorkflowReminder = ""
         if (!paperModePrompt && lastUserContent && hasPaperWritingIntent(lastUserContent)) {
             paperWorkflowReminder = PAPER_WORKFLOW_REMINDER
+        }
+        const userMessageCount = Array.isArray(messages)
+            ? messages.filter((message: { role?: string }) => message?.role === "user").length
+            : 0
+        const isAttachmentProbePrompt = (() => {
+            if (!normalizedLastUserContentLower) return true
+            if (normalizedLastUserContentLower === "." || normalizedLastUserContentLower.length <= 2) return true
+
+            const probePatterns = [
+                /^apa ini\??$/,
+                /^ini apa\??$/,
+                /^jelaskan( isi)?( file| dokumen)?( ini)?\??$/,
+                /^ringkas(kan)?( isi)?( file| dokumen)?( ini)?\??$/,
+                /^analisis(kan)?( isi)?( file| dokumen)?( ini)?\??$/,
+                /^tolong jelaskan( ini)?\??$/,
+            ]
+            return probePatterns.some((pattern) => pattern.test(normalizedLastUserContentLower))
+        })()
+        const shouldForceAttachmentFirstResponse =
+            effectiveFileIds.length > 0 &&
+            requestedAttachmentMode === "explicit" &&
+            !paperModePrompt &&
+            (isAttachmentProbePrompt || (userMessageCount <= 1 && normalizedLastUserContent.length <= 64))
+        const attachmentFirstResponseInstruction = shouldForceAttachmentFirstResponse
+            ? "Pengguna baru saja melampirkan file secara eksplisit. Jawaban pertama WAJIB langsung mengulas isi file terlampir. DILARANG membuka dengan perkenalan umum, profil asisten, atau daftar kemampuan. Kalimat pertama harus langsung menjelaskan inti isi dokumen yang dilampirkan."
+            : ""
+        if (process.env.NODE_ENV !== "production") {
+            console.info("[ATTACH-DIAG][route] attachment-first-response", {
+                shouldForceAttachmentFirstResponse,
+                requestedAttachmentMode,
+                userMessageCount,
+                normalizedLastUserContent,
+            })
         }
 
         const isExplicitSearchRequest = (text: string) => {
@@ -331,10 +436,10 @@ export async function POST(req: Request) {
 
         // Task 6.1-6.4: Fetch file records dan inject context
         let fileContext = ""
-        if (fileIds && fileIds.length > 0) {
+        if (effectiveFileIds.length > 0) {
             let files = await fetchQueryWithToken(api.files.getFilesByIds, {
                 userId: userId as Id<"users">,
-                fileIds: fileIds as Id<"files">[],
+                fileIds: effectiveFileIds,
             })
 
             // Wait for pending extractions (max 8 seconds, poll every 500ms)
@@ -346,7 +451,7 @@ export async function POST(req: Request) {
                     await new Promise((r) => setTimeout(r, 500))
                     files = await fetchQueryWithToken(api.files.getFilesByIds, {
                         userId: userId as Id<"users">,
-                        fileIds: fileIds as Id<"files">[],
+                        fileIds: effectiveFileIds,
                     })
                     const stillPending = files.some(
                         (f: { extractionStatus?: string }) => !f.extractionStatus || f.extractionStatus === "pending"
@@ -401,7 +506,7 @@ export async function POST(req: Request) {
         }
         if (process.env.NODE_ENV !== "production") {
             console.info("[ATTACH-DIAG][route] context result", {
-                fileIdsLength: Array.isArray(fileIds) ? fileIds.length : null,
+                fileIdsLength: effectiveFileIds.length,
                 fileContextLength: fileContext.length,
                 fileContextPreview: fileContext.slice(0, 180),
             })
@@ -522,6 +627,9 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
                 : []),
             ...(fileContext
                 ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
+                : []),
+            ...(attachmentFirstResponseInstruction
+                ? [{ role: "system" as const, content: attachmentFirstResponseInstruction }]
                 : []),
             ...(sourcesContext
                 ? [{ role: "system" as const, content: sourcesContext }]

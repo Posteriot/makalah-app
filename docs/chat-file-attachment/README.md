@@ -47,6 +47,40 @@ File attachment menggunakan dua jalur berbeda tergantung tipe file:
 
 Libraries extraction (pdf-parse, mammoth, xlsx-populate, officeparser) membutuhkan full Node.js environment. Convex runtime tidak support native Node.js modules ini. Maka extraction diproses di Next.js API route yang berjalan di Node.js.
 
+## Conversation-Scoped Attachment Context (Durable)
+
+Mulai implementasi 2026-03-01, attachment tidak lagi hanya bergantung ke payload per-message dari client.
+
+Tambahan arsitektur:
+
+1. **Server state per conversation**
+- Table baru `conversationAttachmentContexts` menyimpan `activeFileIds` per `conversationId`.
+
+2. **Resolver `effectiveFileIds` di `/api/chat`**
+- Prioritas:
+  - `clearAttachmentContext: true` → kosongkan context.
+  - `fileIds` explicit non-empty → merge dengan context aktif (append + dedupe).
+  - `replaceAttachmentContext: true` → replace context aktif penuh.
+  - selain itu (`inheritAttachmentContext !== false`) → inherit dari context aktif server.
+
+3. **Unified send pipeline di `ChatWindow`**
+- Semua jalur kirim user (submit normal, template, approve/revise, edit-resend, starter prompt) lewat helper tunggal.
+- Tidak ada lagi jalur text-only yang bypass attachment contract.
+
+4. **Composer sync dari server context**
+- Tray `Konteks` di composer dihydrate dari context aktif server.
+- User bisa hapus satu file (`x`) atau hapus semua (`Hapus semua`).
+- Attachment tetap aktif lintas turn dan lintas refresh sampai user clear context.
+
+5. **Attachment mode per-message**
+- `messages.attachmentMode` disimpan sebagai `explicit` atau `inherit`.
+- Bubble chip hanya tampil untuk message user dengan mode `explicit`.
+- Follow-up inherit tetap membawa konteks file di server, tanpa spam chip di bubble.
+
+5. **Hard guard send rule**
+- UI: tombol send aktif hanya jika ada teks (`input.trim().length > 0`).
+- Backend: jika ada attachment tapi teks kosong, route return `400`.
+
 ## Tipe File yang Didukung
 
 | Format | MIME Type | Library | Catatan |
@@ -185,10 +219,10 @@ File names diambil dari:
 
 **File:** `src/components/chat/ChatInput.tsx`
 
-Preview attached files di atas input area:
-- Image preview: thumbnail `<img>` dengan overlay icon
-- Document preview: icon `Page` + nama file + ukuran file
-- Tombol remove (X) per file
+Tray `Konteks` berada di dalam composer:
+- Menampilkan file aktif (nama terpotong, ekstensi tetap terlihat, ukuran file).
+- Tombol `x` per file untuk partial remove.
+- Tombol `Hapus semua` untuk reset context conversation.
 
 ## File Map
 

@@ -32,6 +32,7 @@ import type * as billing_subscriptions from "../billing/subscriptions.js";
 import type * as billing_usage from "../billing/usage.js";
 import type * as blog from "../blog.js";
 import type * as chatHelpers from "../chatHelpers.js";
+import type * as conversationAttachmentContexts from "../conversationAttachmentContexts.js";
 import type * as conversations from "../conversations.js";
 import type * as crons from "../crons.js";
 import type * as documentationSections from "../documentationSections.js";
@@ -133,6 +134,7 @@ declare const fullApi: ApiFromModules<{
   "billing/usage": typeof billing_usage;
   blog: typeof blog;
   chatHelpers: typeof chatHelpers;
+  conversationAttachmentContexts: typeof conversationAttachmentContexts;
   conversations: typeof conversations;
   crons: typeof crons;
   documentationSections: typeof documentationSections;

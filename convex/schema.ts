@@ -114,6 +114,7 @@ export default defineSchema({
     content: v.string(),
     createdAt: v.number(),
     fileIds: v.optional(v.array(v.id("files"))),
+    attachmentMode: v.optional(v.union(v.literal("explicit"), v.literal("inherit"))),
     metadata: v.optional(v.object({
       model: v.optional(v.string()),
       tokens: v.optional(v.number()),
@@ -155,6 +156,16 @@ export default defineSchema({
   })
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_conversation_role", ["conversationId", "role", "createdAt"]),
+
+  conversationAttachmentContexts: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+    activeFileIds: v.array(v.id("files")),
+    updatedAt: v.number(),
+    updatedByMessageId: v.optional(v.id("messages")),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_user_conversation", ["userId", "conversationId"]),
 
   files: defineTable({
     userId: v.id("users"),
