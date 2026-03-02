@@ -1,4 +1,4 @@
-import { streamText, type CoreMessage } from "ai"
+import { streamText, type ModelMessage } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createGateway } from "@ai-sdk/gateway"
 import { configCache } from "./config-cache"
@@ -217,7 +217,7 @@ function supportsGeminiThinking(provider: string, model: string): boolean {
  * Prefer getGatewayModel()/getOpenRouterModel() for fine-grained control.
  */
 export async function streamChatResponse(
-  messages: CoreMessage[],
+  messages: ModelMessage[],
   options?: {
     temperature?: number
     maxTokens?: number

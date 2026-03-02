@@ -1,5 +1,5 @@
 import { generateTitle } from "@/lib/ai/title-generator"
-import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateObject, generateText, tool, type ToolSet, type ModelMessage, stepCountIs } from "ai"
+import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, Output, tool, type ToolSet, type ModelMessage, stepCountIs } from "ai"
 import { z } from "zod"
 import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google"
 
@@ -585,7 +585,7 @@ export async function POST(req: Request) {
             })
         }
         // Convert UIMessages to model messages format
-        const rawModelMessages = convertToModelMessages(messages)
+        const rawModelMessages = await convertToModelMessages(messages)
 
         // ════════════════════════════════════════════════════════════════
         // Sanitize messages untuk menghindari ZodError dari OpenRouter
@@ -1055,15 +1055,15 @@ JSON schema:
             })
 
             const runStructuredRouter = async () => {
-                const { object } = await generateObject({
+                const { output } = await generateText({
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     model: options.model as any,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     messages: [{ role: "system", content: routerPrompt }, ...(options.recentMessages as any[])],
-                    schema: routerSchema,
+                    output: Output.object({ schema: routerSchema }),
                     temperature: 0.2,
                 })
-                return object
+                return output
             }
 
             for (let attempt = 0; attempt < 2; attempt += 1) {

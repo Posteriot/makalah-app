@@ -107,7 +107,7 @@ Berikan output dalam format JSON dengan struktur:
  *
  * @param content - The text to analyze and refrasa
  * @param constitution - Optional Style Constitution content
- * @returns { system, prompt } for separate passing to generateObject()
+ * @returns { system, prompt } for separate passing to generateText()
  */
 export function buildRefrasaPrompt(
   content: string,

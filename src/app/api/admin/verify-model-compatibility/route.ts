@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { isAuthenticated, getToken } from "@/lib/auth-server"
 import { createOpenAI } from "@ai-sdk/openai"
-import { generateText, generateObject, tool } from "ai"
+import { generateText, Output, tool } from "ai"
 import { fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { z } from "zod"
@@ -10,7 +10,7 @@ import { z } from "zod"
  * POST /api/admin/verify-model-compatibility
  *
  * Comprehensive model compatibility verification for OpenRouter fallback.
- * Tests: basic generation, tool calling, structured output (generateObject)
+ * Tests: basic generation, tool calling, structured output (generateText with Output.object)
  *
  * Admin/superadmin only
  */
@@ -229,27 +229,27 @@ Include a summary. Use the createTaskList tool.`,
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TEST 4: Structured Output (generateObject)
+  // TEST 4: Structured Output (generateText + Output.object)
   // ═══════════════════════════════════════════════════════════════════════════
   const test4Start = Date.now()
   try {
-    const result = await generateObject({
+    const result = await generateText({
       model: testModel,
-      schema: StructuredOutputSchema,
+      output: Output.object({ schema: StructuredOutputSchema }),
       prompt: "Analyze the word 'hello'. Provide analysis, confidence (0-1), and relevant tags.",
       temperature: 0.3,
     })
 
     const hasValidStructure =
-      typeof result.object.analysis === 'string' &&
-      typeof result.object.confidence === 'number' &&
-      Array.isArray(result.object.tags)
+      typeof result.output.analysis === 'string' &&
+      typeof result.output.confidence === 'number' &&
+      Array.isArray(result.output.tags)
 
     results.push({
       test: "structured_output",
       passed: hasValidStructure,
       duration: Date.now() - test4Start,
-      details: `Generated object with ${result.object.tags?.length || 0} tags`,
+      details: `Generated object with ${result.output.tags.length} tags`,
     })
   } catch (error) {
     results.push({
@@ -290,7 +290,7 @@ Include a summary. Use the createTaskList tool.`,
     "updateArtifact Tool": supportedFeatures.simpleTool,
     "renameConversationTitle Tool": supportedFeatures.simpleTool,
     "Paper Tools (complex)": supportedFeatures.complexTool,
-    "Refrasa (generateObject)": supportedFeatures.structuredOutput,
+    "Refrasa (structuredOutput)": supportedFeatures.structuredOutput,
   }
 
   return NextResponse.json({
