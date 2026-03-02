@@ -1867,6 +1867,9 @@ TIPS PENCARIAN:
             const forcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
                     : undefined
+            const webSearchForcedToolChoice = enableWebSearch
+                ? ({ type: "tool", toolName: "google_search" } as const)
+                : undefined
             // Web search mode: limit to 1 step to prevent AI from trying to call
             // function tools (which don't exist in web search mode) after search
             // Explicit sync mode: force 2-step flow
@@ -1876,6 +1879,35 @@ TIPS PENCARIAN:
                 : shouldForceGetCurrentPaperState
                     ? 2
                     : 5
+            const webSearchRetryPrepareStep = enableWebSearch
+                ? ({ stepNumber, steps }: { stepNumber: number; steps: Array<{ sources?: unknown[] }> }) => {
+                    if (stepNumber === 0) {
+                        return {
+                            toolChoice: { type: "tool", toolName: "google_search" } as const,
+                            activeTools: ["google_search"] as string[],
+                        }
+                    }
+                    if (stepNumber === 1) {
+                        const previousStep = steps[steps.length - 1]
+                        const previousSources = Array.isArray(previousStep?.sources) ? previousStep.sources.length : 0
+                        if (previousSources === 0) {
+                            return {
+                                toolChoice: { type: "tool", toolName: "google_search" } as const,
+                                activeTools: ["google_search"] as string[],
+                            }
+                        }
+                    }
+                    return undefined
+                }
+                : undefined
+            const webSearchRetryStopWhen = enableWebSearch
+                ? ({ steps }: { steps: Array<{ sources?: unknown[] }> }) => {
+                    const lastStep = steps[steps.length - 1]
+                    const lastStepSources = Array.isArray(lastStep?.sources) ? lastStep.sources.length : 0
+                    if (lastStepSources > 0) return true
+                    return steps.length >= 2
+                }
+                : undefined
             const deterministicSyncPrepareStep = shouldForceGetCurrentPaperState
                 ? ({ stepNumber }: { stepNumber: number }) => {
                     if (stepNumber === 0) {
@@ -1909,9 +1941,9 @@ TIPS PENCARIAN:
                 messages: fullMessagesGateway,
                 tools: gatewayTools,
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
-                toolChoice: forcedToolChoice,
-                prepareStep: deterministicSyncPrepareStep,
-                stopWhen: stepCountIs(maxToolSteps),
+                toolChoice: webSearchForcedToolChoice ?? forcedToolChoice,
+                prepareStep: webSearchRetryPrepareStep ?? deterministicSyncPrepareStep,
+                stopWhen: webSearchRetryStopWhen ?? stepCountIs(maxToolSteps),
                 ...samplingOptions,
                 onFinish: enableWebSearch
                     ? undefined
@@ -2028,28 +2060,29 @@ TIPS PENCARIAN:
             // - Jadi kita kirim `data-search` secara optimistis di awal stream, lalu matikan di akhir.
             //   Kalau ternyata tidak ada `source-url` yang muncul, status ditutup sebagai `off`.
             if (enableWebSearch) {
-	                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-	                const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
-	                const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
-	                const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
-                    const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
-                    const reasoningTrace = createCuratedTraceController({
-                        enabled: reasoningTraceEnabled,
-                        traceId,
-                        mode: getTraceModeLabel(!!paperModePrompt, true),
-                        stage: currentStage && currentStage !== "completed" ? currentStage : undefined,
-                        webSearchEnabled: true,
-                    })
-                    primaryReasoningTraceController = reasoningTrace
+                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+                const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
+                const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
+                const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
+                const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
+                const reasoningTrace = createCuratedTraceController({
+                    enabled: reasoningTraceEnabled,
+                    traceId,
+                    mode: getTraceModeLabel(!!paperModePrompt, true),
+                    stage: currentStage && currentStage !== "completed" ? currentStage : undefined,
+                    webSearchEnabled: true,
+                })
+                primaryReasoningTraceController = reasoningTrace
 
-	                const stream = createUIMessageStream({
-	                    execute: async ({ writer }) => {
-	                        let started = false
-	                        let hasAnySource = false
-                        let sourceCount = 0
-                        let searchStatusClosed = false
-                        let streamedText = ""
-                        let lastProviderMetadata: unknown = null
+                    const stream = createUIMessageStream({
+                        execute: async ({ writer }) => {
+                            let started = false
+                            let hasAnySource = false
+                            let sourceCount = 0
+                            let searchStatusClosed = false
+                            let streamedText = ""
+                            let lastProviderMetadata: unknown = null
+                            const streamedSourceUrls: Array<{ url: string; title: string }> = []
 
                         const ensureStart = () => {
                             if (started) return
@@ -2124,6 +2157,16 @@ TIPS PENCARIAN:
                                 sourceCount += 1
                                 primaryReasoningSourceCount = sourceCount
                                 emitTrace(reasoningTrace.markSourceDetected())
+                                if (typeof chunk.url === "string" && chunk.url.trim().length > 0) {
+                                    const normalizedUrl = normalizeWebSearchUrl(chunk.url)
+                                    const title = typeof chunk.title === "string" && chunk.title.trim().length > 0
+                                        ? chunk.title.trim()
+                                        : normalizedUrl
+                                    streamedSourceUrls.push({
+                                        url: normalizedUrl,
+                                        title,
+                                    })
+                                }
                             }
 
                             if (chunk.type === "tool-input-start") {
@@ -2146,7 +2189,6 @@ TIPS PENCARIAN:
                             }
 
                             if (chunk.type === "finish") {
-                                closeSearchStatus(hasAnySource ? "done" : "off")
                                 let didFinalizeForPersist = false
 
                                 type SourceWithChunk = {
@@ -2167,6 +2209,15 @@ TIPS PENCARIAN:
 
                                 type ProviderMetadataWithGoogle = {
                                     google?: GoogleGenerativeAIProviderMetadata
+                                }
+
+                                type ResultSourceUrl = {
+                                    sourceType?: string
+                                    url?: string
+                                    uri?: string
+                                    title?: string
+                                    name?: string
+                                    publishedAt?: number
                                 }
 
                                 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -2191,6 +2242,52 @@ TIPS PENCARIAN:
                                     const raw = (meta as { groundingSupports?: unknown }).groundingSupports
                                     if (!Array.isArray(raw)) return undefined
                                     return raw.filter((support): support is GroundingSupport => isRecord(support))
+                                }
+
+                                const normalizeResultSource = (raw: unknown): SourceWithChunk | null => {
+                                    if (!isRecord(raw)) return null
+                                    const source = raw as ResultSourceUrl
+                                    if (typeof source.sourceType === "string" && source.sourceType !== "url") return null
+                                    const rawUrl = typeof source.url === "string"
+                                        ? source.url
+                                        : typeof source.uri === "string"
+                                            ? source.uri
+                                            : ""
+                                    if (!rawUrl.trim()) return null
+                                    const normalizedUrl = normalizeWebSearchUrl(rawUrl)
+                                    const rawTitle = typeof source.title === "string"
+                                        ? source.title
+                                        : typeof source.name === "string"
+                                            ? source.name
+                                            : ""
+                                    const title = rawTitle.trim() || normalizedUrl
+                                    return {
+                                        url: normalizedUrl,
+                                        title,
+                                        ...(typeof source.publishedAt === "number" && Number.isFinite(source.publishedAt)
+                                            ? { publishedAt: source.publishedAt }
+                                            : {}),
+                                        chunkIndices: [],
+                                    }
+                                }
+
+                                const getResultSources = async (): Promise<SourceWithChunk[]> => {
+                                    const rawSources = await (async () => {
+                                        try {
+                                            return await Promise.race([
+                                                result.sources,
+                                                new Promise<undefined>((resolve) =>
+                                                    setTimeout(() => resolve(undefined), 4000)
+                                                ),
+                                            ])
+                                        } catch {
+                                            return undefined
+                                        }
+                                    })()
+                                    if (!Array.isArray(rawSources)) return []
+                                    return rawSources
+                                        .map((item) => normalizeResultSource(item))
+                                        .filter((item): item is SourceWithChunk => !!item)
                                 }
 
                                 const isVertexProxyUrl = (raw: string) => {
@@ -2262,10 +2359,70 @@ TIPS PENCARIAN:
                                     items: SourceWithChunk[],
                                     groundingSupports: GroundingSupport[] | undefined
                                 ) => {
-                                    if (!groundingSupports || items.length === 0) return inputText
+                                    if (items.length === 0) return inputText
+
+                                    const fallbackInsertPerSentence = (
+                                        text: string,
+                                        sources: SourceWithChunk[],
+                                    ) => {
+                                        if (!text || sources.length === 0) return text
+
+                                        const hasCitationTail = (segment: string) =>
+                                            /\[\d+(?:\s*,\s*\d+)*\]\s*$/.test(segment.trimEnd())
+
+                                        const shouldSkipSegment = (segment: string) => {
+                                            const trimmed = segment.trim()
+                                            if (!trimmed) return true
+                                            if (!/[a-zA-Z0-9]/.test(trimmed)) return true
+                                            if (/^#{1,6}\s/.test(trimmed)) return true
+                                            if (/^\|.+\|$/.test(trimmed)) return true
+                                            return false
+                                        }
+
+                                        const withCitationTail = (segment: string, marker: string) => {
+                                            const trailingWhitespace = segment.match(/\s*$/)?.[0] ?? ""
+                                            const core = trailingWhitespace
+                                                ? segment.slice(0, segment.length - trailingWhitespace.length)
+                                                : segment
+                                            return `${core}${marker}${trailingWhitespace}`
+                                        }
+
+                                        const isSentenceBoundaryChar = (ch: string) => ch === "." || ch === "?" || ch === "!" || ch === "\n"
+
+                                        let out = ""
+                                        let start = 0
+                                        let fallbackIndex = 0
+
+                                        const pushSegment = (segment: string) => {
+                                            if (shouldSkipSegment(segment) || hasCitationTail(segment)) {
+                                                out += segment
+                                                return
+                                            }
+                                            const marker = ` [${(fallbackIndex % sources.length) + 1}]`
+                                            fallbackIndex += 1
+                                            out += withCitationTail(segment, marker)
+                                        }
+
+                                        for (let i = 0; i < text.length; i += 1) {
+                                            if (!isSentenceBoundaryChar(text[i])) continue
+                                            const segment = text.slice(start, i + 1)
+                                            pushSegment(segment)
+                                            start = i + 1
+                                        }
+
+                                        if (start < text.length) {
+                                            pushSegment(text.slice(start))
+                                        }
+
+                                        return out
+                                    }
+
+                                    if (!groundingSupports) {
+                                        return fallbackInsertPerSentence(inputText, items)
+                                    }
 
                                     const chunkToNumber = buildChunkIndexToCitationNumber(items)
-                                    if (chunkToNumber.size === 0) return inputText
+                                    if (chunkToNumber.size === 0) return fallbackInsertPerSentence(inputText, items)
 
                                     const insertsMap = new Map<number, Set<number>>()
 
@@ -2307,7 +2464,7 @@ TIPS PENCARIAN:
                                         insertsMap.set(sentenceEnd, existing)
                                     }
 
-                                    if (insertsMap.size === 0) return inputText
+                                    if (insertsMap.size === 0) return fallbackInsertPerSentence(inputText, items)
 
                                     const inserts = Array.from(insertsMap.entries())
                                         .map(([at, set]) => ({ at, numbers: Array.from(set).sort((a, b) => a - b) }))
@@ -2323,7 +2480,7 @@ TIPS PENCARIAN:
                                         out = `${before}${marker}${after}`
                                     }
 
-                                    return out
+                                    return fallbackInsertPerSentence(out, items)
                                 }
 
                                 try {
@@ -2391,6 +2548,20 @@ TIPS PENCARIAN:
                                         }))
                                     }
 
+                                    const resultSources = await getResultSources()
+                                    if (resultSources.length > 0) {
+                                        sources = [...sources, ...resultSources]
+                                    }
+
+                                    if (streamedSourceUrls.length > 0) {
+                                        const streamedSources = streamedSourceUrls.map((item) => ({
+                                            url: item.url,
+                                            title: item.title,
+                                            chunkIndices: [] as number[],
+                                        }))
+                                        sources = [...sources, ...streamedSources]
+                                    }
+
                                     if (sources.length > 0) {
                                         sources = await enrichSourcesWithFetchedTitles(sources, {
                                             concurrency: 4,
@@ -2442,6 +2613,7 @@ TIPS PENCARIAN:
 
                                     const textWithInlineCitations = insertInlineCitations(streamedText, sources, supports)
                                     const persistedSources = sources.length > 0 ? stripToPersistedSources(sources) : undefined
+                                    closeSearchStatus(persistedSources && persistedSources.length > 0 ? "done" : "off")
 
                                     ensureStart()
                                     writer.write({
@@ -2552,6 +2724,7 @@ TIPS PENCARIAN:
                                     })
                                     // ═════════════════════════════════════════════
                                 } catch (err) {
+                                    closeSearchStatus(hasAnySource || streamedSourceUrls.length > 0 ? "done" : "off")
                                     console.error("[Chat API] Failed to compute inline citations:", err)
                                 }
 
