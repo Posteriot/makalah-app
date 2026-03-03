@@ -121,6 +121,8 @@ TOOLS & LARANGAN:
 - compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail })  // WAJIB untuk kompilasi utama + persist entries/count
 - updateStageData({ ringkasan, ringkasanDetail, ... })  // opsional hanya untuk koreksi minor pasca-compile
 - createArtifact({ type: "citation", title: "Daftar Pustaka - [Judul Paper]", content: "[daftar referensi lengkap format APA]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan compileDaftarPustaka, SEBELUM submitStageForValidation!
 - submitStageForValidation()
 
 CATATAN MODE TOOL:
@@ -244,6 +246,8 @@ TOOLS & LARANGAN:
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari template/contoh lampiran. AI TIDAK BOLEH inisiatif search di stage ini.
 - updateStageData({ ringkasan, ringkasanDetail, items, tidakAdaLampiran, alasanTidakAda })
 - createArtifact({ type: "section", title: "Lampiran [label] - [judul]", content: "[konten lampiran]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 - submitStageForValidation()
 
 CATATAN MODE TOOL:
@@ -377,6 +381,8 @@ TOOLS & LARANGAN:
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari inspirasi judul dari paper serupa. AI TIDAK BOLEH inisiatif search di stage ini.
 - updateStageData({ ringkasan, ringkasanDetail, opsiJudul, judulTerpilih, alasanPemilihan })
 - createArtifact({ type: "section", title: "Opsi Judul Paper", content: "[5 opsi + analysis]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 - submitStageForValidation()
 
 CATATAN MODE TOOL:
@@ -507,6 +513,8 @@ TOOLS & LARANGAN:
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari contoh struktur paper serupa. AI TIDAK BOLEH inisiatif search di stage ini.
 - updateStageData({ ringkasan, ringkasanDetail, sections, totalWordCount, completenessScore })
 - createArtifact({ type: "outline", title: "Outline Paper - [Judul Paper]", content: "[struktur hierarchical lengkap]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 - submitStageForValidation()
 
 CATATAN MODE TOOL:
