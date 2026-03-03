@@ -1927,6 +1927,7 @@ Aturan:
                 )
                 && paperSession?.stageStatus === "drafting"
                 && hasStageRingkasan(paperSession)
+                && hasStageArtifact(paperSession)
 
             const forcedToolTelemetryName = shouldForceGetCurrentPaperState
                 ? "getCurrentPaperState"
