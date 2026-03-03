@@ -870,6 +870,16 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             return typeof stageEntry?.ringkasan === "string" && stageEntry.ringkasan.trim().length > 0
         }
 
+        const hasStageArtifact = (session: {
+            currentStage?: string
+            stageData?: Record<string, unknown>
+        } | null): boolean => {
+            if (!session?.stageData || !session.currentStage) return false
+            if (session.currentStage === "completed") return false
+            const data = session.stageData[session.currentStage] as Record<string, unknown> | undefined
+            return !!data?.artifactId
+        }
+
         const buildForcedSyncStatusMessage = (session: {
             currentStage?: string
             stageStatus?: string
