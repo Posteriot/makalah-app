@@ -1,24 +1,34 @@
 "use client"
 
 import { useSession } from "@/lib/auth-client"
-import { useOnboardingStatus } from "@/lib/hooks/useOnboardingStatus"
 import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 import { SectionCTA } from "@/components/ui/section-cta"
 
-export function HeroCTA() {
+type HeroCTAProps = {
+  ctaText?: string
+  signedOutHref?: string
+}
+
+function toSafeSignedOutHref(path?: string): string {
+  if (!path) return "/sign-up"
+  if (!path.startsWith("/") || path.startsWith("//")) return "/sign-up"
+  return path
+}
+
+export function HeroCTA({ ctaText = "AYO MULAI", signedOutHref = "/sign-up" }: HeroCTAProps) {
   const { data: session, isPending: isSessionPending } = useSession()
-  const isSignedIn = !!session
-  const { hasCompletedOnboarding, isLoading: isOnboardingLoading } = useOnboardingStatus()
   const { isWaitlistMode, subtitle: waitlistSubtitle, ctaText: waitlistCtaText } = useWaitlistMode()
+
+  const isSignedIn = !!session
+  const resolvedSignedOutHref = toSafeSignedOutHref(signedOutHref)
 
   const getHref = (): string => {
     if (isWaitlistMode) return "/waitinglist"
-    if (!isSignedIn) return "/sign-up"
-    if (hasCompletedOnboarding) return "/chat"
-    return "/get-started"
+    if (!isSignedIn) return resolvedSignedOutHref
+    return "/chat"
   }
 
-  const isLoading = isSessionPending || (!isWaitlistMode && isSignedIn && isOnboardingLoading)
+  const isLoading = isSessionPending
 
   return (
     <div className="flex flex-col items-center lg:items-start w-full mt-4 gap-3">
@@ -32,8 +42,8 @@ export function HeroCTA() {
           isWaitlistMode ? "mt-3 md:mt-4" : ""
         }`}
       >
-        <SectionCTA href={getHref()} isLoading={isLoading}>
-          {isWaitlistMode ? waitlistCtaText : "AYO MULAI"}
+        <SectionCTA href={isLoading ? undefined : getHref()} isLoading={isLoading}>
+          {isWaitlistMode ? waitlistCtaText : ctaText}
         </SectionCTA>
       </div>
     </div>
