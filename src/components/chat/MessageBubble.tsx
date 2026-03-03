@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { formatFileSize, isImageType, splitFileName } from "@/lib/types/attached-file"
+import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
+import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
 
 // Types for paper permission checking
 interface StageDataEntry {
@@ -511,10 +513,67 @@ export function MessageBubble({
     }).annotations?.find((annotation) => annotation.type === "sources")?.sources
     const citedSources = extractCitedSources(message)
     const messageSources = (message as { sources?: { url: string; title: string; publishedAt?: number | null }[] }).sources
-    const sources = citedSources || sourcesFromAnnotation || messageSources || []
+    const persistedOrStreamedSources = citedSources || sourcesFromAnnotation || messageSources || []
+    const sourceExtractionText = citedText && citedText.trim().length > 0 ? citedText : content
+    const legacyExtractedSources = isAssistant && persistedOrStreamedSources.length === 0
+        ? extractLegacySourcesFromText(sourceExtractionText)
+        : []
+    const sources = persistedOrStreamedSources.length > 0
+        ? persistedOrStreamedSources
+        : legacyExtractedSources
     const hasArtifactSignals = isAssistant && artifactSignals.length > 0 && Boolean(onArtifactSelect)
     const hasSources = isAssistant && sources.length > 0
     const hasQuickActions = !isEditing && isAssistant
+    const rawDisplayText = citedText ?? content
+    const normalizedLegacyCitedText = (() => {
+        if (!isAssistant) return null
+        if (sources.length === 0) return null
+        if (!rawDisplayText || !rawDisplayText.trim()) return null
+
+        const hasInlineUrls = /\bhttps?:\/\/[^\s<>()\[\]{}"']+/i.test(rawDisplayText)
+
+        const hasMidLineCitationMarkers = rawDisplayText
+            .split("\n")
+            .some((line) => {
+                const matches = Array.from(line.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\](?!\()/g))
+                if (matches.length === 0) return false
+                return matches.some((match) => {
+                    const index = typeof match.index === "number" ? match.index : -1
+                    if (index < 0) return false
+                    const after = line.slice(index + match[0].length).trim()
+                    return after.length > 0
+                })
+            })
+
+        const sourceHosts = Array.from(new Set(
+            sources
+                .map((source) => {
+                    try {
+                        return new URL(source.url).hostname.replace(/^www\./i, "").toLowerCase()
+                    } catch {
+                        return source.url.replace(/^https?:\/\//i, "").replace(/^www\./i, "").toLowerCase()
+                    }
+                })
+                .filter((host) => host.length > 0 && host.includes("."))
+        ))
+        const hasInlineSourceHostMentions = sourceHosts.some((host) => {
+            const escapedHost = host.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+            const hostRegex = new RegExp(
+                `(^|[\\s([{\"'` + "`" + `])(?:www\\.)?${escapedHost}(?=$|[\\s)\\]}\"'` + "`" + `.,;:!?])`,
+                "i"
+            )
+            return hostRegex.test(rawDisplayText)
+        })
+
+        if (!hasInlineUrls && !hasMidLineCitationMarkers && !hasInlineSourceHostMentions) return null
+
+        return formatParagraphEndCitations({
+            text: rawDisplayText,
+            sources,
+            anchors: [],
+        })
+    })()
+    const displayMarkdown = normalizedLegacyCitedText ?? rawDisplayText
 
     // Get timestamp from allMessages if available
 
@@ -749,7 +808,7 @@ export function MessageBubble({
                         )
                     ) : (
                         <MarkdownRenderer
-                            markdown={citedText ?? content}
+                            markdown={displayMarkdown}
                             className="space-y-2 text-sm leading-relaxed text-[var(--chat-foreground)]"
                             sources={sources}
                             context="chat"

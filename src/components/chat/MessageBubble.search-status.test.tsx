@@ -49,4 +49,53 @@ describe("MessageBubble search status", () => {
 
     expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
   })
+
+  it("normalizes legacy assistant text with sources into paragraph-end citation markers", () => {
+    const legacyMessage = {
+      id: "m-legacy-1",
+      role: "assistant",
+      parts: [
+        {
+          type: "text",
+          text: "Data adopsi AI naik signifikan menurut laporan terbaru https://example.com/laporan-ai-2026",
+        },
+      ],
+      sources: [
+        {
+          url: "https://example.com/laporan-ai-2026",
+          title: "Laporan AI 2026",
+        },
+      ],
+    } as unknown as UIMessage
+
+    render(<MessageBubble message={legacyMessage} />)
+
+    expect(screen.queryByText(/https:\/\/example\.com/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/\[1\]/)).toBeInTheDocument()
+  })
+
+  it("normalizes legacy cited text when markers are in the middle of sentence", () => {
+    const legacyCitedTextMessage = {
+      id: "m-legacy-2",
+      role: "assistant",
+      parts: [
+        { type: "text", text: "placeholder" },
+        {
+          type: "data-cited-text",
+          data: {
+            text: "- Fakta pertama [1] menunjukkan tren adopsi AI.\n- Fakta kedua [2] memperlihatkan dampak di kelas.",
+          },
+        },
+      ],
+      sources: [
+        { url: "https://example.com/a", title: "Sumber A" },
+        { url: "https://example.com/b", title: "Sumber B" },
+      ],
+    } as unknown as UIMessage
+
+    render(<MessageBubble message={legacyCitedTextMessage} />)
+
+    expect(screen.getByText(/Fakta pertama menunjukkan tren adopsi AI\. \[1\]/)).toBeInTheDocument()
+    expect(screen.getByText(/Fakta kedua memperlihatkan dampak di kelas\. \[2\]/)).toBeInTheDocument()
+  })
 })
