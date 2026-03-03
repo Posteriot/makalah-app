@@ -3,6 +3,15 @@ import { api } from "../../../convex/_generated/api";
 import type { PaperStageId } from "../../../convex/paperSessions/constants";
 import { validateStageSkillContent } from "./stage-skill-validator";
 
+const ARTIFACT_CREATION_FOOTER = `
+
+═══ MANDATORY ARTIFACT RULE ═══
+⚠️ WAJIB panggil createArtifact() untuk membuat artifact dari output tahap ini.
+- Panggil di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation.
+- Include parameter 'sources' dari AVAILABLE_WEB_SOURCES jika tersedia.
+- Artifact adalah HASIL AKHIR yang akan di-review dan di-approve user.
+═══════════════════════════════`;
+
 type ResolveResult = {
     instructions: string;
     source: "skill" | "fallback";
@@ -108,7 +117,7 @@ export async function resolveStageInstructions(args: ResolveArgs): Promise<Resol
         }
 
         return {
-            instructions: activeSkill.content,
+            instructions: activeSkill.content + ARTIFACT_CREATION_FOOTER,
             source: "skill",
             skillResolverFallback: false,
             skillId: activeSkill.skillId,
