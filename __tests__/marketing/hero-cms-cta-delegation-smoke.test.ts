@@ -9,7 +9,7 @@ describe("hero CMS CTA delegation smoke", () => {
   it("mendelegasikan CTA ke HeroCTA dengan props CMS", () => {
     const source = read("src/components/marketing/hero/HeroCMS.tsx")
 
-    expect(source).toContain("<HeroCTA ctaText={content.ctaText} signedOutHref={content.ctaHref} />")
+    expect(source).toContain("<HeroCTA ctaText={content.ctaText} />")
     expect(source).not.toContain("SectionCTA href={content.ctaHref}")
   })
 })

@@ -92,8 +92,8 @@ export function HeroCMS({ content }: HeroCMSProps) {
               {isWaitlistMode ? (
                 <HeroCTA />
               ) : (
-                content.ctaText && content.ctaHref && (
-                  <HeroCTA ctaText={content.ctaText} signedOutHref={content.ctaHref} />
+                content.ctaText && (
+                  <HeroCTA ctaText={content.ctaText} />
                 )
               )}
             </div>

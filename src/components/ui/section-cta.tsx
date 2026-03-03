@@ -6,6 +6,8 @@ interface SectionCTAProps {
   children: React.ReactNode
   className?: string
   isLoading?: boolean
+  target?: React.HTMLAttributeAnchorTarget
+  rel?: string
   onClick?: () => void
   type?: "button" | "submit" | "reset"
 }
@@ -24,6 +26,8 @@ export function SectionCTA({
   children,
   className,
   isLoading,
+  target,
+  rel,
   onClick,
   type = "button",
 }: SectionCTAProps) {
@@ -67,6 +71,8 @@ export function SectionCTA({
     return (
       <Link
         href={href}
+        target={target}
+        rel={rel}
         className={classes}
         aria-busy={isLoading}
       >

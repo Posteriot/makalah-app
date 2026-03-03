@@ -2,30 +2,23 @@
 
 import { useSession } from "@/lib/auth-client"
 import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
+import { resolveChatEntryHref } from "@/lib/utils/chatEntryRouting"
 import { SectionCTA } from "@/components/ui/section-cta"
 
 type HeroCTAProps = {
   ctaText?: string
-  signedOutHref?: string
 }
 
-function toSafeSignedOutHref(path?: string): string {
-  if (!path) return "/sign-up"
-  if (!path.startsWith("/") || path.startsWith("//")) return "/sign-up"
-  return path
-}
-
-export function HeroCTA({ ctaText = "AYO MULAI", signedOutHref = "/sign-up" }: HeroCTAProps) {
+export function HeroCTA({ ctaText = "AYO MULAI" }: HeroCTAProps) {
   const { data: session, isPending: isSessionPending } = useSession()
   const { isWaitlistMode, subtitle: waitlistSubtitle, ctaText: waitlistCtaText } = useWaitlistMode()
 
   const isSignedIn = !!session
-  const resolvedSignedOutHref = toSafeSignedOutHref(signedOutHref)
+  const chatEntryHref = resolveChatEntryHref(isSignedIn)
 
   const getHref = (): string => {
     if (isWaitlistMode) return "/waitinglist"
-    if (!isSignedIn) return resolvedSignedOutHref
-    return "/chat"
+    return chatEntryHref
   }
 
   const isLoading = isSessionPending
@@ -42,7 +35,12 @@ export function HeroCTA({ ctaText = "AYO MULAI", signedOutHref = "/sign-up" }: H
           isWaitlistMode ? "mt-3 md:mt-4" : ""
         }`}
       >
-        <SectionCTA href={isLoading ? undefined : getHref()} isLoading={isLoading}>
+        <SectionCTA
+          href={isLoading ? undefined : getHref()}
+          target="_blank"
+          rel="noopener noreferrer"
+          isLoading={isLoading}
+        >
           {isWaitlistMode ? waitlistCtaText : ctaText}
         </SectionCTA>
       </div>

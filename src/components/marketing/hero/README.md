@@ -82,10 +82,11 @@ Server components (tanpa `"use client"`):
 ## Perilaku Ringkas
 
 **HeroCTA**
-- Not signed in: `signedOutHref` (fallback aman ke `/sign-up`).
+- Not signed in: `/sign-up?redirect_url=/chat`.
 - Signed in: `/chat`.
 - Waitlist mode: `/waitinglist`.
-- Bisa menerima props `ctaText` dan `signedOutHref`.
+- Chat entry (signed-in/signed-out) dibuka dengan `target="_blank"` untuk konsisten dengan nav Chat di header global.
+- Bisa menerima prop `ctaText`.
 - `aria-busy` aktif saat loading auth session.
 - Delegates rendering ke `SectionCTA` yang punya stripes animation dan inverted slate button pattern.
 

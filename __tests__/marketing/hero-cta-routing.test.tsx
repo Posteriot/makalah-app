@@ -3,15 +3,10 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { HeroCTA } from "@/components/marketing/hero/HeroCTA"
 
 const mockUseSession = vi.fn()
-const mockUseOnboardingStatus = vi.fn()
 const mockUseWaitlistMode = vi.fn()
 
 vi.mock("@/lib/auth-client", () => ({
   useSession: () => mockUseSession(),
-}))
-
-vi.mock("@/lib/hooks/useOnboardingStatus", () => ({
-  useOnboardingStatus: () => mockUseOnboardingStatus(),
 }))
 
 vi.mock("@/lib/hooks/useWaitlistMode", () => ({
@@ -31,12 +26,6 @@ describe("HeroCTA routing", () => {
       data: null,
       isPending: false,
     })
-    mockUseOnboardingStatus.mockReturnValue({
-      hasCompletedOnboarding: false,
-      isLoading: false,
-      isAuthenticated: false,
-      completeOnboarding: vi.fn(),
-    })
     mockUseWaitlistMode.mockReturnValue({
       isWaitlistMode: false,
       subtitle: "",
@@ -44,11 +33,13 @@ describe("HeroCTA routing", () => {
     })
   })
 
-  it("mengarah ke signedOutHref custom saat user belum login", () => {
-    render(<HeroCTA ctaText="MULAI" signedOutHref="/pricing" />)
+  it("mengarah ke sign-up dengan redirect_url=/chat saat user belum login", () => {
+    render(<HeroCTA ctaText="MULAI" />)
 
     const cta = screen.getByRole("link", { name: "MULAI" })
-    expect(cta).toHaveAttribute("href", "/pricing")
+    expect(cta).toHaveAttribute("href", "/sign-up?redirect_url=%2Fchat")
+    expect(cta).toHaveAttribute("target", "_blank")
+    expect(cta).toHaveAttribute("rel", "noopener noreferrer")
   })
 
   it("mengarah ke /chat saat user sudah login", () => {
@@ -64,17 +55,12 @@ describe("HeroCTA routing", () => {
       },
       isPending: false,
     })
-    mockUseOnboardingStatus.mockReturnValue({
-      hasCompletedOnboarding: false,
-      isLoading: false,
-      isAuthenticated: true,
-      completeOnboarding: vi.fn(),
-    })
-
     render(<HeroCTA />)
 
     const cta = screen.getByRole("link", { name: "AYO MULAI" })
     expect(cta).toHaveAttribute("href", "/chat")
+    expect(cta).toHaveAttribute("target", "_blank")
+    expect(cta).toHaveAttribute("rel", "noopener noreferrer")
   })
 
   it("mengarah ke /waitinglist saat waitlist mode aktif", () => {
