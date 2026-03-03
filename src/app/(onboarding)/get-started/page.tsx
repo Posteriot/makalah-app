@@ -184,6 +184,14 @@ export default function GetStartedPage() {
     }
   }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, router])
 
+  // Route guard: redirect mobile users away — get-started is desktop-only.
+  useEffect(() => {
+    const isMobile = window.matchMedia("(max-width: 671px)").matches
+    if (isMobile) {
+      router.replace(getCloseDestination())
+    }
+  }, [router])
+
   const completeThenNavigate = async (targetPath: string) => {
     if (isNavigating) return
     setIsNavigating(true)

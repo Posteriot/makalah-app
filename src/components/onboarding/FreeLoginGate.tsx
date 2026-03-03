@@ -51,6 +51,13 @@ export function FreeLoginGate() {
     if (redirectingRef.current) return
     if (hasSeenFreeLoginGateForSession(session)) return
 
+    // Skip get-started redirect on mobile — user stays on intended page
+    const isMobile = window.matchMedia("(max-width: 671px)").matches
+    if (isMobile) {
+      markFreeLoginGateSeenForSession(session)
+      return
+    }
+
     markFreeLoginGateSeenForSession(session)
     redirectingRef.current = true
     const queryString =
