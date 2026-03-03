@@ -71,5 +71,9 @@ describe("mapSearchToolReasonToFallbackReason", () => {
     expect(mapSearchToolReasonToFallbackReason("import_failed"))
       .toBe("google_search_tool_import_failed")
   })
-})
 
+  it("maps factory_init_failed to explicit telemetry reason", () => {
+    expect(mapSearchToolReasonToFallbackReason("factory_init_failed"))
+      .toBe("google_search_tool_factory_init_failed")
+  })
+})
