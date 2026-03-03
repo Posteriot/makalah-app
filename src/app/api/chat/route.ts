@@ -12,6 +12,7 @@ import { retryMutation } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 import { normalizeCitations, type NormalizedCitation } from "@/lib/citations/normalizer"
+import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { createPaperTools } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
@@ -2465,133 +2466,38 @@ TIPS PENCARIAN:
                                     return out
                                 }
 
-                                const insertInlineCitations = (
-                                    inputText: string,
+                                const buildPrimaryCitationAnchors = (
                                     items: SourceWithChunk[],
                                     groundingSupports: GroundingSupport[] | undefined
                                 ) => {
-                                    if (items.length === 0) return inputText
-
-                                    const fallbackInsertPerSentence = (
-                                        text: string,
-                                        sources: SourceWithChunk[],
-                                    ) => {
-                                        if (!text || sources.length === 0) return text
-
-                                        const hasCitationTail = (segment: string) =>
-                                            /\[\d+(?:\s*,\s*\d+)*\]\s*$/.test(segment.trimEnd())
-
-                                        const shouldSkipSegment = (segment: string) => {
-                                            const trimmed = segment.trim()
-                                            if (!trimmed) return true
-                                            if (!/[a-zA-Z0-9]/.test(trimmed)) return true
-                                            if (/^#{1,6}\s/.test(trimmed)) return true
-                                            if (/^\|.+\|$/.test(trimmed)) return true
-                                            return false
-                                        }
-
-                                        const withCitationTail = (segment: string, marker: string) => {
-                                            const trailingWhitespace = segment.match(/\s*$/)?.[0] ?? ""
-                                            const core = trailingWhitespace
-                                                ? segment.slice(0, segment.length - trailingWhitespace.length)
-                                                : segment
-                                            return `${core}${marker}${trailingWhitespace}`
-                                        }
-
-                                        const isSentenceBoundaryChar = (ch: string) => ch === "." || ch === "?" || ch === "!" || ch === "\n"
-
-                                        let out = ""
-                                        let start = 0
-                                        let fallbackIndex = 0
-
-                                        const pushSegment = (segment: string) => {
-                                            if (shouldSkipSegment(segment) || hasCitationTail(segment)) {
-                                                out += segment
-                                                return
-                                            }
-                                            const marker = ` [${(fallbackIndex % sources.length) + 1}]`
-                                            fallbackIndex += 1
-                                            out += withCitationTail(segment, marker)
-                                        }
-
-                                        for (let i = 0; i < text.length; i += 1) {
-                                            if (!isSentenceBoundaryChar(text[i])) continue
-                                            const segment = text.slice(start, i + 1)
-                                            pushSegment(segment)
-                                            start = i + 1
-                                        }
-
-                                        if (start < text.length) {
-                                            pushSegment(text.slice(start))
-                                        }
-
-                                        return out
-                                    }
-
-                                    if (!groundingSupports) {
-                                        return fallbackInsertPerSentence(inputText, items)
-                                    }
-
+                                    if (!groundingSupports || items.length === 0) return []
                                     const chunkToNumber = buildChunkIndexToCitationNumber(items)
-                                    if (chunkToNumber.size === 0) return fallbackInsertPerSentence(inputText, items)
+                                    if (chunkToNumber.size === 0) return []
 
-                                    const insertsMap = new Map<number, Set<number>>()
-
-                                    const isSentenceBoundaryChar = (ch: string) => ch === "." || ch === "?" || ch === "!" || ch === "\n"
-
-                                    const findSentenceEnd = (text: string, pos: number) => {
-                                        const clamped = Math.max(0, Math.min(text.length - 1, pos))
-                                        for (let i = clamped; i < text.length; i += 1) {
-                                            const ch = text[i]
-                                            if (!isSentenceBoundaryChar(ch)) continue
-                                            if (ch === "\n") return Math.max(0, i - 1)
-                                            return i
-                                        }
-                                        return text.length - 1
-                                    }
-
-                                    for (const s of groundingSupports) {
-                                        const seg = s?.segment
-                                        const endIndex = typeof seg?.endIndex === "number" ? seg.endIndex : null
-                                        if (endIndex === null || !Number.isFinite(endIndex)) continue
-                                        const indices = Array.isArray(s?.groundingChunkIndices) ? s.groundingChunkIndices : []
-                                        const numbersSet = new Set<number>()
-                                        for (const rawIndex of indices) {
+                                    const anchors: Array<{ position?: number | null; sourceNumbers: number[] }> = []
+                                    for (const support of groundingSupports) {
+                                        const segmentEndIndex = typeof support?.segment?.endIndex === "number"
+                                            ? support.segment.endIndex
+                                            : null
+                                        const rawIndices = Array.isArray(support?.groundingChunkIndices)
+                                            ? support.groundingChunkIndices
+                                            : []
+                                        const sourceNumbersSet = new Set<number>()
+                                        for (const rawIndex of rawIndices) {
                                             if (typeof rawIndex !== "number") continue
-                                            const mapped = chunkToNumber.get(rawIndex)
-                                            if (typeof mapped === "number" && Number.isFinite(mapped)) {
-                                                numbersSet.add(mapped)
+                                            const mappedNumber = chunkToNumber.get(rawIndex)
+                                            if (typeof mappedNumber === "number" && Number.isFinite(mappedNumber)) {
+                                                sourceNumbersSet.add(mappedNumber)
                                             }
                                         }
-                                        const numbers = Array.from(numbersSet).sort((a, b) => a - b)
-                                        if (numbers.length === 0) continue
-
-                                        const sentenceEnd = findSentenceEnd(
-                                            inputText,
-                                            Math.max(0, Math.min(inputText.length - 1, endIndex - 1))
-                                        )
-                                        const existing = insertsMap.get(sentenceEnd) ?? new Set<number>()
-                                        numbers.forEach((n) => existing.add(n))
-                                        insertsMap.set(sentenceEnd, existing)
+                                        const sourceNumbers = Array.from(sourceNumbersSet).sort((a, b) => a - b)
+                                        if (sourceNumbers.length === 0) continue
+                                        anchors.push({
+                                            position: segmentEndIndex !== null ? Math.max(0, segmentEndIndex - 1) : null,
+                                            sourceNumbers,
+                                        })
                                     }
-
-                                    if (insertsMap.size === 0) return fallbackInsertPerSentence(inputText, items)
-
-                                    const inserts = Array.from(insertsMap.entries())
-                                        .map(([at, set]) => ({ at, numbers: Array.from(set).sort((a, b) => a - b) }))
-                                        .sort((a, b) => b.at - a.at)
-
-                                    let out = inputText
-                                    for (const ins of inserts) {
-                                        const marker = ` [${ins.numbers.join(",")}]`
-                                        const before = out.slice(0, ins.at + 1)
-                                        const after = out.slice(ins.at + 1)
-                                        const tail = before.slice(-20)
-                                        if (/\[\d+(?:\s*,\s*\d+)*\]\s*$/.test(tail)) continue
-                                        out = `${before}${marker}${after}`
-                                    }
-
-                                    return fallbackInsertPerSentence(out, items)
+                                    return anchors
                                 }
 
                                 try {
@@ -2722,7 +2628,12 @@ TIPS PENCARIAN:
                                         }
                                     }
 
-                                    const textWithInlineCitations = insertInlineCitations(streamedText, sources, supports)
+                                    const primaryCitationAnchors = buildPrimaryCitationAnchors(sources, supports)
+                                    const textWithInlineCitations = formatParagraphEndCitations({
+                                        text: streamedText,
+                                        sources,
+                                        anchors: primaryCitationAnchors,
+                                    })
                                     const persistedSources = sources.length > 0 ? stripToPersistedSources(sources) : undefined
                                     closeSearchStatus(persistedSources && persistedSources.length > 0 ? "done" : "off")
 
@@ -3461,33 +3372,24 @@ TIPS PENCARIAN:
                                 sourceCount = Math.max(sourceCount, normalizedCitations.length)
                                 closeSearchStatus(hasAnyCitations ? "done" : "off")
 
-                                // Task 2.4: Insert inline citation markers
-                                let textWithCitations = streamedText
-                                if (hasAnyCitations) {
-                                    // Simple inline citation insertion
-                                    // For OpenRouter, citations typically come with position data
-                                    // Insert [1], [2] markers based on citation order
-                                    const insertions: { position: number; marker: string }[] = []
-                                    normalizedCitations.forEach((citation, idx) => {
-                                        if (citation.endIndex !== undefined) {
-                                            insertions.push({
-                                                position: citation.endIndex,
-                                                marker: ` [${idx + 1}]`,
-                                            })
-                                        }
+                                const persistedSources = normalizedCitations.map((citation) => ({
+                                    url: citation.url,
+                                    title: citation.title,
+                                    ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),
+                                }))
+                                const fallbackCitationAnchors = normalizedCitations.map((citation, idx) => ({
+                                    position: typeof citation.endIndex === "number"
+                                        ? Math.max(0, citation.endIndex - 1)
+                                        : null,
+                                    sourceNumbers: [idx + 1],
+                                }))
+                                const textWithCitations = hasAnyCitations
+                                    ? formatParagraphEndCitations({
+                                        text: streamedText,
+                                        sources: persistedSources,
+                                        anchors: fallbackCitationAnchors,
                                     })
-
-                                    // Sort by position descending to insert from end
-                                    insertions.sort((a, b) => b.position - a.position)
-                                    for (const ins of insertions) {
-                                        if (ins.position >= 0 && ins.position <= textWithCitations.length) {
-                                            textWithCitations =
-                                                textWithCitations.slice(0, ins.position) +
-                                                ins.marker +
-                                                textWithCitations.slice(ins.position)
-                                        }
-                                    }
-                                }
+                                    : streamedText
 
                                 // Send cited text
                                 ensureStart()
@@ -3499,12 +3401,6 @@ TIPS PENCARIAN:
 
                                 // Send cited sources if available
                                 if (hasAnyCitations) {
-                                    const persistedSources = normalizedCitations.map((c) => ({
-                                        url: c.url,
-                                        title: c.title,
-                                        ...(c.publishedAt ? { publishedAt: c.publishedAt } : {}),
-                                    }))
-
                                     ensureStart()
                                     writer.write({
                                         type: "data-cited-sources",

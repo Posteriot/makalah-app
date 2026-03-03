@@ -24,6 +24,7 @@ import { SkillRuntimeTracePanel } from "./panels/SkillRuntimeTracePanel"
 import { SkillMonitorSummaryPanel } from "./panels/SkillMonitorSummaryPanel"
 import { AttachmentOverviewPanel } from "./panels/AttachmentOverviewPanel"
 import { AttachmentFailuresPanel } from "./panels/AttachmentFailuresPanel"
+import { WebsearchToolMonitorPanel } from "./panels/WebsearchToolMonitorPanel"
 
 type Period = "1h" | "24h" | "7d"
 
@@ -49,6 +50,7 @@ export function AiOpsContentSection({
   const HeaderIcon = currentTab.headerIcon
 
   const isModelTab = activeTab.startsWith("model.")
+  const isToolsMonitorTab = activeTab.startsWith("tools.")
   const isAttachmentTab = activeTab.startsWith("attachment.")
   const isSkillMonitorTab = activeTab === "skill.monitor"
   const isOverview = activeTab === "overview"
@@ -114,7 +116,7 @@ export function AiOpsContentSection({
   )
   const toolHealth = useQuery(
     api.aiTelemetry.getToolHealth,
-    activeTab === "model.tools"
+    activeTab === "model.tools" || activeTab === "tools.websearch"
       ? { requestorUserId: userId, period }
       : "skip"
   )
@@ -126,13 +128,13 @@ export function AiOpsContentSection({
   )
   const recentFailures = useQuery(
     api.aiTelemetry.getRecentFailures,
-    activeTab === "model.failures"
+    activeTab === "model.failures" || activeTab === "tools.websearch"
       ? { requestorUserId: userId, limit: 20 }
       : "skip"
   )
   const failoverTimeline = useQuery(
     api.aiTelemetry.getFailoverTimeline,
-    activeTab === "model.failures"
+    activeTab === "model.failures" || activeTab === "tools.websearch"
       ? { requestorUserId: userId, period }
       : "skip"
   )
@@ -167,7 +169,7 @@ export function AiOpsContentSection({
             </p>
           </div>
 
-          {(isModelTab || isSkillMonitorTab || isOverview || isAttachmentTab) && (
+          {(isModelTab || isToolsMonitorTab || isSkillMonitorTab || isOverview || isAttachmentTab) && (
             <div className="flex items-center gap-1 rounded-[8px] border border-border p-0.5">
               {PERIOD_OPTIONS.map((opt) => (
                 <button
@@ -238,6 +240,14 @@ export function AiOpsContentSection({
             <RecentFailuresPanel data={recentFailures ?? undefined} />
             <FailoverTimelinePanel data={failoverTimeline ?? undefined} />
           </div>
+        )}
+
+        {activeTab === "tools.websearch" && (
+          <WebsearchToolMonitorPanel
+            toolHealth={toolHealth ?? undefined}
+            recentFailures={recentFailures ?? undefined}
+            failoverTimeline={failoverTimeline ?? undefined}
+          />
         )}
 
         {activeTab === "attachment.overview" && (

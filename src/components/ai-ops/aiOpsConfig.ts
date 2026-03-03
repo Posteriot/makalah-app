@@ -147,6 +147,25 @@ export const AI_OPS_SIDEBAR_ITEMS: AiOpsSidebarItem[] = [
       },
     ],
   },
+  {
+    id: "tools",
+    label: "Tools Monitor",
+    icon: Code,
+    headerTitle: "Tools Monitor",
+    headerDescription: "Monitoring kesehatan tools yang aktif di chat",
+    headerIcon: Code,
+    defaultChildId: "tools.websearch",
+    children: [
+      {
+        id: "tools.websearch",
+        label: "Websearch",
+        icon: Activity,
+        headerTitle: "Websearch Tool Monitor",
+        headerDescription: "Pantau kinerja, fallback reason, dan fail-closed websearch",
+        headerIcon: Activity,
+      },
+    ],
+  },
 ]
 
 export type AiOpsTabId =
@@ -160,6 +179,7 @@ export type AiOpsTabId =
   | "model.overview"
   | "model.tools"
   | "model.failures"
+  | "tools.websearch"
 
 export function findAiOpsTabConfig(
   tabId: string
