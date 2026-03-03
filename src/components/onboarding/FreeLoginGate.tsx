@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useSession } from "@/lib/auth-client"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import {
@@ -18,11 +18,9 @@ import {
 export function FreeLoginGate() {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const { data: session, isPending: isSessionPending } = useSession()
   const { user, isLoading: isUserLoading } = useCurrentUser()
   const redirectingRef = useRef(false)
-  const queryString = searchParams.toString()
 
   useEffect(() => {
     if (isSessionPending) return
@@ -55,9 +53,11 @@ export function FreeLoginGate() {
 
     markFreeLoginGateSeenForSession(session)
     redirectingRef.current = true
+    const queryString =
+      typeof window !== "undefined" ? window.location.search.slice(1) : ""
     const returnTo = queryString ? `${pathname}?${queryString}` : pathname
     router.replace(`/get-started?return_to=${encodeURIComponent(returnTo)}`)
-  }, [isSessionPending, session, isUserLoading, user, pathname, queryString, router])
+  }, [isSessionPending, session, isUserLoading, user, pathname, router])
 
   return null
 }

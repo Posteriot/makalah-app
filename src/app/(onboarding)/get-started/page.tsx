@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useQuery } from "convex/react"
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Xmark } from "iconoir-react"
 import { api } from "@convex/_generated/api"
 import { cn } from "@/lib/utils"
@@ -136,14 +136,18 @@ function GetStartedPlanCard({
 
 export default function GetStartedPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { isLoading: isOnboardingLoading, isAuthenticated, completeOnboarding } = useOnboardingStatus()
   const { user, isLoading: isUserLoading } = useCurrentUser()
   const plansData = useQuery(api.pricingPlans.getActivePlans)
   const [showFeedback, setShowFeedback] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
   const isFreeTier = isFreeTierForLoginGate(user?.role, user?.subscriptionStatus)
-  const closeDestination = resolveCloseDestination(searchParams.get("return_to"))
+
+  const getCloseDestination = () => {
+    if (typeof window === "undefined") return "/"
+    const params = new URLSearchParams(window.location.search)
+    return resolveCloseDestination(params.get("return_to"))
+  }
 
   // Show "Mempersiapkan..." after FEEDBACK_DELAY_MS while auth/user sync stabilizes.
   useEffect(() => {
@@ -176,9 +180,9 @@ export default function GetStartedPage() {
   // Route guard: this page is only for free-tier users.
   useEffect(() => {
     if (!isOnboardingLoading && !isUserLoading && isAuthenticated && user && !isFreeTier) {
-      router.replace(closeDestination)
+      router.replace(getCloseDestination())
     }
-  }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, closeDestination, router])
+  }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, router])
 
   const completeThenNavigate = async (targetPath: string) => {
     if (isNavigating) return
@@ -217,7 +221,7 @@ export default function GetStartedPage() {
   }
 
   const handleClose = async () => {
-    await completeThenNavigate(closeDestination)
+    await completeThenNavigate(getCloseDestination())
   }
 
   const getStartedPlans: GetStartedPlan[] = TARGET_PLAN_ORDER
