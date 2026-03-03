@@ -263,18 +263,25 @@ export function MessageBubble({
         return tools
     }
 
-    const extractSearchStatus = (uiMessage: UIMessage): SearchStatus | null => {
+    const extractSearchStatus = (
+        uiMessage: UIMessage
+    ): { status: SearchStatus; message?: string } | null => {
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
             const maybeDataPart = part as unknown as { type?: string; data?: unknown }
             if (maybeDataPart.type !== "data-search") continue
 
-            const data = maybeDataPart.data as { status?: unknown } | null
+            const data = maybeDataPart.data as { status?: unknown; message?: unknown } | null
             if (!data || typeof data !== "object") continue
 
             const status = data.status
             if (status === "searching" || status === "done" || status === "off" || status === "error") {
-                return status
+                return {
+                    status,
+                    ...(typeof data.message === "string" && data.message.trim().length > 0
+                        ? { message: data.message }
+                        : {}),
+                }
             }
         }
 
@@ -644,8 +651,11 @@ export function MessageBubble({
                                     persistUntilDone={persistProcessIndicators}
                                 />
                             ))}
-                            {(persistProcessIndicators || searchStatus === "error") && searchStatus && (
-                                <SearchStatusIndicator status={searchStatus} />
+                            {(persistProcessIndicators || searchStatus?.status === "error") && searchStatus && (
+                                <SearchStatusIndicator
+                                    status={searchStatus.status}
+                                    message={searchStatus.message}
+                                />
                             )}
                             {searchTools.map((tool, index) => (
                                 <ToolStateIndicator

@@ -52,6 +52,14 @@ import {
     normalizeRequestedAttachmentMode,
     resolveAttachmentRuntimeEnv,
 } from "@/lib/chat/attachment-health"
+import {
+    initGoogleSearchTool,
+    type GoogleSearchToolUnavailableReason,
+} from "@/lib/ai/google-search-tool"
+import {
+    mapSearchToolReasonToFallbackReason,
+    resolveSearchExecutionMode,
+} from "@/lib/ai/search-execution-mode"
 
 export async function POST(req: Request) {
     try {
@@ -714,7 +722,6 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
         const {
             getGatewayModel,
             getOpenRouterModel,
-            getGoogleSearchTool,
             getProviderSettings,
             getReasoningSettings,
             buildReasoningProviderOptions,
@@ -725,6 +732,7 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
         const providerSettings = await getProviderSettings()
         const reasoningSettings = await getReasoningSettings()
         const modelNames = await getModelNames()
+        const webSearchConfig = await getWebSearchConfig()
         const samplingOptions = {
             temperature: providerSettings.temperature,
             ...(providerSettings.topP !== undefined ? { topP: providerSettings.topP } : {}),
@@ -1641,13 +1649,80 @@ Aturan:
         // Hoist for catch block accessibility (fallback provider needs these)
         let shouldForceGetCurrentPaperState = false
         let shouldForceSubmitValidation = false
+        class SearchToolUnavailableError extends Error {
+            readonly reason: GoogleSearchToolUnavailableReason
+
+            constructor(reason: GoogleSearchToolUnavailableReason) {
+                super(`google_search unavailable: ${reason}`)
+                this.name = "SearchToolUnavailableError"
+                this.reason = reason
+            }
+        }
+
+        const createSearchUnavailableResponse = async (input: {
+            reasonCode: string
+            message: string
+            usedModel: string
+            provider?: "vercel-gateway" | "openrouter"
+            telemetryFallbackReason?: string
+        }) => {
+            await saveAssistantMessage(input.message, undefined, input.usedModel)
+            const blockedTelemetryContext = {
+                ...skillTelemetryContext,
+                fallbackReason: input.telemetryFallbackReason ?? input.reasonCode,
+            }
+
+            logAiTelemetry({
+                token: convexToken,
+                userId: userId as Id<"users">,
+                conversationId: currentConversationId as Id<"conversations">,
+                provider: input.provider ?? (modelNames.primary.provider as "vercel-gateway" | "openrouter"),
+                model: input.usedModel,
+                isPrimaryProvider: true,
+                failoverUsed: false,
+                toolUsed: "google_search",
+                mode: "websearch",
+                success: false,
+                errorType: "search_unavailable",
+                errorMessage: input.message,
+                latencyMs: Date.now() - telemetryStartTime,
+                ...blockedTelemetryContext,
+            })
+
+            const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+            const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
+            const textId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-text`
+            const stream = createUIMessageStream({
+                execute: async ({ writer }) => {
+                    writer.write({ type: "start", messageId })
+                    writer.write({
+                        type: "data-search",
+                        id: searchStatusId,
+                        data: {
+                            status: "error",
+                            message: input.message,
+                            reasonCode: input.reasonCode,
+                        },
+                    })
+                    writer.write({ type: "text-start", id: textId })
+                    writer.write({ type: "text-delta", id: textId, delta: input.message })
+                    writer.write({ type: "text-end", id: textId })
+                    writer.write({ type: "finish", finishReason: "error" })
+                },
+            })
+
+            return createUIMessageStreamResponse({ stream })
+        }
 
         try {
             const model = await getGatewayModel()
 
             // Inject Google Search Tool for Gateway (Primary) only
-            const googleSearchTool = await getGoogleSearchTool()
-            const wrappedGoogleSearchTool = googleSearchTool ?? null
+            const googleSearchInit = await initGoogleSearchTool()
+            const primaryGoogleSearchReady = googleSearchInit.status === "ready"
+            const wrappedGoogleSearchTool = primaryGoogleSearchReady
+                ? googleSearchInit.tool
+                : null
 
             // Router: tentukan apakah request ini perlu mode websearch.
             // Catatan penting: AI SDK tidak bisa mix provider-defined tools (google_search) dengan function tools dalam 1 request.
@@ -1674,9 +1749,10 @@ Aturan:
             // ════════════════════════════════════════════════════════════════
             let activeStageSearchReason = ""
             let activeStageSearchNote = ""
+            let searchRequestedByPolicy = false
 
             if (compileDaftarPustakaIntent && !!paperModePrompt) {
-                enableWebSearch = false
+                searchRequestedByPolicy = false
                 activeStageSearchReason = "compile_daftar_pustaka_intent"
                 activeStageSearchNote = getFunctionToolsModeNote("Compile daftar pustaka")
 
@@ -1703,49 +1779,45 @@ Aturan:
                     // Priority 1: Search already done - only enable if user EXPLICITLY wants MORE
                     const wantsMoreSearch = isExplicitMoreSearchRequest(lastUserContent)
                     if (wantsMoreSearch) {
-                        enableWebSearch = !!wrappedGoogleSearchTool
+                        searchRequestedByPolicy = true
                         activeStageSearchReason = "user_wants_more_search"
                     } else {
-                        enableWebSearch = false
+                        searchRequestedByPolicy = false
                         activeStageSearchReason = "search_already_done"
                         activeStageSearchNote = getFunctionToolsModeNote("Search selesai")
                     }
                 } else if (userWantsToSave) {
                     // Priority 2: User explicitly wants to save → no search
-                    enableWebSearch = false
+                    searchRequestedByPolicy = false
                     activeStageSearchReason = "explicit_save_request"
                 } else if (aiPromisedSave && userConfirms) {
                     // Priority 3: AI promised to save AND user confirms → honor save intent
                     // e.g., AI: "Saya akan menyimpan..." → User: "Lakukan"
-                    enableWebSearch = false
+                    searchRequestedByPolicy = false
                     activeStageSearchReason = "ai_promised_save_user_confirms"
                 } else if (userConfirms && !aiPromisedSearch) {
                     // Priority 3b: User confirmation without explicit search promise
                     // Prefer paper tools to avoid repetitive search loops.
-                    enableWebSearch = false
+                    searchRequestedByPolicy = false
                     activeStageSearchReason = "user_confirmation_prefer_paper_tools"
                 } else if (aiPromisedSearch) {
                     // Priority 4: AI promised search → honor search promise
-                    enableWebSearch = !!wrappedGoogleSearchTool
+                    searchRequestedByPolicy = true
                     activeStageSearchReason = "ai_promised_search"
                 } else if (incomplete) {
                     // Priority 5: Research incomplete → suggest search (but don't force if user doesn't want)
-                    enableWebSearch = !!wrappedGoogleSearchTool
+                    searchRequestedByPolicy = true
                     activeStageSearchReason = "research_incomplete"
                     activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement!)
                 } else {
                     // Priority 5: Default → FUNCTION TOOLS (safer default)
-                    enableWebSearch = false
+                    searchRequestedByPolicy = false
                     activeStageSearchReason = "active_stage_default_function_tools"
                     activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
                 }
-
-                // Inject note when search is disabled in paper mode
-                if (!enableWebSearch && paperModePrompt && !activeStageSearchNote) {
-                    activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
-                }
-
-                console.log(`[SearchDecision] ACTIVE stage override: ${activeStageSearchReason}, searchAlreadyDone: ${searchAlreadyDone}, enableWebSearch: ${enableWebSearch}`)
+                console.log(
+                    `[SearchDecision] ACTIVE stage override: ${activeStageSearchReason}, searchAlreadyDone: ${searchAlreadyDone}, searchRequestedByPolicy: ${searchRequestedByPolicy}`
+                )
             } else {
                 // PASSIVE/NONE stages OR no paper session: use existing LLM router logic
                 const isUserConfirmation = isUserConfirmationMessage(lastUserContent)
@@ -1768,24 +1840,63 @@ Aturan:
                 const explicitSearchFallback = routerFailed && explicitSearchRequest
 
                 const stagePolicyAllowsSearch = !paperModePrompt
-                    ? true
-                    : (stagePolicy === "active"
                         ? true
-                        : stagePolicy === "passive"
-                            ? explicitSearchRequest
-                            : explicitSearchRequest)
+                        : (stagePolicy === "active"
+                            ? true
+                            : stagePolicy === "passive"
+                                ? explicitSearchRequest
+                                : explicitSearchRequest)
 
-                enableWebSearch = !!wrappedGoogleSearchTool
-                    && !forcePaperToolsMode
+                searchRequestedByPolicy = !forcePaperToolsMode
                     && stagePolicyAllowsSearch
                     && (webSearchDecision.enableWebSearch || explicitSearchFallback || explicitSearchRequest)
             }
 
             if (explicitSyncRequest && !forcePaperToolsMode) {
-                enableWebSearch = false
+                searchRequestedByPolicy = false
                 activeStageSearchReason = "explicit_sync_request"
                 activeStageSearchNote = getFunctionToolsModeNote("Sinkronisasi status sesi")
                 console.log("[SearchDecision] Explicit sync override: forced getCurrentPaperState path")
+            }
+
+            const searchExecutionMode = resolveSearchExecutionMode({
+                searchRequired: searchRequestedByPolicy,
+                primaryToolReady: primaryGoogleSearchReady,
+                fallbackOnlineEnabled: webSearchConfig.fallbackEnabled,
+                fallbackProvider: modelNames.fallback.provider,
+            })
+            let fallbackSearchToolReason: GoogleSearchToolUnavailableReason | undefined
+            let searchUnavailableReasonCode: string | undefined
+
+            if (searchExecutionMode === "primary_google_search") {
+                enableWebSearch = true
+            } else if (searchExecutionMode === "fallback_online_search") {
+                enableWebSearch = true
+                if (googleSearchInit.status === "unavailable") {
+                    fallbackSearchToolReason = googleSearchInit.reason
+                }
+            } else if (searchExecutionMode === "blocked_unavailable") {
+                enableWebSearch = false
+                searchUnavailableReasonCode = "search_required_but_unavailable"
+            } else {
+                enableWebSearch = false
+            }
+
+            if (!enableWebSearch && paperModePrompt && !activeStageSearchNote) {
+                activeStageSearchNote = PAPER_TOOLS_ONLY_NOTE
+            }
+
+            if (searchUnavailableReasonCode) {
+                return createSearchUnavailableResponse({
+                    reasonCode: searchUnavailableReasonCode,
+                    message: "Pencarian web tidak tersedia saat ini. Saya belum bisa memberikan jawaban faktual tanpa sumber. Coba lagi beberapa saat.",
+                    usedModel: modelNames.primary.model,
+                    telemetryFallbackReason: searchUnavailableReasonCode,
+                })
+            }
+
+            if (fallbackSearchToolReason) {
+                throw new SearchToolUnavailableError(fallbackSearchToolReason)
             }
 
             shouldForceGetCurrentPaperState = !enableWebSearch
@@ -2905,6 +3016,15 @@ TIPS PENCARIAN:
             }
         } catch (error) {
             console.error("Gateway stream failed, trying fallback:", error)
+            const searchToolUnavailableError = error instanceof SearchToolUnavailableError
+                ? error
+                : null
+            const primaryFailureFallbackReason = searchToolUnavailableError
+                ? mapSearchToolReasonToFallbackReason(searchToolUnavailableError.reason)
+                : undefined
+            const primaryFailureTelemetryContext = primaryFailureFallbackReason
+                ? { ...skillTelemetryContext, fallbackReason: primaryFailureFallbackReason }
+                : skillTelemetryContext
 
             // ═══ TELEMETRY: Primary provider failure ═══
             const primaryErrorInfo = classifyError(error)
@@ -2922,7 +3042,7 @@ TIPS PENCARIAN:
                 errorType: primaryErrorInfo.errorType,
                 errorMessage: primaryErrorInfo.errorMessage,
                 latencyMs: Date.now() - telemetryStartTime,
-                ...skillTelemetryContext,
+                ...primaryFailureTelemetryContext,
             })
             // ════════════════════════════════════════════
 
@@ -2931,15 +3051,18 @@ TIPS PENCARIAN:
             // Task 2.2-2.6: Enhanced fallback with :online web search support
             // ════════════════════════════════════════════════════════════════
 
-            // Get web search config from database
-            const webSearchConfig = await getWebSearchConfig()
-
             // Determine if web search should be enabled in fallback
             // Requires: 1) primary path wanted web search, AND 2) fallback web search is enabled in config
             const fallbackEnableWebSearch =
                 enableWebSearch
                 && webSearchConfig.fallbackEnabled
                 && modelNames.fallback.provider === "openrouter"
+            const fallbackTelemetryContext = searchToolUnavailableError
+                ? {
+                    ...skillTelemetryContext,
+                    fallbackReason: "websearch_primary_tool_unavailable_fallback_online",
+                }
+                : skillTelemetryContext
 
             const fallbackReasoningProviderOptions = buildReasoningProviderOptions({
                 settings: reasoningSettings,
@@ -3062,7 +3185,7 @@ TIPS PENCARIAN:
                             latencyMs: Date.now() - telemetryStartTime,
                             inputTokens: usage?.inputTokens,
                             outputTokens: usage?.outputTokens,
-                            ...skillTelemetryContext,
+                            ...fallbackTelemetryContext,
                         })
                         // ═════════════════════════════════════════════════
                     },
@@ -3503,7 +3626,7 @@ TIPS PENCARIAN:
                                     latencyMs: Date.now() - telemetryStartTime,
                                     inputTokens: finishUsage?.inputTokens,
                                     outputTokens: finishUsage?.outputTokens,
-                                    ...skillTelemetryContext,
+                                    ...fallbackTelemetryContext,
                                 })
                                 // ═════════════════════════════════════════════
 
@@ -3554,6 +3677,15 @@ TIPS PENCARIAN:
             } catch (onlineError) {
                 // Task 2.6: :online failed, graceful degradation to non-search mode
                 console.error("[Fallback] :online stream failed, retrying without search:", onlineError)
+                if (searchToolUnavailableError) {
+                    return createSearchUnavailableResponse({
+                        reasonCode: "search_required_but_unavailable",
+                        message: "Pencarian web sedang bermasalah saat ini. Saya belum bisa memberikan jawaban faktual tanpa sumber. Coba lagi beberapa saat.",
+                        usedModel: modelNames.fallback.model,
+                        provider: modelNames.fallback.provider as "vercel-gateway" | "openrouter",
+                        telemetryFallbackReason: "search_required_but_unavailable",
+                    })
+                }
                 return runFallbackWithoutSearch()
             }
         }

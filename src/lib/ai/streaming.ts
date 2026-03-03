@@ -2,6 +2,7 @@ import { streamText, type ModelMessage } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createGateway } from "@ai-sdk/gateway"
 import { configCache } from "./config-cache"
+import { initGoogleSearchTool } from "./google-search-tool"
 
 const MIN_THINKING_BUDGET = 0
 const MAX_THINKING_BUDGET = 32768
@@ -406,27 +407,13 @@ export async function getModelNames() {
  * Async to support dynamic imports (cleaner bundle/lint compliance)
  */
 export async function getGoogleSearchTool() {
-  try {
-    const { google } = await import("@ai-sdk/google")
-    // Native Google Search tool from the provider (provider-defined tool factory)
-    // Note: This requires GOOGLE_GENERATIVE_AI_API_KEY to be set in env (when using google provider directly).
-    const toolFactory = google.tools?.googleSearch
-
-    if (!toolFactory) {
-      return null
-    }
-
-    // @ai-sdk/google exposes provider-defined tools as factories (functions).
-    // We must call the factory to get a tool instance to pass into `streamText({ tools })`.
-    if (typeof toolFactory === "function") {
-      const toolInstance = toolFactory({})
-      return toolInstance
-    }
-
-    // Defensive fallback: if SDK ever changes shape and returns an instance directly.
-    return toolFactory
-  } catch (error) {
-    console.error("[Streaming] Failed to load Google Search tool:", error)
+  const initResult = await initGoogleSearchTool()
+  if (initResult.status !== "ready") {
+    console.error("[Streaming] Failed to load Google Search tool:", {
+      reason: initResult.reason,
+      errorMessage: initResult.errorMessage,
+    })
     return null
   }
+  return initResult.tool
 }
