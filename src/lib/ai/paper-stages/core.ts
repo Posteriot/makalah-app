@@ -91,6 +91,8 @@ TOOLS & LARANGAN:
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari contoh abstrak paper serupa. AI TIDAK BOLEH inisiatif search di stage ini karena abstrak adalah compile dari data Phase 1.
 - updateStageData({ ringkasan, ringkasanDetail, ringkasanPenelitian, keywords, wordCount })
 - createArtifact({ type: "section", title: "Abstrak - [Judul Paper]", content: "[konten abstrak lengkap]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 - submitStageForValidation()
 
 CATATAN MODE TOOL:
@@ -219,6 +221,8 @@ TOOLS & LARANGAN:
 - google_search → Cari data/fakta pendukung urgensi
 - updateStageData({ ringkasan, ringkasanDetail, latarBelakang, rumusanMasalah, researchGapAnalysis, tujuanPenelitian, signifikansiPenelitian, hipotesis, sitasiAPA })
 - createArtifact({ type: "section", title: "Pendahuluan - [Judul Paper]", content: "[konten pendahuluan lengkap]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 
 CATATAN MODE TOOL:
 - Jika Anda menggunakan google_search, jangan panggil updateStageData/createArtifact/submitStageForValidation di turn yang sama.
@@ -348,6 +352,8 @@ TOOLS & LARANGAN:
 - google_search → Target pendalaman (3-5 queries)
 - updateStageData({ ringkasan, ringkasanDetail, kerangkaTeoretis, reviewLiteratur, gapAnalysis, justifikasiPenelitian, referensi })
 - createArtifact({ type: "section", title: "Tinjauan Literatur - [Judul Paper]", content: "[konten tinjauan literatur lengkap]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 
 CATATAN MODE TOOL:
 - Jika Anda menggunakan google_search, jangan panggil updateStageData/createArtifact/submitStageForValidation di turn yang sama.
@@ -466,6 +472,8 @@ TOOLS & LARANGAN:
 - google_search → Cari referensi/contoh metodologi sejenis
 - updateStageData({ ringkasan, ringkasanDetail, pendekatanPenelitian, desainPenelitian, metodePerolehanData, teknikAnalisis, etikaPenelitian, alatInstrumen })
 - createArtifact({ type: "section", title: "Metodologi - [Judul Paper]", content: "[konten metodologi lengkap]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 
 CATATAN MODE TOOL:
 - Jika Anda menggunakan google_search, jangan panggil updateStageData/createArtifact/submitStageForValidation di turn yang sama.
