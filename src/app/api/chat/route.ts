@@ -1427,6 +1427,20 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                             "artifacts.create"
                         )
 
+                        // Auto-link artifactId to paper session stageData
+                        if (paperSession) {
+                            try {
+                                await fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                    sessionId: paperSession._id,
+                                    stage: paperSession.currentStage,
+                                    data: { artifactId: result.artifactId },
+                                })
+                            } catch {
+                                // Non-critical: artifact exists but not linked to stage
+                                console.warn("[createArtifact] Auto-link artifactId to stageData failed")
+                            }
+                        }
+
                         return {
                             success: true,
                             artifactId: result.artifactId,
