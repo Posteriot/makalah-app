@@ -17,17 +17,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
  * Grid structure:
  * - Column 1: Activity Bar (48px fixed)
  * - Column 2: Sidebar (280px default, resizable)
- * - Column 3: Resizer (4px)
+ * - Column 3: Resizer (2px)
  * - Column 4: Main Content (1fr)
- * - Column 5: Resizer (4px)
- * - Column 6: Panel (360px default, resizable)
+ * - Column 5: Resizer (2px)
+ * - Column 6: Panel (480px default, resizable)
  *
  * Grid rows:
  * - Single row, full height. Header is inside main column (not spanning all columns)
  *
  * Constraints:
- * - Sidebar: min 180px, max 50% viewport
- * - Panel: min 280px, max 50% viewport
+ * - Sidebar: min 180px, max dynamic (guarantees 640px main content)
+ * - Panel: min 280px, max dynamic (guarantees 640px main content)
  * - Collapse threshold: 100px
  */
 
@@ -58,6 +58,9 @@ const DEFAULT_PANEL_WIDTH = 480
 const MIN_SIDEBAR_WIDTH = 180
 const MIN_PANEL_WIDTH = 280
 const COLLAPSE_THRESHOLD = 100
+const MIN_MAIN_CONTENT_WIDTH = 640
+const ACTIVITY_BAR_WIDTH = 48
+const RESIZER_WIDTH = 2
 
 // CSS Variables for dimensions (can be overridden)
 const CSS_VARS = {
@@ -116,18 +119,52 @@ export function ChatLayout({
     }
   }, [conversationId])
 
-  // Calculate max width (50% of viewport)
-  const getMaxWidth = useCallback(() => {
+  // Sidebar max width — derived from MIN_MAIN_CONTENT_WIDTH guarantee
+  const getSidebarMaxWidth = useCallback(() => {
+    if (typeof window === "undefined") return DEFAULT_SIDEBAR_WIDTH
+    const resizerLeft = RESIZER_WIDTH
+    const resizerRight = isArtifactPanelOpen ? RESIZER_WIDTH : 0
+    const currentPanel = isArtifactPanelOpen ? panelWidth : 0
+    const available =
+      window.innerWidth - ACTIVITY_BAR_WIDTH - resizerLeft - resizerRight - currentPanel - MIN_MAIN_CONTENT_WIDTH
+    return Math.max(MIN_SIDEBAR_WIDTH, available)
+  }, [isArtifactPanelOpen, panelWidth])
+
+  // Panel max width — considers sidebar width and guarantees min main content
+  const getPanelMaxWidth = useCallback(() => {
     if (typeof window === "undefined") return 600
-    return window.innerWidth * 0.5
-  }, [])
+    const resizerLeft = isSidebarCollapsed ? 0 : RESIZER_WIDTH
+    const resizerRight = RESIZER_WIDTH
+    const currentSidebar = isSidebarCollapsed ? 0 : sidebarWidth
+    const available =
+      window.innerWidth - ACTIVITY_BAR_WIDTH - resizerLeft - resizerRight - currentSidebar - MIN_MAIN_CONTENT_WIDTH
+    return Math.max(MIN_PANEL_WIDTH, available)
+  }, [isSidebarCollapsed, sidebarWidth])
+
+  // Auto-clamp sidebar when artifact panel opens or resizes
+  useEffect(() => {
+    if (typeof window === "undefined" || isSidebarCollapsed) return
+    const maxSidebar = getSidebarMaxWidth()
+    if (sidebarWidth > maxSidebar) {
+      setSidebarWidth(maxSidebar)
+    }
+  }, [isArtifactPanelOpen, panelWidth, getSidebarMaxWidth, sidebarWidth, isSidebarCollapsed])
+
+  // Auto-clamp panel when sidebar expands or resizes
+  useEffect(() => {
+    if (typeof window === "undefined" || !isArtifactPanelOpen) return
+    const maxPanel = getPanelMaxWidth()
+    if (panelWidth > maxPanel) {
+      setPanelWidth(maxPanel)
+    }
+  }, [isSidebarCollapsed, sidebarWidth, getPanelMaxWidth, panelWidth, isArtifactPanelOpen])
 
   // Sidebar resize handler
   const handleSidebarResize = useCallback(
     (delta: number) => {
       setSidebarWidth((prev) => {
         const newWidth = prev + delta
-        const maxWidth = getMaxWidth()
+        const maxWidth = getSidebarMaxWidth()
 
         // Check collapse threshold
         if (newWidth < COLLAPSE_THRESHOLD) {
@@ -135,16 +172,14 @@ export function ChatLayout({
           return MIN_SIDEBAR_WIDTH
         }
 
-        // Ensure not collapsed
-        if (isSidebarCollapsed && newWidth >= COLLAPSE_THRESHOLD) {
-          setIsSidebarCollapsed(false)
-        }
+        // Always sync collapse state — avoids stale closure reads
+        setIsSidebarCollapsed(false)
 
         // Clamp to min/max
         return Math.max(MIN_SIDEBAR_WIDTH, Math.min(newWidth, maxWidth))
       })
     },
-    [getMaxWidth, isSidebarCollapsed]
+    [getSidebarMaxWidth]
   )
 
   // Panel resize handler
@@ -152,13 +187,13 @@ export function ChatLayout({
     (delta: number) => {
       setPanelWidth((prev) => {
         const newWidth = prev + delta
-        const maxWidth = getMaxWidth()
+        const maxWidth = getPanelMaxWidth()
 
         // Clamp to min/max
         return Math.max(MIN_PANEL_WIDTH, Math.min(newWidth, maxWidth))
       })
     },
-    [getMaxWidth]
+    [getPanelMaxWidth]
   )
 
   // Reset sidebar to default
@@ -232,9 +267,9 @@ export function ChatLayout({
   const getGridTemplateColumns = () => {
     const activityBar = "var(--activity-bar-width)"
     const sidebar = isSidebarCollapsed ? "0px" : `${sidebarWidth}px`
-    const leftResizer = isSidebarCollapsed ? "0px" : "2px"
+    const leftResizer = isSidebarCollapsed ? "0px" : `${RESIZER_WIDTH}px`
     const main = "1fr"
-    const rightResizer = isArtifactPanelOpen ? "2px" : "0px"
+    const rightResizer = isArtifactPanelOpen ? `${RESIZER_WIDTH}px` : "0px"
     const panel = isArtifactPanelOpen ? `${panelWidth}px` : "0px"
 
     return `${activityBar} ${sidebar} ${leftResizer} ${main} ${rightResizer} ${panel}`
