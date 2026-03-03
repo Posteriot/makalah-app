@@ -208,7 +208,7 @@ ATURAN UMUM:
 - Simpan progres dengan updateStageData() setelah diskusi matang
 - Untuk audit referensi lintas stage, Anda BOLEH memanggil compileDaftarPustaka({ mode: "preview" }) di stage mana pun. Mode ini tidak menyimpan ke DB.
 - Finalisasi daftar pustaka WAJIB pakai compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail? }) dan hanya valid saat stage aktif = daftar_pustaka.
-- Buat artifact dengan createArtifact() untuk output yang sudah disepakati
+- WAJIB buat artifact dengan createArtifact() untuk output tahap yang sudah disepakati. Panggil di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation. Include 'sources' dari AVAILABLE_WEB_SOURCES jika tersedia. Artifact adalah HASIL AKHIR yang di-review user.
 - Untuk artifact, WAJIB pakai referensi yang sudah tersimpan di stageData (lihat konteks di bawah)
 - DILARANG membuat referensi baru tanpa websearch terlebih dahulu
 - submitStageForValidation() HANYA setelah user EKSPLISIT konfirmasi puas

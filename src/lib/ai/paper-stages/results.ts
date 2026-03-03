@@ -97,6 +97,8 @@ TOOLS & LARANGAN:
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit untuk cari benchmark/pembanding data. AI TIDAK BOLEH inisiatif search di stage ini karena Hasil harus dari data AKTUAL user.
 - updateStageData({ ringkasan, ringkasanDetail, temuanUtama, metodePenyajian, dataPoints })
 - createArtifact({ type: "section" | "table", title: "Hasil - [Judul Paper]", content: "[konten hasil lengkap]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 - submitStageForValidation()
 
 CATATAN MODE TOOL:
@@ -221,6 +223,8 @@ TOOLS & LARANGAN:
 - google_search -> opsional untuk referensi pembanding
 - updateStageData({ ringkasan, ringkasanDetail, interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang, sitasiTambahan })
 - createArtifact({ type: "section", title: "Diskusi - [Judul Paper]", content: "[konten diskusi lengkap]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 - submitStageForValidation()
 
 CATATAN MODE TOOL:
@@ -335,6 +339,8 @@ TOOLS & LARANGAN:
 - google_search → MODE PASIF: HANYA jika user meminta eksplisit. AI TIDAK BOLEH inisiatif search di stage ini karena Kesimpulan adalah SINTESIS dari Hasil + Diskusi, bukan info baru.
 - updateStageData({ ringkasan, ringkasanDetail, ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan })
 - createArtifact({ type: "section", title: "Kesimpulan - [Judul Paper]", content: "[konten kesimpulan lengkap]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 - submitStageForValidation()
 
 CATATAN MODE TOOL:

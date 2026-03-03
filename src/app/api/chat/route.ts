@@ -870,6 +870,16 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             return typeof stageEntry?.ringkasan === "string" && stageEntry.ringkasan.trim().length > 0
         }
 
+        const hasStageArtifact = (session: {
+            currentStage?: string
+            stageData?: Record<string, unknown>
+        } | null): boolean => {
+            if (!session?.stageData || !session.currentStage) return false
+            if (session.currentStage === "completed") return false
+            const data = session.stageData[session.currentStage] as Record<string, unknown> | undefined
+            return !!data?.artifactId
+        }
+
         const buildForcedSyncStatusMessage = (session: {
             currentStage?: string
             stageStatus?: string
@@ -1417,6 +1427,20 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                             "artifacts.create"
                         )
 
+                        // Auto-link artifactId to paper session stageData
+                        if (paperSession) {
+                            try {
+                                await fetchMutationWithToken(api.paperSessions.updateStageData, {
+                                    sessionId: paperSession._id,
+                                    stage: paperSession.currentStage,
+                                    data: { artifactId: result.artifactId },
+                                })
+                            } catch {
+                                // Non-critical: artifact exists but not linked to stage
+                                console.warn("[createArtifact] Auto-link artifactId to stageData failed")
+                            }
+                        }
+
                         return {
                             success: true,
                             artifactId: result.artifactId,
@@ -1650,6 +1674,7 @@ Aturan:
         // Hoist for catch block accessibility (fallback provider needs these)
         let shouldForceGetCurrentPaperState = false
         let shouldForceSubmitValidation = false
+        let missingArtifactNote = ""
         class SearchToolUnavailableError extends Error {
             readonly reason: GoogleSearchToolUnavailableReason
 
@@ -1917,6 +1942,21 @@ Aturan:
                 )
                 && paperSession?.stageStatus === "drafting"
                 && hasStageRingkasan(paperSession)
+                && hasStageArtifact(paperSession)
+
+            missingArtifactNote = !shouldForceSubmitValidation
+                && !!paperModePrompt
+                && hasStageRingkasan(paperSession)
+                && !hasStageArtifact(paperSession)
+                && paperSession?.stageStatus === "drafting"
+                && (
+                    activeStageSearchReason === "user_confirmation_prefer_paper_tools" ||
+                    activeStageSearchReason === "ai_promised_save_user_confirms" ||
+                    activeStageSearchReason === "explicit_save_request" ||
+                    isExplicitSaveSubmitRequest(lastUserContent)
+                )
+                ? `\n⚠️ ARTIFACT BELUM DIBUAT untuk tahap ini. WAJIB panggil createArtifact() dengan konten yang sudah disimpan di updateStageData SEBELUM memanggil submitStageForValidation(). Pastikan include parameter 'sources' jika ada AVAILABLE_WEB_SOURCES.\n`
+                : ""
 
             const forcedToolTelemetryName = shouldForceGetCurrentPaperState
                 ? "getCurrentPaperState"
@@ -1969,6 +2009,9 @@ TIPS PENCARIAN:
                     // Inject paper tools only note when search disabled in paper mode (ACTIVE stage override)
                     ...(activeStageSearchNote && paperModePrompt && !enableWebSearch
                         ? [{ role: "system" as const, content: activeStageSearchNote }]
+                        : []),
+                    ...(missingArtifactNote
+                        ? [{ role: "system" as const, content: missingArtifactNote }]
                         : []),
                     ...fullMessagesBase.slice(1),
                 ]
@@ -3017,7 +3060,13 @@ TIPS PENCARIAN:
                     : undefined
                 const result = streamText({
                     model: fallbackModel,
-                    messages: fullMessagesBase,
+                    messages: missingArtifactNote
+                        ? [
+                            fullMessagesBase[0],
+                            { role: "system" as const, content: missingArtifactNote },
+                            ...fullMessagesBase.slice(1),
+                        ]
+                        : fullMessagesBase,
                     tools,
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,

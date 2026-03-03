@@ -221,6 +221,16 @@ export function validateStageSkillContent(input: StageSkillValidationInput): Sta
         }
     }
 
+    // Validate that Tool Policy mentions createArtifact
+    // Required for all stages — artifact is the mandatory output reviewed by user
+    const toolPolicySection = getSection(content, "Tool Policy");
+    if (toolPolicySection && !/createArtifact/i.test(toolPolicySection)) {
+        issues.push({
+            code: "missing_create_artifact_in_tool_policy",
+            message: `Tool Policy wajib menyebut createArtifact untuk stage "${input.stageScope}". Artifact adalah hasil akhir yang di-review user.`,
+        });
+    }
+
     return {
         ok: issues.length === 0,
         issues,
