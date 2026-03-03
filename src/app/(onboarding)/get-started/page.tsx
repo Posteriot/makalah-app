@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useQuery } from "convex/react"
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Xmark } from "iconoir-react"
 import { api } from "@convex/_generated/api"
 import { cn } from "@/lib/utils"
@@ -35,6 +35,13 @@ function toSafeInternalPath(path?: string): string | null {
   if (!path) return null
   if (!path.startsWith("/") || path.startsWith("//")) return null
   return path
+}
+
+function resolveCloseDestination(returnTo: string | null): string {
+  const safePath = toSafeInternalPath(returnTo ?? undefined)
+  if (!safePath) return "/"
+  if (safePath === "/get-started" || safePath.startsWith("/get-started?")) return "/"
+  return safePath
 }
 
 function GetStartedPlanCard({
@@ -129,12 +136,14 @@ function GetStartedPlanCard({
 
 export default function GetStartedPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { isLoading: isOnboardingLoading, isAuthenticated, completeOnboarding } = useOnboardingStatus()
   const { user, isLoading: isUserLoading } = useCurrentUser()
   const plansData = useQuery(api.pricingPlans.getActivePlans)
   const [showFeedback, setShowFeedback] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
   const isFreeTier = isFreeTierForLoginGate(user?.role, user?.subscriptionStatus)
+  const closeDestination = resolveCloseDestination(searchParams.get("return_to"))
 
   // Show "Mempersiapkan..." after FEEDBACK_DELAY_MS while auth/user sync stabilizes.
   useEffect(() => {
@@ -167,9 +176,9 @@ export default function GetStartedPage() {
   // Route guard: this page is only for free-tier users.
   useEffect(() => {
     if (!isOnboardingLoading && !isUserLoading && isAuthenticated && user && !isFreeTier) {
-      router.replace("/chat")
+      router.replace(closeDestination)
     }
-  }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, router])
+  }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, closeDestination, router])
 
   const completeThenNavigate = async (targetPath: string) => {
     if (isNavigating) return
@@ -208,7 +217,7 @@ export default function GetStartedPage() {
   }
 
   const handleClose = async () => {
-    await completeThenNavigate("/chat")
+    await completeThenNavigate(closeDestination)
   }
 
   const getStartedPlans: GetStartedPlan[] = TARGET_PLAN_ORDER
