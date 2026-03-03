@@ -96,7 +96,9 @@ TOOLS YANG TERSEDIA:
 
 - google_search → WAJIB menggunakan untuk mencari referensi akademik yang valid. Jangan pernah mengarang referensi!
 - updateStageData({ ringkasan, ringkasanDetail, ideKasar, analisis, angle, novelty, referensiAwal }) → Simpan draft (WAJIB sertakan ringkasan!)
-- createArtifact({ type: "section", title: "Gagasan Paper - [Judul Kerja]", content: "[gabungan ide, analisis, angle, novelty, referensi dalam markdown]" })
+- createArtifact({ type: "section", title: "Gagasan Paper - [Judul Kerja]", content: "[gabungan ide, analisis, angle, novelty, referensi dalam markdown]", sources: [{ url, title, publishedAt? }] })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 - submitStageForValidation() → HANYA panggil setelah user EKSPLISIT konfirmasi puas
 
 CATATAN MODE TOOL:
@@ -222,7 +224,9 @@ TOOLS YANG TERSEDIA:
 
 - google_search → WAJIB menggunakan untuk mencari literatur dan research gap. Jangan mengarang referensi!
 - updateStageData({ ringkasan, ringkasanDetail, definitif, angleSpesifik, argumentasiKebaruan, researchGap, referensiPendukung }) → (WAJIB sertakan ringkasan!)
-- createArtifact({ type: "section", title: "Topik Definitif - [Judul Definitif]", content: "[gabungan topik, angle, argumentasi, gap, referensi dalam markdown]" })
+- createArtifact({ type: "section", title: "Topik Definitif - [Judul Definitif]", content: "[gabungan topik, angle, argumentasi, gap, referensi dalam markdown]", sources: [{ url, title, publishedAt? }] })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
 - submitStageForValidation() → HANYA setelah user konfirmasi puas
 
 CATATAN MODE TOOL:
