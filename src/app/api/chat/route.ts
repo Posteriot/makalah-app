@@ -1660,6 +1660,7 @@ Aturan:
         // Hoist for catch block accessibility (fallback provider needs these)
         let shouldForceGetCurrentPaperState = false
         let shouldForceSubmitValidation = false
+        let missingArtifactNote = ""
         class SearchToolUnavailableError extends Error {
             readonly reason: GoogleSearchToolUnavailableReason
 
@@ -1929,6 +1930,20 @@ Aturan:
                 && hasStageRingkasan(paperSession)
                 && hasStageArtifact(paperSession)
 
+            missingArtifactNote = !shouldForceSubmitValidation
+                && !!paperModePrompt
+                && hasStageRingkasan(paperSession)
+                && !hasStageArtifact(paperSession)
+                && paperSession?.stageStatus === "drafting"
+                && (
+                    activeStageSearchReason === "user_confirmation_prefer_paper_tools" ||
+                    activeStageSearchReason === "ai_promised_save_user_confirms" ||
+                    activeStageSearchReason === "explicit_save_request" ||
+                    isExplicitSaveSubmitRequest(lastUserContent)
+                )
+                ? `\n⚠️ ARTIFACT BELUM DIBUAT untuk tahap ini. WAJIB panggil createArtifact() dengan konten yang sudah disimpan di updateStageData SEBELUM memanggil submitStageForValidation(). Pastikan include parameter 'sources' jika ada AVAILABLE_WEB_SOURCES.\n`
+                : ""
+
             const forcedToolTelemetryName = shouldForceGetCurrentPaperState
                 ? "getCurrentPaperState"
                 : undefined
@@ -1980,6 +1995,9 @@ TIPS PENCARIAN:
                     // Inject paper tools only note when search disabled in paper mode (ACTIVE stage override)
                     ...(activeStageSearchNote && paperModePrompt && !enableWebSearch
                         ? [{ role: "system" as const, content: activeStageSearchNote }]
+                        : []),
+                    ...(missingArtifactNote
+                        ? [{ role: "system" as const, content: missingArtifactNote }]
                         : []),
                     ...fullMessagesBase.slice(1),
                 ]
@@ -3028,7 +3046,13 @@ TIPS PENCARIAN:
                     : undefined
                 const result = streamText({
                     model: fallbackModel,
-                    messages: fullMessagesBase,
+                    messages: missingArtifactNote
+                        ? [
+                            fullMessagesBase[0],
+                            { role: "system" as const, content: missingArtifactNote },
+                            ...fullMessagesBase.slice(1),
+                        ]
+                        : fullMessagesBase,
                     tools,
                     ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                     toolChoice: fallbackForcedToolChoice,
