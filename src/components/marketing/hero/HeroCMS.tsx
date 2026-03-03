@@ -5,7 +5,6 @@ import { api } from "@convex/_generated/api"
 import type { Doc } from "@convex/_generated/dataModel"
 import { useWaitlistMode } from "@/lib/hooks/useWaitlistMode"
 import { SectionBadge } from "@/components/ui/section-badge"
-import { SectionCTA } from "@/components/ui/section-cta"
 import { GridPattern, DiagonalStripes, DottedPattern } from "@/components/marketing/SectionBackground"
 import { HeroCTA } from "./HeroCTA"
 import { HeroHeadingSvg } from "./HeroHeadingSvg"
@@ -93,14 +92,8 @@ export function HeroCMS({ content }: HeroCMSProps) {
               {isWaitlistMode ? (
                 <HeroCTA />
               ) : (
-                content.ctaText && content.ctaHref && (
-                  <div className="flex flex-col items-center lg:items-start w-full mt-4 gap-3">
-                    <div className="flex w-full justify-center lg:justify-start">
-                      <SectionCTA href={content.ctaHref}>
-                        {content.ctaText}
-                      </SectionCTA>
-                    </div>
-                  </div>
+                content.ctaText && (
+                  <HeroCTA ctaText={content.ctaText} />
                 )
               )}
             </div>

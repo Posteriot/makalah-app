@@ -1,5 +1,5 @@
 import { isAuthenticated } from "@/lib/auth-server"
-import { generateObject } from "ai"
+import { generateText, Output } from "ai"
 import { fetchQuery } from "convex/nextjs"
 import { NextResponse } from "next/server"
 
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     // 4. Build prompt (split: system instructions + user input)
     const { system, prompt } = buildRefrasaPrompt(content, constitutionContent)
 
-    // 5. Call LLM with generateObject
+    // 5. Call LLM with generateText + Output.object
     // system = constitution + instructions (highest LLM compliance)
     // prompt = user text input
     // Primary: Gateway, Fallback: OpenRouter
@@ -82,17 +82,17 @@ export async function POST(req: Request) {
       // Try primary provider (Gateway)
       const primaryModel = await getGatewayModel()
 
-      const { object } = await generateObject({
+      const { output } = await generateText({
         model: primaryModel,
-        schema: RefrasaOutputSchema,
+        output: Output.object({ schema: RefrasaOutputSchema }),
         system,
         prompt,
         temperature: 0.7,
       })
 
       result = {
-        issues: object.issues,
-        refrasedText: object.refrasedText,
+        issues: output.issues,
+        refrasedText: output.refrasedText,
       }
     } catch (primaryError) {
       // Fallback to OpenRouter
@@ -101,17 +101,17 @@ export async function POST(req: Request) {
       try {
         const fallbackModel = await getOpenRouterModel()
 
-        const { object } = await generateObject({
+        const { output } = await generateText({
           model: fallbackModel,
-          schema: RefrasaOutputSchema,
+          output: Output.object({ schema: RefrasaOutputSchema }),
           system,
           prompt,
           temperature: 0.7,
         })
 
         result = {
-          issues: object.issues,
-          refrasedText: object.refrasedText,
+          issues: output.issues,
+          refrasedText: output.refrasedText,
         }
       } catch (fallbackError) {
         console.error("[Refrasa API] Fallback provider also failed:", fallbackError)

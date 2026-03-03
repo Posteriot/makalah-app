@@ -37,6 +37,13 @@ function toSafeInternalPath(path?: string): string | null {
   return path
 }
 
+function resolveCloseDestination(returnTo: string | null): string {
+  const safePath = toSafeInternalPath(returnTo ?? undefined)
+  if (!safePath) return "/"
+  if (safePath === "/get-started" || safePath.startsWith("/get-started?")) return "/"
+  return safePath
+}
+
 function GetStartedPlanCard({
   plan,
   isNavigating,
@@ -136,6 +143,12 @@ export default function GetStartedPage() {
   const [isNavigating, setIsNavigating] = useState(false)
   const isFreeTier = isFreeTierForLoginGate(user?.role, user?.subscriptionStatus)
 
+  const getCloseDestination = () => {
+    if (typeof window === "undefined") return "/"
+    const params = new URLSearchParams(window.location.search)
+    return resolveCloseDestination(params.get("return_to"))
+  }
+
   // Show "Mempersiapkan..." after FEEDBACK_DELAY_MS while auth/user sync stabilizes.
   useEffect(() => {
     const feedbackTimer = setTimeout(() => setShowFeedback(true), FEEDBACK_DELAY_MS)
@@ -167,7 +180,7 @@ export default function GetStartedPage() {
   // Route guard: this page is only for free-tier users.
   useEffect(() => {
     if (!isOnboardingLoading && !isUserLoading && isAuthenticated && user && !isFreeTier) {
-      router.replace("/")
+      router.replace(getCloseDestination())
     }
   }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, router])
 
@@ -195,7 +208,7 @@ export default function GetStartedPage() {
 
     // Fallbacks: prevent dead-end when ctaHref is missing/malformed.
     if (plan.id === "gratis") {
-      await completeThenNavigate("/")
+      await completeThenNavigate("/chat")
       return
     }
 
@@ -208,7 +221,7 @@ export default function GetStartedPage() {
   }
 
   const handleClose = async () => {
-    await completeThenNavigate("/")
+    await completeThenNavigate(getCloseDestination())
   }
 
   const getStartedPlans: GetStartedPlan[] = TARGET_PLAN_ORDER

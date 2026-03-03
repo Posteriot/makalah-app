@@ -88,7 +88,7 @@ export async function checkQuotaBeforeOperation(
  * Record token usage after AI response completes
  * Also deducts from quota/credits
  *
- * Note: AI SDK v5 uses inputTokens/outputTokens naming
+ * Note: AI SDK v5/v6 uses inputTokens/outputTokens naming
  */
 export async function recordUsageAfterOperation(params: {
   userId: Id<"users">

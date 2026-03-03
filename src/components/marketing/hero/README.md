@@ -62,7 +62,7 @@ Integrasi utamanya ada di `src/app/(marketing)/page.tsx`.
 - `HeroHeading.tsx`: server component, heading `h1` dengan text SR (`sr-only`) dan render visual via `HeroHeadingSvg`.
 - `HeroHeadingSvg.tsx`: server component, menampilkan heading sebagai 2 file SVG image via `next/image` (`heading-light-color.svg` untuk dark mode, `heading-dark-color.svg` untuk light mode). Theme switch via `hidden dark:block` / `block dark:hidden`. Kedua image diberi `priority` flag untuk LCP optimization. Container max-w `520px`.
 - `HeroSubheading.tsx`: server component, teks subheading/tagline (Geist Sans via `text-narrative`).
-- `HeroCTA.tsx`: client component, delegates ke `SectionCTA` (dari `@/components/ui/section-cta`), menentukan route berdasar status auth + onboarding.
+- `HeroCTA.tsx`: client component, delegates ke `SectionCTA` (dari `@/components/ui/section-cta`), menentukan route berdasar status auth dan mode waitlist.
 - `HeroResearchMock.tsx`: client component, mockup progress riset/paper (timeline + progress bar), data statik. Permanent dark theme (Stone-800). Z-layer: `z-10` (back).
 - `ChatInputHeroMock.tsx`: client component, mockup input chat dengan animasi typewriter + cursor + click. Permanent light-ish theme (Stone-200). Z-layer: `z-20` (front).
 
@@ -82,10 +82,12 @@ Server components (tanpa `"use client"`):
 ## Perilaku Ringkas
 
 **HeroCTA**
-- Not signed in: `/sign-up`
-- Signed in + onboarding selesai: `/chat`
-- Signed in + onboarding belum selesai: `/get-started`
-- `aria-busy` aktif saat loading auth/onboarding.
+- Not signed in: `/sign-up?redirect_url=/chat`.
+- Signed in: `/chat`.
+- Waitlist mode: `/waitinglist`.
+- Chat entry (signed-in/signed-out) dibuka dengan `target="_blank"` untuk konsisten dengan nav Chat di header global.
+- Bisa menerima prop `ctaText`.
+- `aria-busy` aktif saat loading auth session.
 - Delegates rendering ke `SectionCTA` yang punya stripes animation dan inverted slate button pattern.
 
 **ChatInputHeroMock**
@@ -138,7 +140,7 @@ Server components (tanpa `"use client"`):
 - "Nggak perlu prompt & workflow ruwet. Gagasan bakal diolah runtut oleh Agen Makalah menjadi paper utuh"
 
 **HeroCTA**
-- Label: "AYO MULAI"
+- Label default: "AYO MULAI" (bisa dioverride via prop `ctaText`)
 - Container: `flex justify-center lg:justify-start w-full mt-4`.
 
 **HeroResearchMock**
@@ -187,7 +189,7 @@ Kedua mockup pakai permanent dark/stone theme (tidak ikut app theme toggle).
 - `next/image` untuk `HeroHeadingSvg`.
 - `next/link` via `SectionBadge` (indirect) untuk `PawangBadge`.
 - `@/lib/auth-client` (`useSession`) untuk status auth di `HeroCTA`.
-- `useOnboardingStatus` dari `src/lib/hooks/useOnboardingStatus` untuk status onboarding.
+- `useWaitlistMode` dari `src/lib/hooks/useWaitlistMode` untuk mode waitlist di `HeroCTA`.
 - `SectionBadge` dari `@/components/ui/section-badge` untuk `PawangBadge`.
 - `SectionCTA` dari `@/components/ui/section-cta` untuk `HeroCTA`.
 - `iconoir-react` (`Send`) untuk ikon pada `ChatInputHeroMock`.

@@ -102,7 +102,19 @@ Contoh data untuk tahap 'gagasan':
     {title: "Self-determination theory and...", authors: "Ryan, R.M. & Deci, E.L.", year: 2000},
     {title: "Project-based learning effects...", url: "https://example.com", year: 2019}
   ]
-}`,
+}
+
+Contoh data untuk tahap 'outline':
+{
+  sections: [
+    {id: "abstrak", judul: "Abstrak", level: 1, parentId: null, estimatedWordCount: 200, status: "empty"},
+    {id: "pendahuluan", judul: "Pendahuluan", level: 1, parentId: null, estimatedWordCount: 1000, status: "empty"},
+    {id: "pendahuluan.latar", judul: "Latar Belakang", level: 2, parentId: "pendahuluan", estimatedWordCount: 500, status: "empty"}
+  ],
+  totalWordCount: 5000,
+  completenessScore: 0
+}
+PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' sebagai angka (BUKAN 'wordCount' string). JANGAN tambah field 'checked' atau 'subSections'.`,
             inputSchema: z.object({
                 // NOTE: 'stage' parameter REMOVED - auto-fetched from session.currentStage
                 // This prevents AI from specifying wrong stage (Option B fix for stage confusion bug)

@@ -14,7 +14,7 @@ import {
     DAFTAR_PUSTAKA_SOURCE_STAGES,
     type DaftarPustakaCompileCandidate,
 } from "./paperSessions/daftarPustakaCompiler";
-import { validateStageDataKeys } from "./paperSessions/stageDataWhitelist";
+import { validateStageDataKeys, sanitizeNestedArrayFields } from "./paperSessions/stageDataWhitelist";
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul";
 const MAX_WORKING_TITLE_LENGTH = 80;
@@ -652,9 +652,16 @@ export const updateStageData = mutation({
         // Coerce AI type mismatches (e.g. array sent for string field)
         const coercedData = coerceStageDataTypes(strippedData);
 
+        // Sanitize nested objects in array fields (e.g. outline.sections, lampiran.items)
+        // Maps AI alias names (title→judul, wordCount→estimatedWordCount) and strips unknown nested fields
+        const { sanitized: nestedSanitizedData, nestedDropped } = sanitizeNestedArrayFields(coercedData);
+        if (nestedDropped.length > 0) {
+            unknownKeys.push(...nestedDropped);
+        }
+
         // Normalize referensi data: convert string citations to objects
         // This handles the case where AI sends string citations instead of objects
-        const normalizedData = normalizeReferensiData(coercedData);
+        const normalizedData = normalizeReferensiData(nestedSanitizedData);
 
         // Truncate oversized string fields (W7)
         const { truncated: truncatedData, warnings: truncationWarnings } =

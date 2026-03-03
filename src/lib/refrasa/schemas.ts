@@ -5,7 +5,7 @@ import { z } from "zod"
  *
  * Used for:
  * 1. Request validation (API input)
- * 2. LLM output parsing (generateObject schema)
+ * 2. LLM output parsing (generateText output schema)
  */
 
 // ============================================================================
@@ -66,11 +66,11 @@ export const RefrasaIssueSchema = z.object({
 })
 
 // ============================================================================
-// Output Schema (for generateObject)
+// Output Schema (for generateText structured output)
 // ============================================================================
 
 /**
- * LLM output schema for generateObject
+ * LLM output schema for generateText structured output
  *
  * Note: Score removed due to self-grading bias
  */

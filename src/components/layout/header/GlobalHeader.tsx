@@ -31,6 +31,7 @@ import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
+import { resolveChatEntryHref } from "@/lib/utils/chatEntryRouting"
 import { cn } from "@/lib/utils"
 
 const NAV_LINKS = [
@@ -107,6 +108,8 @@ export function GlobalHeader() {
   const visibleNavLinks = baseNavLinks
   const shouldOpenInNewTab = (href: string) =>
     href === "/chat" || href.startsWith("/chat?")
+  const resolveNavHref = (href: string, isSignedIn: boolean) =>
+    shouldOpenInNewTab(href) ? resolveChatEntryHref(isSignedIn) : href
 
   const isMobileMenuOpen = useMemo(() => {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
@@ -269,10 +272,11 @@ export function GlobalHeader() {
             {visibleNavLinks.map((link) => {
               const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
               const openInNewTab = shouldOpenInNewTab(link.href)
+              const resolvedHref = resolveNavHref(link.href, showAsAuthenticated)
               return (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={resolvedHref}
                   target={openInNewTab ? "_blank" : undefined}
                   rel={openInNewTab ? "noopener noreferrer" : undefined}
                   className={cn(
@@ -403,10 +407,11 @@ export function GlobalHeader() {
           {visibleNavLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
             const openInNewTab = shouldOpenInNewTab(link.href)
+            const resolvedHref = resolveNavHref(link.href, showAsAuthenticated)
             return (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={resolvedHref}
                   target={openInNewTab ? "_blank" : undefined}
                   rel={openInNewTab ? "noopener noreferrer" : undefined}
                   className={cn(

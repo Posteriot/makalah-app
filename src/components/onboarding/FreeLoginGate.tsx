@@ -53,7 +53,10 @@ export function FreeLoginGate() {
 
     markFreeLoginGateSeenForSession(session)
     redirectingRef.current = true
-    router.replace("/get-started")
+    const queryString =
+      typeof window !== "undefined" ? window.location.search.slice(1) : ""
+    const returnTo = queryString ? `${pathname}?${queryString}` : pathname
+    router.replace(`/get-started?return_to=${encodeURIComponent(returnTo)}`)
   }, [isSessionPending, session, isUserLoading, user, pathname, router])
 
   return null
