@@ -167,7 +167,7 @@ export default function GetStartedPage() {
   // Route guard: this page is only for free-tier users.
   useEffect(() => {
     if (!isOnboardingLoading && !isUserLoading && isAuthenticated && user && !isFreeTier) {
-      router.replace("/")
+      router.replace("/chat")
     }
   }, [isOnboardingLoading, isUserLoading, isAuthenticated, user, isFreeTier, router])
 
@@ -195,7 +195,7 @@ export default function GetStartedPage() {
 
     // Fallbacks: prevent dead-end when ctaHref is missing/malformed.
     if (plan.id === "gratis") {
-      await completeThenNavigate("/")
+      await completeThenNavigate("/chat")
       return
     }
 
@@ -208,7 +208,7 @@ export default function GetStartedPage() {
   }
 
   const handleClose = async () => {
-    await completeThenNavigate("/")
+    await completeThenNavigate("/chat")
   }
 
   const getStartedPlans: GetStartedPlan[] = TARGET_PLAN_ORDER
