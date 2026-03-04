@@ -88,3 +88,28 @@ export async function verifyOtp(
     return { status: false, error: "Gagal memverifikasi kode." }
   }
 }
+
+export async function verifyBackupCode(
+  email: string,
+  code: string
+): Promise<{ status: boolean; bypassToken?: string; error?: string }> {
+  try {
+    const response = await fetch(
+      `${CONVEX_SITE_URL}/api/auth/2fa/verify-backup-code`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      }
+    )
+
+    const data = (await response.json()) as {
+      status: boolean
+      bypassToken?: string
+      error?: string
+    }
+    return data
+  } catch {
+    return { status: false, error: "Gagal memverifikasi backup code." }
+  }
+}

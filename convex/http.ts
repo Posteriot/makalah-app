@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { authComponent, createAuth } from "./auth";
-import { sendOtp, verifyOtp } from "./twoFactorHttp";
+import { sendOtp, verifyBackupCode, verifyOtp } from "./twoFactorHttp";
 import { enableTwoFactorAllUsers } from "./migrations/enableTwoFactorAllUsers";
 
 const http = httpRouter();
@@ -29,6 +29,16 @@ http.route({
   path: "/api/auth/2fa/verify-otp",
   method: "OPTIONS",
   handler: verifyOtp,
+});
+http.route({
+  path: "/api/auth/2fa/verify-backup-code",
+  method: "POST",
+  handler: verifyBackupCode,
+});
+http.route({
+  path: "/api/auth/2fa/verify-backup-code",
+  method: "OPTIONS",
+  handler: verifyBackupCode,
 });
 
 // One-time migration: enable 2FA for all existing credential users

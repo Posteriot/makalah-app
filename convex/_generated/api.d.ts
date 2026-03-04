@@ -36,6 +36,7 @@ import type * as blog from "../blog.js";
 import type * as chatHelpers from "../chatHelpers.js";
 import type * as conversationAttachmentContexts from "../conversationAttachmentContexts.js";
 import type * as conversations from "../conversations.js";
+import type * as createPasswordEndpoint from "../createPasswordEndpoint.js";
 import type * as crons from "../crons.js";
 import type * as documentationSections from "../documentationSections.js";
 import type * as files from "../files.js";
@@ -140,6 +141,7 @@ declare const fullApi: ApiFromModules<{
   chatHelpers: typeof chatHelpers;
   conversationAttachmentContexts: typeof conversationAttachmentContexts;
   conversations: typeof conversations;
+  createPasswordEndpoint: typeof createPasswordEndpoint;
   crons: typeof crons;
   documentationSections: typeof documentationSections;
   files: typeof files;
