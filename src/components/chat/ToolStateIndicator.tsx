@@ -11,14 +11,21 @@ interface ToolStateIndicatorProps {
     persistUntilDone?: boolean
 }
 
-const SHIMMER_TEXTS = new Set(["Pencarian web"])
+const SHIMMER_TEXTS = new Set([
+    "Pencarian web",
+    "Memulai sesi paper",
+    "Mengambil status sesi paper",
+    "Menyimpan progres tahapan",
+    "Mengirim validasi tahapan",
+    "Mengomplisasi daftar pustaka",
+])
 
 const TOOL_LABEL_MAP: Record<string, string> = {
     google_search: "Pencarian web",
     startPaperSession: "Memulai sesi paper",
     getCurrentPaperState: "Mengambil status sesi paper",
     updateStageData: "Menyimpan progres tahapan",
-    submitStageForValidation: "Mengirim tahapan untuk validasi",
+    submitStageForValidation: "Mengirim validasi tahapan",
     createArtifact: "Membuat artifak",
     updateArtifact: "Memperbarui artifak",
     renameConversationTitle: "Mengubah judul percakapan",
@@ -75,11 +82,14 @@ export function ToolStateIndicator({ toolName, state, errorText, persistUntilDon
     const toolContextLabel = toolLabel.toLowerCase()
 
     let text = ""
-    if (normalizedState === 'input-streaming') {
+    if (normalizedState === 'input-streaming' && toolName === "compileDaftarPustaka") {
+        text = "Mengomplisasi daftar pustaka"
+    }
+    else if (normalizedState === 'input-streaming') {
         text = isGoogleSearch ? "Pencarian web" : `Menjalankan ${toolLabel}`
     }
     else if (normalizedState === 'input-available') {
-        text = isGoogleSearch ? "Pencarian web" : `Memproses ${toolLabel}`
+        text = toolLabel
     }
     else if (isError) {
         text = normalizedErrorText

@@ -75,6 +75,19 @@ const FORCED_TOOL_AND_SEARCH_PREVIEW_MESSAGE = {
   ],
 } as unknown as UIMessage
 
+const FORCED_PAPER_TOOLS_PREVIEW_MESSAGE = {
+  id: "forced-preview-paper-tools",
+  role: "assistant",
+  parts: [
+    { type: "text", text: "Preview indikator tool paper workflow." },
+    { type: "tool-startPaperSession", state: "input-available" },
+    { type: "tool-getCurrentPaperState", state: "input-available" },
+    { type: "tool-updateStageData", state: "input-available" },
+    { type: "tool-submitStageForValidation", state: "input-available" },
+    { type: "tool-compileDaftarPustaka", state: "input-streaming" },
+  ],
+} as unknown as UIMessage
+
 const FORCED_FALLBACK_PREVIEW_MESSAGE = {
   id: "forced-preview-fallback",
   role: "assistant",
@@ -1811,6 +1824,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                     persistProcessIndicators
                   />
                   <MessageBubble
+                    key="forced-preview-paper-tools"
+                    message={FORCED_PAPER_TOOLS_PREVIEW_MESSAGE}
+                    persistProcessIndicators
+                  />
+                  <MessageBubble
                     key="forced-preview-fallback"
                     message={FORCED_FALLBACK_PREVIEW_MESSAGE}
                     persistProcessIndicators
@@ -1903,6 +1921,11 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                         <MessageBubble
                           key="forced-preview-tool-search-header"
                           message={FORCED_TOOL_AND_SEARCH_PREVIEW_MESSAGE}
+                          persistProcessIndicators
+                        />
+                        <MessageBubble
+                          key="forced-preview-paper-tools-header"
+                          message={FORCED_PAPER_TOOLS_PREVIEW_MESSAGE}
                           persistProcessIndicators
                         />
                         <MessageBubble
