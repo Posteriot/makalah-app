@@ -129,18 +129,18 @@ export const getPaperModeSystemPrompt = async (
                 convexOptions
             );
 
-            // Map artifactId -> artifact content for quick lookup
-            const artifactMap = new Map<string, { content: string }>();
+            // Map artifactId -> artifact metadata for quick lookup
+            const artifactMap = new Map<string, { content: string; version: number; title: string }>();
             for (const a of allArtifacts) {
                 // Only include non-invalidated, latest-version artifacts
                 if (!a.invalidatedAt) {
-                    artifactMap.set(String(a._id), { content: a.content });
+                    artifactMap.set(String(a._id), { content: a.content, version: a.version, title: a.title });
                 }
             }
 
             // Collect artifacts from completed (validated) stages
             const stageData = session.stageData as Record<string, { artifactId?: string; validatedAt?: number; superseded?: boolean }>;
-            const completedArtifacts: Array<{ stageLabel: string; content: string }> = [];
+            const completedArtifacts: Array<{ stageLabel: string; content: string; version: number; title: string }> = [];
 
             for (const stageId of STAGE_ORDER) {
                 // Skip current stage (not yet completed)
@@ -155,6 +155,8 @@ export const getPaperModeSystemPrompt = async (
                     completedArtifacts.push({
                         stageLabel: getStageLabel(stageId as PaperStageId),
                         content: artifact.content,
+                        version: artifact.version,
+                        title: artifact.title,
                     });
                 }
             }
