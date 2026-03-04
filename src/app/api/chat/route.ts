@@ -1755,6 +1755,38 @@ Aturan:
             return createUIMessageStreamResponse({ stream })
         }
 
+        const isVertexProxyUrl = (raw: string) => {
+            try {
+                const u = new URL(raw)
+                const host = u.hostname.toLowerCase()
+                return host === "vertexaisearch.cloud.google.com" || host.startsWith("vertexaisearch.cloud.google.")
+            } catch {
+                return false
+            }
+        }
+
+        const isLowValueCitationUrl = (raw: string) => {
+            try {
+                const u = new URL(raw)
+                const host = u.hostname.toLowerCase()
+                const path = u.pathname || "/"
+                const trimmedPath = path.replace(/\/+$/, "") || "/"
+                const segments = trimmedPath.split("/").filter(Boolean)
+
+                if (path === "/" || path === "") return true
+                if (/(^|\/)(tag|tags|topik|topic|search)(\/|$)/i.test(path)) return true
+                if (segments.length === 1) {
+                    const only = segments[0].toLowerCase()
+                    if (["berita", "news", "artikel", "articles", "posts", "post"].includes(only)) return true
+                }
+                if ((host === "google.com" || host === "www.google.com") && path === "/search") return true
+
+                return false
+            } catch {
+                return false
+            }
+        }
+
         try {
             const model = await getGatewayModel()
 
@@ -2465,38 +2497,6 @@ TIPS PENCARIAN:
                                     return rawSources
                                         .map((item) => normalizeResultSource(item))
                                         .filter((item): item is SourceWithChunk => !!item)
-                                }
-
-                                const isVertexProxyUrl = (raw: string) => {
-                                    try {
-                                        const u = new URL(raw)
-                                        const host = u.hostname.toLowerCase()
-                                        return host === "vertexaisearch.cloud.google.com" || host.startsWith("vertexaisearch.cloud.google.")
-                                    } catch {
-                                        return false
-                                    }
-                                }
-
-                                const isLowValueCitationUrl = (raw: string) => {
-                                    try {
-                                        const u = new URL(raw)
-                                        const host = u.hostname.toLowerCase()
-                                        const path = u.pathname || "/"
-                                        const trimmedPath = path.replace(/\/+$/, "") || "/"
-                                        const segments = trimmedPath.split("/").filter(Boolean)
-
-                                        if (path === "/" || path === "") return true
-                                        if (/(^|\/)(tag|tags|topik|topic|search)(\/|$)/i.test(path)) return true
-                                        if (segments.length === 1) {
-                                            const only = segments[0].toLowerCase()
-                                            if (["berita", "news", "artikel", "articles", "posts", "post"].includes(only)) return true
-                                        }
-                                        if ((host === "google.com" || host === "www.google.com") && path === "/search") return true
-
-                                        return false
-                                    } catch {
-                                        return false
-                                    }
                                 }
 
                                 const canonicalizeCitationUrl = (raw: string) => {
@@ -3439,16 +3439,30 @@ TIPS PENCARIAN:
                                     normalizedCitations = normalizeCitations(preferredMetadata, 'openrouter')
                                 }
 
-                                const hasAnyCitations = normalizedCitations.length > 0
                                 sourceCount = Math.max(sourceCount, normalizedCitations.length)
+
+                                const filteredCitations = (() => {
+                                    const hasHighValue = normalizedCitations.some(
+                                        c => !isVertexProxyUrl(c.url) && !isLowValueCitationUrl(c.url)
+                                    )
+                                    if (hasHighValue) {
+                                        return normalizedCitations.filter(
+                                            c => !isVertexProxyUrl(c.url) && !isLowValueCitationUrl(c.url)
+                                        )
+                                    }
+                                    const hasNonProxy = normalizedCitations.some(c => !isVertexProxyUrl(c.url))
+                                    if (hasNonProxy) return normalizedCitations.filter(c => !isVertexProxyUrl(c.url))
+                                    return normalizedCitations
+                                })()
+                                const hasAnyCitations = filteredCitations.length > 0
                                 closeSearchStatus(hasAnyCitations ? "done" : "off")
 
-                                const persistedSources = normalizedCitations.map((citation) => ({
+                                const persistedSources = filteredCitations.map((citation) => ({
                                     url: citation.url,
                                     title: citation.title,
                                     ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),
                                 }))
-                                const fallbackCitationAnchors = normalizedCitations.map((citation, idx) => ({
+                                const fallbackCitationAnchors = filteredCitations.map((citation, idx) => ({
                                     position: typeof citation.endIndex === "number"
                                         ? Math.max(0, citation.endIndex - 1)
                                         : null,
