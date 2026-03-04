@@ -25,6 +25,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
     const [showRevisionForm, setShowRevisionForm] = useState(false);
     const [feedback, setFeedback] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const isRevisionFeedbackReady = feedback.trim().length > 0 && !isSubmitting;
 
     const handleApprove = async () => {
         setIsSubmitting(true);
@@ -90,7 +91,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             Validasi Tahap: {stageLabel}
                         </h3>
                         <p className="text-xs text-[var(--chat-muted-foreground)]">
-                            Periksa draft di artifact. Apakah sudah sesuai atau perlu revisi?
+                            Periksa draft di artifak. Apakah sudah sesuai atau perlu revisi?
                         </p>
                     </div>
 
@@ -160,9 +161,10 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                                 onClick={handleRevise}
                                 disabled={isSubmitting || !feedback.trim()}
                                 className={cn(
-                                    "gap-2 h-9 px-4",
-                                    "bg-[var(--chat-primary)] text-[var(--chat-primary-foreground)]",
-                                    "hover:brightness-110"
+                                    "gap-2 h-9 px-4 rounded-action disabled:opacity-100",
+                                    isRevisionFeedbackReady
+                                        ? "chat-validation-approve-button"
+                                        : "border border-[color:var(--chat-border)] bg-[var(--chat-background)] text-[var(--chat-secondary-foreground)] hover:bg-[var(--chat-background)] hover:border-[color:var(--chat-border)]"
                                 )}
                             >
                                 <Send className="h-3.5 w-3.5" />
