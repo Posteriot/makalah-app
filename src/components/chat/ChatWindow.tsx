@@ -66,6 +66,32 @@ const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
 const FORCE_INTERACTION_UI_PREVIEW = true
 const FORCED_PREVIEW_STAGE_LABEL = "Menyusun Outline"
 
+interface ChatErrorPayload {
+  error?: string
+}
+
+function parseChatErrorPayload(error: Error | undefined): ChatErrorPayload | null {
+  if (!error?.message) return null
+
+  try {
+    const parsed = JSON.parse(error.message) as ChatErrorPayload
+    if (parsed && typeof parsed === "object") return parsed
+    return null
+  } catch {
+    return null
+  }
+}
+
+function isQuotaExceededChatError(error: Error | undefined): boolean {
+  if (!error?.message) return false
+
+  const parsedPayload = parseChatErrorPayload(error)
+  if (parsedPayload?.error === "quota_exceeded") return true
+
+  const normalizedMessage = error.message.toLowerCase()
+  return normalizedMessage.includes("quota_exceeded")
+}
+
 interface PendingStarterPromptPayload {
   conversationId: string
   prompt: string
@@ -644,9 +670,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       }
     },
     onError: (err) => {
+      if (isQuotaExceededChatError(err)) return
       toast.error("Terjadi kesalahan: " + (err.message || "Gagal memproses pesan"))
     }
   })
+
+  const isQuotaRejectedError = useMemo(() => isQuotaExceededChatError(error), [error])
 
   type AttachmentSendMode = "inherit" | "replace" | "clear"
 
@@ -1870,8 +1899,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             />
           )}
 
-          {/* Preview-only quota rejection error overlay */}
-          {shouldForceInteractionUiPreview && (
+          {/* Quota rejection error overlay (real 402 quota_exceeded only) */}
+          {isQuotaRejectedError && (
             <div
               className="absolute bottom-4 bg-[var(--chat-destructive)] border border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)] p-3 rounded-action flex items-center justify-between text-sm"
               style={{
@@ -1898,7 +1927,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           )}
 
           {/* Error State Overlay - Mechanical Grace: Rose error */}
-          {error && (
+          {error && !isQuotaRejectedError && (
             <div
               className="absolute bottom-4 bg-[var(--chat-destructive)] border border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)] p-3 rounded-action flex items-center justify-between text-sm shadow-sm backdrop-blur-sm"
               style={{

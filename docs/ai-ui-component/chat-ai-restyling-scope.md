@@ -34,6 +34,10 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
   - Error overlay
     - Banner error bawah area message saat `error` dari `useChat`.
     - Tombol retry memanggil `handleRegenerate()`.
+  - Quota-rejected error overlay (`quota_exceeded`)
+    - Banner khusus saat request chat ditolak backend (`HTTP 402`, `error: quota_exceeded`).
+    - Menampilkan copy `Permintaan ditolak: kuota/kredit tidak mencukupi.` + CTA `Beli Kredit`.
+    - Muncul hanya saat error real, bukan preview paksa.
   - `QuotaWarningBanner`
     - Banner billing warning/depleted di bawah top bar chat.
     - Muncul adaptif berdasarkan tier:
@@ -233,6 +237,9 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 - [x] `RewindConfirmationDialog` desktop direstyling: copy baru, warning panel slate, tombol validasi konsisten, dan border panel disesuaikan.
 - [x] `RewindConfirmationDialog` mobile direstyling: heading left+inline icon, body copy left-aligned, warning icon sejajar baris pertama, sizing tombol dioptimalkan untuk touch.
 - [x] Mode preview khusus `RewindConfirmationDialog` sudah dicabut; dialog kembali hanya muncul saat ada interaksi rewind.
+- [x] Error UI saat kirim chat ditolak karena quota (`HTTP 402` + `quota_exceeded`) sudah direstyling untuk desktop.
+- [x] Error UI saat kirim chat ditolak karena quota (`HTTP 402` + `quota_exceeded`) sudah direstyling untuk mobile (teks 2 baris + icon sejajar baris pertama).
+- [x] Mode preview khusus Error UI quota rejection sudah dicabut; banner kembali muncul hanya saat terjadi error quota nyata.
 - [ ] `QuotaWarningBanner` sudah masuk scope interaksi chat, tetapi visualnya **belum** direstyling pada batch ini.
 
 ## Daftar File Terkait
