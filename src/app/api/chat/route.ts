@@ -853,7 +853,8 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
                 }
                 case "daftar_pustaka": {
                     const data = stageData.daftar_pustaka as { entries?: unknown[] } | undefined
-                    return Array.isArray(data?.entries) && data.entries.length >= 1
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.daftar_pustaka?.minCount ?? 1
+                    return Array.isArray(data?.entries) && data.entries.length >= minCount
                 }
                 default:
                     return null
@@ -928,7 +929,7 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
         // 1. stageData evidence is AUTHORITATIVE (if exists, search is definitely done)
         // 2. For ACTIVE stages without stageData evidence, check RECENT messages (last 1 turn)
         //    - This catches "search done but not yet saved" scenario
-        //    - Limited to 1 turn to avoid false positives from old stage citations
+        //    - Checks last 3 assistant messages for sources field or explicit search-done phrases
         // 3. For PASSIVE stages, check more messages (last 3) as fallback
         const hasPreviousSearchResults = (msgs: unknown[], session: {
             currentStage?: string
@@ -945,18 +946,22 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             // This catches "search done but save tool failed" scenario without forcing repeated search loops.
             if (stageEvidence === false) {
                 const recentAssistantMsgs = msgs
-                    .filter((m): m is { role: string; content?: string } =>
+                    .filter((m): m is { role: string; content?: string; sources?: unknown } =>
                         typeof m === "object" && m !== null && "role" in m && (m as { role: string }).role === "assistant"
                     )
                     .slice(-3)
 
                 for (const msg of recentAssistantMsgs) {
                     const content = typeof msg.content === "string" ? msg.content : ""
-                    // Check for citations / search evidence in recent messages
-                    if (/\[\d+(?:,\s*\d+)*\]/.test(content)) return true
-                    if (/berdasarkan hasil pencarian/i.test(content)) return true
-                    if (/menurut .+\(\d{4}\)/i.test(content)) return true
+                    // Strong signal: message has actual sources data from web search
+                    const hasSources = "sources" in msg
+                        && Array.isArray((msg as { sources?: unknown }).sources)
+                        && ((msg as { sources: unknown[] }).sources).length > 0
+                    if (hasSources) return true
+                    // Weak signal: only trust explicit AI search-done phrases
+                    // (removed: [N] pattern and APA citation pattern — high false positive rate)
                     if (/saya telah melakukan pencarian/i.test(content)) return true
+                    if (/berdasarkan hasil pencarian/i.test(content)) return true
                     if (/rangkuman temuan/i.test(content)) return true
                 }
                 return false
@@ -964,18 +969,22 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
 
             // PASSIVE/unknown stage (stageEvidence === null) → check more messages as fallback
             const recentAssistantMsgs = msgs
-                .filter((m): m is { role: string; content?: string } =>
+                .filter((m): m is { role: string; content?: string; sources?: unknown } =>
                     typeof m === "object" && m !== null && "role" in m && (m as { role: string }).role === "assistant"
                 )
-                .slice(-3) // Check last 3 assistant messages
+                .slice(-3)
 
             for (const msg of recentAssistantMsgs) {
                 const content = typeof msg.content === "string" ? msg.content : ""
-                // Check for inline citation markers [1], [2], [1,2], [1,2,3], etc.
-                if (/\[\d+(?:,\s*\d+)*\]/.test(content)) return true
-                // Check for common patterns indicating search was done
+                // Strong signal: message has actual sources data from web search
+                const hasSources = "sources" in msg
+                    && Array.isArray((msg as { sources?: unknown }).sources)
+                    && ((msg as { sources: unknown[] }).sources).length > 0
+                if (hasSources) return true
+                // Weak signal: explicit AI search-done phrases only
                 if (/berdasarkan hasil pencarian/i.test(content)) return true
-                if (/menurut .+\(\d{4}\)/i.test(content)) return true // APA citation pattern
+                if (/saya telah melakukan pencarian/i.test(content)) return true
+                if (/rangkuman temuan/i.test(content)) return true
             }
             return false
         }
