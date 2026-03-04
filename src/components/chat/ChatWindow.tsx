@@ -1873,7 +1873,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           {/* Preview-only quota rejection error overlay */}
           {shouldForceInteractionUiPreview && (
             <div
-              className="absolute bottom-4 bg-[var(--chat-destructive)] border border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)] p-3 rounded-action flex items-center justify-between text-sm shadow-sm backdrop-blur-sm"
+              className="absolute bottom-4 bg-[var(--chat-destructive)] border border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)] p-3 rounded-action flex items-center justify-between text-sm"
               style={{
                 left: "var(--chat-input-pad-x, 5rem)",
                 right: "var(--chat-input-pad-x, 5rem)",
@@ -1881,13 +1881,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             >
               <div className="flex items-center gap-2">
                 <WarningCircle className="h-4 w-4" />
-                <span className="font-mono">Permintaan ditolak: kuota/kredit tidak mencukupi.</span>
+                <span className="text-xs font-sans">Permintaan ditolak: kuota/kredit tidak mencukupi.</span>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/subscription/plans")}
-                className="bg-[var(--chat-background)] hover:bg-[var(--chat-accent)] h-7 text-xs font-mono border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)]"
+                className="h-7 rounded-action bg-[var(--chat-background)] dark:bg-[oklch(0.455_0.188_13.697)] text-[var(--chat-foreground)] dark:text-[var(--chat-destructive-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.41_0.159_10.272)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none"
               >
                 Beli Kredit
               </Button>
