@@ -65,6 +65,7 @@ const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
 // IMPORTANT: set to false after restyling is finalized.
 const FORCE_INTERACTION_UI_PREVIEW = true
 const FORCED_PREVIEW_STAGE_LABEL = "Menyusun Outline"
+const VALIDATION_PANEL_COMPACT_WIDTH = 680
 
 interface ChatErrorPayload {
   error?: string
@@ -394,6 +395,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
+  const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
+  const [chatViewportWidth, setChatViewportWidth] = useState(0)
   const [processUi, setProcessUi] = useState<{
     visible: boolean
     status: ProcessVisualStatus
@@ -412,6 +415,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const stoppedManuallyRef = useRef(false)
   const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
   const starterPromptPendingHistorySyncRef = useRef<string | null>(null)
+  const chatViewportRef = useCallback((node: HTMLDivElement | null) => {
+    setChatViewportNode(node)
+  }, [])
 
   const { data: session } = useSession()
   const { resolvedTheme, setTheme } = useTheme()
@@ -440,6 +446,35 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     rewindToStage,
     getStageStartIndex,
   } = usePaperSession(safeConversationId ?? undefined)
+
+  useEffect(() => {
+    if (!chatViewportNode) {
+      setChatViewportWidth(0)
+      return
+    }
+
+    const syncWidth = (width: number) => {
+      const normalizedWidth = Math.round(width)
+      setChatViewportWidth((prev) => (prev === normalizedWidth ? prev : normalizedWidth))
+    }
+
+    syncWidth(chatViewportNode.getBoundingClientRect().width)
+
+    if (typeof ResizeObserver === "undefined") return
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width
+      if (typeof width === "number") {
+        syncWidth(width)
+      }
+    })
+
+    observer.observe(chatViewportNode)
+    return () => observer.disconnect()
+  }, [chatViewportNode])
+
+  const forceMobileValidationLayout =
+    chatViewportWidth > 0 && chatViewportWidth <= VALIDATION_PANEL_COMPACT_WIDTH
 
   // Track which conversation has been synced to prevent infinite loops
   const syncedConversationRef = useRef<string | null>(null)
@@ -1709,7 +1744,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
+    <div ref={chatViewportRef} className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
       <div className="md:hidden px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)] bg-[var(--chat-background)]">
         <div className="flex items-center h-11">
@@ -1890,6 +1925,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                         onRevise={shouldForceInteractionUiPreview ? async () => Promise.resolve() : handleRevise}
                         isLoading={shouldForceInteractionUiPreview ? false : isLoading}
                         isDirty={shouldForceInteractionUiPreview ? true : paperSession?.isDirty === true}
+                        forceMobileLayout={forceMobileValidationLayout}
                       />
                     )}
                     <div className="h-4" />

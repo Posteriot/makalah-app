@@ -13,6 +13,7 @@ interface PaperValidationPanelProps {
     onRevise: (feedback: string) => Promise<void>;
     isLoading?: boolean;
     isDirty?: boolean;
+    forceMobileLayout?: boolean;
 }
 
 export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
@@ -21,6 +22,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
     onRevise,
     isLoading = false,
     isDirty = false,
+    forceMobileLayout = false,
 }) => {
     const [showRevisionForm, setShowRevisionForm] = useState(false);
     const [feedback, setFeedback] = useState("");
@@ -61,7 +63,8 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
         <div
             className={cn(
                 // Container - full width on mobile, centered card on desktop
-                "mx-4 my-4 md:mx-auto md:max-w-[80%]",
+                "mx-4 my-4",
+                !forceMobileLayout && "md:mx-auto md:max-w-[80%]",
                 "bg-[var(--chat-card)] border border-[color:var(--chat-border)] rounded-lg",
                 "shadow-none",
                 "animate-in fade-in slide-in-from-bottom-4 duration-500"
@@ -81,7 +84,12 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                 className={cn(
                     "p-4",
                     // Always column on mobile; row on desktop (unless revision mode)
-                    showRevisionForm ? "flex flex-col gap-3" : "flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4"
+                    showRevisionForm
+                        ? "flex flex-col gap-3"
+                        : cn(
+                            "flex flex-col gap-3",
+                            !forceMobileLayout && "md:flex-row md:items-center md:justify-between md:gap-4"
+                        )
                 )}
             >
                 {/* Header Section */}
@@ -110,14 +118,15 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
 
                 {/* Action Buttons - Inline mode */}
                 {!showRevisionForm && (
-                    <div className="flex gap-2 md:flex-shrink-0">
+                    <div className={cn("flex gap-2", !forceMobileLayout && "md:flex-shrink-0")}>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setShowRevisionForm(true)}
                             disabled={isSubmitting || isLoading}
                             className={cn(
-                                "gap-2 h-9 px-4 rounded-action flex-1 md:flex-initial",
+                                "gap-2 h-9 px-4 rounded-action",
+                                forceMobileLayout ? "flex-1" : "flex-1 md:flex-initial",
                                 "border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
                                 "hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
                             )}
@@ -130,13 +139,20 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             onClick={handleApprove}
                             disabled={isSubmitting || isLoading}
                             className={cn(
-                                "gap-2 h-9 px-4 rounded-action flex-1 md:flex-initial",
+                                "gap-2 h-9 px-4 rounded-action",
+                                forceMobileLayout ? "flex-1" : "flex-1 md:flex-initial",
                                 "chat-validation-approve-button"
                             )}
                         >
                             <Check className="h-3.5 w-3.5" />
-                            <span className="hidden md:inline">Setujui & Lanjutkan</span>
-                            <span className="md:hidden">Setujui</span>
+                            {forceMobileLayout ? (
+                                <span>Setujui</span>
+                            ) : (
+                                <>
+                                    <span className="hidden md:inline">Setujui & Lanjutkan</span>
+                                    <span className="md:hidden">Setujui</span>
+                                </>
+                            )}
                         </Button>
                     </div>
                 )}
