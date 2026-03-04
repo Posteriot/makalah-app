@@ -61,60 +61,6 @@ type ChatListRow =
 
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
-// Temporary preview mode to force interaction UI visible during restyling.
-// IMPORTANT: Set to false after restyling is finalized.
-const FORCE_INTERACTION_UI_PREVIEW = true
-
-const FORCED_TOOL_AND_SEARCH_PREVIEW_MESSAGE = {
-  id: "forced-preview-tool-search",
-  role: "assistant",
-  parts: [
-    { type: "text", text: "Preview indikator tool dan status pencarian." },
-    { type: "tool-google_search", state: "input-streaming" },
-    { type: "data-search", data: { status: "searching", message: "Pencarian" } },
-  ],
-} as unknown as UIMessage
-
-const FORCED_PAPER_TOOLS_PREVIEW_MESSAGE = {
-  id: "forced-preview-paper-tools",
-  role: "assistant",
-  parts: [
-    { type: "text", text: "Preview indikator tool paper workflow." },
-    { type: "tool-startPaperSession", state: "input-available" },
-    { type: "tool-getCurrentPaperState", state: "input-available" },
-    { type: "tool-updateStageData", state: "input-available" },
-    { type: "tool-submitStageForValidation", state: "input-available" },
-    { type: "tool-compileDaftarPustaka", state: "input-streaming" },
-  ],
-} as unknown as UIMessage
-
-const FORCED_FALLBACK_PREVIEW_MESSAGE = {
-  id: "forced-preview-fallback",
-  role: "assistant",
-  parts: [
-    { type: "text", text: "Preview fallback indikator proses assistant tanpa signal tool/search." },
-  ],
-} as unknown as UIMessage
-
-const FORCED_REASONING_PREVIEW_STEPS: ReasoningTraceStep[] = [
-  {
-    traceId: "forced-preview-trace",
-    stepKey: "intent-analysis",
-    label: "Memahami kebutuhan user",
-    status: "done",
-    progress: 20,
-    ts: 1,
-  },
-  {
-    traceId: "forced-preview-trace",
-    stepKey: "search-decision",
-    label: "Menentukan kebutuhan pencarian web",
-    status: "running",
-    progress: 55,
-    ts: 2,
-    meta: { mode: "websearch", note: "tool-running" },
-  },
-]
 
 interface PendingStarterPromptPayload {
   conversationId: string
@@ -1054,7 +1000,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
-  const shouldForceInteractionUiPreview = FORCE_INTERACTION_UI_PREVIEW && Boolean(conversationId)
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
   const hasStandalonePendingIndicator =
     hasPendingAssistantGeneration &&
@@ -1815,26 +1760,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           ) : messages.length === 0 ? (
             // Empty state with horizontal boundary in sync with ChatInput
             <div className="flex flex-col items-center justify-center h-full" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
-              {shouldForceInteractionUiPreview && (
-                <div className="mb-4 w-full space-y-3">
-                  <PendingAssistantLaneIndicator />
-                  <MessageBubble
-                    key="forced-preview-tool-search"
-                    message={FORCED_TOOL_AND_SEARCH_PREVIEW_MESSAGE}
-                    persistProcessIndicators
-                  />
-                  <MessageBubble
-                    key="forced-preview-paper-tools"
-                    message={FORCED_PAPER_TOOLS_PREVIEW_MESSAGE}
-                    persistProcessIndicators
-                  />
-                  <MessageBubble
-                    key="forced-preview-fallback"
-                    message={FORCED_FALLBACK_PREVIEW_MESSAGE}
-                    persistProcessIndicators
-                  />
-                </div>
-              )}
               <TemplateGrid
                 onTemplateSelect={handleTemplateSelect}
                 onSidebarLinkClick={handleSidebarLinkClick}
@@ -1912,31 +1837,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               initialTopMostItemIndex={chatRows.length - 1}
               style={{ height: "100%", overflowX: "hidden" }}
               components={{
-                Header: () => (
-                  <div style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
-                    <div className="pt-4" />
-                    {shouldForceInteractionUiPreview && (
-                      <div className="space-y-3 pb-4">
-                        <PendingAssistantLaneIndicator />
-                        <MessageBubble
-                          key="forced-preview-tool-search-header"
-                          message={FORCED_TOOL_AND_SEARCH_PREVIEW_MESSAGE}
-                          persistProcessIndicators
-                        />
-                        <MessageBubble
-                          key="forced-preview-paper-tools-header"
-                          message={FORCED_PAPER_TOOLS_PREVIEW_MESSAGE}
-                          persistProcessIndicators
-                        />
-                        <MessageBubble
-                          key="forced-preview-fallback-header"
-                          message={FORCED_FALLBACK_PREVIEW_MESSAGE}
-                          persistProcessIndicators
-                        />
-                      </div>
-                    )}
-                  </div>
-                ),
+                Header: () => <div className="pt-4" />,
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
@@ -1979,12 +1880,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         </div>
 
         <ChatProcessStatusBar
-          visible={shouldForceInteractionUiPreview ? true : processUi.visible}
-          status={shouldForceInteractionUiPreview ? "streaming" : processUi.status}
-          progress={shouldForceInteractionUiPreview ? 56 : processUi.progress}
-          elapsedSeconds={shouldForceInteractionUiPreview ? 12 : processUi.elapsedSeconds}
-          reasoningSteps={shouldForceInteractionUiPreview ? FORCED_REASONING_PREVIEW_STEPS : activeReasoningState.steps}
-          reasoningHeadline={shouldForceInteractionUiPreview ? "Menyusun jawaban berdasarkan konteks dan sumber." : activeReasoningState.headline}
+          visible={processUi.visible}
+          status={processUi.status}
+          progress={processUi.progress}
+          elapsedSeconds={processUi.elapsedSeconds}
+          reasoningSteps={activeReasoningState.steps}
+          reasoningHeadline={activeReasoningState.headline}
         />
 
         {/* Mobile Paper Progress Bar */}

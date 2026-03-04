@@ -10,6 +10,11 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 4. ChatInput + FileUploadButton + context tray + stop generating button.
 5. PaperValidationPanel (approve/revise) + RewindConfirmationDialog.
 
+## Tambahan Komponen Yang Kini Tercatat Eksplisit
+- Trigger detail reasoning dari `ChatProcessStatusBar` saat proses selesai, yang membuka panel kanan/bawah "proses berpikir model".
+- Fallback indikator proses assistant (`assistant_response`) saat stream berjalan tetapi tidak ada sinyal tool/search.
+- Keputusan status `ready/completed` pada `ChatProcessStatusBar`: dipertahankan (tidak diubah visual utamanya) agar konsisten dengan affordance panel reasoning.
+
 ## Detail Per Scope
 
 ### 1) ChatWindow Interaksi Utama
@@ -60,6 +65,7 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
     - `ToolStateIndicator` untuk status tool-call.
     - `SearchStatusIndicator` untuk status data-search.
     - Fallback `ToolStateIndicator` (`assistant_response`) jika stream sedang jalan tapi tidak ada signal tool/search.
+    - Style `SearchStatusIndicator` disejajarkan dengan style `ToolStateIndicator` untuk konteks `google_search`.
   - Konten markdown
     - Render via `MarkdownRenderer`.
     - Mendukung normalization untuk legacy inline citations.
@@ -90,7 +96,7 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 - **UI/component di dalam scope ini**:
   - `ChatProcessStatusBar`
     - Mode processing: headline + thinking dots + progress bar + persen.
-    - Mode completed/error: label durasi proses + affordance buka panel detail.
+    - Mode completed/error: label durasi proses + affordance "Lihat proses berpikir model" untuk membuka panel detail.
   - `ReasoningActivityPanel`
     - Sheet (desktop: right, mobile: bottom).
     - Container untuk timeline reasoning.
@@ -199,6 +205,26 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 - Catatan:
   - `ArtifactIndicator` bisa tetap muncul sebagai bagian bubble assistant, tapi keputusan visual restyling artifact card mengikuti area artifact (bukan fokus dokumen ini).
 
+## Checklist Done Restyling (Interaksi Chat Area)
+- [x] `PendingAssistantLaneIndicator`: orb diubah ke amber 600 + garis ekor diganti titik-titik animasi.
+- [x] `SearchStatusIndicator`: tampilan disamakan dengan pola UI `ToolStateIndicator` untuk konteks pencarian.
+- [x] Teks status pencarian diperbarui menjadi `Pencarian internet...` dan label `Pencarian web`.
+- [x] Efek shimmer aktif untuk `Pencarian internet...` dan `Pencarian web` (highlight kontras slate 50).
+- [x] `ToolStateIndicator` paper tools ditampilkan lengkap untuk alur:
+  - `Memulai sesi paper`
+  - `Mengambil status sesi paper`
+  - `Menyimpan progres tahapan`
+  - `Mengirim validasi tahapan`
+  - `Mengomplisasi daftar pustaka`
+- [x] Prefix kata `Memproses` dihapus dari copy indikator tool agar tidak repetitif.
+- [x] Teks fallback `assistant_response` diubah menjadi `Respons agen`.
+- [x] Efek shimmer aktif untuk seluruh teks indikator paper tools di atas + `Respons agen`.
+- [x] `ChatProcessStatusBar` progress fill diberi efek shimmer dengan highlight teal 200 di bagian yang bergerak.
+- [x] Kontras teks headline/progress pada status proses dinaikkan agar lebih terbaca.
+- [x] Status `ready/completed` dicatat sebagai **tidak jadi di-restyling** (visual utama dipertahankan).
+- [x] Trigger panel "proses berpikir model" saat proses selesai dipertahankan sebagai bagian flow interaksi.
+- [x] Seluruh kode pemaksaan tampilan komponen interaksi sudah dicabut; visibility kembali ke state normal (hanya muncul saat interaksi relevan).
+
 ## Daftar File Terkait
 - `src/components/chat/ChatWindow.tsx`
 - `src/components/chat/MessageBubble.tsx`
@@ -214,4 +240,3 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 - `src/components/paper/PaperValidationPanel.tsx`
 - `src/components/paper/RewindConfirmationDialog.tsx`
 - `src/app/api/chat/route.ts`
-
