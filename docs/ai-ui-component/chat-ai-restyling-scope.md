@@ -230,6 +230,9 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 - [x] Status `ready/completed` dicatat sebagai **tidak jadi di-restyling** (visual utama dipertahankan).
 - [x] Trigger panel "proses berpikir model" saat proses selesai dipertahankan sebagai bagian flow interaksi.
 - [x] Seluruh kode pemaksaan tampilan komponen interaksi sudah dicabut; visibility kembali ke state normal (hanya muncul saat interaksi relevan).
+- [x] `RewindConfirmationDialog` desktop direstyling: copy baru, warning panel slate, tombol validasi konsisten, dan border panel disesuaikan.
+- [x] `RewindConfirmationDialog` mobile direstyling: heading left+inline icon, body copy left-aligned, warning icon sejajar baris pertama, sizing tombol dioptimalkan untuk touch.
+- [x] Mode preview khusus `RewindConfirmationDialog` sudah dicabut; dialog kembali hanya muncul saat ada interaksi rewind.
 - [ ] `QuotaWarningBanner` sudah masuk scope interaksi chat, tetapi visualnya **belum** direstyling pada batch ini.
 
 ## Daftar File Terkait

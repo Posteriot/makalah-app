@@ -65,8 +65,6 @@ const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
 // IMPORTANT: set to false after restyling is finalized.
 const FORCE_INTERACTION_UI_PREVIEW = true
 const FORCED_PREVIEW_STAGE_LABEL = "Menyusun Outline"
-const FORCED_PREVIEW_REWIND_TARGET: PaperStageId = "outline"
-const FORCED_PREVIEW_CURRENT_STAGE: PaperStageId = "abstrak"
 
 interface PendingStarterPromptPayload {
   conversationId: string
@@ -368,7 +366,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [isCreatingChat, setIsCreatingChat] = useState(false)
   const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
   const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
-  const [isPreviewRewindDialogOpen, setIsPreviewRewindDialogOpen] = useState(true)
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [processUi, setProcessUi] = useState<{
@@ -1008,11 +1005,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
   const shouldForceInteractionUiPreview = FORCE_INTERACTION_UI_PREVIEW && Boolean(conversationId)
-  useEffect(() => {
-    if (shouldForceInteractionUiPreview) {
-      setIsPreviewRewindDialogOpen(true)
-    }
-  }, [shouldForceInteractionUiPreview, conversationId])
 
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
   const hasStandalonePendingIndicator =
@@ -1979,30 +1971,19 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       />
 
       {/* Rewind Confirmation Dialog (mobile progress bar) */}
-      {(shouldForceInteractionUiPreview || (isPaperMode && paperSession?.currentStage)) && (
+      {isPaperMode && paperSession?.currentStage && (
         <RewindConfirmationDialog
-          open={shouldForceInteractionUiPreview ? isPreviewRewindDialogOpen : pendingRewindTarget !== null}
+          open={pendingRewindTarget !== null}
           onOpenChange={(open) => {
-            if (shouldForceInteractionUiPreview) {
-              setIsPreviewRewindDialogOpen(open)
-              return
-            }
             if (!open) {
               setPendingRewindTarget(null)
               setIsRewindSubmitting(false)
             }
           }}
-          targetStage={shouldForceInteractionUiPreview ? FORCED_PREVIEW_REWIND_TARGET : pendingRewindTarget}
-          currentStage={shouldForceInteractionUiPreview ? FORCED_PREVIEW_CURRENT_STAGE : (paperSession?.currentStage ?? FORCED_PREVIEW_CURRENT_STAGE)}
-          onConfirm={
-            shouldForceInteractionUiPreview
-              ? () => {
-                setIsPreviewRewindDialogOpen(false)
-                toast.success("Preview rewind: tombol konfirmasi aktif.")
-              }
-              : handleRewindConfirm
-          }
-          isSubmitting={shouldForceInteractionUiPreview ? false : isRewindSubmitting}
+          targetStage={pendingRewindTarget}
+          currentStage={paperSession.currentStage}
+          onConfirm={handleRewindConfirm}
+          isSubmitting={isRewindSubmitting}
         />
       )}
     </div>
