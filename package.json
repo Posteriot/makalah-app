@@ -14,6 +14,8 @@
     "convex:deploy": "npm run convex -- deploy",
     "convex:dashboard": "npm run convex -- dashboard",
     "lint": "eslint",
+    "typegen": "node --no-network-family-autoselection node_modules/next/dist/bin/next typegen",
+    "typecheck": "npm run typegen && tsc -p tsconfig.typecheck.json --noEmit --pretty false",
     "check:chat-empty-state:no-fallback": "bash scripts/check-chat-empty-state-no-fallback.sh",
     "test": "npm run check:chat-empty-state:no-fallback && vitest run"
   },
