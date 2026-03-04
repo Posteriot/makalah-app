@@ -118,7 +118,11 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
 
                 {/* Action Buttons - Inline mode */}
                 {!showRevisionForm && (
-                    <div className={cn("flex gap-2", !forceMobileLayout && "md:flex-shrink-0")}>
+                    <div
+                        className={cn(
+                            forceMobileLayout ? "flex flex-col gap-3 sm:gap-2" : "flex gap-2 md:flex-shrink-0"
+                        )}
+                    >
                         <Button
                             variant="outline"
                             size="sm"
@@ -126,7 +130,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             disabled={isSubmitting || isLoading}
                             className={cn(
                                 "gap-2 h-9 px-4 rounded-action",
-                                forceMobileLayout ? "flex-1" : "flex-1 md:flex-initial",
+                                forceMobileLayout ? "w-full" : "flex-1 md:flex-initial",
                                 "border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
                                 "hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
                             )}
@@ -140,7 +144,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             disabled={isSubmitting || isLoading}
                             className={cn(
                                 "gap-2 h-9 px-4 rounded-action",
-                                forceMobileLayout ? "flex-1" : "flex-1 md:flex-initial",
+                                forceMobileLayout ? "w-full" : "flex-1 md:flex-initial",
                                 "chat-validation-approve-button"
                             )}
                         >
