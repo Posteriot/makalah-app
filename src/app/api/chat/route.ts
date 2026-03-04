@@ -1808,8 +1808,8 @@ Aturan:
 
                 // Decision logic (deterministic, prioritized)
                 // Key insight: User intent (save/search) should be respected over automatic decisions
-                if (searchAlreadyDone) {
-                    // Priority 1: Search already done - only enable if user EXPLICITLY wants MORE
+                if (searchAlreadyDone && !incomplete) {
+                    // Priority 1a: Search done AND research complete → only enable if user explicitly wants more
                     const wantsMoreSearch = isExplicitMoreSearchRequest(lastUserContent)
                     if (wantsMoreSearch) {
                         searchRequestedByPolicy = true
@@ -1819,6 +1819,11 @@ Aturan:
                         activeStageSearchReason = "search_already_done"
                         activeStageSearchNote = getFunctionToolsModeNote("Search selesai")
                     }
+                } else if (searchAlreadyDone && incomplete) {
+                    // Priority 1b: Search done BUT research still incomplete → auto-enable search
+                    searchRequestedByPolicy = true
+                    activeStageSearchReason = "search_done_but_research_incomplete"
+                    activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement!)
                 } else if (userWantsToSave) {
                     // Priority 2: User explicitly wants to save → no search
                     searchRequestedByPolicy = false
