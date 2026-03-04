@@ -10,12 +10,18 @@ import { cn } from "@/lib/utils"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 
 type BannerType = "warning" | "critical" | "depleted"
+type PreviewTier = "gratis" | "pro" | "bpp"
 
 interface QuotaWarningBannerProps {
   className?: string
+  preview?: {
+    enabled?: boolean
+    tier?: PreviewTier
+    type?: BannerType
+  }
 }
 
-export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
+export function QuotaWarningBanner({ className, preview }: QuotaWarningBannerProps) {
   const { user, isLoading: userLoading } = useCurrentUser()
 
   // Track the percent at which user dismissed the banner
@@ -44,63 +50,92 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
   const currentPercent = quotaStatus?.percentUsed ?? 0
   const isDismissed = dismissedAtPercent !== null && currentPercent >= dismissedAtPercent * 0.9
 
-  // Don't show anything while loading or if dismissed
-  if (userLoading || !user || isDismissed) return null
-
-  const tier = getEffectiveTier(user.role, user.subscriptionStatus)
-
-  // Unlimited tier (admin) - never show quota warning
-  if (tier === "unlimited") return null
-
-  // Determine banner type and content
   let bannerType: BannerType | null = null
   let message = ""
   let actionText = ""
   let actionHref = ""
+  let tierForIcon: PreviewTier = "bpp"
 
-  if (tier === "gratis" || tier === "pro") {
-    // Quota-based tiers
-    if (!quotaStatus) return null
+  const isPreviewEnabled = preview?.enabled === true
+  if (isPreviewEnabled) {
+    tierForIcon = preview?.tier ?? "bpp"
+    bannerType = preview?.type ?? "depleted"
 
-    const percentUsed = quotaStatus.percentUsed ?? 0
-
-    if (percentUsed >= 100) {
-      bannerType = "depleted"
-      message = "Kuota habis. Upgrade ke Pro atau tunggu reset bulan depan."
-      actionText = "Upgrade"
-      actionHref = "/subscription/upgrade"
-    } else if (percentUsed >= 90) {
-      bannerType = "critical"
-      message = `Kuota tersisa ${100 - Math.round(percentUsed)}%. Segera upgrade untuk lanjut tanpa batas.`
-      actionText = "Upgrade"
-      actionHref = "/subscription/upgrade"
-    } else if (percentUsed >= 70) {
-      bannerType = "warning"
-      message = `Kuota tersisa ${100 - Math.round(percentUsed)}%. Pantau pemakaian Anda.`
-      actionText = "Lihat Detail"
-      actionHref = "/subscription/overview"
+    if (tierForIcon === "bpp") {
+      if (bannerType === "depleted") {
+        message = "Kredit habis. Beli kredit untuk melanjutkan."
+      } else if (bannerType === "critical") {
+        message = "Kredit rendah: 18 kredit. Segera beli kredit."
+      } else {
+        message = "Sisa kredit: 72 kredit. Pertimbangkan beli kredit."
+      }
+      actionText = "Beli Kredit"
+      actionHref = "/subscription/plans"
+    } else {
+      if (bannerType === "depleted") {
+        message = "Kuota habis. Upgrade ke Pro atau tunggu reset bulan depan."
+      } else if (bannerType === "critical") {
+        message = "Kuota tersisa 10%. Segera upgrade untuk lanjut tanpa batas."
+      } else {
+        message = "Kuota tersisa 30%. Pantau pemakaian Anda."
+      }
+      actionText = tierForIcon === "pro" ? "Lihat Detail" : "Upgrade"
+      actionHref = tierForIcon === "pro" ? "/subscription/overview" : "/subscription/upgrade"
     }
-  } else if (tier === "bpp") {
-    // Credit-based tier
-    if (!creditBalance) return null
+  } else {
+    // Don't show anything while loading or if dismissed
+    if (userLoading || !user || isDismissed) return null
 
-    const remainingCredits = creditBalance.remainingCredits ?? 0
+    const tier = getEffectiveTier(user.role, user.subscriptionStatus)
 
-    if (remainingCredits <= 0) {
-      bannerType = "depleted"
-      message = "Kredit habis. Beli kredit untuk melanjutkan."
-      actionText = "Beli Kredit"
-      actionHref = "/subscription/plans"
-    } else if (remainingCredits < 30) {
-      bannerType = "critical"
-      message = `Kredit rendah: ${remainingCredits} kredit. Segera beli kredit.`
-      actionText = "Beli Kredit"
-      actionHref = "/subscription/plans"
-    } else if (remainingCredits < 100) {
-      bannerType = "warning"
-      message = `Sisa kredit: ${remainingCredits} kredit. Pertimbangkan beli kredit.`
-      actionText = "Beli Kredit"
-      actionHref = "/subscription/plans"
+    // Unlimited tier (admin) - never show quota warning
+    if (tier === "unlimited") return null
+    tierForIcon = tier as PreviewTier
+
+    if (tier === "gratis" || tier === "pro") {
+      // Quota-based tiers
+      if (!quotaStatus) return null
+
+      const percentUsed = quotaStatus.percentUsed ?? 0
+
+      if (percentUsed >= 100) {
+        bannerType = "depleted"
+        message = "Kuota habis. Upgrade ke Pro atau tunggu reset bulan depan."
+        actionText = "Upgrade"
+        actionHref = "/subscription/upgrade"
+      } else if (percentUsed >= 90) {
+        bannerType = "critical"
+        message = `Kuota tersisa ${100 - Math.round(percentUsed)}%. Segera upgrade untuk lanjut tanpa batas.`
+        actionText = "Upgrade"
+        actionHref = "/subscription/upgrade"
+      } else if (percentUsed >= 70) {
+        bannerType = "warning"
+        message = `Kuota tersisa ${100 - Math.round(percentUsed)}%. Pantau pemakaian Anda.`
+        actionText = "Lihat Detail"
+        actionHref = "/subscription/overview"
+      }
+    } else if (tier === "bpp") {
+      // Credit-based tier
+      if (!creditBalance) return null
+
+      const remainingCredits = creditBalance.remainingCredits ?? 0
+
+      if (remainingCredits <= 0) {
+        bannerType = "depleted"
+        message = "Kredit habis. Beli kredit untuk melanjutkan."
+        actionText = "Beli Kredit"
+        actionHref = "/subscription/plans"
+      } else if (remainingCredits < 30) {
+        bannerType = "critical"
+        message = `Kredit rendah: ${remainingCredits} kredit. Segera beli kredit.`
+        actionText = "Beli Kredit"
+        actionHref = "/subscription/plans"
+      } else if (remainingCredits < 100) {
+        bannerType = "warning"
+        message = `Sisa kredit: ${remainingCredits} kredit. Pertimbangkan beli kredit.`
+        actionText = "Beli Kredit"
+        actionHref = "/subscription/plans"
+      }
     }
   }
 
@@ -127,7 +162,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
   }
 
   const Icon = bannerType === "depleted" ? WarningTriangle :
-               tier === "bpp" ? CreditCard : Flash
+               tierForIcon === "bpp" ? CreditCard : Flash
 
   return (
     <div

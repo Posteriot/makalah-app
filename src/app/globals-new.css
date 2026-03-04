@@ -221,6 +221,41 @@
 }
 
 /* ==========================================================================
+ * Chat Component Utilities
+ * Reusable chat-scope styles for portal + in-scope components
+ * ========================================================================== */
+
+[data-chat-scope] [data-slot="button"].chat-validation-approve-button,
+[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button {
+  background-color: var(--chat-success);
+  color: var(--chat-success-foreground);
+  border: none;
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+[data-chat-scope] [data-slot="button"].chat-validation-approve-button:hover,
+[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button:hover {
+  background-color: color-mix(in oklch, var(--chat-success) 88%, black);
+}
+
+[data-chat-scope] [data-slot="button"].chat-validation-approve-button:focus-visible,
+[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--chat-success),
+    0 0 0 3px var(--chat-card);
+}
+
+[data-chat-scope] .chat-rewind-comment-box {
+  background-color: var(--chat-muted);
+}
+
+.dark [data-chat-scope] .chat-rewind-comment-box {
+  background-color: var(--neutral-950);
+}
+
+/* ==========================================================================
  * Auth Token System (Staging)
  * Scoped to [data-auth-scope] for fullpage auth redesign.
  * ========================================================================== */

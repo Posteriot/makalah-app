@@ -61,6 +61,12 @@ type ChatListRow =
 
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
+// Temporary preview mode to force interaction-only UI visibility during restyling.
+// IMPORTANT: set to false after restyling is finalized.
+const FORCE_INTERACTION_UI_PREVIEW = true
+const FORCED_PREVIEW_STAGE_LABEL = "Menyusun Outline"
+const FORCED_PREVIEW_REWIND_TARGET: PaperStageId = "outline"
+const FORCED_PREVIEW_CURRENT_STAGE: PaperStageId = "abstrak"
 
 interface PendingStarterPromptPayload {
   conversationId: string
@@ -362,6 +368,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [isCreatingChat, setIsCreatingChat] = useState(false)
   const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
   const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
+  const [isPreviewRewindDialogOpen, setIsPreviewRewindDialogOpen] = useState(true)
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [processUi, setProcessUi] = useState<{
@@ -1000,6 +1007,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
+  const shouldForceInteractionUiPreview = FORCE_INTERACTION_UI_PREVIEW && Boolean(conversationId)
+  useEffect(() => {
+    if (shouldForceInteractionUiPreview) {
+      setIsPreviewRewindDialogOpen(true)
+    }
+  }, [shouldForceInteractionUiPreview, conversationId])
+
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
   const hasStandalonePendingIndicator =
     hasPendingAssistantGeneration &&
@@ -1738,7 +1752,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       </div>
 
       {/* Quota Warning Banner */}
-      <QuotaWarningBanner className="mx-4 mt-4" />
+      <QuotaWarningBanner
+        className="mx-4 mt-4"
+        preview={
+          shouldForceInteractionUiPreview
+            ? { enabled: true, tier: "bpp", type: "depleted" }
+            : undefined
+        }
+      />
 
       {/* Messages Area */}
       <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
@@ -1841,13 +1862,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
-                    {isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming' && (
+                    {(shouldForceInteractionUiPreview || (isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming')) && (
                       <PaperValidationPanel
-                        stageLabel={stageLabel}
-                        onApprove={handleApprove}
-                        onRevise={handleRevise}
-                        isLoading={isLoading}
-                        isDirty={paperSession?.isDirty === true}
+                        stageLabel={shouldForceInteractionUiPreview ? FORCED_PREVIEW_STAGE_LABEL : stageLabel}
+                        onApprove={shouldForceInteractionUiPreview ? async () => Promise.resolve() : handleApprove}
+                        onRevise={shouldForceInteractionUiPreview ? async () => Promise.resolve() : handleRevise}
+                        isLoading={shouldForceInteractionUiPreview ? false : isLoading}
+                        isDirty={shouldForceInteractionUiPreview ? true : paperSession?.isDirty === true}
                       />
                     )}
                     <div className="h-4" />
@@ -1855,6 +1876,30 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 )
               }}
             />
+          )}
+
+          {/* Preview-only quota rejection error overlay */}
+          {shouldForceInteractionUiPreview && (
+            <div
+              className="absolute bottom-4 bg-[var(--chat-destructive)] border border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)] p-3 rounded-action flex items-center justify-between text-sm shadow-sm backdrop-blur-sm"
+              style={{
+                left: "var(--chat-input-pad-x, 5rem)",
+                right: "var(--chat-input-pad-x, 5rem)",
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <WarningCircle className="h-4 w-4" />
+                <span className="font-mono">Permintaan ditolak: kuota/kredit tidak mencukupi.</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/subscription/plans")}
+                className="bg-[var(--chat-background)] hover:bg-[var(--chat-accent)] h-7 text-xs font-mono border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)]"
+              >
+                Beli Kredit
+              </Button>
+            </div>
           )}
 
           {/* Error State Overlay - Mechanical Grace: Rose error */}
@@ -1934,19 +1979,30 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       />
 
       {/* Rewind Confirmation Dialog (mobile progress bar) */}
-      {isPaperMode && paperSession?.currentStage && (
+      {(shouldForceInteractionUiPreview || (isPaperMode && paperSession?.currentStage)) && (
         <RewindConfirmationDialog
-          open={pendingRewindTarget !== null}
+          open={shouldForceInteractionUiPreview ? isPreviewRewindDialogOpen : pendingRewindTarget !== null}
           onOpenChange={(open) => {
+            if (shouldForceInteractionUiPreview) {
+              setIsPreviewRewindDialogOpen(open)
+              return
+            }
             if (!open) {
               setPendingRewindTarget(null)
               setIsRewindSubmitting(false)
             }
           }}
-          targetStage={pendingRewindTarget}
-          currentStage={paperSession.currentStage}
-          onConfirm={handleRewindConfirm}
-          isSubmitting={isRewindSubmitting}
+          targetStage={shouldForceInteractionUiPreview ? FORCED_PREVIEW_REWIND_TARGET : pendingRewindTarget}
+          currentStage={shouldForceInteractionUiPreview ? FORCED_PREVIEW_CURRENT_STAGE : (paperSession?.currentStage ?? FORCED_PREVIEW_CURRENT_STAGE)}
+          onConfirm={
+            shouldForceInteractionUiPreview
+              ? () => {
+                setIsPreviewRewindDialogOpen(false)
+                toast.success("Preview rewind: tombol konfirmasi aktif.")
+              }
+              : handleRewindConfirm
+          }
+          isSubmitting={shouldForceInteractionUiPreview ? false : isRewindSubmitting}
         />
       )}
     </div>
