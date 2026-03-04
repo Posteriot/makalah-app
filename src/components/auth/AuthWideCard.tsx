@@ -29,14 +29,6 @@ export function AuthWideCard({
     const resolvedTitle = title || "Silakan masuk!"
 
     const resolvedSubtitle = subtitle || "Susun Paper terbaikmu, tanpa ribet, tinggal ngobrol!"
-    const firstCommaIndex = resolvedSubtitle.indexOf(",")
-    const hasComma = firstCommaIndex >= 0
-    const subtitleLineOne = hasComma
-        ? resolvedSubtitle.slice(0, firstCommaIndex + 1).trimEnd()
-        : resolvedSubtitle
-    const subtitleLineTwo = hasComma
-        ? resolvedSubtitle.slice(firstCommaIndex + 1).trimStart()
-        : ""
 
     function handleBackClick() {
         if (onBackClick) {
@@ -137,16 +129,7 @@ export function AuthWideCard({
                                             <h1 className="auth-hero-title">
                                                 {resolvedTitle}
                                             </h1>
-                                            <p className="auth-hero-subtitle">
-                                                <span className="auth-hero-subtitle-line">
-                                                    {subtitleLineOne}
-                                                </span>
-                                                {subtitleLineTwo && (
-                                                    <span className="auth-hero-subtitle-line">
-                                                        {subtitleLineTwo}
-                                                    </span>
-                                                )}
-                                            </p>
+                                            <p className="auth-hero-subtitle">{resolvedSubtitle}</p>
                                         </div>
                                     </div>
                                 </div>
