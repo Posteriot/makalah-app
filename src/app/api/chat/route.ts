@@ -2612,7 +2612,7 @@ TIPS PENCARIAN:
                                                 const uri = chunk.web?.uri
                                                 if (typeof uri === "string" && uri.length > 0) {
                                                     const normalizedUrl = normalizeWebSearchUrl(uri)
-                                                    const title = typeof chunk.web?.title === "string" ? chunk.web.title : normalizedUrl
+                                                    const title = (typeof chunk.web?.title === "string" && chunk.web.title.trim()) || normalizedUrl
                                                     return {
                                                         url: normalizedUrl,
                                                         title,
