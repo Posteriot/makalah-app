@@ -36,6 +36,7 @@ import { RefrasaLoadingIndicator } from "@/components/refrasa"
 interface ArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
   onOpenRefrasaTab?: (tab: { id: Id<"artifacts">; title: string; type: string; sourceArtifactId?: Id<"artifacts"> }) => void
+  onVersionCreated?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
 }
 
 // Exposed methods via ref for parent component (ArtifactPanel)
@@ -98,7 +99,7 @@ function getStageLabelSafe(stageId: string | undefined): string {
 }
 
 export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>(
-  function ArtifactViewer({ artifactId, onOpenRefrasaTab }, ref) {
+  function ArtifactViewer({ artifactId, onOpenRefrasaTab, onVersionCreated }, ref) {
     const [copied, setCopied] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -160,17 +161,19 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       }
     }, [artifact])
 
-    const handleSave = async (newContent: string) => {
+    const handleSave = useCallback(async (newContent: string) => {
       if (!artifact || !currentUser?._id) return
 
       setIsSaving(true)
       try {
-        await updateArtifact({
+        const result = await updateArtifact({
           artifactId: artifact._id,
           userId: currentUser._id,
           content: newContent,
         })
-        toast.success(`Artifak diperbarui ke v${artifact.version + 1}`)
+        toast.success(`Artifak diperbarui ke v${result.version}`)
+        setViewingVersionId(result.artifactId)
+        onVersionCreated?.(artifact._id, result.artifactId)
         setIsEditing(false)
       } catch (error) {
         console.error("Failed to update artifact:", error)
@@ -178,7 +181,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       } finally {
         setIsSaving(false)
       }
-    }
+    }, [artifact, currentUser?._id, updateArtifact, onVersionCreated])
 
     const handleDownload = useCallback(() => {
       if (!artifact) return

@@ -35,6 +35,8 @@ interface UseArtifactTabsReturn {
   closeAllTabs: () => void
   /** Update tab title (when artifact title changes) */
   updateTabTitle: (id: Id<"artifacts">, title: string) => void
+  /** Update tab ID (when artifact is replaced with a new version) */
+  updateTabId: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
 }
 
 /**
@@ -120,6 +122,13 @@ export function useArtifactTabs(): UseArtifactTabsReturn {
     )
   }, [])
 
+  const updateTabId = useCallback((oldId: Id<"artifacts">, newId: Id<"artifacts">) => {
+    setOpenTabs((prev) =>
+      prev.map((tab) => tab.id === oldId ? { ...tab, id: newId } : tab)
+    )
+    setActiveTabId((prev) => prev === oldId ? newId : prev)
+  }, [])
+
   const setActive = useCallback((id: Id<"artifacts">) => {
     setActiveTabId(id)
   }, [])
@@ -132,5 +141,6 @@ export function useArtifactTabs(): UseArtifactTabsReturn {
     setActiveTab: setActive,
     closeAllTabs,
     updateTabTitle,
+    updateTabId,
   }
 }

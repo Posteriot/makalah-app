@@ -439,6 +439,33 @@ export const update = mutationGeneric({
       invalidatedByRewindToStage: undefined,
     })
 
+    // Update paper session stageData reference to point to new version.
+    // This ensures AI context (paper-mode-prompt.ts) uses the latest artifact content.
+    // Note: stageData stores artifact IDs as strings (loosely-typed JSON record),
+    // so we compare and write using String() for consistency.
+    const activeSession = await db
+      .query("paperSessions")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", oldArtifact.conversationId))
+      .filter((q) => q.eq(q.field("archivedAt"), undefined))
+      .first()
+
+    if (activeSession?.stageData) {
+      const stageData = activeSession.stageData as Record<string, Record<string, unknown>>
+      let updated = false
+      const newStageData = { ...stageData }
+
+      for (const [stageId, sd] of Object.entries(newStageData)) {
+        if (sd && typeof sd === "object" && "artifactId" in sd && sd.artifactId === String(artifactId)) {
+          newStageData[stageId] = { ...sd, artifactId: String(newArtifactId) }
+          updated = true
+        }
+      }
+
+      if (updated) {
+        await db.patch(activeSession._id, { stageData: newStageData })
+      }
+    }
+
     return {
       artifactId: newArtifactId,
       version: newVersion,

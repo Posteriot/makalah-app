@@ -60,6 +60,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     setActiveTab: setActiveArtifactTab,
     closeAllTabs: closeAllArtifactTabs,
     updateTabTitle: updateArtifactTabTitle,
+    updateTabId: updateArtifactTabId,
   } = useArtifactTabs()
 
   // Panel is open when there are open tabs
@@ -135,6 +136,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
             onTabChange={setActiveArtifactTab}
             onTabClose={closeArtifactTab}
             onOpenTab={openArtifactTab}
+            onUpdateTabId={updateArtifactTabId}
           />
         }
       >

@@ -25,6 +25,7 @@ interface ArtifactPanelProps {
   onTabChange: (tabId: Id<"artifacts">) => void
   onTabClose: (tabId: Id<"artifacts">) => void
   onOpenTab?: (tab: ArtifactTab) => void
+  onUpdateTabId?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
 }
 
 /**
@@ -52,6 +53,7 @@ export function ArtifactPanel({
   onTabChange,
   onTabClose,
   onOpenTab,
+  onUpdateTabId,
 }: ArtifactPanelProps) {
   const [isFullsizeOpen, setIsFullsizeOpen] = useState(false)
   const { user: currentUser } = useCurrentUser()
@@ -147,6 +149,7 @@ export function ArtifactPanel({
             onTabClose={onTabClose}
             onExpand={() => setIsFullsizeOpen(true)}
             onActivateTab={onTabChange}
+            onSourceVersionCreated={onUpdateTabId}
           />
         ) : activeTabId && activeArtifact ? (
           <ArtifactViewer
@@ -155,6 +158,7 @@ export function ArtifactPanel({
             onOpenRefrasaTab={(tab) => {
               onOpenTab?.(tab as ArtifactTab)
             }}
+            onVersionCreated={onUpdateTabId}
           />
         ) : activeTabId && !activeArtifact ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
@@ -199,6 +203,7 @@ export function ArtifactPanel({
           onTabChange={onTabChange}
           onTabClose={onTabClose}
           onOpenTab={onOpenTab!}
+          onVersionCreated={onUpdateTabId}
         />
       )}
     </div>
