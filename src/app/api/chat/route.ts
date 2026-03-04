@@ -31,6 +31,7 @@ import {
     PAPER_TOOLS_ONLY_NOTE,
     getResearchIncompleteNote,
     getFunctionToolsModeNote,
+    STAGE_RESEARCH_REQUIREMENTS,
 } from "@/lib/ai/paper-search-helpers"
 import {
     checkContextBudget,
@@ -827,27 +828,32 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             switch (session.currentStage) {
                 case "gagasan": {
                     const data = stageData.gagasan as { referensiAwal?: unknown[] } | undefined
-                    return Array.isArray(data?.referensiAwal) && data?.referensiAwal.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.gagasan?.minCount ?? 1
+                    return Array.isArray(data?.referensiAwal) && data.referensiAwal.length >= minCount
                 }
                 case "topik": {
                     const data = stageData.topik as { referensiPendukung?: unknown[] } | undefined
-                    return Array.isArray(data?.referensiPendukung) && data?.referensiPendukung.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.topik?.minCount ?? 1
+                    return Array.isArray(data?.referensiPendukung) && data.referensiPendukung.length >= minCount
                 }
                 case "tinjauan_literatur": {
                     const data = stageData.tinjauan_literatur as { referensi?: unknown[] } | undefined
-                    return Array.isArray(data?.referensi) && data?.referensi.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.tinjauan_literatur?.minCount ?? 1
+                    return Array.isArray(data?.referensi) && data.referensi.length >= minCount
                 }
                 case "pendahuluan": {
                     const data = stageData.pendahuluan as { sitasiAPA?: unknown[] } | undefined
-                    return Array.isArray(data?.sitasiAPA) && data?.sitasiAPA.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.pendahuluan?.minCount ?? 1
+                    return Array.isArray(data?.sitasiAPA) && data.sitasiAPA.length >= minCount
                 }
                 case "diskusi": {
                     const data = stageData.diskusi as { sitasiTambahan?: unknown[] } | undefined
-                    return Array.isArray(data?.sitasiTambahan) && data?.sitasiTambahan.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.diskusi?.minCount ?? 1
+                    return Array.isArray(data?.sitasiTambahan) && data.sitasiTambahan.length >= minCount
                 }
                 case "daftar_pustaka": {
                     const data = stageData.daftar_pustaka as { entries?: unknown[] } | undefined
-                    return Array.isArray(data?.entries) && data?.entries.length > 0
+                    return Array.isArray(data?.entries) && data.entries.length >= 1
                 }
                 default:
                     return null
