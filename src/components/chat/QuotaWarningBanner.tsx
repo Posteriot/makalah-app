@@ -15,18 +15,12 @@ import {
 } from "@/lib/billing/quota-offer-policy"
 
 type BannerType = "warning" | "critical" | "depleted"
-type PreviewTier = "gratis" | "pro" | "bpp"
 
 interface QuotaWarningBannerProps {
   className?: string
-  preview?: {
-    enabled?: boolean
-    tier?: PreviewTier
-    type?: BannerType
-  }
 }
 
-export function QuotaWarningBanner({ className, preview }: QuotaWarningBannerProps) {
+export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
   const { user, isLoading: userLoading } = useCurrentUser()
 
   // Track the percent at which user dismissed the banner
@@ -58,64 +52,52 @@ export function QuotaWarningBanner({ className, preview }: QuotaWarningBannerPro
   let bannerType: BannerType | null = null
   let visualState: QuotaVisualState | null = null
   let offer: ReturnType<typeof resolveQuotaOffer> | null = null
-  let tierForIcon: PreviewTier = "bpp"
+  let tierForIcon: "gratis" | "pro" | "bpp" = "bpp"
 
-  const isPreviewEnabled = preview?.enabled === true
-  if (isPreviewEnabled) {
-    tierForIcon = preview?.tier ?? "bpp"
-    bannerType = preview?.type ?? "depleted"
+  // Don't show anything while loading or if dismissed
+  if (userLoading || !user || isDismissed) return null
+
+  const tier = getEffectiveTier(user.role, user.subscriptionStatus)
+
+  // Unlimited tier (admin) - never show quota warning
+  if (tier === "unlimited") return null
+  tierForIcon = tier
+
+  if (tier === "gratis" || tier === "pro") {
+    // Quota-based tiers
+    if (!quotaStatus) return null
+
+    const percentUsed = quotaStatus.percentUsed ?? 0
+
+    if (percentUsed >= 100) {
+      bannerType = "depleted"
+    } else if (percentUsed >= 90) {
+      bannerType = "critical"
+    } else if (percentUsed >= 70) {
+      bannerType = "warning"
+    }
+  } else if (tier === "bpp") {
+    // Credit-based tier
+    if (!creditBalance) return null
+
+    const remainingCredits = creditBalance.remainingCredits ?? 0
+
+    if (remainingCredits <= 0) {
+      bannerType = "depleted"
+    } else if (remainingCredits < 30) {
+      bannerType = "critical"
+    } else if (remainingCredits < 100) {
+      bannerType = "warning"
+    }
+  }
+
+  if (bannerType) {
     visualState = bannerType
     offer = resolveQuotaOffer({
-      tier: tierForIcon,
+      tier,
       context: "banner",
       visualState,
     })
-  } else {
-    // Don't show anything while loading or if dismissed
-    if (userLoading || !user || isDismissed) return null
-
-    const tier = getEffectiveTier(user.role, user.subscriptionStatus)
-
-    // Unlimited tier (admin) - never show quota warning
-    if (tier === "unlimited") return null
-    tierForIcon = tier as PreviewTier
-
-    if (tier === "gratis" || tier === "pro") {
-      // Quota-based tiers
-      if (!quotaStatus) return null
-
-      const percentUsed = quotaStatus.percentUsed ?? 0
-
-      if (percentUsed >= 100) {
-        bannerType = "depleted"
-      } else if (percentUsed >= 90) {
-        bannerType = "critical"
-      } else if (percentUsed >= 70) {
-        bannerType = "warning"
-      }
-    } else if (tier === "bpp") {
-      // Credit-based tier
-      if (!creditBalance) return null
-
-      const remainingCredits = creditBalance.remainingCredits ?? 0
-
-      if (remainingCredits <= 0) {
-        bannerType = "depleted"
-      } else if (remainingCredits < 30) {
-        bannerType = "critical"
-      } else if (remainingCredits < 100) {
-        bannerType = "warning"
-      }
-    }
-
-    if (bannerType) {
-      visualState = bannerType
-      offer = resolveQuotaOffer({
-        tier,
-        context: "banner",
-        visualState,
-      })
-    }
   }
 
   // No banner needed

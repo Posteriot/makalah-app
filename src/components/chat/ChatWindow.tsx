@@ -9,6 +9,7 @@ import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import type { ReasoningTraceStep, ReasoningTraceStatus } from "./ReasoningTracePanel"
 import { useMessages } from "@/lib/hooks/useMessages"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowUpSquare, FastArrowDownSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
 import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -29,6 +30,11 @@ import { MobilePaperSessionsSheet } from "./mobile/MobilePaperSessionsSheet"
 import { MobileProgressBar } from "./mobile/MobileProgressBar"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
+import { getEffectiveTier } from "@/lib/utils/subscription"
+import {
+  buildChatQuotaOfferFromError,
+  isQuotaExceededChatError,
+} from "./chat-quota-error"
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
 interface ConversationArtifact {
@@ -61,36 +67,7 @@ type ChatListRow =
 
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
-// Temporary preview mode to force interaction-only UI visibility during restyling.
-// IMPORTANT: set to false after restyling is finalized.
-const FORCE_INTERACTION_UI_PREVIEW = true
 const VALIDATION_PANEL_COMPACT_WIDTH = 680
-
-interface ChatErrorPayload {
-  error?: string
-}
-
-function parseChatErrorPayload(error: Error | undefined): ChatErrorPayload | null {
-  if (!error?.message) return null
-
-  try {
-    const parsed = JSON.parse(error.message) as ChatErrorPayload
-    if (parsed && typeof parsed === "object") return parsed
-    return null
-  } catch {
-    return null
-  }
-}
-
-function isQuotaExceededChatError(error: Error | undefined): boolean {
-  if (!error?.message) return false
-
-  const parsedPayload = parseChatErrorPayload(error)
-  if (parsedPayload?.error === "quota_exceeded") return true
-
-  const normalizedMessage = error.message.toLowerCase()
-  return normalizedMessage.includes("quota_exceeded")
-}
 
 interface PendingStarterPromptPayload {
   conversationId: string
@@ -379,6 +356,7 @@ function PendingAssistantLaneIndicator() {
 
 export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, artifacts: conversationArtifacts }: ChatWindowProps) {
   const router = useRouter()
+  const { user: currentUser } = useCurrentUser()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
   const pendingScrollToBottomRef = useRef(false)
@@ -419,6 +397,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }, [])
 
   const { data: session } = useSession()
+  const effectiveTier = getEffectiveTier(currentUser?.role, currentUser?.subscriptionStatus)
   const { resolvedTheme, setTheme } = useTheme()
   const userId = useQuery(api.chatHelpers.getUserId, session?.user?.id ? { betterAuthUserId: session.user.id } : "skip")
   const createConversation = useMutation(api.conversations.createConversation)
@@ -710,6 +689,10 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   })
 
   const isQuotaRejectedError = useMemo(() => isQuotaExceededChatError(error), [error])
+  const quotaRejectedOffer = useMemo(
+    () => buildChatQuotaOfferFromError(error, effectiveTier),
+    [error, effectiveTier]
+  )
 
   type AttachmentSendMode = "inherit" | "replace" | "clear"
 
@@ -1067,7 +1050,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
-  const shouldForceInteractionUiPreview = FORCE_INTERACTION_UI_PREVIEW && Boolean(conversationId)
 
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
   const hasStandalonePendingIndicator =
@@ -1807,14 +1789,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       </div>
 
       {/* Quota Warning Banner */}
-      <QuotaWarningBanner
-        className="mx-4 mt-4"
-        preview={
-          shouldForceInteractionUiPreview
-            ? { enabled: true, tier: "bpp", type: "depleted" }
-            : undefined
-        }
-      />
+      <QuotaWarningBanner className="mx-4 mt-4" />
 
       {/* Messages Area */}
       <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
@@ -1935,7 +1910,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           )}
 
           {/* Quota rejection error overlay (real 402 quota_exceeded only) */}
-          {isQuotaRejectedError && (
+          {isQuotaRejectedError && quotaRejectedOffer && (
             <div
               className="absolute bottom-4 bg-[var(--chat-destructive)] border border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)] p-3 rounded-action flex items-center justify-between text-sm"
               style={{
@@ -1945,19 +1920,28 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             >
               <div className="flex items-start gap-2">
                 <WarningCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span className="text-xs font-sans leading-tight">
-                  <span className="block sm:inline">Permintaan ditolak:</span>
-                  <span className="block sm:inline sm:ml-1">kuota/kredit tidak mencukupi.</span>
-                </span>
+                <span className="text-xs font-sans leading-tight">{quotaRejectedOffer.message}</span>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push("/subscription/plans")}
-                className="h-7 rounded-action bg-[var(--chat-background)] dark:bg-[oklch(0.455_0.188_13.697)] text-[var(--chat-foreground)] dark:text-[var(--chat-destructive-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.41_0.159_10.272)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none"
-              >
-                Beli Kredit
-              </Button>
+              <div className="ml-3 flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(quotaRejectedOffer.primaryCta.href)}
+                  className="h-7 rounded-action bg-[var(--chat-background)] dark:bg-[oklch(0.455_0.188_13.697)] text-[var(--chat-foreground)] dark:text-[var(--chat-destructive-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.41_0.159_10.272)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none"
+                >
+                  {quotaRejectedOffer.primaryCta.label}
+                </Button>
+                {quotaRejectedOffer.secondaryCta && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push(quotaRejectedOffer.secondaryCta!.href)}
+                    className="h-7 rounded-action bg-transparent text-[var(--chat-destructive-foreground)] hover:bg-[var(--chat-destructive-foreground)]/10 text-xs font-sans border-[color:var(--chat-destructive-foreground)]/40 hover:border-[color:var(--chat-destructive-foreground)]/60 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none"
+                  >
+                    {quotaRejectedOffer.secondaryCta.label}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
