@@ -4,7 +4,7 @@
 Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untuk area chat AI non-artifact dan non-refrasa. Fokusnya adalah elemen yang muncul saat interaksi berjalan (submitted, streaming, waiting, error, validation), termasuk indikator tool, status pencarian, reasoning flow, composer context tray, dan panel validasi paper.
 
 ## Scope Final Yang Di-Restyling
-1. ChatWindow interaksi utama: pending lane, error overlay, status flow.
+1. ChatWindow interaksi utama: pending lane, quota warning banner, error overlay, status flow.
 2. MessageBubble dinamis: tool indicators, search status, sources, quick actions, edit state.
 3. ChatProcessStatusBar + ReasoningActivityPanel + ReasoningTracePanel.
 4. ChatInput + FileUploadButton + context tray + stop generating button.
@@ -34,6 +34,12 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
   - Error overlay
     - Banner error bawah area message saat `error` dari `useChat`.
     - Tombol retry memanggil `handleRegenerate()`.
+  - `QuotaWarningBanner`
+    - Banner billing warning/depleted di bawah top bar chat.
+    - Muncul adaptif berdasarkan tier:
+      - Gratis/Pro: warning saat kuota tinggi, depleted saat kuota habis.
+      - BPP: warning/critical saat kredit menipis, depleted saat kredit habis.
+    - CTA mengarah ke halaman subscription (`/subscription/overview`, `/subscription/upgrade`, `/subscription/plans`) sesuai konteks.
   - Process state machine (internal visual state)
     - `processUi.status`: `submitted` | `streaming` | `ready` | `error` | `stopped`.
     - `processUi.progress`, `elapsedSeconds`, timer interval/hide logic.
@@ -224,6 +230,7 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 - [x] Status `ready/completed` dicatat sebagai **tidak jadi di-restyling** (visual utama dipertahankan).
 - [x] Trigger panel "proses berpikir model" saat proses selesai dipertahankan sebagai bagian flow interaksi.
 - [x] Seluruh kode pemaksaan tampilan komponen interaksi sudah dicabut; visibility kembali ke state normal (hanya muncul saat interaksi relevan).
+- [ ] `QuotaWarningBanner` sudah masuk scope interaksi chat, tetapi visualnya **belum** direstyling pada batch ini.
 
 ## Daftar File Terkait
 - `src/components/chat/ChatWindow.tsx`
@@ -235,6 +242,7 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 - `src/components/chat/ChatProcessStatusBar.tsx`
 - `src/components/chat/ReasoningActivityPanel.tsx`
 - `src/components/chat/ReasoningTracePanel.tsx`
+- `src/components/chat/QuotaWarningBanner.tsx`
 - `src/components/chat/ChatInput.tsx`
 - `src/components/chat/FileUploadButton.tsx`
 - `src/components/paper/PaperValidationPanel.tsx`
