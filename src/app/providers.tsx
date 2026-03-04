@@ -6,7 +6,6 @@ import { ConvexReactClient } from "convex/react"
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react"
 import { ThemeProvider } from "next-themes"
 import { ThemeEnforcer } from "@/components/theme/ThemeEnforcer"
-import { FreeLoginGate } from "@/components/onboarding/FreeLoginGate"
 import { authClient, useSession } from "@/lib/auth-client"
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
@@ -86,7 +85,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
           authClient={authClient}
         >
           <SessionCookieSync />
-          <FreeLoginGate />
           {children}
         </ConvexBetterAuthProvider>
       ) : (
