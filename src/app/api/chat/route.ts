@@ -1756,7 +1756,8 @@ Aturan:
             const recentForRouter = modelMessages.slice(-8)
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
-            const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession) || hasRecentSourcesInDb
+            const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
+                || (!paperSession && hasRecentSourcesInDb)
             const explicitSyncRequest = !!paperModePrompt
                 && isExplicitSyncRequest(lastUserContent)
 
