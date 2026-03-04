@@ -237,6 +237,11 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 - [x] `RewindConfirmationDialog` desktop direstyling: copy baru, warning panel slate, tombol validasi konsisten, dan border panel disesuaikan.
 - [x] `RewindConfirmationDialog` mobile direstyling: heading left+inline icon, body copy left-aligned, warning icon sejajar baris pertama, sizing tombol dioptimalkan untuk touch.
 - [x] Mode preview khusus `RewindConfirmationDialog` sudah dicabut; dialog kembali hanya muncul saat ada interaksi rewind.
+- [x] `PaperValidationPanel` sudah direstyling untuk mobile, tablet, dan desktop:
+  - mode compact (lebar chat area `<= 680px`) mengikuti pola mobile, termasuk tombol vertikal (atas `Revisi`, bawah `Setujui & Lanjutkan`).
+  - mode desktop/tablet lebar normal (`> 680px`) menggunakan teks di atas + tombol sejajar di bawah (center).
+- [x] Warning strip `isDirty` pada `PaperValidationPanel` sudah direstyling dan copy diperbarui untuk mobile, tablet, dan desktop.
+- [x] Mode preview khusus `PaperValidationPanel` + warning `isDirty` sudah dicabut; panel kembali hanya muncul pada kondisi interaksi normal (`pending_validation` + state session aktual).
 - [x] Error UI saat kirim chat ditolak karena quota (`HTTP 402` + `quota_exceeded`) sudah direstyling untuk desktop.
 - [x] Error UI saat kirim chat ditolak karena quota (`HTTP 402` + `quota_exceeded`) sudah direstyling untuk mobile (teks 2 baris + icon sejajar baris pertama).
 - [x] Mode preview khusus Error UI quota rejection sudah dicabut; banner kembali muncul hanya saat terjadi error quota nyata.

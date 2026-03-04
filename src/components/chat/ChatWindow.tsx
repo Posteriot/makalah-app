@@ -64,7 +64,6 @@ const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
 // Temporary preview mode to force interaction-only UI visibility during restyling.
 // IMPORTANT: set to false after restyling is finalized.
 const FORCE_INTERACTION_UI_PREVIEW = true
-const FORCED_PREVIEW_STAGE_LABEL = "Menyusun Outline"
 const VALIDATION_PANEL_COMPACT_WIDTH = 680
 
 interface ChatErrorPayload {
@@ -1918,13 +1917,13 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
-                    {(shouldForceInteractionUiPreview || (isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming')) && (
+                    {(isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming') && (
                       <PaperValidationPanel
-                        stageLabel={shouldForceInteractionUiPreview ? FORCED_PREVIEW_STAGE_LABEL : stageLabel}
-                        onApprove={shouldForceInteractionUiPreview ? async () => Promise.resolve() : handleApprove}
-                        onRevise={shouldForceInteractionUiPreview ? async () => Promise.resolve() : handleRevise}
-                        isLoading={shouldForceInteractionUiPreview ? false : isLoading}
-                        isDirty={shouldForceInteractionUiPreview ? true : paperSession?.isDirty === true}
+                        stageLabel={stageLabel}
+                        onApprove={handleApprove}
+                        onRevise={handleRevise}
+                        isLoading={isLoading}
+                        isDirty={paperSession?.isDirty === true}
                         forceMobileLayout={forceMobileValidationLayout}
                       />
                     )}
