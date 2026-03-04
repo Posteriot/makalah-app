@@ -161,6 +161,7 @@ export interface WebPageMetadata {
   title: string | null
   finalUrl: string | null
   publishedAt: number | null
+  reachable: boolean
 }
 
 function parseDateFromUrl(url: string): number | null {
@@ -252,11 +253,11 @@ export async function fetchWebPageMetadata(
   try {
     parsed = new URL(normalized)
   } catch {
-    return { title: null, finalUrl: null, publishedAt: null }
+    return { title: null, finalUrl: null, publishedAt: null, reachable: false }
   }
 
-  if (!["http:", "https:"].includes(parsed.protocol)) return { title: null, finalUrl: null, publishedAt: null }
-  if (isDisallowedHost(parsed.hostname)) return { title: null, finalUrl: null, publishedAt: null }
+  if (!["http:", "https:"].includes(parsed.protocol)) return { title: null, finalUrl: null, publishedAt: null, reachable: false }
+  if (isDisallowedHost(parsed.hostname)) return { title: null, finalUrl: null, publishedAt: null, reachable: false }
 
   const controller = new AbortController()
   const timeoutMs = options?.timeoutMs ?? 2500
@@ -297,13 +298,13 @@ export async function fetchWebPageMetadata(
 
     if (!res.ok) {
       const publishedAt = finalUrlSafe ? parseDateFromUrl(finalUrlSafe) : null
-      return { title: null, finalUrl: finalUrlSafe, publishedAt }
+      return { title: null, finalUrl: finalUrlSafe, publishedAt, reachable: true }
     }
 
     const contentType = res.headers.get("content-type") ?? ""
     if (!contentType.toLowerCase().includes("text/html")) {
       const publishedAt = finalUrlSafe ? parseDateFromUrl(finalUrlSafe) : null
-      return { title: null, finalUrl: finalUrlSafe, publishedAt }
+      return { title: null, finalUrl: finalUrlSafe, publishedAt, reachable: true }
     }
 
     const html = (await res.text()).slice(0, 250_000)
@@ -343,18 +344,18 @@ export async function fetchWebPageMetadata(
 
     const raw = ogTitle ?? twitterTitle ?? titleTag
     const publishedAt = extractPublishedAtFromHtml(html) ?? (finalUrlSafe ? parseDateFromUrl(finalUrlSafe) : null)
-    if (!raw) return { title: null, finalUrl: finalUrlSafe, publishedAt }
+    if (!raw) return { title: null, finalUrl: finalUrlSafe, publishedAt, reachable: true }
 
     const siteName = deriveSiteNameFromUrl(finalUrlSafe ?? normalized)
     const decoded = collapseWhitespace(decodeHtmlEntities(raw))
     const stripped = stripSiteSuffix(decoded, siteName)
     const final = collapseWhitespace(stripped)
 
-    if (!final) return { title: null, finalUrl: finalUrlSafe, publishedAt }
+    if (!final) return { title: null, finalUrl: finalUrlSafe, publishedAt, reachable: true }
     const title = final.length > 200 ? final.slice(0, 200).trim() : final
-    return { title, finalUrl: finalUrlSafe, publishedAt }
+    return { title, finalUrl: finalUrlSafe, publishedAt, reachable: true }
   } catch {
-    return { title: null, finalUrl: null, publishedAt: null }
+    return { title: null, finalUrl: null, publishedAt: null, reachable: false }
   } finally {
     clearTimeout(timer)
   }
@@ -370,12 +371,15 @@ export async function enrichSourcesWithFetchedTitles<
 >(
   sources: T[],
   options?: { concurrency?: number; timeoutMs?: number }
-): Promise<T[]> {
+): Promise<Array<T & { _unreachable?: true }>> {
   const concurrency = options?.concurrency ?? 4
   const timeoutMs = options?.timeoutMs ?? 2500
 
   return await mapWithConcurrency(sources, concurrency, async (src) => {
     const meta = await fetchWebPageMetadata(src.url, { timeoutMs })
+    if (!meta.reachable) {
+      return { ...src, _unreachable: true as const }
+    }
     if (!meta.title && !meta.finalUrl && !meta.publishedAt) return src
     return {
       ...src,

@@ -1787,6 +1787,38 @@ Aturan:
             }
         }
 
+        const KNOWN_GENERIC_TLDS = new Set([
+            "com", "net", "org", "edu", "gov", "mil", "int",
+            "io", "ai", "co", "app", "dev", "info", "biz", "me",
+            "tv", "online", "site", "web", "cloud", "tech", "store",
+            "news", "blog", "media", "digital", "agency", "studio",
+            "design", "academy", "health", "science", "finance",
+            "global", "world", "today", "live", "pro", "plus",
+            "one", "top", "xyz", "space", "page", "link",
+        ])
+
+        const isGarbageUrl = (raw: string): boolean => {
+            try {
+                const u = new URL(raw)
+                const host = u.hostname.toLowerCase()
+                if (!host || !host.includes(".")) return true
+                if (u.protocol !== "http:" && u.protocol !== "https:") return true
+
+                const labels = host.split(".")
+                const tld = labels[labels.length - 1]
+
+                if (!/^[a-z]+$/.test(tld)) return true
+
+                // All 2-letter TLDs are valid IANA country codes
+                if (tld.length === 2) return false
+
+                // 3+ letter TLDs: check against known-good list
+                return !KNOWN_GENERIC_TLDS.has(tld)
+            } catch {
+                return true
+            }
+        }
+
         try {
             const model = await getGatewayModel()
 
@@ -1945,6 +1977,9 @@ Aturan:
                 fallbackOnlineEnabled: webSearchConfig.fallbackEnabled,
                 fallbackProvider: modelNames.fallback.provider,
             })
+            console.log(
+                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}, primaryReady=${primaryGoogleSearchReady}, primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
+            )
             let fallbackSearchToolReason: GoogleSearchToolUnavailableReason | undefined
             let searchUnavailableReasonCode: string | undefined
 
@@ -2644,11 +2679,27 @@ TIPS PENCARIAN:
                                         sources = [...sources, ...streamedSources]
                                     }
 
+                                    // Layer 1: Structural pre-filter — remove garbage URLs before network calls
+                                    if (sources.length > 0) {
+                                        const preGarbageCount = sources.length
+                                        sources = sources.filter((s) => !isGarbageUrl(s.url))
+                                        if (sources.length < preGarbageCount) {
+                                            console.warn(`[Citations] Removed ${preGarbageCount - sources.length} garbage URL(s) via structural pre-filter`)
+                                        }
+                                    }
+
                                     if (sources.length > 0) {
                                         sources = await enrichSourcesWithFetchedTitles(sources, {
                                             concurrency: 4,
                                             timeoutMs: 2500,
                                         })
+
+                                        // Layer 2: Enrichment-based post-filter — remove DNS-unreachable sources
+                                        const preReachCount = sources.length
+                                        sources = sources.filter((s) => !(s as { _unreachable?: true })._unreachable)
+                                        if (sources.length < preReachCount) {
+                                            console.warn(`[Citations] Removed ${preReachCount - sources.length} unreachable source(s) via enrichment filter`)
+                                        }
 
                                         const deduped = new Map<string, SourceWithChunk>()
                                         for (const src of sources) {
@@ -3441,18 +3492,21 @@ TIPS PENCARIAN:
 
                                 sourceCount = Math.max(sourceCount, normalizedCitations.length)
 
+                                // Pre-filter garbage URLs before low-value filter
+                                const nonGarbageCitations = normalizedCitations.filter(c => !isGarbageUrl(c.url))
+
                                 const filteredCitations = (() => {
-                                    const hasHighValue = normalizedCitations.some(
+                                    const hasHighValue = nonGarbageCitations.some(
                                         c => !isVertexProxyUrl(c.url) && !isLowValueCitationUrl(c.url)
                                     )
                                     if (hasHighValue) {
-                                        return normalizedCitations.filter(
+                                        return nonGarbageCitations.filter(
                                             c => !isVertexProxyUrl(c.url) && !isLowValueCitationUrl(c.url)
                                         )
                                     }
-                                    const hasNonProxy = normalizedCitations.some(c => !isVertexProxyUrl(c.url))
-                                    if (hasNonProxy) return normalizedCitations.filter(c => !isVertexProxyUrl(c.url))
-                                    return normalizedCitations
+                                    const hasNonProxy = nonGarbageCitations.some(c => !isVertexProxyUrl(c.url))
+                                    if (hasNonProxy) return nonGarbageCitations.filter(c => !isVertexProxyUrl(c.url))
+                                    return nonGarbageCitations
                                 })()
                                 const hasAnyCitations = filteredCitations.length > 0
                                 closeSearchStatus(hasAnyCitations ? "done" : "off")
