@@ -18,6 +18,7 @@ const SHIMMER_TEXTS = new Set([
     "Menyimpan progres tahapan",
     "Mengirim validasi tahapan",
     "Mengomplisasi daftar pustaka",
+    "Respons agen",
 ])
 
 const TOOL_LABEL_MAP: Record<string, string> = {
@@ -29,6 +30,7 @@ const TOOL_LABEL_MAP: Record<string, string> = {
     createArtifact: "Membuat artifak",
     updateArtifact: "Memperbarui artifak",
     renameConversationTitle: "Mengubah judul percakapan",
+    assistant_response: "Respons agen",
 }
 
 const STATE_LABEL_MAP: Record<string, string> = {
