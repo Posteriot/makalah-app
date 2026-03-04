@@ -88,7 +88,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                         ? "flex flex-col gap-3"
                         : cn(
                             "flex flex-col gap-3",
-                            !forceMobileLayout && "md:flex-row md:items-center md:justify-between md:gap-4"
+                            !forceMobileLayout && "md:gap-4"
                         )
                 )}
             >
@@ -120,7 +120,9 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                 {!showRevisionForm && (
                     <div
                         className={cn(
-                            forceMobileLayout ? "flex flex-col gap-3 sm:gap-2" : "flex gap-2 md:flex-shrink-0"
+                            forceMobileLayout
+                                ? "flex flex-col gap-3 sm:gap-2"
+                                : "flex gap-2 md:justify-center"
                         )}
                     >
                         <Button
@@ -150,11 +152,11 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                         >
                             <Check className="h-3.5 w-3.5" />
                             {forceMobileLayout ? (
-                                <span>Setujui</span>
+                                <span>Setujui & Lanjutkan</span>
                             ) : (
                                 <>
                                     <span className="hidden md:inline">Setujui & Lanjutkan</span>
-                                    <span className="md:hidden">Setujui</span>
+                                    <span className="md:hidden">Setujui & Lanjutkan</span>
                                 </>
                             )}
                         </Button>
