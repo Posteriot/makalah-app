@@ -10,6 +10,7 @@ import {
   clearPending2FA,
   sendOtp,
   verifyOtp,
+  verifyBackupCode,
 } from "@/lib/auth-2fa"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
 import { getRedirectUrl } from "@/lib/utils/redirectAfterAuth"
@@ -40,8 +41,11 @@ function Verify2FAPage() {
     : "/sign-in"
 
   const OTP_LENGTH = 6
+  type VerificationMethod = "otp" | "backup"
+  const [method, setMethod] = useState<VerificationMethod>("otp")
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""))
   const [code, setCode] = useState("")
+  const [backupCode, setBackupCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState("")
@@ -125,6 +129,24 @@ function Verify2FAPage() {
     boxRefs.current[0]?.focus()
   }
 
+  function resetBackupInput() {
+    setBackupCode("")
+  }
+
+  function handleMethodChange(nextMethod: VerificationMethod) {
+    if (method === nextMethod) return
+    setMethod(nextMethod)
+    setError("")
+    setIsLoading(false)
+    if (nextMethod === "otp") {
+      resetBackupInput()
+      setTimeout(() => boxRefs.current[0]?.focus(), 0)
+      return
+    }
+    setDigits(Array(OTP_LENGTH).fill(""))
+    setCode("")
+  }
+
   // Redirect if no pending 2FA
   useEffect(() => {
     const pending = getPending2FA()
@@ -187,6 +209,44 @@ function Verify2FAPage() {
 
   const isSubmitting = useRef(false)
 
+  async function continueSignInWithBypassToken(
+    pending: { email: string; password: string; redirectUrl?: string },
+    bypassTokenValue: string
+  ) {
+    const signInResult = await signIn.email(
+      {
+        email: pending.email,
+        password: pending.password,
+        callbackURL,
+      },
+      {
+        onRequest(ctx) {
+          ctx.headers.set("X-2FA-Bypass-Token", bypassTokenValue)
+          return ctx
+        },
+      }
+    )
+
+    if (signInResult.error) {
+      setError(
+        signInResult.error.message ?? "Gagal masuk. Silakan coba lagi."
+      )
+      return false
+    }
+
+    clearPending2FA()
+    const data = signInResult.data as Record<string, unknown>
+    if (data?.redirect && data?.token) {
+      const url = new URL(data.url as string)
+      url.searchParams.set("ott", data.token as string)
+      window.location.href = url.toString()
+      return true
+    }
+
+    window.location.href = callbackURL
+    return true
+  }
+
   async function submitOtp(otpCode: string) {
     if (isSubmitting.current) return
     isSubmitting.current = true
@@ -217,44 +277,16 @@ function Verify2FAPage() {
         return
       }
 
-      // Step 2: Re-sign-in with bypass token header
-      const bypassTokenValue = otpResult.bypassToken
-      const signInResult = await signIn.email(
-        {
-          email: pending.email,
-          password: pending.password,
-          callbackURL,
-        },
-        {
-          onRequest(ctx) {
-            ctx.headers.set("X-2FA-Bypass-Token", bypassTokenValue)
-            return ctx
-          },
-        }
+      const isSignInSuccess = await continueSignInWithBypassToken(
+        pending,
+        otpResult.bypassToken
       )
-
-      if (signInResult.error) {
-        setError(
-          signInResult.error.message ?? "Gagal masuk. Silakan coba lagi."
-        )
+      if (!isSignInSuccess) {
         resetOtpBoxes()
         setIsLoading(false)
         isSubmitting.current = false
         return
       }
-
-      // Step 3: Handle OTT redirect (same as normal sign-in)
-      clearPending2FA()
-      const data = signInResult.data as Record<string, unknown>
-      if (data?.redirect && data?.token) {
-        const url = new URL(data.url as string)
-        url.searchParams.set("ott", data.token as string)
-        window.location.href = url.toString()
-        return
-      }
-
-      // Non cross-domain fallback
-      window.location.href = callbackURL
     } catch {
       toast.error("Terjadi kesalahan. Silakan coba lagi.")
       resetOtpBoxes()
@@ -263,9 +295,59 @@ function Verify2FAPage() {
     }
   }
 
+  async function submitBackupCode(inputCode: string) {
+    if (isSubmitting.current) return
+    isSubmitting.current = true
+    setError("")
+
+    const pending = getPending2FA()
+    if (!pending) {
+      router.replace(signInHref)
+      return
+    }
+
+    if (!inputCode) {
+      setError("Masukkan backup code.")
+      isSubmitting.current = false
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const backupResult = await verifyBackupCode(pending.email, inputCode)
+      if (!backupResult.status || !backupResult.bypassToken) {
+        setError(backupResult.error ?? "Backup code tidak valid.")
+        resetBackupInput()
+        setIsLoading(false)
+        isSubmitting.current = false
+        return
+      }
+
+      const isSignInSuccess = await continueSignInWithBypassToken(
+        pending,
+        backupResult.bypassToken
+      )
+      if (!isSignInSuccess) {
+        resetBackupInput()
+        setIsLoading(false)
+        isSubmitting.current = false
+        return
+      }
+    } catch {
+      toast.error("Terjadi kesalahan. Silakan coba lagi.")
+      resetBackupInput()
+      setIsLoading(false)
+      isSubmitting.current = false
+    }
+  }
+
   function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault()
-    submitOtp(code.trim())
+    if (method === "otp") {
+      submitOtp(code.trim())
+      return
+    }
+    submitBackupCode(backupCode.trim())
   }
 
   function handleCancel() {
@@ -276,7 +358,7 @@ function Verify2FAPage() {
   return (
     <AuthWideCard
       title="Verifikasi 2FA"
-      subtitle="Masukkan kode verifikasi 6 digit yang terkirim ke email kamu. Jika tidak terdapat di inbox, periksa folder spam."
+      subtitle="Masukkan kode verifikasi 6 digit dari email. Jika email OTP tidak tersedia, gunakan backup code."
       showBackButton
       onBackClick={handleCancel}
     >
@@ -286,7 +368,7 @@ function Verify2FAPage() {
             <span className="auth-icon-badge">
               <Lock className="h-6 w-6" />
             </span>
-            {isSending ? (
+            {isSending && method === "otp" ? (
               <p className="auth-link text-center">
                 Mengirim kode verifikasi...
               </p>
@@ -294,26 +376,69 @@ function Verify2FAPage() {
           </div>
 
           <div className="w-full max-w-[22rem] mx-auto space-y-5">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleMethodChange("otp")}
+                aria-pressed={method === "otp"}
+                className={`rounded-badge border px-3 py-2 text-xs font-mono transition-colors ${
+                  method === "otp"
+                    ? "border-foreground text-foreground"
+                    : "border-muted-foreground/40 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Kode OTP
+              </button>
+              <button
+                type="button"
+                onClick={() => handleMethodChange("backup")}
+                aria-pressed={method === "backup"}
+                className={`rounded-badge border px-3 py-2 text-xs font-mono transition-colors ${
+                  method === "backup"
+                    ? "border-foreground text-foreground"
+                    : "border-muted-foreground/40 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Backup code
+              </button>
+            </div>
+
             <div>
-              <label className="sr-only">Kode OTP</label>
-              <div className="grid grid-cols-6 gap-2.5" onPaste={handleBoxPaste}>
-                {digits.map((digit, i) => (
+              {method === "otp" ? (
+                <>
+                  <label className="sr-only">Kode OTP</label>
+                  <div className="grid grid-cols-6 gap-2.5" onPaste={handleBoxPaste}>
+                    {digits.map((digit, i) => (
+                      <input
+                        key={i}
+                        ref={(el) => { boxRefs.current[i] = el }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleBoxChange(i, e.target.value)}
+                        onKeyDown={(e) => handleBoxKeyDown(i, e)}
+                        onFocus={(e) => e.target.select()}
+                        autoFocus={i === 0}
+                        autoComplete={i === 0 ? "one-time-code" : "off"}
+                        className="auth-otp-input"
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <label className="sr-only" htmlFor="backup-code-input">Backup code</label>
                   <input
-                    key={i}
-                    ref={(el) => { boxRefs.current[i] = el }}
+                    id="backup-code-input"
                     type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleBoxChange(i, e.target.value)}
-                    onKeyDown={(e) => handleBoxKeyDown(i, e)}
-                    onFocus={(e) => e.target.select()}
-                    autoFocus={i === 0}
-                    autoComplete={i === 0 ? "one-time-code" : "off"}
-                    className="auth-otp-input"
+                    placeholder="Contoh: DX1va-73eL5"
+                    value={backupCode}
+                    onChange={(e) => setBackupCode(e.target.value)}
+                    className="h-11 w-full rounded-badge border border-muted-foreground/40 bg-transparent px-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
                   />
-                ))}
-              </div>
+                </>
+              )}
             </div>
 
             {error && (
@@ -324,7 +449,7 @@ function Verify2FAPage() {
 
             <button
               type="submit"
-              disabled={isLoading || code.length !== 6}
+              disabled={isLoading || (method === "otp" ? code.length !== 6 : backupCode.trim().length === 0)}
               className="group auth-cta relative mt-2 inline-flex w-full items-center justify-center gap-2 overflow-hidden px-4 auth-focus-ring disabled:cursor-not-allowed"
             >
               <span
@@ -339,18 +464,20 @@ function Verify2FAPage() {
               </span>
             </button>
 
-            <div className="flex items-center">
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={resendCooldown > 0 || isSending}
-                className="auth-link disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {resendCooldown > 0
-                  ? `Kirim ulang (${resendCooldown}s)`
-                  : "Kirim ulang kode"}
-              </button>
-            </div>
+            {method === "otp" ? (
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCooldown > 0 || isSending}
+                  className="auth-link disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {resendCooldown > 0
+                    ? `Kirim ulang (${resendCooldown}s)`
+                    : "Kirim ulang kode"}
+                </button>
+              </div>
+            ) : null}
           </div>
         </form>
 

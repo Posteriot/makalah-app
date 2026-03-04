@@ -613,7 +613,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
             {backupCodes && backupCodes.length > 0 && (
               <div className="mt-4 border-t border-border pt-4">
                 <p className="text-interface text-xs font-medium text-destructive mb-2">
-                  Simpan backup codes ini di tempat yang aman. Kode ini hanya ditampilkan sekali.
+                  Simpan backup codes ini di tempat yang aman. Gunakan saat kamu tidak bisa akses OTP email. Kode ini hanya ditampilkan sekali.
                 </p>
                 <div className="grid grid-cols-2 gap-2 rounded-md border border-dashed border-slate-400 dark:border-slate-600 bg-slate-100 dark:bg-slate-900 p-3">
                   {backupCodes.map((code, i) => (
