@@ -74,15 +74,19 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
     setIs2FAEnabled(user.twoFactorEnabled === true)
   }, [session])
 
-  const handleSetPassword = async () => {
+  const handleCreatePassword = async () => {
+    if (!session) return
+
     if (!newPassword) {
       toast.error("Password baru wajib diisi.")
       return
     }
+
     if (newPassword.length < 8) {
       toast.error("Password minimal 8 karakter.")
       return
     }
+
     if (newPassword !== confirmPassword) {
       toast.error("Konfirmasi password tidak cocok.")
       return
@@ -90,19 +94,19 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
 
     setIsSettingPassword(true)
     try {
-      // setPassword is a core BetterAuth endpoint for OAuth-only users
-      // but not included in the generated client types — safe to call via proxy.
-      const { error: apiError } = await (authClient as unknown as {
-        setPassword: (args: { newPassword: string }) => Promise<{ error: { message?: string } | null }>
-      }).setPassword({ newPassword })
-      if (apiError) {
-        toast.error(apiError.message ?? "Gagal membuat password.")
+      const authClientWithCreatePassword = authClient as typeof authClient & {
+        createPassword: (args: { newPassword: string }) => Promise<{ error?: { message?: string } | null }>
+      }
+      const result = await authClientWithCreatePassword.createPassword({ newPassword })
+      if (result.error) {
+        toast.error(result.error.message ?? "Gagal membuat password.")
         return
       }
-      toast.success("Password berhasil dibuat.")
+
       setHasPassword(true)
       setNewPassword("")
       setConfirmPassword("")
+      toast.success("Password berhasil dibuat.")
     } catch {
       toast.error("Gagal membuat password. Silakan coba lagi.")
     } finally {
@@ -130,11 +134,15 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
 
     setIsSaving(true)
     try {
-      await authClient.changePassword({
+      const { error: apiError } = await authClient.changePassword({
         currentPassword,
         newPassword,
         revokeOtherSessions: signOutOthers,
       })
+      if (apiError) {
+        toast.error(apiError.message ?? "Gagal memperbarui password.")
+        return
+      }
 
       if (signOutOthers) {
         toast.success("Password berhasil diatur. Silakan masuk kembali.")
@@ -158,6 +166,10 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
   }
 
   const handleEnable2FA = async () => {
+    if (!hasPassword) {
+      toast.error("Buat password dulu untuk mengaktifkan 2FA.")
+      return
+    }
     if (!twoFAPassword) {
       toast.error("Password wajib diisi untuk mengaktifkan 2FA.")
       return
@@ -189,6 +201,10 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
   }
 
   const handleDisable2FA = async () => {
+    if (!hasPassword) {
+      toast.error("Buat password dulu untuk menonaktifkan 2FA.")
+      return
+    }
     if (!twoFAPassword) {
       toast.error("Password wajib diisi untuk menonaktifkan 2FA.")
       return
@@ -221,21 +237,21 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
         <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">Password</div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800">
         {!hasPassword ? (
-          /* OAuth-only user: no credential account yet — inline set password form */
+          /* OAuth-only user: create credential password inline */
           <div className="w-full">
-            <div className="mb-4 flex items-center gap-2">
-              <span className="text-interface text-xs text-muted-foreground">Password</span>
-              <span className="text-interface text-xs text-muted-foreground">—</span>
-              <span className="text-interface text-xs text-muted-foreground">Belum diatur</span>
+            <div className="mb-4 text-interface text-sm font-semibold">
+              Buat password
             </div>
             <div className="flex flex-col gap-5">
               <div className="flex w-full flex-1 flex-col gap-1.5">
-                <label className="sr-only" htmlFor="set-new-password">Password baru</label>
+                <label className="sr-only" htmlFor="create-password-new">
+                  Password baru
+                </label>
                 <div className="relative flex items-center">
                   <input
-                    id="set-new-password"
+                    id="create-password-new"
                     type={showNewPassword ? "text" : "password"}
-                    placeholder="Password baru (min. 8 karakter)"
+                    placeholder="Password baru"
                     className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
@@ -246,15 +262,21 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
                     onClick={() => setShowNewPassword((prev) => !prev)}
                     aria-label="Tampilkan password baru"
                   >
-                    {showNewPassword ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showNewPassword ? (
+                      <EyeClosed className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
               <div className="flex w-full flex-1 flex-col gap-1.5">
-                <label className="sr-only" htmlFor="set-confirm-password">Konfirmasi password</label>
+                <label className="sr-only" htmlFor="create-password-confirm">
+                  Konfirmasi password
+                </label>
                 <div className="relative flex items-center">
                   <input
-                    id="set-confirm-password"
+                    id="create-password-confirm"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Konfirmasi password"
                     className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
@@ -267,17 +289,26 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
                     aria-label="Tampilkan konfirmasi password"
                   >
-                    {showConfirmPassword ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirmPassword ? (
+                      <EyeClosed className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
             </div>
-            <div className="mt-5 flex justify-end border-t border-border pt-4">
+            <p className="mt-3 text-narrative text-xs text-muted-foreground">
+              {isLoadingAccounts
+                ? "Memuat status akun..."
+                : "Setelah password dibuat, kamu bisa langsung ubah password dari tab ini."}
+            </p>
+            <div className="mt-5 flex justify-end gap-4 border-t border-border pt-4 max-sm:flex-col-reverse max-sm:items-stretch">
               <button
                 className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-4 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
-                onClick={handleSetPassword}
-                disabled={isSettingPassword || !newPassword || !confirmPassword}
+                onClick={handleCreatePassword}
+                disabled={isSettingPassword || isLoadingAccounts}
               >
                 <span
                   className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
@@ -455,9 +486,8 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
         </div>
       </div>
 
-      {/* 2FA Section — only show for users with password */}
-      {hasPassword && (
-        <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
+      {/* 2FA Section — visible for all users */}
+      <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
           <div className="border-b border-slate-300 dark:border-slate-600 px-4 py-3 text-narrative text-md font-medium">
             Verifikasi 2 Langkah (2FA)
           </div>
@@ -482,7 +512,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
                   className="group relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-action px-2 py-1 text-narrative text-xs font-medium border border-transparent bg-slate-800 text-slate-100 hover:text-slate-800 hover:border-slate-600 dark:bg-slate-100 dark:text-slate-800 dark:hover:text-slate-100 dark:hover:border-slate-400 transition-colors focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
                   type="button"
                   onClick={() => setShow2FAPasswordInput(true)}
-                  disabled={is2FALoading}
+                  disabled={is2FALoading || !hasPassword}
                 >
                   <span
                     className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
@@ -497,13 +527,15 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
 
             {/* Description */}
             <p className="mt-2 text-narrative text-xs text-muted-foreground">
-              {is2FAEnabled
+              {!hasPassword
+                ? "Buat password dulu untuk mengaktifkan 2FA."
+                : is2FAEnabled
                 ? "Two-factor authentication (2FA) aktif. Setiap kali masuk dengan email dan password, kode verifikasi akan dikirim ke email kamu sebagai lapisan keamanan tambahan."
                 : "Two-factor authentication (2FA) sedang nonaktif. Kami sangat menyarankan untuk mengaktifkannya kembali demi keamanan akunmu."}
             </p>
 
             {/* Password input for enable/disable */}
-            {show2FAPasswordInput && (
+            {show2FAPasswordInput && hasPassword && (
               <div className="mt-4 border-t border-border pt-4">
                 <p className="text-interface text-xs font-medium mb-3">
                   {is2FAEnabled
@@ -519,7 +551,11 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
                       onChange={(e) => setTwoFAPassword(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          is2FAEnabled ? handleDisable2FA() : handleEnable2FA()
+                          if (is2FAEnabled) {
+                            handleDisable2FA()
+                          } else {
+                            handleEnable2FA()
+                          }
                         }
                       }}
                       className="h-10 w-full rounded-md border border-border bg-background dark:bg-slate-900 dark:border-slate-700 px-3 pr-10 font-mono text-sm text-foreground dark:text-slate-100 placeholder:font-mono placeholder:text-muted-foreground dark:placeholder:text-slate-300 transition-colors focus:outline-none focus:ring-0 focus:border-border dark:focus:border-slate-600"
@@ -602,8 +638,7 @@ export function SecurityTab({ session, isLoading }: SecurityTabProps) {
               </div>
             )}
           </div>
-        </div>
-      )}
+      </div>
 
       {/* Connected Accounts Section */}
       <div className="mb-4 overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">

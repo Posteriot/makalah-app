@@ -16,6 +16,7 @@ import {
 } from "./authEmails";
 
 import { twoFactorCrossDomainBypass } from "./twoFactorBypass";
+import { createPasswordEndpoint } from "./createPasswordEndpoint";
 
 // SITE_URL = primary frontend origin (production) — for crossDomain redirects
 // CONVEX_SITE_URL = Convex HTTP actions URL (built-in) — where BetterAuth API runs
@@ -103,6 +104,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
           },
         },
       }),
+      createPasswordEndpoint(),
       twoFactorCrossDomainBypass(),
     ],
   }) satisfies BetterAuthOptions;
