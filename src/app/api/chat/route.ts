@@ -1548,6 +1548,56 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                     }
                 },
             }),
+            readArtifact: tool({
+                description: `Baca isi lengkap sebuah artifact berdasarkan ID-nya. Gunakan tool ini jika perlu merujuk konten artifact secara utuh (bukan hanya ringkasan 500 karakter di system prompt).
+
+USE THIS TOOL WHEN:
+✓ Perlu membaca ulang artifact dari stage sebelumnya sebagai rujukan
+✓ User bertanya tentang isi spesifik sebuah artifact
+✓ Perlu mengecek konten lengkap sebelum menulis revisi atau stage berikutnya
+✓ Perlu memverifikasi detail yang mungkin ter-truncate di ringkasan
+
+Tool ini mengembalikan: title, type, version, content lengkap, dan sources (jika ada).
+Artifact ID bisa didapat dari RINGKASAN ARTIFACT di system prompt atau dari getCurrentPaperState().`,
+                inputSchema: z.object({
+                    artifactId: z.string()
+                        .describe("ID artifact yang ingin dibaca."),
+                }),
+                execute: async ({ artifactId }) => {
+                    try {
+                        const artifact = await fetchQueryWithToken(api.artifacts.get, {
+                            artifactId: artifactId as Id<"artifacts">,
+                            userId: userId as Id<"users">,
+                        })
+
+                        if (!artifact) {
+                            return {
+                                success: false,
+                                error: "Artifact tidak ditemukan atau tidak memiliki akses.",
+                            }
+                        }
+
+                        return {
+                            success: true,
+                            artifactId: artifact._id,
+                            title: artifact.title,
+                            type: artifact.type,
+                            version: artifact.version,
+                            content: artifact.content,
+                            format: artifact.format ?? null,
+                            sources: artifact.sources ?? [],
+                            createdAt: artifact.createdAt,
+                        }
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : String(error)
+                        console.error("[readArtifact] Failed:", errorMessage)
+                        return {
+                            success: false,
+                            error: `Gagal membaca artifact: ${errorMessage}`,
+                        }
+                    }
+                },
+            }),
             renameConversationTitle: tool({
                 description: `Ganti judul conversation secara final ketika kamu benar-benar sudah yakin dengan tujuan utama user.
 

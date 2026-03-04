@@ -130,17 +130,17 @@ export const getPaperModeSystemPrompt = async (
             );
 
             // Map artifactId -> artifact metadata for quick lookup
-            const artifactMap = new Map<string, { content: string; version: number; title: string }>();
+            const artifactMap = new Map<string, { content: string; version: number; title: string; artifactId: string }>();
             for (const a of allArtifacts) {
                 // Only include non-invalidated, latest-version artifacts
                 if (!a.invalidatedAt) {
-                    artifactMap.set(String(a._id), { content: a.content, version: a.version, title: a.title });
+                    artifactMap.set(String(a._id), { content: a.content, version: a.version, title: a.title, artifactId: String(a._id) });
                 }
             }
 
             // Collect artifacts from completed (validated) stages
             const stageData = session.stageData as Record<string, { artifactId?: string; validatedAt?: number; superseded?: boolean }>;
-            const completedArtifacts: Array<{ stageLabel: string; content: string; version: number; title: string }> = [];
+            const completedArtifacts: Array<{ stageLabel: string; content: string; version: number; title: string; artifactId: string }> = [];
 
             for (const stageId of STAGE_ORDER) {
                 // Skip current stage (not yet completed)
@@ -157,6 +157,7 @@ export const getPaperModeSystemPrompt = async (
                         content: artifact.content,
                         version: artifact.version,
                         title: artifact.title,
+                        artifactId: artifact.artifactId,
                     });
                 }
             }
