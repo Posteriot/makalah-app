@@ -9,11 +9,12 @@ export type SearchExecutionMode =
 export function resolveSearchExecutionMode(input: {
   searchRequired: boolean
   primaryToolReady: boolean
+  primaryEnabled: boolean
   fallbackOnlineEnabled: boolean
   fallbackProvider: string
 }): SearchExecutionMode {
   if (!input.searchRequired) return "off"
-  if (input.primaryToolReady) return "primary_google_search"
+  if (input.primaryToolReady && input.primaryEnabled) return "primary_google_search"
   if (input.fallbackOnlineEnabled && input.fallbackProvider === "openrouter") {
     return "fallback_online_search"
   }

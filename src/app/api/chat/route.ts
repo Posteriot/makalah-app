@@ -1888,6 +1888,7 @@ Aturan:
             const searchExecutionMode = resolveSearchExecutionMode({
                 searchRequired: searchRequestedByPolicy,
                 primaryToolReady: primaryGoogleSearchReady,
+                primaryEnabled: webSearchConfig.primaryEnabled,
                 fallbackOnlineEnabled: webSearchConfig.fallbackEnabled,
                 fallbackProvider: modelNames.fallback.provider,
             })
