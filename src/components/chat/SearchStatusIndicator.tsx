@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, CheckCircle, XmarkCircle } from "iconoir-react"
+import { Globe, WarningCircle } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 export type SearchStatus = "searching" | "done" | "off" | "error"
@@ -11,96 +11,59 @@ interface SearchStatusIndicatorProps {
     message?: string
 }
 
-/**
- * SearchStatusIndicator - Full-width status bars
- *
- * Mockup compliance:
- * - Searching: BLUE bg + spinner + "Searching for..." or "Running literature search..."
- * - Done/Success: GREEN bg + checkmark + "Literature search completed"
- * - Error: RED bg + X icon + "Search failed - API timeout"
- * - Layout: Full-width bars with left border
- */
+const SHIMMER_TEXTS = new Set(["Pencarian internet...", "Pencarian web"])
+
 export function SearchStatusIndicator({ status, message }: SearchStatusIndicatorProps) {
-    // Don't render for "off" status
     if (status === "off") return null
 
-    const config = getStatusConfig(status, message)
+    const isError = status === "error"
+    const isProcessing = status === "searching" || status === "done"
+    const text = resolveText(status, message)
 
     return (
         <div
             className={cn(
-                "flex items-center gap-2.5 px-1 py-1",
-                "text-[11px] font-mono tracking-wide transition-all duration-300",
-                "animate-in fade-in slide-in-from-left-2",
-                // Status-specific text/icon tones only (no bg/border)
-                config.containerClass
+                "flex w-fit items-center gap-2 px-1 py-1",
+                "text-[11px] font-mono tracking-wide",
+                "transition-all duration-300 animate-in fade-in zoom-in-95",
+                isError
+                    ? "text-[var(--chat-destructive)]"
+                    : "text-[var(--chat-muted-foreground)]"
             )}
             role="status"
-            aria-label={config.text}
+            aria-label={text}
         >
-            {/* Icon */}
-            <span className={cn("flex-shrink-0", config.iconClass)}>
-                {config.icon}
-            </span>
-
-            {/* Text */}
-            {status === "searching" ? (
-                <span className={cn("inline-flex items-center gap-1.5", config.textClass)}>
-                    <span>{config.text}</span>
-                    <span className="inline-flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-thinking-dot thinking-dot-1" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-thinking-dot thinking-dot-2" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-thinking-dot thinking-dot-3" />
-                    </span>
-                </span>
-            ) : (
-                <span className={config.textClass}>
-                    {config.text}
-                </span>
+            {isProcessing && (
+                <Globe className="h-4 w-4 animate-pulse text-current" />
             )}
+            {isError && <WarningCircle className="h-4 w-4" />}
+            <StatusText text={text} />
         </div>
     )
 }
 
-/**
- * Get configuration based on status
- */
-function getStatusConfig(status: SearchStatus, customMessage?: string) {
-    switch (status) {
-        case "searching":
-            return {
-                icon: <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />,
-                text: customMessage || "Pencarian",
-                containerClass: "",
-                iconClass: "text-[var(--chat-muted-foreground)]",
-                textClass: "text-[var(--chat-muted-foreground)]",
-            }
+function StatusText({ text }: { text: string }) {
+    if (!SHIMMER_TEXTS.has(text)) return <span>{text}</span>
 
-        case "done":
-            return {
-                icon: <CheckCircle className="h-4 w-4" />,
-                text: customMessage || "Pencarian selesai",
-                containerClass: "",
-                iconClass: "text-[var(--chat-success)]",
-                textClass: "text-[var(--chat-success)]",
-            }
+    return (
+        <span className="chat-search-shimmer">
+            <span>{text}</span>
+            <span aria-hidden="true" className="chat-search-shimmer-overlay">
+                {text}
+            </span>
+        </span>
+    )
+}
 
-        case "error":
-            return {
-                icon: <XmarkCircle className="h-4 w-4" />,
-                text: customMessage || "Pencarian gagal",
-                containerClass: "",
-                iconClass: "text-[var(--chat-destructive)]",
-                textClass: "text-[var(--chat-destructive)]",
-            }
-
-        default:
-            return {
-                icon: <Search className="h-4 w-4" />,
-                text: "Pencarian",
-                containerClass: "",
-                iconClass: "text-[var(--chat-muted-foreground)]",
-                textClass: "text-[var(--chat-muted-foreground)]",
-            }
+function resolveText(status: SearchStatus, customMessage?: string): string {
+    if (customMessage && customMessage.trim().length > 0) {
+        const normalized = customMessage.trim().toLowerCase()
+        if (status === "searching" && normalized === "pencarian") {
+            return "Pencarian internet..."
+        }
+        return customMessage
     }
+    if (status === "searching") return "Pencarian internet..."
+    if (status === "error") return "Galat pada pencarian web"
+    return "Pencarian web"
 }

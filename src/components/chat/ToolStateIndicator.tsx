@@ -11,6 +11,8 @@ interface ToolStateIndicatorProps {
     persistUntilDone?: boolean
 }
 
+const SHIMMER_TEXTS = new Set(["Pencarian web"])
+
 const TOOL_LABEL_MAP: Record<string, string> = {
     google_search: "Pencarian web",
     startPaperSession: "Memulai sesi paper",
@@ -107,7 +109,20 @@ export function ToolStateIndicator({ toolName, state, errorText, persistUntilDon
                 )
             )}
             {isError && <WarningCircle className="h-4 w-4" />}
-            <span>{text}</span>
+            <StatusText text={text} />
         </div>
+    )
+}
+
+function StatusText({ text }: { text: string }) {
+    if (!SHIMMER_TEXTS.has(text)) return <span>{text}</span>
+
+    return (
+        <span className="chat-search-shimmer">
+            <span>{text}</span>
+            <span aria-hidden="true" className="chat-search-shimmer-overlay">
+                {text}
+            </span>
+        </span>
     )
 }

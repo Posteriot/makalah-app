@@ -794,6 +794,15 @@
   }
 }
 
+@keyframes chat-search-text-shimmer {
+  0% {
+    background-position: 220% 0;
+  }
+  100% {
+    background-position: -220% 0;
+  }
+}
+
 [data-chat-scope] .animate-chat-thought-breathe {
   animation: chat-thought-breathe 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
@@ -834,6 +843,29 @@
   transform: scale(1);
 }
 
+[data-chat-scope] .chat-search-shimmer {
+  position: relative;
+  display: inline-block;
+}
+
+[data-chat-scope] .chat-search-shimmer-overlay {
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 35%,
+    rgb(248 250 252) 50%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: chat-search-text-shimmer 2.3s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-chat-scope] .animate-chat-thought-breathe,
   [data-chat-scope] .animate-chat-thought-dot,
@@ -842,5 +874,10 @@
   [data-chat-scope] .animate-chat-pause-ring {
     animation: none;
     opacity: 0.6;
+  }
+
+  [data-chat-scope] .chat-search-shimmer-overlay {
+    animation: none;
+    background-position: 50% 0;
   }
 }
