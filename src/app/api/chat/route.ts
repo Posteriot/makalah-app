@@ -1896,7 +1896,7 @@ Aturan:
                     // Priority 1b: Search done BUT research still incomplete → auto-enable search
                     searchRequestedByPolicy = true
                     activeStageSearchReason = "search_done_but_research_incomplete"
-                    activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement!)
+                    activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement ?? "")
                 } else if (userWantsToSave) {
                     // Priority 2: User explicitly wants to save → no search
                     searchRequestedByPolicy = false
@@ -1919,7 +1919,7 @@ Aturan:
                     // Priority 5: Research incomplete → suggest search (but don't force if user doesn't want)
                     searchRequestedByPolicy = true
                     activeStageSearchReason = "research_incomplete"
-                    activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement!)
+                    activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement ?? "")
                 } else {
                     // Priority 5: Default → FUNCTION TOOLS (safer default)
                     searchRequestedByPolicy = false
@@ -3490,8 +3490,6 @@ TIPS PENCARIAN:
                                     normalizedCitations = normalizeCitations(preferredMetadata, 'openrouter')
                                 }
 
-                                sourceCount = Math.max(sourceCount, normalizedCitations.length)
-
                                 // Pre-filter garbage URLs before low-value filter
                                 const nonGarbageCitations = normalizedCitations.filter(c => !isGarbageUrl(c.url))
 
@@ -3508,6 +3506,7 @@ TIPS PENCARIAN:
                                     if (hasNonProxy) return nonGarbageCitations.filter(c => !isVertexProxyUrl(c.url))
                                     return nonGarbageCitations
                                 })()
+                                sourceCount = Math.max(sourceCount, filteredCitations.length)
                                 const hasAnyCitations = filteredCitations.length > 0
                                 closeSearchStatus(hasAnyCitations ? "done" : "off")
 
