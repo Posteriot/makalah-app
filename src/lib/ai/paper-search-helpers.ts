@@ -194,6 +194,16 @@ export const isExplicitMoreSearchRequest = (text: string): boolean => {
         // Explicit command: "cari tentang X", "carikan X"
         /\bcari(kan)?\s+tentang\b/,
         /\bcari(kan)?\s+\w{3,}/,  // "cari [topic]" with at least 3 chars
+        // "butuh/perlu lebih banyak sumber/referensi"
+        /\b(butuh|perlu)\s+(lebih\s+banyak\s+)?(sumber|referensi|literatur)\b/,
+        // "perlu referensi tambahan"
+        /\b(perlu|butuh)\s+referensi\s+tambahan\b/,
+        // "cek literatur/referensi/sumber"
+        /\bcek\s+(literatur|referensi|sumber)\b/,
+        // "temukan sumber/referensi"
+        /\b(temukan|find)\s+(sumber|referensi)\b/,
+        // "gali lebih lanjut"
+        /\bgali\s+(lebih|lanjut)\b/,
     ]
     return moreSearchPatterns.some(p => p.test(normalized))
 }
