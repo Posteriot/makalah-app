@@ -128,9 +128,15 @@ async function getProviderConfig() {
  * Get web search configuration from database
  * Used by route.ts to determine if web search should be enabled
  *
+ * Forces cache invalidation before fetch because:
+ * - Called once per chat request (negligible cost vs LLM call)
+ * - Web search toggles are safety-critical and must reflect admin changes immediately
+ * - configCache TTL (5 min) caused toggle changes to be silently ignored
+ *
  * @returns Web search config with defaults
  */
 export async function getWebSearchConfig() {
+  configCache.invalidate()
   const config = await configCache.get()
 
   if (!config) {

@@ -31,6 +31,7 @@ import {
     PAPER_TOOLS_ONLY_NOTE,
     getResearchIncompleteNote,
     getFunctionToolsModeNote,
+    STAGE_RESEARCH_REQUIREMENTS,
 } from "@/lib/ai/paper-search-helpers"
 import {
     checkContextBudget,
@@ -827,27 +828,33 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             switch (session.currentStage) {
                 case "gagasan": {
                     const data = stageData.gagasan as { referensiAwal?: unknown[] } | undefined
-                    return Array.isArray(data?.referensiAwal) && data?.referensiAwal.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.gagasan?.minCount ?? 1
+                    return Array.isArray(data?.referensiAwal) && data.referensiAwal.length >= minCount
                 }
                 case "topik": {
                     const data = stageData.topik as { referensiPendukung?: unknown[] } | undefined
-                    return Array.isArray(data?.referensiPendukung) && data?.referensiPendukung.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.topik?.minCount ?? 1
+                    return Array.isArray(data?.referensiPendukung) && data.referensiPendukung.length >= minCount
                 }
                 case "tinjauan_literatur": {
                     const data = stageData.tinjauan_literatur as { referensi?: unknown[] } | undefined
-                    return Array.isArray(data?.referensi) && data?.referensi.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.tinjauan_literatur?.minCount ?? 1
+                    return Array.isArray(data?.referensi) && data.referensi.length >= minCount
                 }
                 case "pendahuluan": {
                     const data = stageData.pendahuluan as { sitasiAPA?: unknown[] } | undefined
-                    return Array.isArray(data?.sitasiAPA) && data?.sitasiAPA.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.pendahuluan?.minCount ?? 1
+                    return Array.isArray(data?.sitasiAPA) && data.sitasiAPA.length >= minCount
                 }
                 case "diskusi": {
                     const data = stageData.diskusi as { sitasiTambahan?: unknown[] } | undefined
-                    return Array.isArray(data?.sitasiTambahan) && data?.sitasiTambahan.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.diskusi?.minCount ?? 1
+                    return Array.isArray(data?.sitasiTambahan) && data.sitasiTambahan.length >= minCount
                 }
                 case "daftar_pustaka": {
                     const data = stageData.daftar_pustaka as { entries?: unknown[] } | undefined
-                    return Array.isArray(data?.entries) && data?.entries.length > 0
+                    const minCount = STAGE_RESEARCH_REQUIREMENTS.daftar_pustaka?.minCount ?? 1
+                    return Array.isArray(data?.entries) && data.entries.length >= minCount
                 }
                 default:
                     return null
@@ -922,7 +929,7 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
         // 1. stageData evidence is AUTHORITATIVE (if exists, search is definitely done)
         // 2. For ACTIVE stages without stageData evidence, check RECENT messages (last 1 turn)
         //    - This catches "search done but not yet saved" scenario
-        //    - Limited to 1 turn to avoid false positives from old stage citations
+        //    - Checks last 3 assistant messages for sources field or explicit search-done phrases
         // 3. For PASSIVE stages, check more messages (last 3) as fallback
         const hasPreviousSearchResults = (msgs: unknown[], session: {
             currentStage?: string
@@ -939,18 +946,22 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             // This catches "search done but save tool failed" scenario without forcing repeated search loops.
             if (stageEvidence === false) {
                 const recentAssistantMsgs = msgs
-                    .filter((m): m is { role: string; content?: string } =>
+                    .filter((m): m is { role: string; content?: string; sources?: unknown } =>
                         typeof m === "object" && m !== null && "role" in m && (m as { role: string }).role === "assistant"
                     )
                     .slice(-3)
 
                 for (const msg of recentAssistantMsgs) {
                     const content = typeof msg.content === "string" ? msg.content : ""
-                    // Check for citations / search evidence in recent messages
-                    if (/\[\d+(?:,\s*\d+)*\]/.test(content)) return true
-                    if (/berdasarkan hasil pencarian/i.test(content)) return true
-                    if (/menurut .+\(\d{4}\)/i.test(content)) return true
+                    // Strong signal: message has actual sources data from web search
+                    const hasSources = "sources" in msg
+                        && Array.isArray((msg as { sources?: unknown }).sources)
+                        && ((msg as { sources: unknown[] }).sources).length > 0
+                    if (hasSources) return true
+                    // Weak signal: only trust explicit AI search-done phrases
+                    // (removed: [N] pattern and APA citation pattern — high false positive rate)
                     if (/saya telah melakukan pencarian/i.test(content)) return true
+                    if (/berdasarkan hasil pencarian/i.test(content)) return true
                     if (/rangkuman temuan/i.test(content)) return true
                 }
                 return false
@@ -958,18 +969,22 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
 
             // PASSIVE/unknown stage (stageEvidence === null) → check more messages as fallback
             const recentAssistantMsgs = msgs
-                .filter((m): m is { role: string; content?: string } =>
+                .filter((m): m is { role: string; content?: string; sources?: unknown } =>
                     typeof m === "object" && m !== null && "role" in m && (m as { role: string }).role === "assistant"
                 )
-                .slice(-3) // Check last 3 assistant messages
+                .slice(-3)
 
             for (const msg of recentAssistantMsgs) {
                 const content = typeof msg.content === "string" ? msg.content : ""
-                // Check for inline citation markers [1], [2], [1,2], [1,2,3], etc.
-                if (/\[\d+(?:,\s*\d+)*\]/.test(content)) return true
-                // Check for common patterns indicating search was done
+                // Strong signal: message has actual sources data from web search
+                const hasSources = "sources" in msg
+                    && Array.isArray((msg as { sources?: unknown }).sources)
+                    && ((msg as { sources: unknown[] }).sources).length > 0
+                if (hasSources) return true
+                // Weak signal: explicit AI search-done phrases only
                 if (/berdasarkan hasil pencarian/i.test(content)) return true
-                if (/menurut .+\(\d{4}\)/i.test(content)) return true // APA citation pattern
+                if (/saya telah melakukan pencarian/i.test(content)) return true
+                if (/rangkuman temuan/i.test(content)) return true
             }
             return false
         }
@@ -1740,6 +1755,70 @@ Aturan:
             return createUIMessageStreamResponse({ stream })
         }
 
+        const isVertexProxyUrl = (raw: string) => {
+            try {
+                const u = new URL(raw)
+                const host = u.hostname.toLowerCase()
+                return host === "vertexaisearch.cloud.google.com" || host.startsWith("vertexaisearch.cloud.google.")
+            } catch {
+                return false
+            }
+        }
+
+        const isLowValueCitationUrl = (raw: string) => {
+            try {
+                const u = new URL(raw)
+                const host = u.hostname.toLowerCase()
+                const path = u.pathname || "/"
+                const trimmedPath = path.replace(/\/+$/, "") || "/"
+                const segments = trimmedPath.split("/").filter(Boolean)
+
+                if (path === "/" || path === "") return true
+                if (/(^|\/)(tag|tags|topik|topic|search)(\/|$)/i.test(path)) return true
+                if (segments.length === 1) {
+                    const only = segments[0].toLowerCase()
+                    if (["berita", "news", "artikel", "articles", "posts", "post"].includes(only)) return true
+                }
+                if ((host === "google.com" || host === "www.google.com") && path === "/search") return true
+
+                return false
+            } catch {
+                return false
+            }
+        }
+
+        const KNOWN_GENERIC_TLDS = new Set([
+            "com", "net", "org", "edu", "gov", "mil", "int",
+            "io", "ai", "co", "app", "dev", "info", "biz", "me",
+            "tv", "online", "site", "web", "cloud", "tech", "store",
+            "news", "blog", "media", "digital", "agency", "studio",
+            "design", "academy", "health", "science", "finance",
+            "global", "world", "today", "live", "pro", "plus",
+            "one", "top", "xyz", "space", "page", "link",
+        ])
+
+        const isGarbageUrl = (raw: string): boolean => {
+            try {
+                const u = new URL(raw)
+                const host = u.hostname.toLowerCase()
+                if (!host || !host.includes(".")) return true
+                if (u.protocol !== "http:" && u.protocol !== "https:") return true
+
+                const labels = host.split(".")
+                const tld = labels[labels.length - 1]
+
+                if (!/^[a-z]+$/.test(tld)) return true
+
+                // All 2-letter TLDs are valid IANA country codes
+                if (tld.length === 2) return false
+
+                // 3+ letter TLDs: check against known-good list
+                return !KNOWN_GENERIC_TLDS.has(tld)
+            } catch {
+                return true
+            }
+        }
+
         try {
             const model = await getGatewayModel()
 
@@ -1756,7 +1835,8 @@ Aturan:
             const recentForRouter = modelMessages.slice(-8)
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
-            const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession) || hasRecentSourcesInDb
+            const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
+                || (!paperSession && hasRecentSourcesInDb)
             const explicitSyncRequest = !!paperModePrompt
                 && isExplicitSyncRequest(lastUserContent)
 
@@ -1801,8 +1881,8 @@ Aturan:
 
                 // Decision logic (deterministic, prioritized)
                 // Key insight: User intent (save/search) should be respected over automatic decisions
-                if (searchAlreadyDone) {
-                    // Priority 1: Search already done - only enable if user EXPLICITLY wants MORE
+                if (searchAlreadyDone && !incomplete) {
+                    // Priority 1a: Search done AND research complete → only enable if user explicitly wants more
                     const wantsMoreSearch = isExplicitMoreSearchRequest(lastUserContent)
                     if (wantsMoreSearch) {
                         searchRequestedByPolicy = true
@@ -1812,6 +1892,11 @@ Aturan:
                         activeStageSearchReason = "search_already_done"
                         activeStageSearchNote = getFunctionToolsModeNote("Search selesai")
                     }
+                } else if (searchAlreadyDone && incomplete) {
+                    // Priority 1b: Search done BUT research still incomplete → auto-enable search
+                    searchRequestedByPolicy = true
+                    activeStageSearchReason = "search_done_but_research_incomplete"
+                    activeStageSearchNote = getResearchIncompleteNote(currentStage as string, requirement!)
                 } else if (userWantsToSave) {
                     // Priority 2: User explicitly wants to save → no search
                     searchRequestedByPolicy = false
@@ -1888,9 +1973,13 @@ Aturan:
             const searchExecutionMode = resolveSearchExecutionMode({
                 searchRequired: searchRequestedByPolicy,
                 primaryToolReady: primaryGoogleSearchReady,
+                primaryEnabled: webSearchConfig.primaryEnabled,
                 fallbackOnlineEnabled: webSearchConfig.fallbackEnabled,
                 fallbackProvider: modelNames.fallback.provider,
             })
+            console.log(
+                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}, primaryReady=${primaryGoogleSearchReady}, primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
+            )
             let fallbackSearchToolReason: GoogleSearchToolUnavailableReason | undefined
             let searchUnavailableReasonCode: string | undefined
 
@@ -2445,38 +2534,6 @@ TIPS PENCARIAN:
                                         .filter((item): item is SourceWithChunk => !!item)
                                 }
 
-                                const isVertexProxyUrl = (raw: string) => {
-                                    try {
-                                        const u = new URL(raw)
-                                        const host = u.hostname.toLowerCase()
-                                        return host === "vertexaisearch.cloud.google.com" || host.startsWith("vertexaisearch.cloud.google.")
-                                    } catch {
-                                        return false
-                                    }
-                                }
-
-                                const isLowValueCitationUrl = (raw: string) => {
-                                    try {
-                                        const u = new URL(raw)
-                                        const host = u.hostname.toLowerCase()
-                                        const path = u.pathname || "/"
-                                        const trimmedPath = path.replace(/\/+$/, "") || "/"
-                                        const segments = trimmedPath.split("/").filter(Boolean)
-
-                                        if (path === "/" || path === "") return true
-                                        if (/(^|\/)(tag|tags|topik|topic|search)(\/|$)/i.test(path)) return true
-                                        if (segments.length === 1) {
-                                            const only = segments[0].toLowerCase()
-                                            if (["berita", "news", "artikel", "articles", "posts", "post"].includes(only)) return true
-                                        }
-                                        if ((host === "google.com" || host === "www.google.com") && path === "/search") return true
-
-                                        return false
-                                    } catch {
-                                        return false
-                                    }
-                                }
-
                                 const canonicalizeCitationUrl = (raw: string) => {
                                     try {
                                         const u = new URL(raw)
@@ -2590,7 +2647,7 @@ TIPS PENCARIAN:
                                                 const uri = chunk.web?.uri
                                                 if (typeof uri === "string" && uri.length > 0) {
                                                     const normalizedUrl = normalizeWebSearchUrl(uri)
-                                                    const title = typeof chunk.web?.title === "string" ? chunk.web.title : normalizedUrl
+                                                    const title = (typeof chunk.web?.title === "string" && chunk.web.title.trim()) || normalizedUrl
                                                     return {
                                                         url: normalizedUrl,
                                                         title,
@@ -2622,11 +2679,27 @@ TIPS PENCARIAN:
                                         sources = [...sources, ...streamedSources]
                                     }
 
+                                    // Layer 1: Structural pre-filter — remove garbage URLs before network calls
+                                    if (sources.length > 0) {
+                                        const preGarbageCount = sources.length
+                                        sources = sources.filter((s) => !isGarbageUrl(s.url))
+                                        if (sources.length < preGarbageCount) {
+                                            console.warn(`[Citations] Removed ${preGarbageCount - sources.length} garbage URL(s) via structural pre-filter`)
+                                        }
+                                    }
+
                                     if (sources.length > 0) {
                                         sources = await enrichSourcesWithFetchedTitles(sources, {
                                             concurrency: 4,
                                             timeoutMs: 2500,
                                         })
+
+                                        // Layer 2: Enrichment-based post-filter — remove DNS-unreachable sources
+                                        const preReachCount = sources.length
+                                        sources = sources.filter((s) => !(s as { _unreachable?: true })._unreachable)
+                                        if (sources.length < preReachCount) {
+                                            console.warn(`[Citations] Removed ${preReachCount - sources.length} unreachable source(s) via enrichment filter`)
+                                        }
 
                                         const deduped = new Map<string, SourceWithChunk>()
                                         for (const src of sources) {
@@ -3417,16 +3490,33 @@ TIPS PENCARIAN:
                                     normalizedCitations = normalizeCitations(preferredMetadata, 'openrouter')
                                 }
 
-                                const hasAnyCitations = normalizedCitations.length > 0
                                 sourceCount = Math.max(sourceCount, normalizedCitations.length)
+
+                                // Pre-filter garbage URLs before low-value filter
+                                const nonGarbageCitations = normalizedCitations.filter(c => !isGarbageUrl(c.url))
+
+                                const filteredCitations = (() => {
+                                    const hasHighValue = nonGarbageCitations.some(
+                                        c => !isVertexProxyUrl(c.url) && !isLowValueCitationUrl(c.url)
+                                    )
+                                    if (hasHighValue) {
+                                        return nonGarbageCitations.filter(
+                                            c => !isVertexProxyUrl(c.url) && !isLowValueCitationUrl(c.url)
+                                        )
+                                    }
+                                    const hasNonProxy = nonGarbageCitations.some(c => !isVertexProxyUrl(c.url))
+                                    if (hasNonProxy) return nonGarbageCitations.filter(c => !isVertexProxyUrl(c.url))
+                                    return nonGarbageCitations
+                                })()
+                                const hasAnyCitations = filteredCitations.length > 0
                                 closeSearchStatus(hasAnyCitations ? "done" : "off")
 
-                                const persistedSources = normalizedCitations.map((citation) => ({
+                                const persistedSources = filteredCitations.map((citation) => ({
                                     url: citation.url,
                                     title: citation.title,
                                     ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),
                                 }))
-                                const fallbackCitationAnchors = normalizedCitations.map((citation, idx) => ({
+                                const fallbackCitationAnchors = filteredCitations.map((citation, idx) => ({
                                     position: typeof citation.endIndex === "number"
                                         ? Math.max(0, citation.endIndex - 1)
                                         : null,

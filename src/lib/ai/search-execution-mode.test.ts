@@ -9,6 +9,7 @@ describe("resolveSearchExecutionMode", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
       primaryToolReady: true,
+      primaryEnabled: true,
       fallbackOnlineEnabled: true,
       fallbackProvider: "openrouter",
     })
@@ -20,6 +21,7 @@ describe("resolveSearchExecutionMode", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
       primaryToolReady: false,
+      primaryEnabled: true,
       fallbackOnlineEnabled: true,
       fallbackProvider: "openrouter",
     })
@@ -31,6 +33,7 @@ describe("resolveSearchExecutionMode", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
       primaryToolReady: false,
+      primaryEnabled: true,
       fallbackOnlineEnabled: false,
       fallbackProvider: "openrouter",
     })
@@ -42,6 +45,7 @@ describe("resolveSearchExecutionMode", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
       primaryToolReady: false,
+      primaryEnabled: true,
       fallbackOnlineEnabled: false,
       fallbackProvider: "vercel-gateway",
     })
@@ -53,11 +57,34 @@ describe("resolveSearchExecutionMode", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: false,
       primaryToolReady: false,
+      primaryEnabled: true,
       fallbackOnlineEnabled: true,
       fallbackProvider: "openrouter",
     })
 
     expect(mode).toBe("off")
+  })
+
+  it("skips primary and falls to fallback when primaryEnabled is false", () => {
+    const mode = resolveSearchExecutionMode({
+      searchRequired: true,
+      primaryToolReady: true,
+      primaryEnabled: false,
+      fallbackOnlineEnabled: true,
+      fallbackProvider: "openrouter",
+    })
+    expect(mode).toBe("fallback_online_search")
+  })
+
+  it("returns blocked when primaryEnabled is false and no fallback", () => {
+    const mode = resolveSearchExecutionMode({
+      searchRequired: true,
+      primaryToolReady: true,
+      primaryEnabled: false,
+      fallbackOnlineEnabled: false,
+      fallbackProvider: "openrouter",
+    })
+    expect(mode).toBe("blocked_unavailable")
   })
 })
 
