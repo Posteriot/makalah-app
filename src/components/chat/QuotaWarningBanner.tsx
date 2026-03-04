@@ -8,6 +8,7 @@ import { useState, useCallback } from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { getEffectiveTier } from "@/lib/utils/subscription"
+import { Button } from "@/components/ui/button"
 
 type BannerType = "warning" | "critical" | "depleted"
 type PreviewTier = "gratis" | "pro" | "bpp"
@@ -142,11 +143,11 @@ export function QuotaWarningBanner({ className, preview }: QuotaWarningBannerPro
   // No banner needed
   if (!bannerType) return null
 
-  // Mechanical Grace: Slate background, Signal Theory borders
+  // Align visual language with quota-rejected chat error UI (without changing banner placement/width).
   const bannerStyles = {
-    warning: "bg-[var(--chat-warning)] border-[color:var(--chat-border)] text-[var(--chat-warning-foreground)]",
-    critical: "bg-[var(--chat-destructive)] border-[color:var(--chat-border)] text-[var(--chat-destructive-foreground)]",
-    depleted: "bg-[var(--chat-destructive)] border-[color:var(--chat-border)] text-[var(--chat-destructive-foreground)]",
+    warning: "bg-[var(--chat-warning)] border-[color:var(--chat-warning)] text-[var(--chat-warning-foreground)]",
+    critical: "bg-[var(--chat-destructive)] border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)]",
+    depleted: "bg-[var(--chat-destructive)] border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)]",
   }
 
   const iconStyles = {
@@ -155,10 +156,13 @@ export function QuotaWarningBanner({ className, preview }: QuotaWarningBannerPro
     depleted: "text-[var(--chat-destructive-foreground)]",
   }
 
-  const linkStyles = {
-    warning: "text-[var(--chat-warning-foreground)]",
-    critical: "text-[var(--chat-destructive-foreground)]",
-    depleted: "text-[var(--chat-destructive-foreground)]",
+  const actionButtonStyles = {
+    warning:
+      "h-7 rounded-action bg-[var(--chat-background)] text-[var(--chat-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-warning)] hover:border-[color:var(--chat-warning)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none",
+    critical:
+      "h-7 rounded-action bg-[var(--chat-background)] dark:bg-[oklch(0.455_0.188_13.697)] text-[var(--chat-foreground)] dark:text-[var(--chat-destructive-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.41_0.159_10.272)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none",
+    depleted:
+      "h-7 rounded-action bg-[var(--chat-background)] dark:bg-[oklch(0.455_0.188_13.697)] text-[var(--chat-foreground)] dark:text-[var(--chat-destructive-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.41_0.159_10.272)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none",
   }
 
   const Icon = bannerType === "depleted" ? WarningTriangle :
@@ -167,24 +171,20 @@ export function QuotaWarningBanner({ className, preview }: QuotaWarningBannerPro
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 px-3 py-2.5 border rounded-action text-sm md:flex-nowrap md:gap-3 md:px-4",
+        "flex flex-wrap items-center gap-2 border rounded-action p-3 text-sm md:flex-nowrap md:gap-3 md:px-4",
         bannerStyles[bannerType],
         className
       )}
     >
       <Icon className={cn("h-4 w-4 flex-shrink-0", iconStyles[bannerType])} />
 
-      <p className="flex-1 basis-full font-mono text-xs md:basis-auto">{message}</p>
+      <p className="flex-1 basis-full text-xs font-sans md:basis-auto">{message}</p>
 
-      <Link
-        href={actionHref}
-        className={cn(
-          "font-mono text-xs font-medium underline underline-offset-2 hover:no-underline whitespace-nowrap",
-          linkStyles[bannerType]
-        )}
-      >
-        {actionText}
-      </Link>
+      <Button asChild variant="outline" size="sm" className={actionButtonStyles[bannerType]}>
+        <Link href={actionHref} className="whitespace-nowrap">
+          {actionText}
+        </Link>
+      </Button>
 
       {bannerType !== "depleted" && (
         <button
