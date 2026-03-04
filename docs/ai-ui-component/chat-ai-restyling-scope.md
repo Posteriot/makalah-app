@@ -36,14 +36,22 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
     - Tombol retry memanggil `handleRegenerate()`.
   - Quota-rejected error overlay (`quota_exceeded`)
     - Banner khusus saat request chat ditolak backend (`HTTP 402`, `error: quota_exceeded`).
-    - Menampilkan copy `Permintaan ditolak: kuota/kredit tidak mencukupi.` + CTA `Beli Kredit`.
+    - Copy + CTA kini mengikuti policy tier:
+      - `gratis`: `Beli Kredit` (`/checkout/bpp`) + `Upgrade ke Pro` (`/checkout/pro`)
+      - `bpp`: `Beli Kredit` (`/checkout/bpp`) + `Upgrade ke Pro` (`/checkout/pro`)
+      - `pro`: `Beli Kredit` (`/checkout/bpp`, canonical topup Pro)
     - Muncul hanya saat error real, bukan preview paksa.
   - `QuotaWarningBanner`
     - Banner billing warning/depleted di bawah top bar chat.
     - Muncul adaptif berdasarkan tier:
       - Gratis/Pro: warning saat kuota tinggi, depleted saat kuota habis.
       - BPP: warning/critical saat kredit menipis, depleted saat kredit habis.
-    - CTA mengarah ke halaman subscription (`/subscription/overview`, `/subscription/upgrade`, `/subscription/plans`) sesuai konteks.
+    - CTA kini policy-driven dan executable sampai checkout:
+      - `gratis` depleted: `Beli Kredit` (`/checkout/bpp`) + `Upgrade ke Pro` (`/checkout/pro`)
+      - `bpp` depleted: `Beli Kredit` (`/checkout/bpp`) + `Upgrade ke Pro` (`/checkout/pro`)
+      - `pro` depleted: `Beli Kredit` (`/checkout/bpp`, canonical topup Pro)
+      - `gratis` warning/critical: `Lihat Opsi` (`/subscription/overview`)
+      - `bpp/pro` warning/critical: `Beli Kredit` (`/checkout/bpp`)
   - Process state machine (internal visual state)
     - `processUi.status`: `submitted` | `streaming` | `ready` | `error` | `stopped`.
     - `processUi.progress`, `elapsedSeconds`, timer interval/hide logic.
@@ -245,7 +253,10 @@ Dokumen ini mendefinisikan scope UI/component yang akan di-restyling khusus untu
 - [x] Error UI saat kirim chat ditolak karena quota (`HTTP 402` + `quota_exceeded`) sudah direstyling untuk desktop.
 - [x] Error UI saat kirim chat ditolak karena quota (`HTTP 402` + `quota_exceeded`) sudah direstyling untuk mobile (teks 2 baris + icon sejajar baris pertama).
 - [x] Mode preview khusus Error UI quota rejection sudah dicabut; banner kembali muncul hanya saat terjadi error quota nyata.
-- [ ] `QuotaWarningBanner` sudah masuk scope interaksi chat, tetapi visualnya **belum** direstyling pada batch ini.
+- [x] `QuotaWarningBanner` sudah direstyling visualnya agar konsisten dengan error UI quota rejection (desktop + mobile, tanpa mengubah layout dasar).
+- [x] `QuotaWarningBanner` + quota-rejected error overlay kini memakai policy resolver terpusat untuk matrix CTA tier (`gratis`/`bpp`/`pro`) dan route canonical checkout.
+- [x] Route canonical CTA `Beli Kredit` untuk tier Pro dikunci ke `/checkout/bpp` (bukan `/subscription/plans`).
+- [x] Mode preview khusus quota banner/error sudah dicabut; visibility kembali ke interaksi nyata.
 
 ## Daftar File Terkait
 - `src/components/chat/ChatWindow.tsx`
