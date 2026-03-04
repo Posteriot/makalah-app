@@ -1879,9 +1879,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 right: "var(--chat-input-pad-x, 5rem)",
               }}
             >
-              <div className="flex items-center gap-2">
-                <WarningCircle className="h-4 w-4" />
-                <span className="text-xs font-sans">Permintaan ditolak: kuota/kredit tidak mencukupi.</span>
+              <div className="flex items-start gap-2">
+                <WarningCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="text-xs font-sans leading-tight">
+                  <span className="block sm:inline">Permintaan ditolak:</span>
+                  <span className="block sm:inline sm:ml-1">kuota/kredit tidak mencukupi.</span>
+                </span>
               </div>
               <Button
                 variant="outline"
