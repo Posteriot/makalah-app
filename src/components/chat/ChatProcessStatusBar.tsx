@@ -81,11 +81,17 @@ export function ChatProcessStatusBar({
               )}
               disabled={!hasSteps}
             >
-              <span className="animate-chat-thought-breathe flex min-w-0 items-baseline gap-1 truncate font-mono text-[11px] leading-snug text-[var(--chat-muted-foreground)]">
+              <span
+                className="flex min-w-0 items-baseline gap-1 truncate font-mono text-[11px] leading-snug text-[var(--chat-foreground)]"
+                style={{ opacity: 0.92 }}
+              >
                 <span className="truncate">{narrativeHeadline ?? "Memproses"}</span>
                 <ThinkingDots />
               </span>
-              <span className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--chat-muted-foreground)] opacity-50">
+              <span
+                className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--chat-foreground)]"
+                style={{ opacity: 0.92 }}
+              >
                 {safeProgress}%
               </span>
             </button>
