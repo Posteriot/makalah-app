@@ -221,6 +221,41 @@
 }
 
 /* ==========================================================================
+ * Chat Component Utilities
+ * Reusable chat-scope styles for portal + in-scope components
+ * ========================================================================== */
+
+[data-chat-scope] [data-slot="button"].chat-validation-approve-button,
+[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button {
+  background-color: var(--chat-success);
+  color: var(--chat-success-foreground);
+  border: none;
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+[data-chat-scope] [data-slot="button"].chat-validation-approve-button:hover,
+[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button:hover {
+  background-color: color-mix(in oklch, var(--chat-success) 88%, black);
+}
+
+[data-chat-scope] [data-slot="button"].chat-validation-approve-button:focus-visible,
+[data-chat-scope] [data-slot="alert-dialog-action"].chat-validation-approve-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--chat-success),
+    0 0 0 3px var(--chat-card);
+}
+
+[data-chat-scope] .chat-rewind-comment-box {
+  background-color: var(--chat-muted);
+}
+
+.dark [data-chat-scope] .chat-rewind-comment-box {
+  background-color: var(--neutral-950);
+}
+
+/* ==========================================================================
  * Auth Token System (Staging)
  * Scoped to [data-auth-scope] for fullpage auth redesign.
  * ========================================================================== */
@@ -791,6 +826,24 @@
   }
 }
 
+@keyframes chat-search-text-shimmer {
+  0% {
+    background-position: 220% 0;
+  }
+  100% {
+    background-position: -220% 0;
+  }
+}
+
+@keyframes chat-progress-fill-shimmer {
+  0% {
+    background-position: 220% 0;
+  }
+  100% {
+    background-position: -220% 0;
+  }
+}
+
 [data-chat-scope] .animate-chat-thought-breathe {
   animation: chat-thought-breathe 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
@@ -831,6 +884,52 @@
   transform: scale(1);
 }
 
+[data-chat-scope] .chat-search-shimmer {
+  position: relative;
+  display: inline-block;
+}
+
+[data-chat-scope] .chat-search-shimmer-overlay {
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 35%,
+    rgb(248 250 252) 50%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: chat-search-text-shimmer 2.3s linear infinite;
+}
+
+[data-chat-scope] .chat-progress-fill-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-chat-scope] .chat-progress-fill-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 35%,
+    rgb(153 246 228) 50%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: chat-progress-fill-shimmer 2.1s linear infinite;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-chat-scope] .animate-chat-thought-breathe,
   [data-chat-scope] .animate-chat-thought-dot,
@@ -839,5 +938,15 @@
   [data-chat-scope] .animate-chat-pause-ring {
     animation: none;
     opacity: 0.6;
+  }
+
+  [data-chat-scope] .chat-search-shimmer-overlay {
+    animation: none;
+    background-position: 50% 0;
+  }
+
+  [data-chat-scope] .chat-progress-fill-shimmer::after {
+    animation: none;
+    background-position: 50% 0;
   }
 }

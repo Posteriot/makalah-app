@@ -42,37 +42,37 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
 
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                        <Undo className="h-5 w-5 text-[var(--chat-warning)]" />
+            <AlertDialogContent data-chat-scope="" className="border-0">
+                <AlertDialogHeader className="text-left">
+                    <AlertDialogTitle className="flex items-center gap-2 text-left text-sm whitespace-nowrap sm:text-lg sm:whitespace-normal">
+                        <Undo className="h-4 w-4 text-[var(--chat-warning)] sm:h-5 sm:w-5" />
                         Kembali ke tahap {targetLabel}?
                     </AlertDialogTitle>
                     <AlertDialogDescription asChild>
                         <div className="space-y-3">
-                            <p>
-                                Anda akan kembali dari tahap <strong>{currentLabel}</strong> ke tahap <strong>{targetLabel}</strong>.
+                            <p className="text-left text-xs leading-relaxed sm:text-sm">
+                                Kamu akan kembali dari tahap <strong>{currentLabel}</strong> ke tahap <strong>{targetLabel}</strong>.
                             </p>
-                            <div className="flex items-start gap-2 p-3 bg-[var(--chat-warning)] border border-[color:var(--chat-warning)] rounded-md">
-                                <WarningTriangle className="h-4 w-4 text-[var(--chat-warning-foreground)] mt-0.5 shrink-0" />
-                                <div className="text-xs text-[var(--chat-warning-foreground)]">
-                                    <strong>Perhatian:</strong> Semua artifact dan keputusan dari tahap {targetLabel} sampai {currentLabel} akan ditandai sebagai <em>invalidated</em> dan perlu direvisi ulang.
+                            <div className="chat-rewind-comment-box flex items-start gap-2 p-3 rounded-md">
+                                <WarningTriangle className="h-4 w-4 text-[var(--chat-foreground)] shrink-0" />
+                                <div className="text-left text-xs leading-relaxed text-[var(--chat-foreground)]">
+                                    Semua artifact dan keputusan dari tahap {targetLabel} sampai {currentLabel} akan ditandai sebagai <em>invalidated</em> dan perlu direvisi ulang. Progres perlu divalidasi ulang setelah revisi.
                                 </div>
                             </div>
-                            <p className="text-xs text-[var(--chat-muted-foreground)]">
-                                Progres Anda tidak hilang, tetapi perlu divalidasi ulang setelah revisi.
-                            </p>
                         </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isSubmitting}>
+                <AlertDialogFooter className="gap-3 sm:gap-2">
+                    <AlertDialogCancel
+                        disabled={isSubmitting}
+                        className="h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+                    >
                         Batal
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleConfirm}
                         disabled={isSubmitting}
-                        className="bg-[var(--chat-warning)] hover:brightness-110 text-[var(--chat-warning-foreground)]"
+                        className="chat-validation-approve-button rounded-action h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
                     >
                         {isSubmitting ? (
                             <>

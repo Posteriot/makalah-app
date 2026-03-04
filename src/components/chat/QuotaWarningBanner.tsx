@@ -8,6 +8,11 @@ import { useState, useCallback } from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { getEffectiveTier } from "@/lib/utils/subscription"
+import { Button } from "@/components/ui/button"
+import {
+  resolveQuotaOffer,
+  type QuotaVisualState,
+} from "@/lib/billing/quota-offer-policy"
 
 type BannerType = "warning" | "critical" | "depleted"
 
@@ -44,6 +49,11 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
   const currentPercent = quotaStatus?.percentUsed ?? 0
   const isDismissed = dismissedAtPercent !== null && currentPercent >= dismissedAtPercent * 0.9
 
+  let bannerType: BannerType | null = null
+  let visualState: QuotaVisualState | null = null
+  let offer: ReturnType<typeof resolveQuotaOffer> | null = null
+  let tierForIcon: "gratis" | "pro" | "bpp" = "bpp"
+
   // Don't show anything while loading or if dismissed
   if (userLoading || !user || isDismissed) return null
 
@@ -51,12 +61,7 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
 
   // Unlimited tier (admin) - never show quota warning
   if (tier === "unlimited") return null
-
-  // Determine banner type and content
-  let bannerType: BannerType | null = null
-  let message = ""
-  let actionText = ""
-  let actionHref = ""
+  tierForIcon = tier
 
   if (tier === "gratis" || tier === "pro") {
     // Quota-based tiers
@@ -66,19 +71,10 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
 
     if (percentUsed >= 100) {
       bannerType = "depleted"
-      message = "Kuota habis. Upgrade ke Pro atau tunggu reset bulan depan."
-      actionText = "Upgrade"
-      actionHref = "/subscription/upgrade"
     } else if (percentUsed >= 90) {
       bannerType = "critical"
-      message = `Kuota tersisa ${100 - Math.round(percentUsed)}%. Segera upgrade untuk lanjut tanpa batas.`
-      actionText = "Upgrade"
-      actionHref = "/subscription/upgrade"
     } else if (percentUsed >= 70) {
       bannerType = "warning"
-      message = `Kuota tersisa ${100 - Math.round(percentUsed)}%. Pantau pemakaian Anda.`
-      actionText = "Lihat Detail"
-      actionHref = "/subscription/overview"
     }
   } else if (tier === "bpp") {
     // Credit-based tier
@@ -88,30 +84,30 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
 
     if (remainingCredits <= 0) {
       bannerType = "depleted"
-      message = "Kredit habis. Beli kredit untuk melanjutkan."
-      actionText = "Beli Kredit"
-      actionHref = "/subscription/plans"
     } else if (remainingCredits < 30) {
       bannerType = "critical"
-      message = `Kredit rendah: ${remainingCredits} kredit. Segera beli kredit.`
-      actionText = "Beli Kredit"
-      actionHref = "/subscription/plans"
     } else if (remainingCredits < 100) {
       bannerType = "warning"
-      message = `Sisa kredit: ${remainingCredits} kredit. Pertimbangkan beli kredit.`
-      actionText = "Beli Kredit"
-      actionHref = "/subscription/plans"
     }
   }
 
-  // No banner needed
-  if (!bannerType) return null
+  if (bannerType) {
+    visualState = bannerType
+    offer = resolveQuotaOffer({
+      tier,
+      context: "banner",
+      visualState,
+    })
+  }
 
-  // Mechanical Grace: Slate background, Signal Theory borders
+  // No banner needed
+  if (!bannerType || !visualState || !offer) return null
+
+  // Align visual language with quota-rejected chat error UI (without changing banner placement/width).
   const bannerStyles = {
-    warning: "bg-[var(--chat-warning)] border-[color:var(--chat-border)] text-[var(--chat-warning-foreground)]",
-    critical: "bg-[var(--chat-destructive)] border-[color:var(--chat-border)] text-[var(--chat-destructive-foreground)]",
-    depleted: "bg-[var(--chat-destructive)] border-[color:var(--chat-border)] text-[var(--chat-destructive-foreground)]",
+    warning: "bg-[var(--chat-warning)] border-[color:var(--chat-warning)] text-[var(--chat-warning-foreground)]",
+    critical: "bg-[var(--chat-destructive)] border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)]",
+    depleted: "bg-[var(--chat-destructive)] border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)]",
   }
 
   const iconStyles = {
@@ -120,36 +116,43 @@ export function QuotaWarningBanner({ className }: QuotaWarningBannerProps) {
     depleted: "text-[var(--chat-destructive-foreground)]",
   }
 
-  const linkStyles = {
-    warning: "text-[var(--chat-warning-foreground)]",
-    critical: "text-[var(--chat-destructive-foreground)]",
-    depleted: "text-[var(--chat-destructive-foreground)]",
+  const actionButtonStyles = {
+    warning:
+      "h-7 rounded-action bg-[var(--chat-background)] text-[var(--chat-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-warning)] hover:border-[color:var(--chat-warning)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none",
+    critical:
+      "h-7 rounded-action bg-[var(--chat-background)] dark:bg-[oklch(0.455_0.188_13.697)] text-[var(--chat-foreground)] dark:text-[var(--chat-destructive-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.41_0.159_10.272)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none",
+    depleted:
+      "h-7 rounded-action bg-[var(--chat-background)] dark:bg-[oklch(0.455_0.188_13.697)] text-[var(--chat-foreground)] dark:text-[var(--chat-destructive-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.41_0.159_10.272)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none",
   }
 
   const Icon = bannerType === "depleted" ? WarningTriangle :
-               tier === "bpp" ? CreditCard : Flash
+               tierForIcon === "bpp" ? CreditCard : Flash
 
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 px-3 py-2.5 border rounded-action text-sm md:flex-nowrap md:gap-3 md:px-4",
+        "flex flex-wrap items-center gap-2 border rounded-action p-3 text-sm md:flex-nowrap md:gap-3 md:px-4",
         bannerStyles[bannerType],
         className
       )}
     >
       <Icon className={cn("h-4 w-4 flex-shrink-0", iconStyles[bannerType])} />
 
-      <p className="flex-1 basis-full font-mono text-xs md:basis-auto">{message}</p>
+      <p className="flex-1 basis-full text-xs font-sans md:basis-auto">{offer.message}</p>
 
-      <Link
-        href={actionHref}
-        className={cn(
-          "font-mono text-xs font-medium underline underline-offset-2 hover:no-underline whitespace-nowrap",
-          linkStyles[bannerType]
-        )}
-      >
-        {actionText}
-      </Link>
+      <Button asChild variant="outline" size="sm" className={actionButtonStyles[bannerType]}>
+        <Link href={offer.primaryCta.href} className="whitespace-nowrap">
+          {offer.primaryCta.label}
+        </Link>
+      </Button>
+
+      {offer.secondaryCta && (
+        <Button asChild variant="outline" size="sm" className={actionButtonStyles[bannerType]}>
+          <Link href={offer.secondaryCta.href} className="whitespace-nowrap">
+            {offer.secondaryCta.label}
+          </Link>
+        </Button>
+      )}
 
       {bannerType !== "depleted" && (
         <button

@@ -9,6 +9,7 @@ import { ChatInput } from "./ChatInput"
 import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import type { ReasoningTraceStep, ReasoningTraceStatus } from "./ReasoningTracePanel"
 import { useMessages } from "@/lib/hooks/useMessages"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowUpSquare, FastArrowDownSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
 import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -29,6 +30,11 @@ import { MobilePaperSessionsSheet } from "./mobile/MobilePaperSessionsSheet"
 import { MobileProgressBar } from "./mobile/MobileProgressBar"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
+import { getEffectiveTier } from "@/lib/utils/subscription"
+import {
+  buildChatQuotaOfferFromError,
+  isQuotaExceededChatError,
+} from "./chat-quota-error"
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
 interface ConversationArtifact {
@@ -61,6 +67,7 @@ type ChatListRow =
 
 type ProcessVisualStatus = "submitted" | "streaming" | "ready" | "error" | "stopped"
 const PENDING_STARTER_PROMPT_KEY = "chat:pending-starter-prompt"
+const VALIDATION_PANEL_COMPACT_WIDTH = 680
 
 interface PendingStarterPromptPayload {
   conversationId: string
@@ -336,9 +343,11 @@ function PendingAssistantLaneIndicator() {
       aria-label="Agen sedang menyusun respons"
     >
       <div className="flex items-center gap-2 text-[var(--chat-muted-foreground)]">
-        <span className="h-2.5 w-2.5 rounded-full bg-current animate-chat-assistant-loader-orb" />
-        <span className="relative h-[2px] w-28 overflow-hidden rounded-full bg-[var(--chat-muted)]">
-          <span className="absolute left-0 top-0 h-full w-12 rounded-full bg-current animate-chat-assistant-loader-bar" />
+        <span className="h-2.5 w-2.5 rounded-full bg-amber-600 animate-chat-assistant-loader-orb" />
+        <span className="inline-flex items-center gap-1" aria-hidden="true">
+          <span className="h-1.5 w-1.5 rounded-full bg-current animate-thinking-dot thinking-dot-1" />
+          <span className="h-1.5 w-1.5 rounded-full bg-current animate-thinking-dot thinking-dot-2" />
+          <span className="h-1.5 w-1.5 rounded-full bg-current animate-thinking-dot thinking-dot-3" />
         </span>
       </div>
     </div>
@@ -347,6 +356,7 @@ function PendingAssistantLaneIndicator() {
 
 export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, artifacts: conversationArtifacts }: ChatWindowProps) {
   const router = useRouter()
+  const { user: currentUser } = useCurrentUser()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
   const pendingScrollToBottomRef = useRef(false)
@@ -362,6 +372,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
+  const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
+  const [chatViewportWidth, setChatViewportWidth] = useState(0)
   const [processUi, setProcessUi] = useState<{
     visible: boolean
     status: ProcessVisualStatus
@@ -380,8 +392,12 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const stoppedManuallyRef = useRef(false)
   const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
   const starterPromptPendingHistorySyncRef = useRef<string | null>(null)
+  const chatViewportRef = useCallback((node: HTMLDivElement | null) => {
+    setChatViewportNode(node)
+  }, [])
 
   const { data: session } = useSession()
+  const effectiveTier = getEffectiveTier(currentUser?.role, currentUser?.subscriptionStatus)
   const { resolvedTheme, setTheme } = useTheme()
   const userId = useQuery(api.chatHelpers.getUserId, session?.user?.id ? { betterAuthUserId: session.user.id } : "skip")
   const createConversation = useMutation(api.conversations.createConversation)
@@ -408,6 +424,35 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     rewindToStage,
     getStageStartIndex,
   } = usePaperSession(safeConversationId ?? undefined)
+
+  useEffect(() => {
+    if (!chatViewportNode) {
+      setChatViewportWidth(0)
+      return
+    }
+
+    const syncWidth = (width: number) => {
+      const normalizedWidth = Math.round(width)
+      setChatViewportWidth((prev) => (prev === normalizedWidth ? prev : normalizedWidth))
+    }
+
+    syncWidth(chatViewportNode.getBoundingClientRect().width)
+
+    if (typeof ResizeObserver === "undefined") return
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width
+      if (typeof width === "number") {
+        syncWidth(width)
+      }
+    })
+
+    observer.observe(chatViewportNode)
+    return () => observer.disconnect()
+  }, [chatViewportNode])
+
+  const forceMobileValidationLayout =
+    chatViewportWidth > 0 && chatViewportWidth <= VALIDATION_PANEL_COMPACT_WIDTH
 
   // Track which conversation has been synced to prevent infinite loops
   const syncedConversationRef = useRef<string | null>(null)
@@ -638,9 +683,16 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       }
     },
     onError: (err) => {
+      if (isQuotaExceededChatError(err)) return
       toast.error("Terjadi kesalahan: " + (err.message || "Gagal memproses pesan"))
     }
   })
+
+  const isQuotaRejectedError = useMemo(() => isQuotaExceededChatError(error), [error])
+  const quotaRejectedOffer = useMemo(
+    () => buildChatQuotaOfferFromError(error, effectiveTier),
+    [error, effectiveTier]
+  )
 
   type AttachmentSendMode = "inherit" | "replace" | "clear"
 
@@ -998,6 +1050,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const isLoading = status !== 'ready' && status !== 'error'
   const isGenerating = status === "submitted" || status === "streaming"
+
   const hasPendingAssistantGeneration = isGenerating || isAwaitingAssistantStart
   const hasStandalonePendingIndicator =
     hasPendingAssistantGeneration &&
@@ -1672,7 +1725,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
+    <div ref={chatViewportRef} className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Mobile Header */}
       <div className="md:hidden px-3 pt-[calc(env(safe-area-inset-top,0px)+0.375rem)] bg-[var(--chat-background)]">
         <div className="flex items-center h-11">
@@ -1839,13 +1892,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 Footer: () => (
                   <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                     {/* Paper Validation Panel - footer area before input */}
-                    {isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming' && (
+                    {(isPaperMode && stageStatus === "pending_validation" && userId && status !== 'streaming') && (
                       <PaperValidationPanel
                         stageLabel={stageLabel}
                         onApprove={handleApprove}
                         onRevise={handleRevise}
                         isLoading={isLoading}
                         isDirty={paperSession?.isDirty === true}
+                        forceMobileLayout={forceMobileValidationLayout}
                       />
                     )}
                     <div className="h-4" />
@@ -1855,8 +1909,44 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             />
           )}
 
+          {/* Quota rejection error overlay (real 402 quota_exceeded only) */}
+          {isQuotaRejectedError && quotaRejectedOffer && (
+            <div
+              className="absolute bottom-4 bg-[var(--chat-destructive)] border border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)] p-3 rounded-action flex items-center justify-between text-sm"
+              style={{
+                left: "var(--chat-input-pad-x, 5rem)",
+                right: "var(--chat-input-pad-x, 5rem)",
+              }}
+            >
+              <div className="flex items-start gap-2">
+                <WarningCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="text-xs font-sans leading-tight">{quotaRejectedOffer.message}</span>
+              </div>
+              <div className="ml-3 flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(quotaRejectedOffer.primaryCta.href)}
+                  className="h-7 rounded-action bg-[var(--chat-background)] dark:bg-[oklch(0.455_0.188_13.697)] text-[var(--chat-foreground)] dark:text-[var(--chat-destructive-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.41_0.159_10.272)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none"
+                >
+                  {quotaRejectedOffer.primaryCta.label}
+                </Button>
+                {quotaRejectedOffer.secondaryCta && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push(quotaRejectedOffer.secondaryCta!.href)}
+                    className="h-7 rounded-action bg-transparent text-[var(--chat-destructive-foreground)] hover:bg-[var(--chat-destructive-foreground)]/10 text-xs font-sans border-[color:var(--chat-destructive-foreground)]/40 hover:border-[color:var(--chat-destructive-foreground)]/60 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none"
+                  >
+                    {quotaRejectedOffer.secondaryCta.label}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Error State Overlay - Mechanical Grace: Rose error */}
-          {error && (
+          {error && !isQuotaRejectedError && (
             <div
               className="absolute bottom-4 bg-[var(--chat-destructive)] border border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)] p-3 rounded-action flex items-center justify-between text-sm shadow-sm backdrop-blur-sm"
               style={{

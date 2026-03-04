@@ -13,6 +13,7 @@ interface PaperValidationPanelProps {
     onRevise: (feedback: string) => Promise<void>;
     isLoading?: boolean;
     isDirty?: boolean;
+    forceMobileLayout?: boolean;
 }
 
 export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
@@ -21,10 +22,12 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
     onRevise,
     isLoading = false,
     isDirty = false,
+    forceMobileLayout = false,
 }) => {
     const [showRevisionForm, setShowRevisionForm] = useState(false);
     const [feedback, setFeedback] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const isRevisionFeedbackReady = feedback.trim().length > 0 && !isSubmitting;
 
     const handleApprove = async () => {
         setIsSubmitting(true);
@@ -60,7 +63,8 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
         <div
             className={cn(
                 // Container - full width on mobile, centered card on desktop
-                "mx-4 my-4 md:mx-auto md:max-w-[80%]",
+                "mx-4 my-4",
+                !forceMobileLayout && "md:mx-auto md:max-w-[80%]",
                 "bg-[var(--chat-card)] border border-[color:var(--chat-border)] rounded-lg",
                 "shadow-none",
                 "animate-in fade-in slide-in-from-bottom-4 duration-500"
@@ -71,7 +75,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                     <div className="flex items-start gap-3 text-sm leading-relaxed">
                         <WarningCircle className="mt-[2px] h-4 w-4 flex-shrink-0 text-[var(--chat-secondary-foreground)]" />
                         <p className="min-w-0 flex-1 text-[var(--chat-foreground)] whitespace-normal break-words">
-                            Percakapan berubah sejak data terakhir disimpan. Minta Agen Makalah sinkronkan data sebelum approve.
+                            Percakapan berubah sejak data terakhir disimpan. Perintahkan Agen Makalah sinkronkan data sebelum menyetujui & melanjutkan.
                         </p>
                     </div>
                 </div>
@@ -80,7 +84,12 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                 className={cn(
                     "p-4",
                     // Always column on mobile; row on desktop (unless revision mode)
-                    showRevisionForm ? "flex flex-col gap-3" : "flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4"
+                    showRevisionForm
+                        ? "flex flex-col gap-3"
+                        : cn(
+                            "flex flex-col gap-3",
+                            !forceMobileLayout && "md:gap-4"
+                        )
                 )}
             >
                 {/* Header Section */}
@@ -90,7 +99,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             Validasi Tahap: {stageLabel}
                         </h3>
                         <p className="text-xs text-[var(--chat-muted-foreground)]">
-                            Periksa draft di artifact. Apakah sudah sesuai atau perlu revisi?
+                            Periksa draft di artifak. Apakah sudah sesuai atau perlu revisi?
                         </p>
                     </div>
 
@@ -109,14 +118,21 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
 
                 {/* Action Buttons - Inline mode */}
                 {!showRevisionForm && (
-                    <div className="flex gap-2 md:flex-shrink-0">
+                    <div
+                        className={cn(
+                            forceMobileLayout
+                                ? "flex flex-col gap-3 sm:gap-2"
+                                : "flex gap-2 md:justify-center"
+                        )}
+                    >
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setShowRevisionForm(true)}
                             disabled={isSubmitting || isLoading}
                             className={cn(
-                                "gap-2 h-9 px-4 rounded-action flex-1 md:flex-initial",
+                                "gap-2 h-9 px-4 rounded-action",
+                                forceMobileLayout ? "w-full" : "flex-1 md:flex-initial",
                                 "border-[color:var(--chat-border)] text-[var(--chat-secondary-foreground)]",
                                 "hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-primary)]"
                             )}
@@ -129,17 +145,20 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                             onClick={handleApprove}
                             disabled={isSubmitting || isLoading}
                             className={cn(
-                                "gap-2 h-9 px-4 rounded-action flex-1 md:flex-initial",
-                                "bg-[var(--chat-success)]",
-                                "text-[var(--chat-success-foreground)] border-none",
-                                "transition-[background-color,box-shadow] duration-150",
-                                "hover:bg-[color:color-mix(in_oklch,var(--chat-success)_88%,black)]",
-                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-success)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--chat-card)]"
+                                "gap-2 h-9 px-4 rounded-action",
+                                forceMobileLayout ? "w-full" : "flex-1 md:flex-initial",
+                                "chat-validation-approve-button"
                             )}
                         >
                             <Check className="h-3.5 w-3.5" />
-                            <span className="hidden md:inline">Setujui & Lanjutkan</span>
-                            <span className="md:hidden">Setujui</span>
+                            {forceMobileLayout ? (
+                                <span>Setujui & Lanjutkan</span>
+                            ) : (
+                                <>
+                                    <span className="hidden md:inline">Setujui & Lanjutkan</span>
+                                    <span className="md:hidden">Setujui & Lanjutkan</span>
+                                </>
+                            )}
                         </Button>
                     </div>
                 )}
@@ -164,9 +183,10 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                                 onClick={handleRevise}
                                 disabled={isSubmitting || !feedback.trim()}
                                 className={cn(
-                                    "gap-2 h-9 px-4",
-                                    "bg-[var(--chat-primary)] text-[var(--chat-primary-foreground)]",
-                                    "hover:brightness-110"
+                                    "gap-2 h-9 px-4 rounded-action disabled:opacity-100",
+                                    isRevisionFeedbackReady
+                                        ? "chat-validation-approve-button"
+                                        : "border border-[color:var(--chat-border)] bg-[var(--chat-background)] text-[var(--chat-secondary-foreground)] hover:bg-[var(--chat-background)] hover:border-[color:var(--chat-border)]"
                                 )}
                             >
                                 <Send className="h-3.5 w-3.5" />

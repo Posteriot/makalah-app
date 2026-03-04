@@ -11,15 +11,26 @@ interface ToolStateIndicatorProps {
     persistUntilDone?: boolean
 }
 
+const SHIMMER_TEXTS = new Set([
+    "Pencarian web",
+    "Memulai sesi paper",
+    "Mengambil status sesi paper",
+    "Menyimpan progres tahapan",
+    "Mengirim validasi tahapan",
+    "Mengomplisasi daftar pustaka",
+    "Respons agen",
+])
+
 const TOOL_LABEL_MAP: Record<string, string> = {
     google_search: "Pencarian web",
     startPaperSession: "Memulai sesi paper",
     getCurrentPaperState: "Mengambil status sesi paper",
     updateStageData: "Menyimpan progres tahapan",
-    submitStageForValidation: "Mengirim tahapan untuk validasi",
+    submitStageForValidation: "Mengirim validasi tahapan",
     createArtifact: "Membuat artifak",
     updateArtifact: "Memperbarui artifak",
     renameConversationTitle: "Mengubah judul percakapan",
+    assistant_response: "Respons agen",
 }
 
 const STATE_LABEL_MAP: Record<string, string> = {
@@ -73,11 +84,14 @@ export function ToolStateIndicator({ toolName, state, errorText, persistUntilDon
     const toolContextLabel = toolLabel.toLowerCase()
 
     let text = ""
-    if (normalizedState === 'input-streaming') {
+    if (normalizedState === 'input-streaming' && toolName === "compileDaftarPustaka") {
+        text = "Mengomplisasi daftar pustaka"
+    }
+    else if (normalizedState === 'input-streaming') {
         text = isGoogleSearch ? "Pencarian web" : `Menjalankan ${toolLabel}`
     }
     else if (normalizedState === 'input-available') {
-        text = isGoogleSearch ? "Pencarian web" : `Memproses ${toolLabel}`
+        text = toolLabel
     }
     else if (isError) {
         text = normalizedErrorText
@@ -107,7 +121,20 @@ export function ToolStateIndicator({ toolName, state, errorText, persistUntilDon
                 )
             )}
             {isError && <WarningCircle className="h-4 w-4" />}
-            <span>{text}</span>
+            <StatusText text={text} />
         </div>
+    )
+}
+
+function StatusText({ text }: { text: string }) {
+    if (!SHIMMER_TEXTS.has(text)) return <span>{text}</span>
+
+    return (
+        <span className="chat-search-shimmer">
+            <span>{text}</span>
+            <span aria-hidden="true" className="chat-search-shimmer-overlay">
+                {text}
+            </span>
+        </span>
     )
 }
