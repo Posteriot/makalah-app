@@ -71,7 +71,7 @@ export const PaperValidationPanel: React.FC<PaperValidationPanelProps> = ({
                     <div className="flex items-start gap-3 text-sm leading-relaxed">
                         <WarningCircle className="mt-[2px] h-4 w-4 flex-shrink-0 text-[var(--chat-secondary-foreground)]" />
                         <p className="min-w-0 flex-1 text-[var(--chat-foreground)] whitespace-normal break-words">
-                            Percakapan berubah sejak data terakhir disimpan. Minta Agen Makalah sinkronkan data sebelum approve.
+                            Percakapan berubah sejak data terakhir disimpan. Perintahkan Agen Makalah sinkronkan data sebelum menyetujui & melanjutkan.
                         </p>
                     </div>
                 </div>
