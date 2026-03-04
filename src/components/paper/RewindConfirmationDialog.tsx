@@ -50,7 +50,7 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                     </AlertDialogTitle>
                     <AlertDialogDescription asChild>
                         <div className="space-y-3">
-                            <p className="text-left">
+                            <p className="text-left text-xs leading-relaxed sm:text-sm">
                                 Kamu akan kembali dari tahap <strong>{currentLabel}</strong> ke tahap <strong>{targetLabel}</strong>.
                             </p>
                             <div className="chat-rewind-comment-box flex items-start gap-2 p-3 rounded-md">
@@ -62,14 +62,17 @@ export const RewindConfirmationDialog: React.FC<RewindConfirmationDialogProps> =
                         </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isSubmitting}>
+                <AlertDialogFooter className="gap-3 sm:gap-2">
+                    <AlertDialogCancel
+                        disabled={isSubmitting}
+                        className="h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+                    >
                         Batal
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleConfirm}
                         disabled={isSubmitting}
-                        className="chat-validation-approve-button rounded-action"
+                        className="chat-validation-approve-button rounded-action h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
                     >
                         {isSubmitting ? (
                             <>
