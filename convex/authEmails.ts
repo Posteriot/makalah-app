@@ -74,7 +74,7 @@ export async function sendSignupSuccessEmail(email: string): Promise<void> {
   await sendViaResend(
     email,
     "Pendaftaran Berhasil — Makalah AI",
-    `<p>Pendaftaran akun kamu berhasil.</p><p>Sekarang kamu bisa mulai menyusun paper dengan Makalah AI.</p><p><a href="${appUrl}/get-started">Mulai sekarang</a></p>`
+    `<p>Pendaftaran akun kamu berhasil.</p><p>Sekarang kamu bisa mulai menyusun paper dengan Makalah AI.</p><p><a href="${appUrl}/chat">Mulai sekarang</a></p>`
   );
 }
 

@@ -42,6 +42,7 @@ Read stage context and references.
 Allowed:
 - google_search (active mode)
 - compileDaftarPustaka (mode: preview)
+- createArtifact
 Disallowed:
 - compileDaftarPustaka (mode: persist)
 ## Output Contract
