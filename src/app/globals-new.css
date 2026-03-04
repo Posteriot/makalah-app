@@ -803,6 +803,15 @@
   }
 }
 
+@keyframes chat-progress-fill-shimmer {
+  0% {
+    background-position: 220% 0;
+  }
+  100% {
+    background-position: -220% 0;
+  }
+}
+
 [data-chat-scope] .animate-chat-thought-breathe {
   animation: chat-thought-breathe 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
@@ -866,6 +875,29 @@
   animation: chat-search-text-shimmer 2.3s linear infinite;
 }
 
+[data-chat-scope] .chat-progress-fill-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-chat-scope] .chat-progress-fill-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 35%,
+    rgb(153 246 228) 50%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: chat-progress-fill-shimmer 2.1s linear infinite;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-chat-scope] .animate-chat-thought-breathe,
   [data-chat-scope] .animate-chat-thought-dot,
@@ -877,6 +909,11 @@
   }
 
   [data-chat-scope] .chat-search-shimmer-overlay {
+    animation: none;
+    background-position: 50% 0;
+  }
+
+  [data-chat-scope] .chat-progress-fill-shimmer::after {
     animation: none;
     background-position: 50% 0;
   }

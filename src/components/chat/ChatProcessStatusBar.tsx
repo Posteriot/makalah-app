@@ -95,8 +95,9 @@ export function ChatProcessStatusBar({
               <div
                 className={cn(
                   "h-full rounded-full transition-[width] duration-300 ease-out",
-                  isError ? "bg-[var(--chat-destructive)]" : "bg-[var(--chat-success)]",
-                  "animate-pulse"
+                  isError
+                    ? "bg-[var(--chat-destructive)]"
+                    : "bg-[var(--chat-success)] chat-progress-fill-shimmer"
                 )}
                 style={{ width: `${safeProgress}%` }}
               />
