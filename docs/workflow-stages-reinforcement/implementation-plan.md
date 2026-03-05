@@ -20,14 +20,14 @@ Steps are grouped by dependency. Steps within a group can be parallelized.
 
 **File:** `convex/paperSessions/constants.ts`
 
-- Insert `"pembaruan_abstrak"` at index 10 in `STAGE_ORDER` (after `"kesimpulan"`, before `"daftar_pustaka"`)
+- Insert `"pembaruan_abstrak"` at index 10 (0-based) in `STAGE_ORDER` — after `"kesimpulan"` (index 9), before `"daftar_pustaka"` (currently index 10, shifts to 11)
 - Add label in `getStageLabel()`: `pembaruan_abstrak: "Pembaruan Abstrak"`
 
 #### 1.2 Create PembaruanAbstrakData validator
 
 **File:** `convex/paperSessions/types.ts`
 
-Add after `KesimpulanData`:
+Add after `KesimpulanData` (around line 185). Note: `WebSearchReferenceShape` is defined at lines 8-12 as a file-local `const` (not exported), but it's in-scope for all validators in the same file.
 
 ```typescript
 // Phase 5: Refinement
@@ -73,8 +73,8 @@ Add `v.literal("pembaruan_abstrak")` to the `stageScopeValidator` union.
 
 **File:** `convex/stageSkills/constants.ts`
 
-- Add `"pembaruan_abstrak"` to `STAGE_SCOPE_VALUES` at correct position
-- Add `"pembaruan_abstrak"` to `PASSIVE_SEARCH_STAGES` (if this file also has it — verify; the primary is in `stage-skill-contracts.ts`)
+- Add `"pembaruan_abstrak"` to `STAGE_SCOPE_VALUES` at index 10 (after `"kesimpulan"`)
+- Add `"pembaruan_abstrak"` to `PASSIVE_SEARCH_STAGES` in this file (lines 28-36). **NOTE:** This is a DUPLICATE definition — `src/lib/ai/stage-skill-contracts.ts` has its own copy. Both MUST be updated in Step 2.4.
 
 **Checkpoint:** Run `npx convex dev` to verify schema compiles. TypeScript should now flag missing switch cases.
 
@@ -118,20 +118,25 @@ Add `PEMBARUAN_ABSTRAK_INSTRUCTIONS` constant. Key content:
 
 **File:** `src/lib/ai/paper-stages/formatStageData.ts`
 
-- Create `formatPembaruanAbstrakData()` function:
+- Add `PembaruanAbstrakData` type import and add `pembaruan_abstrak?: PembaruanAbstrakData` to `StageData` interface (lines 32-47)
+- Create `formatPembaruanAbstrakData()` function following existing patterns (e.g., `formatKesimpulanData` at line 483):
+  - Header: `=== TAHAP 11: Pembaruan Abstrak [STATUS] ===`
   - Show `ringkasanPenelitianBaru` (truncated in summary mode)
   - Show `perubahanUtama` as bulleted list
   - Show `keywordsBaru` if present
   - Show `wordCount`
-- Add case in `formatActiveStageData()` switch
-- Add case in `formatCompletedStageSummary()` loop (via the completed stages iteration)
-- **Update TAHAP comment numbers** for daftar_pustaka (11→12), lampiran (12→13), judul (13→14) if present in comments
+- Add case `"pembaruan_abstrak"` in `formatActiveStageData()` switch (line 211-240, before `"daftar_pustaka"`)
+- **CRITICAL: Update TAHAP number STRINGS** (these are rendered output, not comments — they appear in AI prompt context):
+  - Line 508: `TAHAP 11` → `TAHAP 12` (formatDaftarPustakaData)
+  - Line 555: `TAHAP 12` → `TAHAP 13` (formatLampiranData)
+  - Line 595: `TAHAP 13` → `TAHAP 14` (formatJudulData)
+  - Also update function doc comments at lines 502, 549, 589
 
 #### 2.4 Add to search policy
 
 **File:** `src/lib/ai/stage-skill-contracts.ts`
 
-Add `"pembaruan_abstrak"` to `PASSIVE_SEARCH_STAGES` array.
+Add `"pembaruan_abstrak"` to `PASSIVE_SEARCH_STAGES` array (after `"kesimpulan"`). **IMPORTANT:** This file is a DUPLICATE of `convex/stageSkills/constants.ts` lines 28-36. Both updated in this plan (Step 1.5 + Step 2.4).
 
 #### 2.5 Add hasCompleteData case
 
@@ -145,6 +150,12 @@ case "pembaruan_abstrak": {
     return !!data?.ringkasanPenelitianBaru;
 }
 ```
+
+#### 2.6 Update fallback system prompt
+
+**File:** `src/lib/ai/chat-config.ts`
+
+Line 23: Change `"(13 tahap: gagasan → judul)"` to `"(14 tahap: gagasan → judul)"` in `getMinimalFallbackPrompt()`.
 
 **Checkpoint:** TypeScript should compile clean. All switch exhaustive checks satisfied.
 
@@ -196,13 +207,24 @@ Change `"Selesaikan semua 13 tahap"` → `"Selesaikan semua 14 tahap"` (or bette
 
 Import `STAGE_ORDER` from `convex/paperSessions/constants` in each file (if not already imported).
 
-#### 4.2 Update SidebarProgress comment
+#### 4.2 Update SidebarProgress comments
 
 **File:** `src/components/chat/sidebar/SidebarProgress.tsx`
 
-Line 232: Update comment from "13 paper writing stages" to "paper writing stages" (generic).
+- Line 232: `"13 paper writing stages"` → `"paper writing stages"` (generic)
+- Line 238: `"13 stages with states"` → `"stages with states"` (generic)
 
-**Note:** SidebarProgress already renders dynamically via `STAGE_ORDER.map()` and `STAGE_ORDER.length`. No logic changes needed — only the comment.
+**Note:** SidebarProgress already renders dynamically via `STAGE_ORDER.map()` and `STAGE_ORDER.length`. No logic changes needed — only comments.
+
+#### 4.3 Update admin UI descriptions
+
+**File:** `src/components/admin/StageSkillsManager.tsx`
+
+Line 120: Change `"13 stage paper workflow"` → use `STAGE_ORDER.length` or `"14 stage"`.
+
+**File:** `src/components/ai-ops/aiOpsConfig.ts`
+
+Line 50: Change `"workflow 13 stage"` → `"workflow 14 stage"` in `headerDescription`.
 
 **Checkpoint:** All UI components render 14 stages correctly. "/14" shown in badges and labels.
 
@@ -263,13 +285,14 @@ Schema must push successfully.
 |------|-----------|--------|------------|
 | Existing sessions break | Low | High | All changes are additive; `v.optional()` ensures backward compat |
 | Switch exhaustive miss | Low | Medium | TypeScript compiler catches these |
-| Hardcoded "13" missed | Medium | Low | Grep verified — 6 UI locations + 1 validation message |
+| Hardcoded "13" missed | Low | Low | Grep-verified: 6 UI `/13`, 1 validation msg, 1 fallback prompt, 2 admin descriptions, 3 TAHAP strings |
+| Duplicate constants out of sync | Medium | Medium | Both PASSIVE_SEARCH_STAGES copies documented; update in lockstep (Step 1.5 + 2.4) |
 | AI instructions quality | Medium | Medium | Iterative prompt tuning after deployment |
 | Export abstract source wrong | Low | High | Fallback chain ensures original abstract always available |
 
 ## Estimated Change Scope
 
-- **Files modified:** ~18
+- **Files modified:** ~22
 - **New code:** ~150 lines (instructions + formatter + validator)
-- **Modified code:** ~60 lines (switch cases, imports, literals)
-- **Hardcoded fix:** ~10 lines (UI "/13" → dynamic)
+- **Modified code:** ~80 lines (switch cases, imports, literals, TAHAP strings)
+- **Hardcoded fix:** ~15 lines (UI "/13" → dynamic, admin descriptions, fallback prompt)

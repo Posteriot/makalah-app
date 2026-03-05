@@ -147,6 +147,12 @@ No code changes needed for rewind logic — it's index-based.
 - `pembaruan_abstrak` field in `stageData` is `v.optional()`, so existing sessions without it are valid.
 - No migration needed for existing data.
 
+### Stage Number Shift
+- `getStageNumber()` uses `indexOf + 1`, so existing stages after insertion point return different numbers:
+  - `daftar_pustaka`: 11 → 12, `lampiran`: 12 → 13, `judul`: 13 → 14
+- This is cosmetic only — all logic uses stage IDs (strings), not ordinal numbers.
+- UI displays (badges, progress) auto-adapt since they derive from STAGE_ORDER.
+
 ### Export
 - Prefer-updated strategy falls back to original abstract when `pembaruan_abstrak` doesn't exist.
 
@@ -156,24 +162,43 @@ No code changes needed for rewind logic — it's index-based.
 
 | Layer | File | Change Type |
 |-------|------|-------------|
-| **Data** | `convex/paperSessions/constants.ts` | Add stage to STAGE_ORDER + label |
-| **Data** | `convex/paperSessions/types.ts` | Add PembaruanAbstrakData validator |
-| **Data** | `convex/schema.ts` | Add pembaruan_abstrak to stageData |
+| **Data** | `convex/paperSessions/constants.ts` | Add stage to STAGE_ORDER at index 10 (0-based) + label |
+| **Data** | `convex/paperSessions/types.ts` | Add PembaruanAbstrakData validator (WebSearchReferenceShape is in-scope, not exported) |
+| **Data** | `convex/schema.ts` | Add pembaruan_abstrak to stageData + import PembaruanAbstrakData |
 | **Data** | `convex/paperSessions/stageDataWhitelist.ts` | Add whitelist entry |
-| **Data** | `convex/stageSkills.ts` | Add literal to validator union |
-| **Data** | `convex/stageSkills/constants.ts` | Add to STAGE_SCOPE_VALUES + PASSIVE |
+| **Data** | `convex/stageSkills.ts` | Add `v.literal("pembaruan_abstrak")` to stageScopeValidator union |
+| **Data** | `convex/stageSkills/constants.ts` | Add to STAGE_SCOPE_VALUES + PASSIVE_SEARCH_STAGES |
 | **AI** | `src/lib/ai/paper-stages/finalization.ts` | Add PEMBARUAN_ABSTRAK_INSTRUCTIONS |
-| **AI** | `src/lib/ai/paper-stages/index.ts` | Add switch case + re-export |
-| **AI** | `src/lib/ai/paper-stages/formatStageData.ts` | Add formatter + switch case |
-| **AI** | `src/lib/ai/stage-skill-contracts.ts` | Add to PASSIVE_SEARCH_STAGES |
+| **AI** | `src/lib/ai/paper-stages/index.ts` | Add switch case + import + re-export |
+| **AI** | `src/lib/ai/paper-stages/formatStageData.ts` | Add formatter + switch case + TAHAP number strings (see note below) |
+| **AI** | `src/lib/ai/stage-skill-contracts.ts` | Add to PASSIVE_SEARCH_STAGES (DUPLICATE — sync with stageSkills/constants.ts) |
 | **AI** | `src/app/api/chat/route.ts` | Add case in hasCompleteData() |
+| **AI** | `src/lib/ai/chat-config.ts` | Update "13 tahap" in fallback prompt (line 23) |
 | **Export** | `src/lib/export/content-compiler.ts` | Prefer-updated abstract resolution |
-| **Export** | `src/lib/export/validation.ts` | Update "13 tahap" message |
-| **UI** | `src/components/chat/mobile/MobileProgressBar.tsx` | `/13` → dynamic |
-| **UI** | `src/components/chat/mobile/MobilePaperSessionsSheet.tsx` | `/13` → dynamic |
+| **Export** | `src/lib/export/validation.ts` | Update "13 tahap" → use `STAGE_ORDER.length` |
+| **UI** | `src/components/chat/mobile/MobileProgressBar.tsx` | `/13` → `/${STAGE_ORDER.length}` |
+| **UI** | `src/components/chat/mobile/MobilePaperSessionsSheet.tsx` | `/13` → `/${STAGE_ORDER.length}` |
 | **UI** | `src/components/chat/sidebar/SidebarPaperSessions.tsx` | `/13` → dynamic (4 locations) |
-| **UI** | `src/components/chat/sidebar/SidebarProgress.tsx` | Update comment only |
-| **Docs** | `CLAUDE.md` | Update workflow documentation |
+| **UI** | `src/components/chat/sidebar/SidebarProgress.tsx` | Update comments (lines 232, 238) |
+| **UI** | `src/components/admin/StageSkillsManager.tsx` | Update "13 stage" description (line 120) |
+| **UI** | `src/components/ai-ops/aiOpsConfig.ts` | Update "13 stage" description (line 50) |
+| **Docs** | `CLAUDE.md` | Update workflow documentation (14 tahap, Phase mapping) |
+| **Docs** | `.references/paper-workflow/README.md` | Update workflow documentation |
+
+### TAHAP Number Strings in formatStageData.ts
+
+Formatter functions output rendered strings like `=== TAHAP 11: Daftar Pustaka ===` which are injected into the AI prompt. These are NOT comments — they affect AI behavior. After insertion:
+
+- New: `=== TAHAP 11: Pembaruan Abstrak ===`
+- Shift: Daftar Pustaka `TAHAP 11` → `TAHAP 12`, Lampiran `TAHAP 12` → `TAHAP 13`, Judul `TAHAP 13` → `TAHAP 14`
+
+### Duplicate Constants (Sync Risk)
+
+Two files define PASSIVE_SEARCH_STAGES independently:
+1. `src/lib/ai/stage-skill-contracts.ts` (frontend)
+2. `convex/stageSkills/constants.ts` (backend)
+
+Both MUST be updated in lockstep.
 
 ### Files NOT Modified (auto-adapt)
 - `PaperStageProgress.tsx` — iterates STAGE_ORDER dynamically
