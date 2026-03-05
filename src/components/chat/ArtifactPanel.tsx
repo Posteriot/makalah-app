@@ -121,7 +121,7 @@ export function ArtifactPanel({
       )}
     >
       {/* Artifact Tabs */}
-      <div className="shrink-0 border-b border-[color:var(--chat-border)] flex items-center">
+      <div className="shrink-0 border-b border-[color:var(--chat-border)] flex items-end">
         <div className="flex-1 overflow-hidden">
           <ArtifactTabs
             tabs={openTabs}
@@ -132,7 +132,7 @@ export function ArtifactPanel({
         </div>
         <button
           onClick={onToggle}
-          className="flex h-[34px] w-8 shrink-0 items-center justify-center mr-1 text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
+          className="flex h-[34px] w-8 shrink-0 items-center justify-center mr-3 text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
           aria-label="Tutup panel"
         >
           <Xmark className="h-4 w-4" strokeWidth={1.5} />

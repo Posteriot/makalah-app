@@ -27,6 +27,7 @@ import {
   NavArrowDown,
   OpenBook,
   Lock,
+  Xmark,
 } from "iconoir-react"
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { toast } from "sonner"
@@ -476,15 +477,27 @@ export function FullsizeArtifactModal({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      ref={primaryCloseButtonRef}
                       onClick={requestClose}
                       className="flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
-                      aria-label="Tutup fullscreen"
+                      aria-label="Kecilkan fullscreen"
                     >
                       <Collapse className="h-4 w-4" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="font-mono text-xs">Tutup fullscreen</TooltipContent>
+                  <TooltipContent className="font-mono text-xs">Kecilkan</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      ref={primaryCloseButtonRef}
+                      onClick={requestClose}
+                      className="flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
+                      aria-label="Tutup panel"
+                    >
+                      <Xmark className="h-4 w-4" strokeWidth={1.5} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="font-mono text-xs">Tutup</TooltipContent>
                 </Tooltip>
               </div>
             </div>
