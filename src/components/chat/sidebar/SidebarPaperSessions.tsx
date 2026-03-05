@@ -829,7 +829,7 @@ function ReadOnlyArtifactTreeItem({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="shrink-0 rounded-action p-0.5 text-[var(--chat-muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--chat-foreground)] focus-visible:opacity-100 focus-visible:outline-none"
+            className="shrink-0 rounded-action p-0.5 text-[var(--chat-muted-foreground)] opacity-25 transition-opacity group-hover:opacity-100 hover:text-[var(--chat-foreground)] focus-visible:opacity-100 focus-visible:outline-none"
             aria-label="Opsi artifak"
           >
             <svg width="4" height="16" viewBox="0 0 4 16" fill="currentColor" aria-hidden="true">
