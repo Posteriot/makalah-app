@@ -679,30 +679,6 @@ export function FullsizeArtifactModal({
             </div>
           </div>
 
-          {/* Read-only banner */}
-          {readOnly && (
-            <div className="mx-4 mb-3 flex items-center justify-between rounded-action border border-muted bg-muted/30 px-3 py-2">
-              <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-                <span className="font-mono text-[12px] text-muted-foreground">
-                  Artifak dari sesi lain — hanya baca
-                </span>
-              </div>
-              {sourceConversationId && (
-                <Link
-                  href={`/chat/${sourceConversationId}`}
-                  onClick={() => {
-                    onCloseReadOnlyTab?.()
-                    onClose()
-                  }}
-                  className="font-mono text-[11px] text-sky-500 hover:underline"
-                >
-                  Lihat Percakapan →
-                </Link>
-              )}
-            </div>
-          )}
-
           {/* Tab bar — shown when 2+ tabs */}
           {modalTabs.length > 1 && (
             <div className="shrink-0 border-b border-[color:var(--chat-border)]">
@@ -766,6 +742,29 @@ export function FullsizeArtifactModal({
               ) : (
                 <div className="h-full overflow-hidden bg-[var(--chat-background)]">
                   <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
+                    {readOnly && (
+                      <div className="mb-3 flex items-center gap-2 rounded-action border border-muted bg-muted/30 px-3 py-2">
+                        <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                        <span className="font-mono text-[11px] text-muted-foreground">
+                          Artifak dari sesi lain. Mode hanya baca.
+                          {sourceConversationId && (
+                            <>
+                              {" "}
+                              <Link
+                                href={`/chat/${sourceConversationId}`}
+                                onClick={() => {
+                                  onCloseReadOnlyTab?.()
+                                  onClose()
+                                }}
+                                className="text-sky-500 hover:underline"
+                              >
+                                Lihat percakapan terkait
+                              </Link>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    )}
                     {isMermaid ? (
                       <MermaidRenderer code={extractMermaidCode(artifact.content)} />
                     ) : isChartArtifact ? (

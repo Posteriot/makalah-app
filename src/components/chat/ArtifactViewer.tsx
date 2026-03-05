@@ -361,26 +361,6 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
           </div>
         ) : null}
 
-        {readOnly && (
-          <Alert variant="default" className="mx-4 mt-2 rounded-action border-muted bg-muted/30">
-            <Lock className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <span className="font-mono text-[12px]">
-                Artifak dari sesi lain — hanya baca
-              </span>
-              {sourceConversationId && (
-                <Link
-                  href={`/chat/${sourceConversationId}`}
-                  onClick={() => onCloseReadOnlyTab?.()}
-                  className="shrink-0 font-mono text-[11px] text-sky-500 hover:underline"
-                >
-                  Lihat Percakapan →
-                </Link>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-
         {isInvalidated && (
           <Alert
             variant="default"
@@ -412,6 +392,26 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
             <div className="flex-1 overflow-hidden px-4 py-3">
               <div className="flex h-full flex-col overflow-hidden bg-[var(--chat-background)]">
                 <div className="relative flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
+                  {readOnly && (
+                    <div className="mb-3 flex items-center gap-2 rounded-action border border-muted bg-muted/30 px-3 py-2">
+                      <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        Artifak dari sesi lain. Mode hanya baca.
+                        {sourceConversationId && (
+                          <>
+                            {" "}
+                            <Link
+                              href={`/chat/${sourceConversationId}`}
+                              onClick={() => onCloseReadOnlyTab?.()}
+                              className="text-sky-500 hover:underline"
+                            >
+                              Lihat percakapan terkait
+                            </Link>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  )}
                   {isRefrasaLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-[var(--chat-card)] backdrop-blur-md">
                       <RefrasaLoadingIndicator />
