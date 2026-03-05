@@ -113,6 +113,42 @@ export function SidebarPaperSessions({
       : "skip"
   )
 
+  // Helper: render "Sesi Lainnya" section (reused across all render paths)
+  const renderOtherSessions = () => {
+    // When no active session, show ALL sessions as "other"
+    const sessionsToShow = otherSessions
+    if (!sessionsToShow.length || !user) return null
+    return (
+      <div className="mt-3 pt-3 border-t border-[0.5px] border-[color:var(--chat-border)]">
+        <div className="px-4 pb-2">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
+            Sesi Lainnya
+          </span>
+        </div>
+        {sessionsToShow.map((s) => (
+          <OtherSessionFolder
+            key={s._id}
+            session={{
+              _id: s._id as Id<"paperSessions">,
+              conversationId: s.conversationId as Id<"conversations">,
+              workingTitle: s.workingTitle,
+              paperTitle: s.paperTitle,
+              currentStage: s.currentStage as string,
+              stageStatus: s.stageStatus as string,
+              _creationTime: s._creationTime,
+              updatedAt: s.updatedAt,
+            }}
+            onArtifactSelect={onArtifactSelect}
+            isArtifactPanelOpen={isArtifactPanelOpen}
+            onArtifactPanelToggle={onArtifactPanelToggle}
+            onCloseMobile={onCloseMobile}
+            userId={user._id}
+          />
+        ))}
+      </div>
+    )
+  }
+
   // Initial state before any conversation is selected
   if (!currentConversationId) {
     return (
@@ -123,12 +159,18 @@ export function SidebarPaperSessions({
             Folder Artifak
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
-          <Page className="h-8 w-8 text-[var(--chat-muted-foreground)] opacity-50 mb-2" />
-          <span className="text-sm text-[var(--chat-muted-foreground)] font-medium font-mono">
-            Belum ada sesi penyusunan paper. Silakan mulai percakapan baru.
-          </span>
-        </div>
+        {otherSessions.length > 0 && user ? (
+          <div className="flex-1 overflow-y-auto">
+            {renderOtherSessions()}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
+            <Page className="h-8 w-8 text-[var(--chat-muted-foreground)] opacity-50 mb-2" />
+            <span className="text-sm text-[var(--chat-muted-foreground)] font-medium font-mono">
+              Belum ada sesi penyusunan paper.
+            </span>
+          </div>
+        )}
       </div>
     )
   }
@@ -157,7 +199,7 @@ export function SidebarPaperSessions({
     )
   }
 
-  // Empty state - no paper session in this conversation (matches SidebarProgress)
+  // No paper session in this conversation — show indicator + other sessions
   if (!isPaperMode || !session) {
     return (
       <div className="flex flex-col h-full">
@@ -168,15 +210,15 @@ export function SidebarPaperSessions({
             Folder Artifak
           </div>
         </div>
-        {/* Empty state - same messaging as SidebarProgress */}
-        <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
-          <Page className="h-8 w-8 text-[var(--chat-muted-foreground)] opacity-50 mb-2" />
-          <span className="text-sm text-[var(--chat-muted-foreground)] font-medium font-mono mb-1">
-            Tidak ada paper aktif
+        {/* No active session indicator */}
+        <div className="px-4 py-3 text-center">
+          <span className="text-xs text-[var(--chat-muted-foreground)] opacity-60 font-mono">
+            Percakapan ini belum memiliki sesi paper
           </span>
-          <span className="text-xs text-[var(--chat-muted-foreground)] opacity-50 font-mono">
-            Percakapan ini bukan sesi penulisan paper
-          </span>
+        </div>
+        {/* Other sessions still shown */}
+        <div className="flex-1 overflow-y-auto">
+          {renderOtherSessions()}
         </div>
       </div>
     )
@@ -221,35 +263,7 @@ export function SidebarPaperSessions({
         />
 
         {/* Sesi Lainnya — other paper sessions */}
-        {otherSessions.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-[0.5px] border-[color:var(--chat-border)]">
-            <div className="px-4 pb-2">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
-                Sesi Lainnya
-              </span>
-            </div>
-            {otherSessions.map((s) => (
-              <OtherSessionFolder
-                key={s._id}
-                session={{
-                  _id: s._id as Id<"paperSessions">,
-                  conversationId: s.conversationId as Id<"conversations">,
-                  workingTitle: s.workingTitle,
-                  paperTitle: s.paperTitle,
-                  currentStage: s.currentStage as string,
-                  stageStatus: s.stageStatus as string,
-                  _creationTime: s._creationTime,
-                  updatedAt: s.updatedAt,
-                }}
-                onArtifactSelect={onArtifactSelect}
-                isArtifactPanelOpen={isArtifactPanelOpen}
-                onArtifactPanelToggle={onArtifactPanelToggle}
-                onCloseMobile={onCloseMobile}
-                userId={user!._id}
-              />
-            ))}
-          </div>
-        )}
+        {renderOtherSessions()}
       </div>
     </div>
   )
