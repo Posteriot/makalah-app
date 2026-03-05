@@ -1,6 +1,7 @@
 "use client"
 
 import { useQuery } from "convex/react"
+import { useConvexAuth } from "convex/react"
 import { WarningCircle, Clock, RefreshCircle, CheckCircle } from "iconoir-react"
 import { api } from "@convex/_generated/api"
 import { cn } from "@/lib/utils"
@@ -54,9 +55,13 @@ type TechnicalReportProgressSectionProps = {
 export function TechnicalReportProgressSection({
   onCreateReportClick,
 }: TechnicalReportProgressSectionProps) {
-  const reports = useQuery(api.technicalReports.listMyReportProgress, { limit: 10 })
+  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
+  const reports = useQuery(
+    api.technicalReports.listMyReportProgress,
+    isAuthenticated ? { limit: 10 } : "skip"
+  )
 
-  if (reports === undefined) {
+  if (isAuthLoading || reports === undefined) {
     return (
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
@@ -68,6 +73,23 @@ export function TechnicalReportProgressSection({
           </div>
         </div>
         <div className="h-40 animate-pulse rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900" />
+      </section>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <section className="space-y-3">
+        <div className="overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
+          <div className="flex items-start gap-2 bg-slate-50 p-4 dark:bg-slate-800">
+            <WarningCircle className="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div className="space-y-2">
+              <p className="text-narrative text-sm font-medium text-foreground">
+                Silakan masuk untuk melihat progres laporan.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
     )
   }

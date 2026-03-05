@@ -15,6 +15,8 @@ const ALLOWED_REDIRECT_PATH_PREFIXES = [
   "/documentation",
   "/waitinglist",
   "/privacy",
+  "/support",
+  "/technical-report",
   "/checkout/bpp",
   "/checkout/pro",
   "/chat",

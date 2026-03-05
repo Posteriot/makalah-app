@@ -32,7 +32,7 @@ Integrasi utama:
 ## Komponen dan Tanggung Jawab
 
 - `Footer.tsx`: menyusun grid footer 16-kolom, link navigasi (3 grup), logo dengan theme switching, social links, hairline separator, dan copyright.
-- `Footer.tsx`: juga menyediakan CTA tetap `Lapor Masalah Chat` ke `/support/technical-report?source=footer-link` sebagai kanal pelaporan teknis chat dari halaman non-chat.
+- `Footer.tsx`: menyisipkan link `Lapor Masalah` ke section `Sumber Daya` (di bawah `Kerja Sama Bisnis`) dengan guard auth.
 
 ## Perilaku Ringkas
 
@@ -41,7 +41,7 @@ Integrasi utama:
 - Logo otomatis switch antara light/dark variant berdasarkan tema:
   - Light mode: `makalah_logo_dark.svg` (`block dark:hidden`)
   - Dark mode: `makalah_logo_light.svg` (`hidden dark:block`)
-- Footer menampilkan CTA `Lapor Masalah Chat` yang selalu ada (bukan bagian dari CMS link groups).
+- Footer menampilkan `Lapor Masalah` di section `Sumber Daya` (bukan CTA terpisah di bottom bar).
 
 ## Layout & Grid
 
@@ -66,8 +66,9 @@ Integrasi utama:
   - `/privacy` → "Privacy"
   - `/security` → "Security"
   - `/terms` → "Terms"
-- CTA teknis (statis, non-CMS):
-  - `/support/technical-report?source=footer-link` → "Lapor Masalah Chat"
+- Link pelaporan (statis, non-CMS):
+  - Saat login: `/support/technical-report?source=footer-link` → "Lapor Masalah"
+  - Saat belum login: `/sign-in?redirect_url=%2Fsupport%2Ftechnical-report%3Fsource%3Dfooter-link` → "Lapor Masalah"
 - `SOCIAL_LINKS`:
   - `#` → "X" (`XIcon` dari iconoir-react)
   - `#` → "LinkedIn" (`Linkedin` dari iconoir-react)
@@ -80,7 +81,7 @@ Catatan:
 
 - Logo brand (32x32, theme-aware).
 - Section "Sumber Daya", "Perusahaan", dan "Legal" beserta link-linknya.
-- CTA tetap "Lapor Masalah Chat" (global reminder untuk pelaporan issue chat dari halaman non-chat).
+- Link "Lapor Masalah" di section "Sumber Daya" sebagai kanal pelaporan masalah chat dari halaman non-chat.
 - Hairline separator (`h-[0.5px] bg-[color:var(--border-hairline)]`).
 - Copyright:
   - `Jl. H. Jian, Kebayoran Baru, Jakarta Selatan`
