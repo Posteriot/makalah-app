@@ -26,6 +26,7 @@ import {
   WarningTriangle,
   NavArrowDown,
   OpenBook,
+  Lock,
 } from "iconoir-react"
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { toast } from "sonner"
@@ -35,6 +36,7 @@ import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { ChartRenderer } from "./ChartRenderer"
 import { RefrasaSquareIcon } from "./RefrasaSquareIcon"
+import Link from "next/link"
 import dynamic from "next/dynamic"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
@@ -71,6 +73,9 @@ interface FullsizeArtifactModalProps {
   onTabClose: (tabId: Id<"artifacts">) => void
   onOpenTab: (tab: ArtifactTab) => void
   onVersionCreated?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
+  readOnly?: boolean
+  sourceConversationId?: Id<"conversations">
+  onCloseReadOnlyTab?: () => void
 }
 
 const formatToLanguage: Record<string, string> = {
@@ -146,6 +151,9 @@ export function FullsizeArtifactModal({
   onTabClose: closeModalTab,
   onOpenTab: openModalTab,
   onVersionCreated,
+  readOnly,
+  sourceConversationId,
+  onCloseReadOnlyTab,
 }: FullsizeArtifactModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const primaryCloseButtonRef = useRef<HTMLButtonElement>(null)
@@ -570,7 +578,9 @@ export function FullsizeArtifactModal({
                       variant="outline"
                       size="sm"
                       onClick={() => setIsEditing(true)}
-                      className="h-7 px-2.5 font-mono text-[11px]"
+                      disabled={readOnly}
+                      title={readOnly ? "Buka percakapan asli untuk mengedit" : undefined}
+                      className={cn("h-7 px-2.5 font-mono text-[11px]", readOnly && "cursor-not-allowed opacity-40")}
                     >
                       Edit
                     </Button>
@@ -603,8 +613,9 @@ export function FullsizeArtifactModal({
                         variant="outline"
                         size="sm"
                         onClick={handleRefrasaTrigger}
-                        disabled={isRefrasaLoading || !canRefrasa}
-                        className="h-7 px-2.5 font-mono text-[11px]"
+                        disabled={readOnly || isRefrasaLoading || !canRefrasa}
+                        title={readOnly ? "Buka percakapan asli untuk refrasa" : undefined}
+                        className={cn("h-7 px-2.5 font-mono text-[11px]", readOnly && "cursor-not-allowed opacity-40")}
                       >
                         <RefrasaSquareIcon className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
                         Refrasa
@@ -654,6 +665,30 @@ export function FullsizeArtifactModal({
               </div>
             </div>
           </div>
+
+          {/* Read-only banner */}
+          {readOnly && (
+            <div className="mx-4 mb-3 flex items-center justify-between rounded-action border border-muted bg-muted/30 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+                <span className="font-mono text-[12px] text-muted-foreground">
+                  Artifak dari sesi lain — hanya baca
+                </span>
+              </div>
+              {sourceConversationId && (
+                <Link
+                  href={`/chat/${sourceConversationId}`}
+                  onClick={() => {
+                    onCloseReadOnlyTab?.()
+                    onClose()
+                  }}
+                  className="font-mono text-[11px] text-sky-500 hover:underline"
+                >
+                  Lihat Percakapan →
+                </Link>
+              )}
+            </div>
+          )}
 
           {/* Tab bar — shown when 2+ tabs */}
           {modalTabs.length > 1 && (

@@ -214,6 +214,13 @@ export function ArtifactPanel({
           onTabClose={onTabClose}
           onOpenTab={onOpenTab!}
           onVersionCreated={onUpdateTabId}
+          readOnly={isReadOnly}
+          sourceConversationId={sourceConversationId}
+          onCloseReadOnlyTab={() => {
+            if (activeTabId && isReadOnly) {
+              onTabClose(activeTabId)
+            }
+          }}
         />
       )}
     </div>
