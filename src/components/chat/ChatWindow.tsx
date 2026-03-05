@@ -1830,27 +1830,8 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 <FastArrowUpSquare className="h-5 w-5" strokeWidth={1.5} />
               )}
             </button>
-            <ChatTechnicalReportButton
-              compact
-              autoTriggered={shouldShowTechnicalReportAutoTrigger}
-              conversationId={safeConversationId}
-              paperSessionId={paperSession?._id}
-              initialSnapshot={technicalReportSnapshot}
-            />
           </div>
         </div>
-      </div>
-
-      <div
-        className="hidden md:flex justify-end pt-2"
-        style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}
-      >
-        <ChatTechnicalReportButton
-          autoTriggered={shouldShowTechnicalReportAutoTrigger}
-          conversationId={safeConversationId}
-          paperSessionId={paperSession?._id}
-          initialSnapshot={technicalReportSnapshot}
-        />
       </div>
 
       {shouldShowTechnicalReportAutoTrigger && (
