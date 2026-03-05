@@ -27,6 +27,11 @@ function SessionCookieSync() {
   const { data: session, isPending } = useSession()
 
   useEffect(() => {
+    const clearSessionCookie = () => {
+      document.cookie =
+        "ba_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+    }
+
     if (isPending) return
 
     if (session) {
@@ -55,17 +60,84 @@ function SessionCookieSync() {
           }
           if (cookieStr) {
             document.cookie = `ba_session=${encodeURIComponent(cookieStr)}; path=/; SameSite=Lax`
+          } else {
+            clearSessionCookie()
           }
         } catch {
-          // If parsing fails, set a marker so proxy.ts at least allows access
-          document.cookie = "ba_session=1; path=/; SameSite=Lax"
+          clearSessionCookie()
         }
+      } else {
+        clearSessionCookie()
       }
     } else {
-      document.cookie =
-        "ba_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+      clearSessionCookie()
     }
   }, [session, isPending])
+
+  return null
+}
+
+/**
+ * Cross-tab session invalidation.
+ *
+ * Two mechanisms:
+ * 1. `storage` event — fires in OTHER tabs when localStorage changes
+ * 2. `visibilitychange` — when tab becomes visible, re-check localStorage
+ *
+ * When sign-out clears `better-auth_cookie` to `{}`, either listener
+ * detects it and redirects to `/sign-in`.
+ */
+function CrossTabSessionSync() {
+  useEffect(() => {
+    let redirecting = false
+    const SESSION_COOKIE_KEY = "better-auth_cookie"
+    const SESSION_BROADCAST_KEY = "better-auth.message"
+
+    function doSignOutRedirect() {
+      if (redirecting) return
+      redirecting = true
+      document.cookie =
+        "ba_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+      const redirectPath = `${window.location.pathname}${window.location.search}`
+      window.location.replace(
+        `/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`
+      )
+    }
+
+    function isSessionCleared(): boolean {
+      const stored = localStorage.getItem(SESSION_COOKIE_KEY)
+      return !stored || stored === "{}" || stored === ""
+    }
+
+    function handleStorageChange(e: StorageEvent) {
+      if (e.key !== SESSION_COOKIE_KEY && e.key !== SESSION_BROADCAST_KEY) return
+      if (isSessionCleared()) {
+        doSignOutRedirect()
+      }
+    }
+
+    function handleSessionRefresh() {
+      if (isSessionCleared()) {
+        doSignOutRedirect()
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState !== "visible") return
+      handleSessionRefresh()
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("focus", handleSessionRefresh)
+    window.addEventListener("pageshow", handleSessionRefresh)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("focus", handleSessionRefresh)
+      window.removeEventListener("pageshow", handleSessionRefresh)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [])
 
   return null
 }
@@ -85,6 +157,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
           authClient={authClient}
         >
           <SessionCookieSync />
+          <CrossTabSessionSync />
           {children}
         </ConvexBetterAuthProvider>
       ) : (

@@ -13,6 +13,7 @@ import { Id } from "../../../convex/_generated/dataModel"
 import { useArtifactTabs } from "@/lib/hooks/useArtifactTabs"
 import { MobileArtifactViewer } from "./mobile/MobileArtifactViewer"
 import { MobileRefrasaViewer } from "./mobile/MobileRefrasaViewer"
+import { useSession } from "@/lib/auth-client"
 
 interface ChatContainerProps {
   conversationId: string | null
@@ -38,6 +39,7 @@ interface ChatContainerProps {
  */
 export function ChatContainer({ conversationId }: ChatContainerProps) {
   const { user } = useCurrentUser()
+  const { data: session, isPending: isSessionPending } = useSession()
   const searchParams = useSearchParams()
   const router = useRouter()
   const deepLinkArtifactId = searchParams.get("artifact")
@@ -90,6 +92,15 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
       }
     }
   }, [artifacts, artifactTabs, updateArtifactTabTitle])
+
+  useEffect(() => {
+    if (isSessionPending || session) return
+
+    const redirectPath = `${window.location.pathname}${window.location.search}`
+    window.location.replace(
+      `/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`
+    )
+  }, [isSessionPending, session])
 
   // Deep link: auto-open artifact panel when navigating via ?artifact=<id>
   useEffect(() => {

@@ -24,6 +24,17 @@ export const handler = {
   POST: (req: Request) => getAuthHandler().POST(req),
 };
 
+export function decodeBetterAuthCookieValue(
+  encodedValue: string | null | undefined
+): string | null {
+  if (!encodedValue) return null;
+  try {
+    return decodeURIComponent(encodedValue);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Get the BetterAuth cookie string from the `ba_session` browser cookie.
  *
@@ -33,13 +44,7 @@ export const handler = {
  */
 async function getBetterAuthCookies(): Promise<string | null> {
   const cookieStore = await cookies();
-  const baCookie = cookieStore.get("ba_session");
-  if (!baCookie?.value) return null;
-  try {
-    return decodeURIComponent(baCookie.value);
-  } catch {
-    return null;
-  }
+  return decodeBetterAuthCookieValue(cookieStore.get("ba_session")?.value);
 }
 
 /**
@@ -48,6 +53,13 @@ async function getBetterAuthCookies(): Promise<string | null> {
  */
 export async function isAuthenticated(): Promise<boolean> {
   const token = await getToken();
+  return !!token;
+}
+
+export async function isAuthenticatedFromBetterAuthCookies(
+  betterAuthCookies: string | null
+): Promise<boolean> {
+  const token = await getTokenFromBetterAuthCookies(betterAuthCookies);
   return !!token;
 }
 
@@ -61,6 +73,12 @@ export async function isAuthenticated(): Promise<boolean> {
  */
 export async function getToken(): Promise<string | null> {
   const betterAuthCookies = await getBetterAuthCookies();
+  return getTokenFromBetterAuthCookies(betterAuthCookies);
+}
+
+export async function getTokenFromBetterAuthCookies(
+  betterAuthCookies: string | null
+): Promise<string | null> {
   if (!betterAuthCookies) return null;
 
   try {

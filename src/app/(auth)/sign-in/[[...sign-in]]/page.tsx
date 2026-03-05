@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { useTheme } from "next-themes"
 import { toast } from "sonner"
 import { Eye, EyeClosed, Mail, Lock, RefreshDouble } from "iconoir-react"
-import { signIn, authClient } from "@/lib/auth-client"
+import { signIn, authClient, useSession } from "@/lib/auth-client"
 import { setPending2FA } from "@/lib/auth-2fa"
 import { AuthWideCard } from "@/components/auth/AuthWideCard"
 import { TurnstileWidget } from "@/components/auth/TurnstileWidget"
@@ -62,6 +61,7 @@ function getOAuthErrorMessage(errorCode: string | null) {
 export default function SignInPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { data: session, isPending: isSessionPending } = useSession()
   const { isWaitlistMode } = useWaitlistMode()
   const verifiedEmail = searchParams.get("verified_email")
   const resetToken = searchParams.get("token")
@@ -75,9 +75,8 @@ export default function SignInPage() {
     ? `/verify-2fa?${new URLSearchParams({ redirect_url: redirectParam }).toString()}`
     : "/verify-2fa"
   const callbackURL = getRedirectUrl(searchParams, "/")
-  const { resolvedTheme } = useTheme()
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
-  const turnstileTheme = resolvedTheme === "light" ? "light" : "dark"
+  const turnstileTheme = "dark" as const
   const requiresRecoveryCaptcha = Boolean(turnstileSiteKey)
   const initialOAuthErrorMessage =
     !resetToken ? getOAuthErrorMessage(oauthErrorCode) : ""
@@ -106,6 +105,11 @@ export default function SignInPage() {
   useEffect(() => {
     setIsClientReady(true)
   }, [])
+
+  useEffect(() => {
+    if (!isClientReady || isSessionPending || !session) return
+    window.location.replace(callbackURL)
+  }, [callbackURL, isClientReady, isSessionPending, session])
 
   useEffect(() => {
     if (verifiedEmail) {
