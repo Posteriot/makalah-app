@@ -716,24 +716,25 @@ function formatOutlineChecklist(
 
 const ARTIFACT_SUMMARY_CHAR_LIMIT = 500;
 
-function formatArtifactSummary(content: string, stageLabel: string): string {
+function formatArtifactSummary(content: string, stageLabel: string, version: number, title: string, artifactId: string): string {
     const truncated = content.length > ARTIFACT_SUMMARY_CHAR_LIMIT
         ? content.slice(0, ARTIFACT_SUMMARY_CHAR_LIMIT).trim() + "..."
         : content;
-    return `- [${stageLabel}] "${truncated}"`;
+    return `- [${stageLabel}] ID: ${artifactId} | "${title}" (v${version}): "${truncated}"`;
 }
 
 /**
  * Format artifact summaries from completed stages into a context section.
+ * Includes artifactId, version, and title so the model can reference and read them via readArtifact tool.
  * Truncates content to 500 chars per artifact to keep prompt size manageable.
  */
 export function formatArtifactSummaries(
-    artifacts: Array<{ stageLabel: string; content: string }>
+    artifacts: Array<{ stageLabel: string; content: string; version: number; title: string; artifactId: string }>
 ): string {
     if (artifacts.length === 0) return "";
 
     const summaries = artifacts
-        .map((a) => formatArtifactSummary(a.content, a.stageLabel));
+        .map((a) => formatArtifactSummary(a.content, a.stageLabel, a.version, a.title, a.artifactId));
 
-    return `RINGKASAN ARTIFACT TAHAP SELESAI:\n${summaries.join("\n")}`;
+    return `RINGKASAN ARTIFACT TAHAP SELESAI (gunakan readArtifact untuk baca isi lengkap jika dibutuhkan):\n${summaries.join("\n")}`;
 }

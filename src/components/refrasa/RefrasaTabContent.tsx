@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
@@ -15,6 +16,7 @@ interface RefrasaTabContentProps {
   onTabClose?: (artifactId: Id<"artifacts">) => void
   onExpand?: () => void
   onActivateTab?: (tabId: Id<"artifacts">) => void
+  onSourceVersionCreated?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
 }
 
 export function RefrasaTabContent({
@@ -23,6 +25,7 @@ export function RefrasaTabContent({
   onTabClose,
   onExpand,
   onActivateTab,
+  onSourceVersionCreated,
 }: RefrasaTabContentProps) {
   // Local state to track which version is being viewed
   const [viewingArtifactId, setViewingArtifactId] =
@@ -91,23 +94,27 @@ export function RefrasaTabContent({
 
     setIsApplying(true)
     try {
-      await updateArtifact({
+      const result = await updateArtifact({
         artifactId: artifact.sourceArtifactId,
         userId,
         content: artifact.content,
       })
       await markApplied({ artifactId: viewingArtifactId, userId })
 
-      // After 1.5s, switch to source artifact tab
+      // Notify parent to update source tab ID to new version
+      onSourceVersionCreated?.(artifact.sourceArtifactId, result.artifactId)
+
+      // After 1.5s, switch to NEW source artifact tab (v2)
       setTimeout(() => {
-        onActivateTab?.(artifact.sourceArtifactId!)
+        onActivateTab?.(result.artifactId)
       }, 1500)
     } catch (err) {
       console.error("[RefrasaTabContent] Apply failed:", err)
+      toast.error("Gagal menerapkan refrasa. Silakan coba lagi.")
     } finally {
       setIsApplying(false)
     }
-  }, [artifact, viewingArtifactId, userId, updateArtifact, markApplied, onActivateTab])
+  }, [artifact, viewingArtifactId, userId, updateArtifact, markApplied, onActivateTab, onSourceVersionCreated])
 
   const handleDelete = useCallback(async () => {
     if (!artifact) return

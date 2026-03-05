@@ -70,6 +70,7 @@ interface FullsizeArtifactModalProps {
   onTabChange: (tabId: Id<"artifacts">) => void
   onTabClose: (tabId: Id<"artifacts">) => void
   onOpenTab: (tab: ArtifactTab) => void
+  onVersionCreated?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
 }
 
 const formatToLanguage: Record<string, string> = {
@@ -144,6 +145,7 @@ export function FullsizeArtifactModal({
   onTabChange: setModalActiveTab,
   onTabClose: closeModalTab,
   onOpenTab: openModalTab,
+  onVersionCreated,
 }: FullsizeArtifactModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const primaryCloseButtonRef = useRef<HTMLButtonElement>(null)
@@ -334,12 +336,15 @@ export function FullsizeArtifactModal({
 
     setIsSaving(true)
     try {
-      await updateArtifact({
+      const result = await updateArtifact({
         artifactId: artifact._id,
         userId: currentUser._id,
         content: editContent,
       })
-      toast.success(`Artifak diperbarui ke v${artifact.version + 1}`)
+      toast.success(`Artifak diperbarui ke v${result.version}`)
+      setViewingVersionId(result.artifactId)
+      setActiveArtifactId(result.artifactId)
+      onVersionCreated?.(artifact._id, result.artifactId)
       setIsEditing(false)
     } catch (error) {
       console.error("Failed to update artifact:", error)
@@ -347,7 +352,7 @@ export function FullsizeArtifactModal({
     } finally {
       setIsSaving(false)
     }
-  }, [artifact, currentUser?._id, editContent, updateArtifact])
+  }, [artifact, currentUser?._id, editContent, updateArtifact, onVersionCreated])
 
   const handleDownload = useCallback((format: DownloadFormat) => {
     if (!artifact) return
@@ -670,6 +675,7 @@ export function FullsizeArtifactModal({
                 userId={currentUser._id}
                 onTabClose={(id) => closeModalTab(id)}
                 onActivateTab={setModalActiveTab}
+                onSourceVersionCreated={onVersionCreated}
               />
             </div>
           ) : (
