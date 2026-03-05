@@ -302,7 +302,6 @@ function RegularOverviewView({
 // Admin view: full observability (unchanged from original)
 // ─────────────────────────────────────────────────
 function AdminOverviewView({
-  quotaStatus,
   usageBreakdown,
   creditBalance,
   tier,
@@ -319,7 +318,6 @@ function AdminOverviewView({
   isBlocked,
   currentCreditBalance,
 }: {
-  quotaStatus: any
   usageBreakdown: any
   creditBalance: any
   tier: EffectiveTier
@@ -774,7 +772,6 @@ export default function SubscriptionOverviewPage() {
 
       {isUnlimited ? (
         <AdminOverviewView
-          quotaStatus={quotaStatus}
           usageBreakdown={usageBreakdown}
           creditBalance={creditBalance}
           tier={tier}

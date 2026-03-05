@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+
 type FailoverTimelineProps = {
   failoverCount: number
   failoverCauses: { cause: string; count: number }[]
@@ -27,6 +29,9 @@ export function FailoverTimeline({
   failoverAllSuccess,
   failoverTimeline,
 }: FailoverTimelineProps) {
+  // Compute dot positions across 7 days (hook must be called before early return)
+  const [now] = useState(Date.now)
+
   if (failoverCount === 0) {
     return (
       <div>
@@ -43,8 +48,6 @@ export function FailoverTimeline({
     )
   }
 
-  // Compute dot positions across 7 days
-  const now = Date.now()
   const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000
   const totalRange = now - sevenDaysAgo
 

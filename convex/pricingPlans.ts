@@ -179,7 +179,7 @@ export const updatePricingPlan = mutation({
       }
     }
 
-    const { requestorId, id, ...updates } = args
+    const { requestorId: _requestorId, id, ...updates } = args
     const patch: Record<string, unknown> = { updatedAt: Date.now() }
     for (const [key, value] of Object.entries(updates)) {
       if (value !== undefined) {

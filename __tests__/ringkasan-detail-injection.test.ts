@@ -4,7 +4,7 @@ const DETAIL_WINDOW_SIZE = 3;
 
 function getDetailStages(
   completedStages: string[],
-  currentStage: string
+  _currentStage: string
 ): string[] {
   // Return last N completed stages for detail injection
   return completedStages.slice(-DETAIL_WINDOW_SIZE);

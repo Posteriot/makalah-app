@@ -1,3 +1,5 @@
+import { stripMarkdown, sanitizeStepThought } from "./reasoning-sanitizer"
+
 export type CuratedTraceStepKey =
   | "intent-analysis"
   | "paper-context-check"
@@ -164,8 +166,6 @@ export function segmentReasoning(
 
   const stepThoughts = {} as Record<CuratedTraceStepKey, string | null>
   const stepLabels = {} as Record<CuratedTraceStepKey, string>
-
-  const { stripMarkdown } = require("./reasoning-sanitizer") as typeof import("./reasoning-sanitizer")
 
   for (const stepKey of STEP_ORDER) {
     const bucket = buckets[stepKey]
@@ -420,7 +420,6 @@ export function createCuratedTraceController(options: {
     populateFromReasoning: (rawReasoning: string) => {
       if (!rawReasoning || rawReasoning.trim().length === 0) return []
 
-      const { sanitizeStepThought } = require("./reasoning-sanitizer") as typeof import("./reasoning-sanitizer")
       const segmentation = segmentReasoning(rawReasoning, options.mode)
       const events: CuratedTraceDataPart[] = []
 

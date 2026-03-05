@@ -1248,7 +1248,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     setAttachedFiles((prev) => [...prev, file])
   }
 
-  const handleFileRemoved = (fileId: Id<"files">) => {
+  const handleFileRemoved = useCallback((fileId: Id<"files">) => {
     setIsAttachmentDraftDirty(true)
     setAttachedFiles((prev) => prev.filter((f) => f.fileId !== fileId))
     setImageDataUrls((prev) => {
@@ -1256,7 +1256,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       next.delete(fileId)
       return next
     })
-  }
+  }, [])
 
   const handleImageDataUrl = (fileId: Id<"files">, dataUrl: string) => {
     setImageDataUrls((prev) => new Map(prev).set(fileId, dataUrl))

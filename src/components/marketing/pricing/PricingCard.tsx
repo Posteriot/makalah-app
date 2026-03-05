@@ -74,8 +74,7 @@ function PricingCTA({
 // Main PricingCard Component
 // ════════════════════════════════════════════════════════════════
 
-export function PricingCard({ plan, isWaitlistMode }: { plan: PricingPlan; isWaitlistMode?: boolean }) {
-  const isDisabledByWaitlist = isWaitlistMode && plan.slug !== "gratis"
+export function PricingCard({ plan }: { plan: PricingPlan; isWaitlistMode?: boolean }) {
   return (
     <div className="group/card relative h-full">
       {/* Popular tag for highlighted card */}

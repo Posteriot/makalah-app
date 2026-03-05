@@ -323,8 +323,8 @@ export function StageSkillFormDialog({
                 disabled={isSubmitting}
                 className="focus-ring h-10 w-full rounded-action border border-border bg-background px-3 text-sm"
               >
-                <option value="true">"true"</option>
-                <option value="false">"false"</option>
+                <option value="true">&quot;true&quot;</option>
+                <option value="false">&quot;false&quot;</option>
               </select>
             </div>
 

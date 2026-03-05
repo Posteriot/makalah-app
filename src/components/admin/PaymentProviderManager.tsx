@@ -75,7 +75,7 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
         enabledMethods,
       })
       toast.success("Konfigurasi payment provider berhasil disimpan")
-    } catch (e) {
+    } catch {
       toast.error("Gagal menyimpan konfigurasi")
     } finally {
       setSaving(false)

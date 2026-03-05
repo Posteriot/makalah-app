@@ -15,8 +15,23 @@ const eslintConfig = defineConfig([
     ".development/**",
     ".references/**",
     "convex/_generated/**",
-    "worktrees/**",
+    ".worktrees/**",
+    ".claude/**",
+    ".agents/**",
   ]),
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

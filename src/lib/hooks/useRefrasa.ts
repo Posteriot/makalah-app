@@ -25,7 +25,7 @@ interface UseRefrasaReturn {
   reset: () => void
 }
 
-export function useRefrasa(options: UseRefrasaOptions): UseRefrasaReturn {
+export function useRefrasa({ conversationId, userId, onArtifactCreated }: UseRefrasaOptions): UseRefrasaReturn {
   const [state, setState] = useState<UseRefrasaState>({
     isLoading: false,
     result: null,
@@ -36,7 +36,7 @@ export function useRefrasa(options: UseRefrasaOptions): UseRefrasaReturn {
 
   const analyzeAndRefrasa = useCallback(
     async (content: string, sourceArtifactId: Id<"artifacts">, sourceTitle: string) => {
-      if (!options.conversationId || !options.userId) return
+      if (!conversationId || !userId) return
       setState({ isLoading: true, result: null, error: null })
 
       try {
@@ -57,8 +57,8 @@ export function useRefrasa(options: UseRefrasaOptions): UseRefrasaReturn {
 
         // Persist to DB
         const { artifactId } = await createRefrasaMutation({
-          conversationId: options.conversationId,
-          userId: options.userId,
+          conversationId,
+          userId,
           sourceArtifactId,
           content: data.refrasedText,
           refrasaIssues: data.issues,
@@ -67,14 +67,14 @@ export function useRefrasa(options: UseRefrasaOptions): UseRefrasaReturn {
         setState({ isLoading: false, result: data, error: null })
 
         // Notify caller to open tab
-        options.onArtifactCreated?.(artifactId, sourceTitle)
+        onArtifactCreated?.(artifactId, sourceTitle)
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Terjadi kesalahan saat memproses"
         setState({ isLoading: false, result: null, error: errorMessage })
       }
     },
-    [options.conversationId, options.userId, createRefrasaMutation, options.onArtifactCreated]
+    [conversationId, userId, createRefrasaMutation, onArtifactCreated]
   )
 
   const reset = useCallback(() => {

@@ -18,10 +18,6 @@ export default function PlansHubPage() {
   const router = useRouter()
 
   const plans = useQuery(api.pricingPlans.getActivePlans)
-  const creditBalance = useQuery(
-    api.billing.credits.getCreditBalance,
-    user?._id ? { userId: user._id } : "skip"
-  )
   const subscriptionStatus = useQuery(
     api.billing.subscriptions.checkSubscriptionStatus,
     user?._id ? { userId: user._id } : "skip"
@@ -102,7 +98,6 @@ export default function PlansHubPage() {
     )
   }
 
-  const currentCredits = creditBalance?.remainingCredits ?? 0
   const pageTitle = "Pilih Paket"
 
   const visiblePlans = plans.filter((plan) => plan.slug === "pro")

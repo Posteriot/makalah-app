@@ -159,7 +159,7 @@ export const upsertSection = mutation({
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorId, "admin")
 
-    const { requestorId, id, ...data } = args
+    const { requestorId: _requestorId, id, ...data } = args
     const searchText = generateSearchText(data)
     const now = Date.now()
 
