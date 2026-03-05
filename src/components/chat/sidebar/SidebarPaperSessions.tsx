@@ -84,8 +84,10 @@ export function SidebarPaperSessions({
 }: SidebarPaperSessionsProps) {
   const { user, isLoading: isUserLoading } = useCurrentUser()
 
-  // Accordion: only one folder expanded at a time
+  // Accordion: only one folder expanded at a time.
+  // Tracks both manual user selection and auto-expand from active session.
   const [expandedFolderId, setExpandedFolderId] = useState<Id<"paperSessions"> | null>(null)
+  const [lastSyncedSessionId, setLastSyncedSessionId] = useState<Id<"paperSessions"> | null>(null)
 
   // Query paper session for ACTIVE conversation only (like SidebarProgress)
   const {
@@ -111,12 +113,13 @@ export function SidebarPaperSessions({
   }, [allSessions, session])
 
   // Auto-expand active session when conversation changes
-  const activeSessionId = session?._id as Id<"paperSessions"> | undefined
-  useEffect(() => {
-    if (activeSessionId) {
-      setExpandedFolderId(activeSessionId)
-    }
-  }, [activeSessionId])
+  const activeSessionId = (session?._id as Id<"paperSessions"> | undefined) ?? null
+  if (activeSessionId && activeSessionId !== lastSyncedSessionId) {
+    setLastSyncedSessionId(activeSessionId)
+    setExpandedFolderId(activeSessionId)
+  } else if (!activeSessionId && lastSyncedSessionId) {
+    setLastSyncedSessionId(null)
+  }
 
   const conversation = useQuery(
     api.conversations.getConversation,
@@ -596,12 +599,7 @@ function ArtifactTreeItem({
         </span>
       ) : (
         <Page
-          className={cn(
-            "h-4 w-4 shrink-0",
-            isFinal
-              ? "text-[var(--chat-muted-foreground)]"
-              : "text-[var(--chat-muted-foreground)]"
-          )}
+          className="h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]"
         />
       )}
 

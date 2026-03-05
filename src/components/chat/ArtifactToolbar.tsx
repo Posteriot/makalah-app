@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Download, EditPencil, Copy, Check, Expand, Xmark } from "iconoir-react"
-import type { Id } from "../../../convex/_generated/dataModel"
+import { Download, EditPencil, Copy, Check, Expand } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -32,10 +31,6 @@ interface ArtifactToolbarProps {
   } | null
   /** Whether the artifact is read-only (cross-session preview) */
   readOnly?: boolean
-  /** Source conversation ID for read-only cross-session artifacts */
-  sourceConversationId?: Id<"conversations">
-  /** Callback to close read-only tab when navigating to source conversation */
-  onCloseReadOnlyTab?: () => void
   /** Number of open tabs for context label */
   openTabCount?: number
   /** Callbacks for actions — connected to ArtifactViewer ref */
@@ -44,7 +39,6 @@ interface ArtifactToolbarProps {
   onRefrasa?: () => void
   onCopy?: () => void
   onExpand?: () => void
-  onClosePanel?: () => void
 }
 
 function formatDate(timestamp: number): string {
@@ -66,15 +60,12 @@ function formatDate(timestamp: number): string {
 export function ArtifactToolbar({
   artifact,
   readOnly,
-  sourceConversationId,
-  onCloseReadOnlyTab,
   openTabCount = 0,
   onDownload,
   onEdit,
   onRefrasa,
   onCopy,
   onExpand,
-  onClosePanel,
 }: ArtifactToolbarProps) {
   const [copied, setCopied] = useState(false)
 

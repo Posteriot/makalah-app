@@ -37,7 +37,7 @@ interface ArtifactPanelProps {
  * - ArtifactViewer for rendering artifact content
  * - Fullsize modal for expanded viewing
  * - Width controlled by parent resizer
- * - Panel close via TopBar (no close button in panel)
+ * - Panel close via Xmark button in tab bar or TopBar toggle
  *
  * Styling:
  * - Uses CSS variables for theme consistency
@@ -156,12 +156,6 @@ export function ArtifactPanel({
               : null
           }
           readOnly={isReadOnly}
-          sourceConversationId={sourceConversationId}
-          onCloseReadOnlyTab={() => {
-            if (activeTabId && isReadOnly) {
-              onTabClose(activeTabId)
-            }
-          }}
           openTabCount={openTabCount}
           onDownload={(format) => {
             viewerRef.current?.setDownloadFormat(format)
@@ -171,7 +165,6 @@ export function ArtifactPanel({
           onRefrasa={() => viewerRef.current?.triggerRefrasa()}
           onCopy={() => viewerRef.current?.copy()}
           onExpand={() => setIsFullsizeOpen(true)}
-          onClosePanel={onToggle}
         />
       )}
 
