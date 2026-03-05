@@ -401,7 +401,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                           <>
                             {" "}
                             <Link
-                              href={`/chat/${sourceConversationId}`}
+                              href={`/chat/${sourceConversationId}?artifact=${artifactId}`}
                               onClick={() => onCloseReadOnlyTab?.()}
                               className="text-sky-500 hover:underline"
                             >

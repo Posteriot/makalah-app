@@ -751,7 +751,7 @@ export function FullsizeArtifactModal({
                             <>
                               {" "}
                               <Link
-                                href={`/chat/${sourceConversationId}`}
+                                href={`/chat/${sourceConversationId}?artifact=${activeArtifactId}`}
                                 onClick={() => {
                                   onCloseReadOnlyTab?.()
                                   onClose()
