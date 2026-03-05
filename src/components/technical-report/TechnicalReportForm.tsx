@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react"
 import { toast } from "sonner"
 import type { Id } from "@convex/_generated/dataModel"
+import { Button } from "@/components/ui/button"
 import {
   useTechnicalReport,
   type TechnicalReportSource,
@@ -28,7 +29,6 @@ export function TechnicalReportForm({
 }: TechnicalReportFormProps) {
   const { contexts, submitReport, isSubmitting } = useTechnicalReport()
   const [description, setDescription] = useState("")
-  const [issueCategory, setIssueCategory] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [reportId, setReportId] = useState<string | null>(null)
   const [includeDiagnostics, setIncludeDiagnostics] = useState(true)
@@ -56,7 +56,7 @@ export function TechnicalReportForm({
 
     mapped.push({
       value: UNKNOWN_SESSION_VALUE,
-      label: "Saya tidak tahu sesi chat-nya",
+      label: "Sesi chat tidak diketahui",
       paperSessionId: null,
     })
 
@@ -89,7 +89,6 @@ export function TechnicalReportForm({
       const result = await submitReport({
         source,
         description: normalizedDescription,
-        ...(issueCategory.trim() ? { issueCategory: issueCategory.trim() } : {}),
         ...(resolvedConversationId ? { conversationId: resolvedConversationId } : {}),
         ...(resolvedPaperSessionId ? { paperSessionId: resolvedPaperSessionId } : {}),
         ...(includeDiagnostics
@@ -116,16 +115,16 @@ export function TechnicalReportForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-action border border-[color:var(--chat-border)] bg-card p-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <label htmlFor="technical-report-description" className="block text-sm font-medium text-foreground">
-          Ceritakan masalah yang lo temuin
+          Uraian kendala teknis
         </label>
         <textarea
           id="technical-report-description"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
-          placeholder="Contoh: tool pencarian gagal dipanggil setelah saya klik kirim."
+          placeholder="Contoh: Tool pencarian web gagal dipanggil setelah tombol Kirim ditekan."
           className="min-h-28 w-full rounded-action border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
@@ -140,27 +139,13 @@ export function TechnicalReportForm({
           onChange={(event) => setContextValue(event.target.value)}
           className="h-10 w-full rounded-action border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <option value="">Pilih sesi chat (opsional)</option>
+          <option value="">Pilih sesi chat terkait (opsional)</option>
           {contextOptions.map((context) => (
             <option key={context.value} value={context.value}>
               {context.label}
             </option>
           ))}
         </select>
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="technical-report-category" className="block text-sm font-medium text-foreground">
-          Kategori masalah (opsional)
-        </label>
-        <input
-          id="technical-report-category"
-          type="text"
-          value={issueCategory}
-          onChange={(event) => setIssueCategory(event.target.value)}
-          placeholder="Contoh: gagal tool calling"
-          className="h-10 w-full rounded-action border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
       </div>
 
       <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
@@ -186,13 +171,13 @@ export function TechnicalReportForm({
       )}
 
       <div className="flex justify-end">
-        <button
+        <Button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex h-10 items-center justify-center rounded-action bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="chat-validation-approve-button h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
         >
           {isSubmitting ? "Mengirim..." : "Kirim Laporan"}
-        </button>
+        </Button>
       </div>
     </form>
   )

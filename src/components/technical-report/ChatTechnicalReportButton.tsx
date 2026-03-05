@@ -69,11 +69,13 @@ export function ChatTechnicalReportButton({
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Laporkan Masalah Chat</DialogTitle>
-          <DialogDescription>
-            Ceritakan kendala teknis yang lo temuin saat chat atau paper session.
+      <DialogContent data-chat-scope="" className="border-0 sm:max-w-2xl">
+        <DialogHeader className="text-left">
+          <DialogTitle className="text-left text-sm sm:text-lg">
+            Laporkan Kendala Teknis Chat
+          </DialogTitle>
+          <DialogDescription className="text-left text-xs leading-relaxed sm:text-sm">
+            Formulir ini digunakan untuk melaporkan kendala teknis pada chat atau paper session.
           </DialogDescription>
         </DialogHeader>
 
