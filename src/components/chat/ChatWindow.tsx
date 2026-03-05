@@ -35,6 +35,12 @@ import {
   buildChatQuotaOfferFromError,
   isQuotaExceededChatError,
 } from "./chat-quota-error"
+import { ChatTechnicalReportButton } from "@/components/technical-report"
+import {
+  extractChatDiagnosticSnapshot,
+  extractToolStatesFromReasoning,
+  shouldShowTechnicalReportTrigger,
+} from "@/lib/technical-report/chatSnapshot"
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
 interface ConversationArtifact {
@@ -572,6 +578,15 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     return getStageStartIndex(permissionMessages)
   }, [isPaperMode, permissionMessages, getStageStartIndex])
 
+  const latestAssistantModel = useMemo(() => {
+    const latestAssistant = [...(historyMessages ?? [])]
+      .reverse()
+      .find((msg) => msg.role === "assistant")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const maybeModel = (latestAssistant as any)?.metadata?.model
+    return typeof maybeModel === "string" ? maybeModel : undefined
+  }, [historyMessages])
+
   // Build message → artifact map for persisted artifact signals (survives page refresh)
   // Matches artifacts to the assistant message they were created during, using temporal proximity
   const messageArtifactMap = useMemo(() => {
@@ -1090,6 +1105,30 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       headline: null as string | null,
     }
   }, [messages])
+
+  const technicalReportChatStatus = status === "error" && !isQuotaRejectedError ? "error" : status
+  const technicalReportToolStates = useMemo(
+    () => extractToolStatesFromReasoning(activeReasoningState.steps, error?.message),
+    [activeReasoningState.steps, error?.message]
+  )
+  const technicalReportSnapshot = useMemo(
+    () =>
+      extractChatDiagnosticSnapshot({
+        chatStatus: technicalReportChatStatus,
+        errorMessage: error?.message,
+        model: latestAssistantModel,
+        reasoningSteps: activeReasoningState.steps,
+      }),
+    [technicalReportChatStatus, error?.message, latestAssistantModel, activeReasoningState.steps]
+  )
+  const shouldShowTechnicalReportAutoTrigger = useMemo(
+    () =>
+      shouldShowTechnicalReportTrigger({
+        chatStatus: technicalReportChatStatus,
+        toolStates: technicalReportToolStates,
+      }),
+    [technicalReportChatStatus, technicalReportToolStates]
+  )
 
   const clearProcessTimers = useCallback(() => {
     if (processIntervalRef.current !== null) {
@@ -1784,9 +1823,42 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 <FastArrowUpSquare className="h-5 w-5" strokeWidth={1.5} />
               )}
             </button>
+            <ChatTechnicalReportButton
+              compact
+              autoTriggered={shouldShowTechnicalReportAutoTrigger}
+              conversationId={safeConversationId}
+              paperSessionId={paperSession?._id}
+              initialSnapshot={technicalReportSnapshot}
+            />
           </div>
         </div>
       </div>
+
+      <div
+        className="hidden md:flex justify-end pt-2"
+        style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}
+      >
+        <ChatTechnicalReportButton
+          autoTriggered={shouldShowTechnicalReportAutoTrigger}
+          conversationId={safeConversationId}
+          paperSessionId={paperSession?._id}
+          initialSnapshot={technicalReportSnapshot}
+        />
+      </div>
+
+      {shouldShowTechnicalReportAutoTrigger && (
+        <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-action border border-[color:var(--chat-destructive)] bg-[var(--chat-destructive)]/10 px-3 py-2">
+          <p className="text-xs font-medium text-[var(--chat-destructive)]">
+            Terdeteksi kendala teknis pada chat. Lo bisa kirim technical report sekarang.
+          </p>
+          <ChatTechnicalReportButton
+            autoTriggered
+            conversationId={safeConversationId}
+            paperSessionId={paperSession?._id}
+            initialSnapshot={technicalReportSnapshot}
+          />
+        </div>
+      )}
 
       {/* Quota Warning Banner */}
       <QuotaWarningBanner className="mx-4 mt-4" />
@@ -1958,10 +2030,18 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                 <WarningCircle className="h-4 w-4" />
                 <span className="font-mono">Gagal mengirim pesan.</span>
               </div>
-              <Button variant="outline" size="sm" onClick={() => handleRegenerate()} className="bg-[var(--chat-background)] hover:bg-[var(--chat-accent)] h-7 text-xs font-mono border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)]">
-                <Refresh className="h-3 w-3 mr-1" />
-                Coba Lagi
-              </Button>
+              <div className="ml-3 flex items-center gap-1.5">
+                <Button variant="outline" size="sm" onClick={() => handleRegenerate()} className="bg-[var(--chat-background)] hover:bg-[var(--chat-accent)] h-7 text-xs font-mono border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)]">
+                  <Refresh className="h-3 w-3 mr-1" />
+                  Coba Lagi
+                </Button>
+                <ChatTechnicalReportButton
+                  autoTriggered
+                  conversationId={safeConversationId}
+                  paperSessionId={paperSession?._id}
+                  initialSnapshot={technicalReportSnapshot}
+                />
+              </div>
             </div>
           )}
 
