@@ -153,7 +153,7 @@ async function handlePaymentSuccess(event: WebhookEvent, internalKey: string) {
       break
 
     case "subscription_initial": {
-      const planType = (payment as any).planType ?? "pro_monthly"
+      const planType = (payment as unknown as { planType?: string }).planType ?? "pro_monthly"
 
       const subscriptionId = await fetchMutation(
         api.billing.subscriptions.createSubscriptionInternal,

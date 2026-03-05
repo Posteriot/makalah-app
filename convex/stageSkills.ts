@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Id, DataModel } from "./_generated/dataModel";
+import type { GenericDatabaseReader, GenericDatabaseWriter } from "convex/server";
 import { requireRole } from "./permissions";
 import { STAGE_SCOPE_VALUES, getExpectedSearchPolicy, toSkillId } from "./stageSkills/constants";
 import { validateStageSkillContent } from "../src/lib/ai/stage-skill-validator";
@@ -34,7 +35,7 @@ function normalizeText(value: string): string {
 }
 
 async function appendAuditLog(
-    db: any,
+    db: GenericDatabaseWriter<DataModel>,
     input: {
         skillRefId?: Id<"stageSkills">;
         skillId: string;
@@ -56,32 +57,32 @@ async function appendAuditLog(
 }
 
 async function getSkillBySkillId(
-    db: any,
+    db: GenericDatabaseReader<DataModel>,
     skillId: string
 ) {
     return db
         .query("stageSkills")
-        .withIndex("by_skillId", (q: any) => q.eq("skillId", skillId))
+        .withIndex("by_skillId", (q) => q.eq("skillId", skillId))
         .first();
 }
 
 async function getSkillByStageScope(
-    db: any,
+    db: GenericDatabaseReader<DataModel>,
     stageScope: (typeof STAGE_SCOPE_VALUES)[number]
 ) {
     return db
         .query("stageSkills")
-        .withIndex("by_stageScope", (q: any) => q.eq("stageScope", stageScope))
+        .withIndex("by_stageScope", (q) => q.eq("stageScope", stageScope))
         .first();
 }
 
 async function getLatestVersionNumber(
-    db: any,
+    db: GenericDatabaseReader<DataModel>,
     skillRefId: Id<"stageSkills">
 ) {
     const versions = await db
         .query("stageSkillVersions")
-        .withIndex("by_skillRefId", (q: any) => q.eq("skillRefId", skillRefId))
+        .withIndex("by_skillRefId", (q) => q.eq("skillRefId", skillRefId))
         .order("desc")
         .take(1);
 
@@ -89,13 +90,13 @@ async function getLatestVersionNumber(
 }
 
 async function getVersionByNumber(
-    db: any,
+    db: GenericDatabaseReader<DataModel>,
     skillRefId: Id<"stageSkills">,
     version: number
 ) {
     return db
         .query("stageSkillVersions")
-        .withIndex("by_skillRefId", (q: any) =>
+        .withIndex("by_skillRefId", (q) =>
             q.eq("skillRefId", skillRefId).eq("version", version)
         )
         .first();
@@ -111,7 +112,7 @@ export const getActiveByStage = query({
 
         const active = await db
             .query("stageSkillVersions")
-            .withIndex("by_skillRefId_status", (q: any) =>
+            .withIndex("by_skillRefId_status", (q) =>
                 q.eq("skillRefId", skill._id).eq("status", "active")
             )
             .order("desc")
@@ -155,7 +156,7 @@ export const listByStage = query({
             skills.map(async (skill) => {
                 const versions = await db
                     .query("stageSkillVersions")
-                    .withIndex("by_skillRefId", (q: any) => q.eq("skillRefId", skill._id))
+                    .withIndex("by_skillRefId", (q) => q.eq("skillRefId", skill._id))
                     .order("desc")
                     .collect();
 
@@ -193,7 +194,7 @@ export const getVersionHistory = query({
 
         const versions = await db
             .query("stageSkillVersions")
-            .withIndex("by_skillRefId", (q: any) => q.eq("skillRefId", skill._id))
+            .withIndex("by_skillRefId", (q) => q.eq("skillRefId", skill._id))
             .order("desc")
             .collect();
 
@@ -484,7 +485,7 @@ export const activateVersion = mutation({
         const now = Date.now();
         const currentActive = await db
             .query("stageSkillVersions")
-            .withIndex("by_skillRefId_status", (q: any) =>
+            .withIndex("by_skillRefId_status", (q) =>
                 q.eq("skillRefId", skill._id).eq("status", "active")
             )
             .collect();
@@ -559,7 +560,7 @@ export const rollbackVersion = mutation({
         const now = Date.now();
         const currentActive = await db
             .query("stageSkillVersions")
-            .withIndex("by_skillRefId_status", (q: any) =>
+            .withIndex("by_skillRefId_status", (q) =>
                 q.eq("skillRefId", skill._id).eq("status", "active")
             )
             .collect();
@@ -736,7 +737,7 @@ export const listRuntimeConflicts = query({
 
         return db
             .query("stageSkillAuditLogs")
-            .withIndex("by_action_createdAt", (q: any) => q.eq("action", "runtime_conflict"))
+            .withIndex("by_action_createdAt", (q) => q.eq("action", "runtime_conflict"))
             .order("desc")
             .take(args.limit ?? 30);
     },
@@ -754,7 +755,7 @@ export const getSkillById = query({
 
         const active = await db
             .query("stageSkillVersions")
-            .withIndex("by_skillRefId_status", (q: any) =>
+            .withIndex("by_skillRefId_status", (q) =>
                 q.eq("skillRefId", skill._id).eq("status", "active")
             )
             .order("desc")
@@ -827,7 +828,7 @@ export const runPreActivationDryRun = query({
 
             const versions = await db
                 .query("stageSkillVersions")
-                .withIndex("by_skillRefId", (q: any) => q.eq("skillRefId", skill._id))
+                .withIndex("by_skillRefId", (q) => q.eq("skillRefId", skill._id))
                 .order("desc")
                 .collect();
 

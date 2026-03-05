@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Doc } from "@convex/_generated/dataModel"
 import type { Id } from "@convex/_generated/dataModel"
 import type { BlogCategoryId } from "./CmsSidebar"
 import { BLOG_CATEGORIES } from "./CmsSidebar"
@@ -27,38 +28,6 @@ export function CmsBlogOverview({ userId, onCategoryClick, onCreateNewPost, onNa
     pageSlug: "blog",
     sectionSlug: "blog-page-settings",
   })
-  const upsertSection = useMutation(api.pageContent.upsertSection)
-
-  // Pattern toggle state — blog page default: only Dotted active
-  const [showGridPattern, setShowGridPattern] = useState(false)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(false)
-
-  // Sync from DB
-  useEffect(() => {
-    if (pageSettings) {
-      setShowGridPattern(pageSettings.showGridPattern === true)
-      setShowDottedPattern(pageSettings.showDottedPattern !== false)
-      setShowDiagonalStripes(pageSettings.showDiagonalStripes === true)
-    }
-  }, [pageSettings])
-
-  async function handleSavePatterns() {
-    await upsertSection({
-      requestorId: userId,
-      id: pageSettings?._id,
-      pageSlug: "blog",
-      sectionSlug: "blog-page-settings",
-      sectionType: "page-settings",
-      title: "",
-      showGridPattern,
-      showDottedPattern,
-      showDiagonalStripes,
-      isPublished: true,
-      sortOrder: 0,
-    })
-  }
-
   // Loading
   if (allPosts === undefined) {
     return (
@@ -173,6 +142,46 @@ export function CmsBlogOverview({ userId, onCategoryClick, onCreateNewPost, onNa
       </button>
 
       {/* ── Background Patterns ── */}
+      <PatternToggles
+        key={pageSettings?._id ?? "default"}
+        pageSettings={pageSettings}
+        userId={userId}
+        pageSlug="blog"
+        sectionSlug="blog-page-settings"
+      />
+    </div>
+  )
+}
+
+function PatternToggles({ pageSettings, userId, pageSlug, sectionSlug }: {
+  pageSettings: Doc<"pageContent"> | null | undefined
+  userId: Id<"users">
+  pageSlug: string
+  sectionSlug: string
+}) {
+  const upsertSection = useMutation(api.pageContent.upsertSection)
+  const [showGridPattern, setShowGridPattern] = useState(pageSettings?.showGridPattern === true)
+  const [showDottedPattern, setShowDottedPattern] = useState(pageSettings?.showDottedPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(pageSettings?.showDiagonalStripes === true)
+
+  async function handleSave() {
+    await upsertSection({
+      requestorId: userId,
+      id: pageSettings?._id,
+      pageSlug,
+      sectionSlug,
+      sectionType: "page-settings",
+      title: "",
+      showGridPattern,
+      showDottedPattern,
+      showDiagonalStripes,
+      isPublished: true,
+      sortOrder: 0,
+    })
+  }
+
+  return (
+    <>
       <div className="mt-6 border-t border-border" />
       <div className="mt-4 space-y-3">
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -208,8 +217,8 @@ export function CmsBlogOverview({ userId, onCategoryClick, onCreateNewPost, onNa
             onCheckedChange={setShowDiagonalStripes}
           />
         </div>
-        <CmsSaveButton onSave={handleSavePatterns} />
+        <CmsSaveButton onSave={handleSave} />
       </div>
-    </div>
+    </>
   )
 }

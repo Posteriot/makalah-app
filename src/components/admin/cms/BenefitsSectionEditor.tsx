@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
+import type { Doc, Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -33,30 +33,45 @@ export function BenefitsSectionEditor({ userId }: BenefitsSectionEditorProps) {
     sectionSlug: "benefits",
   })
 
+  // Loading skeleton
+  if (section === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-px w-full" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="space-y-2 rounded-action border border-border p-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ))}
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return <BenefitsSectionForm key={section?._id ?? "new"} section={section} userId={userId} />
+}
+
+function BenefitsSectionForm({ section, userId }: { section: Doc<"pageContent"> | null; userId: Id<"users"> }) {
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
-  const [items, setItems] = useState<BenefitItem[]>(EMPTY_ITEMS)
-  const [showGridPattern, setShowGridPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [isPublished, setIsPublished] = useState(false)
-
-  // Sync form state when section data loads
-  useEffect(() => {
-    if (section) {
-      if (section.items && Array.isArray(section.items)) {
-        const loaded = (section.items as Array<{ title?: string; description?: string }>).map((item) => ({
-          title: item.title ?? "",
-          description: item.description ?? "",
-        }))
-        setItems(loaded.length > 0 ? loaded : EMPTY_ITEMS)
-      }
-      setShowGridPattern(section.showGridPattern !== false)
-      setShowDiagonalStripes(section.showDiagonalStripes !== false)
-      setShowDottedPattern(section.showDottedPattern !== false)
-      setIsPublished(section.isPublished ?? false)
+  const [items, setItems] = useState<BenefitItem[]>(() => {
+    if (section?.items && Array.isArray(section.items)) {
+      const loaded = (section.items as Array<{ title?: string; description?: string }>).map((item) => ({
+        title: item.title ?? "",
+        description: item.description ?? "",
+      }))
+      return loaded.length > 0 ? loaded : EMPTY_ITEMS
     }
-  }, [section])
+    return EMPTY_ITEMS
+  })
+  const [showGridPattern, setShowGridPattern] = useState(section?.showGridPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(section?.showDiagonalStripes !== false)
+  const [showDottedPattern, setShowDottedPattern] = useState(section?.showDottedPattern !== false)
+  const [isPublished, setIsPublished] = useState(section?.isPublished ?? false)
 
   function updateItem(index: number, field: keyof BenefitItem, value: string) {
     setItems((prev) =>
@@ -91,25 +106,6 @@ export function BenefitsSectionEditor({ userId }: BenefitsSectionEditorProps) {
       isPublished,
       sortOrder: 2,
     })
-  }
-
-  // Loading skeleton
-  if (section === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-px w-full" />
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="space-y-2 rounded-action border border-border p-4">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-        ))}
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
   }
 
   return (

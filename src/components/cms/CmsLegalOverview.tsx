@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Doc } from "@convex/_generated/dataModel"
 import type { Id } from "@convex/_generated/dataModel"
 import type { LegalPageId } from "./CmsSidebar"
 import { NavArrowRight } from "iconoir-react"
@@ -32,38 +33,6 @@ export function CmsLegalOverview({
     pageSlug: "legal",
     sectionSlug: "legal-page-settings",
   })
-  const upsertSection = useMutation(api.pageContent.upsertSection)
-
-  // Pattern toggle state — legal pages default: only Dotted active
-  const [showGridPattern, setShowGridPattern] = useState(false)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(false)
-
-  // Sync from DB
-  useEffect(() => {
-    if (pageSettings) {
-      setShowGridPattern(pageSettings.showGridPattern === true)
-      setShowDottedPattern(pageSettings.showDottedPattern !== false)
-      setShowDiagonalStripes(pageSettings.showDiagonalStripes === true)
-    }
-  }, [pageSettings])
-
-  async function handleSavePatterns() {
-    await upsertSection({
-      requestorId: userId,
-      id: pageSettings?._id,
-      pageSlug: "legal",
-      sectionSlug: "legal-page-settings",
-      sectionType: "page-settings",
-      title: "",
-      showGridPattern,
-      showDottedPattern,
-      showDiagonalStripes,
-      isPublished: true,
-      sortOrder: 0,
-    })
-  }
-
   // Loading
   if (allPages === undefined) {
     return (
@@ -160,6 +129,46 @@ export function CmsLegalOverview({
       </div>
 
       {/* ── Background Patterns ── */}
+      <PatternToggles
+        key={pageSettings?._id ?? "default"}
+        pageSettings={pageSettings}
+        userId={userId}
+        pageSlug="legal"
+        sectionSlug="legal-page-settings"
+      />
+    </div>
+  )
+}
+
+function PatternToggles({ pageSettings, userId, pageSlug, sectionSlug }: {
+  pageSettings: Doc<"pageContent"> | null | undefined
+  userId: Id<"users">
+  pageSlug: string
+  sectionSlug: string
+}) {
+  const upsertSection = useMutation(api.pageContent.upsertSection)
+  const [showGridPattern, setShowGridPattern] = useState(pageSettings?.showGridPattern === true)
+  const [showDottedPattern, setShowDottedPattern] = useState(pageSettings?.showDottedPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(pageSettings?.showDiagonalStripes === true)
+
+  async function handleSave() {
+    await upsertSection({
+      requestorId: userId,
+      id: pageSettings?._id,
+      pageSlug,
+      sectionSlug,
+      sectionType: "page-settings",
+      title: "",
+      showGridPattern,
+      showDottedPattern,
+      showDiagonalStripes,
+      isPublished: true,
+      sortOrder: 0,
+    })
+  }
+
+  return (
+    <>
       <div className="mt-6 border-t border-border" />
       <div className="mt-4 space-y-3">
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -195,8 +204,8 @@ export function CmsLegalOverview({
             onCheckedChange={setShowDiagonalStripes}
           />
         </div>
-        <CmsSaveButton onSave={handleSavePatterns} />
+        <CmsSaveButton onSave={handleSave} />
       </div>
-    </div>
+    </>
   )
 }

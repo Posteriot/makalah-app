@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Doc } from "@convex/_generated/dataModel"
@@ -105,17 +106,23 @@ export function ManifestoSectionCMS({ content }: ManifestoSectionCMSProps) {
             {hasTerminalImages ? (
               <>
                 {terminalDarkUrl && (
-                  <img
+                  <Image
                     src={terminalDarkUrl}
                     alt="Manifesto terminal panel"
+                    width={720}
+                    height={405}
                     className="hidden w-full max-w-[720px] rounded-md dark:block"
+                    unoptimized
                   />
                 )}
                 {terminalLightUrl && (
-                  <img
+                  <Image
                     src={terminalLightUrl}
                     alt="Manifesto terminal panel"
+                    width={720}
+                    height={405}
                     className="block w-full max-w-[720px] rounded-md dark:hidden"
+                    unoptimized
                   />
                 )}
               </>

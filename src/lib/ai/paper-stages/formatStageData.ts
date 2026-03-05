@@ -29,7 +29,7 @@ const RINGKASAN_DETAIL_CHAR_LIMIT = 1000;
 const WEB_REFERENCES_CAP = 5;
 const CITATION_CAP = 5;
 
-interface StageData {
+export interface StageData {
     gagasan?: GagasanData;
     topik?: TopikData;
     abstrak?: AbstrakData;
@@ -159,7 +159,7 @@ function formatRingkasanTahapSelesai(
     STAGE_ORDER.forEach((stageId) => {
         if (currentStage !== "completed" && stageId === currentStage) return;
         const data = stageData[stageId] as AllStageData | undefined;
-        if (data?.validatedAt && !(data as any).superseded) {
+        if (data?.validatedAt && !(data as Record<string, unknown>).superseded) {
             completedStageIds.push(stageId);
         }
     });
@@ -179,8 +179,8 @@ function formatRingkasanTahapSelesai(
 
         // Inject detail for last N completed stages (saves context budget)
         const isDetailStage = detailStages.has(stageId);
-        const detail = isDetailStage && typeof (data as any).ringkasanDetail === "string"
-            ? ((data as any).ringkasanDetail as string).trim()
+        const detail = isDetailStage && typeof (data as Record<string, unknown>).ringkasanDetail === "string"
+            ? ((data as Record<string, unknown>).ringkasanDetail as string).trim()
             : null;
 
         if (detail) {

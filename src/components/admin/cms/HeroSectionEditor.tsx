@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
+import type { Doc, Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -22,44 +22,48 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
     sectionSlug: "hero",
   })
 
+  // Loading skeleton
+  if (section === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <div className="flex gap-4">
+          <Skeleton className="h-9 flex-1" />
+          <Skeleton className="h-9 flex-1" />
+        </div>
+        <Skeleton className="aspect-video w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return <HeroSectionForm key={section?._id ?? "new"} section={section} userId={userId} />
+}
+
+function HeroSectionForm({ section, userId }: { section: Doc<"pageContent"> | null; userId: Id<"users"> }) {
   const upsertSection = useMutation(api.pageContent.upsertSection)
   const { isWaitlistMode } = useWaitlistMode()
 
-  const [title, setTitle] = useState("")
-  const [subtitle, setSubtitle] = useState("")
-  const [badgeText, setBadgeText] = useState("")
-  const [ctaText, setCtaText] = useState("")
-  const [ctaHref, setCtaHref] = useState("")
+  const [title, setTitle] = useState(section?.title ?? "")
+  const [subtitle, setSubtitle] = useState(section?.subtitle ?? "")
+  const [badgeText, setBadgeText] = useState(section?.badgeText ?? "")
+  const [ctaText, setCtaText] = useState(section?.ctaText ?? "")
+  const [ctaHref, setCtaHref] = useState(section?.ctaHref ?? "")
   const [primaryImageId, setPrimaryImageId] = useState<Id<"_storage"> | null>(
-    null
+    section?.primaryImageId ?? null
   )
-  const [primaryImageAlt, setPrimaryImageAlt] = useState("")
-  const [headingImageDarkId, setHeadingImageDarkId] = useState<Id<"_storage"> | null>(null)
-  const [headingImageLightId, setHeadingImageLightId] = useState<Id<"_storage"> | null>(null)
-  const [showGridPattern, setShowGridPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [isPublished, setIsPublished] = useState(false)
-
-
-  // Sync form state when section data loads
-  useEffect(() => {
-    if (section) {
-      setTitle(section.title ?? "")
-      setSubtitle(section.subtitle ?? "")
-      setBadgeText(section.badgeText ?? "")
-      setCtaText(section.ctaText ?? "")
-      setCtaHref(section.ctaHref ?? "")
-      setPrimaryImageId(section.primaryImageId ?? null)
-      setPrimaryImageAlt(section.primaryImageAlt ?? "")
-      setHeadingImageDarkId(section.headingImageDarkId ?? null)
-      setHeadingImageLightId(section.headingImageLightId ?? null)
-      setShowGridPattern(section.showGridPattern !== false)
-      setShowDiagonalStripes(section.showDiagonalStripes !== false)
-      setShowDottedPattern(section.showDottedPattern !== false)
-      setIsPublished(section.isPublished ?? false)
-    }
-  }, [section])
+  const [primaryImageAlt, setPrimaryImageAlt] = useState(section?.primaryImageAlt ?? "")
+  const [headingImageDarkId, setHeadingImageDarkId] = useState<Id<"_storage"> | null>(section?.headingImageDarkId ?? null)
+  const [headingImageLightId, setHeadingImageLightId] = useState<Id<"_storage"> | null>(section?.headingImageLightId ?? null)
+  const [showGridPattern, setShowGridPattern] = useState(section?.showGridPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(section?.showDiagonalStripes !== false)
+  const [showDottedPattern, setShowDottedPattern] = useState(section?.showDottedPattern !== false)
+  const [isPublished, setIsPublished] = useState(section?.isPublished ?? false)
 
   async function handleSave() {
     await upsertSection({
@@ -83,26 +87,6 @@ export function HeroSectionEditor({ userId }: HeroSectionEditorProps) {
       isPublished,
       sortOrder: 1,
     })
-  }
-
-  // Loading skeleton
-  if (section === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <div className="flex gap-4">
-          <Skeleton className="h-9 flex-1" />
-          <Skeleton className="h-9 flex-1" />
-        </div>
-        <Skeleton className="aspect-video w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
   }
 
   return (

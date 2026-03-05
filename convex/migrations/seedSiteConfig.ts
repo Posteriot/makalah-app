@@ -23,7 +23,7 @@ export const seedSiteConfig = internalMutationGeneric({
     // ========================================================================
     const existingHeader = await db
       .query("siteConfig")
-      .withIndex("by_key", (q: any) => q.eq("key", "header"))
+      .withIndex("by_key", (q) => q.eq("key", "header"))
       .first()
 
     if (existingHeader) {
@@ -50,7 +50,7 @@ export const seedSiteConfig = internalMutationGeneric({
     // ========================================================================
     const existingFooter = await db
       .query("siteConfig")
-      .withIndex("by_key", (q: any) => q.eq("key", "footer"))
+      .withIndex("by_key", (q) => q.eq("key", "footer"))
       .first()
 
     if (existingFooter) {

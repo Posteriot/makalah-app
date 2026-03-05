@@ -28,6 +28,7 @@ export const enableTwoFactorAllUsers = httpAction(async (ctx, request) => {
 
   try {
     const auth = createAuth(ctx)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BetterAuth internal API, no public type
     const authCtx = await (auth as any).$context
 
     // List all users from BetterAuth table

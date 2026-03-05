@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
+import type { Doc, Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -22,36 +22,48 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
     sectionSlug: "manifesto",
   })
 
+  // Loading skeleton
+  if (section === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return <ManifestoSectionForm key={section?._id ?? "new"} section={section} userId={userId} />
+}
+
+function ManifestoSectionForm({ section, userId }: { section: Doc<"pageContent"> | null; userId: Id<"users"> }) {
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
-  const [badgeText, setBadgeText] = useState("")
-  const [headingText, setHeadingText] = useState("")
-  const [subheading, setSubheading] = useState("")
-  const [paragraphs, setParagraphs] = useState<string[]>([])
-  const [terminalDarkId, setTerminalDarkId] = useState<Id<"_storage"> | null>(null)
-  const [terminalLightId, setTerminalLightId] = useState<Id<"_storage"> | null>(null)
-  const [showGridPattern, setShowGridPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [isPublished, setIsPublished] = useState(false)
-
-  // Sync form state when section data loads
-  useEffect(() => {
-    if (section) {
-      setBadgeText(section.badgeText ?? "")
-      const lines = (section.headingLines as string[] | undefined) ?? []
-      setHeadingText(lines.join("\n"))
-      setSubheading(section.subheading ?? "")
-      const paras = (section.paragraphs as string[] | undefined) ?? []
-      setParagraphs(paras)
-      setTerminalDarkId((section.primaryImageId as Id<"_storage"> | undefined) ?? null)
-      setTerminalLightId((section.secondaryImageId as Id<"_storage"> | undefined) ?? null)
-      setShowGridPattern(section.showGridPattern !== false)
-      setShowDiagonalStripes(section.showDiagonalStripes !== false)
-      setShowDottedPattern(section.showDottedPattern !== false)
-      setIsPublished(section.isPublished ?? false)
-    }
-  }, [section])
+  const [badgeText, setBadgeText] = useState(section?.badgeText ?? "")
+  const [headingText, setHeadingText] = useState(() => {
+    const lines = (section?.headingLines as string[] | undefined) ?? []
+    return lines.join("\n")
+  })
+  const [subheading, setSubheading] = useState(section?.subheading ?? "")
+  const [paragraphs, setParagraphs] = useState<string[]>(() => {
+    return (section?.paragraphs as string[] | undefined) ?? []
+  })
+  const [terminalDarkId, setTerminalDarkId] = useState<Id<"_storage"> | null>(
+    (section?.primaryImageId as Id<"_storage"> | undefined) ?? null
+  )
+  const [terminalLightId, setTerminalLightId] = useState<Id<"_storage"> | null>(
+    (section?.secondaryImageId as Id<"_storage"> | undefined) ?? null
+  )
+  const [showGridPattern, setShowGridPattern] = useState(section?.showGridPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(section?.showDiagonalStripes !== false)
+  const [showDottedPattern, setShowDottedPattern] = useState(section?.showDottedPattern !== false)
+  const [isPublished, setIsPublished] = useState(section?.isPublished ?? false)
 
   function updateParagraph(index: number, value: string) {
     setParagraphs((prev) => prev.map((p, i) => (i === index ? value : p)))
@@ -84,23 +96,6 @@ export function ManifestoSectionEditor({ userId }: ManifestoSectionEditorProps) 
       isPublished,
       sortOrder: 1,
     })
-  }
-
-  // Loading skeleton
-  if (section === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
   }
 
   return (

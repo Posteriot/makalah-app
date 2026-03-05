@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Doc } from "@convex/_generated/dataModel"
 import type { Id } from "@convex/_generated/dataModel"
 import type { DocBlock } from "@/components/marketing/documentation/types"
 import { Switch } from "@/components/ui/switch"
@@ -91,7 +92,7 @@ type DocSectionEditorProps = {
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Wrapper (exported)
 // ---------------------------------------------------------------------------
 
 export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps) {
@@ -102,38 +103,69 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
     slug !== null ? { requestorId: userId, slug } : "skip"
   )
 
+  // Loading skeleton for edit mode
+  if (!isCreateMode && existingSection === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return (
+    <DocSectionForm
+      key={existingSection?._id ?? "new"}
+      section={isCreateMode ? null : (existingSection ?? null)}
+      slug={slug}
+      userId={userId}
+      onBack={onBack}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Form (not exported)
+// ---------------------------------------------------------------------------
+
+function DocSectionForm({
+  section,
+  slug,
+  userId,
+  onBack,
+}: {
+  section: Doc<"documentationSections"> | null
+  slug: string | null
+  userId: Id<"users">
+  onBack: () => void
+}) {
+  const isCreateMode = slug === null
+
   const upsertSection = useMutation(api.documentationSections.upsertSection)
 
-  // Form state
-  const [title, setTitle] = useState("")
-  const [slugValue, setSlugValue] = useState("")
-  const [group, setGroup] = useState("Mulai")
-  const [order, setOrder] = useState(0)
-  const [icon, setIcon] = useState("")
-  const [headerIcon, setHeaderIcon] = useState("")
-  const [summary, setSummary] = useState("")
-  const [isPublished, setIsPublished] = useState(false)
-  const [blocks, setBlocks] = useState<DocBlock[]>([])
+  // Form state — initialized from section prop
+  const [title, setTitle] = useState(section?.title ?? "")
+  const [slugValue, setSlugValue] = useState(section?.slug ?? "")
+  const [group, setGroup] = useState(section?.group ?? "Mulai")
+  const [order, setOrder] = useState(section?.order ?? 0)
+  const [icon, setIcon] = useState(section?.icon ?? "")
+  const [headerIcon, setHeaderIcon] = useState(section?.headerIcon ?? "")
+  const [summary, setSummary] = useState(section?.summary ?? "")
+  const [isPublished, setIsPublished] = useState(section?.isPublished ?? false)
+  const [blocks, setBlocks] = useState<DocBlock[]>(
+    (section?.blocks as DocBlock[] | undefined) ?? []
+  )
 
   // UI state
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(section !== null)
   const [addBlockType, setAddBlockType] = useState<"section" | "infoCard" | "ctaCards">("section")
-
-  // Populate form when existing section data loads
-  useEffect(() => {
-    if (existingSection) {
-      setTitle(existingSection.title)
-      setSlugValue(existingSection.slug)
-      setGroup(existingSection.group)
-      setOrder(existingSection.order)
-      setIcon(existingSection.icon ?? "")
-      setHeaderIcon(existingSection.headerIcon ?? "")
-      setSummary(existingSection.summary ?? "")
-      setIsPublished(existingSection.isPublished)
-      setBlocks(existingSection.blocks as DocBlock[])
-      setSlugManuallyEdited(true)
-    }
-  }, [existingSection])
 
   // Auto-generate slug from title in create mode
   function handleTitleChange(value: string) {
@@ -177,7 +209,7 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
   async function handleSave() {
     await upsertSection({
       requestorId: userId,
-      id: existingSection?._id as Id<"documentationSections"> | undefined,
+      id: section?._id as Id<"documentationSections"> | undefined,
       slug: slugValue,
       title,
       group,
@@ -188,23 +220,6 @@ export function DocSectionEditor({ slug, userId, onBack }: DocSectionEditorProps
       blocks,
       isPublished,
     })
-  }
-
-  // Loading skeleton for edit mode
-  if (!isCreateMode && existingSection === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
   }
 
   return (

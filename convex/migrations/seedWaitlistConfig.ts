@@ -12,7 +12,7 @@ export const seedWaitlistConfig = internalMutationGeneric({
 
     const existing = await db
       .query("appConfig")
-      .withIndex("by_key", (q: any) => q.eq("key", "waitlistMode"))
+      .withIndex("by_key", (q) => q.eq("key", "waitlistMode"))
       .unique()
 
     if (existing) {

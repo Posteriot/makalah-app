@@ -1,8 +1,9 @@
 "use client"
 
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Doc } from "@convex/_generated/dataModel"
 import type { Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -139,50 +140,87 @@ const DEFAULT_SOCIALS: SocialLink[] = [
   { platform: "instagram", url: "", isVisible: true },
 ]
 
+// ---------------------------------------------------------------------------
+// Wrapper (exported)
+// ---------------------------------------------------------------------------
+
 export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
   const config = useQuery(api.siteConfig.getConfig, { key: "footer" })
+
+  // Loading skeleton
+  if (config === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return (
+    <FooterConfigForm
+      key={config?._id ?? "new"}
+      section={config}
+      userId={userId}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Form (not exported)
+// ---------------------------------------------------------------------------
+
+function FooterConfigForm({
+  section,
+  userId,
+}: {
+  section: Doc<"siteConfig"> | null
+  userId: Id<"users">
+}) {
   const upsertConfig = useMutation(api.siteConfig.upsertConfig)
 
-  const [footerSections, setFooterSections] = useState<FooterSection[]>(DEFAULT_SECTIONS)
-  const [socialLinks, setSocialLinks] = useState<SocialLink[]>(DEFAULT_SOCIALS)
-  const [copyrightText, setCopyrightText] = useState("")
-  const [companyDescription, setCompanyDescription] = useState("")
-  const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(null)
-  const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(null)
-  const [showGridPattern, setShowGridPattern] = useState(true)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-
-  // Sync form state when config data loads
-  useEffect(() => {
-    if (config) {
-      const sections = (config.footerSections as FooterSection[] | undefined) ?? []
-      setFooterSections(sections.length > 0 ? sections : DEFAULT_SECTIONS)
-
-      const socials = (config.socialLinks as SocialLink[] | undefined) ?? []
-      setSocialLinks(socials.length > 0 ? socials : DEFAULT_SOCIALS)
-
-      setCopyrightText((config.copyrightText as string | undefined) ?? "")
-      setCompanyDescription((config.companyDescription as string | undefined) ?? "")
-      setLogoDarkId((config.logoDarkId as Id<"_storage"> | undefined) ?? null)
-      setLogoLightId((config.logoLightId as Id<"_storage"> | undefined) ?? null)
-      setShowGridPattern(config.showGridPattern !== false)
-      setShowDottedPattern(config.showDottedPattern !== false)
-      setShowDiagonalStripes(config.showDiagonalStripes !== false)
-    } else if (config === null) {
-      setFooterSections(DEFAULT_SECTIONS)
-      setSocialLinks(DEFAULT_SOCIALS)
-      setCopyrightText("")
-      setCompanyDescription("")
+  // Initialize from section prop; when null use defaults
+  const [footerSections, setFooterSections] = useState<FooterSection[]>(() => {
+    if (section) {
+      const sections = (section.footerSections as FooterSection[] | undefined) ?? []
+      return sections.length > 0 ? sections : DEFAULT_SECTIONS
     }
-  }, [config])
+    return DEFAULT_SECTIONS
+  })
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>(() => {
+    if (section) {
+      const socials = (section.socialLinks as SocialLink[] | undefined) ?? []
+      return socials.length > 0 ? socials : DEFAULT_SOCIALS
+    }
+    return DEFAULT_SOCIALS
+  })
+  const [copyrightText, setCopyrightText] = useState(
+    (section?.copyrightText as string | undefined) ?? ""
+  )
+  const [companyDescription, setCompanyDescription] = useState(
+    (section?.companyDescription as string | undefined) ?? ""
+  )
+  const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(
+    (section?.logoDarkId as Id<"_storage"> | undefined) ?? null
+  )
+  const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(
+    (section?.logoLightId as Id<"_storage"> | undefined) ?? null
+  )
+  const [showGridPattern, setShowGridPattern] = useState(section?.showGridPattern !== false)
+  const [showDottedPattern, setShowDottedPattern] = useState(section?.showDottedPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(section?.showDiagonalStripes !== false)
 
   // --- Footer Sections helpers ---
 
   function updateSectionTitle(sectionIndex: number, title: string) {
     setFooterSections((prev) =>
-      prev.map((section, i) =>
-        i === sectionIndex ? { ...section, title } : section
+      prev.map((s, i) =>
+        i === sectionIndex ? { ...s, title } : s
       )
     )
   }
@@ -194,35 +232,35 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
     value: string
   ) {
     setFooterSections((prev) =>
-      prev.map((section, si) =>
+      prev.map((s, si) =>
         si === sectionIndex
           ? {
-              ...section,
-              links: section.links.map((link, li) =>
+              ...s,
+              links: s.links.map((link, li) =>
                 li === linkIndex ? { ...link, [field]: value } : link
               ),
             }
-          : section
+          : s
       )
     )
   }
 
   function addLinkToSection(sectionIndex: number) {
     setFooterSections((prev) =>
-      prev.map((section, i) =>
+      prev.map((s, i) =>
         i === sectionIndex
-          ? { ...section, links: [...section.links, { label: "", href: "" }] }
-          : section
+          ? { ...s, links: [...s.links, { label: "", href: "" }] }
+          : s
       )
     )
   }
 
   function removeLinkFromSection(sectionIndex: number, linkIndex: number) {
     setFooterSections((prev) =>
-      prev.map((section, si) =>
+      prev.map((s, si) =>
         si === sectionIndex
-          ? { ...section, links: section.links.filter((_, li) => li !== linkIndex) }
-          : section
+          ? { ...s, links: s.links.filter((_, li) => li !== linkIndex) }
+          : s
       )
     )
   }
@@ -267,9 +305,9 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
     await upsertConfig({
       requestorId: userId,
       key: "footer",
-      footerSections: footerSections.map((section) => ({
-        title: section.title,
-        links: section.links.map((link) => ({
+      footerSections: footerSections.map((s) => ({
+        title: s.title,
+        links: s.links.map((link) => ({
           label: link.label,
           href: link.href,
         })),
@@ -288,21 +326,6 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
       showDottedPattern,
       showDiagonalStripes,
     })
-  }
-
-  // Loading skeleton
-  if (config === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
   }
 
   return (
@@ -331,7 +354,7 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
         </Button>
 
         <div className="space-y-3">
-          {footerSections.map((section, sectionIndex) => (
+          {footerSections.map((fsection, sectionIndex) => (
             <div
               key={sectionIndex}
               className="rounded-action border border-border p-4 space-y-3"
@@ -357,16 +380,16 @@ export function FooterConfigEditor({ userId }: FooterConfigEditorProps) {
                   Judul Section
                 </label>
                 <Input
-                  value={section.title}
+                  value={fsection.title}
                   onChange={(e) => updateSectionTitle(sectionIndex, e.target.value)}
                   placeholder="Nama section"
                 />
               </div>
 
               {/* Links list */}
-              {section.links.length > 0 && (
+              {fsection.links.length > 0 && (
                 <div className="space-y-2 pl-3 border-l border-border">
-                  {section.links.map((link, linkIndex) => (
+                  {fsection.links.map((link, linkIndex) => (
                     <div key={linkIndex} className="flex items-center gap-2">
                       <Input
                         value={link.label}

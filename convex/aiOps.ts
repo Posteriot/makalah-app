@@ -166,15 +166,15 @@ export const getSessionDrillDown = query({
 
     // Build per-stage summary from stageData
     const stageDetails = Object.entries(session.stageData || {}).map(
-      ([stageId, data]: [string, any]) => ({
+      ([stageId, data]: [string, Record<string, unknown>]) => ({
         stageId,
         hasRingkasan: !!data?.ringkasan,
         hasRingkasanDetail: !!data?.ringkasanDetail,
-        ringkasan: data?.ringkasan || null,
-        ringkasanDetail: data?.ringkasanDetail || null,
-        validatedAt: data?.validatedAt || null,
-        superseded: data?.superseded || false,
-        revisionCount: data?.revisionCount || 0,
+        ringkasan: (data?.ringkasan as string) || null,
+        ringkasanDetail: (data?.ringkasanDetail as string) || null,
+        validatedAt: (data?.validatedAt as number) || null,
+        superseded: (data?.superseded as boolean) || false,
+        revisionCount: (data?.revisionCount as number) || 0,
       })
     );
 

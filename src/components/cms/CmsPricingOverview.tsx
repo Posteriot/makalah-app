@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Doc } from "@convex/_generated/dataModel"
 import type { Id } from "@convex/_generated/dataModel"
 import type { CmsSectionId } from "./CmsSidebar"
 import { NavArrowRight } from "iconoir-react"
@@ -29,38 +30,6 @@ export function CmsPricingOverview({
     pageSlug: "pricing",
     sectionSlug: "pricing-page-header",
   })
-  const upsertSection = useMutation(api.pageContent.upsertSection)
-
-  // Pattern toggle state
-  const [showGridPattern, setShowGridPattern] = useState(true)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-
-  // Sync from DB
-  useEffect(() => {
-    if (headerSection) {
-      setShowGridPattern(headerSection.showGridPattern !== false)
-      setShowDottedPattern(headerSection.showDottedPattern !== false)
-      setShowDiagonalStripes(headerSection.showDiagonalStripes !== false)
-    }
-  }, [headerSection])
-
-  async function handleSavePatterns() {
-    await upsertSection({
-      requestorId: userId,
-      id: headerSection?._id,
-      pageSlug: "pricing",
-      sectionSlug: "pricing-page-header",
-      sectionType: "pricing-header",
-      title: headerSection?.title ?? "",
-      showGridPattern,
-      showDottedPattern,
-      showDiagonalStripes,
-      isPublished: headerSection?.isPublished ?? false,
-      sortOrder: headerSection?.sortOrder ?? 0,
-    })
-  }
-
   // Loading
   if (allSections === undefined || plans === undefined) {
     return (
@@ -196,6 +165,42 @@ export function CmsPricingOverview({
       </div>
 
       {/* ── Background Patterns ── */}
+      <PatternToggles
+        key={headerSection?._id ?? "default"}
+        headerSection={headerSection}
+        userId={userId}
+      />
+    </div>
+  )
+}
+
+function PatternToggles({ headerSection, userId }: {
+  headerSection: Doc<"pageContent"> | null | undefined
+  userId: Id<"users">
+}) {
+  const upsertSection = useMutation(api.pageContent.upsertSection)
+  const [showGridPattern, setShowGridPattern] = useState(headerSection?.showGridPattern !== false)
+  const [showDottedPattern, setShowDottedPattern] = useState(headerSection?.showDottedPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(headerSection?.showDiagonalStripes !== false)
+
+  async function handleSave() {
+    await upsertSection({
+      requestorId: userId,
+      id: headerSection?._id,
+      pageSlug: "pricing",
+      sectionSlug: "pricing-page-header",
+      sectionType: "pricing-header",
+      title: headerSection?.title ?? "",
+      showGridPattern,
+      showDottedPattern,
+      showDiagonalStripes,
+      isPublished: headerSection?.isPublished ?? false,
+      sortOrder: headerSection?.sortOrder ?? 0,
+    })
+  }
+
+  return (
+    <>
       <div className="mt-6 border-t border-border" />
       <div className="mt-4 space-y-3">
         <span className="text-signal block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -231,8 +236,8 @@ export function CmsPricingOverview({
             onCheckedChange={setShowDiagonalStripes}
           />
         </div>
-        <CmsSaveButton onSave={handleSavePatterns} />
+        <CmsSaveButton onSave={handleSave} />
       </div>
-    </div>
+    </>
   )
 }

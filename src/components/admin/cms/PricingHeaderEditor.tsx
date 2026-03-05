@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
+import type { Doc, Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -37,31 +37,56 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId, onNavigateT
     sectionSlug,
   })
 
+  // Loading skeleton
+  if (section === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return (
+    <PricingHeaderForm
+      key={section?._id ?? "new"}
+      section={section}
+      pageSlug={pageSlug}
+      sectionSlug={sectionSlug}
+      userId={userId}
+      onNavigateToPricing={onNavigateToPricing}
+    />
+  )
+}
+
+function PricingHeaderForm({
+  section,
+  pageSlug,
+  sectionSlug,
+  userId,
+  onNavigateToPricing,
+}: {
+  section: Doc<"pageContent"> | null
+  pageSlug: string
+  sectionSlug: string
+  userId: Id<"users">
+  onNavigateToPricing?: () => void
+}) {
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
   const defaults = DEFAULTS[sectionSlug] ?? { badge: "", title: "", subtitle: "" }
 
-  const [badgeText, setBadgeText] = useState(defaults.badge)
-  const [title, setTitle] = useState(defaults.title)
-  const [subtitle, setSubtitle] = useState(defaults.subtitle)
-  const [showGridPattern, setShowGridPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [isPublished, setIsPublished] = useState(false)
-
-  // Sync form state when section data loads (DB record exists)
-  // When section is null (no record yet), keep the defaults
-  useEffect(() => {
-    if (section) {
-      setBadgeText(section.badgeText ?? defaults.badge)
-      setTitle(section.title ?? defaults.title)
-      setSubtitle(section.subtitle ?? defaults.subtitle)
-      setShowGridPattern(section.showGridPattern !== false)
-      setShowDiagonalStripes(section.showDiagonalStripes !== false)
-      setShowDottedPattern(section.showDottedPattern !== false)
-      setIsPublished(section.isPublished ?? false)
-    }
-  }, [section, defaults.badge, defaults.title, defaults.subtitle])
+  const [badgeText, setBadgeText] = useState(section?.badgeText ?? defaults.badge)
+  const [title, setTitle] = useState(section?.title ?? defaults.title)
+  const [subtitle, setSubtitle] = useState(section?.subtitle ?? defaults.subtitle)
+  const [showGridPattern, setShowGridPattern] = useState(section?.showGridPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(section?.showDiagonalStripes !== false)
+  const [showDottedPattern, setShowDottedPattern] = useState(section?.showDottedPattern !== false)
+  const [isPublished, setIsPublished] = useState(section?.isPublished ?? false)
 
   async function handleSave() {
     await upsertSection({
@@ -83,20 +108,6 @@ export function PricingHeaderEditor({ pageSlug, sectionSlug, userId, onNavigateT
 
   // Friendly label
   const label = pageSlug === "home" ? "Pricing Teaser Header" : "Pricing Page Header"
-
-  // Loading skeleton
-  if (section === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
-  }
 
   return (
     <div className="w-full space-y-6 p-comfort">

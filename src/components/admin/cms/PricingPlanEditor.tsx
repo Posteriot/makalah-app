@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Doc } from "@convex/_generated/dataModel"
 import type { Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -26,49 +27,84 @@ type PricingPlanEditorProps = {
   userId: Id<"users">
 }
 
+// ---------------------------------------------------------------------------
+// Wrapper (exported)
+// ---------------------------------------------------------------------------
+
 export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
   const plan = useQuery(api.pricingPlans.getPlanBySlug, { slug })
+
+  // Loading skeleton
+  if (plan === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return (
+    <PricingPlanForm
+      key={plan?._id ?? "new"}
+      plan={plan}
+      slug={slug}
+      userId={userId}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Form (not exported)
+// ---------------------------------------------------------------------------
+
+function PricingPlanForm({
+  plan,
+  slug,
+  userId,
+}: {
+  plan: Doc<"pricingPlans"> | null
+  slug: string
+  userId: Id<"users">
+}) {
   const updatePlan = useMutation(api.pricingPlans.updatePricingPlan)
   const updatePackages = useMutation(api.pricingPlans.updateCreditPackages)
 
   const isGratis = slug === "gratis"
   const isBpp = slug === "bpp"
 
-  // Form state
-  const [name, setName] = useState("")
-  const [price, setPrice] = useState("")
-  const [priceValue, setPriceValue] = useState(0)
-  const [unit, setUnit] = useState("")
-  const [tagline, setTagline] = useState("")
-  const [teaserDescription, setTeaserDescription] = useState("")
-  const [teaserCreditNote, setTeaserCreditNote] = useState("")
-  const [features, setFeatures] = useState<string[]>([])
-  const [ctaText, setCtaText] = useState("")
-  const [ctaHref, setCtaHref] = useState("")
-  const [isHighlighted, setIsHighlighted] = useState(false)
-  const [isDisabled, setIsDisabled] = useState(false)
-  const [creditPackages, setCreditPackages] = useState<CreditPackage[]>([])
+  // Form state — initialized from plan prop
+  const [name, setName] = useState(plan?.name ?? "")
+  const [price, setPrice] = useState(plan?.price ?? "")
+  const [priceValue, setPriceValue] = useState(plan?.priceValue ?? 0)
+  const [unit, setUnit] = useState(plan?.unit ?? "")
+  const [tagline, setTagline] = useState(plan?.tagline ?? "")
+  const [teaserDescription, setTeaserDescription] = useState(plan?.teaserDescription ?? "")
+  const [teaserCreditNote, setTeaserCreditNote] = useState(plan?.teaserCreditNote ?? "")
+  const [features, setFeatures] = useState<string[]>(plan?.features ?? [])
+  const [ctaText, setCtaText] = useState(plan?.ctaText ?? "")
+  const [ctaHref, setCtaHref] = useState(plan?.ctaHref ?? "")
+  const [isHighlighted, setIsHighlighted] = useState(plan?.isHighlighted ?? false)
+  const [isDisabled, setIsDisabled] = useState(plan?.isDisabled ?? false)
+  const [creditPackages, setCreditPackages] = useState<CreditPackage[]>(
+    (plan?.creditPackages as CreditPackage[] | undefined) ?? []
+  )
 
-  // UI state
-
-  // Sync from DB
-  useEffect(() => {
-    if (plan) {
-      setName(plan.name ?? "")
-      setPrice(plan.price ?? "")
-      setPriceValue(plan.priceValue ?? 0)
-      setUnit(plan.unit ?? "")
-      setTagline(plan.tagline ?? "")
-      setTeaserDescription(plan.teaserDescription ?? "")
-      setTeaserCreditNote(plan.teaserCreditNote ?? "")
-      setFeatures(plan.features ?? [])
-      setCtaText(plan.ctaText ?? "")
-      setCtaHref(plan.ctaHref ?? "")
-      setIsHighlighted(plan.isHighlighted ?? false)
-      setIsDisabled(plan.isDisabled ?? false)
-      setCreditPackages((plan.creditPackages as CreditPackage[] | undefined) ?? [])
-    }
-  }, [plan])
+  // Not found
+  if (plan === null) {
+    return (
+      <div className="w-full p-comfort">
+        <p className="text-interface text-sm text-muted-foreground">
+          Plan &quot;{slug}&quot; tidak ditemukan di database.
+        </p>
+      </div>
+    )
+  }
 
   // Feature list helpers
   function updateFeature(index: number, value: string) {
@@ -114,31 +150,6 @@ export function PricingPlanEditor({ slug, userId }: PricingPlanEditorProps) {
       })
     }
 
-  }
-
-  // Loading skeleton
-  if (plan === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
-  }
-
-  if (plan === null) {
-    return (
-      <div className="w-full p-comfort">
-        <p className="text-interface text-sm text-muted-foreground">
-          Plan &quot;{slug}&quot; tidak ditemukan di database.
-        </p>
-      </div>
-    )
   }
 
   return (
