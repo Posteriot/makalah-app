@@ -4,6 +4,7 @@ import {
   DiskusiData,
   HasilData,
   KesimpulanData,
+  PembaruanAbstrakData,
   DaftarPustakaData,
   LampiranData,
   JudulData,
@@ -238,6 +239,7 @@ export default defineSchema({
       v.literal("hasil"),
       v.literal("diskusi"),
       v.literal("kesimpulan"),
+      v.literal("pembaruan_abstrak"),
       v.literal("daftar_pustaka"),
       v.literal("lampiran"),
       v.literal("judul")
@@ -449,7 +451,7 @@ export default defineSchema({
     currentStage: v.string(), // PaperStage enum (gagasan, topik, etc.)
     stageStatus: v.string(), // StageStatus (drafting, pending_validation, approved, revision)
 
-    // Accumulated data for all 13 stages
+    // Accumulated data for all 14 stages
     stageData: v.object({
       // Phase 1: Foundation Stages
       gagasan: v.optional(v.object({
@@ -594,7 +596,10 @@ export default defineSchema({
       diskusi: v.optional(DiskusiData),
       kesimpulan: v.optional(KesimpulanData),
 
-      // Phase 5: Finalization
+      // Phase 5: Refinement
+      pembaruan_abstrak: v.optional(PembaruanAbstrakData),
+
+      // Phase 6: Finalization
       daftar_pustaka: v.optional(DaftarPustakaData),
       lampiran: v.optional(LampiranData),
       judul: v.optional(JudulData),
@@ -1083,6 +1088,7 @@ export default defineSchema({
       v.literal("hasil"),
       v.literal("diskusi"),
       v.literal("kesimpulan"),
+      v.literal("pembaruan_abstrak"),
       v.literal("daftar_pustaka"),
       v.literal("lampiran"),
       v.literal("judul"),

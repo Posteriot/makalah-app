@@ -184,7 +184,21 @@ export const KesimpulanData = v.object({
     revisionCount: v.optional(v.number()),
 });
 
-// Phase 4: Finalization Stages
+// Phase 5: Refinement
+export const PembaruanAbstrakData = v.object({
+    ringkasan: v.optional(v.string()),
+    ringkasanDetail: v.optional(v.string()),
+    ringkasanPenelitianBaru: v.optional(v.string()),
+    perubahanUtama: v.optional(v.array(v.string())),
+    keywordsBaru: v.optional(v.array(v.string())),
+    wordCount: v.optional(v.number()),
+    webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
+    artifactId: v.optional(v.id("artifacts")),
+    validatedAt: v.optional(v.number()),
+    revisionCount: v.optional(v.number()),
+});
+
+// Phase 6: Finalization Stages
 
 // Stage 10: Daftar Pustaka (Bibliography/References)
 // Compiles all references from previous stages into APA 7th format

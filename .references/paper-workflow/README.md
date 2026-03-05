@@ -1,4 +1,4 @@
-# Paper Workflow Revisi (13 Tahap, Outline di Awal) - Referensi Teknis
+# Paper Workflow Revisi (14 Tahap, Outline di Awal) - Referensi Teknis
 
 Dokumentasi ini jadi sumber kebenaran buat alur kerja paper terbaru di Makalah App. Gue tulis supaya lo bisa koreksi dan ngembangin fitur ini tanpa ambigu.
 
@@ -7,7 +7,7 @@ Dokumentasi ini jadi sumber kebenaran buat alur kerja paper terbaru di Makalah A
 1. [Ikhtisar](#ikhtisar)
 2. [Implementasi: Native AI Tools](#implementasi-native-ai-tools)
 3. [Prinsip Kerja](#prinsip-kerja)
-4. [Struktur 13 Tahap](#struktur-13-tahap)
+4. [Struktur 14 Tahap](#struktur-14-tahap)
 5. [Status Tahap (Mesin Status)](#status-tahap-mesin-status)
 6. [Arsitektur Sistem](#arsitektur-sistem)
 7. [Skema Database](#skema-database)
@@ -23,10 +23,10 @@ Dokumentasi ini jadi sumber kebenaran buat alur kerja paper terbaru di Makalah A
 
 ## Ikhtisar
 
-Alur kerja ini punya **13 tahap** dengan **outline di tahap 3**, supaya semua tahap setelahnya ngikutin daftar cek outline. Alur ini **linear**, **dialog dulu**, dan wajib **validasi user** sebelum lanjut ke tahap berikutnya.
+Alur kerja ini punya **14 tahap** dengan **outline di tahap 3**, supaya semua tahap setelahnya ngikutin daftar cek outline. Alur ini **linear**, **dialog dulu**, dan wajib **validasi user** sebelum lanjut ke tahap berikutnya.
 
 Fitur kunci:
-- **13 tahap terstruktur**: `gagasan` → `topik` → `outline` → ... → `judul`
+- **14 tahap terstruktur**: `gagasan` → `topik` → `outline` → ... → `pembaruan_abstrak` → ... → `judul`
 - **Dialog dulu**: diskusi dulu, baru drafting
 - **Validasi manusia**: setujui/revisi per tahap
 - **Ringkasan per tahap + daftar cek outline** selalu disuntik ke prompt
@@ -246,7 +246,7 @@ Tahap cuma boleh maju kalau tahap aktif disetujui. `updateStageData` juga hanya 
 
 ---
 
-## Struktur 13 Tahap
+## Struktur 14 Tahap
 
 | No | Stage ID | Label (UI) | Fokus Utama |
 |----|----------|------------|-------------|
@@ -260,9 +260,10 @@ Tahap cuma boleh maju kalau tahap aktif disetujui. `updateStageData` juga hanya 
 | 8 | `hasil` | Hasil Penelitian | temuan + titik data |
 | 9 | `diskusi` | Diskusi | interpretasi + implikasi |
 | 10 | `kesimpulan` | Kesimpulan | ringkas hasil + saran |
-| 11 | `daftar_pustaka` | Daftar Pustaka | kompilasi referensi APA |
-| 12 | `lampiran` | Lampiran | opsional, bisa dinyatakan kosong |
-| 13 | `judul` | Pemilihan Judul | 5 opsi + 1 judul terpilih |
+| 11 | `pembaruan_abstrak` | Pembaruan Abstrak | revisi abstrak sesuai temuan aktual |
+| 12 | `daftar_pustaka` | Daftar Pustaka | kompilasi referensi APA |
+| 13 | `lampiran` | Lampiran | opsional, bisa dinyatakan kosong |
+| 14 | `judul` | Pemilihan Judul | 5 opsi + 1 judul terpilih |
 
 ---
 
@@ -466,7 +467,7 @@ CATATAN MODE TOOL:
 
 ### Google Search Mode per Stage (Update 2026-01-15)
 
-Semua 13 stage punya akses ke `google_search`, tapi dengan mode berbeda:
+Semua 14 stage punya akses ke `google_search`, tapi dengan mode berbeda:
 
 | Stage | Mode | Decision Method | Keterangan |
 |-------|------|-----------------|------------|
@@ -480,6 +481,7 @@ Semua 13 stage punya akses ke `google_search`, tapi dengan mode berbeda:
 | Hasil | PASIF | LLM router | Hanya jika user minta benchmark |
 | Diskusi | AKTIF | 3-layer deterministic | Boleh search untuk referensi pembanding |
 | Kesimpulan | PASIF | LLM router | Hanya jika user minta eksplisit |
+| Pembaruan Abstrak | PASIF | LLM router | Hanya jika user minta verifikasi ulang |
 | Daftar Pustaka | PASIF | LLM router | Hanya jika user minta verifikasi |
 | Lampiran | PASIF | LLM router | Hanya jika user minta template |
 | Judul | PASIF | LLM router | Hanya jika user minta inspirasi |
@@ -598,14 +600,14 @@ Pengecualian di reminder:
 
 Lokasi file instruksi:
 - `foundation.ts` → tahap 1-2
-- `finalization.ts` → tahap 3 + 11-13
 - `core.ts` → tahap 4-7
 - `results.ts` → tahap 8-10
+- `finalization.ts` → tahap 3 + 11 (pembaruan abstrak) + 12-14
 - `index.ts` → router `getStageInstructions(stage)`
 
 Catatan implementasi:
 - Outline ada di tahap 3 dan jadi daftar cek utama untuk semua tahap setelahnya.
-- Semua tahap 4-13 didorong sebagai elaborasi per bagian berdasarkan outline.
+- Semua tahap 4-14 didorong sebagai elaborasi per bagian berdasarkan outline.
 - Di `finalization.ts`, beberapa instruksi masih menyebut "elaborasi" sebagai konteks, tapi **bukan** stage terpisah di `STAGE_ORDER`.
 - Di `foundation.ts`, stage `gagasan` dan `topik` menuliskan output final via `createArtifact`.
 
@@ -614,7 +616,7 @@ Catatan implementasi:
 ## Komponen UI
 
 Komponen utama:
-- `PaperStageProgress`: bar progres 13 tahap + opsi rewind (butuh `stageData` + `onRewindRequest`)
+- `PaperStageProgress`: bar progres 14 tahap + opsi rewind (butuh `stageData` + `onRewindRequest`)
 - `PaperValidationPanel`: panel setujui/revisi
 - `PaperSessionBadge`: badge jumlah tahap (x/13)
 - `RewindConfirmationDialog`: dialog konfirmasi sebelum rewind
@@ -682,6 +684,7 @@ File kunci untuk search decision:
 
 *Last updated: 2026-01-15*
 *Updated: 3-layer deterministic protection untuk AKTIF stages, bypass LLM router*
+*Updated: 2026-03-06 - Expanded to 14 stages: added Pembaruan Abstrak (Stage 11) between Kesimpulan and Daftar Pustaka*
 *Previous: 2026-01-14 - KOLABORASI PROAKTIF wajib di semua 13 stage*
 *Previous: 2026-01-13 - google_search tersedia di semua stage dengan mode AKTIF/PASIF*
 *Previous: 2026-01-11 - `updateStageData` AUTO-STAGE, `ringkasan` WAJIB*

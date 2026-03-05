@@ -207,6 +207,7 @@ export function validateStageSkillContent(input: StageSkillValidationInput): Sta
         "hasil",
         "diskusi",
         "kesimpulan",
+        "pembaruan_abstrak",
         "daftar_pustaka",
         "lampiran",
         "judul",

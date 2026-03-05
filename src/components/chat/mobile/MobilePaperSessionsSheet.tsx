@@ -8,6 +8,7 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { Page, Folder, NavArrowRight } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import {
+  STAGE_ORDER,
   getStageLabel,
   getStageNumber,
   type PaperStageId,
@@ -241,7 +242,7 @@ export function MobilePaperSessionsSheet({
             {/* Stage info */}
             <div className="px-3 pb-2 pt-1">
               <div className="font-mono text-[11px] text-[var(--chat-muted-foreground)]">
-                Stage {stageNumber}/13 - {stageLabel}
+                Stage {stageNumber}/{STAGE_ORDER.length} - {stageLabel}
               </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--chat-muted-foreground)]">

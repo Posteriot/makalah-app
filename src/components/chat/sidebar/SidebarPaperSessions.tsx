@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Page, Folder, NavArrowRight, EditPencil } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import {
+  STAGE_ORDER,
   getStageLabel,
   getStageNumber,
   type PaperStageId,
@@ -499,7 +500,7 @@ function PaperFolderItem({
           </div>
           {!isExpanded && (
             <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] opacity-70 truncate">
-              Stage {stageNumber}/13 · {latestArtifacts.length} artifak
+              Stage {stageNumber}/{STAGE_ORDER.length} · {latestArtifacts.length} artifak
             </span>
           )}
         </div>
@@ -511,7 +512,7 @@ function PaperFolderItem({
           {/* Stage Info - Mechanical Grace: Mono metadata */}
           <div className="px-4 pt-1 pb-2">
             <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-              Stage {stageNumber}/13 - {stageLabel}
+              Stage {stageNumber}/{STAGE_ORDER.length} - {stageLabel}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
@@ -679,7 +680,7 @@ function OtherSessionFolder({
     : "bg-sky-500 dark:bg-sky-400 opacity-60"
 
   // Compact stage info for collapsed state
-  const compactStageLabel = isCompleted ? "Selesai" : `Stage ${stageNumber}/13`
+  const compactStageLabel = isCompleted ? "Selesai" : `Stage ${stageNumber}/${STAGE_ORDER.length}`
   const artifactCount = latestArtifacts.length
   const hasArtifacts = artifactCount > 0
 
@@ -737,7 +738,7 @@ function OtherSessionFolder({
           {/* Stage Info */}
           <div className="px-4 pt-1 pb-2">
             <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-              {isCompleted ? "Selesai" : `Stage ${stageNumber}/13 - ${stageLabel}`}
+              {isCompleted ? "Selesai" : `Stage ${stageNumber}/${STAGE_ORDER.length} - ${stageLabel}`}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">

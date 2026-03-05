@@ -17,6 +17,7 @@ import type {
     LampiranData,
     MetodologiData,
     OutlineData,
+    PembaruanAbstrakData,
     PendahuluanData,
     TinjauanLiteraturData,
     TopikData,
@@ -39,6 +40,7 @@ export interface StageData {
     hasil?: HasilData;
     diskusi?: DiskusiData;
     kesimpulan?: KesimpulanData;
+    pembaruan_abstrak?: PembaruanAbstrakData;
     daftar_pustaka?: DaftarPustakaData;
     lampiran?: LampiranData;
     judul?: JudulData;
@@ -57,6 +59,7 @@ type AllStageData =
     | HasilData
     | DiskusiData
     | KesimpulanData
+    | PembaruanAbstrakData
     | DaftarPustakaData
     | LampiranData
     | JudulData
@@ -229,6 +232,8 @@ function formatActiveStageData(
             return formatDiskusiData(data as DiskusiData, true);
         case "kesimpulan":
             return formatKesimpulanData(data as KesimpulanData, true);
+        case "pembaruan_abstrak":
+            return formatPembaruanAbstrakData(data as PembaruanAbstrakData, true);
         case "daftar_pustaka":
             return formatDaftarPustakaData(data as DaftarPustakaData, true);
         case "lampiran":
@@ -499,13 +504,38 @@ function formatKesimpulanData(data: KesimpulanData, isCurrentStage: boolean, sum
 }
 
 /**
- * Format Daftar Pustaka stage data (Stage 11)
+ * Format Pembaruan Abstrak stage data (Stage 11)
+ */
+function formatPembaruanAbstrakData(data: PembaruanAbstrakData, isCurrentStage: boolean, summaryMode = false): string {
+    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+
+    let output = `=== TAHAP 11: ${getStageLabel("pembaruan_abstrak")} [${status}${revisions}] ===\n`;
+
+    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ringkasanPenelitianBaru) output += `Abstrak Baru: ${truncateText(data.ringkasanPenelitianBaru, summaryMode)}\n`;
+    if (data.perubahanUtama && data.perubahanUtama.length > 0) {
+        output += `Perubahan Utama:\n`;
+        data.perubahanUtama.forEach((item, i) => {
+            output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
+        });
+    }
+    if (data.keywordsBaru && data.keywordsBaru.length > 0) {
+        output += `Keywords Baru: ${data.keywordsBaru.join(", ")}\n`;
+    }
+    if (data.wordCount !== undefined) output += `Word Count: ${data.wordCount}\n`;
+
+    return output.trim();
+}
+
+/**
+ * Format Daftar Pustaka stage data (Stage 12)
  */
 function formatDaftarPustakaData(data: DaftarPustakaData, isCurrentStage: boolean, summaryMode = false): string {
     const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
     const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
 
-    let output = `=== TAHAP 11: ${getStageLabel("daftar_pustaka")} [${status}${revisions}] ===\n`;
+    let output = `=== TAHAP 12: ${getStageLabel("daftar_pustaka")} [${status}${revisions}] ===\n`;
 
     // Stats
     if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
@@ -546,13 +576,13 @@ function formatDaftarPustakaData(data: DaftarPustakaData, isCurrentStage: boolea
 }
 
 /**
- * Format Lampiran stage data (Stage 12)
+ * Format Lampiran stage data (Stage 13)
  */
 function formatLampiranData(data: LampiranData, isCurrentStage: boolean, summaryMode = false): string {
     const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
     const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
 
-    let output = `=== TAHAP 12: ${getStageLabel("lampiran")} [${status}${revisions}] ===\n`;
+    let output = `=== TAHAP 13: ${getStageLabel("lampiran")} [${status}${revisions}] ===\n`;
 
     if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.tidakAdaLampiran) {
@@ -586,13 +616,13 @@ function formatLampiranData(data: LampiranData, isCurrentStage: boolean, summary
 }
 
 /**
- * Format Judul stage data (Stage 13)
+ * Format Judul stage data (Stage 14)
  */
 function formatJudulData(data: JudulData, isCurrentStage: boolean, summaryMode = false): string {
     const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
     const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
 
-    let output = `=== TAHAP 13: ${getStageLabel("judul")} [${status}${revisions}] ===\n`;
+    let output = `=== TAHAP 14: ${getStageLabel("judul")} [${status}${revisions}] ===\n`;
 
     if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
     // Selected title (emphasized)

@@ -89,11 +89,15 @@ export function compilePaperContent(session: Doc<"paperSessions">): CompiledPape
   // Get title dari judulTerpilih atau paperTitle atau fallback ke null
   const title = stageData.judul?.judulTerpilih ?? paperTitle ?? null
 
-  // Get keywords dari abstrak
-  const keywords = stageData.abstrak?.keywords ?? null
+  // Get keywords — prefer updated from pembaruan_abstrak, fallback to original
+  const keywords = stageData.pembaruan_abstrak?.keywordsBaru
+    ?? stageData.abstrak?.keywords
+    ?? null
 
-  // Compile abstract
-  const abstract = stageData.abstrak?.ringkasanPenelitian ?? null
+  // Compile abstract — prefer updated from pembaruan_abstrak, fallback to original
+  const abstract = stageData.pembaruan_abstrak?.ringkasanPenelitianBaru
+    ?? stageData.abstrak?.ringkasanPenelitian
+    ?? null
 
   // Compile pendahuluan
   const pendahuluan = stageData.pendahuluan

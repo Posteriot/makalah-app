@@ -14,6 +14,7 @@ export const PASSIVE_SEARCH_STAGES: PaperStageId[] = [
     "abstrak",
     "hasil",
     "kesimpulan",
+    "pembaruan_abstrak",
     "daftar_pustaka",
     "lampiran",
     "judul",
