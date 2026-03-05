@@ -393,14 +393,19 @@ function PaperFolderItem({
   const hasArtifacts = latestArtifacts.length > 0
 
   return (
-    <div className="mb-0.5">
+    <div
+      className={cn(
+        "mb-0.5 rounded-action border transition-colors",
+        isExpanded
+          ? "border-[color:var(--chat-border)] bg-[var(--chat-accent)]"
+          : "border-transparent"
+      )}
+    >
       {/* Folder Header */}
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-2 rounded-action border border-transparent px-4 py-2 transition-colors",
-          isExpanded
-            ? "border-[color:var(--chat-border)] bg-[var(--chat-accent)]"
-            : "hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]"
+          "flex cursor-pointer items-center gap-2 px-4 py-2 transition-colors",
+          !isExpanded && "rounded-action hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]"
         )}
         onClick={onToggle}
       >
@@ -669,14 +674,19 @@ function OtherSessionFolder({
     : `Stage ${stageNumber}/13 · ${latestArtifacts.length} artifak`
 
   return (
-    <div className="mb-0.5">
+    <div
+      className={cn(
+        "mb-0.5 rounded-action border transition-colors",
+        isExpanded
+          ? "border-[color:var(--chat-border)] bg-[var(--chat-sidebar-accent)]"
+          : "border-transparent"
+      )}
+    >
       {/* Folder Header */}
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-2 rounded-action border border-transparent px-4 py-2 transition-colors",
-          isExpanded
-            ? "border-[color:var(--chat-border)] bg-[var(--chat-sidebar-accent)]"
-            : "hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-sidebar-accent)]"
+          "flex cursor-pointer items-center gap-2 px-4 py-2 transition-colors",
+          !isExpanded && "rounded-action hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-sidebar-accent)]"
         )}
         onClick={onToggle}
       >
