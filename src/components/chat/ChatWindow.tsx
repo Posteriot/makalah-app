@@ -1858,7 +1858,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <div className="flex items-start gap-2">
             <WarningCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <p className="text-xs font-sans leading-tight">
-              Terdeteksi kendala teknis pada chat. Lo bisa kirim technical report sekarang.
+              Terdeteksi kendala teknis pada chat. Kamu bisa kirim technical report sekarang.
             </p>
           </div>
           <ChatTechnicalReportButton
