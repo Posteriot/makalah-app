@@ -10,7 +10,7 @@ import { RefrasaTabContent } from "@/components/refrasa/RefrasaTabContent"
 import { ArtifactTabs } from "./ArtifactTabs"
 import { ArtifactToolbar } from "./ArtifactToolbar"
 import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
-import { Page } from "iconoir-react"
+import { Page, Xmark } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { FullsizeArtifactModal } from "./FullsizeArtifactModal"
 import { Button } from "@/components/ui/button"
@@ -61,12 +61,28 @@ export function ArtifactPanel({
   // Ref for ArtifactViewer actions
   const viewerRef = useRef<ArtifactViewerRef>(null)
 
+  // Derive read-only tab info early (before conditional rendering)
+  const activeTabForQuery = activeTabId ? openTabs.find((t) => t.id === activeTabId) : null
+  const isReadOnlyActive = activeTabForQuery?.readOnly ?? false
+  const sourceConvId = activeTabForQuery?.sourceConversationId
+
   // Fetch artifacts for this conversation
   const artifacts = useQuery(
     api.artifacts.listByConversation,
     conversationId && currentUser?._id
       ? {
           conversationId,
+          userId: currentUser._id,
+        }
+      : "skip"
+  )
+
+  // Query artifacts from source conversation (for read-only cross-session preview)
+  const sourceConversationArtifacts = useQuery(
+    api.artifacts.listByConversation,
+    isReadOnlyActive && sourceConvId && currentUser?._id
+      ? {
+          conversationId: sourceConvId,
           userId: currentUser._id,
         }
       : "skip"
@@ -80,10 +96,11 @@ export function ArtifactPanel({
   // Find active tab metadata and artifact data
   const activeTab = activeTabId ? openTabs.find((t) => t.id === activeTabId) : null
   const isRefrasaTab = activeTab?.type === "refrasa"
-  const isReadOnly = activeTab?.readOnly ?? false
-  const sourceConversationId = activeTab?.sourceConversationId
+  const isReadOnly = isReadOnlyActive
+  const sourceConversationId = sourceConvId
   const activeArtifact = activeTabId
-    ? artifacts?.find((a) => a._id === activeTabId)
+    ? (artifacts?.find((a) => a._id === activeTabId)
+      ?? sourceConversationArtifacts?.find((a) => a._id === activeTabId))
     : null
   const openTabCount = openTabs.length
   const isCodeArtifact = activeArtifact
@@ -104,13 +121,22 @@ export function ArtifactPanel({
       )}
     >
       {/* Artifact Tabs */}
-      <div className="shrink-0 border-b border-[color:var(--chat-border)]">
-        <ArtifactTabs
-          tabs={openTabs}
-          activeTabId={activeTabId}
-          onTabChange={onTabChange}
-          onTabClose={onTabClose}
-        />
+      <div className="shrink-0 border-b border-[color:var(--chat-border)] flex items-center">
+        <div className="flex-1 overflow-hidden">
+          <ArtifactTabs
+            tabs={openTabs}
+            activeTabId={activeTabId}
+            onTabChange={onTabChange}
+            onTabClose={onTabClose}
+          />
+        </div>
+        <button
+          onClick={onToggle}
+          className="shrink-0 p-2 text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
+          aria-label="Tutup panel"
+        >
+          <Xmark className="h-4 w-4" strokeWidth={1.5} />
+        </button>
       </div>
 
       {/* Artifact Toolbar — metadata + actions (hidden for refrasa tabs) */}
@@ -130,6 +156,12 @@ export function ArtifactPanel({
               : null
           }
           readOnly={isReadOnly}
+          sourceConversationId={sourceConversationId}
+          onCloseReadOnlyTab={() => {
+            if (activeTabId && isReadOnly) {
+              onTabClose(activeTabId)
+            }
+          }}
           openTabCount={openTabCount}
           onDownload={(format) => {
             viewerRef.current?.setDownloadFormat(format)

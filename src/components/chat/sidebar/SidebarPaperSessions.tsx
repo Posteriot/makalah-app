@@ -665,7 +665,7 @@ function OtherSessionFolder({
       <div
         className={cn(
           "flex cursor-pointer items-center gap-2 rounded-action border border-transparent px-4 py-2 transition-colors",
-          "hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]"
+          "hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-sidebar-accent)]"
         )}
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -775,7 +775,7 @@ function ReadOnlyArtifactTreeItem({
     <div
       className={cn(
         "group my-1 mr-3 flex items-center gap-2 rounded-action border px-3.5 py-2 transition-colors",
-        "border-transparent hover:bg-[var(--chat-accent)]"
+        "border-transparent hover:bg-[var(--chat-sidebar-accent)]"
       )}
     >
       {/* Document Icon / Refrasa Badge */}

@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Download, EditPencil, Copy, Check, Expand, MoreVert, Xmark } from "iconoir-react"
+import type { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -31,6 +33,10 @@ interface ArtifactToolbarProps {
   } | null
   /** Whether the artifact is read-only (cross-session preview) */
   readOnly?: boolean
+  /** Source conversation ID for read-only cross-session artifacts */
+  sourceConversationId?: Id<"conversations">
+  /** Callback to close read-only tab when navigating to source conversation */
+  onCloseReadOnlyTab?: () => void
   /** Number of open tabs for context label */
   openTabCount?: number
   /** Callbacks for actions — connected to ArtifactViewer ref */
@@ -61,6 +67,8 @@ function formatDate(timestamp: number): string {
 export function ArtifactToolbar({
   artifact,
   readOnly,
+  sourceConversationId,
+  onCloseReadOnlyTab,
   openTabCount = 0,
   onDownload,
   onEdit,
@@ -195,6 +203,16 @@ export function ArtifactToolbar({
         </div>
 
         <div className="hidden @[520px]/toolbar:flex items-center gap-1.5">
+          {readOnly && sourceConversationId && (
+            <Link
+              href={`/chat/${sourceConversationId}`}
+              onClick={() => onCloseReadOnlyTab?.()}
+              className="inline-flex h-7 items-center gap-1.5 rounded-action border border-[color:var(--chat-border)] px-2.5 font-mono text-[11px] text-sky-500 hover:bg-[var(--chat-sidebar-accent)] transition-colors"
+            >
+              Lihat Percakapan →
+            </Link>
+          )}
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -312,6 +330,20 @@ export function ArtifactToolbar({
               <TooltipContent className="font-mono text-xs">Aksi dokumen</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end">
+              {readOnly && sourceConversationId && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={`/chat/${sourceConversationId}`}
+                      onClick={() => onCloseReadOnlyTab?.()}
+                      className="text-sky-500"
+                    >
+                      Lihat Percakapan →
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem
                 onClick={onEdit}
                 disabled={readOnly}
