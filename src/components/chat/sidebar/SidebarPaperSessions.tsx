@@ -80,8 +80,8 @@ export function SidebarPaperSessions({
 }: SidebarPaperSessionsProps) {
   const { user, isLoading: isUserLoading } = useCurrentUser()
 
-  // Single folder expanded state (default: expanded)
-  const [isExpanded, setIsExpanded] = useState(true)
+  // Accordion: only one folder expanded at a time
+  const [expandedFolderId, setExpandedFolderId] = useState<Id<"paperSessions"> | null>(null)
 
   // Query paper session for ACTIVE conversation only (like SidebarProgress)
   const {
@@ -105,6 +105,14 @@ export function SidebarPaperSessions({
     if (!allSessions || !session) return allSessions ?? []
     return allSessions.filter((s) => s._id !== session._id)
   }, [allSessions, session])
+
+  // Auto-expand active session when conversation changes
+  const activeSessionId = session?._id as Id<"paperSessions"> | undefined
+  useEffect(() => {
+    if (activeSessionId) {
+      setExpandedFolderId(activeSessionId)
+    }
+  }, [activeSessionId])
 
   const conversation = useQuery(
     api.conversations.getConversation,
@@ -138,6 +146,8 @@ export function SidebarPaperSessions({
               _creationTime: s._creationTime,
               updatedAt: s.updatedAt,
             }}
+            isExpanded={expandedFolderId === (s._id as Id<"paperSessions">)}
+            onToggle={() => setExpandedFolderId(prev => prev === (s._id as Id<"paperSessions">) ? null : (s._id as Id<"paperSessions">))}
             onArtifactSelect={onArtifactSelect}
             isArtifactPanelOpen={isArtifactPanelOpen}
             onArtifactPanelToggle={onArtifactPanelToggle}
@@ -156,7 +166,7 @@ export function SidebarPaperSessions({
         <div className="pt-5 px-4 pb-3">
           <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">Sesi Paper</div>
           <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] mt-1">
-            Folder Artifak
+            Folder Artifak{allSessions ? ` · ${allSessions.length} sesi` : ""}
           </div>
         </div>
         {otherSessions.length > 0 && user ? (
@@ -207,7 +217,7 @@ export function SidebarPaperSessions({
         <div className="pt-5 px-4 pb-3">
           <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">Sesi Paper</div>
           <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] mt-1">
-            Folder Artifak
+            Folder Artifak{allSessions ? ` · ${allSessions.length} sesi` : ""}
           </div>
         </div>
         {/* No active session indicator */}
@@ -242,7 +252,7 @@ export function SidebarPaperSessions({
       <div className="pt-5 px-4 pb-3">
         <div className="text-sm font-semibold">Sesi Paper</div>
         <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-          Folder Artifak
+          Folder Artifak{allSessions ? ` · ${allSessions.length} sesi` : ""}
         </div>
       </div>
 
@@ -250,8 +260,8 @@ export function SidebarPaperSessions({
       <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
         <PaperFolderItem
           session={sessionItem}
-          isExpanded={isExpanded}
-          onToggle={() => setIsExpanded(!isExpanded)}
+          isExpanded={expandedFolderId === sessionItem._id}
+          onToggle={() => setExpandedFolderId(prev => prev === sessionItem._id ? null : sessionItem._id)}
           onArtifactSelect={onArtifactSelect}
           activeArtifactId={activeArtifactId}
           isArtifactPanelOpen={isArtifactPanelOpen}
@@ -297,12 +307,10 @@ function PaperFolderItem({
   onUpdateWorkingTitle?: (title: string) => Promise<unknown> | undefined
   userId: Id<"users">
 }) {
-  // Query artifacts for this paper session's conversation
+  // Always query artifacts (needed for count badge when collapsed)
   const artifacts = useQuery(
     api.artifacts.listByConversation,
-    isExpanded
-      ? { conversationId: session.conversationId, userId }
-      : "skip"
+    { conversationId: session.conversationId, userId }
   ) as ArtifactItem[] | undefined
 
   const stageNumber = getStageNumber(
@@ -390,7 +398,9 @@ function PaperFolderItem({
       <div
         className={cn(
           "flex cursor-pointer items-center gap-2 rounded-action border border-transparent px-4 py-2 transition-colors",
-          "hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]"
+          isExpanded
+            ? "border-[color:var(--chat-border)] bg-[var(--chat-accent)]"
+            : "hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-accent)]"
         )}
         onClick={onToggle}
       >
@@ -414,9 +424,10 @@ function PaperFolderItem({
         <Folder className="h-[18px] w-[18px] shrink-0 text-sky-500 dark:text-sky-400 [&_path]:fill-current [&_path]:stroke-current" />
 
         <div
-          className="flex flex-1 min-w-0 items-center gap-1.5"
+          className="flex flex-1 min-w-0 flex-col"
           onClick={(event) => event.stopPropagation()}
         >
+          <div className="flex items-center gap-1.5">
           {isEditingTitle ? (
             <input
               value={draftTitle}
@@ -468,6 +479,12 @@ function PaperFolderItem({
               )}
             </button>
           )}
+          </div>
+          {!isExpanded && (
+            <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] opacity-70 truncate">
+              Stage {stageNumber}/13 · {latestArtifacts.length} artifak
+            </span>
+          )}
         </div>
       </div>
 
@@ -487,7 +504,7 @@ function PaperFolderItem({
           </div>
 
           {/* Artifact Items */}
-          {hasArtifacts ? (
+          {hasArtifacts &&
             latestArtifacts.map((artifact) => (
               <ArtifactTreeItem
                 key={artifact._id}
@@ -499,12 +516,7 @@ function PaperFolderItem({
                 onArtifactPanelToggle={onArtifactPanelToggle}
                 onCloseMobile={onCloseMobile}
               />
-            ))
-          ) : (
-            <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] py-2 px-4 uppercase">
-              Belum ada artifak
-            </div>
-          )}
+            ))}
         </div>
       )}
     </div>
@@ -605,6 +617,8 @@ function ArtifactTreeItem({
  */
 function OtherSessionFolder({
   session,
+  isExpanded,
+  onToggle,
   onArtifactSelect,
   isArtifactPanelOpen,
   onArtifactPanelToggle,
@@ -612,20 +626,18 @@ function OtherSessionFolder({
   userId,
 }: {
   session: PaperSessionItem
+  isExpanded: boolean
+  onToggle: () => void
   onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactSelectOpts) => void
   isArtifactPanelOpen?: boolean
   onArtifactPanelToggle?: () => void
   onCloseMobile?: () => void
   userId: Id<"users">
 }) {
-  const [isExpanded, setIsExpanded] = useState(false)
-
-  // Lazy-load artifacts only when expanded
+  // Always query artifacts (needed for count badge when collapsed)
   const artifacts = useQuery(
     api.artifacts.listByConversation,
-    isExpanded
-      ? { conversationId: session.conversationId, userId }
-      : "skip"
+    { conversationId: session.conversationId, userId }
   ) as ArtifactItem[] | undefined
 
   const latestArtifacts = artifacts
@@ -652,12 +664,9 @@ function OtherSessionFolder({
     : "bg-sky-500 dark:bg-sky-400 opacity-60"
 
   // Compact stage info for collapsed state
-  const artifactCountText = artifacts
-    ? `${latestArtifacts.length} artifak`
-    : ""
   const compactInfo = isCompleted
-    ? `Selesai${artifactCountText ? ` · ${artifactCountText}` : ""}`
-    : `Stage ${stageNumber}/13${artifactCountText ? ` · ${artifactCountText}` : ""}`
+    ? `Selesai · ${latestArtifacts.length} artifak`
+    : `Stage ${stageNumber}/13 · ${latestArtifacts.length} artifak`
 
   return (
     <div className="mb-0.5">
@@ -665,9 +674,11 @@ function OtherSessionFolder({
       <div
         className={cn(
           "flex cursor-pointer items-center gap-2 rounded-action border border-transparent px-4 py-2 transition-colors",
-          "hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-sidebar-accent)]"
+          isExpanded
+            ? "border-[color:var(--chat-border)] bg-[var(--chat-sidebar-accent)]"
+            : "hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-sidebar-accent)]"
         )}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={onToggle}
       >
         {/* Chevron */}
         <NavArrowRight
@@ -712,7 +723,7 @@ function OtherSessionFolder({
           </div>
 
           {/* Read-Only Artifact Items */}
-          {latestArtifacts.length > 0 ? (
+          {latestArtifacts.length > 0 &&
             latestArtifacts.map((artifact) => (
               <ReadOnlyArtifactTreeItem
                 key={artifact._id}
@@ -723,12 +734,7 @@ function OtherSessionFolder({
                 onArtifactPanelToggle={onArtifactPanelToggle}
                 onCloseMobile={onCloseMobile}
               />
-            ))
-          ) : (
-            <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] py-2 px-4 uppercase">
-              Belum ada artifak
-            </div>
-          )}
+            ))}
         </div>
       )}
     </div>
