@@ -29,6 +29,8 @@ interface ArtifactToolbarProps {
     wordCount: number
     contentTypeLabel: string
   } | null
+  /** Whether the artifact is read-only (cross-session preview) */
+  readOnly?: boolean
   /** Number of open tabs for context label */
   openTabCount?: number
   /** Callbacks for actions — connected to ArtifactViewer ref */
@@ -58,6 +60,7 @@ function formatDate(timestamp: number): string {
  */
 export function ArtifactToolbar({
   artifact,
+  readOnly,
   openTabCount = 0,
   onDownload,
   onEdit,
@@ -198,16 +201,21 @@ export function ArtifactToolbar({
                 variant="outline"
                 size="icon"
                 onClick={onEdit}
+                disabled={readOnly}
+                title={readOnly ? "Buka percakapan asli untuk mengedit" : undefined}
                 className={cn(
                   "h-8 w-8 rounded-action border transition-all duration-150",
-                  sidebarButtonSurfaceClass
+                  sidebarButtonSurfaceClass,
+                  readOnly && "cursor-not-allowed opacity-40"
                 )}
                 aria-label="Edit"
               >
                 <EditPencil className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Edit</TooltipContent>
+            <TooltipContent className="font-mono text-xs">
+              {readOnly ? "Buka percakapan asli untuk mengedit" : "Edit"}
+            </TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -235,10 +243,12 @@ export function ArtifactToolbar({
                 variant="outline"
                 size="icon"
                 onClick={onRefrasa}
+                disabled={readOnly || !isRefrasaReady}
+                title={readOnly ? "Buka percakapan asli untuk refrasa" : undefined}
                 className={cn(
                   "h-8 w-8 rounded-action border transition-all duration-150",
                   sidebarButtonSurfaceClass,
-                  !isRefrasaReady && "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-muted-foreground)]"
+                  (readOnly || !isRefrasaReady) && "cursor-not-allowed opacity-40"
                 )}
                 aria-label="Refrasa"
               >
@@ -246,7 +256,7 @@ export function ArtifactToolbar({
               </Button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
-              {isRefrasaReady ? "Refrasa" : "Refrasa (min. 50 karakter)"}
+              {readOnly ? "Buka percakapan asli untuk refrasa" : isRefrasaReady ? "Refrasa" : "Refrasa (min. 50 karakter)"}
             </TooltipContent>
           </Tooltip>
 
@@ -302,11 +312,21 @@ export function ArtifactToolbar({
               <TooltipContent className="font-mono text-xs">Aksi dokumen</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>
+              <DropdownMenuItem
+                onClick={onEdit}
+                disabled={readOnly}
+                title={readOnly ? "Buka percakapan asli untuk mengedit" : undefined}
+                className={cn(readOnly && "cursor-not-allowed opacity-40")}
+              >
                 <EditPencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onRefrasa}>
+              <DropdownMenuItem
+                onClick={onRefrasa}
+                disabled={readOnly || !isRefrasaReady}
+                title={readOnly ? "Buka percakapan asli untuk refrasa" : undefined}
+                className={cn((readOnly || !isRefrasaReady) && "cursor-not-allowed opacity-40")}
+              >
                 <RefrasaSquareIcon className="mr-2 h-4 w-4" strokeWidth={1.5} />
                 Refrasa
               </DropdownMenuItem>

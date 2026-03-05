@@ -80,6 +80,8 @@ export function ArtifactPanel({
   // Find active tab metadata and artifact data
   const activeTab = activeTabId ? openTabs.find((t) => t.id === activeTabId) : null
   const isRefrasaTab = activeTab?.type === "refrasa"
+  const isReadOnly = activeTab?.readOnly ?? false
+  const sourceConversationId = activeTab?.sourceConversationId
   const activeArtifact = activeTabId
     ? artifacts?.find((a) => a._id === activeTabId)
     : null
@@ -127,6 +129,7 @@ export function ArtifactPanel({
                 }
               : null
           }
+          readOnly={isReadOnly}
           openTabCount={openTabCount}
           onDownload={(format) => {
             viewerRef.current?.setDownloadFormat(format)
@@ -155,6 +158,13 @@ export function ArtifactPanel({
           <ArtifactViewer
             ref={viewerRef}
             artifactId={activeTabId}
+            readOnly={isReadOnly}
+            sourceConversationId={sourceConversationId}
+            onCloseReadOnlyTab={() => {
+              if (activeTabId && isReadOnly) {
+                onTabClose(activeTabId)
+              }
+            }}
             onOpenRefrasaTab={(tab) => {
               onOpenTab?.(tab as ArtifactTab)
             }}

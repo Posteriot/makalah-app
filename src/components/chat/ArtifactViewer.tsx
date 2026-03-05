@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Page, WarningTriangle } from "iconoir-react"
+import { Lock, Page, WarningTriangle } from "iconoir-react"
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from "react"
 import { toast } from "sonner"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -27,6 +27,7 @@ const MermaidRenderer = dynamic(
   () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
   { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-[var(--chat-muted)]" /> }
 )
+import Link from "next/link"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
@@ -35,6 +36,9 @@ import { RefrasaLoadingIndicator } from "@/components/refrasa"
 
 interface ArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
+  readOnly?: boolean
+  sourceConversationId?: Id<"conversations">
+  onCloseReadOnlyTab?: () => void
   onOpenRefrasaTab?: (tab: { id: Id<"artifacts">; title: string; type: string; sourceArtifactId?: Id<"artifacts"> }) => void
   onVersionCreated?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
 }
@@ -99,7 +103,7 @@ function getStageLabelSafe(stageId: string | undefined): string {
 }
 
 export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>(
-  function ArtifactViewer({ artifactId, onOpenRefrasaTab, onVersionCreated }, ref) {
+  function ArtifactViewer({ artifactId, readOnly, sourceConversationId, onCloseReadOnlyTab, onOpenRefrasaTab, onVersionCreated }, ref) {
     const [copied, setCopied] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -234,15 +238,21 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       () => ({
         download: handleDownload,
         copy: handleCopy,
-        startEdit: () => setIsEditing(true),
-        triggerRefrasa: handleRefrasaTrigger,
+        startEdit: () => {
+          if (readOnly) return
+          setIsEditing(true)
+        },
+        triggerRefrasa: () => {
+          if (readOnly) return
+          handleRefrasaTrigger()
+        },
         setDownloadFormat: (format: "docx" | "pdf" | "txt") => setDownloadFormat(format),
         getState: () => ({
           copied,
           isEditing,
           downloadFormat,
           isRefrasaLoading,
-          canRefrasa,
+          canRefrasa: readOnly ? false : canRefrasa,
           hasArtifact: !!artifact,
         }),
       }),
@@ -253,6 +263,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         isRefrasaLoading,
         canRefrasa,
         artifact,
+        readOnly,
         handleDownload,
         handleCopy,
         handleRefrasaTrigger,
@@ -349,6 +360,26 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
             </div>
           </div>
         ) : null}
+
+        {readOnly && (
+          <Alert variant="default" className="mx-4 mt-2 rounded-action border-muted bg-muted/30">
+            <Lock className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span className="font-mono text-[12px]">
+                Artifak dari sesi lain — hanya baca
+              </span>
+              {sourceConversationId && (
+                <Link
+                  href={`/chat/${sourceConversationId}`}
+                  onClick={() => onCloseReadOnlyTab?.()}
+                  className="shrink-0 font-mono text-[11px] text-sky-500 hover:underline"
+                >
+                  Lihat Percakapan →
+                </Link>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {isInvalidated && (
           <Alert
