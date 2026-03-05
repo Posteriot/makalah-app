@@ -3,7 +3,6 @@
 import { FormEvent, useMemo, useState } from "react"
 import { toast } from "sonner"
 import type { Id } from "@convex/_generated/dataModel"
-import { Button } from "@/components/ui/button"
 import {
   useTechnicalReport,
   type TechnicalReportSource,
@@ -104,11 +103,11 @@ export function TechnicalReportForm({
       const submittedReportId = String(result.reportId)
       setReportId(submittedReportId)
       setDescription("")
-      toast.success("Laporan teknis berhasil dikirim.")
+      toast.success("Laporan berhasil dikirim.")
       onSubmitted?.(submittedReportId)
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Gagal mengirim laporan teknis. Coba lagi."
+        err instanceof Error ? err.message : "Gagal mengirim laporan. Coba lagi."
       setError(message)
       toast.error(message)
     }
@@ -116,68 +115,85 @@ export function TechnicalReportForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="technical-report-description" className="block text-sm font-medium text-foreground">
-          Uraian kendala teknis
-        </label>
-        <textarea
-          id="technical-report-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="Contoh: Tool pencarian web gagal dipanggil setelah tombol Kirim ditekan."
-          className="min-h-28 w-full rounded-action border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
+      <div className="overflow-hidden rounded-lg border border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-900">
+        <div className="border-b border-slate-300 px-4 py-3 text-narrative text-md font-medium dark:border-slate-600">
+          Form Laporan
+        </div>
+        <div className="space-y-4 bg-slate-50 p-4 dark:bg-slate-800">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="technical-report-description"
+              className="text-interface text-xs font-medium text-foreground"
+            >
+              Ceritakan masalah yang terjadi
+            </label>
+            <textarea
+              id="technical-report-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Contoh: Jawaban berhenti di tengah atau chat error saat tombol Kirim ditekan."
+              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground placeholder:font-mono placeholder:text-muted-foreground transition-colors focus:border-border focus:outline-none focus:ring-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-300 dark:focus:border-slate-600"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="technical-report-context"
+              className="text-interface text-xs font-medium text-foreground"
+            >
+              Sesi chat terkait
+            </label>
+            <select
+              id="technical-report-context"
+              value={contextValue}
+              onChange={(event) => setContextValue(event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm text-foreground transition-colors focus:border-border focus:outline-none focus:ring-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-600"
+            >
+              <option value="">Pilih sesi chat terkait (opsional)</option>
+              {contextOptions.map((context) => (
+                <option key={context.value} value={context.value}>
+                  {context.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <label className="inline-flex items-center gap-2 text-interface text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={includeDiagnostics}
+              onChange={(event) => setIncludeDiagnostics(event.target.checked)}
+              className="h-4 w-4 rounded border-border dark:border-slate-600"
+            />
+            Sertakan informasi tambahan otomatis (disarankan)
+          </label>
+
+          {error && (
+            <p role="alert" className="text-interface text-xs text-rose-600 dark:text-rose-400">
+              {error}
+            </p>
+          )}
+
+          {reportId && (
+            <p className="text-interface text-xs text-emerald-600 dark:text-emerald-400">
+              Laporan terkirim. ID: <span className="font-mono">{reportId}</span>
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="technical-report-context" className="block text-sm font-medium text-foreground">
-          Sesi chat terkait
-        </label>
-        <select
-          id="technical-report-context"
-          value={contextValue}
-          onChange={(event) => setContextValue(event.target.value)}
-          className="h-10 w-full rounded-action border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="">Pilih sesi chat terkait (opsional)</option>
-          {contextOptions.map((context) => (
-            <option key={context.value} value={context.value}>
-              {context.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-        <input
-          type="checkbox"
-          checked={includeDiagnostics}
-          onChange={(event) => setIncludeDiagnostics(event.target.checked)}
-          className="h-4 w-4 rounded border-input"
-        />
-        Sertakan diagnostik teknis
-      </label>
-
-      {error && (
-        <p role="alert" className="text-sm text-[var(--chat-destructive)]">
-          {error}
-        </p>
-      )}
-
-      {reportId && (
-        <p className="text-sm text-[var(--chat-success)]">
-          Laporan terkirim. ID: <span className="font-mono">{reportId}</span>
-        </p>
-      )}
-
-      <div className="flex justify-end">
-        <Button
+      <div className="flex justify-end border-t border-border pt-4">
+        <button
           type="submit"
           disabled={isSubmitting}
-          className="chat-validation-approve-button h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+          className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-action border border-transparent bg-slate-800 px-4 py-1 text-narrative text-xs font-medium text-slate-100 transition-colors hover:border-slate-600 hover:text-slate-800 focus-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-800 dark:hover:border-slate-400 dark:hover:text-slate-100"
         >
-          {isSubmitting ? "Mengirim..." : "Kirim Laporan"}
-        </Button>
+          <span
+            className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0"
+            aria-hidden="true"
+          />
+          <span className="relative z-10">{isSubmitting ? "Mengirim..." : "Kirim Laporan"}</span>
+        </button>
       </div>
     </form>
   )
