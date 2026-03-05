@@ -15,6 +15,10 @@ export interface ArtifactTab {
   type: string
   /** Source artifact ID — used for refrasa tab reuse */
   sourceArtifactId?: Id<"artifacts">
+  /** Whether this tab is read-only (e.g., cross-session artifact preview) */
+  readOnly?: boolean
+  /** Source conversation ID — for cross-session artifact references */
+  sourceConversationId?: Id<"conversations">
 }
 
 /** Maximum number of open artifact tabs */
