@@ -6,7 +6,7 @@ import { api } from "../../../../convex/_generated/api"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Page, Folder, NavArrowRight, EditPencil, MoreVert } from "iconoir-react"
+import { Page, Folder, NavArrowRight, EditPencil, MoreHoriz } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import {
   getStageLabel,
@@ -832,7 +832,7 @@ function ReadOnlyArtifactTreeItem({
             className="shrink-0 rounded-action p-0.5 text-[var(--chat-muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--chat-foreground)] focus-visible:opacity-100 focus-visible:outline-none"
             aria-label="Opsi artifak"
           >
-            <MoreVert className="h-5 w-5" />
+            <MoreHoriz className="h-5 w-5" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[140px]">
