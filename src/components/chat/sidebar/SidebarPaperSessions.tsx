@@ -832,10 +832,10 @@ function ReadOnlyArtifactTreeItem({
             className="shrink-0 rounded-action p-0.5 text-[var(--chat-muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--chat-foreground)] focus-visible:opacity-100 focus-visible:outline-none"
             aria-label="Opsi artifak"
           >
-            <svg width="16" height="4" viewBox="0 0 16 4" fill="currentColor" aria-hidden="true">
+            <svg width="4" height="16" viewBox="0 0 4 16" fill="currentColor" aria-hidden="true">
               <circle cx="2" cy="2" r="2" />
-              <circle cx="8" cy="2" r="2" />
-              <circle cx="14" cy="2" r="2" />
+              <circle cx="2" cy="8" r="2" />
+              <circle cx="2" cy="14" r="2" />
             </svg>
           </button>
         </DropdownMenuTrigger>
