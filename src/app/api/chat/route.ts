@@ -1564,6 +1564,9 @@ Artifact ID bisa didapat dari RINGKASAN ARTIFACT di system prompt atau dari getC
                         .describe("ID artifact yang ingin dibaca."),
                 }),
                 execute: async ({ artifactId }) => {
+                    if (!artifactId?.trim()) {
+                        return { success: false, error: "artifactId tidak boleh kosong." }
+                    }
                     try {
                         const artifact = await fetchQueryWithToken(api.artifacts.get, {
                             artifactId: artifactId as Id<"artifacts">,

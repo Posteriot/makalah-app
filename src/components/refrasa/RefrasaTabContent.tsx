@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
@@ -109,6 +110,7 @@ export function RefrasaTabContent({
       }, 1500)
     } catch (err) {
       console.error("[RefrasaTabContent] Apply failed:", err)
+      toast.error("Gagal menerapkan refrasa. Silakan coba lagi.")
     } finally {
       setIsApplying(false)
     }
