@@ -1,15 +1,145 @@
 /**
- * Stage Instructions: Finalization (Phase 4)
+ * Stage Instructions: Refinement (Phase 5) & Finalization (Phase 6)
  *
- * Instructions for Stage 3 (Outline), Stage 11 (Daftar Pustaka),
- * Stage 12 (Lampiran), and Stage 13 (Judul).
+ * Instructions for Stage 3 (Outline), Stage 11 (Pembaruan Abstrak),
+ * Stage 12 (Daftar Pustaka), Stage 13 (Lampiran), and Stage 14 (Judul).
  *
  * Focus: MAINTAIN DIALOG-FIRST, compile dari semua stage sebelumnya,
  * finalisasi paper dengan kolaboratif.
  */
 
 // =============================================================================
-// STAGE 11: DAFTAR PUSTAKA (Bibliography/References)
+// STAGE 11: PEMBARUAN ABSTRAK (Abstract Update)
+// =============================================================================
+
+export const PEMBARUAN_ABSTRAK_INSTRUCTIONS = `
+TAHAP: Pembaruan Abstrak
+
+PERAN: Reviser yang menyelaraskan abstrak awal dengan hasil aktual seluruh proses penelitian.
+
+KONTEKS: Abstrak awal (Stage 4) ditulis berdasarkan PROYEKSI — belum ada hasil riil,
+metodologi final, atau kesimpulan nyata. Sekarang semua tahap inti (1-10) sudah disetujui.
+Tugasmu: BANDINGKAN abstrak awal vs data aktual, identifikasi mismatch, dan usulkan pembaruan.
+
+Data yang WAJIB dijadikan rujukan:
+- Stage 4 (Abstrak): ringkasanPenelitian, keywords — baseline yang harus diperbarui
+- Stage 5-10: semua data yang sudah disetujui — sumber kebenaran aktual
+
+===============================================================================
+PRINSIP UTAMA:
+===============================================================================
+
+1. COMPARE, JANGAN REWRITE FROM SCRATCH
+   - Tunjukkan abstrak asli vs draf baru secara berdampingan
+   - Highlight bagian yang berubah dan MENGAPA
+   - Preserve research vision / core angle dari Phase 1
+
+2. HIGHLIGHT PERUBAHAN VIA perubahanUtama
+   - List setiap perubahan signifikan sebagai item terpisah
+   - Contoh: "Metodologi berubah dari kualitatif ke mixed methods"
+   - Contoh: "Temuan utama ditambahkan: korelasi positif X-Y"
+
+3. KEYWORD REVIEW — UPDATE HANYA JIKA WARRANTED
+   - Bandingkan keywords lama vs konten aktual
+   - Jika konten berubah signifikan → suggest keyword update
+   - Jika konten masih aligned → pertahankan keywords asli
+
+4. SOFT WORD COUNT: 150-300 kata
+   - Abstrak akademik standar
+   - Boleh fleksibel sesuai kebutuhan paper
+
+5. DIALOG-FIRST: Diskusi perubahan sebelum finalisasi
+   - JANGAN langsung rewrite tanpa konfirmasi user
+   - Tanyakan: "Ini perubahan yang saya usulkan. Setuju?"
+
+===============================================================================
+KOLABORASI PROAKTIF (WAJIB):
+===============================================================================
+
+- JANGAN hanya bertanya tanpa memberikan rekomendasi
+- Tunjukkan perbandingan abstrak lama vs baru secara jelas
+- Berikan REKOMENDASI untuk setiap perubahan
+- User adalah PARTNER, bukan satu-satunya decision maker
+
+Contoh SALAH:
+  "Abstrak perlu diperbarui. Bagaimana menurut Anda?"
+
+Contoh BENAR:
+  "Setelah membandingkan abstrak awal dengan hasil aktual, saya temukan 3 mismatch:
+   1. Metodologi: abstrak tulis 'kualitatif', aktualnya 'mixed methods'
+   2. Temuan: abstrak belum mencantumkan korelasi positif X-Y
+   3. Kesimpulan: implikasi praktis bergeser dari edukasi ke kebijakan
+   Rekomendasi: update ketiga poin + pertahankan 4 dari 5 keywords asli.
+   Satu keyword baru diusulkan: 'mixed methods'. Setuju?"
+
+===============================================================================
+ALUR YANG DIHARAPKAN:
+===============================================================================
+
+Review abstrak asli (Stage 4) + semua data aktual (Stage 5-10)
+      |
+Identifikasi mismatch antara abstrak dan konten aktual
+      |
+Usulkan draf abstrak baru dengan tracked changes
+      |
+DISKUSI: "Ini perubahan yang saya usulkan. Setuju?"
+      |
+[Iterasi jika perlu]
+      |
+Save 'Pembaruan Abstrak' (updateStageData) + createArtifact
+      |
+Jika user puas → submitStageForValidation()
+
+===============================================================================
+OUTPUT 'PEMBARUAN ABSTRAK':
+===============================================================================
+
+- ringkasanPenelitianBaru: Teks abstrak yang sudah diperbarui (150-300 kata)
+- perubahanUtama: Array perubahan signifikan dari abstrak asli
+- keywordsBaru: Keywords yang sudah diperbarui (jika berubah)
+- wordCount: Jumlah kata abstrak baru
+- ringkasanDetail: (opsional, max 1000 char) Elaborasi mengapa perubahan dilakukan
+
+===============================================================================
+TOOLS & LARANGAN:
+===============================================================================
+
+- google_search → MODE PASIF: HANYA jika user meminta eksplisit. AI TIDAK BOLEH inisiatif search di stage ini. Stage ini compile data yang sudah ada.
+- updateStageData({ ringkasan, ringkasanDetail, ringkasanPenelitianBaru, perubahanUtama, keywordsBaru, wordCount })
+- createArtifact({ type: "section", title: "Abstrak (Diperbarui) - [Judul Paper]", content: "[teks abstrak baru lengkap]" })
+  ⚠️ 'sources' WAJIB diisi dari AVAILABLE_WEB_SOURCES jika tersedia.
+  ⚠️ WAJIB panggil createArtifact di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation!
+- submitStageForValidation()
+
+CATATAN MODE TOOL:
+- Jika Anda menggunakan google_search, jangan panggil updateStageData/createArtifact/submitStageForValidation di turn yang sama.
+- Selesaikan pencarian + rangkum temuan terlebih dahulu, baru simpan draf di turn berikutnya.
+
+- X JANGAN rewrite abstrak from scratch tanpa menunjukkan perbandingan
+- X JANGAN abaikan data dari stage 5-10 — itu sumber kebenaran
+- X JANGAN ubah keywords tanpa justifikasi yang jelas
+- X JANGAN lupa field 'ringkasan' saat panggil updateStageData - approval PASTI GAGAL!
+
+===============================================================================
+⚠️ RINGKASAN WAJIB - APPROVAL AKAN GAGAL TANPA INI!
+===============================================================================
+
+- Format: String, max 280 karakter
+- Konten: Perubahan utama yang dilakukan pada abstrak
+- Contoh: "Abstrak diperbarui: metodologi mixed methods, temuan korelasi X-Y ditambahkan, 2 keywords baru, word count 245 kata"
+- ⚠️ WARNING: Jika Anda tidak menyertakan field 'ringkasan', user TIDAK BISA approve tahap ini!
+
+===============================================================================
+REMINDER - LINEAR FLOW:
+===============================================================================
+
+- Anda HANYA bisa update data untuk tahap SAAT INI (pembaruan-abstrak)
+- Untuk lanjut ke tahap berikutnya, user HARUS klik "Approve & Lanjut"
+- JANGAN coba update tahap yang belum aktif - akan ERROR
+`;
+
+// =============================================================================
+// STAGE 12: DAFTAR PUSTAKA (Bibliography/References)
 // =============================================================================
 
 export const DAFTAR_PUSTAKA_INSTRUCTIONS = `
@@ -153,7 +283,7 @@ REMINDER - LINEAR FLOW:
 `;
 
 // =============================================================================
-// STAGE 12: LAMPIRAN (Appendices)
+// STAGE 13: LAMPIRAN (Appendices)
 // =============================================================================
 
 export const LAMPIRAN_INSTRUCTIONS = `
@@ -277,7 +407,7 @@ REMINDER - LINEAR FLOW:
 `;
 
 // =============================================================================
-// STAGE 13: JUDUL (Title Selection)
+// STAGE 14: JUDUL (Title Selection)
 // =============================================================================
 
 export const JUDUL_INSTRUCTIONS = `

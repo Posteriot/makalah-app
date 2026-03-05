@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react"
 import { toast } from "sonner"
 import { Plus, EditPencil, ClockRotateRight, SwitchOn, SwitchOff } from "iconoir-react"
 import { api } from "@convex/_generated/api"
+import { STAGE_ORDER } from "@convex/paperSessions/constants"
 import type { Id } from "@convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
 import { StageSkillFormDialog, type StageSkillRow } from "./StageSkillFormDialog"
@@ -117,7 +118,7 @@ export function StageSkillsManager({ userId }: StageSkillsManagerProps) {
             Stage Skills
           </h2>
           <p className="text-narrative text-sm text-muted-foreground">
-            Kelola draft, publish, activation, dan rollback skill untuk 13 stage paper workflow.
+            Kelola draft, publish, activation, dan rollback skill untuk {STAGE_ORDER.length} stage paper workflow.
           </p>
         </div>
         <Button

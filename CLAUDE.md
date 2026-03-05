@@ -149,7 +149,7 @@ npm run convex:dashboard           # Open dashboard
 
 **styleConstitutions**: name, content, version, isActive, type (naturalness|style), parentId, rootId (for Refrasa tool - Layer 2 style rules)
 
-**paperSessions**: userId, conversationId, currentStage (13 stages), stageStatus, stageData, paperTitle, archivedAt, completedAt, paperMemoryDigest
+**paperSessions**: userId, conversationId, currentStage (14 stages), stageStatus, stageData, paperTitle, archivedAt, completedAt, paperMemoryDigest
 
 **artifacts**: conversationId, userId, type, title, content, version, invalidatedAt?, invalidatedByRewindToStage?
 
@@ -538,19 +538,20 @@ Database-driven system prompt dengan fallback monitoring.
 
 ## Paper Writing Workflow
 
-13-stage guided workflow for academic papers:
+14-stage guided workflow for academic papers:
 
 **Phase 1 - Foundation:** Gagasan, Topik
 **Phase 2 - Outline:** Outline
 **Phase 3 - Core:** Abstrak, Pendahuluan, Tinjauan Literatur, Metodologi
 **Phase 4 - Results:** Hasil, Diskusi, Kesimpulan
-**Phase 5 - Finalization:** Daftar Pustaka, Lampiran, Judul
+**Phase 5 - Refinement:** Pembaruan Abstrak
+**Phase 6 - Finalization:** Daftar Pustaka, Lampiran, Judul
 
 **Key Files:**
 - `src/lib/ai/paper-intent-detector.ts` - Auto-detect intent
 - `src/lib/ai/paper-tools.ts` - AI tools (startPaperSession, updateStageData, submitStageForValidation)
 - `src/lib/ai/paper-mode-prompt.ts` - Paper mode system prompt injection
-- `src/lib/ai/paper-stages/*.ts` - Stage-specific instructions (foundation, core, results, finalization)
+- `src/lib/ai/paper-stages/*.ts` - Stage-specific instructions (foundation, core, results, refinement, finalization)
 - `src/lib/ai/paper-search-helpers.ts` - Deterministic search decision helpers (3-layer protection)
 - `src/lib/ai/paper-workflow-reminder.ts` - Injected workflow reminders
 - `convex/paperSessions.ts` - CRUD operations + rewindToStage mutation

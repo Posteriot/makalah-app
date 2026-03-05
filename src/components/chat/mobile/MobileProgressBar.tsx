@@ -51,7 +51,7 @@ export function MobileProgressBar({
         </div>
         <span className="flex items-center gap-1 text-[var(--chat-muted-foreground)]">
           <span className="font-mono text-xs tabular-nums">
-            {stageNumber}/13
+            {stageNumber}/{STAGE_ORDER.length}
           </span>
           {isExpanded ? (
             <NavArrowUp className="h-3 w-3" strokeWidth={1.5} />

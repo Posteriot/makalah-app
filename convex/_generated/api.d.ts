@@ -62,6 +62,7 @@ import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultA
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
 import type * as migrations_seedDocumentationSections from "../migrations/seedDocumentationSections.js";
 import type * as migrations_seedHomeContent from "../migrations/seedHomeContent.js";
+import type * as migrations_seedPembaruanAbstrakSkill from "../migrations/seedPembaruanAbstrakSkill.js";
 import type * as migrations_seedPolicyContent from "../migrations/seedPolicyContent.js";
 import type * as migrations_seedPricingPlans from "../migrations/seedPricingPlans.js";
 import type * as migrations_seedRichTextPages from "../migrations/seedRichTextPages.js";
@@ -79,6 +80,7 @@ import type * as migrations_updateDocumentationWorkflow13Tahapan from "../migrat
 import type * as migrations_updatePromptWithArtifactGuidelines from "../migrations/updatePromptWithArtifactGuidelines.js";
 import type * as migrations_updatePromptWithArtifactSources from "../migrations/updatePromptWithArtifactSources.js";
 import type * as migrations_updatePromptWithPaperWorkflow from "../migrations/updatePromptWithPaperWorkflow.js";
+import type * as migrations_updateSystemPromptTo14Stages from "../migrations/updateSystemPromptTo14Stages.js";
 import type * as migrations_updateToGPT4oForToolCalling from "../migrations/updateToGPT4oForToolCalling.js";
 import type * as migrations_upsertDocumentationLanggananTierPembayaranS11 from "../migrations/upsertDocumentationLanggananTierPembayaranS11.js";
 import type * as migrations_upsertDocumentationLegalS7S8S10 from "../migrations/upsertDocumentationLegalS7S8S10.js";
@@ -168,6 +170,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
   "migrations/seedDocumentationSections": typeof migrations_seedDocumentationSections;
   "migrations/seedHomeContent": typeof migrations_seedHomeContent;
+  "migrations/seedPembaruanAbstrakSkill": typeof migrations_seedPembaruanAbstrakSkill;
   "migrations/seedPolicyContent": typeof migrations_seedPolicyContent;
   "migrations/seedPricingPlans": typeof migrations_seedPricingPlans;
   "migrations/seedRichTextPages": typeof migrations_seedRichTextPages;
@@ -185,6 +188,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/updatePromptWithArtifactGuidelines": typeof migrations_updatePromptWithArtifactGuidelines;
   "migrations/updatePromptWithArtifactSources": typeof migrations_updatePromptWithArtifactSources;
   "migrations/updatePromptWithPaperWorkflow": typeof migrations_updatePromptWithPaperWorkflow;
+  "migrations/updateSystemPromptTo14Stages": typeof migrations_updateSystemPromptTo14Stages;
   "migrations/updateToGPT4oForToolCalling": typeof migrations_updateToGPT4oForToolCalling;
   "migrations/upsertDocumentationLanggananTierPembayaranS11": typeof migrations_upsertDocumentationLanggananTierPembayaranS11;
   "migrations/upsertDocumentationLegalS7S8S10": typeof migrations_upsertDocumentationLegalS7S8S10;

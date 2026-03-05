@@ -6,6 +6,7 @@
  */
 
 import type { Doc, Id } from "@convex/_generated/dataModel"
+import { STAGE_ORDER } from "@convex/paperSessions/constants"
 import { compilePaperContent, type CompiledPaperContent, getMissingSections } from "./content-compiler"
 
 /**
@@ -110,7 +111,7 @@ export function getExportableContent(
   // Check completion status
   if (session.currentStage !== "completed") {
     throw new ExportValidationError(
-      `Paper belum selesai. Stage saat ini: ${session.currentStage}. Selesaikan semua 13 tahap untuk export.`,
+      `Paper belum selesai. Stage saat ini: ${session.currentStage}. Selesaikan semua ${STAGE_ORDER.length} tahap untuk export.`,
       "NOT_COMPLETED"
     )
   }

@@ -47,7 +47,7 @@ export const AI_OPS_SIDEBAR_ITEMS: AiOpsSidebarItem[] = [
     label: "Skill Monitor",
     icon: Brain,
     headerTitle: "Skill Runtime Monitoring",
-    headerDescription: "Pantau skill aktif vs fallback pada workflow 13 stage",
+    headerDescription: "Pantau skill aktif vs fallback pada workflow 14 stage",
     headerIcon: Brain,
   },
   {

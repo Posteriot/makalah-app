@@ -35,6 +35,7 @@ const stageScopeValidator = v.union(
   v.literal("hasil"),
   v.literal("diskusi"),
   v.literal("kesimpulan"),
+  v.literal("pembaruan_abstrak"),
   v.literal("daftar_pustaka"),
   v.literal("lampiran"),
   v.literal("judul"),
@@ -56,6 +57,7 @@ type StageScope =
   | "hasil"
   | "diskusi"
   | "kesimpulan"
+  | "pembaruan_abstrak"
   | "daftar_pustaka"
   | "lampiran"
   | "judul"

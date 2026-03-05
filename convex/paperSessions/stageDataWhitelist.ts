@@ -44,6 +44,11 @@ export const STAGE_KEY_WHITELIST: Record<string, string[]> = {
         "implikasiPraktis", "saranPraktisi", "saranPeneliti", "saranKebijakan",
         "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
     ],
+    pembaruan_abstrak: [
+        "ringkasan", "ringkasanDetail", "ringkasanPenelitianBaru",
+        "perubahanUtama", "keywordsBaru", "wordCount",
+        "webSearchReferences", "artifactId", "validatedAt", "revisionCount"
+    ],
     daftar_pustaka: [
         "ringkasan", "ringkasanDetail", "entries", "totalCount", "incompleteCount", "duplicatesMerged",
         "webSearchReferences", "artifactId", "validatedAt", "revisionCount"

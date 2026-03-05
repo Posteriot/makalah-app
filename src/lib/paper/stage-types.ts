@@ -172,7 +172,21 @@ export interface KesimpulanData {
   revisionCount?: number
 }
 
-// Phase 4: Finalization
+// Phase 5: Refinement
+export interface PembaruanAbstrakData {
+  ringkasan?: string
+  ringkasanDetail?: string
+  ringkasanPenelitianBaru?: string
+  perubahanUtama?: string[]
+  keywordsBaru?: string[]
+  wordCount?: number
+  webSearchReferences?: WebSearchReference[]
+  artifactId?: string
+  validatedAt?: number
+  revisionCount?: number
+}
+
+// Phase 6: Finalization
 export interface DaftarPustakaEntry {
   title: string
   authors?: string

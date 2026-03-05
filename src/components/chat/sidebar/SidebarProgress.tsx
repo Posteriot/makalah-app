@@ -229,13 +229,13 @@ function MilestoneItem({
 /**
  * SidebarProgress - Paper milestone timeline with Rewind support
  *
- * Displays a vertical timeline of the 13 paper writing stages.
+ * Displays a vertical timeline of all paper writing stages (driven by STAGE_ORDER).
  * Shows progress for the current conversation's paper session.
  * Supports rewind to previous stages (max 2 stages back).
  *
  * Components:
  * - Header: Title "Progress", subtitle (paper name), progress bar with percentage
- * - Milestone timeline: 13 stages with states (completed, current, pending)
+ * - Milestone timeline: stages with states (completed, current, pending)
  * - Rewind: Click completed stages to rewind (with confirmation dialog)
  * - Empty state: "No active paper session" if no paper in conversation
  */

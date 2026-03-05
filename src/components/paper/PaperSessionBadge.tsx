@@ -13,7 +13,7 @@ interface PaperSessionBadgeProps {
 
 /**
  * Small badge indicating conversation has paper session.
- * Shows current stage number (e.g., "2/13")
+ * Shows current stage number (e.g., "2/14")
  */
 export const PaperSessionBadge: React.FC<PaperSessionBadgeProps> = ({
   stageNumber,

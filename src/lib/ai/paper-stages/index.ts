@@ -19,6 +19,7 @@ import {
     KESIMPULAN_INSTRUCTIONS
 } from "./results";
 import {
+    PEMBARUAN_ABSTRAK_INSTRUCTIONS,
     DAFTAR_PUSTAKA_INSTRUCTIONS,
     LAMPIRAN_INSTRUCTIONS,
     JUDUL_INSTRUCTIONS,
@@ -60,7 +61,11 @@ export function getStageInstructions(stage: PaperStageId | "completed"): string 
         case "kesimpulan":
             return KESIMPULAN_INSTRUCTIONS;
 
-        // Phase 5: Finalization
+        // Phase 5: Refinement
+        case "pembaruan_abstrak":
+            return PEMBARUAN_ABSTRAK_INSTRUCTIONS;
+
+        // Phase 6: Finalization
         case "daftar_pustaka":
             return DAFTAR_PUSTAKA_INSTRUCTIONS;
         case "lampiran":
@@ -97,7 +102,10 @@ export {
 // Phase 4: Outline
 export { OUTLINE_INSTRUCTIONS } from "./finalization";
 
-// Phase 5: Finalization
+// Phase 5: Refinement
+export { PEMBARUAN_ABSTRAK_INSTRUCTIONS } from "./finalization";
+
+// Phase 6: Finalization
 export {
     DAFTAR_PUSTAKA_INSTRUCTIONS,
     LAMPIRAN_INSTRUCTIONS,
