@@ -167,6 +167,12 @@ export function Footer() {
                 </p>
               )}
             </div>
+            <Link
+              href="/support/technical-report?source=footer-link"
+              className="text-narrative text-[13px] font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
+            >
+              Lapor Masalah Chat
+            </Link>
             <div className="flex justify-center gap-6">
               {socialLinks.map((social) => (
                 <a

@@ -32,6 +32,7 @@ Integrasi utama:
 ## Komponen dan Tanggung Jawab
 
 - `Footer.tsx`: menyusun grid footer 16-kolom, link navigasi (3 grup), logo dengan theme switching, social links, hairline separator, dan copyright.
+- `Footer.tsx`: juga menyediakan CTA tetap `Lapor Masalah Chat` ke `/support/technical-report?source=footer-link` sebagai kanal pelaporan teknis chat dari halaman non-chat.
 
 ## Perilaku Ringkas
 
@@ -40,6 +41,7 @@ Integrasi utama:
 - Logo otomatis switch antara light/dark variant berdasarkan tema:
   - Light mode: `makalah_logo_dark.svg` (`block dark:hidden`)
   - Dark mode: `makalah_logo_light.svg` (`hidden dark:block`)
+- Footer menampilkan CTA `Lapor Masalah Chat` yang selalu ada (bukan bagian dari CMS link groups).
 
 ## Layout & Grid
 
@@ -61,8 +63,11 @@ Integrasi utama:
   - `/about#bergabung-dengan-tim` → "Karier"
   - `/about` → "Tentang kami"
 - `LEGAL_LINKS`:
-  - `/about#privacy-policy` → "Privacy"
-  - `/about#terms` → "Terms"
+  - `/privacy` → "Privacy"
+  - `/security` → "Security"
+  - `/terms` → "Terms"
+- CTA teknis (statis, non-CMS):
+  - `/support/technical-report?source=footer-link` → "Lapor Masalah Chat"
 - `SOCIAL_LINKS`:
   - `#` → "X" (`XIcon` dari iconoir-react)
   - `#` → "LinkedIn" (`Linkedin` dari iconoir-react)
@@ -75,6 +80,7 @@ Catatan:
 
 - Logo brand (32x32, theme-aware).
 - Section "Sumber Daya", "Perusahaan", dan "Legal" beserta link-linknya.
+- CTA tetap "Lapor Masalah Chat" (global reminder untuk pelaporan issue chat dari halaman non-chat).
 - Hairline separator (`h-[0.5px] bg-[color:var(--border-hairline)]`).
 - Copyright:
   - `Jl. H. Jian, Kebayoran Baru, Jakarta Selatan`
