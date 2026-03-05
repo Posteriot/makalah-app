@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Download, EditPencil, Copy, Check, Expand, MoreVert, Xmark } from "iconoir-react"
+import { Download, EditPencil, Copy, Check, Expand, Xmark } from "iconoir-react"
 import type { Id } from "../../../convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -308,7 +308,11 @@ export function ArtifactToolbar({
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className={iconActionClass} aria-label="Aksi dokumen">
-                    <MoreVert className="h-3.5 w-3.5" />
+                    <svg width="4" height="16" viewBox="0 0 4 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="2" cy="2" r="2" />
+                      <circle cx="2" cy="8" r="2" />
+                      <circle cx="2" cy="14" r="2" />
+                    </svg>
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
