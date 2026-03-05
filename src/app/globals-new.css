@@ -260,7 +260,7 @@
  * Scoped to [data-auth-scope] for fullpage auth redesign.
  * ========================================================================== */
 
-/* ── Light Mode ── */
+/* ── Always Dark (self-contained) ── */
 [data-auth-scope] {
   --background: var(--auth-background);
   --foreground: var(--auth-foreground);
@@ -275,53 +275,12 @@
   --border: var(--auth-border);
   --input: var(--auth-input-border);
   --ring: var(--auth-ring);
-
-  --auth-background: oklch(0.984 0 0);
-  --auth-foreground: oklch(0.129 0 0);
-  --auth-surface-left: oklch(0.129 0 0);
-  --auth-surface-left-foreground: oklch(0.968 0 0);
-  --auth-surface-right: oklch(0.968 0 0);
-  --auth-surface-right-foreground: oklch(0.129 0 0);
-  --auth-border: oklch(0.869 0 0);
-  --auth-border-strong: oklch(0.704 0 0);
-  --auth-input: oklch(1 0 0);
-  --auth-input-border: oklch(0.804 0 0);
-  --auth-input-placeholder: oklch(0.554 0 0);
-  --auth-ring: oklch(0.588 0.158 241.966);
-  --auth-primary: oklch(0.208 0 0);
-  --auth-primary-foreground: oklch(0.968 0 0);
-  --auth-danger: oklch(0.586 0.253 17.585);
-  --auth-danger-foreground: oklch(0.968 0 0);
-  --auth-warning: oklch(0.666 0.179 58.318);
-  --auth-warning-foreground: oklch(0.968 0 0);
-  --auth-success: oklch(0.6 0.118 184.704);
-  --auth-success-foreground: oklch(0.968 0 0);
-
-  --auth-font-sans: var(--font-sans);
-  --auth-font-mono: var(--font-mono);
-  --auth-radius-action: 0.375rem;
-  --auth-space-page-x: 1rem;
-  --auth-space-page-y: 1rem;
-  --auth-space-panel: 1.25rem;
-  --auth-space-gap: 1rem;
-  --auth-left-inset: max(1.25rem, calc((100% - 24.5rem) / 2));
-}
-
-/* ── Dark Mode ── */
-.dark [data-auth-scope] {
-  --background: var(--auth-background);
-  --foreground: var(--auth-foreground);
-  --card: var(--auth-surface-right);
-  --card-foreground: var(--auth-surface-right-foreground);
-  --popover: var(--auth-surface-right);
-  --popover-foreground: var(--auth-surface-right-foreground);
-  --primary: var(--auth-primary);
-  --primary-foreground: var(--auth-primary-foreground);
-  --destructive: var(--auth-danger);
-  --destructive-foreground: var(--auth-danger-foreground);
-  --border: var(--auth-border);
-  --input: var(--auth-input-border);
-  --ring: var(--auth-ring);
+  --muted: oklch(0.279 0.006 286.033);
+  --muted-foreground: oklch(0.704 0.015 264.117);
+  --secondary: oklch(0.279 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --accent: oklch(0.372 0.010 268.0);
+  --accent-foreground: oklch(0.985 0 0);
 
   --auth-background: oklch(0.208 0 0);
   --auth-foreground: oklch(0.968 0 0);
@@ -343,6 +302,15 @@
   --auth-warning-foreground: oklch(0.968 0 0);
   --auth-success: oklch(0.6 0.118 184.704);
   --auth-success-foreground: oklch(0.968 0 0);
+
+  --auth-font-sans: var(--font-sans);
+  --auth-font-mono: var(--font-mono);
+  --auth-radius-action: 0.375rem;
+  --auth-space-page-x: 1rem;
+  --auth-space-page-y: 1rem;
+  --auth-space-panel: 1.25rem;
+  --auth-space-gap: 1rem;
+  --auth-left-inset: max(1.25rem, calc((100% - 24.5rem) / 2));
 }
 
 @media (min-width: 768px) {
@@ -372,15 +340,11 @@
     inset: 0;
     z-index: 1;
     pointer-events: none;
-    opacity: 0.03;
+    opacity: 0.05;
     background-image:
       linear-gradient(var(--border-hairline) 1px, transparent 1px),
       linear-gradient(90deg, var(--border-hairline) 1px, transparent 1px);
     background-size: 48px 48px;
-  }
-
-  .dark [data-auth-scope] .auth-shell-grid-overlay {
-    opacity: 0.05;
   }
 
   [data-auth-scope] .auth-split {
@@ -417,7 +381,7 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    opacity: 0.03;
+    opacity: 0.05;
     background-image: repeating-linear-gradient(
       45deg,
       currentColor 0,
@@ -425,10 +389,6 @@
       transparent 1px,
       transparent 8px
     );
-  }
-
-  .dark [data-auth-scope] .auth-left-pattern-overlay {
-    opacity: 0.05;
   }
 
   [data-auth-scope] .auth-back-button {

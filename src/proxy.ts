@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import {
+  decodeBetterAuthCookieValue,
+  isAuthenticatedFromBetterAuthCookies,
+} from "@/lib/auth-server"
 
 const PUBLIC_ROUTES = [
   "/",
@@ -23,7 +27,7 @@ function isPublicRoute(pathname: string): boolean {
   )
 }
 
-export default function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (isPublicRoute(pathname)) {
@@ -39,9 +43,14 @@ export default function middleware(request: NextRequest) {
   // Lightweight cookie check — real auth validation happens via Convex queries.
   // With cross-domain auth, the real session lives in localStorage.
   // SessionCookieSync encodes the session into a `ba_session` browser cookie.
-  const sessionCookie = request.cookies.get("ba_session")
+  const betterAuthCookies = decodeBetterAuthCookieValue(
+    request.cookies.get("ba_session")?.value
+  )
+  const isAuthenticated = await isAuthenticatedFromBetterAuthCookies(
+    betterAuthCookies
+  )
 
-  if (!sessionCookie) {
+  if (!isAuthenticated) {
     const signInUrl = new URL("/sign-in", request.url)
     const redirectPath = `${request.nextUrl.pathname}${request.nextUrl.search}`
     signInUrl.searchParams.set("redirect_url", redirectPath)
