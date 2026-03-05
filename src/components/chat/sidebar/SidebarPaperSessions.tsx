@@ -131,7 +131,7 @@ export function SidebarPaperSessions({
     const sessionsToShow = otherSessions
     if (!sessionsToShow.length || !user) return null
     return (
-      <div className="mt-3 pt-3 border-t border-[0.5px] border-[color:var(--chat-border)]">
+      <div className="pt-3">
         <div className="px-4 pb-2">
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
             Sesi Lainnya
@@ -167,7 +167,7 @@ export function SidebarPaperSessions({
   if (!currentConversationId) {
     return (
       <div className="flex flex-col h-full">
-        <div className="pt-5 px-4 pb-3">
+        <div className="pt-5 px-4 pb-3 border-b border-[color:var(--chat-border)]">
           <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">Sesi Paper</div>
           <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] mt-1">
             Folder Artifak{allSessions ? ` · ${allSessions.length} sesi` : ""}
@@ -218,14 +218,14 @@ export function SidebarPaperSessions({
     return (
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="pt-5 px-4 pb-3">
+        <div className="pt-5 px-4 pb-3 border-b border-[color:var(--chat-border)]">
           <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">Sesi Paper</div>
           <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] mt-1">
             Folder Artifak{allSessions ? ` · ${allSessions.length} sesi` : ""}
           </div>
         </div>
         {/* No active session indicator */}
-        <div className="px-4 py-3 text-center">
+        <div className="px-4 py-3 text-center border-b border-[color:var(--chat-border)]">
           <span className="text-xs text-[var(--chat-muted-foreground)] opacity-60 font-mono">
             Percakapan ini belum memiliki sesi paper
           </span>
@@ -252,8 +252,8 @@ export function SidebarPaperSessions({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header - padding 20px 16px 12px 16px, no border */}
-      <div className="pt-5 px-4 pb-3">
+      {/* Header */}
+      <div className="pt-5 px-4 pb-3 border-b border-[color:var(--chat-border)]">
         <div className="text-sm font-semibold">Sesi Paper</div>
         <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
           Folder Artifak{allSessions ? ` · ${allSessions.length} sesi` : ""}
@@ -275,6 +275,11 @@ export function SidebarPaperSessions({
           onUpdateWorkingTitle={(title) => updateWorkingTitle(user!._id, title)}
           userId={user!._id}
         />
+
+        {/* Separator — only when active session exists */}
+        {otherSessions.length > 0 && (
+          <div className="border-t border-[color:var(--chat-border)]" />
+        )}
 
         {/* Sesi Lainnya — other paper sessions */}
         {renderOtherSessions()}
@@ -401,7 +406,7 @@ function PaperFolderItem({
       className={cn(
         "mb-0.5 transition-colors",
         isExpanded
-          ? "border-y border-[color:var(--chat-border)] bg-[var(--chat-accent)]"
+          ? "pb-3 bg-[var(--chat-accent)]"
           : ""
       )}
     >
@@ -577,10 +582,10 @@ function ArtifactTreeItem({
       href={`/chat/${conversationId}`}
       onClick={handleClick}
       className={cn(
-        "my-1 mr-3 flex cursor-pointer items-center gap-2 rounded-action border px-3.5 py-2 transition-colors",
-        "border-transparent hover:bg-[var(--chat-accent)]",
+        "my-1 mr-3 flex cursor-pointer items-center gap-2 rounded-action px-3.5 py-2 transition-colors",
+        "hover:bg-[var(--chat-accent)]",
         isSelected &&
-          "border-[color:var(--chat-border)] bg-[var(--chat-accent)] shadow-[inset_0_1px_0_var(--chat-border)]"
+          "bg-[var(--chat-accent)]"
       )}
       aria-current={isSelected ? "page" : undefined}
     >
