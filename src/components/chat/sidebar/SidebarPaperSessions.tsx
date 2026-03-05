@@ -28,6 +28,10 @@ import {
 export interface ArtifactSelectOpts {
   readOnly?: boolean
   sourceConversationId?: Id<"conversations">
+  /** Artifact title — passed so tab can display it immediately without extra query */
+  title?: string
+  /** Artifact type — passed for tab metadata */
+  type?: string
 }
 
 interface SidebarPaperSessionsProps {
@@ -559,7 +563,10 @@ function ArtifactTreeItem({
     }
     // Select this artifact
     if (onArtifactSelect) {
-      onArtifactSelect(artifact._id)
+      onArtifactSelect(artifact._id, {
+        title: artifact.title,
+        type: artifact.type,
+      })
     }
     // Close mobile menu
     onCloseMobile?.()
@@ -782,6 +789,8 @@ function ReadOnlyArtifactTreeItem({
       onArtifactSelect(artifact._id, {
         readOnly: true,
         sourceConversationId: conversationId,
+        title: artifact.title,
+        type: artifact.type,
       })
     }
     onCloseMobile?.()

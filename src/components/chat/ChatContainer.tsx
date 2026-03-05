@@ -89,7 +89,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   // Handler when artifact is created or selected — opens a tab (desktop) or overlay (mobile)
   const handleArtifactSelect = (
     artifactId: Id<"artifacts">,
-    opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations"> }
+    opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations">; title?: string; type?: string }
   ) => {
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       setMobileArtifactId(artifactId)
@@ -97,8 +97,8 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
       const artifact = artifacts?.find((a) => a._id === artifactId)
       openArtifactTab({
         id: artifactId,
-        title: artifact?.title ?? "Loading...",
-        type: artifact?.type ?? "section",
+        title: artifact?.title ?? opts?.title ?? "Untitled",
+        type: artifact?.type ?? opts?.type ?? "section",
         readOnly: opts?.readOnly,
         sourceConversationId: opts?.sourceConversationId,
       })

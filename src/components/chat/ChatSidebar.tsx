@@ -38,7 +38,7 @@ interface ChatSidebarProps {
   /** Callback to update conversation title */
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
   /** Callback when artifact is selected */
-  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations"> }) => void
+  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations">; title?: string; type?: string }) => void
   /** Currently selected artifact ID in panel */
   activeArtifactId?: Id<"artifacts"> | null
   /** Whether artifact panel is open */
