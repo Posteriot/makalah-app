@@ -318,8 +318,8 @@ function AdminOverviewView({
   isBlocked,
   currentCreditBalance,
 }: {
-  usageBreakdown: any
-  creditBalance: any
+  usageBreakdown: { breakdown: { type: string; icon: string; tokens: number; cost: number; count: number }[]; totalTokens: number; totalCost: number; periodStart: number; periodEnd: number } | null | undefined
+  creditBalance: { remainingCredits?: number; usedCredits?: number; totalCredits?: number; lastPurchaseAt?: number | null; lastPurchaseCredits?: number | null } | null | undefined
   tier: EffectiveTier
   tierConfig: { label: string; description: string; color: string; textColor: string }
   resetDate: string
@@ -578,7 +578,7 @@ function AdminOverviewView({
           <h2 className="text-interface text-sm font-medium text-foreground">Breakdown Penggunaan</h2>
         </div>
 
-        {usageBreakdown === undefined ? (
+        {!usageBreakdown ? (
           <div className="p-8 text-center">
             <RefreshDouble className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
           </div>
@@ -606,7 +606,7 @@ function AdminOverviewView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {usageBreakdown.breakdown.map((item: any) => {
+                {usageBreakdown.breakdown.map((item) => {
                   const IconComponent = ICON_MAP[item.icon as keyof typeof ICON_MAP] || ChatBubble
                   return (
                     <tr key={item.type} className="group transition-colors hover:bg-muted/50">

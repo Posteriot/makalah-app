@@ -174,7 +174,7 @@ describe("stageSkills lifecycle", () => {
         changeNote: string;
       },
       { version: number; skillId: string }
-    >(createOrUpdateDraft as any, db, {
+    >(createOrUpdateDraft as never, db, {
       requestorUserId,
       stageScope: "gagasan",
       name: "gagasan-skill",
@@ -185,12 +185,12 @@ describe("stageSkills lifecycle", () => {
     expect(draftV1.version).toBe(1);
     expect(draftV1.skillId).toBe("gagasan-skill");
 
-    await callMutation(publishVersion as any, db, {
+    await callMutation(publishVersion as never, db, {
       requestorUserId,
       skillId: "gagasan-skill",
       version: 1,
     });
-    await callMutation(activateVersion as any, db, {
+    await callMutation(activateVersion as never, db, {
       requestorUserId,
       skillId: "gagasan-skill",
       version: 1,
@@ -206,7 +206,7 @@ describe("stageSkills lifecycle", () => {
         changeNote: string;
       },
       { version: number }
-    >(createOrUpdateDraft as any, db, {
+    >(createOrUpdateDraft as never, db, {
       requestorUserId,
       stageScope: "gagasan",
       name: "gagasan-skill",
@@ -216,12 +216,12 @@ describe("stageSkills lifecycle", () => {
     });
     expect(draftV2.version).toBe(2);
 
-    await callMutation(publishVersion as any, db, {
+    await callMutation(publishVersion as never, db, {
       requestorUserId,
       skillId: "gagasan-skill",
       version: 2,
     });
-    await callMutation(activateVersion as any, db, {
+    await callMutation(activateVersion as never, db, {
       requestorUserId,
       skillId: "gagasan-skill",
       version: 2,
@@ -235,7 +235,7 @@ describe("stageSkills lifecycle", () => {
         reason: string;
       },
       { version: number }
-    >(rollbackVersion as any, db, {
+    >(rollbackVersion as never, db, {
       requestorUserId,
       skillId: "gagasan-skill",
       targetVersion: 1,
@@ -269,7 +269,7 @@ describe("stageSkills lifecycle", () => {
     vi.mocked(requireRole).mockRejectedValueOnce(new Error("forbidden"));
 
     await expect(
-      callMutation(createOrUpdateDraft as any, db, {
+      callMutation(createOrUpdateDraft as never, db, {
         requestorUserId: "user_non_admin",
         stageScope: "gagasan",
         name: "gagasan-skill",

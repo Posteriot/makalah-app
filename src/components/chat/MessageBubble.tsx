@@ -8,6 +8,7 @@ import { ToolStateIndicator } from "./ToolStateIndicator"
 import { SearchStatusIndicator, type SearchStatus } from "./SearchStatusIndicator"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { useState, useRef, useMemo, useEffect } from "react"
+import Image from "next/image"
 import { Id } from "../../../convex/_generated/dataModel"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { isEditAllowed } from "@/lib/utils/paperPermissions"
@@ -686,11 +687,13 @@ export function MessageBubble({
                             const filePart = part as Record<string, unknown>
                             return (
                                 <div key={`img-${i}`} className="mb-3">
-                                    <img
+                                    <Image
                                         src={filePart.url as string}
                                         alt={(filePart.filename as string) ?? "attachment"}
-                                        className="max-w-xs max-h-64 rounded-action border border-[color:var(--chat-border)]"
-                                        loading="lazy"
+                                        width={320}
+                                        height={256}
+                                        className="max-w-xs max-h-64 rounded-action border border-[color:var(--chat-border)] object-contain"
+                                        unoptimized
                                     />
                                 </div>
                             )

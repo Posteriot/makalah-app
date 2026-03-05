@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
+import type { Doc, Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -20,38 +20,42 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
     sectionSlug: "career-contact",
   })
 
+  // Loading skeleton
+  if (section === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return <CareerContactForm key={section?._id ?? "new"} section={section} userId={userId} />
+}
+
+function CareerContactForm({ section, userId }: { section: Doc<"pageContent"> | null; userId: Id<"users"> }) {
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
-  const [badgeText, setBadgeText] = useState("")
-  const [title, setTitle] = useState("")
-  const [careerText, setCareerText] = useState("")
-  const [company, setCompany] = useState("")
-  const [address, setAddress] = useState("")
-  const [email, setEmail] = useState("")
-  const [showGridPattern, setShowGridPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [isPublished, setIsPublished] = useState(false)
+  const sectionItems = section?.items as Array<{ title?: string; description?: string }> | undefined
+  const contact = section?.contactInfo as { company?: string; address?: string[]; email?: string } | undefined
 
-  // Sync form state when section data loads
-  useEffect(() => {
-    if (section) {
-      setBadgeText(section.badgeText ?? "")
-      setTitle(section.title ?? "")
-      // Map items[0].description -> careerText
-      const sectionItems = section.items as Array<{ title?: string; description?: string }> | undefined
-      setCareerText(sectionItems?.[0]?.description ?? "")
-      // Map contactInfo -> company/address/email
-      const contact = section.contactInfo as { company?: string; address?: string[]; email?: string } | undefined
-      setCompany(contact?.company ?? "")
-      setAddress(contact?.address?.[0] ?? "")
-      setEmail(contact?.email ?? "")
-      setShowGridPattern(section.showGridPattern !== false)
-      setShowDiagonalStripes(section.showDiagonalStripes !== false)
-      setShowDottedPattern(section.showDottedPattern !== false)
-      setIsPublished(section.isPublished ?? false)
-    }
-  }, [section])
+  const [badgeText, setBadgeText] = useState(section?.badgeText ?? "")
+  const [title, setTitle] = useState(section?.title ?? "")
+  const [careerText, setCareerText] = useState(sectionItems?.[0]?.description ?? "")
+  const [company, setCompany] = useState(contact?.company ?? "")
+  const [address, setAddress] = useState(contact?.address?.[0] ?? "")
+  const [email, setEmail] = useState(contact?.email ?? "")
+  const [showGridPattern, setShowGridPattern] = useState(section?.showGridPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(section?.showDiagonalStripes !== false)
+  const [showDottedPattern, setShowDottedPattern] = useState(section?.showDottedPattern !== false)
+  const [isPublished, setIsPublished] = useState(section?.isPublished ?? false)
 
   async function handleSave() {
     await upsertSection({
@@ -70,23 +74,6 @@ export function CareerContactEditor({ userId }: CareerContactEditorProps) {
       isPublished,
       sortOrder: 4,
     })
-  }
-
-  // Loading skeleton
-  if (section === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-56" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
   }
 
   return (

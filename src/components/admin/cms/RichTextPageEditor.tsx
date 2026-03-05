@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Doc } from "@convex/_generated/dataModel"
 import type { Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -22,40 +23,15 @@ const SLUG_TITLES: Record<string, string> = {
   terms: "Terms Page",
 }
 
+// ---------------------------------------------------------------------------
+// Wrapper (exported)
+// ---------------------------------------------------------------------------
+
 export function RichTextPageEditor({ slug, userId }: RichTextPageEditorProps) {
   const page = useQuery(api.richTextPages.getPageBySlugAdmin, {
     requestorId: userId,
     slug,
   })
-
-  const upsertPage = useMutation(api.richTextPages.upsertPage)
-
-  const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
-  const [lastUpdatedLabel, setLastUpdatedLabel] = useState("")
-  const [isPublished, setIsPublished] = useState(false)
-
-  // Sync form state when page data loads
-  useEffect(() => {
-    if (page) {
-      setTitle(page.title ?? "")
-      setContent(page.content ?? "")
-      setLastUpdatedLabel(page.lastUpdatedLabel ?? "")
-      setIsPublished(page.isPublished ?? false)
-    }
-  }, [page])
-
-  async function handleSave() {
-    await upsertPage({
-      requestorId: userId,
-      id: page?._id,
-      slug,
-      title,
-      content,
-      lastUpdatedLabel: lastUpdatedLabel || undefined,
-      isPublished,
-    })
-  }
 
   // Loading skeleton
   if (page === undefined) {
@@ -69,6 +45,48 @@ export function RichTextPageEditor({ slug, userId }: RichTextPageEditorProps) {
         <Skeleton className="h-9 w-32" />
       </div>
     )
+  }
+
+  return (
+    <RichTextPageForm
+      key={page?._id ?? "new"}
+      section={page}
+      slug={slug}
+      userId={userId}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Form (not exported)
+// ---------------------------------------------------------------------------
+
+function RichTextPageForm({
+  section,
+  slug,
+  userId,
+}: {
+  section: Doc<"richTextPages"> | null
+  slug: string
+  userId: Id<"users">
+}) {
+  const upsertPage = useMutation(api.richTextPages.upsertPage)
+
+  const [title, setTitle] = useState(section?.title ?? "")
+  const [content, setContent] = useState(section?.content ?? "")
+  const [lastUpdatedLabel, setLastUpdatedLabel] = useState(section?.lastUpdatedLabel ?? "")
+  const [isPublished, setIsPublished] = useState(section?.isPublished ?? false)
+
+  async function handleSave() {
+    await upsertPage({
+      requestorId: userId,
+      id: section?._id,
+      slug,
+      title,
+      content,
+      lastUpdatedLabel: lastUpdatedLabel || undefined,
+      isPublished,
+    })
   }
 
   const sectionTitle = SLUG_TITLES[slug] ?? `${slug} Page`

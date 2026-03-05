@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Doc } from "@convex/_generated/dataModel"
 import type { Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -53,6 +54,26 @@ const EMPTY_ITEMS: FeatureItem[] = [
   { title: "", description: "" },
 ]
 
+function initItems(section: Doc<"pageContent"> | null): FeatureItem[] {
+  if (section?.items && Array.isArray(section.items)) {
+    const loaded = (
+      section.items as Array<{
+        title?: string
+        description?: string
+      }>
+    ).map((item) => ({
+      title: item.title ?? "",
+      description: item.description ?? "",
+    }))
+    return loaded.length > 0 ? loaded : EMPTY_ITEMS
+  }
+  return EMPTY_ITEMS
+}
+
+// ---------------------------------------------------------------------------
+// Wrapper (exported)
+// ---------------------------------------------------------------------------
+
 export function FeatureShowcaseEditor({
   pageSlug,
   sectionSlug,
@@ -63,52 +84,75 @@ export function FeatureShowcaseEditor({
     sectionSlug,
   })
 
+  // Loading skeleton
+  if (section === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-9 w-full" />
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div
+            key={i}
+            className="space-y-2 rounded-action border border-border p-4"
+          >
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ))}
+        <Skeleton className="aspect-video w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return (
+    <FeatureShowcaseForm
+      key={section?._id ?? "new"}
+      section={section}
+      pageSlug={pageSlug}
+      sectionSlug={sectionSlug}
+      userId={userId}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Form (not exported)
+// ---------------------------------------------------------------------------
+
+function FeatureShowcaseForm({
+  section,
+  pageSlug,
+  sectionSlug,
+  userId,
+}: {
+  section: Doc<"pageContent"> | null
+  pageSlug: string
+  sectionSlug: string
+  userId: Id<"users">
+}) {
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [badgeText, setBadgeText] = useState("")
-  const [items, setItems] = useState<FeatureItem[]>(EMPTY_ITEMS)
+  const [title, setTitle] = useState(section?.title ?? "")
+  const [description, setDescription] = useState(section?.description ?? "")
+  const [badgeText, setBadgeText] = useState(section?.badgeText ?? "")
+  const [items, setItems] = useState<FeatureItem[]>(() => initItems(section))
   const [primaryImageId, setPrimaryImageId] = useState<Id<"_storage"> | null>(
-    null
+    section?.primaryImageId ?? null
   )
   const [secondaryImageId, setSecondaryImageId] = useState<Id<"_storage"> | null>(
-    null
+    section?.secondaryImageId ?? null
   )
-  const [primaryImageAlt, setPrimaryImageAlt] = useState("")
-  const [showGridPattern, setShowGridPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [isPublished, setIsPublished] = useState(false)
-
-  // Sync form state when section data loads
-  useEffect(() => {
-    if (section) {
-      setTitle(section.title ?? "")
-      setDescription(section.description ?? "")
-      setBadgeText(section.badgeText ?? "")
-      setPrimaryImageId(section.primaryImageId ?? null)
-      setSecondaryImageId(section.secondaryImageId ?? null)
-      setPrimaryImageAlt(section.primaryImageAlt ?? "")
-      setShowGridPattern(section.showGridPattern !== false)
-      setShowDiagonalStripes(section.showDiagonalStripes !== false)
-      setShowDottedPattern(section.showDottedPattern !== false)
-      setIsPublished(section.isPublished ?? false)
-
-      if (section.items && Array.isArray(section.items)) {
-        const loaded = (
-          section.items as Array<{
-            title?: string
-            description?: string
-          }>
-        ).map((item) => ({
-          title: item.title ?? "",
-          description: item.description ?? "",
-        }))
-        setItems(loaded.length > 0 ? loaded : EMPTY_ITEMS)
-      }
-    }
-  }, [section])
+  const [primaryImageAlt, setPrimaryImageAlt] = useState(section?.primaryImageAlt ?? "")
+  const [showGridPattern, setShowGridPattern] = useState(section?.showGridPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(section?.showDiagonalStripes !== false)
+  const [showDottedPattern, setShowDottedPattern] = useState(section?.showDottedPattern !== false)
+  const [isPublished, setIsPublished] = useState(section?.isPublished ?? false)
 
   function updateItem(
     index: number,
@@ -154,32 +198,6 @@ export function FeatureShowcaseEditor({
       isPublished,
       sortOrder: SORT_ORDER_MAP[sectionSlug] ?? 3,
     })
-  }
-
-  // Loading skeleton
-  if (section === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-56" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-9 w-full" />
-        {Array.from({ length: 2 }).map((_, i) => (
-          <div
-            key={i}
-            className="space-y-2 rounded-action border border-border p-4"
-          >
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-        ))}
-        <Skeleton className="aspect-video w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
   }
 
   return (

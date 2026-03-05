@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
+import type { Doc, Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -26,34 +26,46 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
     sectionSlug: "problems",
   })
 
+  // Loading skeleton
+  if (section === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-2 rounded-action border border-border p-4">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ))}
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return <ProblemsSectionForm key={section?._id ?? "new"} section={section} userId={userId} />
+}
+
+function ProblemsSectionForm({ section, userId }: { section: Doc<"pageContent"> | null; userId: Id<"users"> }) {
   const upsertSection = useMutation(api.pageContent.upsertSection)
 
-  const [badgeText, setBadgeText] = useState("")
-  const [title, setTitle] = useState("")
-  const [items, setItems] = useState<ProblemItem[]>([])
-  const [showGridPattern, setShowGridPattern] = useState(true)
-  const [showDiagonalStripes, setShowDiagonalStripes] = useState(true)
-  const [showDottedPattern, setShowDottedPattern] = useState(true)
-  const [isPublished, setIsPublished] = useState(false)
-
-  // Sync form state when section data loads
-  useEffect(() => {
-    if (section) {
-      setBadgeText(section.badgeText ?? "")
-      setTitle(section.title ?? "")
-      if (section.items && Array.isArray(section.items)) {
-        const loaded = (section.items as Array<{ title?: string; description?: string }>).map((item) => ({
-          title: item.title ?? "",
-          description: item.description ?? "",
-        }))
-        setItems(loaded)
-      }
-      setShowGridPattern(section.showGridPattern !== false)
-      setShowDiagonalStripes(section.showDiagonalStripes !== false)
-      setShowDottedPattern(section.showDottedPattern !== false)
-      setIsPublished(section.isPublished ?? false)
+  const [badgeText, setBadgeText] = useState(section?.badgeText ?? "")
+  const [title, setTitle] = useState(section?.title ?? "")
+  const [items, setItems] = useState<ProblemItem[]>(() => {
+    if (section?.items && Array.isArray(section.items)) {
+      return (section.items as Array<{ title?: string; description?: string }>).map((item) => ({
+        title: item.title ?? "",
+        description: item.description ?? "",
+      }))
     }
-  }, [section])
+    return []
+  })
+  const [showGridPattern, setShowGridPattern] = useState(section?.showGridPattern !== false)
+  const [showDiagonalStripes, setShowDiagonalStripes] = useState(section?.showDiagonalStripes !== false)
+  const [showDottedPattern, setShowDottedPattern] = useState(section?.showDottedPattern !== false)
+  const [isPublished, setIsPublished] = useState(section?.isPublished ?? false)
 
   function updateItem(index: number, field: keyof ProblemItem, value: string) {
     setItems((prev) =>
@@ -90,25 +102,6 @@ export function ProblemsSectionEditor({ userId }: ProblemsSectionEditorProps) {
       isPublished,
       sortOrder: 2,
     })
-  }
-
-  // Loading skeleton
-  if (section === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="space-y-2 rounded-action border border-border p-4">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-        ))}
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
   }
 
   return (

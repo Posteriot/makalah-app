@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatStageData } from "@/lib/ai/paper-stages/formatStageData";
+import { formatStageData, type StageData } from "@/lib/ai/paper-stages/formatStageData";
 
 describe("formatStageData - superseded digest filtering", () => {
   it("should exclude superseded entries from ringkasan output", () => {
@@ -15,7 +15,7 @@ describe("formatStageData - superseded digest filtering", () => {
       },
     };
 
-    const result = formatStageData(stageData as any, "outline");
+    const result = formatStageData(stageData as StageData, "outline");
 
     expect(result).toContain("Ide tentang AI pendidikan");
     expect(result).not.toContain("Topik lama yang di-rewind");
@@ -33,7 +33,7 @@ describe("formatStageData - superseded digest filtering", () => {
       },
     };
 
-    const result = formatStageData(stageData as any, "outline");
+    const result = formatStageData(stageData as StageData, "outline");
 
     expect(result).toContain("Ide final");
     expect(result).toContain("Topik definitif");
@@ -53,7 +53,7 @@ describe("formatStageData - superseded digest filtering", () => {
           definitif: "Topik AI pendidikan",
           webSearchReferences,
         },
-      } as any,
+      } as StageData,
       "topik"
     );
 
@@ -77,7 +77,7 @@ describe("formatStageData - superseded digest filtering", () => {
           latarBelakang: "Latar belakang penelitian",
           sitasiAPA,
         },
-      } as any,
+      } as StageData,
       "pendahuluan"
     );
 
@@ -116,7 +116,7 @@ describe("formatStageData - superseded digest filtering", () => {
           ringkasanDetail: "DETAIL_PENDAHULUAN",
           validatedAt: 5,
         },
-      } as any,
+      } as StageData,
       "tinjauan_literatur"
     );
 

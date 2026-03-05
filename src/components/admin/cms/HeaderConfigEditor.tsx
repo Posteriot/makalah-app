@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Doc } from "@convex/_generated/dataModel"
 import type { Id } from "@convex/_generated/dataModel"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -21,43 +22,76 @@ type HeaderConfigEditorProps = {
   userId: Id<"users">
 }
 
+const DEFAULT_NAV_LINKS: NavLink[] = Array.from({ length: 5 }, () => ({
+  label: "",
+  href: "",
+  isVisible: true,
+}))
+
+// ---------------------------------------------------------------------------
+// Wrapper (exported)
+// ---------------------------------------------------------------------------
+
 export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
   const config = useQuery(api.siteConfig.getConfig, { key: "header" })
+
+  // Loading skeleton
+  if (config === undefined) {
+    return (
+      <div className="w-full space-y-4 p-comfort">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    )
+  }
+
+  return (
+    <HeaderConfigForm
+      key={config?._id ?? "new"}
+      section={config}
+      userId={userId}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Form (not exported)
+// ---------------------------------------------------------------------------
+
+function HeaderConfigForm({
+  section,
+  userId,
+}: {
+  section: Doc<"siteConfig"> | null
+  userId: Id<"users">
+}) {
   const upsertConfig = useMutation(api.siteConfig.upsertConfig)
 
-  const [navLinks, setNavLinks] = useState<NavLink[]>([])
-  const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(null)
-  const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(null)
-  const [brandTextDarkId, setBrandTextDarkId] = useState<Id<"_storage"> | null>(null)
-  const [brandTextLightId, setBrandTextLightId] = useState<Id<"_storage"> | null>(null)
-
-  // Sync form state when config data loads
-  useEffect(() => {
-    if (config) {
-      const links = (config.navLinks as NavLink[] | undefined) ?? []
-      setNavLinks(
-        links.length > 0
-          ? links
-          : Array.from({ length: 5 }, () => ({
-              label: "",
-              href: "",
-              isVisible: true,
-            }))
-      )
-      setLogoDarkId((config.logoDarkId as Id<"_storage"> | undefined) ?? null)
-      setLogoLightId((config.logoLightId as Id<"_storage"> | undefined) ?? null)
-      setBrandTextDarkId((config.brandTextDarkId as Id<"_storage"> | undefined) ?? null)
-      setBrandTextLightId((config.brandTextLightId as Id<"_storage"> | undefined) ?? null)
-    } else if (config === null) {
-      setNavLinks(
-        Array.from({ length: 5 }, () => ({
-          label: "",
-          href: "",
-          isVisible: true,
-        }))
-      )
+  // Initialize from section prop; when null use defaults
+  const [navLinks, setNavLinks] = useState<NavLink[]>(() => {
+    if (section) {
+      const links = (section.navLinks as NavLink[] | undefined) ?? []
+      return links.length > 0 ? links : DEFAULT_NAV_LINKS
     }
-  }, [config])
+    return DEFAULT_NAV_LINKS
+  })
+  const [logoDarkId, setLogoDarkId] = useState<Id<"_storage"> | null>(
+    (section?.logoDarkId as Id<"_storage"> | undefined) ?? null
+  )
+  const [logoLightId, setLogoLightId] = useState<Id<"_storage"> | null>(
+    (section?.logoLightId as Id<"_storage"> | undefined) ?? null
+  )
+  const [brandTextDarkId, setBrandTextDarkId] = useState<Id<"_storage"> | null>(
+    (section?.brandTextDarkId as Id<"_storage"> | undefined) ?? null
+  )
+  const [brandTextLightId, setBrandTextLightId] = useState<Id<"_storage"> | null>(
+    (section?.brandTextLightId as Id<"_storage"> | undefined) ?? null
+  )
 
   function updateLink(index: number, field: keyof NavLink, value: string | boolean) {
     setNavLinks((prev) =>
@@ -85,21 +119,6 @@ export function HeaderConfigEditor({ userId }: HeaderConfigEditorProps) {
       brandTextDarkId: brandTextDarkId ?? undefined,
       brandTextLightId: brandTextLightId ?? undefined,
     })
-  }
-
-  // Loading skeleton
-  if (config === undefined) {
-    return (
-      <div className="w-full space-y-4 p-comfort">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-9 w-32" />
-      </div>
-    )
   }
 
   return (
