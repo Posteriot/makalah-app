@@ -87,7 +87,10 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   }, [artifacts, artifactTabs, updateArtifactTabTitle])
 
   // Handler when artifact is created or selected — opens a tab (desktop) or overlay (mobile)
-  const handleArtifactSelect = (artifactId: Id<"artifacts">) => {
+  const handleArtifactSelect = (
+    artifactId: Id<"artifacts">,
+    opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations"> }
+  ) => {
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       setMobileArtifactId(artifactId)
     } else {
@@ -96,6 +99,8 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
         id: artifactId,
         title: artifact?.title ?? "Loading...",
         type: artifact?.type ?? "section",
+        readOnly: opts?.readOnly,
+        sourceConversationId: opts?.sourceConversationId,
       })
     }
   }
