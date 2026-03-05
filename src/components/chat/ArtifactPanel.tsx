@@ -132,7 +132,7 @@ export function ArtifactPanel({
         </div>
         <button
           onClick={onToggle}
-          className="shrink-0 p-2 text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
+          className="flex h-[34px] w-8 shrink-0 items-center justify-center mr-1 text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
           aria-label="Tutup panel"
         >
           <Xmark className="h-4 w-4" strokeWidth={1.5} />

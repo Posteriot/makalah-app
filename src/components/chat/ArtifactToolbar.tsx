@@ -169,21 +169,6 @@ export function ArtifactToolbar({
               <TooltipContent className="font-mono text-xs">Fullscreen</TooltipContent>
             </Tooltip>
           )}
-          {onClosePanel && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={iconActionClass}
-                  onClick={onClosePanel}
-                >
-                  <Xmark className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="font-mono text-xs">Tutup panel</TooltipContent>
-            </Tooltip>
-          )}
         </div>
       </div>
 
