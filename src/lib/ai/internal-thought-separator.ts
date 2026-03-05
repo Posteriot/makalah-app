@@ -3,6 +3,11 @@ export interface InternalThoughtSplitResult {
   internalThoughtContent: string
 }
 
+export interface UserFacingSearchPayload {
+  citedText: string
+  internalThoughtText: string
+}
+
 const INTERNAL_THOUGHT_PATTERNS: RegExp[] = [
   /\b(bentar|sebentar|tunggu|mohon\s+tunggu)\b/i,
   /\b(aku|saya|gue)\s+(akan|mau|ingin|coba)?\s*(cari|mencari|search|cek)\b/i,
@@ -73,5 +78,21 @@ export function splitInternalThought(input: string): InternalThoughtSplitResult 
   return {
     publicContent: rest.trim(),
     internalThoughtContent: internalSegments.join(" ").trim(),
+  }
+}
+
+/**
+ * Build payload for web-search UI stream:
+ * - `citedText` goes to `data-cited-text` (user-facing section)
+ * - `internalThoughtText` goes to dedicated internal-thought data part
+ */
+export function buildUserFacingSearchPayload(input: string): UserFacingSearchPayload {
+  const split = splitInternalThought(input)
+  const citedText = split.publicContent.trim()
+  const internalThoughtText = split.internalThoughtContent.trim()
+
+  return {
+    citedText,
+    internalThoughtText,
   }
 }

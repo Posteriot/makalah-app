@@ -546,7 +546,7 @@ export function MessageBubble({
         ? streamedInternalThought.trim()
         : fallbackSplitContent.internalThoughtContent
     const publicDisplayText = streamedInternalThought?.trim()
-        ? rawDisplayText
+        ? (fallbackSplitContent.publicContent || rawDisplayText)
         : (fallbackSplitContent.publicContent || rawDisplayText)
     const normalizedLegacyCitedText = (() => {
         if (!isAssistant) return null

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { splitInternalThought } from "./internal-thought-separator"
+import { buildUserFacingSearchPayload, splitInternalThought } from "./internal-thought-separator"
 
 describe("splitInternalThought", () => {
   it("memisahkan frasa penundaan search dari jawaban utama", () => {
@@ -33,5 +33,23 @@ describe("splitInternalThought", () => {
 
     expect(out.publicContent).toBe("")
     expect(out.internalThoughtContent).toContain("gue cari dulu")
+  })
+})
+
+describe("buildUserFacingSearchPayload", () => {
+  it("strips internal-thought from cited text payload", () => {
+    const input = "Bentar ya, aku cari dulu informasinya. Oke, ini rangkumannya: poin A."
+    const out = buildUserFacingSearchPayload(input)
+
+    expect(out.citedText).toBe("Oke, ini rangkumannya: poin A.")
+    expect(out.internalThoughtText).toBe("Bentar ya, aku cari dulu informasinya.")
+  })
+
+  it("keeps cited text unchanged when there is no internal-thought", () => {
+    const input = "Ini jawaban final tanpa preamble."
+    const out = buildUserFacingSearchPayload(input)
+
+    expect(out.citedText).toBe(input)
+    expect(out.internalThoughtText).toBe("")
   })
 })
