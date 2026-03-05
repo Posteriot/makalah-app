@@ -681,9 +681,9 @@ function OtherSessionFolder({
     : "bg-sky-500 dark:bg-sky-400 opacity-60"
 
   // Compact stage info for collapsed state
-  const compactInfo = isCompleted
-    ? `Selesai · ${latestArtifacts.length} artifak`
-    : `Stage ${stageNumber}/13 · ${latestArtifacts.length} artifak`
+  const compactStageLabel = isCompleted ? "Selesai" : `Stage ${stageNumber}/13`
+  const artifactCount = latestArtifacts.length
+  const hasArtifacts = artifactCount > 0
 
   return (
     <div
@@ -722,8 +722,12 @@ function OtherSessionFolder({
             {displayTitle}
           </span>
           {!isExpanded && (
-            <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] opacity-70 truncate">
-              {compactInfo}
+            <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] truncate">
+              <span className="opacity-70">{compactStageLabel}</span>
+              <span className="opacity-70"> · </span>
+              <span className={hasArtifacts ? "text-[var(--chat-foreground)] opacity-90" : "opacity-50"}>
+                {artifactCount} artifak
+              </span>
             </span>
           )}
         </div>
