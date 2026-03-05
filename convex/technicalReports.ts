@@ -233,6 +233,59 @@ export const listMyTechnicalReports = query({
   },
 })
 
+export const listMyReportProgress = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const authUser = await requireAuthUser(ctx)
+    const limit = clampLimit(args.limit, DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT)
+
+    const reports = await ctx.db
+      .query("technicalReports")
+      .withIndex("by_user_created", (q) => q.eq("userId", authUser._id))
+      .order("desc")
+      .take(limit)
+
+    return await Promise.all(
+      reports.map(async (report) => {
+        const progressEventsRaw = await ctx.db
+          .query("technicalReportEvents")
+          .withIndex("by_report_created", (q) => q.eq("reportId", report._id))
+          .order("desc")
+          .take(12)
+
+        const progressEvents = progressEventsRaw
+          .filter(
+            (event) =>
+              event.eventType === "created" ||
+              (event.eventType === "status_changed" && Boolean(event.toStatus))
+          )
+          .slice(0, 6)
+          .reverse()
+          .map((event) => ({
+            _id: event._id,
+            eventType: event.eventType,
+            fromStatus: event.fromStatus,
+            toStatus: event.toStatus,
+            createdAt: event.createdAt,
+          }))
+
+        return {
+          _id: report._id,
+          status: report.status,
+          statusLabel: getStatusLabel(report.status),
+          source: report.source,
+          descriptionPreview: buildSummary(report.description),
+          createdAt: report.createdAt,
+          updatedAt: report.updatedAt,
+          events: progressEvents,
+        }
+      })
+    )
+  },
+})
+
 export const getAdminStats = query({
   args: {
     requestorUserId: v.id("users"),
