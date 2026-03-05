@@ -238,10 +238,10 @@ export async function sendTechnicalReportUserNotification(
     fromStatusLabel: input.fromStatusLabel,
   });
 
-  const subject = `[Technical Report] Status Laporan Lo: ${statusLine}`;
+  const subject = `[Technical Report] Status Laporan Kamu: ${statusLine}`;
   const html = `<div style="font-family: 'Geist Sans', -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 22px; background: #ffffff; color: #0f172a; border: 1px solid #e2e8f0; border-radius: 8px;">
     <h2 style="font-size: 18px; margin: 0 0 12px 0;">Update Laporan Teknis</h2>
-    <p style="font-size: 14px; margin: 0 0 10px 0;">Laporan lo sedang diproses. Berikut update terakhir:</p>
+    <p style="font-size: 14px; margin: 0 0 10px 0;">Laporan Kamu sedang diproses. Berikut pembaruan terakhir:</p>
     <p style="font-size: 13px; margin: 0 0 8px 0;"><strong>Status:</strong> ${statusLine}</p>
     <p style="font-size: 13px; margin: 0 0 8px 0;"><strong>ID Laporan:</strong> ${input.reportId}</p>
     <p style="font-size: 13px; margin: 0 0 8px 0;"><strong>Waktu:</strong> ${input.timestampLabel}</p>

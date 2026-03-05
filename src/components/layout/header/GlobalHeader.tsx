@@ -10,6 +10,7 @@ import {
   HalfMoon,
   User,
   CreditCard,
+  WarningTriangle,
   Settings,
   LogOut,
   RefreshDouble,
@@ -469,6 +470,15 @@ export function GlobalHeader() {
                     >
                       <CreditCard className="icon-interface" />
                       <span>Subskripsi</span>
+                    </Link>
+
+                    <Link
+                      href="/support/technical-report?source=support-page"
+                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
+                      onClick={() => setMobileMenuState({ isOpen: false, pathname })}
+                    >
+                      <WarningTriangle className="icon-interface" />
+                      <span>Lapor Masalah</span>
                     </Link>
 
                     {isAdmin && (
