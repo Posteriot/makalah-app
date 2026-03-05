@@ -116,7 +116,7 @@ export function ArtifactPanel({
       className={cn(
         "@container/artifact",
         "flex h-full w-full flex-col",
-        "rounded-shell border border-l-0 border-[color:var(--chat-border)] bg-[var(--chat-card)]",
+        "border border-l-0 border-[color:var(--chat-border)] bg-[var(--chat-card)]",
         "transition-all duration-300 ease-in-out"
       )}
     >
