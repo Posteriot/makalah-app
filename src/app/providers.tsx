@@ -92,12 +92,33 @@ function CrossTabSessionSync() {
     let redirecting = false
     const SESSION_COOKIE_KEY = "better-auth_cookie"
     const SESSION_BROADCAST_KEY = "better-auth.message"
+    const PUBLIC_ROUTES = [
+      "/",
+      "/sign-in",
+      "/sign-up",
+      "/verify-2fa",
+      "/about",
+      "/pricing",
+      "/blog",
+      "/documentation",
+      "/waitinglist",
+      "/privacy",
+      "/security",
+      "/terms",
+    ]
+
+    function isPublicRoute(pathname: string): boolean {
+      return PUBLIC_ROUTES.some(
+        (route) => pathname === route || pathname.startsWith(`${route}/`)
+      )
+    }
 
     function doSignOutRedirect() {
       if (redirecting) return
       redirecting = true
       document.cookie =
         "ba_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+      if (isPublicRoute(window.location.pathname)) return
       const redirectPath = `${window.location.pathname}${window.location.search}`
       window.location.replace(
         `/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`
