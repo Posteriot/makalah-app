@@ -1164,6 +1164,29 @@ export default defineSchema({
     .index("by_health_created", ["healthStatus", "createdAt"])
     .index("by_conversation_created", ["conversationId", "createdAt"])
     .index("by_env_created", ["runtimeEnv", "createdAt"]),
+
+  technicalReports: defineTable({
+    userId: v.id("users"),
+    scope: v.literal("chat"),
+    source: v.union(
+      v.literal("chat-inline"),
+      v.literal("footer-link"),
+      v.literal("support-page")
+    ),
+    status: v.union(v.literal("open"), v.literal("triaged"), v.literal("resolved")),
+    description: v.string(),
+    issueCategory: v.optional(v.string()),
+    conversationId: v.optional(v.id("conversations")),
+    paperSessionId: v.optional(v.id("paperSessions")),
+    contextSnapshot: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    resolvedBy: v.optional(v.id("users")),
+  })
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_conversation_created", ["conversationId", "createdAt"]),
   // ── CMS Tables ──────────────────────────────────────────
 
   pageContent: defineTable({
