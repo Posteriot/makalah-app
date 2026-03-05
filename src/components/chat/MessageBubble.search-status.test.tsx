@@ -98,4 +98,30 @@ describe("MessageBubble search status", () => {
     expect(screen.getByText(/Fakta pertama menunjukkan tren adopsi AI\. \[1\]/)).toBeInTheDocument()
     expect(screen.getByText(/Fakta kedua memperlihatkan dampak di kelas\. \[2\]/)).toBeInTheDocument()
   })
+
+  it("keeps search status rendering while splitting internal-thought block", () => {
+    const message = {
+      id: "m-search-internal",
+      role: "assistant",
+      parts: [
+        {
+          type: "data-search",
+          data: {
+            status: "error",
+            message: "Tool pencarian tidak tersedia",
+          },
+        },
+        {
+          type: "text",
+          text: "Bentar ya, aku cari dulu. Ini fallback jawaban tanpa sumber.",
+        },
+      ],
+    } as unknown as UIMessage
+
+    render(<MessageBubble message={message} persistProcessIndicators />)
+
+    expect(screen.getByText("Tool pencarian tidak tersedia")).toBeInTheDocument()
+    expect(screen.getByText(/Ini fallback jawaban tanpa sumber\./)).toBeInTheDocument()
+    expect(screen.getByTestId("internal-thought-block")).toHaveTextContent(/Bentar ya, aku cari dulu\./)
+  })
 })

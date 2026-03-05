@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { formatFileSize, isImageType, splitFileName } from "@/lib/types/attached-file"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { extractLegacySourcesFromText } from "@/lib/citations/legacy-source-extractor"
+import { splitInternalThought } from "@/lib/ai/internal-thought-separator"
 
 // Types for paper permission checking
 interface StageDataEntry {
@@ -333,6 +334,20 @@ export function MessageBubble({
         return null
     }
 
+    const extractInternalThoughtData = (uiMessage: UIMessage): string | null => {
+        for (const part of uiMessage.parts ?? []) {
+            if (!part || typeof part !== "object") continue
+            const maybeDataPart = part as unknown as { type?: string; data?: unknown }
+            if (maybeDataPart.type !== "data-internal-thought") continue
+
+            const data = maybeDataPart.data as { text?: unknown } | null
+            if (!data || typeof data !== "object") continue
+            return typeof data.text === "string" ? data.text : null
+        }
+
+        return null
+    }
+
     const searchStatus = extractSearchStatus(message)
     const citedText = extractCitedText(message)
 
@@ -526,14 +541,22 @@ export function MessageBubble({
     const hasSources = isAssistant && sources.length > 0
     const hasQuickActions = !isEditing && isAssistant
     const rawDisplayText = citedText ?? content
+    const streamedInternalThought = extractInternalThoughtData(message)
+    const fallbackSplitContent = splitInternalThought(rawDisplayText)
+    const internalThoughtContent = streamedInternalThought?.trim()
+        ? streamedInternalThought.trim()
+        : fallbackSplitContent.internalThoughtContent
+    const publicDisplayText = streamedInternalThought?.trim()
+        ? (fallbackSplitContent.publicContent || rawDisplayText)
+        : (fallbackSplitContent.publicContent || rawDisplayText)
     const normalizedLegacyCitedText = (() => {
         if (!isAssistant) return null
         if (sources.length === 0) return null
-        if (!rawDisplayText || !rawDisplayText.trim()) return null
+        if (!publicDisplayText || !publicDisplayText.trim()) return null
 
-        const hasInlineUrls = /\bhttps?:\/\/[^\s<>()\[\]{}"']+/i.test(rawDisplayText)
+        const hasInlineUrls = /\bhttps?:\/\/[^\s<>()\[\]{}"']+/i.test(publicDisplayText)
 
-        const hasMidLineCitationMarkers = rawDisplayText
+        const hasMidLineCitationMarkers = publicDisplayText
             .split("\n")
             .some((line) => {
                 const matches = Array.from(line.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\](?!\()/g))
@@ -563,18 +586,18 @@ export function MessageBubble({
                 `(^|[\\s([{\"'` + "`" + `])(?:www\\.)?${escapedHost}(?=$|[\\s)\\]}\"'` + "`" + `.,;:!?])`,
                 "i"
             )
-            return hostRegex.test(rawDisplayText)
+            return hostRegex.test(publicDisplayText)
         })
 
         if (!hasInlineUrls && !hasMidLineCitationMarkers && !hasInlineSourceHostMentions) return null
 
         return formatParagraphEndCitations({
-            text: rawDisplayText,
+            text: publicDisplayText,
             sources,
             anchors: [],
         })
     })()
-    const displayMarkdown = normalizedLegacyCitedText ?? rawDisplayText
+    const displayMarkdown = normalizedLegacyCitedText ?? publicDisplayText
 
     // Get timestamp from allMessages if available
 
@@ -810,12 +833,24 @@ export function MessageBubble({
                             </div>
                         )
                     ) : (
-                        <MarkdownRenderer
-                            markdown={displayMarkdown}
-                            className="space-y-2 text-sm leading-relaxed text-[var(--chat-foreground)]"
-                            sources={sources}
-                            context="chat"
-                        />
+                        <div className="space-y-3">
+                            {displayMarkdown.trim().length > 0 && (
+                                <MarkdownRenderer
+                                    markdown={displayMarkdown}
+                                    className="space-y-2 text-sm leading-relaxed text-[var(--chat-foreground)]"
+                                    sources={sources}
+                                    context="chat"
+                                />
+                            )}
+                            {isAssistant && internalThoughtContent.trim().length > 0 && (
+                                <div
+                                    className="border-y border-[color:var(--chat-border)] py-2 text-xs italic leading-relaxed text-[var(--chat-muted-foreground)]"
+                                    data-testid="internal-thought-block"
+                                >
+                                    {internalThoughtContent}
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     {/* Assistant follow-up blocks: artifact output -> sources -> quick actions */}
@@ -844,7 +879,7 @@ export function MessageBubble({
                                 </section>
                             )}
 
-                            {hasQuickActions && <QuickActions content={content} />}
+                            {hasQuickActions && <QuickActions content={displayMarkdown || content} />}
                         </div>
                     )}
                 </div>

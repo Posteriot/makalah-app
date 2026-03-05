@@ -100,6 +100,7 @@ import type * as stageSkills_constants from "../stageSkills/constants.js";
 import type * as styleConstitutions from "../styleConstitutions.js";
 import type * as systemAlerts from "../systemAlerts.js";
 import type * as systemPrompts from "../systemPrompts.js";
+import type * as technicalReports from "../technicalReports.js";
 import type * as twoFactorBypass from "../twoFactorBypass.js";
 import type * as twoFactorHttp from "../twoFactorHttp.js";
 import type * as twoFactorOtp from "../twoFactorOtp.js";
@@ -205,6 +206,7 @@ declare const fullApi: ApiFromModules<{
   styleConstitutions: typeof styleConstitutions;
   systemAlerts: typeof systemAlerts;
   systemPrompts: typeof systemPrompts;
+  technicalReports: typeof technicalReports;
   twoFactorBypass: typeof twoFactorBypass;
   twoFactorHttp: typeof twoFactorHttp;
   twoFactorOtp: typeof twoFactorOtp;

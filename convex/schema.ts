@@ -1164,6 +1164,49 @@ export default defineSchema({
     .index("by_health_created", ["healthStatus", "createdAt"])
     .index("by_conversation_created", ["conversationId", "createdAt"])
     .index("by_env_created", ["runtimeEnv", "createdAt"]),
+
+  technicalReports: defineTable({
+    userId: v.id("users"),
+    scope: v.literal("chat"),
+    source: v.union(
+      v.literal("chat-inline"),
+      v.literal("footer-link"),
+      v.literal("support-page")
+    ),
+    status: v.union(v.literal("open"), v.literal("triaged"), v.literal("resolved")),
+    description: v.string(),
+    issueCategory: v.optional(v.string()),
+    conversationId: v.optional(v.id("conversations")),
+    paperSessionId: v.optional(v.id("paperSessions")),
+    contextSnapshot: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    resolvedBy: v.optional(v.id("users")),
+  })
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_source_created", ["source", "createdAt"])
+    .index("by_status_source_created", ["status", "source", "createdAt"])
+    .index("by_conversation_created", ["conversationId", "createdAt"]),
+
+  technicalReportEvents: defineTable({
+    reportId: v.id("technicalReports"),
+    actorUserId: v.optional(v.id("users")),
+    eventType: v.union(
+      v.literal("created"),
+      v.literal("status_changed"),
+      v.literal("email_sent"),
+      v.literal("email_failed")
+    ),
+    fromStatus: v.optional(v.union(v.literal("open"), v.literal("triaged"), v.literal("resolved"))),
+    toStatus: v.optional(v.union(v.literal("open"), v.literal("triaged"), v.literal("resolved"))),
+    recipient: v.optional(v.string()),
+    payload: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_report_created", ["reportId", "createdAt"])
+    .index("by_event_created", ["eventType", "createdAt"]),
   // ── CMS Tables ──────────────────────────────────────────
 
   pageContent: defineTable({

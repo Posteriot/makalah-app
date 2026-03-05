@@ -10,6 +10,7 @@ import { StageSkillsManager } from "./StageSkillsManager"
 import { UserList } from "./UserList"
 import { WaitlistEntries } from "./WaitlistEntries"
 import { WaitlistSettings } from "./WaitlistSettings"
+import { TechnicalReportManager } from "./TechnicalReportManager"
 import { ADMIN_SIDEBAR_ITEMS, findTabConfig, type AdminTabId } from "./adminPanelConfig"
 
 type AdminContentSectionProps = {
@@ -88,6 +89,10 @@ export function AdminContentSection({
 
         {activeTab === "waitlist.settings" && (
           <WaitlistSettings userId={userId} />
+        )}
+
+        {activeTab === "technical-report" && (
+          <TechnicalReportManager userId={userId} />
         )}
 
         {activeTab === "stats" && (

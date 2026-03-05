@@ -13,6 +13,7 @@ import {
   User,
   CreditCard,
   Journal,
+  WarningTriangle,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -258,6 +259,15 @@ export function UserDropdown({
           >
             <CreditCard className="icon-interface" />
             <span>Subskripsi</span>
+          </Link>
+
+          <Link
+            href="/support/technical-report?source=support-page"
+            onClick={closeAfterAction}
+            className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors rounded-action"
+          >
+            <WarningTriangle className="icon-interface" />
+            <span>Lapor Masalah</span>
           </Link>
 
           {/* Admin Panel Link (conditional) */}

@@ -171,3 +171,87 @@ export async function sendWaitlistAdminNotification(
     }
   }
 }
+
+type TechnicalReportStatusLabel = "Pending" | "Proses" | "Selesai";
+
+type TechnicalReportEmailBase = {
+  reportId: string;
+  statusLabel: TechnicalReportStatusLabel;
+  summary: string;
+  timestampLabel: string;
+  fromStatusLabel?: TechnicalReportStatusLabel;
+};
+
+type TechnicalReportDeveloperNotificationInput = TechnicalReportEmailBase & {
+  to: string;
+  source: "chat-inline" | "footer-link" | "support-page";
+  dashboardUrl: string;
+};
+
+type TechnicalReportUserNotificationInput = TechnicalReportEmailBase & {
+  email: string;
+  supportUrl: string;
+};
+
+function renderStatusLine({
+  statusLabel,
+  fromStatusLabel,
+}: Pick<TechnicalReportEmailBase, "statusLabel" | "fromStatusLabel">): string {
+  if (!fromStatusLabel) return statusLabel;
+  return `${fromStatusLabel} → ${statusLabel}`;
+}
+
+export async function sendTechnicalReportDeveloperNotification(
+  input: TechnicalReportDeveloperNotificationInput
+): Promise<void> {
+  const statusLine = renderStatusLine({
+    statusLabel: input.statusLabel,
+    fromStatusLabel: input.fromStatusLabel,
+  });
+
+  const subject = `[Technical Report] ${statusLine} • ${input.reportId}`;
+  const html = `<div style="font-family: 'Geist Mono', 'SF Mono', monospace; max-width: 560px; margin: 0 auto; padding: 28px 22px; background: #0f172a; color: #e2e8f0; border-radius: 8px;">
+    <div style="border-bottom: 1px solid #334155; padding-bottom: 12px; margin-bottom: 18px;">
+      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: #94a3b8;">Makalah AI — Technical Report</span>
+    </div>
+    <p style="font-size: 12px; margin: 0 0 10px 0; color: #cbd5e1;"><strong>Status:</strong> ${statusLine}</p>
+    <p style="font-size: 12px; margin: 0 0 10px 0; color: #cbd5e1;"><strong>Report ID:</strong> ${input.reportId}</p>
+    <p style="font-size: 12px; margin: 0 0 10px 0; color: #cbd5e1;"><strong>Sumber:</strong> ${input.source}</p>
+    <p style="font-size: 12px; margin: 0 0 10px 0; color: #cbd5e1;"><strong>Waktu:</strong> ${input.timestampLabel}</p>
+    <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 10px 12px; margin: 14px 0;">
+      <p style="font-size: 11px; color: #94a3b8; margin: 0 0 6px 0;">RINGKASAN</p>
+      <p style="font-size: 12px; color: #f8fafc; margin: 0;">${input.summary}</p>
+    </div>
+    <div style="text-align: center; margin-top: 18px;">
+      <a href="${input.dashboardUrl}" style="display:inline-block; background:#334155; color:#f8fafc; font-size:11px; font-weight:700; text-decoration:none; text-transform:uppercase; letter-spacing:.08em; padding:10px 20px; border-radius:6px;">Buka Dashboard</a>
+    </div>
+  </div>`;
+
+  await sendViaResend(input.to, subject, html);
+}
+
+export async function sendTechnicalReportUserNotification(
+  input: TechnicalReportUserNotificationInput
+): Promise<void> {
+  const statusLine = renderStatusLine({
+    statusLabel: input.statusLabel,
+    fromStatusLabel: input.fromStatusLabel,
+  });
+
+  const subject = `[Technical Report] Status Laporan Kamu: ${statusLine}`;
+  const html = `<div style="font-family: 'Geist Sans', -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px 22px; background: #ffffff; color: #0f172a; border: 1px solid #e2e8f0; border-radius: 8px;">
+    <h2 style="font-size: 18px; margin: 0 0 12px 0;">Update Laporan Teknis</h2>
+    <p style="font-size: 14px; margin: 0 0 10px 0;">Laporan Kamu sedang diproses. Berikut pembaruan terakhir:</p>
+    <p style="font-size: 13px; margin: 0 0 8px 0;"><strong>Status:</strong> ${statusLine}</p>
+    <p style="font-size: 13px; margin: 0 0 8px 0;"><strong>ID Laporan:</strong> ${input.reportId}</p>
+    <p style="font-size: 13px; margin: 0 0 8px 0;"><strong>Waktu:</strong> ${input.timestampLabel}</p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin: 14px 0;">
+      <p style="font-size: 11px; color: #475569; margin: 0 0 6px 0;">Ringkasan laporan</p>
+      <p style="font-size: 13px; color: #0f172a; margin: 0;">${input.summary}</p>
+    </div>
+    <a href="${input.supportUrl}" style="display:inline-block; background:#0f172a; color:#ffffff; font-size:12px; font-weight:600; text-decoration:none; padding:10px 16px; border-radius:6px;">Buka Halaman Support</a>
+    <p style="font-size: 11px; color: #64748b; margin: 14px 0 0 0;">Email otomatis dari Makalah AI.</p>
+  </div>`;
+
+  await sendViaResend(input.email, subject, html);
+}

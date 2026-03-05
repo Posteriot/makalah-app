@@ -7,6 +7,7 @@ import type { Id } from "@convex/_generated/dataModel"
 import type { ComponentType, SVGProps } from "react"
 import { X as XIcon, Linkedin, Instagram } from "iconoir-react"
 import { GridPattern, DottedPattern, DiagonalStripes } from "@/components/marketing/SectionBackground"
+import { useSession } from "@/lib/auth-client"
 
 const RESOURCE_LINKS = [
   { href: "/blog", label: "Blog" },
@@ -24,6 +25,8 @@ const LEGAL_LINKS = [
   { href: "/security", label: "Security" },
   { href: "/terms", label: "Terms" },
 ]
+
+const FOOTER_SUPPORT_PATH = "/support/technical-report?source=footer-link"
 
 // Map CMS platform names to iconoir icons
 const PLATFORM_ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
@@ -63,7 +66,11 @@ function SocialIcon({ iconId, icon: IconComponent, label }: {
 }
 
 export function Footer() {
+  const { data: session } = useSession()
   const footerConfig = useQuery(api.siteConfig.getConfig, { key: "footer" })
+  const supportHref = session
+    ? FOOTER_SUPPORT_PATH
+    : `/sign-in?${new URLSearchParams({ redirect_url: FOOTER_SUPPORT_PATH }).toString()}`
 
   // CMS logo URLs (resolve storage IDs, fallback to static)
   const cmsLogoDarkUrl = useQuery(
@@ -79,13 +86,48 @@ export function Footer() {
   const logoLight = cmsLogoLightUrl ?? "/logo/makalah_logo_dark.svg"
 
   // CMS footer sections with hardcoded fallback
-  const footerSections = footerConfig?.footerSections
+  const baseFooterSections = footerConfig?.footerSections
     ? (footerConfig.footerSections as Array<{ title: string; links: Array<{ label: string; href: string }> }>)
     : [
         { title: "Sumber Daya", links: RESOURCE_LINKS },
         { title: "Perusahaan", links: COMPANY_LINKS },
         { title: "Legal", links: LEGAL_LINKS },
       ]
+
+  const sections = baseFooterSections.map((section) => ({
+    ...section,
+    links: section.links.filter((link) => link.label !== "Lapor Masalah"),
+  }))
+
+  const resourceIndex = sections.findIndex(
+    (section) => section.title.trim().toLowerCase() === "sumber daya"
+  )
+
+  const footerSections =
+    resourceIndex === -1
+      ? [
+          {
+            title: "Sumber Daya",
+            links: [{ href: supportHref, label: "Lapor Masalah" }],
+          },
+          ...sections,
+        ]
+      : (() => {
+          const resourceSection = sections[resourceIndex]
+          const links = [...resourceSection.links]
+          const kerjaSamaIndex = links.findIndex(
+            (link) => link.label.trim().toLowerCase() === "kerja sama bisnis"
+          )
+          const insertIndex = kerjaSamaIndex >= 0 ? kerjaSamaIndex + 1 : links.length
+          links.splice(insertIndex, 0, { href: supportHref, label: "Lapor Masalah" })
+
+          sections[resourceIndex] = {
+            ...resourceSection,
+            links,
+          }
+
+          return sections
+        })()
 
   // CMS company description (no fallback — empty if not set)
   const companyDescription = (footerConfig?.companyDescription as string | undefined) || ""

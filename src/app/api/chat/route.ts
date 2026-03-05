@@ -48,6 +48,7 @@ import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { enforceArtifactSourcesPolicy } from "@/lib/ai/artifact-sources-policy"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
+import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
     classifyAttachmentHealth,
@@ -2361,6 +2362,7 @@ TIPS PENCARIAN:
                 const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
                 const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
                 const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
+                const internalThoughtId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-internal-thought`
                 const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
                 const reasoningTrace = createCuratedTraceController({
                     enabled: reasoningTraceEnabled,
@@ -2803,6 +2805,7 @@ TIPS PENCARIAN:
                                         sources,
                                         anchors: primaryCitationAnchors,
                                     })
+                                    const userFacingPayload = buildUserFacingSearchPayload(textWithInlineCitations)
                                     const persistedSources = sources.length > 0 ? stripToPersistedSources(sources) : undefined
                                     closeSearchStatus(persistedSources && persistedSources.length > 0 ? "done" : "off")
 
@@ -2810,8 +2813,16 @@ TIPS PENCARIAN:
                                     writer.write({
                                         type: "data-cited-text",
                                         id: citedTextId,
-                                        data: { text: textWithInlineCitations },
+                                        data: { text: userFacingPayload.citedText },
                                     })
+                                    if (userFacingPayload.internalThoughtText) {
+                                        ensureStart()
+                                        writer.write({
+                                            type: "data-internal-thought",
+                                            id: internalThoughtId,
+                                            data: { text: userFacingPayload.internalThoughtText },
+                                        })
+                                    }
 
                                     if (persistedSources && persistedSources.length > 0) {
                                         ensureStart()
@@ -3404,6 +3415,7 @@ TIPS PENCARIAN:
                 const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
                 const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
                 const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
+                const internalThoughtId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-internal-thought`
                 const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
                 const reasoningTrace = createCuratedTraceController({
                     enabled: reasoningTraceEnabled,
@@ -3581,14 +3593,23 @@ TIPS PENCARIAN:
                                         anchors: fallbackCitationAnchors,
                                     })
                                     : streamedText
+                                const userFacingPayload = buildUserFacingSearchPayload(textWithCitations)
 
                                 // Send cited text
                                 ensureStart()
                                 writer.write({
                                     type: "data-cited-text",
                                     id: citedTextId,
-                                    data: { text: textWithCitations },
+                                    data: { text: userFacingPayload.citedText },
                                 })
+                                if (userFacingPayload.internalThoughtText) {
+                                    ensureStart()
+                                    writer.write({
+                                        type: "data-internal-thought",
+                                        id: internalThoughtId,
+                                        data: { text: userFacingPayload.internalThoughtText },
+                                    })
+                                }
 
                                 // Send cited sources if available
                                 if (hasAnyCitations) {
