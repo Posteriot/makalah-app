@@ -395,10 +395,10 @@ function PaperFolderItem({
   return (
     <div
       className={cn(
-        "mb-0.5 rounded-action border transition-colors",
+        "mb-0.5 transition-colors",
         isExpanded
-          ? "border-[color:var(--chat-border)] bg-[var(--chat-accent)]"
-          : "border-transparent"
+          ? "border-y border-[color:var(--chat-border)] bg-[var(--chat-accent)]"
+          : ""
       )}
     >
       {/* Folder Header */}
@@ -676,10 +676,10 @@ function OtherSessionFolder({
   return (
     <div
       className={cn(
-        "mb-0.5 rounded-action border transition-colors",
+        "mb-0.5 transition-colors",
         isExpanded
-          ? "border-[color:var(--chat-border)] bg-[var(--chat-sidebar-accent)]"
-          : "border-transparent"
+          ? "border-y border-[color:var(--chat-border)] bg-[var(--chat-sidebar-accent)]"
+          : ""
       )}
     >
       {/* Folder Header */}
