@@ -800,11 +800,11 @@ function ReadOnlyArtifactTreeItem({
           R
         </span>
       ) : (
-        <Page className="h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]" />
+        <Page className="h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)] transition-colors group-hover:text-[var(--chat-foreground)]" />
       )}
 
       {/* File Name */}
-      <span className="flex-1 truncate text-xs font-mono text-[var(--chat-muted-foreground)]">
+      <span className="flex-1 truncate text-xs font-mono text-[var(--chat-muted-foreground)] transition-colors group-hover:text-[var(--chat-foreground)]">
         {artifact.title}
       </span>
 
@@ -829,10 +829,10 @@ function ReadOnlyArtifactTreeItem({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="shrink-0 rounded-action p-0.5 text-[var(--chat-muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[var(--chat-accent)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-accent)] text-[var(--chat-foreground)] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[var(--chat-secondary)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
             aria-label="Opsi artifak"
           >
-            <MoreVert className="h-4 w-4" />
+            <MoreVert className="h-5 w-5" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[140px]">
