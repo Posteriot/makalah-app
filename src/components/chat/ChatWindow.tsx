@@ -41,6 +41,7 @@ import {
   extractToolStatesFromReasoning,
   shouldShowTechnicalReportTrigger,
 } from "@/lib/technical-report/chatSnapshot"
+import { resolveTechnicalReportSearchStatus } from "@/lib/technical-report/searchStatus"
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
 interface ConversationArtifact {
@@ -1107,23 +1108,10 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }, [messages])
 
   const technicalReportChatStatus = status === "error" && !isQuotaRejectedError ? "error" : status
-  const technicalReportSearchStatus = useMemo(() => {
-    for (const message of [...messages].reverse()) {
-      if (message.role !== "assistant") continue
-
-      for (const part of message.parts ?? []) {
-        if (!part || typeof part !== "object") continue
-        const maybeDataPart = part as { type?: unknown; data?: unknown }
-        if (maybeDataPart.type !== "data-search") continue
-        if (!maybeDataPart.data || typeof maybeDataPart.data !== "object") continue
-
-        const searchStatus = (maybeDataPart.data as { status?: unknown }).status
-        if (typeof searchStatus === "string") return searchStatus
-      }
-    }
-
-    return undefined
-  }, [messages])
+  const technicalReportSearchStatus = useMemo(
+    () => resolveTechnicalReportSearchStatus(messages),
+    [messages]
+  )
   const technicalReportToolStates = useMemo(
     () => extractToolStatesFromReasoning(activeReasoningState.steps, error?.message),
     [activeReasoningState.steps, error?.message]

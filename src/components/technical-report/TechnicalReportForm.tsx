@@ -36,21 +36,32 @@ export function TechnicalReportForm({
     initialConversationId ?? ""
   )
 
-  const contextOptions = useMemo(
-    () => [
-      ...contexts.map((context) => ({
-        value: context.conversationId as string,
-        label: context.title || "Percakapan tanpa judul",
-        paperSessionId: context.paperSessionId as Id<"paperSessions"> | null,
-      })),
-      {
-        value: UNKNOWN_SESSION_VALUE,
-        label: "Saya tidak tahu sesi chat-nya",
-        paperSessionId: null,
-      },
-    ],
-    [contexts]
-  )
+  const contextOptions = useMemo(() => {
+    const mapped = contexts.map((context) => ({
+      value: context.conversationId as string,
+      label: context.title || "Percakapan tanpa judul",
+      paperSessionId: context.paperSessionId as Id<"paperSessions"> | null,
+    }))
+
+    if (
+      initialConversationId &&
+      !mapped.some((context) => context.value === initialConversationId)
+    ) {
+      mapped.unshift({
+        value: initialConversationId,
+        label: "Percakapan saat ini",
+        paperSessionId: initialPaperSessionId ?? null,
+      })
+    }
+
+    mapped.push({
+      value: UNKNOWN_SESSION_VALUE,
+      label: "Saya tidak tahu sesi chat-nya",
+      paperSessionId: null,
+    })
+
+    return mapped
+  }, [contexts, initialConversationId, initialPaperSessionId])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
