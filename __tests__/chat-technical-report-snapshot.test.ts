@@ -34,10 +34,21 @@ describe("extractChatDiagnosticSnapshot", () => {
     ).toBe(true)
   })
 
+  it("shows trigger when data-search status is error", () => {
+    expect(
+      shouldShowTechnicalReportTrigger({
+        chatStatus: "ready",
+        searchStatus: "error",
+        toolStates: [],
+      })
+    ).toBe(true)
+  })
+
   it("does not show trigger in healthy state", () => {
     expect(
       shouldShowTechnicalReportTrigger({
         chatStatus: "ready",
+        searchStatus: "done",
         toolStates: [{ toolName: "google_search", state: "done" }],
       })
     ).toBe(false)

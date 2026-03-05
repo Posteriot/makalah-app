@@ -1107,6 +1107,23 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   }, [messages])
 
   const technicalReportChatStatus = status === "error" && !isQuotaRejectedError ? "error" : status
+  const technicalReportSearchStatus = useMemo(() => {
+    for (const message of [...messages].reverse()) {
+      if (message.role !== "assistant") continue
+
+      for (const part of message.parts ?? []) {
+        if (!part || typeof part !== "object") continue
+        const maybeDataPart = part as { type?: unknown; data?: unknown }
+        if (maybeDataPart.type !== "data-search") continue
+        if (!maybeDataPart.data || typeof maybeDataPart.data !== "object") continue
+
+        const searchStatus = (maybeDataPart.data as { status?: unknown }).status
+        if (typeof searchStatus === "string") return searchStatus
+      }
+    }
+
+    return undefined
+  }, [messages])
   const technicalReportToolStates = useMemo(
     () => extractToolStatesFromReasoning(activeReasoningState.steps, error?.message),
     [activeReasoningState.steps, error?.message]
@@ -1117,17 +1134,19 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         chatStatus: technicalReportChatStatus,
         errorMessage: error?.message,
         model: latestAssistantModel,
+        searchStatus: technicalReportSearchStatus,
         reasoningSteps: activeReasoningState.steps,
       }),
-    [technicalReportChatStatus, error?.message, latestAssistantModel, activeReasoningState.steps]
+    [technicalReportChatStatus, error?.message, latestAssistantModel, technicalReportSearchStatus, activeReasoningState.steps]
   )
   const shouldShowTechnicalReportAutoTrigger = useMemo(
     () =>
       shouldShowTechnicalReportTrigger({
         chatStatus: technicalReportChatStatus,
+        searchStatus: technicalReportSearchStatus,
         toolStates: technicalReportToolStates,
       }),
-    [technicalReportChatStatus, technicalReportToolStates]
+    [technicalReportChatStatus, technicalReportSearchStatus, technicalReportToolStates]
   )
 
   const clearProcessTimers = useCallback(() => {
@@ -1847,15 +1866,20 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       </div>
 
       {shouldShowTechnicalReportAutoTrigger && (
-        <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-action border border-[color:var(--chat-destructive)] bg-[var(--chat-destructive)]/10 px-3 py-2">
-          <p className="text-xs font-medium text-[var(--chat-destructive)]">
-            Terdeteksi kendala teknis pada chat. Lo bisa kirim technical report sekarang.
-          </p>
+        <div className="mx-4 mt-3 flex flex-wrap items-center gap-2 border rounded-action p-3 text-sm md:flex-nowrap md:gap-3 md:px-4 bg-[var(--chat-destructive)] border-[color:var(--chat-destructive)] text-[var(--chat-destructive-foreground)]">
+          <div className="flex items-start gap-2">
+            <WarningCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="text-xs font-sans leading-tight">
+              Terdeteksi kendala teknis pada chat. Lo bisa kirim technical report sekarang.
+            </p>
+          </div>
           <ChatTechnicalReportButton
             autoTriggered
+            triggerVariant="outline"
             conversationId={safeConversationId}
             paperSessionId={paperSession?._id}
             initialSnapshot={technicalReportSnapshot}
+            className="h-7 rounded-action bg-[var(--chat-background)] dark:bg-[oklch(0.455_0.188_13.697)] text-[var(--chat-foreground)] dark:text-[var(--chat-destructive-foreground)] hover:bg-[oklch(0.869_0.022_252.894)] dark:hover:bg-[oklch(0.41_0.159_10.272)] hover:text-[var(--chat-foreground)] text-xs font-sans border-[color:var(--chat-destructive)] hover:border-[color:var(--chat-destructive)] dark:border-0 dark:hover:border-0 shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none"
           />
         </div>
       )}
