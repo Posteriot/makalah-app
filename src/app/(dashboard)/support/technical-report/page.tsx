@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { Suspense, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   WarningTriangle,
@@ -48,7 +48,7 @@ const TECHNICAL_REPORT_SECTIONS: Array<{
   },
 ]
 
-export default function TechnicalReportPage() {
+function TechnicalReportPageContent() {
   const searchParams = useSearchParams()
   const [activeSection, setActiveSection] = useState<TechnicalReportSectionId>("progress")
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -189,5 +189,22 @@ export default function TechnicalReportPage() {
         </SheetContent>
       </Sheet>
     </div>
+  )
+}
+
+export default function TechnicalReportPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="space-y-4 text-center">
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <p className="text-sm font-mono text-muted-foreground">Memuat halaman...</p>
+          </div>
+        </div>
+      }
+    >
+      <TechnicalReportPageContent />
+    </Suspense>
   )
 }
