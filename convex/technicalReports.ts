@@ -233,6 +233,23 @@ export const listMyTechnicalReports = query({
   },
 })
 
+export const getAdminStats = query({
+  args: {
+    requestorUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    await requireAdminRequestor(ctx, args.requestorUserId)
+
+    const reports = await ctx.db.query("technicalReports").collect()
+    return {
+      total: reports.length,
+      open: reports.filter((report) => report.status === "open").length,
+      triaged: reports.filter((report) => report.status === "triaged").length,
+      resolved: reports.filter((report) => report.status === "resolved").length,
+    }
+  },
+})
+
 export const listForAdmin = query({
   args: {
     requestorUserId: v.id("users"),
@@ -366,11 +383,24 @@ export const listEventsByReport = query({
 
     const limit = clampLimit(args.limit, DEFAULT_LIST_LIMIT, 100)
 
-    return await ctx.db
+    const events = await ctx.db
       .query("technicalReportEvents")
       .withIndex("by_report_created", (q) => q.eq("reportId", args.reportId))
       .order("desc")
       .take(limit)
+
+    return await Promise.all(
+      events.map(async (event) => {
+        const actor = event.actorUserId ? await ctx.db.get(event.actorUserId) : null
+        return {
+          ...event,
+          actorEmail: actor?.email ?? null,
+          actorName: actor
+            ? [actor.firstName, actor.lastName].filter(Boolean).join(" ").trim() || null
+            : null,
+        }
+      })
+    )
   },
 })
 

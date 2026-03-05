@@ -11,6 +11,7 @@ import {
   Clock,
   List,
   Settings,
+  WarningCircle,
 } from "iconoir-react"
 import type { ComponentType, SVGProps } from "react"
 
@@ -125,6 +126,14 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
     ],
   },
   {
+    id: "technical-report",
+    label: "Technical Report",
+    icon: WarningCircle,
+    headerTitle: "Technical Report",
+    headerDescription: "Kelola laporan teknis chat dari user",
+    headerIcon: WarningCircle,
+  },
+  {
     id: "stats",
     label: "Statistik",
     icon: StatsReport,
@@ -155,6 +164,7 @@ export type AdminTabId =
   | "waitlist"
   | "waitlist.entries"
   | "waitlist.settings"
+  | "technical-report"
   | "stats"
   | "cms"
 
