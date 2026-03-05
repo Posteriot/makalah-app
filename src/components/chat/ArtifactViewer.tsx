@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Page, WarningTriangle } from "iconoir-react"
+import { Lock, Page, WarningTriangle } from "iconoir-react"
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from "react"
 import { toast } from "sonner"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -27,6 +27,7 @@ const MermaidRenderer = dynamic(
   () => import("./MermaidRenderer").then((m) => ({ default: m.MermaidRenderer })),
   { ssr: false, loading: () => <div className="my-2 h-32 animate-pulse rounded-action bg-[var(--chat-muted)]" /> }
 )
+import Link from "next/link"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
@@ -35,6 +36,9 @@ import { RefrasaLoadingIndicator } from "@/components/refrasa"
 
 interface ArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
+  readOnly?: boolean
+  sourceConversationId?: Id<"conversations">
+  onCloseReadOnlyTab?: () => void
   onOpenRefrasaTab?: (tab: { id: Id<"artifacts">; title: string; type: string; sourceArtifactId?: Id<"artifacts"> }) => void
   onVersionCreated?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
 }
@@ -99,7 +103,7 @@ function getStageLabelSafe(stageId: string | undefined): string {
 }
 
 export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>(
-  function ArtifactViewer({ artifactId, onOpenRefrasaTab, onVersionCreated }, ref) {
+  function ArtifactViewer({ artifactId, readOnly, sourceConversationId, onCloseReadOnlyTab, onOpenRefrasaTab, onVersionCreated }, ref) {
     const [copied, setCopied] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -234,15 +238,21 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
       () => ({
         download: handleDownload,
         copy: handleCopy,
-        startEdit: () => setIsEditing(true),
-        triggerRefrasa: handleRefrasaTrigger,
+        startEdit: () => {
+          if (readOnly) return
+          setIsEditing(true)
+        },
+        triggerRefrasa: () => {
+          if (readOnly) return
+          handleRefrasaTrigger()
+        },
         setDownloadFormat: (format: "docx" | "pdf" | "txt") => setDownloadFormat(format),
         getState: () => ({
           copied,
           isEditing,
           downloadFormat,
           isRefrasaLoading,
-          canRefrasa,
+          canRefrasa: readOnly ? false : canRefrasa,
           hasArtifact: !!artifact,
         }),
       }),
@@ -253,6 +263,7 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
         isRefrasaLoading,
         canRefrasa,
         artifact,
+        readOnly,
         handleDownload,
         handleCopy,
         handleRefrasaTrigger,
@@ -381,6 +392,26 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
             <div className="flex-1 overflow-hidden px-4 py-3">
               <div className="flex h-full flex-col overflow-hidden bg-[var(--chat-background)]">
                 <div className="relative flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pr-6 scrollbar-thin [scrollbar-gutter:stable]">
+                  {readOnly && (
+                    <div className="mb-3 flex items-center gap-2 rounded-action border border-muted bg-muted/30 px-3 py-2">
+                      <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        Artifak dari sesi lain. Mode hanya baca.
+                        {sourceConversationId && (
+                          <>
+                            {" "}
+                            <Link
+                              href={`/chat/${sourceConversationId}?artifact=${artifactId}`}
+                              onClick={() => onCloseReadOnlyTab?.()}
+                              className="text-sky-500 hover:underline"
+                            >
+                              Lihat percakapan terkait
+                            </Link>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  )}
                   {isRefrasaLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-action bg-[var(--chat-card)] backdrop-blur-md">
                       <RefrasaLoadingIndicator />

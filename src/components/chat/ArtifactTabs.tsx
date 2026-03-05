@@ -11,6 +11,7 @@ import {
   Xmark,
   NavArrowLeft,
   NavArrowRight,
+  Lock,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
@@ -283,11 +284,16 @@ export function ArtifactTabs({
                   <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
                 </span>
 
-                <span className="min-w-0 flex-1">
+                <span className="flex min-w-0 flex-1 items-center gap-1">
+                  {tab.readOnly && (
+                    <Lock className="h-3 w-3 shrink-0 text-muted-foreground/60" strokeWidth={1.5} />
+                  )}
                   <span
                     className={cn(
                       "block truncate text-[11px] font-medium leading-tight",
-                      isActive ? "text-[var(--chat-foreground)]" : "text-[var(--chat-muted-foreground)]"
+                      tab.readOnly
+                        ? "text-muted-foreground/70"
+                        : isActive ? "text-[var(--chat-foreground)]" : "text-[var(--chat-muted-foreground)]"
                     )}
                   >
                     {tab.title}

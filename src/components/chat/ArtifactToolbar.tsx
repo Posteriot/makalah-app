@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Download, EditPencil, Copy, Check, Expand, MoreVert, Xmark } from "iconoir-react"
+import { Download, EditPencil, Copy, Check, Expand } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -29,6 +29,8 @@ interface ArtifactToolbarProps {
     wordCount: number
     contentTypeLabel: string
   } | null
+  /** Whether the artifact is read-only (cross-session preview) */
+  readOnly?: boolean
   /** Number of open tabs for context label */
   openTabCount?: number
   /** Callbacks for actions — connected to ArtifactViewer ref */
@@ -37,7 +39,6 @@ interface ArtifactToolbarProps {
   onRefrasa?: () => void
   onCopy?: () => void
   onExpand?: () => void
-  onClosePanel?: () => void
 }
 
 function formatDate(timestamp: number): string {
@@ -58,13 +59,13 @@ function formatDate(timestamp: number): string {
  */
 export function ArtifactToolbar({
   artifact,
+  readOnly,
   openTabCount = 0,
   onDownload,
   onEdit,
   onRefrasa,
   onCopy,
   onExpand,
-  onClosePanel,
 }: ArtifactToolbarProps) {
   const [copied, setCopied] = useState(false)
 
@@ -158,21 +159,6 @@ export function ArtifactToolbar({
               <TooltipContent className="font-mono text-xs">Fullscreen</TooltipContent>
             </Tooltip>
           )}
-          {onClosePanel && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={iconActionClass}
-                  onClick={onClosePanel}
-                >
-                  <Xmark className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="font-mono text-xs">Tutup panel</TooltipContent>
-            </Tooltip>
-          )}
         </div>
       </div>
 
@@ -198,16 +184,21 @@ export function ArtifactToolbar({
                 variant="outline"
                 size="icon"
                 onClick={onEdit}
+                disabled={readOnly}
+                title={readOnly ? "Buka percakapan asli untuk mengedit" : undefined}
                 className={cn(
                   "h-8 w-8 rounded-action border transition-all duration-150",
-                  sidebarButtonSurfaceClass
+                  sidebarButtonSurfaceClass,
+                  readOnly && "cursor-not-allowed opacity-40"
                 )}
                 aria-label="Edit"
               >
                 <EditPencil className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">Edit</TooltipContent>
+            <TooltipContent className="font-mono text-xs">
+              {readOnly ? "Buka percakapan asli untuk mengedit" : "Edit"}
+            </TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -235,10 +226,12 @@ export function ArtifactToolbar({
                 variant="outline"
                 size="icon"
                 onClick={onRefrasa}
+                disabled={readOnly || !isRefrasaReady}
+                title={readOnly ? "Buka percakapan asli untuk refrasa" : undefined}
                 className={cn(
                   "h-8 w-8 rounded-action border transition-all duration-150",
                   sidebarButtonSurfaceClass,
-                  !isRefrasaReady && "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-muted-foreground)]"
+                  (readOnly || !isRefrasaReady) && "cursor-not-allowed opacity-40"
                 )}
                 aria-label="Refrasa"
               >
@@ -246,7 +239,7 @@ export function ArtifactToolbar({
               </Button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
-              {isRefrasaReady ? "Refrasa" : "Refrasa (min. 50 karakter)"}
+              {readOnly ? "Buka percakapan asli untuk refrasa" : isRefrasaReady ? "Refrasa" : "Refrasa (min. 50 karakter)"}
             </TooltipContent>
           </Tooltip>
 
@@ -295,18 +288,32 @@ export function ArtifactToolbar({
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className={iconActionClass} aria-label="Aksi dokumen">
-                    <MoreVert className="h-3.5 w-3.5" />
+                    <svg width="4" height="16" viewBox="0 0 4 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="2" cy="2" r="2" />
+                      <circle cx="2" cy="8" r="2" />
+                      <circle cx="2" cy="14" r="2" />
+                    </svg>
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent className="font-mono text-xs">Aksi dokumen</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>
+              <DropdownMenuItem
+                onClick={onEdit}
+                disabled={readOnly}
+                title={readOnly ? "Buka percakapan asli untuk mengedit" : undefined}
+                className={cn(readOnly && "cursor-not-allowed opacity-40")}
+              >
                 <EditPencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onRefrasa}>
+              <DropdownMenuItem
+                onClick={onRefrasa}
+                disabled={readOnly || !isRefrasaReady}
+                title={readOnly ? "Buka percakapan asli untuk refrasa" : undefined}
+                className={cn((readOnly || !isRefrasaReady) && "cursor-not-allowed opacity-40")}
+              >
                 <RefrasaSquareIcon className="mr-2 h-4 w-4" strokeWidth={1.5} />
                 Refrasa
               </DropdownMenuItem>

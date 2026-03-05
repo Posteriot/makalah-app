@@ -39,7 +39,7 @@ interface ChatLayoutProps {
   /** Callback when artifact panel toggle is requested */
   onArtifactPanelToggle?: () => void
   /** Callback when artifact is selected */
-  onArtifactSelect?: (artifactId: Id<"artifacts">) => void
+  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations">; title?: string; type?: string }) => void
   /** Currently active artifact in panel */
   activeArtifactId?: Id<"artifacts"> | null
   /** Artifact panel content (passed from parent) */

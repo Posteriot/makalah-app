@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useQuery } from "convex/react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { api } from "../../../convex/_generated/api"
 import { ChatLayout } from "./layout/ChatLayout"
 import { ChatWindow } from "./ChatWindow"
@@ -37,6 +38,10 @@ interface ChatContainerProps {
  */
 export function ChatContainer({ conversationId }: ChatContainerProps) {
   const { user } = useCurrentUser()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const deepLinkArtifactId = searchParams.get("artifact")
+  const deepLinkHandled = useRef(false)
 
   // Cleanup empty conversations ONLY on landing page (/chat without ID)
   // Don't cleanup when viewing a specific conversation - prevents deleting newly created ones
@@ -86,16 +91,36 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     }
   }, [artifacts, artifactTabs, updateArtifactTabTitle])
 
+  // Deep link: auto-open artifact panel when navigating via ?artifact=<id>
+  useEffect(() => {
+    if (!deepLinkArtifactId || deepLinkHandled.current || !artifacts) return
+    const artifact = artifacts.find((a) => a._id === deepLinkArtifactId)
+    if (!artifact) return
+    deepLinkHandled.current = true
+    openArtifactTab({
+      id: artifact._id,
+      title: artifact.title,
+      type: artifact.type,
+    })
+    // Clean up URL search param
+    router.replace(`/chat/${conversationId}`, { scroll: false })
+  }, [deepLinkArtifactId, artifacts, conversationId, openArtifactTab, router])
+
   // Handler when artifact is created or selected — opens a tab (desktop) or overlay (mobile)
-  const handleArtifactSelect = (artifactId: Id<"artifacts">) => {
+  const handleArtifactSelect = (
+    artifactId: Id<"artifacts">,
+    opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations">; title?: string; type?: string }
+  ) => {
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       setMobileArtifactId(artifactId)
     } else {
       const artifact = artifacts?.find((a) => a._id === artifactId)
       openArtifactTab({
         id: artifactId,
-        title: artifact?.title ?? "Loading...",
-        type: artifact?.type ?? "section",
+        title: artifact?.title ?? opts?.title ?? "Untitled",
+        type: artifact?.type ?? opts?.type ?? "section",
+        readOnly: opts?.readOnly,
+        sourceConversationId: opts?.sourceConversationId,
       })
     }
   }

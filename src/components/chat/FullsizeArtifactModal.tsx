@@ -26,6 +26,8 @@ import {
   WarningTriangle,
   NavArrowDown,
   OpenBook,
+  Lock,
+  Xmark,
 } from "iconoir-react"
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { toast } from "sonner"
@@ -35,6 +37,7 @@ import { MarkdownRenderer } from "./MarkdownRenderer"
 import { SourcesIndicator } from "./SourcesIndicator"
 import { ChartRenderer } from "./ChartRenderer"
 import { RefrasaSquareIcon } from "./RefrasaSquareIcon"
+import Link from "next/link"
 import dynamic from "next/dynamic"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { isMermaidContent, extractMermaidCode } from "@/lib/utils/mermaid"
@@ -71,6 +74,9 @@ interface FullsizeArtifactModalProps {
   onTabClose: (tabId: Id<"artifacts">) => void
   onOpenTab: (tab: ArtifactTab) => void
   onVersionCreated?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
+  readOnly?: boolean
+  sourceConversationId?: Id<"conversations">
+  onCloseReadOnlyTab?: () => void
 }
 
 const formatToLanguage: Record<string, string> = {
@@ -146,6 +152,9 @@ export function FullsizeArtifactModal({
   onTabClose: closeModalTab,
   onOpenTab: openModalTab,
   onVersionCreated,
+  readOnly,
+  sourceConversationId,
+  onCloseReadOnlyTab,
 }: FullsizeArtifactModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const primaryCloseButtonRef = useRef<HTMLButtonElement>(null)
@@ -468,15 +477,27 @@ export function FullsizeArtifactModal({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      ref={primaryCloseButtonRef}
                       onClick={requestClose}
                       className="flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
-                      aria-label="Tutup fullscreen"
+                      aria-label="Kecilkan fullscreen"
                     >
                       <Collapse className="h-4 w-4" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="font-mono text-xs">Tutup fullscreen</TooltipContent>
+                  <TooltipContent className="font-mono text-xs">Kecilkan</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      ref={primaryCloseButtonRef}
+                      onClick={requestClose}
+                      className="flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chat-border)]"
+                      aria-label="Tutup panel"
+                    >
+                      <Xmark className="h-4 w-4" strokeWidth={1.5} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="font-mono text-xs">Tutup</TooltipContent>
                 </Tooltip>
               </div>
             </div>
@@ -570,7 +591,9 @@ export function FullsizeArtifactModal({
                       variant="outline"
                       size="sm"
                       onClick={() => setIsEditing(true)}
-                      className="h-7 px-2.5 font-mono text-[11px]"
+                      disabled={readOnly}
+                      title={readOnly ? "Buka percakapan asli untuk mengedit" : undefined}
+                      className={cn("h-7 px-2.5 font-mono text-[11px]", readOnly && "cursor-not-allowed opacity-40")}
                     >
                       Edit
                     </Button>
@@ -603,8 +626,9 @@ export function FullsizeArtifactModal({
                         variant="outline"
                         size="sm"
                         onClick={handleRefrasaTrigger}
-                        disabled={isRefrasaLoading || !canRefrasa}
-                        className="h-7 px-2.5 font-mono text-[11px]"
+                        disabled={readOnly || isRefrasaLoading || !canRefrasa}
+                        title={readOnly ? "Buka percakapan asli untuk refrasa" : undefined}
+                        className={cn("h-7 px-2.5 font-mono text-[11px]", readOnly && "cursor-not-allowed opacity-40")}
                       >
                         <RefrasaSquareIcon className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
                         Refrasa
@@ -718,6 +742,29 @@ export function FullsizeArtifactModal({
               ) : (
                 <div className="h-full overflow-hidden bg-[var(--chat-background)]">
                   <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
+                    {readOnly && (
+                      <div className="mb-3 flex items-center gap-2 rounded-action border border-muted bg-muted/30 px-3 py-2">
+                        <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                        <span className="font-mono text-[11px] text-muted-foreground">
+                          Artifak dari sesi lain. Mode hanya baca.
+                          {sourceConversationId && (
+                            <>
+                              {" "}
+                              <Link
+                                href={`/chat/${sourceConversationId}?artifact=${activeArtifactId}`}
+                                onClick={() => {
+                                  onCloseReadOnlyTab?.()
+                                  onClose()
+                                }}
+                                className="text-sky-500 hover:underline"
+                              >
+                                Lihat percakapan terkait
+                              </Link>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    )}
                     {isMermaid ? (
                       <MermaidRenderer code={extractMermaidCode(artifact.content)} />
                     ) : isChartArtifact ? (
