@@ -356,7 +356,7 @@ export async function getWebSearchFallbackModel() {
   return openrouter.chat(config.webSearch.webSearchFallbackModel, {
     web_search_options: {
       max_results: config.webSearch.fallbackMaxResults ?? 5,
-      search_context_size: config.webSearch.fallbackEngine ?? "medium",
+      engine: (config.webSearch.fallbackEngine as "native" | "exa" | undefined) ?? undefined,
     },
   })
 }
