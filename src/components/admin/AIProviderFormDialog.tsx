@@ -32,6 +32,7 @@ import {
   Shield,
   ShieldCheck,
   ShieldXmark,
+  InfoCircle,
 } from "iconoir-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Id } from "@convex/_generated/dataModel"
@@ -72,6 +73,8 @@ interface AIProviderConfig {
   fallbackWebSearchEnabled?: boolean
   fallbackWebSearchEngine?: string
   fallbackWebSearchMaxResults?: number
+  webSearchModel?: string
+  webSearchFallbackModel?: string
   version: number
 }
 
@@ -165,6 +168,8 @@ export function AIProviderFormDialog({
   const [fallbackWebSearchEnabled, setFallbackWebSearchEnabled] = useState(true)
   const [fallbackWebSearchEngine, setFallbackWebSearchEngine] = useState("auto")
   const [fallbackWebSearchMaxResults, setFallbackWebSearchMaxResults] = useState(5)
+  const [webSearchModel, setWebSearchModel] = useState("perplexity/sonar")
+  const [webSearchFallbackModel, setWebSearchFallbackModel] = useState("x-ai/grok-3-mini")
 
   // UI state
   const [isLoading, setIsLoading] = useState(false)
@@ -215,6 +220,8 @@ export function AIProviderFormDialog({
         setFallbackWebSearchEnabled(config.fallbackWebSearchEnabled ?? true)
         setFallbackWebSearchEngine(config.fallbackWebSearchEngine ?? "auto")
         setFallbackWebSearchMaxResults(config.fallbackWebSearchMaxResults ?? 5)
+        setWebSearchModel(config.webSearchModel ?? "perplexity/sonar")
+        setWebSearchFallbackModel(config.webSearchFallbackModel ?? "x-ai/grok-3-mini")
         // API keys: tidak di-populate (security)
         setGatewayApiKey("")
         setOpenrouterApiKey("")
@@ -249,6 +256,8 @@ export function AIProviderFormDialog({
         setFallbackWebSearchEnabled(true)
         setFallbackWebSearchEngine("auto")
         setFallbackWebSearchMaxResults(5)
+        setWebSearchModel("perplexity/sonar")
+        setWebSearchFallbackModel("x-ai/grok-3-mini")
       }
       // Reset validation state
       setPrimaryValidation("idle")
@@ -560,6 +569,12 @@ export function AIProviderFormDialog({
         if (fallbackWebSearchMaxResults !== (config.fallbackWebSearchMaxResults ?? 5)) {
           updateArgs.fallbackWebSearchMaxResults = fallbackWebSearchMaxResults
         }
+        if (webSearchModel !== (config.webSearchModel ?? "perplexity/sonar")) {
+          updateArgs.webSearchModel = webSearchModel
+        }
+        if (webSearchFallbackModel !== (config.webSearchFallbackModel ?? "x-ai/grok-3-mini")) {
+          updateArgs.webSearchFallbackModel = webSearchFallbackModel
+        }
 
         const result = await updateMutation(updateArgs)
         toast.success(result.message)
@@ -590,6 +605,8 @@ export function AIProviderFormDialog({
           fallbackWebSearchEnabled,
           fallbackWebSearchEngine,
           fallbackWebSearchMaxResults,
+          webSearchModel,
+          webSearchFallbackModel,
         })
         toast.success(result.message)
       }
@@ -623,6 +640,8 @@ export function AIProviderFormDialog({
     fallbackWebSearchEnabled !== (config.fallbackWebSearchEnabled ?? true) ||
     fallbackWebSearchEngine !== (config.fallbackWebSearchEngine ?? "auto") ||
     fallbackWebSearchMaxResults !== (config.fallbackWebSearchMaxResults ?? 5) ||
+    webSearchModel !== (config.webSearchModel ?? "perplexity/sonar") ||
+    webSearchFallbackModel !== (config.webSearchFallbackModel ?? "x-ai/grok-3-mini") ||
     gatewayApiKey.trim() !== "" ||
     openrouterApiKey.trim() !== "" ||
     gatewayUseEnvKey ||
@@ -1167,6 +1186,14 @@ export function AIProviderFormDialog({
               Kontrol fitur web search untuk primary dan fallback provider.
             </p>
 
+            {/* Info banner */}
+            <div className="flex items-start gap-2.5 rounded-md border border-sky-200 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950/30">
+              <InfoCircle className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+              <p className="text-xs text-sky-700 dark:text-sky-300">
+                Semua pencarian web dirutekan melalui OpenRouter
+              </p>
+            </div>
+
             <div className="space-y-4">
               {/* Primary Web Search Toggle */}
               <div className="flex items-center justify-between rounded-lg border p-4">
@@ -1175,7 +1202,7 @@ export function AIProviderFormDialog({
                     Enable Primary Web Search
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Aktifkan google_search tool untuk primary provider (Vercel AI Gateway)
+                    Aktifkan pencarian web utama (Perplexity Sonar via OpenRouter)
                   </p>
                 </div>
                 <Switch
@@ -1186,6 +1213,24 @@ export function AIProviderFormDialog({
                 />
               </div>
 
+              {/* Primary Web Search Model */}
+              {primaryWebSearchEnabled && (
+                <div className="space-y-2 pl-4 border-l-2 border-muted">
+                  <Label htmlFor="webSearchModel">Model Pencarian Web Utama</Label>
+                  <Input
+                    id="webSearchModel"
+                    type="text"
+                    value={webSearchModel}
+                    onChange={(e) => setWebSearchModel(e.target.value)}
+                    placeholder="perplexity/sonar"
+                    disabled={isLoading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Model pencarian web utama (via OpenRouter), e.g. perplexity/sonar
+                  </p>
+                </div>
+              )}
+
               {/* Fallback Web Search Toggle */}
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
@@ -1193,7 +1238,7 @@ export function AIProviderFormDialog({
                     Enable Fallback Web Search
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Aktifkan :online suffix untuk fallback provider (OpenRouter)
+                    Aktifkan fallback pencarian web (via OpenRouter)
                   </p>
                 </div>
                 <Switch
@@ -1204,44 +1249,62 @@ export function AIProviderFormDialog({
                 />
               </div>
 
-              {/* Fallback Search Engine + Max Results (only show if fallback enabled) */}
+              {/* Fallback Web Search Sub-settings */}
               {fallbackWebSearchEnabled && (
-                <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-muted">
+                <div className="space-y-4 pl-4 border-l-2 border-muted">
+                  {/* Fallback Web Search Model */}
                   <div className="space-y-2">
-                    <Label htmlFor="fallbackWebSearchEngine">Fallback Search Engine</Label>
-                    <Select
-                      value={fallbackWebSearchEngine}
-                      onValueChange={setFallbackWebSearchEngine}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger id="fallbackWebSearchEngine">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto">Auto (OpenRouter Default)</SelectItem>
-                        <SelectItem value="native">Native</SelectItem>
-                        <SelectItem value="exa">Exa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Engine untuk OpenRouter :online suffix
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="fallbackWebSearchMaxResults">Max Search Results</Label>
+                    <Label htmlFor="webSearchFallbackModel">Model Pencarian Web Fallback</Label>
                     <Input
-                      id="fallbackWebSearchMaxResults"
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={fallbackWebSearchMaxResults}
-                      onChange={(e) => setFallbackWebSearchMaxResults(parseInt(e.target.value, 10) || 5)}
+                      id="webSearchFallbackModel"
+                      type="text"
+                      value={webSearchFallbackModel}
+                      onChange={(e) => setWebSearchFallbackModel(e.target.value)}
+                      placeholder="x-ai/grok-3-mini"
                       disabled={isLoading}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Jumlah hasil pencarian (1-10)
+                      Fallback jika model utama gagal (via OpenRouter), e.g. x-ai/grok-3-mini
                     </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fallbackWebSearchEngine">Fallback Search Engine</Label>
+                      <Select
+                        value={fallbackWebSearchEngine}
+                        onValueChange={setFallbackWebSearchEngine}
+                        disabled={isLoading}
+                      >
+                        <SelectTrigger id="fallbackWebSearchEngine">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Auto (OpenRouter Default)</SelectItem>
+                          <SelectItem value="native">Native</SelectItem>
+                          <SelectItem value="exa">Exa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Engine untuk fallback web search
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="fallbackWebSearchMaxResults">Max Search Results</Label>
+                      <Input
+                        id="fallbackWebSearchMaxResults"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={fallbackWebSearchMaxResults}
+                        onChange={(e) => setFallbackWebSearchMaxResults(parseInt(e.target.value, 10) || 5)}
+                        disabled={isLoading}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Jumlah hasil pencarian (1-10)
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
