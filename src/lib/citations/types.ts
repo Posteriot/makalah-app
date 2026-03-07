@@ -43,7 +43,7 @@ export interface NormalizedCitation {
  * - 'anthropic': Anthropic Claude (future support)
  * - 'openai': Direct OpenAI (same format as openrouter annotations)
  */
-export type CitationProvider = 'gateway' | 'openrouter' | 'anthropic' | 'openai'
+export type CitationProvider = 'gateway' | 'openrouter' | 'anthropic' | 'openai' | 'perplexity'
 
 /**
  * Raw Google Grounding chunk from groundingMetadata.groundingChunks[]

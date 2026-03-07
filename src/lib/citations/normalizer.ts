@@ -13,6 +13,7 @@ import type {
   GoogleGroundingSupport,
   OpenAIAnnotation,
 } from './types'
+import { isBlockedSourceDomain } from '@/lib/ai/blocked-domains'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Type Guards & Helpers
@@ -306,7 +307,62 @@ export function normalizeAnthropicCitations(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Task 1.4: Main Normalizer Dispatcher
+// Perplexity Sonar Normalizer
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Perplexity source format dari AI SDK response.
+ * Perplexity Sonar returns sources sebagai array of { url, title? }.
+ */
+interface PerplexitySource {
+  url: string
+  title?: string
+}
+
+/**
+ * Type guard untuk Perplexity source
+ */
+const isPerplexitySource = (value: unknown): value is PerplexitySource => {
+  if (!isRecord(value)) return false
+  return typeof value.url === 'string'
+}
+
+/**
+ * Normalize Perplexity Sonar sources ke NormalizedCitation[].
+ *
+ * Pure mapping — no filtering inside. Domain filtering dilakukan
+ * di dispatcher level (normalizeCitations) untuk konsistensi antar provider.
+ *
+ * @param sources - Raw sources array dari Perplexity response
+ * @returns NormalizedCitation[] - Empty array if invalid/missing data
+ */
+export function normalizePerplexityCitations(
+  sources: unknown
+): NormalizedCitation[] {
+  try {
+    if (!Array.isArray(sources)) return []
+
+    const citations: NormalizedCitation[] = []
+
+    for (const source of sources) {
+      if (!isPerplexitySource(source)) continue
+      if (!isValidUrl(source.url)) continue
+
+      citations.push({
+        url: source.url,
+        title: source.title ?? '',
+      })
+    }
+
+    return citations
+  } catch (error) {
+    console.error('[normalizePerplexityCitations] Error:', error)
+    return []
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Main Normalizer Dispatcher
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -329,22 +385,35 @@ export function normalizeCitations(
   providerData: unknown,
   provider: CitationProvider
 ): NormalizedCitation[] {
+  let citations: NormalizedCitation[]
+
   switch (provider) {
+    case 'perplexity':
+      citations = normalizePerplexityCitations(providerData)
+      break
+
     case 'gateway':
-      return normalizeGoogleGrounding(providerData)
+      citations = normalizeGoogleGrounding(providerData)
+      break
 
     case 'openrouter':
     case 'openai':
-      return normalizeOpenAIAnnotations(providerData)
+      citations = normalizeOpenAIAnnotations(providerData)
+      break
 
     case 'anthropic':
-      return normalizeAnthropicCitations(providerData)
+      citations = normalizeAnthropicCitations(providerData)
+      break
 
     default:
       // Unknown provider - return empty array (no throw)
       console.warn(`[normalizeCitations] Unknown provider: ${provider}`)
-      return []
+      citations = []
+      break
   }
+
+  // Universal post-filter — applied to ALL providers
+  return citations.filter(c => !isBlockedSourceDomain(c.url))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
