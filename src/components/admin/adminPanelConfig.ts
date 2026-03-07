@@ -95,7 +95,7 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
     label: "Payment Provider",
     icon: CreditCard,
     headerTitle: "Payment Provider",
-    headerDescription: "Konfigurasi provider pembayaran",
+    headerDescription: "Kelola pengaturan Xendit dan metode pembayaran checkout",
     headerIcon: CreditCard,
   },
   {

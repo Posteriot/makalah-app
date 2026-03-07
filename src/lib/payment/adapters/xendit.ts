@@ -143,6 +143,9 @@ function mapWebhookEventToStatus(event: string): PaymentStatus | null {
       return "SUCCEEDED"
     case "payment.failed":
       return "FAILED"
+    // Xendit dashboard "Test and save" sends `payment_request.expiry`,
+    // while live docs/runtime may emit `payment_request.expired`.
+    case "payment_request.expiry":
     case "payment_request.expired":
       return "EXPIRED"
     default:
