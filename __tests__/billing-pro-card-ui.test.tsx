@@ -5,6 +5,7 @@ const mockUseCurrentUser = vi.fn()
 const mockUseOnboardingStatus = vi.fn()
 const mockUseQuery = vi.fn()
 const mockRouterReplace = vi.fn()
+const mockSearchParamGet = vi.fn()
 
 vi.mock("@/lib/hooks/useCurrentUser", () => ({
   useCurrentUser: () => mockUseCurrentUser(),
@@ -29,7 +30,7 @@ vi.mock("next/navigation", () => ({
     prefetch: vi.fn(),
   }),
   useSearchParams: () => ({
-    get: (key: string) => (key === "from" ? "plans" : null),
+    get: mockSearchParamGet,
   }),
   usePathname: () => "/subscription/plans",
 }))
@@ -124,6 +125,7 @@ function setupCheckoutQueryMock(options?: CheckoutQueryMockOptions) {
 describe("Billing - PRO checkout flow", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchParamGet.mockImplementation((key: string) => (key === "from" ? "plans" : null))
 
     mockUseCurrentUser.mockReturnValue({
       user: MOCK_FREE_USER,

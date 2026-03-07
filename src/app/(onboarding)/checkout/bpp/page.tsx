@@ -17,7 +17,6 @@ import {
   Copy,
   OpenNewWindow,
   Clock,
-  WarningCircle,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { getEffectiveTier } from "@/lib/utils/subscription"
@@ -25,6 +24,7 @@ import { toast } from "sonner"
 import Image from "next/image"
 import { QRCodeSVG } from "qrcode.react"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
+import { CheckoutErrorBanner } from "@/components/billing/CheckoutErrorBanner"
 import {
   DEFAULT_ENABLED_METHODS,
   getEnabledCheckoutMethods,
@@ -413,13 +413,10 @@ function CheckoutBPPContent() {
             </div>
 
             {error && (
-              <div className="rounded-action border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
-                <WarningCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-interface text-xs font-medium text-destructive">Gagal memproses pembayaran</p>
-                  <p className="text-narrative text-sm text-destructive/80">{error}</p>
-                </div>
-              </div>
+              <CheckoutErrorBanner
+                title="Gagal memproses pembayaran"
+                message={error}
+              />
             )}
 
               <div className={sectionCardClass}>
