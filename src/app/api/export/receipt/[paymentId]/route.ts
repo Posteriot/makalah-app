@@ -12,6 +12,7 @@ import { fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 import PDFDocument from "pdfkit"
+import { getVAPaymentMethodLabel } from "@/lib/payment/channel-labels"
 
 function formatCurrency(amount: number): string {
   return `Rp ${amount.toLocaleString("id-ID")}`
@@ -29,7 +30,7 @@ function formatDate(timestamp: number): string {
 
 function getMethodLabel(method: string, channel?: string): string {
   if (method === "QRIS") return "QRIS"
-  if (method === "VIRTUAL_ACCOUNT") return `Virtual Account ${channel ?? ""}`.trim()
+  if (method === "VIRTUAL_ACCOUNT") return getVAPaymentMethodLabel(channel)
   if (method === "EWALLET") return channel ?? "E-Wallet"
   return method
 }

@@ -23,6 +23,7 @@ export type PaymentStatus = "PENDING" | "SUCCEEDED" | "FAILED" | "EXPIRED" | "RE
 
 export interface VAChannelOption {
   code: string
+  shortLabel: string
   label: string
 }
 
