@@ -3821,10 +3821,6 @@ TIPS PENCARIAN:
             tags: {
                 "api.route": "chat",
             },
-            extra: {
-                conversationId: currentConversationId,
-                userId,
-            },
         })
         console.error("Chat API Error:", error)
         return new Response("Internal Server Error", { status: 500 })
