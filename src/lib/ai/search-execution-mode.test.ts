@@ -5,37 +5,49 @@ import {
 } from "./search-execution-mode"
 
 describe("resolveSearchExecutionMode", () => {
-  it("selects primary mode when search is required and primary tool is ready", () => {
+  it("selects primary_perplexity when search required and web search model configured", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      primaryToolReady: true,
-      primaryEnabled: true,
-      fallbackOnlineEnabled: true,
-      fallbackProvider: "openrouter",
+      webSearchEnabled: true,
+      webSearchModel: "perplexity/sonar",
+      fallbackWebSearchEnabled: true,
+      webSearchFallbackModel: "x-ai/grok-3-mini",
     })
 
-    expect(mode).toBe("primary_google_search")
+    expect(mode).toBe("primary_perplexity")
   })
 
-  it("selects fallback mode when primary unavailable and openrouter online fallback is enabled", () => {
+  it("selects fallback_web_search when primary disabled but fallback enabled", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      primaryToolReady: false,
-      primaryEnabled: true,
-      fallbackOnlineEnabled: true,
-      fallbackProvider: "openrouter",
+      webSearchEnabled: false,
+      webSearchModel: "perplexity/sonar",
+      fallbackWebSearchEnabled: true,
+      webSearchFallbackModel: "x-ai/grok-3-mini",
     })
 
-    expect(mode).toBe("fallback_online_search")
+    expect(mode).toBe("fallback_web_search")
   })
 
-  it("selects blocked mode when search is required and no search engine is available", () => {
+  it("selects fallback_web_search when primary enabled but model undefined", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      primaryToolReady: false,
-      primaryEnabled: true,
-      fallbackOnlineEnabled: false,
-      fallbackProvider: "openrouter",
+      webSearchEnabled: true,
+      webSearchModel: undefined,
+      fallbackWebSearchEnabled: true,
+      webSearchFallbackModel: "x-ai/grok-3-mini",
+    })
+
+    expect(mode).toBe("fallback_web_search")
+  })
+
+  it("selects blocked mode when search required but no models available", () => {
+    const mode = resolveSearchExecutionMode({
+      searchRequired: true,
+      webSearchEnabled: true,
+      webSearchModel: undefined,
+      fallbackWebSearchEnabled: false,
+      webSearchFallbackModel: undefined,
     })
 
     expect(mode).toBe("blocked_unavailable")
@@ -44,10 +56,10 @@ describe("resolveSearchExecutionMode", () => {
   it("never returns off when search is required", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      primaryToolReady: false,
-      primaryEnabled: true,
-      fallbackOnlineEnabled: false,
-      fallbackProvider: "vercel-gateway",
+      webSearchEnabled: false,
+      webSearchModel: undefined,
+      fallbackWebSearchEnabled: false,
+      webSearchFallbackModel: undefined,
     })
 
     expect(mode).not.toBe("off")
@@ -56,33 +68,22 @@ describe("resolveSearchExecutionMode", () => {
   it("returns off when search is not required", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: false,
-      primaryToolReady: false,
-      primaryEnabled: true,
-      fallbackOnlineEnabled: true,
-      fallbackProvider: "openrouter",
+      webSearchEnabled: true,
+      webSearchModel: "perplexity/sonar",
+      fallbackWebSearchEnabled: true,
+      webSearchFallbackModel: "x-ai/grok-3-mini",
     })
 
     expect(mode).toBe("off")
   })
 
-  it("skips primary and falls to fallback when primaryEnabled is false", () => {
+  it("returns blocked when both enabled but both models undefined", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      primaryToolReady: true,
-      primaryEnabled: false,
-      fallbackOnlineEnabled: true,
-      fallbackProvider: "openrouter",
-    })
-    expect(mode).toBe("fallback_online_search")
-  })
-
-  it("returns blocked when primaryEnabled is false and no fallback", () => {
-    const mode = resolveSearchExecutionMode({
-      searchRequired: true,
-      primaryToolReady: true,
-      primaryEnabled: false,
-      fallbackOnlineEnabled: false,
-      fallbackProvider: "openrouter",
+      webSearchEnabled: true,
+      webSearchModel: undefined,
+      fallbackWebSearchEnabled: true,
+      webSearchFallbackModel: undefined,
     })
     expect(mode).toBe("blocked_unavailable")
   })

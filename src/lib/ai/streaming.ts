@@ -113,6 +113,8 @@ async function getProviderConfig() {
       fallbackEnabled: config.fallbackWebSearchEnabled,
       fallbackEngine: config.fallbackWebSearchEngine,
       fallbackMaxResults: config.fallbackWebSearchMaxResults,
+      webSearchModel: config.webSearchModel,
+      webSearchFallbackModel: config.webSearchFallbackModel,
     },
     // Context window settings (for W2 context budget monitor)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -154,6 +156,8 @@ export async function getWebSearchConfig() {
     fallbackEnabled: config.fallbackWebSearchEnabled,
     fallbackEngine: config.fallbackWebSearchEngine as "auto" | "native" | "exa",
     fallbackMaxResults: config.fallbackWebSearchMaxResults,
+    webSearchModel: config.webSearchModel,
+    webSearchFallbackModel: config.webSearchFallbackModel,
   }
 }
 
@@ -312,6 +316,49 @@ export async function getOpenRouterModel(options?: {
     modelId,
     config.fallback.apiKey
   )
+}
+
+/**
+ * Primary web search model — Perplexity Sonar is a native search model,
+ * no special config needed. Uses OpenRouter as the provider.
+ */
+export async function getWebSearchModel() {
+  const config = await getProviderConfig()
+  const resolvedApiKey = config.fallback.apiKey || process.env.OPENROUTER_API_KEY
+
+  if (!resolvedApiKey) {
+    throw new Error("API key ENV tidak ditemukan untuk OpenRouter (web search model)")
+  }
+
+  const openrouter = createOpenRouter({
+    apiKey: resolvedApiKey,
+  })
+
+  return openrouter.chat(config.webSearch.webSearchModel)
+}
+
+/**
+ * Fallback web search model — needs web_search_options to enable search.
+ * Uses OpenRouter as the provider with search options passed via provider extras.
+ */
+export async function getWebSearchFallbackModel() {
+  const config = await getProviderConfig()
+  const resolvedApiKey = config.fallback.apiKey || process.env.OPENROUTER_API_KEY
+
+  if (!resolvedApiKey) {
+    throw new Error("API key ENV tidak ditemukan untuk OpenRouter (web search fallback model)")
+  }
+
+  const openrouter = createOpenRouter({
+    apiKey: resolvedApiKey,
+  })
+
+  return openrouter.chat(config.webSearch.webSearchFallbackModel, {
+    web_search_options: {
+      max_results: config.webSearch.fallbackMaxResults ?? 5,
+      search_context_size: config.webSearch.fallbackEngine ?? "medium",
+    },
+  })
 }
 
 /**
