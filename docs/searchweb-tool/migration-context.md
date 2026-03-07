@@ -90,6 +90,11 @@ Migrated from `google_search` to `parallel_search` via `gateway.tools.parallelSe
 - `perplexity/sonar` — Standard search-grounded model
 - `perplexity/sonar-pro` — More capable, deeper search
 - Available via OpenRouter as `perplexity/sonar` and `perplexity/sonar-pro`
+- Also available via Perplexity's own API directly
+
+### Credentials
+- `PERPLEXITY_API_KEY` is already configured in `.env.local`
+- Can be used directly with Perplexity API, or via OpenRouter with `OPENROUTER_API_KEY` (already configured)
 
 ## Reusable Work from parallel_search Attempt
 
