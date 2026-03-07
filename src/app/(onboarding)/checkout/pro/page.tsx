@@ -28,6 +28,11 @@ import Image from "next/image"
 import Link from "next/link"
 import { QRCodeSVG } from "qrcode.react"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
+import {
+  getEnabledCheckoutMethods,
+  getRuntimeProviderLabel,
+  resolveCheckoutMethodSelection,
+} from "@/lib/payment/runtime-settings"
 
 type PaymentMethod = "qris" | "va" | "ewallet"
 const PRO_PLAN_TYPE = "pro_monthly" as const
@@ -66,12 +71,6 @@ const EWALLET_CHANNELS = [
   { code: "OVO", label: "OVO" },
   { code: "GOPAY", label: "GoPay" },
 ]
-
-const METHOD_ID_TO_ENABLED: Record<PaymentMethod, "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"> = {
-  qris: "QRIS",
-  va: "VIRTUAL_ACCOUNT",
-  ewallet: "EWALLET",
-}
 
 const shellPanelClass = "rounded-shell border border-border/70 bg-card/95"
 const sectionCardClass = "rounded-shell border border-border/60 bg-[color:var(--slate-100)]/70 p-3 dark:bg-[color:var(--slate-900)]/70 md:p-4"
@@ -142,6 +141,7 @@ function CheckoutPROContent() {
   const proPricing = useQuery(api.billing.pricingHelpers.getProPricing)
   const paymentConfig = useQuery(api.billing.paymentProviderConfigs.getActiveConfig)
   const enabledMethods = paymentConfig?.enabledMethods ?? ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"]
+  const availableMethods = getEnabledCheckoutMethods(enabledMethods)
 
   const backRoute = getSubscriptionBackRoute(searchParams.get("from"))
   const handleBackToSubscription = useCallback(() => {
@@ -211,6 +211,13 @@ function CheckoutPROContent() {
       toast.success("Pembayaran berhasil. Langganan Pro sudah aktif.")
     }
   }, [paymentStatus?.status, paymentResult])
+
+  useEffect(() => {
+    const nextMethod = resolveCheckoutMethodSelection(selectedMethod, enabledMethods)
+    if (nextMethod && nextMethod !== selectedMethod) {
+      setSelectedMethod(nextMethod)
+    }
+  }, [enabledMethods, selectedMethod])
 
   const handleSubscribe = useCallback(async () => {
     if (isProcessing) return
@@ -524,7 +531,7 @@ function CheckoutPROContent() {
                 <div className={sectionCardClass}>
                   <h2 className="text-narrative mb-2 font-medium text-foreground">Metode Pembayaran</h2>
                   <div className="space-y-2">
-                    {PAYMENT_METHODS.filter((m) => enabledMethods.includes(METHOD_ID_TO_ENABLED[m.id])).map((method) => {
+                    {PAYMENT_METHODS.filter((m) => availableMethods.includes(m.id)).map((method) => {
                       const Icon = method.icon
                       const isSelected = selectedMethod === method.id
                       return (
@@ -658,7 +665,7 @@ function CheckoutPROContent() {
                     </span>
                   </button>
                   <p className="text-narrative mt-2 text-center text-xs text-muted-foreground">
-                    Pembayaran diproses oleh {paymentConfig?.activeProvider === "midtrans" ? "Midtrans" : "Xendit"}. Aman dan terenkripsi.
+                    Pembayaran diproses oleh {getRuntimeProviderLabel()}. Aman dan terenkripsi.
                   </p>
                 </div>
               </>

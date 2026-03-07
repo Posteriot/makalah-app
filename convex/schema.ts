@@ -1016,7 +1016,6 @@ export default defineSchema({
 
   // Payment provider configuration (admin-managed)
   paymentProviderConfigs: defineTable({
-    activeProvider: v.union(v.literal("xendit"), v.literal("midtrans")),
     enabledMethods: v.array(
       v.union(v.literal("QRIS"), v.literal("VIRTUAL_ACCOUNT"), v.literal("EWALLET"))
     ),

@@ -68,6 +68,10 @@ const MOCK_FREE_USER = {
 type CheckoutQueryMockOptions = {
   remainingCredits?: number
   subscriptionStatusResponse?: Record<string, unknown>
+  paymentConfig?: {
+    enabledMethods: Array<"QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET">
+    webhookUrl: string
+  }
 }
 
 function setupCheckoutQueryMock(options?: CheckoutQueryMockOptions) {
@@ -76,6 +80,10 @@ function setupCheckoutQueryMock(options?: CheckoutQueryMockOptions) {
   const subscriptionStatusResponse = options?.subscriptionStatusResponse ?? {
     hasSubscription: false,
     status: null,
+  }
+  const paymentConfig = options?.paymentConfig ?? {
+    enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"],
+    webhookUrl: "/api/webhooks/payment",
   }
 
   mockUseQuery.mockImplementation((_queryRef: unknown, args: unknown) => {
@@ -93,6 +101,7 @@ function setupCheckoutQueryMock(options?: CheckoutQueryMockOptions) {
       return {
         priceIDR: 200_000,
         label: "Pro Bulanan",
+        ...paymentConfig,
       }
     }
 
@@ -144,6 +153,24 @@ describe("Billing - PRO checkout flow", () => {
     expect(screen.getByText("QRIS")).toBeInTheDocument()
     expect(screen.getByText("Virtual Account")).toBeInTheDocument()
     expect(screen.getByText("E-Wallet")).toBeInTheDocument()
+  })
+
+  it("menyembunyikan metode nonaktif dan menampilkan copy xendit", async () => {
+    setupCheckoutQueryMock({
+      paymentConfig: {
+        enabledMethods: ["QRIS"],
+        webhookUrl: "/api/webhooks/payment",
+      },
+    })
+
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+
+    render(<CheckoutPROPage />)
+
+    expect(screen.getByText("QRIS")).toBeInTheDocument()
+    expect(screen.queryByText("Virtual Account")).not.toBeInTheDocument()
+    expect(screen.queryByText("E-Wallet")).not.toBeInTheDocument()
+    expect(screen.getByText(/pembayaran diproses oleh xendit/i)).toBeInTheDocument()
   })
 
   it("POST ke /api/payments/subscribe dengan payload default saat klik Bayar", async () => {

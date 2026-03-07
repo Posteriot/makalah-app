@@ -11,18 +11,12 @@ interface PaymentProviderManagerProps {
   userId: Id<"users">
 }
 
-const PROVIDERS = [
-  { value: "xendit" as const, label: "Xendit" },
-  { value: "midtrans" as const, label: "Midtrans" },
-]
-
 const PAYMENT_METHODS = [
   { value: "QRIS" as const, label: "QRIS" },
   { value: "VIRTUAL_ACCOUNT" as const, label: "Virtual Account" },
   { value: "EWALLET" as const, label: "E-Wallet" },
 ]
 
-type Provider = "xendit" | "midtrans"
 type PaymentMethod = "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"
 
 const sectionCard = "rounded-shell border border-border/60 bg-card/95 p-4"
@@ -35,7 +29,6 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
   )
   const upsertConfig = useMutation(api.billing.paymentProviderConfigs.upsertConfig)
 
-  const [activeProvider, setActiveProvider] = useState<Provider>("xendit")
   const [enabledMethods, setEnabledMethods] = useState<PaymentMethod[]>([
     "QRIS",
     "VIRTUAL_ACCOUNT",
@@ -45,7 +38,6 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
 
   useEffect(() => {
     if (config) {
-      setActiveProvider(config.activeProvider as Provider)
       setEnabledMethods([...(config.enabledMethods as PaymentMethod[])])
     }
   }, [config])
@@ -58,12 +50,9 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
     )
   }
 
-  function isProviderConfigured(provider: Provider): boolean {
+  function isXenditConfigured(): boolean {
     if (!envStatus) return false
-    if (provider === "xendit") {
-      return envStatus.xendit.secretKey && envStatus.xendit.webhookToken
-    }
-    return envStatus.midtrans.serverKey && envStatus.midtrans.clientKey
+    return envStatus.xendit.secretKey && envStatus.xendit.webhookToken
   }
 
   async function handleSave() {
@@ -71,7 +60,6 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
     try {
       await upsertConfig({
         requestorUserId: userId,
-        activeProvider,
         enabledMethods,
       })
       toast.success("Konfigurasi payment provider berhasil disimpan")
@@ -94,45 +82,28 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
 
   return (
     <div className="space-y-6">
-      {/* Provider Selection */}
+      {/* Provider Status */}
       <div className={sectionCard}>
         <h3 className="text-interface text-sm font-medium mb-3">Provider Aktif</h3>
-        <div className="flex gap-3">
-          {PROVIDERS.map((provider) => {
-            const configured = isProviderConfigured(provider.value)
-            const isActive = activeProvider === provider.value
-            return (
-              <button
-                key={provider.value}
-                type="button"
-                onClick={() => setActiveProvider(provider.value)}
-                className={`flex items-center gap-2 rounded-action border px-4 py-2.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card text-muted-foreground hover:border-border/80 hover:bg-card/80"
-                }`}
-              >
-                <span className="text-interface">{provider.label}</span>
-                {configured ? (
-                  <CheckCircle
-                    className="h-4 w-4 text-teal-500"
-                    strokeWidth={1.5}
-                  />
-                ) : (
-                  <WarningCircle
-                    className="h-4 w-4 text-amber-500"
-                    strokeWidth={1.5}
-                  />
-                )}
-              </button>
-            )
-          })}
+        <div className="inline-flex items-center gap-2 rounded-action border border-primary bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary">
+          <span className="text-interface">Xendit</span>
+          {isXenditConfigured() ? (
+            <CheckCircle
+              className="h-4 w-4 text-teal-500"
+              strokeWidth={1.5}
+            />
+          ) : (
+            <WarningCircle
+              className="h-4 w-4 text-amber-500"
+              strokeWidth={1.5}
+            />
+          )}
         </div>
         {envStatus && (
           <p className="text-narrative text-xs text-muted-foreground mt-2">
-            {isProviderConfigured(activeProvider)
-              ? "Environment variables untuk provider ini sudah dikonfigurasi."
-              : "Environment variables untuk provider ini belum lengkap. Periksa konfigurasi server."}
+            {isXenditConfigured()
+              ? "Environment variables Xendit sudah dikonfigurasi."
+              : "Environment variables Xendit belum lengkap. Periksa konfigurasi server."}
           </p>
         )}
       </div>

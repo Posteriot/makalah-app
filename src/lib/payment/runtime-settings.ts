@@ -11,7 +11,7 @@ const CHECKOUT_ORDER: Array<{
 ]
 
 export function getEnabledCheckoutMethods(
-  enabledMethods: EnabledPaymentMethod[]
+  enabledMethods: readonly EnabledPaymentMethod[]
 ): CheckoutPaymentMethod[] {
   return CHECKOUT_ORDER
     .filter((item) => enabledMethods.includes(item.enabled))
@@ -20,7 +20,7 @@ export function getEnabledCheckoutMethods(
 
 export function resolveCheckoutMethodSelection(
   current: CheckoutPaymentMethod,
-  enabledMethods: EnabledPaymentMethod[]
+  enabledMethods: readonly EnabledPaymentMethod[]
 ): CheckoutPaymentMethod | null {
   const enabled = getEnabledCheckoutMethods(enabledMethods)
   if (enabled.includes(current)) return current
@@ -29,7 +29,7 @@ export function resolveCheckoutMethodSelection(
 
 export function isPaymentMethodEnabled(
   method: CheckoutPaymentMethod,
-  enabledMethods: EnabledPaymentMethod[]
+  enabledMethods: readonly EnabledPaymentMethod[]
 ): boolean {
   return getEnabledCheckoutMethods(enabledMethods).includes(method)
 }

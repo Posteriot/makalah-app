@@ -18,7 +18,6 @@ export const getActiveConfig = query({
     if (!config) {
       // Return defaults when no config exists
       return {
-        activeProvider: "xendit" as const,
         enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"] as const,
         webhookUrl: "/api/webhooks/payment",
         defaultExpiryMinutes: 30,
@@ -26,7 +25,6 @@ export const getActiveConfig = query({
     }
 
     return {
-      activeProvider: config.activeProvider,
       enabledMethods: config.enabledMethods,
       webhookUrl: config.webhookUrl ?? "/api/webhooks/payment",
       defaultExpiryMinutes: config.defaultExpiryMinutes ?? 30,
@@ -41,7 +39,6 @@ export const getActiveConfig = query({
 export const upsertConfig = mutation({
   args: {
     requestorUserId: v.id("users"),
-    activeProvider: v.union(v.literal("xendit"), v.literal("midtrans")),
     enabledMethods: v.array(
       v.union(v.literal("QRIS"), v.literal("VIRTUAL_ACCOUNT"), v.literal("EWALLET"))
     ),
@@ -64,7 +61,6 @@ export const upsertConfig = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        activeProvider: args.activeProvider,
         enabledMethods: args.enabledMethods,
         webhookUrl: args.webhookUrl,
         defaultExpiryMinutes: args.defaultExpiryMinutes,
@@ -75,7 +71,6 @@ export const upsertConfig = mutation({
     }
 
     return await ctx.db.insert("paymentProviderConfigs", {
-      activeProvider: args.activeProvider,
       enabledMethods: args.enabledMethods,
       webhookUrl: args.webhookUrl,
       defaultExpiryMinutes: args.defaultExpiryMinutes,
@@ -102,10 +97,6 @@ export const checkProviderEnvStatus = query({
       xendit: {
         secretKey: Boolean(process.env.XENDIT_SECRET_KEY),
         webhookToken: Boolean(process.env.XENDIT_WEBHOOK_TOKEN || process.env.XENDIT_WEBHOOK_SECRET),
-      },
-      midtrans: {
-        serverKey: Boolean(process.env.MIDTRANS_SERVER_KEY),
-        clientKey: Boolean(process.env.MIDTRANS_CLIENT_KEY),
       },
     }
   },
