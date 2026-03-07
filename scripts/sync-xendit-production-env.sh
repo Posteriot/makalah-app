@@ -21,8 +21,8 @@ Optional variables:
   APP_URL
   NEXT_PUBLIC_APP_URL
   CONVEX_INTERNAL_KEY
-  SYNC_VERCEL=1
-  SYNC_CONVEX=1
+  SYNC_VERCEL=0
+  SYNC_CONVEX=0
   SYNC_LOCAL_ENV=0
   SYNC_CONVEX_INTERNAL_KEY_FROM_LOCAL_ENV=1
   CONVEX_TARGET=linked
@@ -111,13 +111,23 @@ if is_placeholder "${XENDIT_WEBHOOK_SECRET:-}" && is_placeholder "${XENDIT_WEBHO
   exit 1
 fi
 
-SYNC_VERCEL="${SYNC_VERCEL:-1}"
-SYNC_CONVEX="${SYNC_CONVEX:-1}"
+SYNC_VERCEL="${SYNC_VERCEL:-0}"
+SYNC_CONVEX="${SYNC_CONVEX:-0}"
 SYNC_LOCAL_ENV="${SYNC_LOCAL_ENV:-0}"
 SYNC_CONVEX_INTERNAL_KEY_FROM_LOCAL_ENV="${SYNC_CONVEX_INTERNAL_KEY_FROM_LOCAL_ENV:-1}"
 CONVEX_TARGET="${CONVEX_TARGET:-linked}"
 VERCEL_ENV="${VERCEL_ENV:-production}"
 NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-${APP_URL:-}}"
+
+if [[ "${SYNC_VERCEL}" != "1" && "${SYNC_CONVEX}" != "1" && "${SYNC_LOCAL_ENV}" != "1" ]]; then
+  echo "Nothing to sync. Set at least one of SYNC_VERCEL=1, SYNC_CONVEX=1, or SYNC_LOCAL_ENV=1." >&2
+  exit 1
+fi
+
+if [[ "${SYNC_VERCEL}" == "1" && "${VERCEL_ENV}" == "production" && "${CONVEX_TARGET}" == "linked" ]]; then
+  echo "Refusing to sync Vercel production while CONVEX_TARGET=linked. Set CONVEX_TARGET explicitly or disable SYNC_VERCEL." >&2
+  exit 1
+fi
 
 GIT_COMMON_DIR="$(git rev-parse --git-common-dir)"
 MAIN_PROJECT_ROOT="$(cd "${GIT_COMMON_DIR}/.." && pwd)"

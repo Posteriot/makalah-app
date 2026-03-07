@@ -173,6 +173,28 @@ describe("Billing - PRO checkout flow", () => {
     expect(screen.getByText(/pembayaran diproses oleh xendit/i)).toBeInTheDocument()
   })
 
+  it("menampilkan hanya channel VA aktif dan hanya OVO untuk e-wallet", async () => {
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+
+    render(<CheckoutPROPage />)
+
+    fireEvent.click(screen.getByText("Virtual Account"))
+
+    expect(screen.getByText("BJB")).toBeInTheDocument()
+    expect(screen.getByText("BNI")).toBeInTheDocument()
+    expect(screen.getByText("BRI")).toBeInTheDocument()
+    expect(screen.getByText("BSI")).toBeInTheDocument()
+    expect(screen.getByText("CIMB")).toBeInTheDocument()
+    expect(screen.getByText("Mandiri")).toBeInTheDocument()
+    expect(screen.getByText("Permata")).toBeInTheDocument()
+    expect(screen.queryByText("BCA")).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText("E-Wallet"))
+
+    expect(screen.getAllByText("OVO").length).toBeGreaterThan(0)
+    expect(screen.queryByText("GoPay")).not.toBeInTheDocument()
+  })
+
   it("POST ke /api/payments/subscribe dengan payload default saat klik Bayar", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

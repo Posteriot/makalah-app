@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { requireRole } from "../permissions"
 import { assertValidEnabledMethodsConfig } from "../../src/lib/payment/request-validation"
+import { DEFAULT_ENABLED_METHODS } from "../../src/lib/payment/runtime-settings"
 
 /**
  * Get the currently active payment provider configuration.
@@ -19,7 +20,7 @@ export const getActiveConfig = query({
     if (!config) {
       // Return defaults when no config exists
       return {
-        enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"] as const,
+        enabledMethods: DEFAULT_ENABLED_METHODS,
         webhookUrl: "/api/webhooks/payment",
         defaultExpiryMinutes: 30,
       }

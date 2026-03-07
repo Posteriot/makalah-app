@@ -14,6 +14,7 @@ import type {
   EWalletChannelOption,
   WebhookEvent,
 } from "../types"
+import { ACTIVE_EWALLET_CHANNELS, ACTIVE_VA_CHANNELS } from "../channel-options"
 
 // ════════════════════════════════════════════════════════════════
 // Xendit-specific types (private to this adapter)
@@ -92,17 +93,8 @@ interface XenditErrorResponse {
 const XENDIT_API_URL = "https://api.xendit.co"
 const XENDIT_API_VERSION = "2024-11-11"
 
-const VA_CHANNELS: VAChannelOption[] = [
-  { code: "BCA_VIRTUAL_ACCOUNT", label: "BCA" },
-  { code: "BNI_VIRTUAL_ACCOUNT", label: "BNI" },
-  { code: "BRI_VIRTUAL_ACCOUNT", label: "BRI" },
-  { code: "MANDIRI_VIRTUAL_ACCOUNT", label: "Mandiri" },
-]
-
-const EWALLET_CHANNELS: EWalletChannelOption[] = [
-  { code: "OVO", label: "OVO", requiresMobileNumber: true },
-  { code: "GOPAY", label: "GoPay", requiresRedirectUrl: true },
-]
+const VA_CHANNELS: VAChannelOption[] = ACTIVE_VA_CHANNELS
+const EWALLET_CHANNELS: EWalletChannelOption[] = ACTIVE_EWALLET_CHANNELS
 
 // ════════════════════════════════════════════════════════════════
 // Helpers

@@ -6,7 +6,10 @@ import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
 import { CheckCircle, CreditCard, Internet, WarningCircle } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
-import { assertEnabledMethodsConfig } from "@/lib/payment/runtime-settings"
+import {
+  assertEnabledMethodsConfig,
+  DEFAULT_ENABLED_METHODS,
+} from "@/lib/payment/runtime-settings"
 
 interface PaymentProviderManagerProps {
   userId: Id<"users">
@@ -35,9 +38,7 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
   const upsertConfig = useMutation(api.billing.paymentProviderConfigs.upsertConfig)
 
   const [enabledMethods, setEnabledMethods] = useState<PaymentMethod[]>([
-    "QRIS",
-    "VIRTUAL_ACCOUNT",
-    "EWALLET",
+    ...(DEFAULT_ENABLED_METHODS as PaymentMethod[]),
   ])
   const [saving, setSaving] = useState(false)
 

@@ -104,7 +104,7 @@ function RegularOverviewView({
   return (
     <>
       {/* Tier + Saldo Card */}
-      <div className="rounded-shell border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5">
+      <div className="rounded-shell border-hairline bg-card/90 p-5 backdrop-blur-[1px] dark:bg-slate-900 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:p-0">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6">
           {/* Left: Tier Info */}
           <div>

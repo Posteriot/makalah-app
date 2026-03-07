@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   assertEnabledMethodsConfig,
+  DEFAULT_ENABLED_METHODS,
   getEnabledCheckoutMethods,
   getRuntimeProviderLabel,
   isPaymentMethodEnabled,
@@ -44,5 +45,9 @@ describe("payment runtime settings", () => {
     expect(() => assertEnabledMethodsConfig([])).toThrow(
       "Minimal satu metode pembayaran harus aktif"
     )
+  })
+
+  it("uses a conservative default enabled methods set", () => {
+    expect(DEFAULT_ENABLED_METHODS).toEqual(["VIRTUAL_ACCOUNT"])
   })
 })

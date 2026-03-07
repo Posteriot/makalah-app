@@ -1,5 +1,8 @@
 export type EnabledPaymentMethod = "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"
 export type CheckoutPaymentMethod = "qris" | "va" | "ewallet"
+export const DEFAULT_ENABLED_METHODS: readonly EnabledPaymentMethod[] = [
+  "VIRTUAL_ACCOUNT",
+]
 
 const CHECKOUT_ORDER: Array<{
   enabled: EnabledPaymentMethod
