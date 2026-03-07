@@ -2197,128 +2197,11 @@ TIPS PENCARIAN:
                 primaryReasoningTraceSnapshot = primaryReasoningTraceController.getPersistedSnapshot()
             }
 
-            const result = streamText({
-                model,
-                messages: fullMessagesGateway,
-                tools,
-                ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
-                toolChoice: forcedToolChoice,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                prepareStep: deterministicSyncPrepareStep as any,
-                stopWhen: stepCountIs(maxToolSteps),
-                ...samplingOptions,
-                onFinish: enableWebSearch
-                    ? undefined
-                    : async ({ text, providerMetadata, usage }) => {
-                        let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
-
-                        const googleMetadata = providerMetadata?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
-                        const groundingMetadata = googleMetadata?.groundingMetadata
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const chunks = (groundingMetadata as any)?.groundingChunks as any[] | undefined
-
-                        if (chunks) {
-                            sources = chunks
-                                .map((chunk) => {
-                                    if (chunk.web?.uri) {
-                                        const normalizedUrl = normalizeWebSearchUrl(chunk.web.uri)
-                                        return {
-                                            url: normalizedUrl,
-                                            title: chunk.web.title || normalizedUrl,
-                                        }
-                                    }
-                                    return null
-                                })
-                                .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
-                        }
-
-                        const normalizedText = typeof text === "string" ? text.trim() : ""
-                        const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
-                        const persistedContent = shouldPersistForcedSyncFallback
-                            ? buildForcedSyncStatusMessage(paperSession)
-                            : normalizedText
-
-                        if (normalizedText.length > 0 && sources && sources.length > 0) {
-                            sources = await enrichSourcesWithFetchedTitles(sources, {
-                                concurrency: 4,
-                                timeoutMs: 2500,
-                            })
-                        }
-
-                        if (persistedContent.length > 0) {
-                            const persistedReasoningTrace = (() => {
-                                if (!reasoningTraceEnabled) return undefined
-                                if (primaryReasoningTraceSnapshot) return primaryReasoningTraceSnapshot
-                                if (!primaryReasoningTraceController?.enabled) return undefined
-                                primaryReasoningTraceController.finalize({
-                                    outcome: "done",
-                                    sourceCount: primaryReasoningSourceCount,
-                                })
-                                capturePrimaryReasoningSnapshot()
-                                return primaryReasoningTraceSnapshot
-                            })()
-
-                            await saveAssistantMessage(
-                                persistedContent,
-                                normalizedText.length > 0 ? sources : undefined,
-                                modelNames.primary.model,
-                                persistedReasoningTrace
-                            )
-                        }
-
-                        // ═══ BILLING: Record token usage ═══
-                        if (usage) {
-                            await recordUsageAfterOperation({
-                                userId: billingContext.userId,
-                                conversationId: currentConversationId as Id<"conversations">,
-                                sessionId: paperSession?._id,
-                                inputTokens: usage.inputTokens ?? 0,
-                                outputTokens: usage.outputTokens ?? 0,
-                                totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
-                                model: modelNames.primary.model,
-                                operationType: billingContext.operationType,
-                                convexToken,
-                            }).catch(err => console.error("[Billing] Failed to record usage:", err))
-                        }
-                        // ═══════════════════════════════════
-
-                        // ═══ TELEMETRY: Primary non-websearch success ═══
-                        logAiTelemetry({
-                            token: convexToken,
-                            userId: userId as Id<"users">,
-                            conversationId: currentConversationId as Id<"conversations">,
-                            provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
-                            model: modelNames.primary.model,
-                            isPrimaryProvider: true,
-                            failoverUsed: false,
-                            toolUsed: forcedToolTelemetryName,
-                            mode: isPaperMode ? "paper" : "normal",
-                            success: true,
-                            latencyMs: Date.now() - telemetryStartTime,
-                            inputTokens: usage?.inputTokens,
-                            outputTokens: usage?.outputTokens,
-                            ...telemetrySkillContext,
-                        })
-                        // ═════════════════════════════════════════════════
-
-                        if (normalizedText.length > 0) {
-                            const minPairsForFinalTitle = Number.parseInt(
-                                process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
-                                10
-                            )
-                            await maybeUpdateTitleFromAI({
-                                assistantText: normalizedText,
-                                minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
-                                    ? minPairsForFinalTitle
-                                    : 3,
-                            })
-                        }
-                    },
-            })
-
             // ════════════════════════════════════════════════════════════════
             // PRIMARY WEB SEARCH: Perplexity Sonar via OpenRouter
             // Native search model — no tools, no tool steps.
+            // Must be checked BEFORE creating the gateway streamText call
+            // to avoid a wasted (eager) API request.
             // ════════════════════════════════════════════════════════════════
             if (enableWebSearch) {
                 const webSearchModel = await getWebSearchModel()
@@ -2697,6 +2580,123 @@ TIPS PENCARIAN:
 
                 return createUIMessageStreamResponse({ stream })
             }
+
+            const result = streamText({
+                model,
+                messages: fullMessagesGateway,
+                tools,
+                ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
+                toolChoice: forcedToolChoice,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                prepareStep: deterministicSyncPrepareStep as any,
+                stopWhen: stepCountIs(maxToolSteps),
+                ...samplingOptions,
+                onFinish: async ({ text, providerMetadata, usage }) => {
+                        let sources: { url: string; title: string; publishedAt?: number | null }[] | undefined
+
+                        const googleMetadata = providerMetadata?.google as unknown as GoogleGenerativeAIProviderMetadata | undefined
+                        const groundingMetadata = googleMetadata?.groundingMetadata
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const chunks = (groundingMetadata as any)?.groundingChunks as any[] | undefined
+
+                        if (chunks) {
+                            sources = chunks
+                                .map((chunk) => {
+                                    if (chunk.web?.uri) {
+                                        const normalizedUrl = normalizeWebSearchUrl(chunk.web.uri)
+                                        return {
+                                            url: normalizedUrl,
+                                            title: chunk.web.title || normalizedUrl,
+                                        }
+                                    }
+                                    return null
+                                })
+                                .filter(Boolean) as { url: string; title: string; publishedAt?: number | null }[]
+                        }
+
+                        const normalizedText = typeof text === "string" ? text.trim() : ""
+                        const shouldPersistForcedSyncFallback = shouldForceGetCurrentPaperState && normalizedText.length === 0
+                        const persistedContent = shouldPersistForcedSyncFallback
+                            ? buildForcedSyncStatusMessage(paperSession)
+                            : normalizedText
+
+                        if (normalizedText.length > 0 && sources && sources.length > 0) {
+                            sources = await enrichSourcesWithFetchedTitles(sources, {
+                                concurrency: 4,
+                                timeoutMs: 2500,
+                            })
+                        }
+
+                        if (persistedContent.length > 0) {
+                            const persistedReasoningTrace = (() => {
+                                if (!reasoningTraceEnabled) return undefined
+                                if (primaryReasoningTraceSnapshot) return primaryReasoningTraceSnapshot
+                                if (!primaryReasoningTraceController?.enabled) return undefined
+                                primaryReasoningTraceController.finalize({
+                                    outcome: "done",
+                                    sourceCount: primaryReasoningSourceCount,
+                                })
+                                capturePrimaryReasoningSnapshot()
+                                return primaryReasoningTraceSnapshot
+                            })()
+
+                            await saveAssistantMessage(
+                                persistedContent,
+                                normalizedText.length > 0 ? sources : undefined,
+                                modelNames.primary.model,
+                                persistedReasoningTrace
+                            )
+                        }
+
+                        // ═══ BILLING: Record token usage ═══
+                        if (usage) {
+                            await recordUsageAfterOperation({
+                                userId: billingContext.userId,
+                                conversationId: currentConversationId as Id<"conversations">,
+                                sessionId: paperSession?._id,
+                                inputTokens: usage.inputTokens ?? 0,
+                                outputTokens: usage.outputTokens ?? 0,
+                                totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+                                model: modelNames.primary.model,
+                                operationType: billingContext.operationType,
+                                convexToken,
+                            }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                        }
+                        // ═══════════════════════════════════
+
+                        // ═══ TELEMETRY: Primary non-websearch success ═══
+                        logAiTelemetry({
+                            token: convexToken,
+                            userId: userId as Id<"users">,
+                            conversationId: currentConversationId as Id<"conversations">,
+                            provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
+                            model: modelNames.primary.model,
+                            isPrimaryProvider: true,
+                            failoverUsed: false,
+                            toolUsed: forcedToolTelemetryName,
+                            mode: isPaperMode ? "paper" : "normal",
+                            success: true,
+                            latencyMs: Date.now() - telemetryStartTime,
+                            inputTokens: usage?.inputTokens,
+                            outputTokens: usage?.outputTokens,
+                            ...telemetrySkillContext,
+                        })
+                        // ═════════════════════════════════════════════════
+
+                        if (normalizedText.length > 0) {
+                            const minPairsForFinalTitle = Number.parseInt(
+                                process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                                10
+                            )
+                            await maybeUpdateTitleFromAI({
+                                assistantText: normalizedText,
+                                minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                                    ? minPairsForFinalTitle
+                                    : 3,
+                            })
+                        }
+                    },
+            })
 
             {
                 const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
