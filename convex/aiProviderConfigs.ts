@@ -35,6 +35,8 @@ export const getActiveConfig = query({
       thinkingBudgetPrimary: activeConfig.thinkingBudgetPrimary ?? 256,
       thinkingBudgetFallback: activeConfig.thinkingBudgetFallback ?? 128,
       reasoningTraceMode: activeConfig.reasoningTraceMode ?? "curated",
+      webSearchModel: activeConfig.webSearchModel ?? "perplexity/sonar",
+      webSearchFallbackModel: activeConfig.webSearchFallbackModel ?? "x-ai/grok-3-mini",
     }
   },
 })
@@ -172,6 +174,8 @@ export const createConfig = mutation({
     fallbackWebSearchEnabled: v.optional(v.boolean()),
     fallbackWebSearchEngine: v.optional(v.string()),
     fallbackWebSearchMaxResults: v.optional(v.number()),
+    webSearchModel: v.optional(v.string()),
+    webSearchFallbackModel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
@@ -235,6 +239,8 @@ export const createConfig = mutation({
       fallbackWebSearchEnabled: args.fallbackWebSearchEnabled,
       fallbackWebSearchEngine: args.fallbackWebSearchEngine,
       fallbackWebSearchMaxResults: args.fallbackWebSearchMaxResults,
+      webSearchModel: args.webSearchModel,
+      webSearchFallbackModel: args.webSearchFallbackModel,
       version: 1,
       isActive: false, // Not active by default
       parentId: undefined,
@@ -287,6 +293,8 @@ export const updateConfig = mutation({
     fallbackWebSearchEnabled: v.optional(v.boolean()),
     fallbackWebSearchEngine: v.optional(v.string()),
     fallbackWebSearchMaxResults: v.optional(v.number()),
+    webSearchModel: v.optional(v.string()),
+    webSearchFallbackModel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
@@ -342,6 +350,10 @@ export const updateConfig = mutation({
       args.fallbackWebSearchEngine ?? oldConfig.fallbackWebSearchEngine
     const fallbackWebSearchMaxResults =
       args.fallbackWebSearchMaxResults ?? oldConfig.fallbackWebSearchMaxResults
+    const webSearchModel =
+      args.webSearchModel ?? oldConfig.webSearchModel
+    const webSearchFallbackModel =
+      args.webSearchFallbackModel ?? oldConfig.webSearchFallbackModel
 
     // Validate inputs
     if (!name.trim()) {
@@ -404,6 +416,8 @@ export const updateConfig = mutation({
       fallbackWebSearchEnabled,
       fallbackWebSearchEngine,
       fallbackWebSearchMaxResults,
+      webSearchModel,
+      webSearchFallbackModel,
       version: newVersion,
       isActive: false, // Not active yet
       parentId: args.configId,
@@ -533,6 +547,9 @@ export const swapProviders = mutation({
       // Engine and maxResults stay with fallback (specific to :online behavior)
       fallbackWebSearchEngine: config.fallbackWebSearchEngine,
       fallbackWebSearchMaxResults: config.fallbackWebSearchMaxResults,
+      // Dedicated web search models (not tied to primary/fallback slots)
+      webSearchModel: config.webSearchModel,
+      webSearchFallbackModel: config.webSearchFallbackModel,
       version: newVersion,
       isActive: false,
       parentId: configId,
