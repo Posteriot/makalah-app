@@ -75,7 +75,7 @@ npm run convex:dashboard           # Open dashboard
 - **AI/LLM**: Vercel AI SDK v5
   - Primary: Vercel AI Gateway → `gemini-2.5-flash`
   - Fallback: OpenRouter → `openai/gpt-5.1`
-  - Web Search: `google_search` provider-defined tool (Gateway), `:online` suffix (OpenRouter)
+  - Web Search: Perplexity Sonar (primary, via OpenRouter), Grok with `web_search_options` (fallback, via OpenRouter)
   - **NOTE:** Actual config stored in `aiProviderConfigs` table. Check Admin Panel for current values.
 - **Email**: Resend
 - **UI**: Radix UI primitives + shadcn/ui
@@ -111,10 +111,10 @@ npm run convex:dashboard           # Open dashboard
 **Mutation Retry:** Use `retryMutation()` from `src/lib/convex/retry.ts` for critical mutations that may transiently fail
 
 ### Web Search Constraint
-- `google_search` is a provider-defined tool
-- Cannot mix with function tools in same request
+- Web search uses separate models (Perplexity Sonar / Grok via OpenRouter) instead of provider-defined tools
+- Cannot mix web search models with function tools in same request (different models for search vs function tools)
 - `src/app/api/chat/route.ts` runs a router to decide mode:
-  - **Websearch mode**: tools = `{ google_search }`
+  - **Websearch mode**: uses dedicated search model (Perplexity Sonar or Grok), no function tools
   - **Normal mode**: tools = function tools only
 
 ### Authentication Flow
@@ -480,28 +480,34 @@ Use `v` from `convex/values` for argument validation. Pattern: `query/mutation({
 - Primary → Gateway, Fallback → OpenRouter, Final fallback → truncate user message
 - Called after first AI response in new conversations
 
-### Fallback Web Search (`:online` suffix)
+### Web Search Models
 
-When Gateway fails during web search, fallback uses OpenRouter's `:online` suffix.
+Primary web search uses Perplexity Sonar (native search model). Fallback uses Grok with `web_search_options`.
 
 **How it works:**
-1. Gateway fails + web search requested → check `fallbackWebSearchEnabled` config
-2. If enabled → append `:online` to model ID (e.g., `model-id:online`)
-3. OpenRouter annotations → `normalizeCitations('openrouter')` → citations UI
+1. Search required → resolve execution mode via `resolveSearchExecutionMode()`
+2. Primary: `getWebSearchModel()` → Perplexity Sonar via OpenRouter (native search, no special config)
+3. Fallback: `getWebSearchFallbackModel()` → Grok via OpenRouter with `web_search_options` provider extras
+4. Citations: Perplexity sources / OpenRouter annotations → `normalizeCitations()` → citations UI
 
 **Admin Config (Admin Panel → AI Providers → Web Search Settings):**
-- `primaryWebSearchEnabled` (default: true) - Enable `google_search` for Gateway
-- `fallbackWebSearchEnabled` (default: true) - Enable `:online` for OpenRouter
+- `primaryWebSearchEnabled` (default: true) - Enable Perplexity Sonar for web search
+- `fallbackWebSearchEnabled` (default: true) - Enable Grok fallback for web search
+- `webSearchModel` (default: "perplexity/sonar") - Primary search model
+- `webSearchFallbackModel` (default: "x-ai/grok-3-mini") - Fallback search model
 - `fallbackWebSearchEngine` (default: "auto") - Engine: "auto" | "native" | "exa"
 - `fallbackWebSearchMaxResults` (default: 5) - Max results (1-10)
 
 **Troubleshooting:**
-- Web search not working in fallback → Check `fallbackWebSearchEnabled` is true
-- Citations not appearing → Check console `[Fallback] Web search config:`
-- `:online` fails → Auto-retry without suffix (graceful degradation)
+- Web search not working → Check `primaryWebSearchEnabled` is true and model is configured
+- Fallback not working → Check `fallbackWebSearchEnabled` is true
+- Citations not appearing → Check `normalizeCitations()` output in console
 
 **Key Files:**
-- `src/lib/ai/streaming.ts` → `getWebSearchConfig()`, `getOpenRouterModel()`
+- `src/lib/ai/streaming.ts` → `getWebSearchConfig()`, `getWebSearchModel()`, `getWebSearchFallbackModel()`
+- `src/lib/ai/search-execution-mode.ts` → `resolveSearchExecutionMode()`
+- `src/lib/ai/search-source-policy.ts` → Search source policy enforcement
+- `src/lib/ai/blocked-domains.ts` → Blocked domain list for search filtering
 - `src/lib/citations/normalizer.ts` → `normalizeCitations()`
 
 ## System Prompt Management
@@ -618,7 +624,7 @@ Messages in paper mode have edit restrictions:
 
 ## Inline Citations
 
-**Flow:** streamText with google_search -> onFinish extracts groundingSupports -> stream data-cited-text/data-cited-sources -> MarkdownRenderer renders [1] as InlineCitationChip
+**Flow:** streamText with search model (Perplexity/Grok) -> Perplexity sources / OpenRouter annotations -> normalizeCitations() -> stream data-cited-text/data-cited-sources -> MarkdownRenderer renders [1] as InlineCitationChip
 
 **Key Files:**
 - `src/lib/citations/apaWeb.ts` - URL/title normalization
