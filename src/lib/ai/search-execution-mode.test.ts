@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest"
 import {
-  mapSearchToolReasonToFallbackReason,
   resolveSearchExecutionMode,
 } from "./search-execution-mode"
 
@@ -89,19 +88,3 @@ describe("resolveSearchExecutionMode", () => {
   })
 })
 
-describe("mapSearchToolReasonToFallbackReason", () => {
-  it("maps factory_missing to explicit telemetry reason", () => {
-    expect(mapSearchToolReasonToFallbackReason("factory_missing"))
-      .toBe("google_search_tool_factory_missing")
-  })
-
-  it("maps import_failed to explicit telemetry reason", () => {
-    expect(mapSearchToolReasonToFallbackReason("import_failed"))
-      .toBe("google_search_tool_import_failed")
-  })
-
-  it("maps factory_init_failed to explicit telemetry reason", () => {
-    expect(mapSearchToolReasonToFallbackReason("factory_init_failed"))
-      .toBe("google_search_tool_factory_init_failed")
-  })
-})

@@ -56,7 +56,6 @@ import {
     normalizeRequestedAttachmentMode,
     resolveAttachmentRuntimeEnv,
 } from "@/lib/chat/attachment-health"
-// Note: google-search-tool import removed — Perplexity/Grok handle search natively
 import {
     resolveSearchExecutionMode,
 } from "@/lib/ai/search-execution-mode"

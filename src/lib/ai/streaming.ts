@@ -2,7 +2,6 @@ import { streamText, type ModelMessage } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createGateway } from "@ai-sdk/gateway"
 import { configCache } from "./config-cache"
-import { initGoogleSearchTool } from "./google-search-tool"
 
 const MIN_THINKING_BUDGET = 0
 const MAX_THINKING_BUDGET = 32768
@@ -456,19 +455,3 @@ export async function getModelNames() {
   }
 }
 
-/**
- * Get the Google Search tool definition
- * Returns null if initialization fails (graceful degradation)
- * Async to support dynamic imports (cleaner bundle/lint compliance)
- */
-export async function getGoogleSearchTool() {
-  const initResult = await initGoogleSearchTool()
-  if (initResult.status !== "ready") {
-    console.error("[Streaming] Failed to load Google Search tool:", {
-      reason: initResult.reason,
-      errorMessage: initResult.errorMessage,
-    })
-    return null
-  }
-  return initResult.tool
-}
