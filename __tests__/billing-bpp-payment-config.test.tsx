@@ -5,6 +5,7 @@ const mockUseCurrentUser = vi.fn()
 const mockUseOnboardingStatus = vi.fn()
 const mockUseQuery = vi.fn()
 const mockRouterReplace = vi.fn()
+const mockSearchParamGet = vi.fn()
 
 vi.mock("@/lib/hooks/useCurrentUser", () => ({
   useCurrentUser: () => mockUseCurrentUser(),
@@ -28,7 +29,7 @@ vi.mock("next/navigation", () => ({
     prefetch: vi.fn(),
   }),
   useSearchParams: () => ({
-    get: () => "plans",
+    get: mockSearchParamGet,
   }),
 }))
 
@@ -51,6 +52,7 @@ vi.mock("sonner", () => ({
 describe("Checkout BPP payment settings", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchParamGet.mockImplementation((key: string) => (key === "from" ? "plans" : null))
 
     mockUseCurrentUser.mockReturnValue({
       user: {
