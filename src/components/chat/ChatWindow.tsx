@@ -42,6 +42,7 @@ import {
   shouldShowTechnicalReportTrigger,
 } from "@/lib/technical-report/chatSnapshot"
 import { resolveTechnicalReportSearchStatus } from "@/lib/technical-report/searchStatus"
+import * as Sentry from "@sentry/nextjs"
 
 /** Minimal artifact shape from Convex query (only fields we need for signal reconstruction) */
 interface ConversationArtifact {
@@ -364,6 +365,16 @@ function PendingAssistantLaneIndicator() {
 export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, artifacts: conversationArtifacts }: ChatWindowProps) {
   const router = useRouter()
   const { user: currentUser } = useCurrentUser()
+
+  // Sentry: set user identity for error correlation
+  useEffect(() => {
+    if (currentUser) {
+      Sentry.setUser({ id: currentUser._id, email: currentUser.email })
+    } else {
+      Sentry.setUser(null)
+    }
+  }, [currentUser])
+
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const scrollRafRef = useRef<number | null>(null)
   const pendingScrollToBottomRef = useRef(false)
@@ -701,6 +712,14 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     onError: (err) => {
       if (isQuotaExceededChatError(err)) return
       toast.error("Terjadi kesalahan: " + (err.message || "Gagal memproses pesan"))
+
+      Sentry.withScope((scope) => {
+        scope.setTag("chat.mode", isPaperMode ? "paper" : "normal")
+        scope.setTag("chat.provider", latestAssistantModel ?? "unknown")
+        scope.setContext("chat_diagnostic", technicalReportSnapshot)
+        if (safeConversationId) scope.setTag("chat.conversationId", String(safeConversationId))
+        Sentry.captureException(err)
+      })
     }
   })
 
@@ -1137,6 +1156,25 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     [technicalReportChatStatus, technicalReportSearchStatus, technicalReportToolStates]
   )
 
+  // Sentry: auto-capture when technical report trigger fires
+  const sentryAutoTriggerFired = useRef(false)
+  useEffect(() => {
+    if (!shouldShowTechnicalReportAutoTrigger) {
+      sentryAutoTriggerFired.current = false
+      return
+    }
+    if (sentryAutoTriggerFired.current) return
+    sentryAutoTriggerFired.current = true
+
+    Sentry.withScope((scope) => {
+      scope.setTag("chat.auto_triggered", "true")
+      scope.setTag("chat.mode", isPaperMode ? "paper" : "normal")
+      scope.setContext("chat_diagnostic", technicalReportSnapshot)
+      if (safeConversationId) scope.setTag("chat.conversationId", String(safeConversationId))
+      Sentry.captureMessage("Chat error auto-detected", "warning")
+    })
+  }, [shouldShowTechnicalReportAutoTrigger, technicalReportSnapshot, isPaperMode, safeConversationId])
+
   const clearProcessTimers = useCallback(() => {
     if (processIntervalRef.current !== null) {
       window.clearInterval(processIntervalRef.current)
@@ -1508,6 +1546,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       }
 
     } catch (error) {
+      Sentry.captureException(error, { tags: { subsystem: "chat.edit" } })
       console.error("Failed to edit and resend:", error)
       toast.error("Gagal mengedit pesan. Silakan coba lagi.")
     }
@@ -1550,6 +1589,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       // Auto-send message agar AI aware dan bisa lanjutkan ke tahap berikutnya
       sendMessageWithPendingIndicator(`[Approved: ${stageLabel}] Lanjut ke tahap berikutnya.`)
     } catch (error) {
+      Sentry.captureException(error, { tags: { subsystem: "paper.approve" } })
       console.error("Failed to approve stage:", error)
       toast.error("Gagal menyetujui tahap.")
     }
@@ -1563,6 +1603,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       sendMessageWithPendingIndicator(`[Revisi untuk ${stageLabel}]\n\n${feedback}`)
       toast.info("Feedback revisi telah dikirim ke agen.")
     } catch (error) {
+      Sentry.captureException(error, { tags: { subsystem: "paper.revision" } })
       console.error("Failed to request revision:", error)
       toast.error("Gagal mengirim feedback revisi.")
     }
@@ -1595,6 +1636,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
       router.push(`/chat/${newId}`)
       return
     } catch (error) {
+      Sentry.captureException(error, { tags: { subsystem: "chat.create" } })
       console.error("Failed to create conversation:", error)
       toast.error("Gagal membuat percakapan baru")
       setIsCreatingChat(false)
@@ -1638,6 +1680,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         toast.error(errorMsg)
       }
     } catch (error) {
+      Sentry.captureException(error, { tags: { subsystem: "paper.rewind" } })
       console.error("Rewind failed:", error)
       toast.error("Gagal melakukan rewind.")
     } finally {
