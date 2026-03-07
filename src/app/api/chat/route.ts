@@ -2026,20 +2026,20 @@ Aturan:
 
             const searchExecutionMode = resolveSearchExecutionMode({
                 searchRequired: searchRequestedByPolicy,
-                primaryToolReady: primaryGoogleSearchReady,
-                primaryEnabled: webSearchConfig.primaryEnabled,
-                fallbackOnlineEnabled: webSearchConfig.fallbackEnabled,
-                fallbackProvider: modelNames.fallback.provider,
+                webSearchEnabled: webSearchConfig.primaryEnabled,
+                webSearchModel: webSearchConfig.webSearchModel,
+                fallbackWebSearchEnabled: webSearchConfig.fallbackEnabled,
+                webSearchFallbackModel: webSearchConfig.webSearchFallbackModel,
             })
             console.log(
-                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}, primaryReady=${primaryGoogleSearchReady}, primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
+                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}, primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
             )
             let fallbackSearchToolReason: GoogleSearchToolUnavailableReason | undefined
             let searchUnavailableReasonCode: string | undefined
 
-            if (searchExecutionMode === "primary_google_search") {
+            if (searchExecutionMode === "primary_perplexity") {
                 enableWebSearch = true
-            } else if (searchExecutionMode === "fallback_online_search") {
+            } else if (searchExecutionMode === "fallback_web_search") {
                 enableWebSearch = true
                 if (googleSearchInit.status === "unavailable") {
                     fallbackSearchToolReason = googleSearchInit.reason

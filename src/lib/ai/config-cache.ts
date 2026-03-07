@@ -30,6 +30,9 @@ export interface AIProviderConfig {
   fallbackWebSearchEnabled: boolean // default: true
   fallbackWebSearchEngine: string // default: "auto", options: "native" | "exa" | "auto"
   fallbackWebSearchMaxResults: number // default: 5, range: 1-10
+  // Dedicated web search models (with defaults from getActiveConfig)
+  webSearchModel: string // default: "perplexity/sonar"
+  webSearchFallbackModel: string // default: "x-ai/grok-3-mini"
   version: number
   isActive: boolean
   createdBy: Id<"users">
