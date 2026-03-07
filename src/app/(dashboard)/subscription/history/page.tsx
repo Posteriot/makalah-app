@@ -12,6 +12,7 @@ import {
   Download,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
+import { getVAPaymentMethodLabel } from "@/lib/payment/channel-labels"
 
 function formatDate(timestamp: number): string {
   return new Intl.DateTimeFormat("id-ID", {
@@ -73,7 +74,7 @@ function getPaymentMethodLabel(
     case "QRIS":
       return "QRIS"
     case "VIRTUAL_ACCOUNT":
-      return channel ? `VA ${channel}` : "Virtual Account"
+      return getVAPaymentMethodLabel(channel)
     case "EWALLET":
       return channel ?? "E-Wallet"
     case "DIRECT_DEBIT":

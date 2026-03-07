@@ -47,7 +47,11 @@ describe("payment runtime settings", () => {
     )
   })
 
-  it("uses a conservative default enabled methods set", () => {
-    expect(DEFAULT_ENABLED_METHODS).toEqual(["VIRTUAL_ACCOUNT"])
+  it("enables all checkout methods by default", () => {
+    expect(DEFAULT_ENABLED_METHODS).toEqual([
+      "QRIS",
+      "VIRTUAL_ACCOUNT",
+      "EWALLET",
+    ])
   })
 })

@@ -35,6 +35,7 @@ import {
   ACTIVE_EWALLET_CHANNELS,
   ACTIVE_VA_CHANNELS,
 } from "@/lib/payment/channel-options"
+import { getVAChannelFullLabel } from "@/lib/payment/channel-labels"
 import { mapPaymentCreationErrorMessage } from "@/lib/payment/provider-error-messages"
 import { normalizeOvoMobileNumber } from "@/lib/payment/mobile-number-format"
 
@@ -54,7 +55,7 @@ type PaymentMethod = "qris" | "va" | "ewallet"
 
 const shellPanelClass = "rounded-shell border border-border/70 bg-card/95"
 const sectionCardClass =
-  "rounded-shell border border-border/60 bg-[color:var(--slate-100)] p-2.5 dark:bg-[color:var(--slate-800)]/70 md:p-3"
+  "rounded-action border border-border/60 bg-[color:var(--slate-100)] p-2.5 dark:bg-[color:var(--slate-800)]/70 md:p-3"
 const checkoutViewportClass =
   "relative z-10 flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10"
 const checkoutCardClass = "w-full max-w-[42rem]"
@@ -114,8 +115,8 @@ export default function CheckoutBPPPage() {
             <div className={cn(checkoutCardClass, "p-3 md:p-3.5", shellPanelClass)}>
               <div className="animate-pulse space-y-3">
                 <div className="h-6 rounded bg-muted w-1/3" />
-                <div className="h-28 rounded-shell bg-muted" />
-                <div className="h-48 rounded-shell bg-muted" />
+                <div className="h-28 rounded-action bg-muted" />
+                <div className="h-48 rounded-action bg-muted" />
               </div>
             </div>
           </div>
@@ -262,8 +263,8 @@ function CheckoutBPPContent() {
           <div className={cn(checkoutCardClass, "p-3 md:p-3.5", shellPanelClass)}>
             <div className="animate-pulse space-y-3">
               <div className="h-6 rounded bg-muted w-1/3" />
-              <div className="h-28 rounded-shell bg-muted" />
-              <div className="h-48 rounded-shell bg-muted" />
+              <div className="h-28 rounded-action bg-muted" />
+              <div className="h-48 rounded-action bg-muted" />
             </div>
           </div>
         </div>
@@ -301,7 +302,7 @@ function CheckoutBPPContent() {
 
                 {selectedMethod === "qris" && (paymentResult.qrCodeUrl || paymentResult.qrString) && (
                   <div className="space-y-2">
-                    <div className="inline-flex rounded-shell border border-border/70 bg-white p-3">
+                    <div className="inline-flex rounded-action border border-border/70 bg-white p-3">
                       {paymentResult.qrCodeUrl ? (
                         <Image
                           src={paymentResult.qrCodeUrl}
@@ -327,9 +328,12 @@ function CheckoutBPPContent() {
 
                 {selectedMethod === "va" && paymentResult.vaNumber && (
                   <div className="space-y-2">
-                    <div className="rounded-shell border border-border/70 bg-background/60 p-3">
+                    <div className="rounded-action border border-border/70 bg-background/60 p-3">
                       <p className="text-interface text-xs text-muted-foreground mb-1">
-                        Bank {paymentResult.vaChannel}
+                        Virtual Account
+                      </p>
+                      <p className="text-narrative mb-2 text-sm text-foreground">
+                        {getVAChannelFullLabel(paymentResult.vaChannel) ?? paymentResult.vaChannel}
                       </p>
                       <div className="flex items-center justify-center gap-2">
                         <p className="text-interface text-2xl font-medium tracking-wider text-foreground">
@@ -351,7 +355,7 @@ function CheckoutBPPContent() {
                 )}
 
                 {selectedMethod === "ewallet" && (
-                  <div className="rounded-shell border border-border/70 bg-background/60 p-3">
+                  <div className="rounded-action border border-border/70 bg-background/60 p-3">
                     <div className="mb-2 flex items-center justify-center gap-2">
                       <Wallet className="h-5 w-5 text-foreground" />
                       <p className="text-interface text-sm font-medium">{selectedEWalletChannel}</p>
@@ -372,7 +376,7 @@ function CheckoutBPPContent() {
                   </p>
                 </div>
 
-                <div className="rounded-shell border border-border/70 bg-background/60 p-3 text-left">
+                <div className="rounded-action border border-border/70 bg-background/60 p-3 text-left">
                   <p className="text-interface text-xs font-medium text-foreground mb-1">Catatan:</p>
                   <ul className="text-narrative list-disc list-inside space-y-1 text-sm text-muted-foreground">
                     <li>Pembayaran diproses otomatis dalam hitungan menit.</li>
@@ -409,7 +413,7 @@ function CheckoutBPPContent() {
             </div>
 
             {error && (
-              <div className="rounded-shell border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
+              <div className="rounded-action border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2">
                 <WarningCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                 <div>
                   <p className="text-interface text-xs font-medium text-destructive">Gagal memproses pembayaran</p>
@@ -454,7 +458,7 @@ function CheckoutBPPContent() {
                       onClick={() => setSelectedMethod(method.id)}
                       disabled={isProcessing}
                       className={cn(
-                        "w-full flex items-center gap-3 rounded-shell border p-2 text-left transition-colors md:p-2.5",
+                        "w-full flex items-center gap-3 rounded-action border p-2 text-left transition-colors md:p-2.5",
                         isSelected
                           ? "border-[color:var(--emerald-500)] bg-[color:var(--emerald-500)]/10"
                           : "border-border/70 bg-background/50 hover:bg-muted/90",
@@ -491,21 +495,27 @@ function CheckoutBPPContent() {
               {selectedMethod === "va" && (
                 <div className="mt-3 border-t border-border/60 pt-3">
                   <p className="text-interface text-xs text-muted-foreground mb-2">Pilih Bank</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     {VA_CHANNELS.map((channel) => (
                       <button
                         key={channel.code}
                         onClick={() => setSelectedVAChannel(channel.code)}
                         disabled={isProcessing}
                         className={cn(
-                          "rounded-action border px-2 py-2 text-interface text-xs transition-colors",
+                          "rounded-action border px-3 py-2.5 text-left transition-colors",
+                          "flex min-h-[4.75rem] flex-col items-start justify-center gap-0.5",
                           selectedVAChannel === channel.code
                             ? "border-[color:var(--emerald-500)] bg-[color:var(--emerald-500)]/10"
                             : "border-border/70 hover:bg-muted/60",
                           isProcessing && "opacity-50 cursor-not-allowed"
                         )}
                       >
-                        {channel.label}
+                        <span className="text-interface text-xs font-medium text-foreground">
+                          {channel.shortLabel}
+                        </span>
+                        <span className="text-narrative text-[11px] leading-tight text-muted-foreground">
+                          {channel.label}
+                        </span>
                       </button>
                     ))}
                   </div>
