@@ -8,6 +8,7 @@ const mutate = vi.fn()
 const configResult = {
   enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"] as const,
   webhookUrl: "/api/webhooks/payment",
+  defaultExpiryMinutes: 30,
 }
 const envStatusResult = {
   xendit: {
@@ -61,6 +62,8 @@ describe("PaymentProviderManager", () => {
       expect(mutate).toHaveBeenCalledWith({
         requestorUserId: "user_123",
         enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT"],
+        webhookUrl: "/api/webhooks/payment",
+        defaultExpiryMinutes: 30,
       })
     })
   })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  assertEnabledMethodsConfig,
   getEnabledCheckoutMethods,
   getRuntimeProviderLabel,
   isPaymentMethodEnabled,
@@ -37,5 +38,11 @@ describe("payment runtime settings", () => {
 
   it("returns xendit as the only runtime provider label", () => {
     expect(getRuntimeProviderLabel()).toBe("Xendit")
+  })
+
+  it("rejects empty enabled methods config", () => {
+    expect(() => assertEnabledMethodsConfig([])).toThrow(
+      "Minimal satu metode pembayaran harus aktif"
+    )
   })
 })

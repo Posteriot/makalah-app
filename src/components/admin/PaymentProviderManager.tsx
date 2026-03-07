@@ -6,6 +6,7 @@ import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
 import { CheckCircle, WarningCircle } from "iconoir-react"
 import type { Id } from "@convex/_generated/dataModel"
+import { assertEnabledMethodsConfig } from "@/lib/payment/runtime-settings"
 
 interface PaymentProviderManagerProps {
   userId: Id<"users">
@@ -56,15 +57,22 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
   }
 
   async function handleSave() {
+    if (!config) return
+
     setSaving(true)
     try {
+      assertEnabledMethodsConfig(enabledMethods)
       await upsertConfig({
         requestorUserId: userId,
         enabledMethods,
+        webhookUrl: config.webhookUrl,
+        defaultExpiryMinutes: config.defaultExpiryMinutes,
       })
       toast.success("Konfigurasi payment provider berhasil disimpan")
-    } catch {
-      toast.error("Gagal menyimpan konfigurasi")
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Gagal menyimpan konfigurasi"
+      toast.error(message)
     } finally {
       setSaving(false)
     }
@@ -138,7 +146,7 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
       <div className={sectionCard}>
         <h3 className="text-interface text-sm font-medium mb-3">Webhook URL</h3>
         <code className="text-interface text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-badge">
-          /api/webhooks/payment
+          {config.webhookUrl}
         </code>
       </div>
 

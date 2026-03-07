@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { requireRole } from "../permissions"
+import { assertValidEnabledMethodsConfig } from "../../src/lib/payment/request-validation"
 
 /**
  * Get the currently active payment provider configuration.
@@ -47,6 +48,7 @@ export const upsertConfig = mutation({
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
+    assertValidEnabledMethodsConfig(args.enabledMethods)
 
     const now = Date.now()
 

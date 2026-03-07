@@ -34,6 +34,14 @@ export function isPaymentMethodEnabled(
   return getEnabledCheckoutMethods(enabledMethods).includes(method)
 }
 
+export function assertEnabledMethodsConfig(
+  enabledMethods: readonly EnabledPaymentMethod[]
+): void {
+  if (enabledMethods.length === 0) {
+    throw new Error("Minimal satu metode pembayaran harus aktif")
+  }
+}
+
 export function getRuntimeProviderLabel(): "Xendit" {
   return "Xendit"
 }

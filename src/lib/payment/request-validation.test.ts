@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { assertEnabledPaymentMethod } from "./request-validation"
+import {
+  assertEnabledPaymentMethod,
+  assertSupportedRuntimePaymentType,
+  assertValidEnabledMethodsConfig,
+} from "./request-validation"
 
 describe("assertEnabledPaymentMethod", () => {
   it("allows enabled payment methods", () => {
@@ -12,5 +16,17 @@ describe("assertEnabledPaymentMethod", () => {
     expect(() =>
       assertEnabledPaymentMethod("va", ["QRIS"])
     ).toThrow("Metode pembayaran tidak tersedia")
+  })
+
+  it("rejects empty enabled payment settings", () => {
+    expect(() => assertValidEnabledMethodsConfig([])).toThrow(
+      "Minimal satu metode pembayaran harus aktif"
+    )
+  })
+
+  it("rejects unsupported runtime payment types", () => {
+    expect(() =>
+      assertSupportedRuntimePaymentType("paper_completion")
+    ).toThrow("Jenis pembayaran ini tidak didukung di runtime aktif")
   })
 })
