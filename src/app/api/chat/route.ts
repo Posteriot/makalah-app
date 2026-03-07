@@ -12,6 +12,7 @@ import { retryMutation } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 import { normalizeCitations, type NormalizedCitation } from "@/lib/citations/normalizer"
+import { getSourcePolicyPrompt } from "@/lib/ai/search-source-policy"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { createPaperTools } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
@@ -55,12 +56,8 @@ import {
     normalizeRequestedAttachmentMode,
     resolveAttachmentRuntimeEnv,
 } from "@/lib/chat/attachment-health"
+// Note: google-search-tool import removed — Perplexity/Grok handle search natively
 import {
-    initGoogleSearchTool,
-    type GoogleSearchToolUnavailableReason,
-} from "@/lib/ai/google-search-tool"
-import {
-    mapSearchToolReasonToFallbackReason,
     resolveSearchExecutionMode,
 } from "@/lib/ai/search-execution-mode"
 
@@ -730,6 +727,8 @@ Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
             buildReasoningProviderOptions,
             getModelNames,
             getWebSearchConfig,
+            getWebSearchModel,
+            getWebSearchFallbackModel,
         } = await import("@/lib/ai/streaming")
         const { streamText } = await import("ai")
         const providerSettings = await getProviderSettings()
@@ -1060,7 +1059,7 @@ Catatan tambahan:
 - Set false jika user meminta simpan/approve hasil yang sudah ada, ATAU semua data sudah tersedia dari pencarian sebelumnya.`
                 : ""
 
-            const routerPrompt = `Anda adalah "router" yang memutuskan apakah jawaban untuk user WAJIB memakai pencarian web (tool google_search).
+            const routerPrompt = `Anda adalah "router" yang memutuskan apakah jawaban untuk user WAJIB memakai pencarian web.
 
 Tujuan:
 - enableWebSearch = true jika:
@@ -1744,16 +1743,55 @@ Aturan:
         let shouldForceGetCurrentPaperState = false
         let shouldForceSubmitValidation = false
         let missingArtifactNote = ""
-        class SearchToolUnavailableError extends Error {
-            readonly reason: GoogleSearchToolUnavailableReason
 
-            constructor(reason: GoogleSearchToolUnavailableReason) {
-                super(`google_search unavailable: ${reason}`)
-                this.name = "SearchToolUnavailableError"
-                this.reason = reason
-            }
+        // Hoisted: web search behavior note + message sanitizer (used in both primary and fallback)
+        const webSearchBehaviorSystemNote = `⚠️ MODE PENCARIAN WEB AKTIF - BACA INI DENGAN TELITI!
+
+CONSTRAINT TEKNIS PENTING:
+- Ini adalah mode pencarian web. Model pencarian menangani search secara native (tanpa tool).
+- Tool lain (createArtifact, updateArtifact, updateStageData, submitStageForValidation, renameConversationTitle) TIDAK TERSEDIA di turn ini.
+- JANGAN coba memanggil tool apapun di turn ini.
+
+YANG HARUS ANDA LAKUKAN DI TURN INI:
+1) Jawab pertanyaan user dengan pencarian web (model pencarian menangani search otomatis)
+2) Rangkum temuan dari pencarian
+3) AKHIRI respons Anda di sini - JANGAN coba menyimpan data atau membuat artifact
+
+YANG HARUS ANDA LAKUKAN DI TURN BERIKUTNYA (setelah user merespons):
+- Baru di turn berikutnya Anda bisa menyimpan draf (updateStageData) atau membuat artifact (createArtifact)
+- Tool-tool tersebut akan tersedia kembali setelah pencarian selesai
+
+TIPS PENCARIAN:
+- Hindari halaman listing/tag/homepage sebagai sumber utama
+- Utamakan URL artikel/siaran pers yang spesifik
+- Tulis klaim faktual secara ringkas per kalimat`
+
+        // Helper: sanitize messages for cross-model compatibility
+        // Strips tool call/result messages that Perplexity/Grok don't understand
+        const sanitizeMessagesForSearch = (msgs: typeof fullMessagesBase): typeof fullMessagesBase => {
+            return msgs
+                .filter((msg) => {
+                    if (msg.role === "system" || msg.role === "user") return true
+                    if (msg.role === "assistant") return true
+                    return false
+                })
+                .map((msg) => {
+                    if (msg.role !== "assistant") return msg
+                    if (Array.isArray(msg.content)) {
+                        const textParts = (msg.content as Array<{ type: string; text?: string }>).filter(
+                            (part) => typeof part === "object" && part !== null && "type" in part && part.type === "text"
+                        )
+                        if (textParts.length === 0) return null
+                        const textContent = textParts
+                            .filter((p): p is { type: "text"; text: string } => "text" in p && typeof p.text === "string")
+                            .map((p) => p.text)
+                            .join("\n")
+                        return { ...msg, content: textContent }
+                    }
+                    return msg
+                })
+                .filter((msg): msg is NonNullable<typeof msg> => msg !== null)
         }
-
         const createSearchUnavailableResponse = async (input: {
             reasonCode: string
             message: string
@@ -1775,7 +1813,7 @@ Aturan:
                 model: input.usedModel,
                 isPrimaryProvider: true,
                 failoverUsed: false,
-                toolUsed: "google_search",
+                toolUsed: "web_search",
                 mode: "websearch",
                 success: false,
                 errorType: "search_unavailable",
@@ -1876,16 +1914,8 @@ Aturan:
         try {
             const model = await getGatewayModel()
 
-            // Inject Google Search Tool for Gateway (Primary) only
-            const googleSearchInit = await initGoogleSearchTool()
-            const primaryGoogleSearchReady = googleSearchInit.status === "ready"
-            const wrappedGoogleSearchTool = primaryGoogleSearchReady
-                ? googleSearchInit.tool
-                : null
-
             // Router: tentukan apakah request ini perlu mode websearch.
-            // Catatan penting: AI SDK tidak bisa mix provider-defined tools (google_search) dengan function tools dalam 1 request.
-            // Jadi kita pilih salah satu tools set per request.
+            // Web search uses separate models (Perplexity/Grok) — no tool mixing constraint.
             const recentForRouter = modelMessages.slice(-8)
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
@@ -2034,16 +2064,12 @@ Aturan:
             console.log(
                 `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}, primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
             )
-            let fallbackSearchToolReason: GoogleSearchToolUnavailableReason | undefined
             let searchUnavailableReasonCode: string | undefined
 
             if (searchExecutionMode === "primary_perplexity") {
                 enableWebSearch = true
             } else if (searchExecutionMode === "fallback_web_search") {
                 enableWebSearch = true
-                if (googleSearchInit.status === "unavailable") {
-                    fallbackSearchToolReason = googleSearchInit.reason
-                }
             } else if (searchExecutionMode === "blocked_unavailable") {
                 enableWebSearch = false
                 searchUnavailableReasonCode = "search_required_but_unavailable"
@@ -2062,10 +2088,6 @@ Aturan:
                     usedModel: modelNames.primary.model,
                     telemetryFallbackReason: searchUnavailableReasonCode,
                 })
-            }
-
-            if (fallbackSearchToolReason) {
-                throw new SearchToolUnavailableError(fallbackSearchToolReason)
             }
 
             shouldForceGetCurrentPaperState = !enableWebSearch
@@ -2116,31 +2138,11 @@ Aturan:
                     : "narrative",
             })
 
-            const webSearchBehaviorSystemNote = `⚠️ MODE PENCARIAN WEB AKTIF - BACA INI DENGAN TELITI!
-
-CONSTRAINT TEKNIS PENTING:
-- Dalam mode ini, HANYA tool "google_search" yang tersedia.
-- Tool lain (createArtifact, updateArtifact, updateStageData, submitStageForValidation, renameConversationTitle) TIDAK TERSEDIA dan TIDAK BISA dipanggil.
-- Jika Anda mencoba memanggil tool selain google_search, panggilan akan GAGAL.
-
-YANG HARUS ANDA LAKUKAN DI TURN INI:
-1) Lakukan pencarian dengan google_search jika diperlukan
-2) Rangkum temuan dari pencarian
-3) AKHIRI respons Anda di sini - JANGAN coba menyimpan data atau membuat artifact
-
-YANG HARUS ANDA LAKUKAN DI TURN BERIKUTNYA (setelah user merespons):
-- Baru di turn berikutnya Anda bisa menyimpan draf (updateStageData) atau membuat artifact (createArtifact)
-- Tool-tool tersebut akan tersedia kembali setelah pencarian selesai
-
-TIPS PENCARIAN:
-- Hindari halaman listing/tag/homepage sebagai sumber utama
-- Utamakan URL artikel/siaran pers yang spesifik
-- Tulis klaim faktual secara ringkas per kalimat`
-
             const fullMessagesGateway = enableWebSearch
                 ? [
                     fullMessagesBase[0],
                     { role: "system" as const, content: webSearchBehaviorSystemNote },
+                    { role: "system" as const, content: getSourcePolicyPrompt() },
                     // Inject research incomplete note if applicable (ACTIVE stage override)
                     ...(activeStageSearchNote && activeStageSearchReason === "research_incomplete"
                         ? [{ role: "system" as const, content: activeStageSearchNote }]
@@ -2159,53 +2161,14 @@ TIPS PENCARIAN:
                     ...fullMessagesBase.slice(1),
                 ]
 
-            const gatewayTools: ToolSet = enableWebSearch
-                ? ({ google_search: wrappedGoogleSearchTool } as unknown as ToolSet)
-                : tools
             const forcedToolChoice = shouldForceSubmitValidation
                     ? ({ type: "tool", toolName: "submitStageForValidation" } as const)
                     : undefined
-            const webSearchForcedToolChoice = enableWebSearch
-                ? ({ type: "tool", toolName: "google_search" } as const)
-                : undefined
-            // Web search mode: limit to 1 step to prevent AI from trying to call
-            // function tools (which don't exist in web search mode) after search
             // Explicit sync mode: force 2-step flow
             // step 0: force getCurrentPaperState, step 1: force plain answer (no tools)
-            const maxToolSteps = enableWebSearch
-                ? 1
-                : shouldForceGetCurrentPaperState
+            const maxToolSteps = shouldForceGetCurrentPaperState
                     ? 2
                     : 5
-            const webSearchRetryPrepareStep = enableWebSearch
-                ? ({ stepNumber, steps }: { stepNumber: number; steps: Array<{ sources?: unknown[] }> }) => {
-                    if (stepNumber === 0) {
-                        return {
-                            toolChoice: { type: "tool", toolName: "google_search" } as const,
-                            activeTools: ["google_search"] as string[],
-                        }
-                    }
-                    if (stepNumber === 1) {
-                        const previousStep = steps[steps.length - 1]
-                        const previousSources = Array.isArray(previousStep?.sources) ? previousStep.sources.length : 0
-                        if (previousSources === 0) {
-                            return {
-                                toolChoice: { type: "tool", toolName: "google_search" } as const,
-                                activeTools: ["google_search"] as string[],
-                            }
-                        }
-                    }
-                    return undefined
-                }
-                : undefined
-            const webSearchRetryStopWhen = enableWebSearch
-                ? ({ steps }: { steps: Array<{ sources?: unknown[] }> }) => {
-                    const lastStep = steps[steps.length - 1]
-                    const lastStepSources = Array.isArray(lastStep?.sources) ? lastStep.sources.length : 0
-                    if (lastStepSources > 0) return true
-                    return steps.length >= 2
-                }
-                : undefined
             const deterministicSyncPrepareStep = shouldForceGetCurrentPaperState
                 ? ({ stepNumber }: { stepNumber: number }) => {
                     if (stepNumber === 0) {
@@ -2237,11 +2200,12 @@ TIPS PENCARIAN:
             const result = streamText({
                 model,
                 messages: fullMessagesGateway,
-                tools: gatewayTools,
+                tools,
                 ...(primaryReasoningProviderOptions ? { providerOptions: primaryReasoningProviderOptions } : {}),
-                toolChoice: webSearchForcedToolChoice ?? forcedToolChoice,
-                prepareStep: webSearchRetryPrepareStep ?? deterministicSyncPrepareStep,
-                stopWhen: webSearchRetryStopWhen ?? stepCountIs(maxToolSteps),
+                toolChoice: forcedToolChoice,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                prepareStep: deterministicSyncPrepareStep as any,
+                stopWhen: stepCountIs(maxToolSteps),
                 ...samplingOptions,
                 onFinish: enableWebSearch
                     ? undefined
@@ -2352,12 +2316,15 @@ TIPS PENCARIAN:
                     },
             })
 
-            // Indikator pencarian (inline) untuk grounding web:
-            // - Karena `google_search` adalah provider-defined tool, event tool `tool-input-*` bisa nggak muncul sama sekali.
-            // - AI SDK merekomendasikan status/progress UI lewat `data-*` parts (Streaming Custom Data).
-            // - Jadi kita kirim `data-search` secara optimistis di awal stream, lalu matikan di akhir.
-            //   Kalau ternyata tidak ada `source-url` yang muncul, status ditutup sebagai `off`.
+            // ════════════════════════════════════════════════════════════════
+            // PRIMARY WEB SEARCH: Perplexity Sonar via OpenRouter
+            // Native search model — no tools, no tool steps.
+            // ════════════════════════════════════════════════════════════════
             if (enableWebSearch) {
+                const webSearchModel = await getWebSearchModel()
+                const webSearchModelName = webSearchConfig.webSearchModel ?? "perplexity/sonar"
+                const sanitizedMessages = sanitizeMessagesForSearch(fullMessagesGateway)
+
                 const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
                 const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
                 const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
@@ -2373,15 +2340,20 @@ TIPS PENCARIAN:
                 })
                 primaryReasoningTraceController = reasoningTrace
 
-                    const stream = createUIMessageStream({
-                        execute: async ({ writer }) => {
-                            let started = false
-                            let hasAnySource = false
-                            let sourceCount = 0
-                            let searchStatusClosed = false
-                            let streamedText = ""
-                            let lastProviderMetadata: unknown = null
-                            const streamedSourceUrls: Array<{ url: string; title: string }> = []
+                // Perplexity Sonar: native search, NO tools, NO tool steps
+                const perplexityResult = streamText({
+                    model: webSearchModel,
+                    messages: sanitizedMessages,
+                    // No tools — Perplexity searches natively
+                    ...samplingOptions,
+                })
+
+                const stream = createUIMessageStream({
+                    execute: async ({ writer }) => {
+                        let started = false
+                        let sourceCount = 0
+                        let searchStatusClosed = false
+                        let streamedText = ""
 
                         const ensureStart = () => {
                             if (started) return
@@ -2399,17 +2371,6 @@ TIPS PENCARIAN:
                             }
                         }
 
-                        const ensureSearchStatusShown = () => {
-                            ensureStart()
-                            writer.write({
-                                type: "data-search",
-                                id: searchStatusId,
-                                data: {
-                                    status: "searching",
-                                },
-                            })
-                        }
-
                         const closeSearchStatus = (finalStatus: "done" | "off" | "error") => {
                             if (searchStatusClosed) return
                             searchStatusClosed = true
@@ -2417,9 +2378,7 @@ TIPS PENCARIAN:
                             writer.write({
                                 type: "data-search",
                                 id: searchStatusId,
-                                data: {
-                                    status: finalStatus,
-                                },
+                                data: { status: finalStatus },
                             })
                         }
 
@@ -2430,11 +2389,16 @@ TIPS PENCARIAN:
                             enabled: isTransparentReasoning,
                         })
 
-                        // Optimistis: tampilkan indikator "Mencari..." sejak awal stream (sebelum token ada).
-                        ensureSearchStatusShown()
+                        // Show searching indicator immediately
+                        ensureStart()
+                        writer.write({
+                            type: "data-search",
+                            id: searchStatusId,
+                            data: { status: "searching" },
+                        })
                         emitTrace(reasoningTrace.initialEvents)
 
-                        for await (const chunk of result.toUIMessageStream({
+                        for await (const chunk of perplexityResult.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
                             sendSources: true,
@@ -2452,35 +2416,9 @@ TIPS PENCARIAN:
                             }
 
                             if (chunk.type === "source-url") {
-                                hasAnySource = true
                                 sourceCount += 1
                                 primaryReasoningSourceCount = sourceCount
                                 emitTrace(reasoningTrace.markSourceDetected())
-                                if (typeof chunk.url === "string" && chunk.url.trim().length > 0) {
-                                    const normalizedUrl = normalizeWebSearchUrl(chunk.url)
-                                    const title = typeof chunk.title === "string" && chunk.title.trim().length > 0
-                                        ? chunk.title.trim()
-                                        : normalizedUrl
-                                    streamedSourceUrls.push({
-                                        url: normalizedUrl,
-                                        title,
-                                    })
-                                }
-                            }
-
-                            if (chunk.type === "tool-input-start") {
-                                const toolName = getToolNameFromChunk(chunk)
-                                emitTrace(reasoningTrace.markToolRunning(toolName))
-                            }
-
-
-                            if (
-                                "providerMetadata" in chunk &&
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                (chunk as any).providerMetadata
-                            ) {
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                lastProviderMetadata = (chunk as any).providerMetadata
                             }
 
                             if (chunk.type === "text-delta") {
@@ -2490,103 +2428,10 @@ TIPS PENCARIAN:
                             if (chunk.type === "finish") {
                                 let didFinalizeForPersist = false
 
-                                type SourceWithChunk = {
+                                type SourceEntry = {
                                     url: string
                                     title: string
                                     publishedAt?: number | null
-                                    chunkIndices: number[]
-                                }
-
-                                type GroundingChunk = {
-                                    web?: { uri?: string; title?: string }
-                                }
-
-                                type GroundingSupport = {
-                                    segment?: { endIndex?: number }
-                                    groundingChunkIndices?: number[]
-                                }
-
-                                type ProviderMetadataWithGoogle = {
-                                    google?: GoogleGenerativeAIProviderMetadata
-                                }
-
-                                type ResultSourceUrl = {
-                                    sourceType?: string
-                                    url?: string
-                                    uri?: string
-                                    title?: string
-                                    name?: string
-                                    publishedAt?: number
-                                }
-
-                                const isRecord = (value: unknown): value is Record<string, unknown> =>
-                                    typeof value === "object" && value !== null
-
-                                const hasGroundingMetadata = (value: unknown): value is ProviderMetadataWithGoogle => {
-                                    if (!isRecord(value)) return false
-                                    if (!("google" in value)) return false
-                                    const google = (value as ProviderMetadataWithGoogle).google
-                                    return isRecord(google) && "groundingMetadata" in google
-                                }
-
-                                const getGroundingChunks = (meta: unknown): GroundingChunk[] | undefined => {
-                                    if (!isRecord(meta)) return undefined
-                                    const raw = (meta as { groundingChunks?: unknown }).groundingChunks
-                                    if (!Array.isArray(raw)) return undefined
-                                    return raw.filter((chunk): chunk is GroundingChunk => isRecord(chunk))
-                                }
-
-                                const getGroundingSupports = (meta: unknown): GroundingSupport[] | undefined => {
-                                    if (!isRecord(meta)) return undefined
-                                    const raw = (meta as { groundingSupports?: unknown }).groundingSupports
-                                    if (!Array.isArray(raw)) return undefined
-                                    return raw.filter((support): support is GroundingSupport => isRecord(support))
-                                }
-
-                                const normalizeResultSource = (raw: unknown): SourceWithChunk | null => {
-                                    if (!isRecord(raw)) return null
-                                    const source = raw as ResultSourceUrl
-                                    if (typeof source.sourceType === "string" && source.sourceType !== "url") return null
-                                    const rawUrl = typeof source.url === "string"
-                                        ? source.url
-                                        : typeof source.uri === "string"
-                                            ? source.uri
-                                            : ""
-                                    if (!rawUrl.trim()) return null
-                                    const normalizedUrl = normalizeWebSearchUrl(rawUrl)
-                                    const rawTitle = typeof source.title === "string"
-                                        ? source.title
-                                        : typeof source.name === "string"
-                                            ? source.name
-                                            : ""
-                                    const title = rawTitle.trim() || normalizedUrl
-                                    return {
-                                        url: normalizedUrl,
-                                        title,
-                                        ...(typeof source.publishedAt === "number" && Number.isFinite(source.publishedAt)
-                                            ? { publishedAt: source.publishedAt }
-                                            : {}),
-                                        chunkIndices: [],
-                                    }
-                                }
-
-                                const getResultSources = async (): Promise<SourceWithChunk[]> => {
-                                    const rawSources = await (async () => {
-                                        try {
-                                            return await Promise.race([
-                                                result.sources,
-                                                new Promise<undefined>((resolve) =>
-                                                    setTimeout(() => resolve(undefined), 4000)
-                                                ),
-                                            ])
-                                        } catch {
-                                            return undefined
-                                        }
-                                    })()
-                                    if (!Array.isArray(rawSources)) return []
-                                    return rawSources
-                                        .map((item) => normalizeResultSource(item))
-                                        .filter((item): item is SourceWithChunk => !!item)
                                 }
 
                                 const canonicalizeCitationUrl = (raw: string) => {
@@ -2603,210 +2448,72 @@ TIPS PENCARIAN:
                                     }
                                 }
 
-                                const stripToPersistedSources = (items: SourceWithChunk[]) =>
-                                    items.map((s) => ({
-                                        url: s.url,
-                                        title: s.title,
-                                        ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
-                                            ? { publishedAt: s.publishedAt }
-                                            : {}),
-                                    }))
-
-                                const buildChunkIndexToCitationNumber = (items: SourceWithChunk[]) => {
-                                    const out = new Map<number, number>()
-                                    items.forEach((src, idx) => {
-                                        const n = idx + 1
-                                        for (const ci of src.chunkIndices) out.set(ci, n)
-                                    })
-                                    return out
-                                }
-
-                                const buildPrimaryCitationAnchors = (
-                                    items: SourceWithChunk[],
-                                    groundingSupports: GroundingSupport[] | undefined
-                                ) => {
-                                    if (!groundingSupports || items.length === 0) return []
-                                    const chunkToNumber = buildChunkIndexToCitationNumber(items)
-                                    if (chunkToNumber.size === 0) return []
-
-                                    const anchors: Array<{ position?: number | null; sourceNumbers: number[] }> = []
-                                    for (const support of groundingSupports) {
-                                        const segmentEndIndex = typeof support?.segment?.endIndex === "number"
-                                            ? support.segment.endIndex
-                                            : null
-                                        const rawIndices = Array.isArray(support?.groundingChunkIndices)
-                                            ? support.groundingChunkIndices
-                                            : []
-                                        const sourceNumbersSet = new Set<number>()
-                                        for (const rawIndex of rawIndices) {
-                                            if (typeof rawIndex !== "number") continue
-                                            const mappedNumber = chunkToNumber.get(rawIndex)
-                                            if (typeof mappedNumber === "number" && Number.isFinite(mappedNumber)) {
-                                                sourceNumbersSet.add(mappedNumber)
-                                            }
-                                        }
-                                        const sourceNumbers = Array.from(sourceNumbersSet).sort((a, b) => a - b)
-                                        if (sourceNumbers.length === 0) continue
-                                        anchors.push({
-                                            position: segmentEndIndex !== null ? Math.max(0, segmentEndIndex - 1) : null,
-                                            sourceNumbers,
-                                        })
-                                    }
-                                    return anchors
-                                }
-
                                 try {
-                                    // providerMetadata kadang tidak ikut kebawa di chunk; ambil dari result sebagai fallback.
-                                    const providerMetadataFromResult = await (async () => {
+                                    // Get sources from Perplexity via result.sources
+                                    const rawSources = await (async () => {
                                         try {
                                             return await Promise.race([
-                                                result.providerMetadata,
+                                                perplexityResult.sources,
                                                 new Promise<undefined>((resolve) =>
-                                                    setTimeout(() => resolve(undefined), 8000)
+                                                    setTimeout(() => resolve(undefined), 4000)
                                                 ),
                                             ])
                                         } catch {
                                             return undefined
                                         }
                                     })()
-                                    const preferredProviderMetadata = hasGroundingMetadata(lastProviderMetadata)
-                                        ? lastProviderMetadata
-                                        : providerMetadataFromResult
 
-                                    const googleMetadata = hasGroundingMetadata(preferredProviderMetadata)
-                                        ? preferredProviderMetadata.google
-                                        : undefined
-                                    const groundingMetadata = googleMetadata?.groundingMetadata
-                                    const chunks = getGroundingChunks(groundingMetadata)
-                                    const supports = getGroundingSupports(groundingMetadata)
+                                    // Normalize via normalizeCitations('perplexity') — applies domain filter
+                                    const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
 
-                                    const usedChunkIndices = (() => {
-                                        const out = new Set<number>()
-                                        if (!supports) return out
-                                        for (const s of supports) {
-                                            const indices = s?.groundingChunkIndices as unknown
-                                            if (!Array.isArray(indices)) continue
-                                            for (const raw of indices) {
-                                                if (typeof raw === "number" && Number.isFinite(raw)) out.add(raw)
-                                            }
-                                        }
-                                        return out
-                                    })()
-
-                                    let sources: SourceWithChunk[] = []
-                                    if (chunks) {
-                                        const rawSources = chunks
-                                            .map((chunk, idx) => ({ chunk, idx }))
-                                            .filter(({ idx }) => usedChunkIndices.size === 0 || usedChunkIndices.has(idx))
-                                            .map(({ chunk, idx }) => {
-                                                const uri = chunk.web?.uri
-                                                if (typeof uri === "string" && uri.length > 0) {
-                                                    const normalizedUrl = normalizeWebSearchUrl(uri)
-                                                    const title = (typeof chunk.web?.title === "string" && chunk.web.title.trim()) || normalizedUrl
-                                                    return {
-                                                        url: normalizedUrl,
-                                                        title,
-                                                        chunkIndex: idx,
-                                                    }
-                                                }
-                                                return null
-                                            })
-                                            .filter((item): item is { url: string; title: string; chunkIndex: number } => !!item)
-
-                                        sources = rawSources.map((s) => ({
-                                            url: s.url,
-                                            title: s.title,
-                                            chunkIndices: [s.chunkIndex],
+                                    // Layer 1: Structural pre-filter — remove garbage URLs
+                                    let sources: SourceEntry[] = normalizedCitations
+                                        .filter(c => !isGarbageUrl(c.url))
+                                        .map(c => ({
+                                            url: normalizeWebSearchUrl(c.url),
+                                            title: c.title || c.url,
                                         }))
-                                    }
 
-                                    const resultSources = await getResultSources()
-                                    if (resultSources.length > 0) {
-                                        sources = [...sources, ...resultSources]
-                                    }
-
-                                    if (streamedSourceUrls.length > 0) {
-                                        const streamedSources = streamedSourceUrls.map((item) => ({
-                                            url: item.url,
-                                            title: item.title,
-                                            chunkIndices: [] as number[],
-                                        }))
-                                        sources = [...sources, ...streamedSources]
-                                    }
-
-                                    // Layer 1: Structural pre-filter — remove garbage URLs before network calls
-                                    if (sources.length > 0) {
-                                        const preGarbageCount = sources.length
-                                        sources = sources.filter((s) => !isGarbageUrl(s.url))
-                                        if (sources.length < preGarbageCount) {
-                                            console.warn(`[Citations] Removed ${preGarbageCount - sources.length} garbage URL(s) via structural pre-filter`)
-                                        }
-                                    }
-
+                                    // Enrichment
                                     if (sources.length > 0) {
                                         sources = await enrichSourcesWithFetchedTitles(sources, {
                                             concurrency: 4,
                                             timeoutMs: 2500,
                                         })
 
-                                        // Layer 2: Enrichment-based post-filter — remove DNS-unreachable sources
-                                        const preReachCount = sources.length
+                                        // Layer 2: Enrichment-based post-filter
                                         sources = sources.filter((s) => !(s as { _unreachable?: true })._unreachable)
-                                        if (sources.length < preReachCount) {
-                                            console.warn(`[Citations] Removed ${preReachCount - sources.length} unreachable source(s) via enrichment filter`)
-                                        }
 
-                                        const deduped = new Map<string, SourceWithChunk>()
+                                        // Dedup
+                                        const deduped = new Map<string, SourceEntry>()
                                         for (const src of sources) {
                                             const key = canonicalizeCitationUrl(src.url)
-                                            const existing = deduped.get(key)
-                                            if (!existing) {
+                                            if (!deduped.has(key)) {
                                                 deduped.set(key, src)
-                                                continue
-                                            }
-
-                                            const existingIsProxy = isVertexProxyUrl(existing.url)
-                                            const currentIsProxy = isVertexProxyUrl(src.url)
-                                            if (existingIsProxy && !currentIsProxy) {
-                                                deduped.set(key, {
-                                                    ...src,
-                                                    chunkIndices: Array.from(new Set([...existing.chunkIndices, ...src.chunkIndices])),
-                                                })
-                                                continue
-                                            }
-
-                                            if (!existing.publishedAt && src.publishedAt) {
-                                                deduped.set(key, {
-                                                    ...existing,
-                                                    publishedAt: src.publishedAt,
-                                                    chunkIndices: Array.from(new Set([...existing.chunkIndices, ...src.chunkIndices])),
-                                                })
-                                            } else {
-                                                deduped.set(key, {
-                                                    ...existing,
-                                                    chunkIndices: Array.from(new Set([...existing.chunkIndices, ...src.chunkIndices])),
-                                                })
                                             }
                                         }
                                         sources = Array.from(deduped.values())
 
-                                        const hasHighValue = sources.some((s) => !isVertexProxyUrl(s.url) && !isLowValueCitationUrl(s.url))
+                                        // Low-value filter
+                                        const hasHighValue = sources.some(s => !isLowValueCitationUrl(s.url))
                                         if (hasHighValue) {
-                                            sources = sources.filter((s) => !isVertexProxyUrl(s.url) && !isLowValueCitationUrl(s.url))
-                                        } else {
-                                            const hasNonProxy = sources.some((s) => !isVertexProxyUrl(s.url))
-                                            if (hasNonProxy) sources = sources.filter((s) => !isVertexProxyUrl(s.url))
+                                            sources = sources.filter(s => !isLowValueCitationUrl(s.url))
                                         }
                                     }
 
-                                    const primaryCitationAnchors = buildPrimaryCitationAnchors(sources, supports)
+                                    // Citation anchors: Perplexity doesn't provide position data,
+                                    // so we use paragraph-end formatting only
+                                    const citationAnchors = sources.map((_, idx) => ({
+                                        position: null as number | null,
+                                        sourceNumbers: [idx + 1],
+                                    }))
                                     const textWithInlineCitations = formatParagraphEndCitations({
                                         text: streamedText,
                                         sources,
-                                        anchors: primaryCitationAnchors,
+                                        anchors: citationAnchors,
                                     })
                                     const userFacingPayload = buildUserFacingSearchPayload(textWithInlineCitations)
-                                    const persistedSources = sources.length > 0 ? stripToPersistedSources(sources) : undefined
+                                    const persistedSources = sources.length > 0 ? sources : undefined
                                     closeSearchStatus(persistedSources && persistedSources.length > 0 ? "done" : "off")
 
                                     ensureStart()
@@ -2852,7 +2559,7 @@ TIPS PENCARIAN:
                                     await saveAssistantMessage(
                                         textWithInlineCitations,
                                         persistedSources,
-                                        modelNames.primary.model,
+                                        webSearchModelName,
                                         persistedReasoningTrace
                                     )
 
@@ -2872,7 +2579,6 @@ TIPS PENCARIAN:
                                             console.log(`[Paper] Auto-persisted ${persistedSources.length} search refs to stageData`)
                                         } catch (err) {
                                             console.error("[Paper] Failed to auto-persist search references:", err)
-                                            // Non-blocking: don't fail the response stream
                                         }
                                     }
                                     // ───────────────────────────────────────────────────────────
@@ -2889,7 +2595,6 @@ TIPS PENCARIAN:
                                     })
 
                                     // ═══ BILLING: Record token usage (web search primary) ═══
-                                    // Extract usage from finish chunk if available
                                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     const finishUsage = (chunk as any).usage
                                     if (finishUsage) {
@@ -2900,7 +2605,7 @@ TIPS PENCARIAN:
                                             inputTokens: finishUsage.inputTokens ?? 0,
                                             outputTokens: finishUsage.outputTokens ?? 0,
                                             totalTokens: (finishUsage.inputTokens ?? 0) + (finishUsage.outputTokens ?? 0),
-                                            model: modelNames.primary.model,
+                                            model: webSearchModelName,
                                             operationType: "web_search",
                                             convexToken,
                                         }).catch(err => console.error("[Billing] Failed to record usage:", err))
@@ -2912,11 +2617,11 @@ TIPS PENCARIAN:
                                         token: convexToken,
                                         userId: userId as Id<"users">,
                                         conversationId: currentConversationId as Id<"conversations">,
-                                        provider: modelNames.primary.provider as "vercel-gateway" | "openrouter",
-                                        model: modelNames.primary.model,
+                                        provider: "openrouter",
+                                        model: webSearchModelName,
                                         isPrimaryProvider: true,
                                         failoverUsed: false,
-                                        toolUsed: "google_search",
+                                        toolUsed: "perplexity_search",
                                         mode: "websearch",
                                         success: true,
                                         latencyMs: Date.now() - telemetryStartTime,
@@ -2926,7 +2631,7 @@ TIPS PENCARIAN:
                                     })
                                     // ═════════════════════════════════════════════
                                 } catch (err) {
-                                    closeSearchStatus(hasAnySource || streamedSourceUrls.length > 0 ? "done" : "off")
+                                    closeSearchStatus(sourceCount > 0 ? "done" : "off")
                                     console.error("[Chat API] Failed to compute inline citations:", err)
                                 }
 
@@ -2957,7 +2662,7 @@ TIPS PENCARIAN:
                             }
 
                             if (chunk.type === "abort") {
-                                closeSearchStatus(hasAnySource ? "done" : "off")
+                                closeSearchStatus(sourceCount > 0 ? "done" : "off")
                                 const stoppedTraceEvents = reasoningTrace.finalize({
                                     outcome: "stopped",
                                     sourceCount,
@@ -2966,13 +2671,12 @@ TIPS PENCARIAN:
                                 const persistedReasoningTrace = reasoningTrace.enabled
                                     ? reasoningTrace.getPersistedSnapshot()
                                     : undefined
-                                // Save partial message on abort to prevent data loss
                                 if (streamedText.trim()) {
                                     try {
                                         await saveAssistantMessage(
                                             streamedText,
                                             undefined,
-                                            modelNames.primary.model,
+                                            webSearchModelName,
                                             persistedReasoningTrace
                                         )
                                         console.log("[Chat API] Saved partial message on stream abort")
@@ -2984,7 +2688,7 @@ TIPS PENCARIAN:
                                 break
                             }
 
-                            // Tulis chunk normal
+                            // Forward normal chunks
                             ensureStart()
                             writer.write(chunk)
                         }
@@ -3107,15 +2811,6 @@ TIPS PENCARIAN:
             }
         } catch (error) {
             console.error("Gateway stream failed, trying fallback:", error)
-            const searchToolUnavailableError = error instanceof SearchToolUnavailableError
-                ? error
-                : null
-            const primaryFailureFallbackReason = searchToolUnavailableError
-                ? mapSearchToolReasonToFallbackReason(searchToolUnavailableError.reason)
-                : undefined
-            const primaryFailureTelemetryContext = primaryFailureFallbackReason
-                ? { ...skillTelemetryContext, fallbackReason: primaryFailureFallbackReason }
-                : skillTelemetryContext
 
             // ═══ TELEMETRY: Primary provider failure ═══
             const primaryErrorInfo = classifyError(error)
@@ -3127,19 +2822,18 @@ TIPS PENCARIAN:
                 model: modelNames.primary.model,
                 isPrimaryProvider: true,
                 failoverUsed: false,
-                toolUsed: enableWebSearch ? "google_search" : undefined,
+                toolUsed: enableWebSearch ? "perplexity_search" : undefined,
                 mode: enableWebSearch ? "websearch" : (isPaperMode ? "paper" : "normal"),
                 success: false,
                 errorType: primaryErrorInfo.errorType,
                 errorMessage: primaryErrorInfo.errorMessage,
                 latencyMs: Date.now() - telemetryStartTime,
-                ...primaryFailureTelemetryContext,
+                ...skillTelemetryContext,
             })
             // ════════════════════════════════════════════
 
             // ════════════════════════════════════════════════════════════════
-            // FALLBACK: OpenRouter with optional web search
-            // Task 2.2-2.6: Enhanced fallback with :online web search support
+            // FALLBACK: OpenRouter with optional web search (Grok w/ web_search_options)
             // ════════════════════════════════════════════════════════════════
 
             // Determine if web search should be enabled in fallback
@@ -3147,13 +2841,8 @@ TIPS PENCARIAN:
             const fallbackEnableWebSearch =
                 enableWebSearch
                 && webSearchConfig.fallbackEnabled
-                && modelNames.fallback.provider === "openrouter"
-            const fallbackTelemetryContext = searchToolUnavailableError
-                ? {
-                    ...skillTelemetryContext,
-                    fallbackReason: "websearch_primary_tool_unavailable_fallback_online",
-                }
-                : skillTelemetryContext
+                && !!webSearchConfig.webSearchFallbackModel
+            const fallbackTelemetryContext = skillTelemetryContext
 
             const fallbackReasoningProviderOptions = buildReasoningProviderOptions({
                 settings: reasoningSettings,
@@ -3406,9 +3095,16 @@ TIPS PENCARIAN:
                 return runFallbackWithoutSearch()
             }
 
-            // Task 2.2: Web search mode in fallback
+            // Fallback web search: Grok with web_search_options via OpenRouter
             try {
-                const fallbackModel = await getOpenRouterModel({ enableWebSearch: true })
+                const fallbackSearchModel = await getWebSearchFallbackModel()
+                const fallbackSearchModelName = webSearchConfig.webSearchFallbackModel ?? "x-ai/grok-3-mini"
+                const sanitizedFallbackMessages = sanitizeMessagesForSearch([
+                    fullMessagesBase[0],
+                    { role: "system" as const, content: webSearchBehaviorSystemNote },
+                    { role: "system" as const, content: getSourcePolicyPrompt() },
+                    ...fullMessagesBase.slice(1),
+                ])
 
                 // Generate unique IDs for stream parts
                 const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
@@ -3477,18 +3173,19 @@ TIPS PENCARIAN:
                         })
                         emitTrace(reasoningTrace.initialEvents)
 
-                        // Stream from OpenRouter with :online
-                        const result = streamText({
-                            model: fallbackModel,
-                            messages: fullMessagesBase,
-                            // Note: :online handles search internally, no tools needed
+                        // Stream from Grok with web_search_options (configured in model init)
+                        const fallbackSearchResult = streamText({
+                            model: fallbackSearchModel,
+                            messages: sanitizedFallbackMessages,
+                            // No explicit tools — web_search_options configured in model init
                             ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                             ...samplingOptions,
                         })
 
-                        for await (const chunk of result.toUIMessageStream({
+                        for await (const chunk of fallbackSearchResult.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
+                            sendSources: true,
                             sendReasoning: fallbackTransparent,
                         })) {
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
@@ -3507,12 +3204,6 @@ TIPS PENCARIAN:
                                 emitTrace(reasoningTrace.markSourceDetected())
                             }
 
-                            if (chunk.type === "tool-input-start") {
-                                const toolName = getToolNameFromChunk(chunk)
-                                emitTrace(reasoningTrace.markToolRunning(toolName))
-                            }
-
-
                             // Capture provider metadata from chunks
                             if (
                                 "providerMetadata" in chunk &&
@@ -3530,11 +3221,12 @@ TIPS PENCARIAN:
                             if (chunk.type === "finish") {
                                 let persistedReasoningTrace: PersistedCuratedTraceSnapshot | undefined
                                 let didFinalizeForPersist = false
-                                // Task 2.3: Extract OpenRouter annotations from response
+
+                                // Extract OpenRouter annotations from response
                                 const providerMetadataFromResult = await (async () => {
                                     try {
                                         return await Promise.race([
-                                            result.providerMetadata,
+                                            fallbackSearchResult.providerMetadata,
                                             new Promise<undefined>((resolve) =>
                                                 setTimeout(() => resolve(undefined), 8000)
                                             ),
@@ -3546,12 +3238,9 @@ TIPS PENCARIAN:
 
                                 const preferredMetadata = lastProviderMetadata ?? providerMetadataFromResult
 
-                                // Task 2.4: Normalize citations using the normalization layer
+                                // Normalize citations via 'openrouter' — handles annotations
                                 let normalizedCitations: NormalizedCitation[] = []
-
                                 if (preferredMetadata) {
-                                    // Try to extract annotations from OpenRouter response
-                                    // OpenRouter annotations can be at different paths
                                     normalizedCitations = normalizeCitations(preferredMetadata, 'openrouter')
                                 }
 
@@ -3636,11 +3325,10 @@ TIPS PENCARIAN:
                                         ? reasoningTrace.getPersistedSnapshot()
                                         : undefined
 
-                                    // Task 2.5: Save to database with fallback metadata
                                     await saveAssistantMessage(
                                         textWithCitations,
                                         persistedSources,
-                                        `${modelNames.fallback.model}:online`,
+                                        fallbackSearchModelName,
                                         persistedReasoningTrace
                                     )
 
@@ -3684,7 +3372,7 @@ TIPS PENCARIAN:
                                     await saveAssistantMessage(
                                         textWithCitations,
                                         undefined,
-                                        `${modelNames.fallback.model}:online`,
+                                        fallbackSearchModelName,
                                         persistedReasoningTrace
                                     )
                                 }
@@ -3712,7 +3400,7 @@ TIPS PENCARIAN:
                                         inputTokens: finishUsage.inputTokens ?? 0,
                                         outputTokens: finishUsage.outputTokens ?? 0,
                                         totalTokens: (finishUsage.inputTokens ?? 0) + (finishUsage.outputTokens ?? 0),
-                                        model: `${modelNames.fallback.model}:online`,
+                                        model: fallbackSearchModelName,
                                         operationType: "web_search",
                                         convexToken,
                                     }).catch(err => console.error("[Billing] Failed to record usage:", err))
@@ -3724,11 +3412,11 @@ TIPS PENCARIAN:
                                     token: convexToken,
                                     userId: userId as Id<"users">,
                                     conversationId: currentConversationId as Id<"conversations">,
-                                    provider: modelNames.fallback.provider as "vercel-gateway" | "openrouter",
-                                    model: modelNames.fallback.model,
+                                    provider: "openrouter",
+                                    model: fallbackSearchModelName,
                                     isPrimaryProvider: false,
                                     failoverUsed: true,
-                                    toolUsed: "google_search",
+                                    toolUsed: "web_search_fallback",
                                     mode: "websearch",
                                     success: true,
                                     latencyMs: Date.now() - telemetryStartTime,
@@ -3782,18 +3470,9 @@ TIPS PENCARIAN:
                 })
 
                 return createUIMessageStreamResponse({ stream })
-            } catch (onlineError) {
-                // Task 2.6: :online failed, graceful degradation to non-search mode
-                console.error("[Fallback] :online stream failed, retrying without search:", onlineError)
-                if (searchToolUnavailableError) {
-                    return createSearchUnavailableResponse({
-                        reasonCode: "search_required_but_unavailable",
-                        message: "Pencarian web sedang bermasalah saat ini. Saya belum bisa memberikan jawaban faktual tanpa sumber. Coba lagi beberapa saat.",
-                        usedModel: modelNames.fallback.model,
-                        provider: modelNames.fallback.provider as "vercel-gateway" | "openrouter",
-                        telemetryFallbackReason: "search_required_but_unavailable",
-                    })
-                }
+            } catch (fallbackSearchError) {
+                // Fallback web search failed, graceful degradation to non-search mode
+                console.error("[Fallback] Web search stream failed, retrying without search:", fallbackSearchError)
                 return runFallbackWithoutSearch()
             }
         }
