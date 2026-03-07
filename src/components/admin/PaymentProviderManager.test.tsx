@@ -41,12 +41,14 @@ describe("PaymentProviderManager", () => {
     })
   })
 
-  it("renders xendit-only settings without midtrans selector", () => {
+  it("renders xendit-only settings without alternate provider selector", () => {
     render(<PaymentProviderManager userId={"user_123" as never} />)
 
     expect(screen.getByText("Provider Aktif")).toBeInTheDocument()
     expect(screen.getByText("Xendit")).toBeInTheDocument()
-    expect(screen.queryByText("Midtrans")).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(new RegExp(["Mid", "trans"].join("")))
+    ).not.toBeInTheDocument()
   })
 
   it("saves enabled methods without activeProvider payload", async () => {

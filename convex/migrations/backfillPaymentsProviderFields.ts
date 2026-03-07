@@ -84,7 +84,7 @@ export const backfillPaymentsProviderFields = internalMutation({
 
       if (!dryRun) {
         const patch: {
-          providerName?: "xendit" | "midtrans"
+          providerName?: "xendit"
           providerPaymentId?: string
           providerReferenceId?: string
         } = {}
