@@ -7,7 +7,7 @@
 // Provider Identity
 // ════════════════════════════════════════════════════════════════
 
-export type PaymentProviderName = "xendit" | "midtrans"
+export type PaymentProviderName = "xendit"
 
 // ════════════════════════════════════════════════════════════════
 // Payment Method Categories

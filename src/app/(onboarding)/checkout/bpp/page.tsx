@@ -25,6 +25,18 @@ import { toast } from "sonner"
 import Image from "next/image"
 import { QRCodeSVG } from "qrcode.react"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
+import {
+  DEFAULT_ENABLED_METHODS,
+  getEnabledCheckoutMethods,
+  getRuntimeProviderLabel,
+  resolveCheckoutMethodSelection,
+} from "@/lib/payment/runtime-settings"
+import {
+  ACTIVE_EWALLET_CHANNELS,
+  ACTIVE_VA_CHANNELS,
+} from "@/lib/payment/channel-options"
+import { mapPaymentCreationErrorMessage } from "@/lib/payment/provider-error-messages"
+import { normalizeOvoMobileNumber } from "@/lib/payment/mobile-number-format"
 
 // ════════════════════════════════════════════════════════════════
 // Constants
@@ -33,31 +45,19 @@ import { DottedPattern } from "@/components/marketing/SectionBackground"
 const PAYMENT_METHODS = [
   { id: "qris" as const, label: "QRIS", icon: QrCode, description: "Scan dengan e-wallet" },
   { id: "va" as const, label: "Virtual Account", icon: Building, description: "Transfer bank" },
-  { id: "ewallet" as const, label: "E-Wallet", icon: Wallet, description: "OVO, GoPay" },
+  { id: "ewallet" as const, label: "E-Wallet", icon: Wallet, description: "OVO" },
 ]
-
-const VA_CHANNELS = [
-  { code: "BCA_VIRTUAL_ACCOUNT", label: "BCA" },
-  { code: "BNI_VIRTUAL_ACCOUNT", label: "BNI" },
-  { code: "BRI_VIRTUAL_ACCOUNT", label: "BRI" },
-  { code: "MANDIRI_VIRTUAL_ACCOUNT", label: "Mandiri" },
-]
-
-const EWALLET_CHANNELS = [
-  { code: "OVO", label: "OVO" },
-  { code: "GOPAY", label: "GoPay" },
-]
+const VA_CHANNELS = ACTIVE_VA_CHANNELS
+const EWALLET_CHANNELS = ACTIVE_EWALLET_CHANNELS
 
 type PaymentMethod = "qris" | "va" | "ewallet"
 
-const METHOD_ID_TO_ENABLED: Record<PaymentMethod, "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"> = {
-  qris: "QRIS",
-  va: "VIRTUAL_ACCOUNT",
-  ewallet: "EWALLET",
-}
-
 const shellPanelClass = "rounded-shell border border-border/70 bg-card/95"
-const sectionCardClass = "rounded-shell border border-border/60 bg-[color:var(--slate-100)] p-3 dark:bg-[color:var(--slate-800)]/70 md:p-4"
+const sectionCardClass =
+  "rounded-shell border border-border/60 bg-[color:var(--slate-100)] p-2.5 dark:bg-[color:var(--slate-800)]/70 md:p-3"
+const checkoutViewportClass =
+  "relative z-10 flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10"
+const checkoutCardClass = "w-full max-w-[42rem]"
 
 interface PaymentResult {
   paymentId: string
@@ -108,10 +108,10 @@ export default function CheckoutBPPPage() {
   return (
     <Suspense
       fallback={
-        <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+        <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
           <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-          <div className="relative z-10 flex h-full items-center justify-center px-4">
-            <div className={cn("w-full max-w-2xl p-4 md:p-5", shellPanelClass)}>
+          <div className={checkoutViewportClass}>
+            <div className={cn(checkoutCardClass, "p-3 md:p-3.5", shellPanelClass)}>
               <div className="animate-pulse space-y-3">
                 <div className="h-6 rounded bg-muted w-1/3" />
                 <div className="h-28 rounded-shell bg-muted" />
@@ -145,7 +145,8 @@ function CheckoutBPPContent() {
   const bppPlan = useQuery(api.pricingPlans.getPlanBySlug, { slug: "bpp" })
   const bppPackage = useQuery(api.billing.pricingHelpers.getBppCreditPackage, { packageType: "paper" })
   const paymentConfig = useQuery(api.billing.paymentProviderConfigs.getActiveConfig)
-  const enabledMethods = paymentConfig?.enabledMethods ?? ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"]
+  const enabledMethods = paymentConfig?.enabledMethods ?? DEFAULT_ENABLED_METHODS
+  const availableMethods = getEnabledCheckoutMethods(enabledMethods)
 
   useEffect(() => {
     if (bppPlan?.isDisabled) {
@@ -169,26 +170,6 @@ function CheckoutBPPContent() {
     }
   }, [hasCompletedOnboarding, completeOnboarding, isOnboardingLoading, isAuthenticated])
 
-  // Keep checkout viewport fixed like /get-started (no page scroll).
-  useEffect(() => {
-    const prevHtmlOverflow = document.documentElement.style.overflow
-    const prevBodyOverflow = document.body.style.overflow
-    const prevHtmlOverscroll = document.documentElement.style.overscrollBehavior
-    const prevBodyOverscroll = document.body.style.overscrollBehavior
-
-    document.documentElement.style.overflow = "hidden"
-    document.body.style.overflow = "hidden"
-    document.documentElement.style.overscrollBehavior = "none"
-    document.body.style.overscrollBehavior = "none"
-
-    return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow
-      document.body.style.overflow = prevBodyOverflow
-      document.documentElement.style.overscrollBehavior = prevHtmlOverscroll
-      document.body.style.overscrollBehavior = prevBodyOverscroll
-    }
-  }, [])
-
   // Get current credit balance
   const creditBalance = useQuery(
     api.billing.credits.getCreditBalance,
@@ -203,6 +184,13 @@ function CheckoutBPPContent() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const nextMethod = resolveCheckoutMethodSelection(selectedMethod, enabledMethods)
+    if (nextMethod && nextMethod !== selectedMethod) {
+      setSelectedMethod(nextMethod)
+    }
+  }, [enabledMethods, selectedMethod])
 
   const handleTopUp = useCallback(async () => {
     if (isProcessing) return
@@ -228,7 +216,10 @@ function CheckoutBPPContent() {
           paymentMethod: selectedMethod,
           vaChannel: selectedMethod === "va" ? selectedVAChannel : undefined,
           ewalletChannel: selectedMethod === "ewallet" ? selectedEWalletChannel : undefined,
-          mobileNumber: selectedMethod === "ewallet" && selectedEWalletChannel === "OVO" ? mobileNumber : undefined,
+          mobileNumber:
+            selectedMethod === "ewallet" && selectedEWalletChannel === "OVO"
+              ? normalizeOvoMobileNumber(mobileNumber)
+              : undefined,
         }),
       })
 
@@ -246,8 +237,12 @@ function CheckoutBPPContent() {
       }
     } catch (err) {
       console.error("[CheckoutBPP] Error:", err)
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan")
-      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan")
+      const message =
+        err instanceof Error
+          ? mapPaymentCreationErrorMessage(selectedMethod, err.message)
+          : "Terjadi kesalahan"
+      setError(message)
+      toast.error(message)
     } finally {
       setIsProcessing(false)
     }
@@ -261,10 +256,10 @@ function CheckoutBPPContent() {
   // Loading state
   if (userLoading || bppPackage === undefined) {
     return (
-      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
-        <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-        <div className="relative z-10 flex h-full items-center justify-center px-4">
-          <div className={cn("w-full max-w-2xl p-4 md:p-5", shellPanelClass)}>
+        <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+          <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+          <div className={checkoutViewportClass}>
+          <div className={cn(checkoutCardClass, "p-3 md:p-3.5", shellPanelClass)}>
             <div className="animate-pulse space-y-3">
               <div className="h-6 rounded bg-muted w-1/3" />
               <div className="h-28 rounded-shell bg-muted" />
@@ -281,11 +276,11 @@ function CheckoutBPPContent() {
   // Show payment result (QR Code / VA Number / OVO notification)
   if (paymentResult && (selectedMethod !== "ewallet" || !paymentResult.redirectUrl)) {
     return (
-      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+      <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
         <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-        <div className="relative z-10 flex h-full items-center justify-center px-3 py-3 md:px-6 md:py-6">
-          <div className="w-full max-w-2xl">
-            <div className={cn("space-y-3 p-4 md:p-5", shellPanelClass)}>
+        <div className={checkoutViewportClass}>
+          <div className={cn(checkoutCardClass, "p-3 md:p-3.5", shellPanelClass)}>
+            <div className="space-y-2">
               <BackToSubscriptionButton onClick={handleBackToSubscription} />
 
               <div className={cn("space-y-3 text-center", sectionCardClass)}>
@@ -394,17 +389,19 @@ function CheckoutBPPContent() {
   }
 
   return (
-    <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+    <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
       <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-      <div className="relative z-10 flex h-full items-center justify-center px-3 py-3 md:px-6 md:py-6">
-        <div className="w-full max-w-2xl">
-          <div className={cn("space-y-3 p-4 md:p-5", shellPanelClass)}>
+      <div className={checkoutViewportClass}>
+        <div className={cn(checkoutCardClass, "p-3 md:p-3.5", shellPanelClass)}>
+          <div className="space-y-2">
             <BackToSubscriptionButton onClick={handleBackToSubscription} />
 
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 mb-1">
-                <CreditCard className="h-5 w-5 text-foreground" />
-                <h1 className="text-narrative text-xl font-medium text-foreground">Beli Kredit</h1>
+              <div className="mb-1 inline-flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-foreground" />
+                <h1 className="text-narrative text-base font-medium text-foreground md:text-lg">
+                  Beli Kredit
+                </h1>
               </div>
               <p className="text-interface text-xs text-muted-foreground">
                 {currentTier === "pro" ? "Top Up Kredit" : "Bayar Per Paper - 1 paper lengkap"}
@@ -421,20 +418,20 @@ function CheckoutBPPContent() {
               </div>
             )}
 
-            <div className={sectionCardClass}>
-              <div className="flex items-center justify-between">
-                {currentTier !== "pro" && (
-                  <div>
-                    <p className="text-interface text-xs text-muted-foreground">Saldo kredit saat ini</p>
-                    <p className="text-interface text-2xl font-medium tracking-tight text-foreground">
-                      {currentCredits}
-                      <span className="ml-1 text-sm font-normal text-muted-foreground">kredit</span>
-                    </p>
+              <div className={sectionCardClass}>
+                <div className="flex items-center justify-between">
+                  {currentTier !== "pro" && (
+                    <div>
+                      <p className="text-interface text-xs text-muted-foreground">Saldo kredit saat ini</p>
+                      <p className="text-interface text-lg font-medium tracking-tight text-foreground md:text-xl">
+                        {currentCredits}
+                        <span className="ml-1 text-sm font-normal text-muted-foreground">kredit</span>
+                      </p>
                   </div>
                 )}
                 <div className={currentTier === "pro" ? "" : "text-right"}>
                   <p className="text-signal text-[10px] text-muted-foreground">Paket Paper</p>
-                  <p className="text-interface text-lg font-medium text-foreground">
+                  <p className="text-interface text-base font-medium text-foreground md:text-lg">
                     {pkg.credits} kredit
                   </p>
                   <p className="text-interface text-sm text-muted-foreground">
@@ -447,7 +444,7 @@ function CheckoutBPPContent() {
             <div className={sectionCardClass}>
               <h2 className="text-narrative font-medium text-foreground mb-2">Metode Pembayaran</h2>
               <div className="space-y-2">
-                {PAYMENT_METHODS.filter((m) => enabledMethods.includes(METHOD_ID_TO_ENABLED[m.id])).map((method) => {
+                {PAYMENT_METHODS.filter((m) => availableMethods.includes(m.id)).map((method) => {
                   const Icon = method.icon
                   const isSelected = selectedMethod === method.id
 
@@ -457,7 +454,7 @@ function CheckoutBPPContent() {
                       onClick={() => setSelectedMethod(method.id)}
                       disabled={isProcessing}
                       className={cn(
-                        "w-full flex items-center gap-3 rounded-shell border p-3 text-left transition-colors",
+                        "w-full flex items-center gap-3 rounded-shell border p-2 text-left transition-colors md:p-2.5",
                         isSelected
                           ? "border-[color:var(--emerald-500)] bg-[color:var(--emerald-500)]/10"
                           : "border-border/70 bg-background/50 hover:bg-muted/90",
@@ -518,7 +515,7 @@ function CheckoutBPPContent() {
               {selectedMethod === "ewallet" && (
                 <div className="mt-3 border-t border-border/60 pt-3">
                   <p className="text-interface text-xs text-muted-foreground mb-2">Pilih E-Wallet</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {EWALLET_CHANNELS.map((channel) => (
                       <button
                         key={channel.code}
@@ -566,9 +563,9 @@ function CheckoutBPPContent() {
             </div>
 
             <div className={sectionCardClass}>
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 flex items-center justify-between">
                 <span className="text-narrative text-sm text-muted-foreground">Total Pembayaran</span>
-                <span className="text-interface text-2xl font-medium tracking-tight text-foreground">
+                <span className="text-interface text-lg font-medium tracking-tight text-foreground md:text-xl">
                   Rp {pkg.priceIDR.toLocaleString("id-ID")}
                 </span>
               </div>
@@ -584,7 +581,7 @@ function CheckoutBPPContent() {
                 onClick={handleTopUp}
                 disabled={isProcessing}
                 className={cn(
-                  "group relative w-full overflow-hidden rounded-action border border-transparent px-4 py-2.5",
+                  "group relative w-full overflow-hidden rounded-action border border-transparent px-4 py-2.5 md:py-3",
                   "text-signal text-xs font-medium uppercase tracking-widest",
                   "bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
                   "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
@@ -615,7 +612,7 @@ function CheckoutBPPContent() {
                 </span>
               </button>
               <p className="text-narrative text-xs text-muted-foreground text-center mt-2">
-                Pembayaran diproses oleh {paymentConfig?.activeProvider === "midtrans" ? "Midtrans" : "Xendit"}. Aman dan terenkripsi.
+                Pembayaran diproses oleh {getRuntimeProviderLabel()}. Aman dan terenkripsi.
               </p>
             </div>
           </div>

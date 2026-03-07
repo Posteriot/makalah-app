@@ -11,6 +11,7 @@ import type { Id } from "@convex/_generated/dataModel"
 import { randomUUID } from "crypto"
 import { isValidPackageType } from "@convex/billing/constants"
 import { createPaymentViaProvider } from "@/lib/payment/create-payment"
+import { assertEnabledPaymentMethod } from "@/lib/payment/request-validation"
 
 // Request body type
 interface TopUpRequest {
@@ -72,6 +73,13 @@ export async function POST(req: NextRequest) {
     }
     const { credits, priceIDR: amount, label: packageLabel } = pkg
 
+    const paymentConfig = await fetchQuery(
+      api.billing.paymentProviderConfigs.getActiveConfig,
+      {},
+      convexOptions
+    )
+    assertEnabledPaymentMethod(paymentMethod, paymentConfig.enabledMethods)
+
     // 7. Generate unique reference ID and idempotency key
     const referenceId = `topup_${convexUser._id}_${Date.now()}`
     const idempotencyKey = randomUUID()
@@ -128,6 +136,13 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error("[TopUp] Error:", error)
+
+    if (error instanceof Error && error.message === "Metode pembayaran tidak tersedia") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
 
     if (error instanceof Error) {
       return NextResponse.json(

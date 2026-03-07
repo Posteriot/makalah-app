@@ -10,6 +10,7 @@ import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 import { createPaymentViaProvider } from "@/lib/payment/create-payment"
 import { randomUUID } from "crypto"
+import { assertEnabledPaymentMethod } from "@/lib/payment/request-validation"
 
 type PlanType = "pro_monthly"
 const PRO_PLAN_TYPE: PlanType = "pro_monthly"
@@ -94,6 +95,13 @@ export async function POST(req: NextRequest) {
     const { priceIDR: amount, label: planLabel } = pricing
     const description = `${planLabel} — Makalah AI`
 
+    const paymentConfig = await fetchQuery(
+      api.billing.paymentProviderConfigs.getActiveConfig,
+      {},
+      convexOptions
+    )
+    assertEnabledPaymentMethod(body.paymentMethod, paymentConfig.enabledMethods)
+
     // 6. Generate unique reference ID and idempotency key
     const referenceId = `sub_${convexUser._id}_${Date.now()}`
     const idempotencyKey = randomUUID()
@@ -135,6 +143,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ...result, planType, planLabel })
   } catch (error) {
     console.error("[Subscribe] Error:", error)
+
+    if (error instanceof Error && error.message === "Metode pembayaran tidak tersedia") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
 
     if (error instanceof Error) {
       return NextResponse.json(

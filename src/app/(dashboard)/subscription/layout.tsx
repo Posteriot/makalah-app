@@ -162,7 +162,7 @@ export default function SubscriptionLayout({
             "col-span-1 pt-4",
             tier !== "gratis" ? "md:col-span-12" : "md:col-span-1"
           )}>
-            <div className="mx-auto w-full max-w-4xl rounded-shell border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-6 md:px-8">
+            <div className="mx-auto w-full max-w-4xl rounded-shell border-hairline bg-card/90 px-5 py-6 backdrop-blur-[1px] dark:bg-slate-900 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:px-0 max-md:py-0 md:px-8">
               {children}
             </div>
           </main>

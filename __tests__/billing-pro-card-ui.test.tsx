@@ -68,6 +68,10 @@ const MOCK_FREE_USER = {
 type CheckoutQueryMockOptions = {
   remainingCredits?: number
   subscriptionStatusResponse?: Record<string, unknown>
+  paymentConfig?: {
+    enabledMethods: Array<"QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET">
+    webhookUrl: string
+  }
 }
 
 function setupCheckoutQueryMock(options?: CheckoutQueryMockOptions) {
@@ -76,6 +80,10 @@ function setupCheckoutQueryMock(options?: CheckoutQueryMockOptions) {
   const subscriptionStatusResponse = options?.subscriptionStatusResponse ?? {
     hasSubscription: false,
     status: null,
+  }
+  const paymentConfig = options?.paymentConfig ?? {
+    enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"],
+    webhookUrl: "/api/webhooks/payment",
   }
 
   mockUseQuery.mockImplementation((_queryRef: unknown, args: unknown) => {
@@ -93,6 +101,7 @@ function setupCheckoutQueryMock(options?: CheckoutQueryMockOptions) {
       return {
         priceIDR: 200_000,
         label: "Pro Bulanan",
+        ...paymentConfig,
       }
     }
 
@@ -144,6 +153,46 @@ describe("Billing - PRO checkout flow", () => {
     expect(screen.getByText("QRIS")).toBeInTheDocument()
     expect(screen.getByText("Virtual Account")).toBeInTheDocument()
     expect(screen.getByText("E-Wallet")).toBeInTheDocument()
+  })
+
+  it("menyembunyikan metode nonaktif dan menampilkan copy xendit", async () => {
+    setupCheckoutQueryMock({
+      paymentConfig: {
+        enabledMethods: ["QRIS"],
+        webhookUrl: "/api/webhooks/payment",
+      },
+    })
+
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+
+    render(<CheckoutPROPage />)
+
+    expect(screen.getByText("QRIS")).toBeInTheDocument()
+    expect(screen.queryByText("Virtual Account")).not.toBeInTheDocument()
+    expect(screen.queryByText("E-Wallet")).not.toBeInTheDocument()
+    expect(screen.getByText(/pembayaran diproses oleh xendit/i)).toBeInTheDocument()
+  })
+
+  it("menampilkan hanya channel VA aktif dan hanya OVO untuk e-wallet", async () => {
+    const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+
+    render(<CheckoutPROPage />)
+
+    fireEvent.click(screen.getByText("Virtual Account"))
+
+    expect(screen.getByText("BJB")).toBeInTheDocument()
+    expect(screen.getByText("BNI")).toBeInTheDocument()
+    expect(screen.getByText("BRI")).toBeInTheDocument()
+    expect(screen.getByText("BSI")).toBeInTheDocument()
+    expect(screen.getByText("CIMB")).toBeInTheDocument()
+    expect(screen.getByText("Mandiri")).toBeInTheDocument()
+    expect(screen.getByText("Permata")).toBeInTheDocument()
+    expect(screen.queryByText("BCA")).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText("E-Wallet"))
+
+    expect(screen.getAllByText("OVO").length).toBeGreaterThan(0)
+    expect(screen.queryByText("GoPay")).not.toBeInTheDocument()
   })
 
   it("POST ke /api/payments/subscribe dengan payload default saat klik Bayar", async () => {

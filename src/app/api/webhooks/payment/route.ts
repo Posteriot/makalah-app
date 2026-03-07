@@ -148,8 +148,9 @@ async function handlePaymentSuccess(event: WebhookEvent, internalKey: string) {
     }
 
     case "paper_completion":
-      // TODO: Unlock paper export
-      console.log(`[Payment] Paper completion payment - unlock export`)
+      console.error(
+        "[Payment] paper_completion received on Xendit runtime, but no active fulfillment path exists"
+      )
       break
 
     case "subscription_initial": {
