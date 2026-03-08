@@ -305,8 +305,8 @@ export function GlobalHeader() {
                 "group relative overflow-hidden",
                 // Base layout
                 "md:hidden inline-flex h-6 w-6 items-center justify-center rounded-action mr-2",
-                "border border-[color:var(--core-border)] bg-[color:var(--core-secondary)] text-[color:var(--core-secondary-foreground)]",
-                "hover:bg-[color:var(--core-accent)] hover:text-[color:var(--core-accent-foreground)] hover:border-[color:var(--core-border-strong)]",
+                "bg-[color:var(--core-secondary)] text-[color:var(--core-secondary-foreground)]",
+                "hover:bg-[color:var(--core-accent)] hover:text-[color:var(--core-accent-foreground)]",
                 // Transition & focus
                 "transition-colors focus-ring"
               )}
@@ -354,8 +354,8 @@ export function GlobalHeader() {
                 "group relative overflow-hidden",
                 // Base layout
                 "hidden md:inline-flex h-7.5 w-7.5 items-center justify-center rounded-action",
-                "border border-[color:var(--core-border)] bg-[color:var(--core-secondary)] text-[color:var(--core-secondary-foreground)]",
-                "hover:bg-[color:var(--core-accent)] hover:text-[color:var(--core-accent-foreground)] hover:border-[color:var(--core-border-strong)]",
+                "bg-[color:var(--core-secondary)] text-[color:var(--core-secondary-foreground)]",
+                "hover:bg-[color:var(--core-accent)] hover:text-[color:var(--core-accent-foreground)]",
                 // Transition & focus
                 "transition-colors focus-ring"
               )}
