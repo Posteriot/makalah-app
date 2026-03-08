@@ -2285,124 +2285,6 @@ SEARCH TIPS:
                     publishedAt?: number | null
                 }
 
-                // ────────────────────────────────────────────────────────────
-                // PHASE 1: Silent Perplexity search (await full result)
-                // ────────────────────────────────────────────────────────────
-                const perplexityResult = streamText({
-                    model: webSearchModel,
-                    messages: sanitizedMessages,
-                    // No tools — Perplexity searches natively
-                    ...samplingOptions,
-                })
-
-                // Await full text (not streamed to user)
-                const searchText = await perplexityResult.text
-                const searchUsage = await perplexityResult.usage
-
-                // Get sources with 4s timeout (same as before)
-                const rawSources = await (async () => {
-                    try {
-                        return await Promise.race([
-                            perplexityResult.sources,
-                            new Promise<undefined>((resolve) =>
-                                setTimeout(() => resolve(undefined), 4000)
-                            ),
-                        ])
-                    } catch {
-                        return undefined
-                    }
-                })()
-
-                // Source pipeline: normalize → score → enrich → dedup
-                const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
-
-                const qualityInput = normalizedCitations.map(c => ({
-                    url: normalizeWebSearchUrl(c.url),
-                    title: c.title || c.url,
-                }))
-                const qualityResult = validateWithScores({ sources: qualityInput })
-
-                let scoredSources: SourceEntry[] = qualityResult.scoredSources
-                    ? qualityResult.scoredSources.map(s => ({ url: s.url, title: s.title }))
-                    : qualityInput.filter(c => !isGarbageUrl(c.url)) // fallback to old behavior
-
-                if (qualityResult.filteredOut?.length) {
-                    console.log(`[source-quality] Filtered ${qualityResult.filteredOut.length} low-quality sources`)
-                }
-                if (qualityResult.diversityWarning) {
-                    console.log(`[source-quality] ${qualityResult.diversityWarning}`)
-                }
-
-                // Enrichment
-                if (scoredSources.length > 0) {
-                    scoredSources = await enrichSourcesWithFetchedTitles(scoredSources, {
-                        concurrency: 4,
-                        timeoutMs: 2500,
-                    })
-                    scoredSources = scoredSources.filter((s) => !(s as { _unreachable?: true })._unreachable)
-
-                    // Dedup
-                    const deduped = new Map<string, SourceEntry>()
-                    for (const src of scoredSources) {
-                        const key = canonicalizeCitationUrl(src.url)
-                        if (!deduped.has(key)) {
-                            deduped.set(key, src)
-                        }
-                    }
-                    scoredSources = Array.from(deduped.values())
-                }
-
-                const sourceCount = scoredSources.length
-                primaryReasoningSourceCount = sourceCount
-
-                // ────────────────────────────────────────────────────────────
-                // PHASE 2: Gemini compose with skill instructions
-                // ────────────────────────────────────────────────────────────
-                const { buildSearchResultsContext } = await import("@/lib/ai/search-results-context")
-
-                const skillContext: SkillContext = {
-                    isPaperMode: !!paperModePrompt,
-                    currentStage: paperSession?.currentStage ?? null,
-                    hasRecentSources: scoredSources.length > 0,
-                    availableSources: scoredSources.map(s => ({
-                        url: s.url,
-                        title: s.title,
-                        ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
-                    })),
-                }
-                const skillInstructions = composeSkillInstructions(skillContext)
-
-                const searchResultsContext = buildSearchResultsContext(
-                    qualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
-                    searchText
-                )
-
-                // Build compose messages: system + skills + search results + file context + conversation
-                const composeMessages: ModelMessage[] = [
-                    { role: "system" as const, content: systemPrompt },
-                    ...(paperModePrompt
-                        ? [{ role: "system" as const, content: paperModePrompt }]
-                        : []),
-                    ...(paperWorkflowReminder
-                        ? [{ role: "system" as const, content: paperWorkflowReminder }]
-                        : []),
-                    ...(skillInstructions
-                        ? [{ role: "system" as const, content: skillInstructions }]
-                        : []),
-                    { role: "system" as const, content: searchResultsContext },
-                    ...(fileContext
-                        ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
-                        : []),
-                    ...trimmedModelMessages,
-                ]
-
-                const composeModel = model
-                const composeResult = streamText({
-                    model: composeModel,
-                    messages: composeMessages,
-                    ...samplingOptions,
-                })
-
                 const stream = createUIMessageStream({
                     execute: async ({ writer }) => {
                         let started = false
@@ -2432,7 +2314,7 @@ SEARCH TIPS:
                             writer.write({
                                 type: "data-search",
                                 id: searchStatusId,
-                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount } : {}) },
+                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount: 0 } : {}) },
                             })
                         }
 
@@ -2443,7 +2325,7 @@ SEARCH TIPS:
                             enabled: isTransparentReasoning,
                         })
 
-                        // Emit searching → composing status transition
+                        // Emit "searching" status — user sees "Mencari sumber..." immediately
                         ensureStart()
                         writer.write({
                             type: "data-search",
@@ -2452,11 +2334,141 @@ SEARCH TIPS:
                         })
                         emitTrace(reasoningTrace.initialEvents)
 
-                        // Phase 1 already complete — transition to composing
+                        // ────────────────────────────────────────────────────────────
+                        // PHASE 1: Silent Perplexity search (runs while user sees "Mencari sumber...")
+                        // ────────────────────────────────────────────────────────────
+                        const perplexityResult = streamText({
+                            model: webSearchModel,
+                            messages: sanitizedMessages,
+                            // No tools — Perplexity searches natively
+                            ...samplingOptions,
+                        })
+
+                        // Await full text (not streamed to user)
+                        const searchText = await perplexityResult.text
+                        const searchUsage = await perplexityResult.usage
+
+                        // Get sources with 4s timeout (same as before)
+                        const rawSources = await (async () => {
+                            try {
+                                return await Promise.race([
+                                    perplexityResult.sources,
+                                    new Promise<undefined>((resolve) =>
+                                        setTimeout(() => resolve(undefined), 4000)
+                                    ),
+                                ])
+                            } catch {
+                                return undefined
+                            }
+                        })()
+
+                        // Source pipeline: normalize → score → enrich → dedup
+                        const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
+
+                        const qualityInput = normalizedCitations.map(c => ({
+                            url: normalizeWebSearchUrl(c.url),
+                            title: c.title || c.url,
+                        }))
+                        const qualityResult = validateWithScores({ sources: qualityInput })
+
+                        let scoredSources: SourceEntry[] = qualityResult.scoredSources
+                            ? qualityResult.scoredSources.map(s => ({ url: s.url, title: s.title }))
+                            : qualityInput.filter(c => !isGarbageUrl(c.url)) // fallback to old behavior
+
+                        if (qualityResult.filteredOut?.length) {
+                            console.log(`[source-quality] Filtered ${qualityResult.filteredOut.length} low-quality sources`)
+                        }
+                        if (qualityResult.diversityWarning) {
+                            console.log(`[source-quality] ${qualityResult.diversityWarning}`)
+                        }
+
+                        // Enrichment
+                        if (scoredSources.length > 0) {
+                            scoredSources = await enrichSourcesWithFetchedTitles(scoredSources, {
+                                concurrency: 4,
+                                timeoutMs: 2500,
+                            })
+                            scoredSources = scoredSources.filter((s) => !(s as { _unreachable?: true })._unreachable)
+
+                            // Dedup
+                            const deduped = new Map<string, SourceEntry>()
+                            for (const src of scoredSources) {
+                                const key = canonicalizeCitationUrl(src.url)
+                                if (!deduped.has(key)) {
+                                    deduped.set(key, src)
+                                }
+                            }
+                            scoredSources = Array.from(deduped.values())
+                        }
+
+                        const sourceCount = scoredSources.length
+                        primaryReasoningSourceCount = sourceCount
+
+                        // Phase 1 complete — transition to composing
                         if (sourceCount > 0) {
                             emitTrace(reasoningTrace.markSourceDetected())
                         }
-                        closeSearchStatus(sourceCount > 0 ? "composing" : "off")
+                        // Update closeSearchStatus to use actual sourceCount
+                        searchStatusClosed = false
+                        const closeSearchStatusWithCount = (finalStatus: "done" | "off" | "error" | "composing") => {
+                            if (searchStatusClosed) return
+                            searchStatusClosed = finalStatus !== "composing"
+                            ensureStart()
+                            writer.write({
+                                type: "data-search",
+                                id: searchStatusId,
+                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount } : {}) },
+                            })
+                        }
+                        closeSearchStatusWithCount(sourceCount > 0 ? "composing" : "off")
+
+                        // ────────────────────────────────────────────────────────────
+                        // PHASE 2: Gemini compose with skill instructions
+                        // ────────────────────────────────────────────────────────────
+                        const { buildSearchResultsContext } = await import("@/lib/ai/search-results-context")
+
+                        const skillContext: SkillContext = {
+                            isPaperMode: !!paperModePrompt,
+                            currentStage: paperSession?.currentStage ?? null,
+                            hasRecentSources: scoredSources.length > 0,
+                            availableSources: scoredSources.map(s => ({
+                                url: s.url,
+                                title: s.title,
+                                ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
+                            })),
+                        }
+                        const skillInstructions = composeSkillInstructions(skillContext)
+
+                        const searchResultsContext = buildSearchResultsContext(
+                            qualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
+                            searchText
+                        )
+
+                        // Build compose messages: system + skills + search results + file context + conversation
+                        const composeMessages: ModelMessage[] = [
+                            { role: "system" as const, content: systemPrompt },
+                            ...(paperModePrompt
+                                ? [{ role: "system" as const, content: paperModePrompt }]
+                                : []),
+                            ...(paperWorkflowReminder
+                                ? [{ role: "system" as const, content: paperWorkflowReminder }]
+                                : []),
+                            ...(skillInstructions
+                                ? [{ role: "system" as const, content: skillInstructions }]
+                                : []),
+                            { role: "system" as const, content: searchResultsContext },
+                            ...(fileContext
+                                ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
+                                : []),
+                            ...trimmedModelMessages,
+                        ]
+
+                        const composeModel = model
+                        const composeResult = streamText({
+                            model: composeModel,
+                            messages: composeMessages,
+                            ...samplingOptions,
+                        })
 
                         // Stream Gemini compose output to user
                         for await (const chunk of composeResult.toUIMessageStream({
@@ -2623,7 +2635,7 @@ SEARCH TIPS:
                                         model: `${webSearchModelName}+${modelNames.primary.model}`,
                                         isPrimaryProvider: true,
                                         failoverUsed: false,
-                                        toolUsed: "perplexity_search",
+                                        toolUsed: "two_pass_search",
                                         mode: "websearch",
                                         success: true,
                                         latencyMs: Date.now() - telemetryStartTime,
