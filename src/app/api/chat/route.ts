@@ -45,7 +45,7 @@ import {
     type OperationType,
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
-import { referenceIntegritySkill, sourceQualitySkill, validateWithScores, type SkillContext } from "@/lib/ai/skills"
+import { referenceIntegritySkill, sourceQualitySkill, validateWithScores, getToolExamples, type SkillContext } from "@/lib/ai/skills"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
@@ -1398,7 +1398,9 @@ sequenceDiagram
 
 Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagram, gantt, mindmap, timeline, journey, gitgraph, quadrantChart, xychart, block-beta, sankey-beta.
 
-📚 SOURCES: Jika konten artifact BERASAL dari hasil web search sebelumnya, WAJIB pass parameter 'sources' dengan URL dan judul dari referensi yang digunakan. Ini memastikan inline citations [1], [2] di artifact terhubung ke sumber yang benar.`,
+📚 SOURCES: Jika konten artifact BERASAL dari hasil web search sebelumnya, WAJIB pass parameter 'sources' dengan URL dan judul dari referensi yang digunakan. Ini memastikan inline citations [1], [2] di artifact terhubung ke sumber yang benar.${getToolExamples("createArtifact") ? `
+
+${getToolExamples("createArtifact")}` : ""}`,
                 inputSchema: z.object({
                     type: z.enum(["code", "outline", "section", "table", "citation", "formula", "chart"])
                         .describe("The type of artifact to create"),

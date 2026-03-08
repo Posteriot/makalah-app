@@ -1,4 +1,5 @@
 import { tool } from "ai"
+import { getToolExamples } from "@/lib/ai/skills"
 import { z } from "zod"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
@@ -116,7 +117,9 @@ Contoh data untuk tahap 'outline':
   totalWordCount: 5000,
   completenessScore: 0
 }
-PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' sebagai angka (BUKAN 'wordCount' string). JANGAN tambah field 'checked' atau 'subSections'.`,
+PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' sebagai angka (BUKAN 'wordCount' string). JANGAN tambah field 'checked' atau 'subSections'.${getToolExamples("updateStageData") ? `
+
+${getToolExamples("updateStageData")}` : ""}`,
             inputSchema: z.object({
                 // NOTE: 'stage' parameter REMOVED - auto-fetched from session.currentStage
                 // This prevents AI from specifying wrong stage (Option B fix for stage confusion bug)
