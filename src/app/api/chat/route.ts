@@ -1427,6 +1427,23 @@ ${getToolExamples("createArtifact")}` : ""}`,
                             availableSources: recentSourcesList,
                             hasRecentSources: hasRecentSourcesInDb,
                         })
+                        logAiTelemetry({
+                            token: convexToken,
+                            userId: userId as Id<"users">,
+                            conversationId: currentConversationId as Id<"conversations">,
+                            provider: modelNames.primary.provider,
+                            model: "tool-validation",
+                            isPrimaryProvider: true,
+                            failoverUsed: false,
+                            mode: isPaperMode ? "paper" : "normal",
+                            success: refValidation.valid,
+                            latencyMs: 0,
+                            searchSkillApplied: true,
+                            searchSkillName: "reference-integrity",
+                            searchSkillAction: refValidation.valid ? "validated" : "rejected",
+                            referencesClaimed: sources?.length ?? 0,
+                            referencesMatched: refValidation.valid ? (sources?.length ?? 0) : 0,
+                        })
                         if (!refValidation.valid) {
                             return {
                                 success: false,
@@ -1519,6 +1536,23 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                             claimedSources: sources,
                             availableSources: recentSourcesList,
                             hasRecentSources: hasRecentSourcesInDb,
+                        })
+                        logAiTelemetry({
+                            token: convexToken,
+                            userId: userId as Id<"users">,
+                            conversationId: currentConversationId as Id<"conversations">,
+                            provider: modelNames.primary.provider,
+                            model: "tool-validation",
+                            isPrimaryProvider: true,
+                            failoverUsed: false,
+                            mode: isPaperMode ? "paper" : "normal",
+                            success: refValidation.valid,
+                            latencyMs: 0,
+                            searchSkillApplied: true,
+                            searchSkillName: "reference-integrity",
+                            searchSkillAction: refValidation.valid ? "validated" : "rejected",
+                            referencesClaimed: sources?.length ?? 0,
+                            referencesMatched: refValidation.valid ? (sources?.length ?? 0) : 0,
                         })
                         if (!refValidation.valid) {
                             return {
@@ -2512,6 +2546,20 @@ SEARCH TIPS:
                                     // ═══════════════════════════════════════════════════════════
 
                                     // ═══ TELEMETRY: Primary websearch success ═══
+                                    const sourceQualityTelemetry = {
+                                        searchSkillApplied: true,
+                                        searchSkillName: "source-quality",
+                                        searchSkillAction: qualityResult.valid ? "scored" : "rejected",
+                                        sourcesScored: (qualityResult.scoredSources?.length ?? 0) + (qualityResult.filteredOut?.length ?? 0),
+                                        sourcesFiltered: qualityResult.filteredOut?.length ?? 0,
+                                        sourcesPassedTiers: JSON.stringify(
+                                            (qualityResult.scoredSources ?? []).reduce((acc: Record<string, number>, s) => {
+                                                acc[s.tier] = (acc[s.tier] ?? 0) + 1
+                                                return acc
+                                            }, {} as Record<string, number>)
+                                        ),
+                                        diversityWarning: qualityResult.diversityWarning,
+                                    }
                                     logAiTelemetry({
                                         token: convexToken,
                                         userId: userId as Id<"users">,
@@ -2527,6 +2575,7 @@ SEARCH TIPS:
                                         inputTokens: finishUsage?.inputTokens,
                                         outputTokens: finishUsage?.outputTokens,
                                         ...telemetrySkillContext,
+                                        ...sourceQualityTelemetry,
                                     })
                                     // ═════════════════════════════════════════════
                                 } catch (err) {
@@ -3433,6 +3482,20 @@ SEARCH TIPS:
                                 // ═══════════════════════════════════════════════════════════
 
                                 // ═══ TELEMETRY: Fallback websearch success ═══
+                                const grokSourceQualityTelemetry = {
+                                    searchSkillApplied: true,
+                                    searchSkillName: "source-quality",
+                                    searchSkillAction: grokQualityResult.valid ? "scored" : "rejected",
+                                    sourcesScored: (grokQualityResult.scoredSources?.length ?? 0) + (grokQualityResult.filteredOut?.length ?? 0),
+                                    sourcesFiltered: grokQualityResult.filteredOut?.length ?? 0,
+                                    sourcesPassedTiers: JSON.stringify(
+                                        (grokQualityResult.scoredSources ?? []).reduce((acc: Record<string, number>, s) => {
+                                            acc[s.tier] = (acc[s.tier] ?? 0) + 1
+                                            return acc
+                                        }, {} as Record<string, number>)
+                                    ),
+                                    diversityWarning: grokQualityResult.diversityWarning,
+                                }
                                 logAiTelemetry({
                                     token: convexToken,
                                     userId: userId as Id<"users">,
@@ -3448,6 +3511,7 @@ SEARCH TIPS:
                                     inputTokens: finishUsage?.inputTokens,
                                     outputTokens: finishUsage?.outputTokens,
                                     ...fallbackTelemetryContext,
+                                    ...grokSourceQualityTelemetry,
                                 })
                                 // ═════════════════════════════════════════════
 
