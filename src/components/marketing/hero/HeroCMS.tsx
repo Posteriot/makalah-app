@@ -83,7 +83,7 @@ export function HeroCMS({ content }: HeroCMSProps) {
             </h1>
 
             {content.subtitle && (
-              <p className="text-narrative text-base md:text-2xl font-normal text-slate-600 dark:text-slate-200 max-w-[520px] mt-4 mb-0">
+              <p className="text-narrative text-base md:text-2xl font-normal text-muted-foreground max-w-[520px] mt-4 mb-0">
                 {content.subtitle}
               </p>
             )}
@@ -103,7 +103,7 @@ export function HeroCMS({ content }: HeroCMSProps) {
           <div className="hidden lg:flex lg:col-span-9 lg:items-center lg:justify-end">
             <div className="relative h-[480px] w-full max-w-[560px]">
               {imageUrl ? (
-                <div className="absolute w-full transition-all duration-300 rounded-md dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.2)] shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.3)] z-10 top-1/2 -translate-y-1/2 scale-[0.88] -translate-x-[60px]">
+                <div className="absolute w-full transition-all duration-300 rounded-md shadow-lg z-10 top-1/2 -translate-y-1/2 scale-[0.88] -translate-x-[60px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imageUrl}
