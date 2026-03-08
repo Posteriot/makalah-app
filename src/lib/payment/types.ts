@@ -7,7 +7,7 @@
 // Provider Identity
 // ════════════════════════════════════════════════════════════════
 
-export type PaymentProviderName = "xendit" | "midtrans"
+export type PaymentProviderName = "xendit"
 
 // ════════════════════════════════════════════════════════════════
 // Payment Method Categories
@@ -23,6 +23,7 @@ export type PaymentStatus = "PENDING" | "SUCCEEDED" | "FAILED" | "EXPIRED" | "RE
 
 export interface VAChannelOption {
   code: string
+  shortLabel: string
   label: string
 }
 

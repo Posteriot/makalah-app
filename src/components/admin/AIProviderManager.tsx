@@ -46,6 +46,8 @@ interface AIProviderConfig {
   fallbackWebSearchEnabled?: boolean
   fallbackWebSearchEngine?: string
   fallbackWebSearchMaxResults?: number
+  webSearchModel?: string
+  webSearchFallbackModel?: string
   version: number
   isActive: boolean
   createdAt: number
@@ -389,7 +391,8 @@ function ConfigCard({
         <WebSearchChip
           primaryEnabled={config.primaryWebSearchEnabled ?? true}
           fallbackEnabled={config.fallbackWebSearchEnabled ?? true}
-          engine={config.fallbackWebSearchEngine ?? "auto"}
+          primaryModel={config.webSearchModel ?? "perplexity/sonar"}
+          fallbackModel={config.webSearchFallbackModel ?? "x-ai/grok-3-mini"}
         />
       </div>
 
@@ -484,11 +487,13 @@ function SettingChip({ label, value }: { label: string; value: string }) {
 function WebSearchChip({
   primaryEnabled,
   fallbackEnabled,
-  engine,
+  primaryModel,
+  fallbackModel,
 }: {
   primaryEnabled: boolean
   fallbackEnabled: boolean
-  engine: string
+  primaryModel: string
+  fallbackModel: string
 }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -497,8 +502,9 @@ function WebSearchChip({
         Search
       </span>
       <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300">
-        {primaryEnabled ? "P:on" : "P:off"}{" "}
-        {fallbackEnabled ? `F:on (${engine})` : "F:off"}
+        {primaryEnabled ? `P: ${primaryModel}` : "P: off"}
+        {"  "}
+        {fallbackEnabled ? `F: ${fallbackModel}` : "F: off"}
       </span>
     </div>
   )

@@ -6,15 +6,15 @@
     "node": "20.x"
   },
   "scripts": {
-    "dev": "node --no-network-family-autoselection node_modules/next/dist/bin/next dev",
-    "build": "node --no-network-family-autoselection node_modules/next/dist/bin/next build",
-    "start": "node --no-network-family-autoselection node_modules/next/dist/bin/next start",
-    "convex": "node --no-network-family-autoselection node_modules/convex/bin/main.js",
+    "dev": "node --dns-result-order=ipv4first node_modules/next/dist/bin/next dev",
+    "build": "node --dns-result-order=ipv4first node_modules/next/dist/bin/next build",
+    "start": "node --dns-result-order=ipv4first node_modules/next/dist/bin/next start",
+    "convex": "node --dns-result-order=ipv4first node_modules/convex/bin/main.js",
     "convex:dev": "npm run convex -- dev",
     "convex:deploy": "npm run convex -- deploy",
     "convex:dashboard": "npm run convex -- dashboard",
     "lint": "eslint",
-    "typegen": "node --no-network-family-autoselection node_modules/next/dist/bin/next typegen",
+    "typegen": "node --dns-result-order=ipv4first node_modules/next/dist/bin/next typegen",
     "typecheck": "npm run typegen && tsc -p tsconfig.typecheck.json --noEmit --pretty false",
     "check:chat-empty-state:no-fallback": "bash scripts/check-chat-empty-state-no-fallback.sh",
     "test": "npm run check:chat-empty-state:no-fallback && vitest run"

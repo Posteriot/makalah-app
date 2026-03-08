@@ -417,6 +417,8 @@ export default defineSchema({
     fallbackWebSearchEnabled: v.optional(v.boolean()), // Enable web search for fallback :online (default: true)
     fallbackWebSearchEngine: v.optional(v.string()), // "native" | "exa" | "auto" (default: "auto")
     fallbackWebSearchMaxResults: v.optional(v.number()), // Max search results (default: 5, range: 1-10)
+    webSearchModel: v.optional(v.string()), // Dedicated web search model (default: "perplexity/sonar")
+    webSearchFallbackModel: v.optional(v.string()), // Fallback web search model (default: "x-ai/grok-3-mini")
 
     // ════════════════════════════════════════════════════════════════
     // Tool Visibility Settings (Admin maintenance toggle)
@@ -897,7 +899,7 @@ export default defineSchema({
     // Provider reference
     providerPaymentId: v.string(), // Provider's payment ID
     providerReferenceId: v.string(), // Our reference ID sent to provider
-    providerName: v.union(v.literal("xendit"), v.literal("midtrans")),
+    providerName: v.literal("xendit"),
     // Legacy fields retained for migration compatibility/readability.
     xenditPaymentRequestId: v.optional(v.string()),
     xenditReferenceId: v.optional(v.string()),
@@ -1016,7 +1018,6 @@ export default defineSchema({
 
   // Payment provider configuration (admin-managed)
   paymentProviderConfigs: defineTable({
-    activeProvider: v.union(v.literal("xendit"), v.literal("midtrans")),
     enabledMethods: v.array(
       v.union(v.literal("QRIS"), v.literal("VIRTUAL_ACCOUNT"), v.literal("EWALLET"))
     ),

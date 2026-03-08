@@ -1,279 +1,297 @@
-# Payment Provider Abstraction — Implementation Plan
+# Payment Provider Xendit-Only Hardening Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Make the payment architecture provider-agnostic, supporting Xendit and Midtrans via Interface + Adapter pattern with admin panel switching.
+**Goal:** Remove Midtrans from active payment runtime and admin surface while preserving the internal payment abstraction and keeping Xendit checkout flow fully operational.
 
-**Architecture:** Interface + Adapter pattern. Factory resolves active provider from DB config (admin panel) with env var fallback. Each provider adapter normalizes responses to shared types. Business logic (quota, credits, subscriptions) stays unchanged.
+**Architecture:** The implementation keeps the generic payment record model and generic webhook flow, but simplifies runtime provider resolution to Xendit only. Admin configuration is narrowed from provider switching to payment method settings, and both frontend and API routes are hardened so enabled methods are enforced consistently.
 
-**Tech Stack:** TypeScript, Convex (schema + functions), Next.js API routes, React (admin UI), Iconoir icons
-
-**Design Doc:** `docs/payment-provider/design.md`
+**Tech Stack:** Next.js 16 App Router, TypeScript, Convex, React 19, Vitest
 
 ---
 
-## Task 1: Create Payment Provider Types
+## Implementation Tasks
+
+### Task 1: Add Payment Runtime Settings Helpers
 
 **Files:**
-- Create: `src/lib/payment/types.ts`
+- Create: `src/lib/payment/runtime-settings.ts`
+- Test: `src/lib/payment/runtime-settings.test.ts`
 
-**Step 1: Write the types file**
+**Step 1: Write the failing test**
 
-```typescript
-// src/lib/payment/types.ts
+```ts
+import { describe, expect, it } from "vitest"
+import {
+  getEnabledCheckoutMethods,
+  getRuntimeProviderLabel,
+  isPaymentMethodEnabled,
+  resolveCheckoutMethodSelection,
+} from "./runtime-settings"
 
-/**
- * Payment Provider Abstraction Types
- * Provider-agnostic interfaces for payment processing
- */
+describe("payment runtime settings", () => {
+  it("returns checkout methods in canonical order", () => {
+    expect(getEnabledCheckoutMethods(["QRIS", "EWALLET"])).toEqual([
+      "qris",
+      "ewallet",
+    ])
+  })
 
-// ════════════════════════════════════════════════════════════════
-// Provider Identity
-// ════════════════════════════════════════════════════════════════
+  it("keeps current checkout method when still enabled", () => {
+    expect(resolveCheckoutMethodSelection("ewallet", ["QRIS", "EWALLET"])).toBe(
+      "ewallet"
+    )
+  })
 
-export type PaymentProviderName = "xendit" | "midtrans"
+  it("falls back to first enabled checkout method when current one is disabled", () => {
+    expect(resolveCheckoutMethodSelection("va", ["QRIS", "EWALLET"])).toBe(
+      "qris"
+    )
+  })
 
-// ════════════════════════════════════════════════════════════════
-// Payment Method Categories
-// ════════════════════════════════════════════════════════════════
+  it("returns null when no checkout method is enabled", () => {
+    expect(resolveCheckoutMethodSelection("qris", [])).toBeNull()
+  })
 
-export type PaymentMethodCategory = "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"
+  it("validates payment method against enabled methods", () => {
+    expect(isPaymentMethodEnabled("va", ["VIRTUAL_ACCOUNT"])).toBe(true)
+    expect(isPaymentMethodEnabled("va", ["QRIS"])).toBe(false)
+  })
 
-export type PaymentStatus = "PENDING" | "SUCCEEDED" | "FAILED" | "EXPIRED" | "REFUNDED"
+  it("returns xendit as the only runtime provider label", () => {
+    expect(getRuntimeProviderLabel()).toBe("Xendit")
+  })
+})
+```
 
-// ════════════════════════════════════════════════════════════════
-// Channel Options (provider returns these)
-// ════════════════════════════════════════════════════════════════
+**Step 2: Run test to verify it fails**
 
-export interface VAChannelOption {
-  code: string
-  label: string
+Run:
+```bash
+npx vitest run src/lib/payment/runtime-settings.test.ts
+```
+
+Expected:
+- FAIL karena module belum ada
+
+**Step 3: Write minimal implementation**
+
+```ts
+export type EnabledPaymentMethod = "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"
+export type CheckoutPaymentMethod = "qris" | "va" | "ewallet"
+
+const CHECKOUT_ORDER: Array<{
+  enabled: EnabledPaymentMethod
+  checkout: CheckoutPaymentMethod
+}> = [
+  { enabled: "QRIS", checkout: "qris" },
+  { enabled: "VIRTUAL_ACCOUNT", checkout: "va" },
+  { enabled: "EWALLET", checkout: "ewallet" },
+]
+
+export function getEnabledCheckoutMethods(
+  enabledMethods: EnabledPaymentMethod[]
+): CheckoutPaymentMethod[] {
+  return CHECKOUT_ORDER
+    .filter((item) => enabledMethods.includes(item.enabled))
+    .map((item) => item.checkout)
 }
 
-export interface EWalletChannelOption {
-  code: string
-  label: string
-  requiresMobileNumber?: boolean
-  requiresRedirectUrl?: boolean
+export function resolveCheckoutMethodSelection(
+  current: CheckoutPaymentMethod,
+  enabledMethods: EnabledPaymentMethod[]
+): CheckoutPaymentMethod | null {
+  const enabled = getEnabledCheckoutMethods(enabledMethods)
+  if (enabled.includes(current)) return current
+  return enabled[0] ?? null
 }
 
-// ════════════════════════════════════════════════════════════════
-// Payment Creation Params (caller sends these)
-// ════════════════════════════════════════════════════════════════
-
-export interface QRISParams {
-  referenceId: string
-  amount: number
-  description?: string
-  metadata?: Record<string, unknown>
-  expiresMinutes?: number
+export function isPaymentMethodEnabled(
+  method: CheckoutPaymentMethod,
+  enabledMethods: EnabledPaymentMethod[]
+): boolean {
+  return getEnabledCheckoutMethods(enabledMethods).includes(method)
 }
 
-export interface VAParams {
-  referenceId: string
-  amount: number
-  channelCode: string
-  customerName: string
-  description?: string
-  metadata?: Record<string, unknown>
-  expiresMinutes?: number
-}
-
-export interface EWalletParams {
-  referenceId: string
-  amount: number
-  channelCode: string
-  description?: string
-  metadata?: Record<string, unknown>
-  // OVO-specific
-  mobileNumber?: string
-  // Redirect-based (GoPay, ShopeePay, etc)
-  successReturnUrl?: string
-  failureReturnUrl?: string
-  cancelReturnUrl?: string
-}
-
-// ════════════════════════════════════════════════════════════════
-// Normalized Results (provider returns these)
-// ════════════════════════════════════════════════════════════════
-
-export interface PaymentResult {
-  providerPaymentId: string
-  referenceId: string
-  status: PaymentStatus
-  expiresAt?: number
-  // Method-specific presentation data
-  qrString?: string
-  vaNumber?: string
-  vaChannel?: string
-  redirectUrl?: string
-}
-
-export interface WebhookEvent {
-  providerPaymentId: string
-  status: PaymentStatus
-  paidAt?: number
-  failureCode?: string
-  rawAmount?: number
-  channelCode?: string
-  metadata?: Record<string, unknown>
-}
-
-// ════════════════════════════════════════════════════════════════
-// Provider Interface
-// ════════════════════════════════════════════════════════════════
-
-export interface PaymentProvider {
-  readonly name: PaymentProviderName
-
-  // Payment creation — one per method category
-  createQRIS(params: QRISParams): Promise<PaymentResult>
-  createVA(params: VAParams): Promise<PaymentResult>
-  createEWallet(params: EWalletParams): Promise<PaymentResult>
-
-  // Webhook verification + parsing
-  verifyWebhook(request: Request): Promise<WebhookEvent | null>
-
-  // Status check (polling fallback)
-  getPaymentStatus(providerPaymentId: string): Promise<PaymentStatus>
-
-  // Available channels (differs per provider)
-  getSupportedVAChannels(): VAChannelOption[]
-  getSupportedEWalletChannels(): EWalletChannelOption[]
+export function getRuntimeProviderLabel(): "Xendit" {
+  return "Xendit"
 }
 ```
 
-**Step 2: Verify no TypeScript errors**
+**Step 4: Run test to verify it passes**
 
-Run: `npx tsc --noEmit --pretty 2>&1 | head -20`
-Expected: No errors from `src/lib/payment/types.ts`
+Run:
+```bash
+npx vitest run src/lib/payment/runtime-settings.test.ts
+```
 
-**Step 3: Commit**
+Expected:
+- PASS semua test di file itu
+
+**Step 5: Commit**
 
 ```bash
-git add src/lib/payment/types.ts
-git commit -m "feat(payment): add provider-agnostic types and interface"
+git add src/lib/payment/runtime-settings.ts src/lib/payment/runtime-settings.test.ts
+git commit -m "test(payment): add xendit-only runtime settings helpers"
 ```
 
----
-
-## Task 2: Create Xendit Adapter
+### Task 2: Refactor Admin Payment Settings Surface
 
 **Files:**
-- Create: `src/lib/payment/adapters/xendit.ts`
-- Reference (read-only): `src/lib/xendit/client.ts`
+- Modify: `src/components/admin/PaymentProviderManager.tsx`
+- Modify: `convex/billing/paymentProviderConfigs.ts`
+- Modify: `convex/schema.ts`
+- Create: `src/components/admin/PaymentProviderManager.test.tsx`
 
-**Step 1: Write the Xendit adapter**
+**Step 1: Write the failing component test**
 
-Wrap all existing Xendit API calls from `src/lib/xendit/client.ts` into adapter class. Inline the Xendit REST API logic (don't import from old client — we'll delete it later).
+```tsx
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { PaymentProviderManager } from "./PaymentProviderManager"
 
-Key mapping:
-- `XenditPaymentResponse.payment_request_id` → `PaymentResult.providerPaymentId`
-- `XenditPaymentResponse.reference_id` → `PaymentResult.referenceId`
-- `XenditPaymentResponse.status` → map to `PaymentStatus`
-- `XenditPaymentResponse.actions[]` → extract `qrString`, `vaNumber`, `redirectUrl`
-- Webhook: `x-callback-token` verification → parse `XenditWebhookPayload` → return `WebhookEvent`
+const mockUseQuery = vi.fn()
+const mockUseMutation = vi.fn()
+const mutate = vi.fn()
 
-Channel lists:
-- VA: BCA, BNI, BRI, Mandiri (same as current `VA_CHANNELS`)
-- EWallet: OVO (requiresMobileNumber), GoPay (requiresRedirectUrl)
+vi.mock("convex/react", () => ({
+  useQuery: (...args: unknown[]) => mockUseQuery(...args),
+  useMutation: () => mockUseMutation(),
+}))
 
-**Step 2: Verify TypeScript compiles**
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}))
 
-Run: `npx tsc --noEmit --pretty 2>&1 | head -20`
+describe("PaymentProviderManager", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseMutation.mockReturnValue(mutate)
+    mockUseQuery
+      .mockReturnValueOnce({
+        enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"],
+        webhookUrl: "/api/webhooks/payment",
+      })
+      .mockReturnValueOnce({
+        xendit: {
+          secretKey: true,
+          webhookToken: true,
+        },
+      })
+  })
 
-**Step 3: Commit**
+  it("renders xendit-only settings without midtrans selector", () => {
+    render(<PaymentProviderManager userId={"user_123" as never} />)
 
+    expect(screen.getByText("Provider Aktif")).toBeInTheDocument()
+    expect(screen.getByText("Xendit")).toBeInTheDocument()
+    expect(screen.queryByText("Midtrans")).not.toBeInTheDocument()
+  })
+
+  it("saves enabled methods without activeProvider payload", async () => {
+    render(<PaymentProviderManager userId={"user_123" as never} />)
+
+    fireEvent.click(screen.getByLabelText("E-Wallet"))
+    fireEvent.click(screen.getByRole("button", { name: /simpan konfigurasi/i }))
+
+    await waitFor(() => {
+      expect(mutate).toHaveBeenCalledWith({
+        requestorUserId: "user_123",
+        enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT"],
+      })
+    })
+  })
+})
+```
+
+**Step 2: Run test to verify it fails**
+
+Run:
 ```bash
-git add src/lib/payment/adapters/xendit.ts
-git commit -m "feat(payment): add Xendit adapter implementing PaymentProvider"
+npx vitest run src/components/admin/PaymentProviderManager.test.tsx
 ```
 
----
+Expected:
+- FAIL karena komponen masih merender Midtrans dan mutation masih mengirim `activeProvider`
 
-## Task 3: Create Midtrans Adapter (Skeleton)
+**Step 3: Write minimal implementation**
 
-**Files:**
-- Create: `src/lib/payment/adapters/midtrans.ts`
+Update `src/components/admin/PaymentProviderManager.tsx`:
 
-**Step 1: Write the skeleton adapter**
+```tsx
+const PAYMENT_METHODS = [
+  { value: "QRIS" as const, label: "QRIS" },
+  { value: "VIRTUAL_ACCOUNT" as const, label: "Virtual Account" },
+  { value: "EWALLET" as const, label: "E-Wallet" },
+]
 
-All methods throw `Error("MidtransAdapter.<method> not yet implemented")`. TypeScript compiler ensures all interface methods exist.
+function isXenditConfigured() {
+  return Boolean(envStatus?.xendit.secretKey && envStatus?.xendit.webhookToken)
+}
 
-Include channel lists as comments/TODOs for future implementation:
-- VA: BCA, BNI, BRI, Mandiri, Permata (Midtrans equivalents)
-- EWallet: GoPay, ShopeePay
-
-**Step 2: Verify TypeScript compiles**
-
-Run: `npx tsc --noEmit --pretty 2>&1 | head -20`
-
-**Step 3: Commit**
-
-```bash
-git add src/lib/payment/adapters/midtrans.ts
-git commit -m "feat(payment): add Midtrans adapter skeleton"
+await upsertConfig({
+  requestorUserId: userId,
+  enabledMethods,
+})
 ```
 
----
+Update `convex/billing/paymentProviderConfigs.ts`:
 
-## Task 4: Create Factory
+```ts
+export const getActiveConfig = query({
+  args: {},
+  handler: async (ctx) => {
+    const config = await ctx.db
+      .query("paymentProviderConfigs")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .first()
 
-**Files:**
-- Create: `src/lib/payment/factory.ts`
+    return {
+      enabledMethods: config?.enabledMethods ?? [
+        "QRIS",
+        "VIRTUAL_ACCOUNT",
+        "EWALLET",
+      ],
+      webhookUrl: config?.webhookUrl ?? "/api/webhooks/payment",
+      defaultExpiryMinutes: config?.defaultExpiryMinutes ?? 30,
+    }
+  },
+})
 
-**Step 1: Write the factory**
+export const upsertConfig = mutation({
+  args: {
+    requestorUserId: v.id("users"),
+    enabledMethods: v.array(
+      v.union(v.literal("QRIS"), v.literal("VIRTUAL_ACCOUNT"), v.literal("EWALLET"))
+    ),
+    webhookUrl: v.optional(v.string()),
+    defaultExpiryMinutes: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // upsert without activeProvider
+  },
+})
 
-Logic:
-1. Try `fetchQuery(api.billing.paymentProviderConfigs.getActiveConfig)` — will fail until Task 7, that's OK
-2. Fallback: `process.env.PAYMENT_PROVIDER ?? "xendit"`
-3. Switch on provider name → return adapter instance
-4. For now, wrap DB call in try-catch (table doesn't exist yet)
-
-**Step 2: Verify TypeScript compiles**
-
-**Step 3: Commit**
-
-```bash
-git add src/lib/payment/factory.ts
-git commit -m "feat(payment): add provider factory with DB-first, env-fallback"
+export const checkProviderEnvStatus = query({
+  args: { requestorUserId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireRole(ctx.db, args.requestorUserId, "admin")
+    return {
+      xendit: {
+        secretKey: Boolean(process.env.XENDIT_SECRET_KEY),
+        webhookToken: Boolean(
+          process.env.XENDIT_WEBHOOK_TOKEN || process.env.XENDIT_WEBHOOK_SECRET
+        ),
+      },
+    }
+  },
+})
 ```
 
----
+Update `convex/schema.ts`:
 
-## Task 5: Update Convex Schema — Payments & Subscriptions
-
-**Files:**
-- Modify: `convex/schema.ts` (payments table ~line 813-888, subscriptions table ~line 891-925)
-
-**Step 1: Rename fields in `payments` table**
-
-| Old | New |
-|-----|-----|
-| `xenditPaymentRequestId: v.string()` | `providerPaymentId: v.string()` |
-| `xenditReferenceId: v.string()` | `providerReferenceId: v.string()` |
-| (add new) | `providerName: v.union(v.literal("xendit"), v.literal("midtrans"))` |
-| Index `by_xendit_id` on `["xenditPaymentRequestId"]` | `by_provider_id` on `["providerPaymentId"]` |
-| Index `by_reference` on `["xenditReferenceId"]` | `by_provider_reference` on `["providerReferenceId"]` |
-
-Comment on line 812 change: `// Payment records (Xendit transactions)` → `// Payment records (provider-agnostic)`
-
-**Step 2: Rename fields in `subscriptions` table**
-
-| Old | New |
-|-----|-----|
-| `xenditRecurringId: v.optional(v.string())` | `providerRecurringId: v.optional(v.string())` |
-| `xenditCustomerId: v.optional(v.string())` | `providerCustomerId: v.optional(v.string())` |
-| Index `by_xendit_recurring` on `["xenditRecurringId"]` | `by_provider_recurring` on `["providerRecurringId"]` |
-
-**Step 3: Add `paymentProviderConfigs` table**
-
-Add after `subscriptions` table definition:
-
-```typescript
-// Payment provider configuration (admin-managed)
+```ts
 paymentProviderConfigs: defineTable({
-  activeProvider: v.union(v.literal("xendit"), v.literal("midtrans")),
   enabledMethods: v.array(
     v.union(v.literal("QRIS"), v.literal("VIRTUAL_ACCOUNT"), v.literal("EWALLET"))
   ),
@@ -283,559 +301,432 @@ paymentProviderConfigs: defineTable({
   updatedBy: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
-})
-  .index("by_active", ["isActive"]),
+}).index("by_active", ["isActive"])
 ```
 
-**Step 4: Verify schema compiles**
+**Step 4: Run test and typecheck**
 
-Run: `npx tsc --noEmit --pretty 2>&1 | head -30`
-Expected: Errors in `convex/billing/payments.ts` and `convex/billing/subscriptions.ts` (old field names) — that's expected, we fix those next.
+Run:
+```bash
+npx vitest run src/components/admin/PaymentProviderManager.test.tsx
+npm run typecheck
+```
+
+Expected:
+- PASS untuk component test
+- `typecheck` selesai tanpa error `activeProvider` yang tertinggal
 
 **Step 5: Commit**
 
 ```bash
-git add convex/schema.ts
-git commit -m "feat(schema): rename xendit-specific fields to provider-agnostic names"
+git add src/components/admin/PaymentProviderManager.tsx src/components/admin/PaymentProviderManager.test.tsx convex/billing/paymentProviderConfigs.ts convex/schema.ts
+git commit -m "refactor(payment): narrow admin payment settings to xendit only"
 ```
 
----
-
-## Task 6: Update Convex Billing Functions — Payments
+### Task 3: Simplify Runtime Provider Types and Factory
 
 **Files:**
-- Modify: `convex/billing/payments.ts`
+- Modify: `src/lib/payment/types.ts`
+- Modify: `src/lib/payment/factory.ts`
+- Delete: `src/lib/payment/adapters/midtrans.ts`
+- Create: `src/lib/payment/factory.test.ts`
 
-**Step 1: Rename all xendit references**
+**Step 1: Write the failing factory test**
 
-Global replacements in this file:
-- `xenditPaymentRequestId` → `providerPaymentId` (in args, handler body, index names)
-- `xenditReferenceId` → `providerReferenceId`
-- `by_xendit_id` → `by_provider_id`
-- `by_reference` → `by_provider_reference`
-- `getPaymentByXenditId` → `getPaymentByProviderId`
-- `getPaymentByReference` → `getPaymentByProviderReference`
+```ts
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-Add `providerName` to `createPayment` args:
-```typescript
-providerName: v.union(v.literal("xendit"), v.literal("midtrans")),
+const fetchQuery = vi.fn()
+
+vi.mock("convex/nextjs", () => ({
+  fetchQuery: (...args: unknown[]) => fetchQuery(...args),
+}))
+
+describe("getProvider", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    fetchQuery.mockReset()
+  })
+
+  it("returns xendit adapter when config query fails", async () => {
+    fetchQuery.mockRejectedValueOnce(new Error("db unavailable"))
+    const { getProvider } = await import("./factory")
+
+    const provider = await getProvider()
+
+    expect(provider.name).toBe("xendit")
+  })
+
+  it("returns xendit adapter when config query succeeds", async () => {
+    fetchQuery.mockResolvedValueOnce({
+      enabledMethods: ["QRIS"],
+      webhookUrl: "/api/webhooks/payment",
+    })
+    const { getProvider } = await import("./factory")
+
+    const provider = await getProvider()
+
+    expect(provider.name).toBe("xendit")
+  })
+})
 ```
 
-Update file header comment: `Track Xendit payment transactions` → `Track payment transactions (provider-agnostic)`
+**Step 2: Run test to verify it fails**
 
-**Step 2: Verify no TypeScript errors in this file**
-
-Run: `npx tsc --noEmit --pretty 2>&1 | grep payments`
-
-**Step 3: Commit**
-
+Run:
 ```bash
-git add convex/billing/payments.ts
-git commit -m "refactor(billing): rename xendit-specific payment functions to provider-agnostic"
+npx vitest run src/lib/payment/factory.test.ts
 ```
 
----
+Expected:
+- FAIL karena factory masih punya branch Midtrans atau mengandalkan `activeProvider`
 
-## Task 7: Update Convex Billing Functions — Subscriptions
+**Step 3: Write minimal implementation**
 
-**Files:**
-- Modify: `convex/billing/subscriptions.ts`
+Update `src/lib/payment/types.ts`:
 
-**Step 1: Rename xendit references**
-
-- `xenditRecurringId` → `providerRecurringId` (in args, handler body)
-- `xenditCustomerId` → `providerCustomerId`
-- `getSubscriptionByXenditId` → `getSubscriptionByProviderId`
-- `by_xendit_recurring` → `by_provider_recurring`
-
-**Step 2: Verify TypeScript compiles**
-
-**Step 3: Commit**
-
-```bash
-git add convex/billing/subscriptions.ts
-git commit -m "refactor(billing): rename xendit-specific subscription fields to provider-agnostic"
+```ts
+export type PaymentProviderName = "xendit"
 ```
 
----
+Update `src/lib/payment/factory.ts`:
 
-## Task 8: Create Convex Payment Provider Config Functions
+```ts
+import { fetchQuery } from "convex/nextjs"
+import { api } from "@convex/_generated/api"
+import type { PaymentProvider } from "./types"
+import { XenditAdapter } from "./adapters/xendit"
 
-**Files:**
-- Create: `convex/billing/paymentProviderConfigs.ts`
+export async function getProvider(): Promise<PaymentProvider> {
+  try {
+    await fetchQuery(api.billing.paymentProviderConfigs.getActiveConfig, {})
+  } catch {
+    // ignore settings query failure, runtime provider is still Xendit
+  }
 
-**Step 1: Write CRUD functions**
-
-Three functions following `aiProviderConfigs.ts` pattern:
-
-1. `getActiveConfig` — query, no auth (used by payment API routes)
-   - Query `paymentProviderConfigs` with `by_active` index where `isActive === true`
-   - Return config with defaults if no record: `{ activeProvider: "xendit", enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"] }`
-
-2. `upsertConfig` — mutation, admin only (via `requireRole`)
-   - Args: `activeProvider`, `enabledMethods`, `webhookUrl?`, `defaultExpiryMinutes?`, `requestorUserId`
-   - If existing active config → patch it. Otherwise → insert new.
-   - Set `updatedBy` to admin email, `updatedAt` to now
-
-3. `checkProviderEnvStatus` — query, admin only
-   - Check env vars exist (truthy check, never return values):
-     - Xendit: `XENDIT_SECRET_KEY`, `XENDIT_WEBHOOK_TOKEN` or `XENDIT_WEBHOOK_SECRET`
-     - Midtrans: `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`
-   - Return: `{ xendit: { secretKey: boolean, webhookToken: boolean }, midtrans: { serverKey: boolean, clientKey: boolean } }`
-
-**Step 2: Verify TypeScript compiles**
-
-**Step 3: Commit**
-
-```bash
-git add convex/billing/paymentProviderConfigs.ts
-git commit -m "feat(billing): add payment provider config CRUD functions"
-```
-
----
-
-## Task 9: Create Shared Payment Creation Function
-
-**Files:**
-- Create: `src/lib/payment/create-payment.ts`
-- Reference: `src/app/api/payments/topup/route.ts` (for current logic to extract)
-
-**Step 1: Write the shared function**
-
-Extract the duplicated payment-method dispatch + Convex save logic from topup/subscribe routes:
-
-```typescript
-import { getProvider } from "./factory"
-import type { PaymentMethodCategory } from "./types"
-
-interface CreatePaymentInput {
-  userId: Id<"users">
-  referenceId: string
-  amount: number
-  description: string
-  paymentMethod: "qris" | "va" | "ewallet"
-  paymentType: "credit_topup" | "paper_completion" | "subscription_initial" | "subscription_renewal"
-  metadata: Record<string, unknown>
-  idempotencyKey: string
-  convexToken: string
-  appUrl: string
-  // Method-specific
-  vaChannel?: string
-  ewalletChannel?: string
-  mobileNumber?: string
-  customerName?: string
-  // Package info (pass-through to DB)
-  packageType?: string
-  credits?: number
-  planType?: string
-}
-
-interface CreatePaymentResponse {
-  paymentId: string
-  convexPaymentId: string
-  providerPaymentId: string
-  providerName: string
-  status: string
-  amount: number
-  expiresAt: number
-  // Method-specific
-  qrString?: string
-  vaNumber?: string
-  vaChannel?: string
-  redirectUrl?: string
+  return new XenditAdapter()
 }
 ```
 
-Function body:
-1. `const provider = await getProvider()`
-2. Switch `paymentMethod` → call `provider.createQRIS/createVA/createEWallet`
-3. `fetchMutation(api.billing.payments.createPayment, { providerPaymentId, providerReferenceId, providerName: provider.name, ... })`
-4. Return `CreatePaymentResponse`
+Delete `src/lib/payment/adapters/midtrans.ts`.
 
-**Step 2: Verify TypeScript compiles**
+**Step 4: Run test and regression scan**
 
-**Step 3: Commit**
+Run:
+```bash
+npx vitest run src/lib/payment/factory.test.ts
+rg -n "midtrans" src/lib/payment convex/schema.ts convex/billing/paymentProviderConfigs.ts
+npm run typecheck
+```
+
+Expected:
+- PASS untuk factory test
+- tidak ada referensi runtime aktif Midtrans pada file payment utama
+- typecheck bersih
+
+**Step 5: Commit**
 
 ```bash
-git add src/lib/payment/create-payment.ts
-git commit -m "feat(payment): add shared createPaymentViaProvider function"
+git add src/lib/payment/types.ts src/lib/payment/factory.ts src/lib/payment/factory.test.ts convex/schema.ts convex/billing/paymentProviderConfigs.ts
+git rm src/lib/payment/adapters/midtrans.ts
+git commit -m "refactor(payment): simplify runtime provider resolution to xendit"
 ```
 
----
-
-## Task 10: Refactor Topup API Route
-
-**Files:**
-- Modify: `src/app/api/payments/topup/route.ts`
-
-**Step 1: Replace Xendit imports with shared function**
-
-Remove:
-```typescript
-import { createQRISPayment, createVAPayment, createOVOPayment, createGopayPayment, type VAChannel, type EWalletChannel } from "@/lib/xendit/client"
-```
-
-Add:
-```typescript
-import { createPaymentViaProvider } from "@/lib/payment/create-payment"
-```
-
-Replace the entire switch block (lines ~102-300) + Convex save + response building with single call to `createPaymentViaProvider()`.
-
-Route should only keep: auth check, user fetch, package validation, BPP disabled check, pricing fetch, idempotency check. Then delegate to shared function.
-
-**Step 2: Verify route still compiles**
-
-Run: `npx tsc --noEmit --pretty 2>&1 | grep topup`
-
-**Step 3: Commit**
-
-```bash
-git add src/app/api/payments/topup/route.ts
-git commit -m "refactor(topup): use shared createPaymentViaProvider"
-```
-
----
-
-## Task 11: Refactor Subscribe API Route
-
-**Files:**
-- Modify: `src/app/api/payments/subscribe/route.ts`
-
-**Step 1: Same pattern as Task 10**
-
-Replace Xendit imports → `createPaymentViaProvider`. Keep only subscribe-specific business logic (active sub check, Pro disabled check, pricing).
-
-**Step 2: Verify compiles**
-
-**Step 3: Commit**
-
-```bash
-git add src/app/api/payments/subscribe/route.ts
-git commit -m "refactor(subscribe): use shared createPaymentViaProvider"
-```
-
----
-
-## Task 12: Create Generic Webhook Route
-
-**Files:**
-- Create: `src/app/api/webhooks/payment/route.ts`
-- Reference: `src/app/api/webhooks/xendit/route.ts` (current webhook)
-
-**Step 1: Write generic webhook handler**
-
-Structure:
-1. `const provider = await getProvider()`
-2. `const event = await provider.verifyWebhook(req)` — returns `WebhookEvent | null`
-3. If null → 401
-4. Switch `event.status`:
-   - `SUCCEEDED` → `handlePaymentSuccess(event, internalKey)` (same business logic)
-   - `FAILED` → `handlePaymentFailed(event, internalKey)`
-   - `EXPIRED` → `handlePaymentExpired(event, internalKey)`
-
-Business logic functions (`handlePaymentSuccess`, etc.) stay almost identical, but receive `WebhookEvent` (normalized) instead of `XenditPaymentData`. Key changes:
-- `data.payment_request_id` → `event.providerPaymentId`
-- `api.billing.payments.getPaymentByXenditId` → `api.billing.payments.getPaymentByProviderId`
-- `xenditPaymentRequestId` arg → `providerPaymentId` arg
-- `xenditStatus` in metadata → `providerStatus`
-
-Email sending logic: no change (already uses generic params).
-
-**Step 2: Verify compiles**
-
-**Step 3: Commit**
-
-```bash
-git add src/app/api/webhooks/payment/route.ts
-git commit -m "feat(webhook): add provider-agnostic payment webhook handler"
-```
-
----
-
-## Task 13: Delete Old Xendit Files
-
-**Files:**
-- Delete: `src/lib/xendit/client.ts`
-- Delete: `src/app/api/webhooks/xendit/route.ts`
-
-**Step 1: Verify no remaining imports to deleted files**
-
-Run: `grep -r "xendit/client" src/ --include="*.ts" --include="*.tsx"`
-Run: `grep -r "webhooks/xendit" src/ --include="*.ts" --include="*.tsx"`
-
-Expected: no results (all references updated in Tasks 10-12)
-
-**Step 2: Delete files**
-
-```bash
-rm src/lib/xendit/client.ts
-rmdir src/lib/xendit 2>/dev/null  # remove dir if empty
-rm src/app/api/webhooks/xendit/route.ts
-rmdir src/app/api/webhooks/xendit 2>/dev/null
-```
-
-**Step 3: Commit**
-
-```bash
-git add -A
-git commit -m "chore: remove old Xendit-specific client and webhook route"
-```
-
----
-
-## Task 14: Update Receipt Export Route
-
-**Files:**
-- Modify: `src/app/api/export/receipt/[paymentId]/route.ts`
-
-**Step 1: Rename xendit references**
-
-Line 88: `payment.xenditReferenceId` → `payment.providerReferenceId` (in PDF title)
-Line 119: `payment.xenditReferenceId` → `payment.providerReferenceId` (in receipt row)
-Line 142: `payment.xenditReferenceId` → `payment.providerReferenceId` (in filename)
-
-**Step 2: Verify compiles**
-
-**Step 3: Commit**
-
-```bash
-git add src/app/api/export/receipt/[paymentId]/route.ts
-git commit -m "refactor(receipt): use provider-agnostic field names"
-```
-
----
-
-## Task 15: Update Checkout BPP Page
+### Task 4: Harden Checkout Pages Against Disabled Methods and Remove Midtrans Branding
 
 **Files:**
 - Modify: `src/app/(onboarding)/checkout/bpp/page.tsx`
-
-**Step 1: Update PaymentResult interface**
-
-```typescript
-// Before:
-interface PaymentResult {
-  xenditId: string
-  // ...
-}
-
-// After:
-interface PaymentResult {
-  providerPaymentId: string
-  providerName: string
-  // ...
-}
-```
-
-**Step 2: Update all `xenditId` references in component**
-
-Replace `result.xenditId` → `result.providerPaymentId` everywhere.
-
-**Step 3: Add dynamic provider branding**
-
-Replace hardcoded "Pembayaran diproses oleh Xendit. Aman dan terenkripsi." with:
-```tsx
-const providerLabel = result.providerName === "midtrans" ? "Midtrans" : "Xendit"
-// ...
-<p>Pembayaran diproses oleh {providerLabel}. Aman dan terenkripsi.</p>
-```
-
-**Step 4: Add method filtering from config**
-
-Add query for enabled methods:
-```tsx
-const paymentConfig = useQuery(api.billing.paymentProviderConfigs.getActiveConfig)
-const enabledMethods = paymentConfig?.enabledMethods ?? ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"]
-```
-
-Filter `PAYMENT_METHODS` array by `enabledMethods`.
-
-**Step 5: Verify compiles**
-
-**Step 6: Commit**
-
-```bash
-git add src/app/(onboarding)/checkout/bpp/page.tsx
-git commit -m "refactor(checkout-bpp): use provider-agnostic fields and dynamic branding"
-```
-
----
-
-## Task 16: Update Checkout Pro Page
-
-**Files:**
 - Modify: `src/app/(onboarding)/checkout/pro/page.tsx`
+- Modify: `__tests__/billing-pro-card-ui.test.tsx`
+- Create: `__tests__/billing-bpp-payment-config.test.tsx`
+- Modify: `src/lib/payment/runtime-settings.ts`
 
-**Step 1-6: Same changes as Task 15**
+**Step 1: Write the failing checkout tests**
 
-Apply identical changes: `PaymentResult` interface, `xenditId` references, dynamic branding, method filtering.
+Add to `__tests__/billing-pro-card-ui.test.tsx`:
 
-**Step 7: Commit**
-
-```bash
-git add src/app/(onboarding)/checkout/pro/page.tsx
-git commit -m "refactor(checkout-pro): use provider-agnostic fields and dynamic branding"
-```
-
----
-
-## Task 17: Create Admin Panel — Payment Provider Manager
-
-**Files:**
-- Create: `src/components/admin/PaymentProviderManager.tsx`
-- Modify: `src/components/admin/adminPanelConfig.ts`
-- Modify: `src/components/admin/AdminContentSection.tsx`
-
-**Step 1: Add sidebar entry in `adminPanelConfig.ts`**
-
-Import `CreditCard` from `iconoir-react`. Add new item after "refrasa" entry:
-
-```typescript
-{
-  id: "payment",
-  label: "Payment Provider",
-  icon: CreditCard,
-  headerTitle: "Payment Provider",
-  headerDescription: "Konfigurasi provider pembayaran",
-  headerIcon: CreditCard,
-},
-```
-
-Add `"payment"` to `AdminTabId` type union.
-
-**Step 2: Create `PaymentProviderManager.tsx`**
-
-Component structure (following AIProviderManager pattern):
-- Props: `{ userId: Id<"users"> }`
-- Queries: `useQuery(api.billing.paymentProviderConfigs.getActiveConfig)`, `useQuery(api.billing.paymentProviderConfigs.checkProviderEnvStatus, { requestorUserId: userId })`
-- Mutation: `useMutation(api.billing.paymentProviderConfigs.upsertConfig)`
-- State: `activeProvider`, `enabledMethods[]`, `defaultExpiryMinutes`
-
-UI sections:
-1. **Provider Selection** — Radio group: Xendit / Midtrans. Show env status indicator (green check or yellow warning).
-2. **Payment Methods** — Checkbox group: QRIS, Virtual Account, E-Wallet.
-3. **Settings** — Default QRIS expiry (number input, minutes).
-4. **Webhook URL** — Read-only display: `/api/webhooks/payment`
-5. **Save Button** — `CmsSaveButton` pattern or inline button with loading state.
-
-Styling: Follow Mechanical Grace design system (rounded-shell, border-hairline, text-interface, Iconoir icons 1.5px stroke).
-
-**Step 3: Wire into `AdminContentSection.tsx`**
-
-Import `PaymentProviderManager`. Add render block:
 ```tsx
-{activeTab === "payment" && (
-  <div className="space-y-6">
-    <PaymentProviderManager userId={userId} />
-  </div>
-)}
+it("hides disabled methods and shows xendit-only payment copy", async () => {
+  let objectQueryCount = 0
+
+  mockUseQuery.mockImplementation((_queryRef: unknown, args: unknown) => {
+    if (args && typeof args === "object" && "slug" in args) {
+      return { _id: "plan-pro", slug: "pro", isDisabled: false }
+    }
+
+    if (args === undefined) {
+      objectQueryCount += 1
+      if (objectQueryCount === 1) {
+        return { priceIDR: 200_000, label: "Pro Bulanan" }
+      }
+      return {
+        enabledMethods: ["QRIS"],
+        webhookUrl: "/api/webhooks/payment",
+      }
+    }
+
+    if (args && typeof args === "object" && "userId" in args) {
+      return { remainingCredits: 0 }
+    }
+
+    return undefined
+  })
+
+  const { default: CheckoutPROPage } = await import("@/app/(onboarding)/checkout/pro/page")
+  render(<CheckoutPROPage />)
+
+  expect(screen.getByText("QRIS")).toBeInTheDocument()
+  expect(screen.queryByText("Virtual Account")).not.toBeInTheDocument()
+  expect(screen.queryByText("E-Wallet")).not.toBeInTheDocument()
+  expect(screen.getByText(/pembayaran diproses oleh xendit/i)).toBeInTheDocument()
+})
 ```
 
-**Step 4: Verify compiles**
+Create `__tests__/billing-bpp-payment-config.test.tsx`:
+
+```tsx
+import { render, screen } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+// mock useCurrentUser, useOnboardingStatus, useQuery same pattern as checkout pro test
+
+describe("Checkout BPP payment settings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("shows only enabled payment methods and xendit copy", async () => {
+    const { default: CheckoutBPPPage } = await import("@/app/(onboarding)/checkout/bpp/page")
+    render(<CheckoutBPPPage />)
+
+    expect(screen.getByText("QRIS")).toBeInTheDocument()
+    expect(screen.queryByText("Virtual Account")).not.toBeInTheDocument()
+    expect(screen.getByText(/pembayaran diproses oleh xendit/i)).toBeInTheDocument()
+  })
+})
+```
+
+**Step 2: Run tests to verify they fail**
+
+Run:
+```bash
+npx vitest run __tests__/billing-pro-card-ui.test.tsx __tests__/billing-bpp-payment-config.test.tsx
+```
+
+Expected:
+- FAIL karena checkout masih punya copy/conditional Midtrans dan belum pakai helper fallback method
+
+**Step 3: Write minimal implementation**
+
+Update both checkout pages to use `runtime-settings.ts`:
+
+```ts
+import {
+  getEnabledCheckoutMethods,
+  getRuntimeProviderLabel,
+  resolveCheckoutMethodSelection,
+} from "@/lib/payment/runtime-settings"
+
+const enabledMethods = paymentConfig?.enabledMethods ?? [
+  "QRIS",
+  "VIRTUAL_ACCOUNT",
+  "EWALLET",
+]
+
+const availableMethods = getEnabledCheckoutMethods(enabledMethods)
+
+useEffect(() => {
+  const next = resolveCheckoutMethodSelection(selectedMethod, enabledMethods)
+  if (next && next !== selectedMethod) {
+    setSelectedMethod(next)
+  }
+}, [enabledMethods, selectedMethod])
+```
+
+Replace provider copy:
+
+```tsx
+Pembayaran diproses oleh {getRuntimeProviderLabel()}. Aman dan terenkripsi.
+```
+
+Render methods from `availableMethods`, not hardcoded `enabledMethods.includes(...)`.
+
+**Step 4: Run tests and typecheck**
+
+Run:
+```bash
+npx vitest run __tests__/billing-pro-card-ui.test.tsx __tests__/billing-bpp-payment-config.test.tsx src/lib/payment/runtime-settings.test.ts
+npm run typecheck
+```
+
+Expected:
+- PASS untuk checkout tests dan runtime helper tests
+- typecheck bersih
 
 **Step 5: Commit**
 
 ```bash
-git add src/components/admin/PaymentProviderManager.tsx src/components/admin/adminPanelConfig.ts src/components/admin/AdminContentSection.tsx
-git commit -m "feat(admin): add Payment Provider configuration panel"
+git add src/app/'(onboarding)'/checkout/bpp/page.tsx src/app/'(onboarding)'/checkout/pro/page.tsx __tests__/billing-pro-card-ui.test.tsx __tests__/billing-bpp-payment-config.test.tsx src/lib/payment/runtime-settings.ts
+git commit -m "refactor(payment): harden checkout pages for xendit-only settings"
 ```
 
----
-
-## Task 18: Update Factory to Use DB Config (Remove Try-Catch)
+### Task 5: Enforce Enabled Payment Methods in API Routes
 
 **Files:**
-- Modify: `src/lib/payment/factory.ts`
+- Modify: `src/app/api/payments/topup/route.ts`
+- Modify: `src/app/api/payments/subscribe/route.ts`
+- Create: `src/lib/payment/request-validation.ts`
+- Test: `src/lib/payment/request-validation.test.ts`
 
-**Step 1: Now that `paymentProviderConfigs` table exists, clean up factory**
+**Step 1: Write the failing validation test**
 
-Remove the try-catch fallback added in Task 4. Factory should now cleanly query DB and fall back to env var only when no active config exists (null result), not on error.
+```ts
+import { describe, expect, it } from "vitest"
+import { assertEnabledPaymentMethod } from "./request-validation"
 
-**Step 2: Verify compiles**
+describe("assertEnabledPaymentMethod", () => {
+  it("allows enabled payment methods", () => {
+    expect(() =>
+      assertEnabledPaymentMethod("qris", ["QRIS", "EWALLET"])
+    ).not.toThrow()
+  })
 
-**Step 3: Commit**
-
-```bash
-git add src/lib/payment/factory.ts
-git commit -m "refactor(payment): clean up factory now that DB config exists"
+  it("throws when payment method is disabled", () => {
+    expect(() =>
+      assertEnabledPaymentMethod("va", ["QRIS"])
+    ).toThrow("Metode pembayaran tidak tersedia")
+  })
+})
 ```
 
----
+**Step 2: Run test to verify it fails**
 
-## Task 19: Grep Audit — Find Remaining Xendit References
+Run:
+```bash
+npx vitest run src/lib/payment/request-validation.test.ts
+```
+
+Expected:
+- FAIL karena helper belum ada
+
+**Step 3: Write minimal implementation**
+
+Create `src/lib/payment/request-validation.ts`:
+
+```ts
+import {
+  type EnabledPaymentMethod,
+  isPaymentMethodEnabled,
+  type CheckoutPaymentMethod,
+} from "./runtime-settings"
+
+export function assertEnabledPaymentMethod(
+  method: CheckoutPaymentMethod,
+  enabledMethods: EnabledPaymentMethod[]
+): void {
+  if (!isPaymentMethodEnabled(method, enabledMethods)) {
+    throw new Error("Metode pembayaran tidak tersedia")
+  }
+}
+```
+
+Use it in both routes:
+
+```ts
+const paymentConfig = await fetchQuery(
+  api.billing.paymentProviderConfigs.getActiveConfig,
+  {},
+  convexOptions
+)
+
+assertEnabledPaymentMethod(paymentMethod, paymentConfig.enabledMethods)
+```
+
+Map thrown error to `400` response:
+
+```ts
+if (error instanceof Error && error.message === "Metode pembayaran tidak tersedia") {
+  return NextResponse.json({ error: error.message }, { status: 400 })
+}
+```
+
+**Step 4: Run test and targeted route verification**
+
+Run:
+```bash
+npx vitest run src/lib/payment/request-validation.test.ts
+npm run typecheck
+```
+
+Expected:
+- PASS untuk validation test
+- typecheck bersih setelah kedua route memakai helper
+
+**Step 5: Commit**
+
+```bash
+git add src/lib/payment/request-validation.ts src/lib/payment/request-validation.test.ts src/app/api/payments/topup/route.ts src/app/api/payments/subscribe/route.ts
+git commit -m "feat(payment): enforce enabled payment methods in api routes"
+```
+
+### Task 6: Final Verification and Documentation Cleanup
 
 **Files:**
-- Audit across entire `src/` and `convex/` directories
+- Modify: `docs/payment-provider/design.md`
+- Modify: `docs/payment-provider/implementation-plan.md`
 
-**Step 1: Search for remaining xendit references**
+**Step 1: Confirm the canonical docs set**
 
+Make sure the canonical docs now live only in `docs/payment-provider/`:
+
+- `docs/payment-provider/design.md`
+- `docs/payment-provider/implementation-plan.md`
+
+Delete any duplicate plan copy under `docs/plans/`.
+
+**Step 2: Run regression search against runtime paths only**
+
+Run:
 ```bash
-grep -rn "xendit" src/ convex/ --include="*.ts" --include="*.tsx" -i | grep -v node_modules | grep -v ".backup"
+rg -n "midtrans|activeProvider" src/lib/payment src/app/api/payments src/components/admin convex/billing/paymentProviderConfigs.ts convex/schema.ts --glob '!convex/migrations/**'
 ```
 
-Expected: Only results in:
-- `convex/migrations/` (historical seed data — OK to keep)
-- `.references/` (documentation — OK to keep)
-- `docs/` (documentation — OK to keep)
+Expected:
+- no runtime references to `midtrans`
+- no runtime references to `activeProvider`
 
-Any results in `src/app/`, `src/lib/`, `src/components/`, or `convex/billing/` = missed reference, fix it.
+**Step 3: Run final verification commands**
 
-**Step 2: Fix any remaining references found**
-
-**Step 3: Commit if changes made**
-
+Run:
 ```bash
-git add -A
-git commit -m "chore: fix remaining xendit references"
+npx vitest run src/lib/payment/runtime-settings.test.ts src/components/admin/PaymentProviderManager.test.tsx src/lib/payment/factory.test.ts src/lib/payment/request-validation.test.ts __tests__/billing-pro-card-ui.test.tsx __tests__/billing-bpp-payment-config.test.tsx
+npm run typecheck
 ```
 
----
+Expected:
+- PASS untuk seluruh targeted tests
+- PASS untuk typecheck
 
-## Task 20: Build Verification
+**Step 4: Manual smoke checklist**
 
-**Step 1: Run TypeScript check**
+Verify manually in dev server:
 
-```bash
-npx tsc --noEmit --pretty
+```text
+1. Open /admin?tab=payment and confirm only Xendit is shown.
+2. Disable one payment method and save settings.
+3. Open /checkout/bpp and /checkout/pro and confirm disabled method is hidden.
+4. Trigger payment creation with an enabled method and confirm Xendit response still renders.
+5. Confirm webhook URL displayed remains /api/webhooks/payment.
 ```
 
-Expected: 0 errors
+Expected:
+- admin UI jujur terhadap runtime capability
+- checkout follows admin settings
+- Xendit flow remains intact
 
-**Step 2: Run ESLint**
-
-```bash
-npm run lint
-```
-
-Expected: 0 errors (warnings OK)
-
-**Step 3: Run build**
+**Step 5: Commit**
 
 ```bash
-npm run build
+git add docs/payment-provider/design.md docs/payment-provider/implementation-plan.md
+git commit -m "docs(payment): consolidate canonical xendit-only payment docs"
 ```
-
-Expected: Build succeeds
-
-**Step 4: Fix any errors found, commit fixes**
-
-```bash
-git add -A
-git commit -m "fix: resolve build errors from payment provider refactor"
-```
-
----
-
-## Summary
-
-| Phase | Tasks | Description |
-|-------|-------|-------------|
-| Foundation | 1-4 | Types, Xendit adapter, Midtrans skeleton, factory |
-| Schema | 5-8 | Schema rename, payments CRUD, subscriptions, provider config |
-| API Routes | 9-13 | Shared function, topup refactor, subscribe refactor, webhook, delete old files |
-| Peripheral | 14 | Receipt export |
-| UI | 15-17 | Checkout BPP, checkout Pro, admin panel |
-| Cleanup | 18-20 | Factory cleanup, grep audit, build verification |
-
-Total: 20 tasks, ~20 commits.

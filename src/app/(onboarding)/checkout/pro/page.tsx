@@ -18,7 +18,6 @@ import {
   Copy,
   OpenNewWindow,
   Clock,
-  WarningCircle,
   ArrowRight,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
@@ -28,6 +27,20 @@ import Image from "next/image"
 import Link from "next/link"
 import { QRCodeSVG } from "qrcode.react"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
+import { CheckoutErrorBanner } from "@/components/billing/CheckoutErrorBanner"
+import {
+  DEFAULT_ENABLED_METHODS,
+  getEnabledCheckoutMethods,
+  getRuntimeProviderLabel,
+  resolveCheckoutMethodSelection,
+} from "@/lib/payment/runtime-settings"
+import {
+  ACTIVE_EWALLET_CHANNELS,
+  ACTIVE_VA_CHANNELS,
+} from "@/lib/payment/channel-options"
+import { getVAChannelFullLabel } from "@/lib/payment/channel-labels"
+import { mapPaymentCreationErrorMessage } from "@/lib/payment/provider-error-messages"
+import { normalizeOvoMobileNumber } from "@/lib/payment/mobile-number-format"
 
 type PaymentMethod = "qris" | "va" | "ewallet"
 const PRO_PLAN_TYPE = "pro_monthly" as const
@@ -52,29 +65,17 @@ interface PaymentResult {
 const PAYMENT_METHODS = [
   { id: "qris" as const, label: "QRIS", icon: QrCode, description: "Scan dengan e-wallet" },
   { id: "va" as const, label: "Virtual Account", icon: Building, description: "Transfer bank" },
-  { id: "ewallet" as const, label: "E-Wallet", icon: Wallet, description: "OVO, GoPay" },
+  { id: "ewallet" as const, label: "E-Wallet", icon: Wallet, description: "OVO" },
 ]
-
-const VA_CHANNELS = [
-  { code: "BCA_VIRTUAL_ACCOUNT", label: "BCA" },
-  { code: "BNI_VIRTUAL_ACCOUNT", label: "BNI" },
-  { code: "BRI_VIRTUAL_ACCOUNT", label: "BRI" },
-  { code: "MANDIRI_VIRTUAL_ACCOUNT", label: "Mandiri" },
-]
-
-const EWALLET_CHANNELS = [
-  { code: "OVO", label: "OVO" },
-  { code: "GOPAY", label: "GoPay" },
-]
-
-const METHOD_ID_TO_ENABLED: Record<PaymentMethod, "QRIS" | "VIRTUAL_ACCOUNT" | "EWALLET"> = {
-  qris: "QRIS",
-  va: "VIRTUAL_ACCOUNT",
-  ewallet: "EWALLET",
-}
+const VA_CHANNELS = ACTIVE_VA_CHANNELS
+const EWALLET_CHANNELS = ACTIVE_EWALLET_CHANNELS
 
 const shellPanelClass = "rounded-shell border border-border/70 bg-card/95"
-const sectionCardClass = "rounded-shell border border-border/60 bg-[color:var(--slate-100)]/70 p-3 dark:bg-[color:var(--slate-900)]/70 md:p-4"
+const sectionCardClass =
+  "rounded-action border border-border/60 bg-[color:var(--slate-100)]/70 p-2.5 dark:bg-[color:var(--slate-900)]/70 md:p-3"
+const checkoutViewportClass =
+  "relative z-10 flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10"
+const checkoutCardClass = "w-full max-w-[42rem]"
 
 function getSubscriptionBackRoute(fromParam: string | null): string {
   switch (fromParam) {
@@ -107,14 +108,14 @@ export default function CheckoutPROPage() {
   return (
     <Suspense
       fallback={
-        <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+        <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
           <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-          <div className="relative z-10 flex h-full items-center justify-center px-4">
-            <div className={cn("w-full max-w-2xl p-4 md:p-5", shellPanelClass)}>
+          <div className={checkoutViewportClass}>
+            <div className={cn(checkoutCardClass, "p-3 md:p-3.5", shellPanelClass)}>
               <div className="animate-pulse space-y-3">
                 <div className="h-6 rounded bg-muted w-1/3" />
-                <div className="h-28 rounded-shell bg-muted" />
-                <div className="h-48 rounded-shell bg-muted" />
+                <div className="h-28 rounded-action bg-muted" />
+                <div className="h-48 rounded-action bg-muted" />
               </div>
             </div>
           </div>
@@ -141,7 +142,8 @@ function CheckoutPROContent() {
   const proPlan = useQuery(api.pricingPlans.getPlanBySlug, { slug: "pro" })
   const proPricing = useQuery(api.billing.pricingHelpers.getProPricing)
   const paymentConfig = useQuery(api.billing.paymentProviderConfigs.getActiveConfig)
-  const enabledMethods = paymentConfig?.enabledMethods ?? ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"]
+  const enabledMethods = paymentConfig?.enabledMethods ?? DEFAULT_ENABLED_METHODS
+  const availableMethods = getEnabledCheckoutMethods(enabledMethods)
 
   const backRoute = getSubscriptionBackRoute(searchParams.get("from"))
   const handleBackToSubscription = useCallback(() => {
@@ -162,25 +164,6 @@ function CheckoutPROContent() {
       })
     }
   }, [hasCompletedOnboarding, completeOnboarding, isOnboardingLoading, isAuthenticated])
-
-  useEffect(() => {
-    const prevHtmlOverflow = document.documentElement.style.overflow
-    const prevBodyOverflow = document.body.style.overflow
-    const prevHtmlOverscroll = document.documentElement.style.overscrollBehavior
-    const prevBodyOverscroll = document.body.style.overscrollBehavior
-
-    document.documentElement.style.overflow = "hidden"
-    document.body.style.overflow = "hidden"
-    document.documentElement.style.overscrollBehavior = "none"
-    document.body.style.overscrollBehavior = "none"
-
-    return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow
-      document.body.style.overflow = prevBodyOverflow
-      document.documentElement.style.overscrollBehavior = prevHtmlOverscroll
-      document.body.style.overscrollBehavior = prevBodyOverscroll
-    }
-  }, [])
 
   const creditBalance = useQuery(
     api.billing.credits.getCreditBalance,
@@ -212,6 +195,13 @@ function CheckoutPROContent() {
     }
   }, [paymentStatus?.status, paymentResult])
 
+  useEffect(() => {
+    const nextMethod = resolveCheckoutMethodSelection(selectedMethod, enabledMethods)
+    if (nextMethod && nextMethod !== selectedMethod) {
+      setSelectedMethod(nextMethod)
+    }
+  }, [enabledMethods, selectedMethod])
+
   const handleSubscribe = useCallback(async () => {
     if (isProcessing) return
 
@@ -233,7 +223,10 @@ function CheckoutPROContent() {
           paymentMethod: selectedMethod,
           vaChannel: selectedMethod === "va" ? selectedVAChannel : undefined,
           ewalletChannel: selectedMethod === "ewallet" ? selectedEWalletChannel : undefined,
-          mobileNumber: selectedMethod === "ewallet" && selectedEWalletChannel === "OVO" ? mobileNumber : undefined,
+          mobileNumber:
+            selectedMethod === "ewallet" && selectedEWalletChannel === "OVO"
+              ? normalizeOvoMobileNumber(mobileNumber)
+              : undefined,
         }),
       })
 
@@ -247,7 +240,10 @@ function CheckoutPROContent() {
       }
     } catch (err) {
       console.error("[CheckoutPRO] Error:", err)
-      const message = err instanceof Error ? err.message : "Terjadi kesalahan"
+      const message =
+        err instanceof Error
+          ? mapPaymentCreationErrorMessage(selectedMethod, err.message)
+          : "Terjadi kesalahan"
       setError(message)
       toast.error(message)
     } finally {
@@ -267,7 +263,7 @@ function CheckoutPROContent() {
 
   if (userLoading || proPricing === undefined) {
     return (
-      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+      <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
         <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
       </section>
     )
@@ -275,10 +271,10 @@ function CheckoutPROContent() {
 
   if (!user) {
     return (
-      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+      <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
         <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-        <div className="relative z-10 flex h-full items-center justify-center px-4">
-          <div className={cn("w-full max-w-xl p-4 text-center", shellPanelClass)}>
+        <div className={checkoutViewportClass}>
+          <div className={cn("max-w-xl p-3.5 text-center md:p-4", checkoutCardClass, shellPanelClass)}>
             <p className="text-narrative text-sm text-muted-foreground">Sesi tidak aktif. Silakan login ulang.</p>
           </div>
         </div>
@@ -289,7 +285,7 @@ function CheckoutPROContent() {
   const currentTier = getEffectiveTier(user.role, user.subscriptionStatus)
   if (subscriptionStatus === undefined) {
     return (
-      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+      <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
         <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
       </section>
     )
@@ -311,10 +307,10 @@ function CheckoutPROContent() {
 
   if (currentTier === "unlimited") {
     return (
-      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
-        <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-        <div className="relative z-10 flex h-full items-center justify-center px-4">
-          <div className={cn("w-full max-w-xl space-y-3 p-4 text-center", shellPanelClass)}>
+        <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+          <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+          <div className={checkoutViewportClass}>
+          <div className={cn("max-w-xl space-y-2 p-3 text-center md:p-3.5", checkoutCardClass, shellPanelClass)}>
             <BackToSubscriptionButton onClick={handleBackToSubscription} />
             <p className="text-narrative text-base text-foreground">Akun lo sudah berada di tier Unlimited, checkout Pro tidak diperlukan.</p>
             <Link href="/subscription/plans" className="text-interface text-xs text-primary hover:underline">
@@ -328,10 +324,10 @@ function CheckoutPROContent() {
 
   if (hasActiveProSubscription) {
     return (
-      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
-        <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-        <div className="relative z-10 flex h-full items-center justify-center px-4">
-          <div className={cn("w-full max-w-xl space-y-3 p-4 text-center", shellPanelClass)}>
+        <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+          <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+          <div className={checkoutViewportClass}>
+          <div className={cn("max-w-xl space-y-2 p-3 text-center md:p-3.5", checkoutCardClass, shellPanelClass)}>
             <BackToSubscriptionButton onClick={handleBackToSubscription} />
             <p className="text-interface text-base font-medium text-foreground">Langganan Pro lo masih aktif.</p>
             <p className="text-narrative text-sm text-muted-foreground">
@@ -360,10 +356,10 @@ function CheckoutPROContent() {
 
   if (paymentResult && paymentState === "SUCCEEDED") {
     return (
-      <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
-        <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-        <div className="relative z-10 flex h-full items-center justify-center px-4">
-          <div className={cn("w-full max-w-xl space-y-3 p-4 text-center", shellPanelClass)}>
+        <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+          <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
+          <div className={checkoutViewportClass}>
+          <div className={cn("max-w-xl space-y-2 p-3 text-center md:p-3.5", checkoutCardClass, shellPanelClass)}>
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10">
               <CheckCircle className="h-6 w-6 text-emerald-600" />
             </div>
@@ -385,34 +381,31 @@ function CheckoutPROContent() {
   }
 
   return (
-    <section className="fixed inset-0 overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
+    <section className="relative min-h-screen overflow-hidden bg-[color:var(--slate-100)] dark:bg-[color:var(--slate-950)]">
       <DottedPattern spacing={24} withRadialMask={false} className="z-0" />
-      <div className="relative z-10 flex h-full items-center justify-center px-3 py-3 md:px-6 md:py-6">
-        <div className="w-full max-w-2xl">
-          <div className={cn("space-y-3 p-4 md:p-5", shellPanelClass)}>
+      <div className={checkoutViewportClass}>
+        <div className={cn(checkoutCardClass, "p-3 md:p-3.5", shellPanelClass)}>
+          <div className="space-y-2">
             <BackToSubscriptionButton onClick={handleBackToSubscription} />
 
             <div className="text-center">
               <div className="mb-1 inline-flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-foreground" />
-                <h1 className="text-narrative text-xl font-medium text-foreground">Checkout Pro</h1>
+                <CreditCard className="h-4 w-4 text-foreground" />
+                <h1 className="text-narrative text-base font-medium text-foreground md:text-lg">Checkout Pro</h1>
               </div>
               <p className="text-interface text-xs text-muted-foreground">Upgrade ke langganan Pro</p>
             </div>
 
             {error && (
-              <div className="flex items-start gap-2 rounded-shell border border-destructive/40 bg-destructive/10 p-3">
-                <WarningCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                <div>
-                  <p className="text-interface text-xs font-medium text-destructive">Gagal memproses pembayaran</p>
-                  <p className="text-narrative text-sm text-destructive/80">{error}</p>
-                </div>
-              </div>
+              <CheckoutErrorBanner
+                title="Gagal memproses pembayaran"
+                message={error}
+              />
             )}
 
             <div className={sectionCardClass}>
               <p className="text-interface text-xs text-muted-foreground">Saldo kredit saat ini</p>
-              <p className="text-interface text-2xl font-medium tracking-tight text-foreground">
+              <p className="text-interface text-lg font-medium tracking-tight text-foreground md:text-xl">
                 {currentCredits}
                 <span className="ml-1 text-sm font-normal text-muted-foreground">kredit</span>
               </p>
@@ -437,7 +430,7 @@ function CheckoutPROContent() {
 
                 {selectedMethod === "qris" && (paymentResult.qrCodeUrl || paymentResult.qrString) && (
                   <div className="space-y-2">
-                    <div className="inline-flex rounded-shell border border-border/70 bg-white p-3">
+                    <div className="inline-flex rounded-action border border-border/70 bg-white p-3">
                       {paymentResult.qrCodeUrl ? (
                         <Image src={paymentResult.qrCodeUrl} alt="QRIS Code" width={208} height={208} className="h-[208px] w-[208px]" />
                       ) : paymentResult.qrString ? (
@@ -449,8 +442,11 @@ function CheckoutPROContent() {
 
                 {selectedMethod === "va" && paymentResult.vaNumber && (
                   <div className="space-y-2">
-                    <div className="rounded-shell border border-border/70 bg-background/60 p-3">
-                      <p className="text-interface mb-1 text-xs text-muted-foreground">Bank {paymentResult.vaChannel}</p>
+                    <div className="rounded-action border border-border/70 bg-background/60 p-3">
+                      <p className="text-interface mb-1 text-xs text-muted-foreground">Virtual Account</p>
+                      <p className="text-narrative mb-2 text-sm text-foreground">
+                        {getVAChannelFullLabel(paymentResult.vaChannel) ?? paymentResult.vaChannel}
+                      </p>
                       <div className="flex items-center justify-center gap-2">
                         <p className="text-interface text-2xl font-medium tracking-wider text-foreground">{paymentResult.vaNumber}</p>
                         <button
@@ -466,7 +462,7 @@ function CheckoutPROContent() {
                 )}
 
                 {selectedMethod === "ewallet" && (
-                  <div className="rounded-shell border border-border/70 bg-background/60 p-3">
+                  <div className="rounded-action border border-border/70 bg-background/60 p-3">
                     <div className="mb-2 flex items-center justify-center gap-2">
                       <Wallet className="h-5 w-5 text-foreground" />
                       <p className="text-interface text-sm font-medium">{selectedEWalletChannel}</p>
@@ -513,7 +509,7 @@ function CheckoutPROContent() {
               <>
                 <div className={sectionCardClass}>
                   <h2 className="text-narrative mb-2 font-medium text-foreground">Paket Langganan</h2>
-                  <div className="rounded-shell border border-[color:var(--emerald-500)] bg-[color:var(--emerald-500)]/10 p-3">
+                  <div className="rounded-action border border-[color:var(--emerald-500)] bg-[color:var(--emerald-500)]/10 p-3">
                     <div className="flex items-center justify-between">
                       <p className="text-interface text-sm font-medium text-foreground">{pricing.label}</p>
                       <p className="text-interface text-sm font-medium text-foreground">Rp {pricing.priceIDR.toLocaleString("id-ID")}</p>
@@ -524,7 +520,7 @@ function CheckoutPROContent() {
                 <div className={sectionCardClass}>
                   <h2 className="text-narrative mb-2 font-medium text-foreground">Metode Pembayaran</h2>
                   <div className="space-y-2">
-                    {PAYMENT_METHODS.filter((m) => enabledMethods.includes(METHOD_ID_TO_ENABLED[m.id])).map((method) => {
+                    {PAYMENT_METHODS.filter((m) => availableMethods.includes(m.id)).map((method) => {
                       const Icon = method.icon
                       const isSelected = selectedMethod === method.id
                       return (
@@ -533,7 +529,7 @@ function CheckoutPROContent() {
                           onClick={() => setSelectedMethod(method.id)}
                           disabled={isProcessing}
                           className={cn(
-                            "w-full rounded-shell border p-3 text-left transition-colors",
+                        "w-full rounded-action border p-2 text-left transition-colors md:p-2.5",
                             "flex items-center gap-3",
                             isSelected
                               ? "border-[color:var(--emerald-500)] bg-[color:var(--emerald-500)]/10"
@@ -555,21 +551,27 @@ function CheckoutPROContent() {
                   {selectedMethod === "va" && (
                     <div className="mt-3 border-t border-border/60 pt-3">
                       <p className="text-interface mb-2 text-xs text-muted-foreground">Pilih Bank</p>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {VA_CHANNELS.map((channel) => (
                           <button
                             key={channel.code}
                             onClick={() => setSelectedVAChannel(channel.code)}
                             disabled={isProcessing}
                             className={cn(
-                              "rounded-action border px-2 py-2 text-interface text-xs transition-colors",
+                              "rounded-action border px-3 py-2.5 text-left transition-colors",
+                              "flex min-h-[4.75rem] flex-col items-start justify-center gap-0.5",
                               selectedVAChannel === channel.code
                                 ? "border-[color:var(--emerald-500)] bg-[color:var(--emerald-500)]/10"
                                 : "border-border/70 hover:bg-muted/60",
                               isProcessing && "cursor-not-allowed opacity-50"
                             )}
                           >
-                            {channel.label}
+                            <span className="text-interface text-xs font-medium text-foreground">
+                              {channel.shortLabel}
+                            </span>
+                            <span className="text-narrative text-[11px] leading-tight text-muted-foreground">
+                              {channel.label}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -579,7 +581,7 @@ function CheckoutPROContent() {
                   {selectedMethod === "ewallet" && (
                     <div className="mt-3 border-t border-border/60 pt-3">
                       <p className="text-interface mb-2 text-xs text-muted-foreground">Pilih E-Wallet</p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2">
                         {EWALLET_CHANNELS.map((channel) => (
                           <button
                             key={channel.code}
@@ -626,13 +628,13 @@ function CheckoutPROContent() {
                 <div className={sectionCardClass}>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-narrative text-sm text-muted-foreground">Total Pembayaran</span>
-                    <span className="text-interface text-2xl font-medium tracking-tight text-foreground">Rp {pricing.priceIDR.toLocaleString("id-ID")}</span>
+                    <span className="text-interface text-lg font-medium tracking-tight text-foreground md:text-xl">Rp {pricing.priceIDR.toLocaleString("id-ID")}</span>
                   </div>
                   <button
                     onClick={handleSubscribe}
                     disabled={isProcessing}
                     className={cn(
-                      "group relative w-full overflow-hidden rounded-action border border-transparent px-4 py-2.5",
+                      "group relative w-full overflow-hidden rounded-action border border-transparent px-4 py-2.5 md:py-3",
                       "text-signal text-xs font-medium uppercase tracking-widest",
                       "bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
                       "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
@@ -658,7 +660,7 @@ function CheckoutPROContent() {
                     </span>
                   </button>
                   <p className="text-narrative mt-2 text-center text-xs text-muted-foreground">
-                    Pembayaran diproses oleh {paymentConfig?.activeProvider === "midtrans" ? "Midtrans" : "Xendit"}. Aman dan terenkripsi.
+                    Pembayaran diproses oleh {getRuntimeProviderLabel()}. Aman dan terenkripsi.
                   </p>
                 </div>
               </>

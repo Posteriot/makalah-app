@@ -21,7 +21,7 @@ export const createPayment = mutation({
   args: {
     userId: v.id("users"),
     sessionId: v.optional(v.id("paperSessions")),
-    providerName: v.union(v.literal("xendit"), v.literal("midtrans")),
+    providerName: v.literal("xendit"),
     providerPaymentId: v.string(),
     providerReferenceId: v.string(),
     amount: v.number(),
@@ -35,7 +35,6 @@ export const createPayment = mutation({
     paymentChannel: v.optional(v.string()),
     paymentType: v.union(
       v.literal("credit_topup"),
-      v.literal("paper_completion"),
       v.literal("subscription_initial"),
       v.literal("subscription_renewal")
     ),
@@ -391,4 +390,3 @@ export const getPaymentStats = query({
     return stats
   },
 })
-

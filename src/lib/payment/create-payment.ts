@@ -8,6 +8,7 @@ import { fetchMutation } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { getProvider } from "./factory"
+import { assertSupportedRuntimePaymentType, type SupportedRuntimePaymentType } from "./request-validation"
 
 // ════════════════════════════════════════════════════════════════
 // Input / Output Types
@@ -19,11 +20,7 @@ export interface CreatePaymentInput {
   amount: number
   description: string
   paymentMethod: "qris" | "va" | "ewallet"
-  paymentType:
-    | "credit_topup"
-    | "paper_completion"
-    | "subscription_initial"
-    | "subscription_renewal"
+  paymentType: SupportedRuntimePaymentType
   metadata: Record<string, unknown>
   idempotencyKey: string
   convexToken: string
@@ -67,6 +64,7 @@ export interface CreatePaymentResponse {
 export async function createPaymentViaProvider(
   input: CreatePaymentInput
 ): Promise<CreatePaymentResponse> {
+  assertSupportedRuntimePaymentType(input.paymentType)
   const provider = await getProvider()
   const convexOptions = { token: input.convexToken }
 
