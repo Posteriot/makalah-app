@@ -1,6 +1,5 @@
 import type {
   Skill,
-  SkillContext,
   ValidationResult,
   SourceEntry,
 } from "./types"
@@ -34,7 +33,7 @@ export interface SourceQualityResult extends Record<string, unknown> {
   diversityWarning?: string
 }
 
-export const MIN_QUALITY_SCORE = 30
+const MIN_QUALITY_SCORE = 30
 
 const ACADEMIC_DOMAINS = [
   "scholar.google.com",

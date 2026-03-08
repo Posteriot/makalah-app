@@ -1866,7 +1866,7 @@ SEARCH TIPS:
             }
         }
 
-        const isLowValueCitationUrl = (raw: string) => {
+        const _isLowValueCitationUrl = (raw: string) => {
             try {
                 const u = new URL(raw)
                 const host = u.hostname.toLowerCase()
