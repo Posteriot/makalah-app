@@ -13,7 +13,7 @@ interface SearchStatusIndicatorProps {
     sourceCount?: number
 }
 
-const SHIMMER_TEXTS = new Set(["Pencarian internet...", "Pencarian web", "Menyusun jawaban..."])
+const SHIMMER_STATUSES: ReadonlySet<SearchStatus> = new Set(["searching", "composing"])
 
 export function SearchStatusIndicator({ status, message, sourceCount }: SearchStatusIndicatorProps) {
     if (status === "off") return null
@@ -21,6 +21,7 @@ export function SearchStatusIndicator({ status, message, sourceCount }: SearchSt
     const isError = status === "error"
     const isProcessing = status === "searching" || status === "composing" || status === "done"
     const text = resolveText(status, message, sourceCount)
+    const shouldShimmer = SHIMMER_STATUSES.has(status)
 
     return (
         <div
@@ -39,13 +40,13 @@ export function SearchStatusIndicator({ status, message, sourceCount }: SearchSt
                 <Globe className="h-4 w-4 animate-pulse text-current" />
             )}
             {isError && <WarningCircle className="h-4 w-4" />}
-            <StatusText text={text} />
+            <StatusText text={text} shimmer={shouldShimmer} />
         </div>
     )
 }
 
-function StatusText({ text }: { text: string }) {
-    if (!SHIMMER_TEXTS.has(text)) return <span>{text}</span>
+function StatusText({ text, shimmer }: { text: string; shimmer: boolean }) {
+    if (!shimmer) return <span>{text}</span>
 
     return (
         <span className="chat-search-shimmer">
