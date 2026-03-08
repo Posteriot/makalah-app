@@ -3260,10 +3260,8 @@ SEARCH TIPS:
                 const stream = createUIMessageStream({
                     execute: async ({ writer }) => {
                         let started = false
-                        let sourceCount = 0
                         let searchStatusClosed = false
-                        let streamedText = ""
-                        let lastProviderMetadata: unknown = null
+                        let composedText = ""
 
                         const ensureStart = () => {
                             if (started) return
@@ -3279,14 +3277,14 @@ SEARCH TIPS:
                             }
                         }
 
-                        const closeSearchStatus = (finalStatus: "done" | "off" | "error") => {
+                        const closeSearchStatus = (finalStatus: "done" | "off" | "error" | "composing") => {
                             if (searchStatusClosed) return
-                            searchStatusClosed = true
+                            searchStatusClosed = finalStatus !== "composing" // only close on terminal states
                             ensureStart()
                             writer.write({
                                 type: "data-search",
                                 id: searchStatusId,
-                                data: { status: finalStatus },
+                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount: 0 } : {}) },
                             })
                         }
 
@@ -3298,7 +3296,7 @@ SEARCH TIPS:
                             enabled: fallbackTransparent,
                         })
 
-                        // Show searching indicator immediately
+                        // Emit "searching" status — user sees "Mencari sumber..." immediately
                         ensureStart()
                         writer.write({
                             type: "data-search",
@@ -3307,7 +3305,9 @@ SEARCH TIPS:
                         })
                         emitTrace(reasoningTrace.initialEvents)
 
-                        // Stream from Grok with web_search_options (configured in model init)
+                        // ────────────────────────────────────────────────────────────
+                        // PHASE 1: Silent Grok search (runs while user sees "Mencari sumber...")
+                        // ────────────────────────────────────────────────────────────
                         const fallbackSearchResult = streamText({
                             model: fallbackSearchModel,
                             messages: sanitizedFallbackMessages,
@@ -3316,10 +3316,138 @@ SEARCH TIPS:
                             ...samplingOptions,
                         })
 
-                        for await (const chunk of fallbackSearchResult.toUIMessageStream({
+                        // Await full text (not streamed to user)
+                        const searchText = await fallbackSearchResult.text
+                        const searchUsage = await fallbackSearchResult.usage
+
+                        // Get provider metadata with 8s timeout (OpenRouter annotations)
+                        const providerMetadataFromResult = await (async () => {
+                            try {
+                                return await Promise.race([
+                                    fallbackSearchResult.providerMetadata,
+                                    new Promise<undefined>((resolve) =>
+                                        setTimeout(() => resolve(undefined), 8000)
+                                    ),
+                                ])
+                            } catch {
+                                return undefined
+                            }
+                        })()
+
+                        // Source pipeline: normalize → score → filter (no enrichment for Grok)
+                        let normalizedCitations: NormalizedCitation[] = []
+                        if (providerMetadataFromResult) {
+                            normalizedCitations = normalizeCitations(providerMetadataFromResult, 'openrouter')
+                        }
+
+                        // Skill-based quality scoring (include publishedAt so it flows through)
+                        const grokQualityInput = normalizedCitations
+                            .filter(c => !isVertexProxyUrl(c.url)) // Keep proxy filter (separate concern)
+                            .map(c => ({
+                                url: c.url,
+                                title: c.title || c.url,
+                            }))
+                        const grokQualityResult = validateWithScores({ sources: grokQualityInput })
+
+                        const filteredCitations = grokQualityResult.scoredSources
+                            ? grokQualityResult.scoredSources.map(s => {
+                                // Re-attach full NormalizedCitation fields (endIndex, publishedAt, etc.)
+                                const original = normalizedCitations.find(c => c.url === s.url)
+                                return original ?? { url: s.url, title: s.title }
+                            })
+                            : normalizedCitations.filter(c => !isGarbageUrl(c.url) && !isVertexProxyUrl(c.url)) // fallback
+
+                        if (grokQualityResult.filteredOut?.length) {
+                            console.log(`[source-quality:grok] Filtered ${grokQualityResult.filteredOut.length} low-quality sources`)
+                        }
+                        if (grokQualityResult.diversityWarning) {
+                            console.log(`[source-quality:grok] ${grokQualityResult.diversityWarning}`)
+                        }
+
+                        type SourceEntry = {
+                            url: string
+                            title: string
+                            publishedAt?: number | null
+                        }
+                        const scoredSources: SourceEntry[] = filteredCitations.map((citation) => ({
+                            url: citation.url,
+                            title: citation.title || citation.url,
+                            ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),
+                        }))
+
+                        const sourceCount = scoredSources.length
+
+                        // Phase 1 complete — transition to composing
+                        if (sourceCount > 0) {
+                            emitTrace(reasoningTrace.markSourceDetected())
+                        }
+                        // Update closeSearchStatus to use actual sourceCount
+                        searchStatusClosed = false
+                        const closeSearchStatusWithCount = (finalStatus: "done" | "off" | "error" | "composing") => {
+                            if (searchStatusClosed) return
+                            searchStatusClosed = finalStatus !== "composing"
+                            ensureStart()
+                            writer.write({
+                                type: "data-search",
+                                id: searchStatusId,
+                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount } : {}) },
+                            })
+                        }
+                        closeSearchStatusWithCount(sourceCount > 0 ? "composing" : "off")
+
+                        // ────────────────────────────────────────────────────────────
+                        // PHASE 2: Compose with skill instructions (fallback model)
+                        // ────────────────────────────────────────────────────────────
+                        const { buildSearchResultsContext } = await import("@/lib/ai/search-results-context")
+
+                        const skillContext: SkillContext = {
+                            isPaperMode: !!paperModePrompt,
+                            currentStage: paperSession?.currentStage ?? null,
+                            hasRecentSources: scoredSources.length > 0,
+                            availableSources: scoredSources.map(s => ({
+                                url: s.url,
+                                title: s.title,
+                                ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
+                            })),
+                        }
+                        const skillInstructions = composeSkillInstructions(skillContext)
+
+                        const searchResultsContext = buildSearchResultsContext(
+                            grokQualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
+                            searchText
+                        )
+
+                        // Build compose messages: system + skills + search results + file context + conversation
+                        const composeMessages: ModelMessage[] = [
+                            { role: "system" as const, content: systemPrompt },
+                            ...(paperModePrompt
+                                ? [{ role: "system" as const, content: paperModePrompt }]
+                                : []),
+                            ...(paperWorkflowReminder
+                                ? [{ role: "system" as const, content: paperWorkflowReminder }]
+                                : []),
+                            ...(skillInstructions
+                                ? [{ role: "system" as const, content: skillInstructions }]
+                                : []),
+                            { role: "system" as const, content: searchResultsContext },
+                            ...(fileContext
+                                ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
+                                : []),
+                            ...trimmedModelMessages,
+                        ]
+
+                        const composeModel = await getOpenRouterModel({ enableWebSearch: false })
+                        const composeResult = streamText({
+                            model: composeModel,
+                            messages: composeMessages,
+                            ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
+                            ...samplingOptions,
+                        })
+
+                        // Stream compose output to user
+                        for await (const chunk of composeResult.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
-                            sendSources: true,
                             sendReasoning: fallbackTransparent,
                         })) {
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
@@ -3333,119 +3461,55 @@ SEARCH TIPS:
                                 continue
                             }
 
-                            if (chunk.type === "source-url") {
-                                sourceCount += 1
-                                emitTrace(reasoningTrace.markSourceDetected())
-                            }
-
-                            // Capture provider metadata from chunks
-                            if (
-                                "providerMetadata" in chunk &&
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                (chunk as any).providerMetadata
-                            ) {
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                lastProviderMetadata = (chunk as any).providerMetadata
-                            }
-
                             if (chunk.type === "text-delta") {
-                                streamedText += chunk.delta
+                                composedText += chunk.delta
                             }
 
                             if (chunk.type === "finish") {
-                                let persistedReasoningTrace: PersistedCuratedTraceSnapshot | undefined
                                 let didFinalizeForPersist = false
 
-                                // Extract OpenRouter annotations from response
-                                const providerMetadataFromResult = await (async () => {
-                                    try {
-                                        return await Promise.race([
-                                            fallbackSearchResult.providerMetadata,
-                                            new Promise<undefined>((resolve) =>
-                                                setTimeout(() => resolve(undefined), 8000)
-                                            ),
-                                        ])
-                                    } catch {
-                                        return undefined
-                                    }
-                                })()
+                                try {
+                                    const persistedSources = scoredSources.length > 0 ? scoredSources : undefined
 
-                                const preferredMetadata = lastProviderMetadata ?? providerMetadataFromResult
-
-                                // Normalize citations via 'openrouter' — handles annotations
-                                let normalizedCitations: NormalizedCitation[] = []
-                                if (preferredMetadata) {
-                                    normalizedCitations = normalizeCitations(preferredMetadata, 'openrouter')
-                                }
-
-                                // Skill-based quality scoring (include publishedAt so it flows through)
-                                const grokQualityInput = normalizedCitations
-                                    .filter(c => !isVertexProxyUrl(c.url)) // Keep proxy filter (separate concern)
-                                    .map(c => ({
-                                        url: c.url,
-                                        title: c.title || c.url,
+                                    // Citation anchors: paragraph-end formatting
+                                    const citationAnchors = scoredSources.map((_, idx) => ({
+                                        position: null as number | null,
+                                        sourceNumbers: [idx + 1],
                                     }))
-                                const grokQualityResult = validateWithScores({ sources: grokQualityInput })
-
-                                const filteredCitations = grokQualityResult.scoredSources
-                                    ? grokQualityResult.scoredSources.map(s => {
-                                        // Re-attach full NormalizedCitation fields (endIndex, publishedAt, etc.)
-                                        const original = normalizedCitations.find(c => c.url === s.url)
-                                        return original ?? { url: s.url, title: s.title }
+                                    const textWithCitations = formatParagraphEndCitations({
+                                        text: composedText,
+                                        sources: scoredSources,
+                                        anchors: citationAnchors,
                                     })
-                                    : normalizedCitations.filter(c => !isGarbageUrl(c.url) && !isVertexProxyUrl(c.url)) // fallback
+                                    const userFacingPayload = buildUserFacingSearchPayload(textWithCitations)
 
-                                if (grokQualityResult.filteredOut?.length) {
-                                    console.log(`[source-quality:grok] Filtered ${grokQualityResult.filteredOut.length} low-quality sources`)
-                                }
-                                sourceCount = Math.max(sourceCount, filteredCitations.length)
-                                const hasAnyCitations = filteredCitations.length > 0
-                                closeSearchStatus(hasAnyCitations ? "done" : "off")
+                                    // Close search status as done
+                                    searchStatusClosed = false // reset so we can write terminal status
+                                    closeSearchStatus(persistedSources && persistedSources.length > 0 ? "done" : "off")
 
-                                const persistedSources = filteredCitations.map((citation) => ({
-                                    url: citation.url,
-                                    title: citation.title,
-                                    ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),
-                                }))
-                                const fallbackCitationAnchors = filteredCitations.map((citation, idx) => ({
-                                    position: typeof citation.endIndex === "number"
-                                        ? Math.max(0, citation.endIndex - 1)
-                                        : null,
-                                    sourceNumbers: [idx + 1],
-                                }))
-                                const textWithCitations = hasAnyCitations
-                                    ? formatParagraphEndCitations({
-                                        text: streamedText,
-                                        sources: persistedSources,
-                                        anchors: fallbackCitationAnchors,
-                                    })
-                                    : streamedText
-                                const userFacingPayload = buildUserFacingSearchPayload(textWithCitations)
-
-                                // Send cited text
-                                ensureStart()
-                                writer.write({
-                                    type: "data-cited-text",
-                                    id: citedTextId,
-                                    data: { text: userFacingPayload.citedText },
-                                })
-                                if (userFacingPayload.internalThoughtText) {
                                     ensureStart()
                                     writer.write({
-                                        type: "data-internal-thought",
-                                        id: internalThoughtId,
-                                        data: { text: userFacingPayload.internalThoughtText },
+                                        type: "data-cited-text",
+                                        id: citedTextId,
+                                        data: { text: userFacingPayload.citedText },
                                     })
-                                }
+                                    if (userFacingPayload.internalThoughtText) {
+                                        ensureStart()
+                                        writer.write({
+                                            type: "data-internal-thought",
+                                            id: internalThoughtId,
+                                            data: { text: userFacingPayload.internalThoughtText },
+                                        })
+                                    }
 
-                                // Send cited sources if available
-                                if (hasAnyCitations) {
-                                    ensureStart()
-                                    writer.write({
-                                        type: "data-cited-sources",
-                                        id: citedSourcesId,
-                                        data: { sources: persistedSources },
-                                    })
+                                    if (persistedSources && persistedSources.length > 0) {
+                                        ensureStart()
+                                        writer.write({
+                                            type: "data-cited-sources",
+                                            id: citedSourcesId,
+                                            data: { sources: persistedSources },
+                                        })
+                                    }
 
                                     if (reasoningAccumulator.hasReasoning()) {
                                         emitTrace(reasoningTrace.populateFromReasoning(
@@ -3459,19 +3523,22 @@ SEARCH TIPS:
                                     })
                                     emitTrace(doneTraceEvents)
                                     didFinalizeForPersist = true
-                                    persistedReasoningTrace = reasoningTrace.enabled
+                                    const persistedReasoningTrace = reasoningTrace.enabled
                                         ? reasoningTrace.getPersistedSnapshot()
                                         : undefined
 
+                                    const combinedModelName = `${fallbackSearchModelName}+${modelNames.fallback.model}`
+
+                                    // Persist with combined model name (Grok searched, fallback composed)
                                     await saveAssistantMessage(
                                         textWithCitations,
                                         persistedSources,
-                                        fallbackSearchModelName,
+                                        combinedModelName,
                                         persistedReasoningTrace
                                     )
 
                                     // ──── Auto-persist search references to paper stageData ────
-                                    if (paperSession && persistedSources.length > 0) {
+                                    if (paperSession && persistedSources && persistedSources.length > 0) {
                                         try {
                                             await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
                                                 sessionId: paperSession._id,
@@ -3489,95 +3556,76 @@ SEARCH TIPS:
                                         }
                                     }
                                     // ───────────────────────────────────────────────────────────
-                                } else {
-                                    if (reasoningAccumulator.hasReasoning()) {
-                                        emitTrace(reasoningTrace.populateFromReasoning(
-                                            reasoningAccumulator.getFullReasoning()
-                                        ))
-                                    }
 
-                                    const doneTraceEvents = reasoningTrace.finalize({
-                                        outcome: "done",
-                                        sourceCount,
-                                    })
-                                    emitTrace(doneTraceEvents)
-                                    didFinalizeForPersist = true
-                                    persistedReasoningTrace = reasoningTrace.enabled
-                                        ? reasoningTrace.getPersistedSnapshot()
-                                        : undefined
-
-                                    // No citations - save without sources
-                                    await saveAssistantMessage(
-                                        textWithCitations,
-                                        undefined,
-                                        fallbackSearchModelName,
-                                        persistedReasoningTrace
+                                    const minPairsForFinalTitle = Number.parseInt(
+                                        process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                                        10
                                     )
-                                }
+                                    await maybeUpdateTitleFromAI({
+                                        assistantText: textWithCitations,
+                                        minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                                            ? minPairsForFinalTitle
+                                            : 3,
+                                    })
 
-                                // Update title if needed
-                                const minPairsForFinalTitle = Number.parseInt(
-                                    process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
-                                    10
-                                )
-                                await maybeUpdateTitleFromAI({
-                                    assistantText: textWithCitations,
-                                    minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
-                                        ? minPairsForFinalTitle
-                                        : 3,
-                                })
+                                    // ═══ BILLING: Record combined search + compose tokens ═══
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const composeFinishUsage = (chunk as any).usage
+                                    const combinedInputTokens = (searchUsage?.inputTokens ?? 0) + (composeFinishUsage?.inputTokens ?? 0)
+                                    const combinedOutputTokens = (searchUsage?.outputTokens ?? 0) + (composeFinishUsage?.outputTokens ?? 0)
+                                    if (combinedInputTokens > 0 || combinedOutputTokens > 0) {
+                                        await recordUsageAfterOperation({
+                                            userId: billingContext.userId,
+                                            conversationId: currentConversationId as Id<"conversations">,
+                                            sessionId: paperSession?._id,
+                                            inputTokens: combinedInputTokens,
+                                            outputTokens: combinedOutputTokens,
+                                            totalTokens: combinedInputTokens + combinedOutputTokens,
+                                            model: combinedModelName,
+                                            operationType: "web_search",
+                                            convexToken,
+                                        }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                                    }
+                                    // ═══════════════════════════════════════════════════════════
 
-                                // ═══ BILLING: Record token usage (fallback web search) ═══
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                const finishUsage = (chunk as any).usage
-                                if (finishUsage) {
-                                    await recordUsageAfterOperation({
-                                        userId: billingContext.userId,
+                                    // ═══ TELEMETRY: Fallback websearch two-pass success ═══
+                                    const grokSourceQualityTelemetry = {
+                                        searchSkillApplied: true,
+                                        searchSkillName: "source-quality",
+                                        searchSkillAction: grokQualityResult.valid ? "scored" : "rejected",
+                                        sourcesScored: (grokQualityResult.scoredSources?.length ?? 0) + (grokQualityResult.filteredOut?.length ?? 0),
+                                        sourcesFiltered: grokQualityResult.filteredOut?.length ?? 0,
+                                        sourcesPassedTiers: JSON.stringify(
+                                            (grokQualityResult.scoredSources ?? []).reduce((acc: Record<string, number>, s) => {
+                                                acc[s.tier] = (acc[s.tier] ?? 0) + 1
+                                                return acc
+                                            }, {} as Record<string, number>)
+                                        ),
+                                        diversityWarning: grokQualityResult.diversityWarning,
+                                    }
+                                    logAiTelemetry({
+                                        token: convexToken,
+                                        userId: userId as Id<"users">,
                                         conversationId: currentConversationId as Id<"conversations">,
-                                        sessionId: paperSession?._id,
-                                        inputTokens: finishUsage.inputTokens ?? 0,
-                                        outputTokens: finishUsage.outputTokens ?? 0,
-                                        totalTokens: (finishUsage.inputTokens ?? 0) + (finishUsage.outputTokens ?? 0),
-                                        model: fallbackSearchModelName,
-                                        operationType: "web_search",
-                                        convexToken,
-                                    }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                                        provider: "openrouter",
+                                        model: combinedModelName,
+                                        isPrimaryProvider: false,
+                                        failoverUsed: true,
+                                        toolUsed: "two_pass_search_fallback",
+                                        mode: "websearch",
+                                        success: true,
+                                        latencyMs: Date.now() - telemetryStartTime,
+                                        inputTokens: combinedInputTokens,
+                                        outputTokens: combinedOutputTokens,
+                                        ...fallbackTelemetryContext,
+                                        ...grokSourceQualityTelemetry,
+                                    })
+                                    // ═════════════════════════════════════════════
+                                } catch (err) {
+                                    searchStatusClosed = false
+                                    closeSearchStatus(sourceCount > 0 ? "done" : "off")
+                                    console.error("[Chat API] Failed to compute inline citations (fallback):", err)
                                 }
-                                // ═══════════════════════════════════════════════════════════
-
-                                // ═══ TELEMETRY: Fallback websearch success ═══
-                                const grokSourceQualityTelemetry = {
-                                    searchSkillApplied: true,
-                                    searchSkillName: "source-quality",
-                                    searchSkillAction: grokQualityResult.valid ? "scored" : "rejected",
-                                    sourcesScored: (grokQualityResult.scoredSources?.length ?? 0) + (grokQualityResult.filteredOut?.length ?? 0),
-                                    sourcesFiltered: grokQualityResult.filteredOut?.length ?? 0,
-                                    sourcesPassedTiers: JSON.stringify(
-                                        (grokQualityResult.scoredSources ?? []).reduce((acc: Record<string, number>, s) => {
-                                            acc[s.tier] = (acc[s.tier] ?? 0) + 1
-                                            return acc
-                                        }, {} as Record<string, number>)
-                                    ),
-                                    diversityWarning: grokQualityResult.diversityWarning,
-                                }
-                                logAiTelemetry({
-                                    token: convexToken,
-                                    userId: userId as Id<"users">,
-                                    conversationId: currentConversationId as Id<"conversations">,
-                                    provider: "openrouter",
-                                    model: fallbackSearchModelName,
-                                    isPrimaryProvider: false,
-                                    failoverUsed: true,
-                                    toolUsed: "web_search_fallback",
-                                    mode: "websearch",
-                                    success: true,
-                                    latencyMs: Date.now() - telemetryStartTime,
-                                    inputTokens: finishUsage?.inputTokens,
-                                    outputTokens: finishUsage?.outputTokens,
-                                    ...fallbackTelemetryContext,
-                                    ...grokSourceQualityTelemetry,
-                                })
-                                // ═════════════════════════════════════════════
 
                                 if (!didFinalizeForPersist) {
                                     if (reasoningAccumulator.hasReasoning()) {
@@ -3595,27 +3643,46 @@ SEARCH TIPS:
                             }
 
                             if (chunk.type === "error") {
+                                searchStatusClosed = false
                                 closeSearchStatus("error")
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "error",
                                     sourceCount,
-                                    errorNote: "fallback-websearch-stream-error",
+                                    errorNote: "fallback-websearch-compose-error",
                                 }))
                                 writer.write(chunk)
                                 break
                             }
 
                             if (chunk.type === "abort") {
-                                closeSearchStatus("off")
-                                emitTrace(reasoningTrace.finalize({
+                                searchStatusClosed = false
+                                closeSearchStatus(sourceCount > 0 ? "done" : "off")
+                                const stoppedTraceEvents = reasoningTrace.finalize({
                                     outcome: "stopped",
                                     sourceCount,
-                                }))
+                                })
+                                emitTrace(stoppedTraceEvents)
+                                const persistedReasoningTrace = reasoningTrace.enabled
+                                    ? reasoningTrace.getPersistedSnapshot()
+                                    : undefined
+                                if (composedText.trim()) {
+                                    try {
+                                        await saveAssistantMessage(
+                                            composedText,
+                                            undefined,
+                                            `${fallbackSearchModelName}+${modelNames.fallback.model}`,
+                                            persistedReasoningTrace
+                                        )
+                                        console.log("[Chat API] Saved partial message on fallback compose stream abort")
+                                    } catch (err) {
+                                        console.error("[Chat API] Failed to save partial message on abort:", err)
+                                    }
+                                }
                                 writer.write(chunk)
                                 break
                             }
 
-                            // Forward other chunks
+                            // Forward compose chunks to user
                             ensureStart()
                             writer.write(chunk)
                         }
