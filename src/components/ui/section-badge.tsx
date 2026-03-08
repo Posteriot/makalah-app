@@ -31,7 +31,7 @@ export function SectionBadge({ children, href, className }: SectionBadgeProps) {
       )}
     >
       {/* Animated amber dot */}
-      <span className="h-2 w-2 rounded-full bg-warning shadow-[0_0_6px_var(--core-warning)] animate-pulse" />
+      <span className="h-2 w-2 rounded-full bg-[color:var(--core-warning-dot)] shadow-[0_0_10px_var(--core-warning-dot)] animate-pulse" />
       {/* Badge text */}
       <span
         className={cn(

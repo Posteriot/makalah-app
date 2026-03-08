@@ -141,6 +141,7 @@
   --core-success-foreground: oklch(1 0 0);         /* neutral-0 */
   --core-warning: oklch(0.666 0.179 58.318);       /* amber-600 */
   --core-warning-foreground: oklch(1 0 0);         /* neutral-0 */
+  --core-warning-dot: oklch(0.828 0.189 84.429);   /* amber-400 */
   --core-info: oklch(0.588 0.158 241.966);         /* sky-600 */
   --core-info-foreground: oklch(1 0 0);            /* neutral-0 */
   --core-border: oklch(0.869 0 0);                 /* slate-300 */
@@ -197,6 +198,7 @@
   --core-success-foreground: oklch(1 0 0);         /* neutral-0 */
   --core-warning: oklch(0.666 0.179 58.318);       /* amber-600 */
   --core-warning-foreground: oklch(1 0 0);         /* neutral-0 */
+  --core-warning-dot: oklch(0.879 0.169 91.605);   /* amber-300 */
   --core-info: oklch(0.588 0.158 241.966);         /* sky-600 */
   --core-info-foreground: oklch(1 0 0);            /* neutral-0 */
   --core-border: oklch(0.372 0 0);                 /* slate-700 */
@@ -342,6 +344,7 @@
     var(--core-muted-foreground) 7px
   );
 }
+
 
 /* ── Light Mode ── */
 [data-chat-scope] {
