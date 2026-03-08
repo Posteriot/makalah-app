@@ -2284,14 +2284,14 @@ Aturan:
                             }
                         }
 
-                        const closeSearchStatus = (finalStatus: "done" | "off" | "error" | "composing") => {
+                        const closeSearchStatus = (finalStatus: "done" | "off" | "error" | "composing", count?: number) => {
                             if (searchStatusClosed) return
                             searchStatusClosed = finalStatus !== "composing" // only close on terminal states
                             ensureStart()
                             writer.write({
                                 type: "data-search",
                                 id: searchStatusId,
-                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount: 0 } : {}) },
+                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount: count ?? 0 } : {}) },
                             })
                         }
 
@@ -2314,6 +2314,13 @@ Aturan:
                         // ────────────────────────────────────────────────────────────
                         // PHASE 1: Silent Perplexity search (runs while user sees "Mencari sumber...")
                         // ────────────────────────────────────────────────────────────
+                        let searchText: string
+                        let searchUsage: Awaited<ReturnType<typeof streamText>["usage"]> | undefined
+                        let scoredSources: SourceEntry[] = []
+                        let sourceCount = 0
+                        let qualityResult: ReturnType<typeof validateWithScores> = { valid: true }
+
+                        try {
                         const perplexityResult = streamText({
                             model: webSearchModel,
                             messages: sanitizedMessages,
@@ -2322,8 +2329,8 @@ Aturan:
                         })
 
                         // Await full text (not streamed to user)
-                        const searchText = await perplexityResult.text
-                        const searchUsage = await perplexityResult.usage
+                        searchText = await perplexityResult.text
+                        searchUsage = await perplexityResult.usage
 
                         // Get sources with 4s timeout (same as before)
                         const rawSources = await (async () => {
@@ -2346,9 +2353,9 @@ Aturan:
                             url: normalizeWebSearchUrl(c.url),
                             title: c.title || c.url,
                         }))
-                        const qualityResult = validateWithScores({ sources: qualityInput })
+                        qualityResult = validateWithScores({ sources: qualityInput })
 
-                        let scoredSources: SourceEntry[] = qualityResult.scoredSources
+                        scoredSources = qualityResult.scoredSources
                             ? qualityResult.scoredSources.map(s => ({ url: s.url, title: s.title }))
                             : qualityInput.filter(c => !isGarbageUrl(c.url)) // fallback to old behavior
 
@@ -2378,26 +2385,38 @@ Aturan:
                             scoredSources = Array.from(deduped.values())
                         }
 
-                        const sourceCount = scoredSources.length
+                        sourceCount = scoredSources.length
                         primaryReasoningSourceCount = sourceCount
 
                         // Phase 1 complete — transition to composing
                         if (sourceCount > 0) {
                             emitTrace(reasoningTrace.markSourceDetected())
                         }
-                        // Update closeSearchStatus to use actual sourceCount
                         searchStatusClosed = false
-                        const closeSearchStatusWithCount = (finalStatus: "done" | "off" | "error" | "composing") => {
-                            if (searchStatusClosed) return
-                            searchStatusClosed = finalStatus !== "composing"
+                        closeSearchStatus(sourceCount > 0 ? "composing" : "off", sourceCount)
+
+                        } catch (phase1Error) {
+                            // Phase 1 failed — emit error status so UI doesn't freeze
+                            console.error("[Chat API] Phase 1 Perplexity search failed:", phase1Error)
+                            searchStatusClosed = false
+                            closeSearchStatus("error")
+                            emitTrace(reasoningTrace.finalize({
+                                outcome: "error",
+                                sourceCount: 0,
+                                errorNote: "primary-websearch-phase1-error",
+                            }))
                             ensureStart()
                             writer.write({
-                                type: "data-search",
-                                id: searchStatusId,
-                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount } : {}) },
+                                type: "text-delta",
+                                id: messageId,
+                                delta: "Maaf, terjadi kesalahan saat mencari sumber. Silakan coba lagi.",
                             })
+                            writer.write({
+                                type: "finish",
+                                finishReason: "error",
+                            })
+                            return
                         }
-                        closeSearchStatusWithCount(sourceCount > 0 ? "composing" : "off")
 
                         // ────────────────────────────────────────────────────────────
                         // PHASE 2: Gemini compose with skill instructions
@@ -3250,14 +3269,14 @@ Aturan:
                             }
                         }
 
-                        const closeSearchStatus = (finalStatus: "done" | "off" | "error" | "composing") => {
+                        const closeSearchStatus = (finalStatus: "done" | "off" | "error" | "composing", count?: number) => {
                             if (searchStatusClosed) return
                             searchStatusClosed = finalStatus !== "composing" // only close on terminal states
                             ensureStart()
                             writer.write({
                                 type: "data-search",
                                 id: searchStatusId,
-                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount: 0 } : {}) },
+                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount: count ?? 0 } : {}) },
                             })
                         }
 
@@ -3281,6 +3300,18 @@ Aturan:
                         // ────────────────────────────────────────────────────────────
                         // PHASE 1: Silent Grok search (runs while user sees "Mencari sumber...")
                         // ────────────────────────────────────────────────────────────
+                        let searchText: string
+                        let searchUsage: Awaited<ReturnType<typeof streamText>["usage"]> | undefined
+                        type SourceEntry = {
+                            url: string
+                            title: string
+                            publishedAt?: number | null
+                        }
+                        let scoredSources: SourceEntry[] = []
+                        let sourceCount = 0
+                        let grokQualityResult: ReturnType<typeof validateWithScores> = { valid: true }
+
+                        try {
                         const fallbackSearchResult = streamText({
                             model: fallbackSearchModel,
                             messages: sanitizedFallbackMessages,
@@ -3290,8 +3321,8 @@ Aturan:
                         })
 
                         // Await full text (not streamed to user)
-                        const searchText = await fallbackSearchResult.text
-                        const searchUsage = await fallbackSearchResult.usage
+                        searchText = await fallbackSearchResult.text
+                        searchUsage = await fallbackSearchResult.usage
 
                         // Get provider metadata with 8s timeout (OpenRouter annotations)
                         const providerMetadataFromResult = await (async () => {
@@ -3320,7 +3351,7 @@ Aturan:
                                 url: c.url,
                                 title: c.title || c.url,
                             }))
-                        const grokQualityResult = validateWithScores({ sources: grokQualityInput })
+                        grokQualityResult = validateWithScores({ sources: grokQualityInput })
 
                         const filteredCitations = grokQualityResult.scoredSources
                             ? grokQualityResult.scoredSources.map(s => {
@@ -3337,36 +3368,43 @@ Aturan:
                             console.log(`[source-quality:grok] ${grokQualityResult.diversityWarning}`)
                         }
 
-                        type SourceEntry = {
-                            url: string
-                            title: string
-                            publishedAt?: number | null
-                        }
-                        const scoredSources: SourceEntry[] = filteredCitations.map((citation) => ({
+                        scoredSources = filteredCitations.map((citation) => ({
                             url: citation.url,
                             title: citation.title || citation.url,
                             ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),
                         }))
 
-                        const sourceCount = scoredSources.length
+                        sourceCount = scoredSources.length
 
                         // Phase 1 complete — transition to composing
                         if (sourceCount > 0) {
                             emitTrace(reasoningTrace.markSourceDetected())
                         }
-                        // Update closeSearchStatus to use actual sourceCount
                         searchStatusClosed = false
-                        const closeSearchStatusWithCount = (finalStatus: "done" | "off" | "error" | "composing") => {
-                            if (searchStatusClosed) return
-                            searchStatusClosed = finalStatus !== "composing"
+                        closeSearchStatus(sourceCount > 0 ? "composing" : "off", sourceCount)
+
+                        } catch (phase1Error) {
+                            // Phase 1 failed — emit error status so UI doesn't freeze
+                            console.error("[Chat API] Phase 1 Grok search failed:", phase1Error)
+                            searchStatusClosed = false
+                            closeSearchStatus("error")
+                            emitTrace(reasoningTrace.finalize({
+                                outcome: "error",
+                                sourceCount: 0,
+                                errorNote: "fallback-websearch-phase1-error",
+                            }))
                             ensureStart()
                             writer.write({
-                                type: "data-search",
-                                id: searchStatusId,
-                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount } : {}) },
+                                type: "text-delta",
+                                id: messageId,
+                                delta: "Maaf, terjadi kesalahan saat mencari sumber. Silakan coba lagi.",
                             })
+                            writer.write({
+                                type: "finish",
+                                finishReason: "error",
+                            })
+                            return
                         }
-                        closeSearchStatusWithCount(sourceCount > 0 ? "composing" : "off")
 
                         // ────────────────────────────────────────────────────────────
                         // PHASE 2: Compose with skill instructions (fallback model)
