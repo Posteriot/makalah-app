@@ -74,17 +74,17 @@ export function AuthWideCard({
 
     return (
         <div className="flex min-h-0 w-full flex-1">
-            <div className="auth-split flex-1">
-                <div className="auth-section-left relative">
+            <div className="auth-split max-lg:grid-rows-[50dvh_auto] max-lg:overflow-y-auto flex-1">
+                <div className="auth-section-left relative max-lg:min-h-0">
                     <div className="auth-left-pattern-overlay" aria-hidden="true" />
 
                     <div className="relative z-10 flex h-full w-full flex-col">
-                        <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3">
+                        <div className="relative z-20 flex items-start justify-between gap-3 lg:absolute lg:inset-x-0 lg:top-0">
                             {showBackButton ? (
                                 <button
                                     type="button"
                                     onClick={handleBackClick}
-                                    className="auth-back-button auth-focus-ring"
+                                    className="auth-back-button auth-focus-ring -ml-1.5"
                                 >
                                     <NavArrowLeft className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                                     <span>Kembali</span>
@@ -112,8 +112,8 @@ export function AuthWideCard({
                                 {customLeftContent}
                             </div>
                         ) : (
-                            <div className="relative flex w-full flex-1">
-                                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
+                            <div className="relative flex w-full max-lg:flex-1 max-lg:items-center lg:flex-1">
+                                <div className="lg:absolute lg:inset-x-0 lg:top-1/2 lg:-translate-y-1/2">
                                     <div className="flex w-full max-w-xl flex-col gap-8 md:gap-10">
                                         <Link href="/" className="auth-logo-link auth-focus-ring inline-flex w-fit items-center gap-2" aria-label="Kembali ke beranda">
                                             <Image
