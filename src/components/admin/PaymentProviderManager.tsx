@@ -10,6 +10,10 @@ import {
   assertEnabledMethodsConfig,
   DEFAULT_ENABLED_METHODS,
 } from "@/lib/payment/runtime-settings"
+import {
+  ACTIVE_VA_CHANNELS,
+  getDefaultVisibleVAChannels,
+} from "@/lib/payment/channel-options"
 
 interface PaymentProviderManagerProps {
   userId: Id<"users">
@@ -40,11 +44,19 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
   const [enabledMethods, setEnabledMethods] = useState<PaymentMethod[]>([
     ...(DEFAULT_ENABLED_METHODS as PaymentMethod[]),
   ])
+  const [visibleVAChannels, setVisibleVAChannels] = useState<string[]>(
+    getDefaultVisibleVAChannels()
+  )
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (config) {
       setEnabledMethods([...(config.enabledMethods as PaymentMethod[])])
+      setVisibleVAChannels(
+        config.visibleVAChannels?.length
+          ? [...config.visibleVAChannels]
+          : getDefaultVisibleVAChannels()
+      )
     }
   }, [config])
 
@@ -53,6 +65,14 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
       prev.includes(method)
         ? prev.filter((m) => m !== method)
         : [...prev, method]
+    )
+  }
+
+  function toggleVAChannel(channelCode: string) {
+    setVisibleVAChannels((prev) =>
+      prev.includes(channelCode)
+        ? prev.filter((code) => code !== channelCode)
+        : [...prev, channelCode]
     )
   }
 
@@ -72,6 +92,7 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
       await upsertConfig({
         requestorUserId: userId,
         enabledMethods,
+        visibleVAChannels,
         webhookUrl: config.webhookUrl,
         defaultExpiryMinutes: config.defaultExpiryMinutes,
       })
@@ -168,26 +189,78 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
           {PAYMENT_METHODS.map((method) => {
             const checked = enabledMethods.includes(method.value)
             return (
-              <label
-                key={method.value}
-                className={`${methodCardClass} cursor-pointer`}
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    aria-label={method.label}
-                    checked={checked}
-                    onChange={() => toggleMethod(method.value)}
-                    className="h-4 w-4 rounded-badge border-border accent-slate-700 dark:accent-slate-200"
-                  />
-                  <span className="text-interface text-sm font-medium text-foreground">
-                    {method.label}
+              <div key={method.value} className="space-y-2">
+                <label className={`${methodCardClass} cursor-pointer`}>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      aria-label={method.label}
+                      checked={checked}
+                      onChange={() => toggleMethod(method.value)}
+                      className="h-4 w-4 rounded-badge border-border accent-slate-700 dark:accent-slate-200"
+                    />
+                    <span className="text-interface text-sm font-medium text-foreground">
+                      {method.label}
+                    </span>
+                  </div>
+                  <span className="text-signal rounded-badge border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {checked ? "Aktif" : "Nonaktif"}
                   </span>
-                </div>
-                <span className="text-signal rounded-badge border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {checked ? "Aktif" : "Nonaktif"}
-                </span>
-              </label>
+                </label>
+
+                {method.value === "VIRTUAL_ACCOUNT" && (
+                  <div className="rounded-action border border-border bg-card/50 p-3 dark:bg-slate-900/60">
+                    <div className="mb-2.5 space-y-1">
+                      <p className="text-interface text-xs font-semibold text-foreground">
+                        Virtual Account Channels
+                      </p>
+                      <p className="text-narrative text-xs text-muted-foreground">
+                        Tampilkan atau sembunyikan bank VA yang tersedia di checkout.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {ACTIVE_VA_CHANNELS.map((channel) => {
+                        const isVisible = visibleVAChannels.includes(channel.code)
+                        return (
+                          <label
+                            key={channel.code}
+                            className={`${methodCardClass} min-h-[4.25rem] cursor-pointer`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                aria-label={channel.label}
+                                checked={isVisible}
+                                onChange={() => toggleVAChannel(channel.code)}
+                                className="mt-0.5 h-4 w-4 rounded-badge border-border accent-slate-700 dark:accent-slate-200"
+                              />
+                              <div className="space-y-0.5">
+                                <p className="text-interface text-sm font-medium text-foreground">
+                                  {channel.shortLabel}
+                                </p>
+                                <p className="text-narrative text-xs text-muted-foreground">
+                                  {channel.label}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-signal rounded-badge border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              {isVisible ? "Aktif" : "Nonaktif"}
+                            </span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                    {enabledMethods.includes("VIRTUAL_ACCOUNT") &&
+                      visibleVAChannels.length === 0 && (
+                        <p className="text-narrative mt-2 rounded-action border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                          Semua bank VA sedang disembunyikan. Checkout tetap
+                          berjalan, tapi metode Virtual Account tidak akan
+                          ditampilkan.
+                        </p>
+                      )}
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>

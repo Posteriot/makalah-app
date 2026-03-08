@@ -3,6 +3,14 @@ import { mutation, query } from "../_generated/server"
 import { requireRole } from "../permissions"
 import { assertValidEnabledMethodsConfig } from "../../src/lib/payment/request-validation"
 import { DEFAULT_ENABLED_METHODS } from "../../src/lib/payment/runtime-settings"
+import {
+  getDefaultVisibleVAChannels,
+  isKnownVAChannel,
+} from "../../src/lib/payment/channel-options"
+
+function sanitizeVisibleVAChannels(channels: readonly string[]): string[] {
+  return channels.filter((channel) => isKnownVAChannel(channel))
+}
 
 /**
  * Get the currently active payment provider configuration.
@@ -21,6 +29,7 @@ export const getActiveConfig = query({
       // Return defaults when no config exists
       return {
         enabledMethods: DEFAULT_ENABLED_METHODS,
+        visibleVAChannels: getDefaultVisibleVAChannels(),
         webhookUrl: "/api/webhooks/payment",
         defaultExpiryMinutes: 30,
       }
@@ -28,6 +37,10 @@ export const getActiveConfig = query({
 
     return {
       enabledMethods: config.enabledMethods,
+      visibleVAChannels:
+        config.visibleVAChannels && config.visibleVAChannels.length > 0
+          ? sanitizeVisibleVAChannels(config.visibleVAChannels)
+          : getDefaultVisibleVAChannels(),
       webhookUrl: config.webhookUrl ?? "/api/webhooks/payment",
       defaultExpiryMinutes: config.defaultExpiryMinutes ?? 30,
     }
@@ -44,12 +57,14 @@ export const upsertConfig = mutation({
     enabledMethods: v.array(
       v.union(v.literal("QRIS"), v.literal("VIRTUAL_ACCOUNT"), v.literal("EWALLET"))
     ),
+    visibleVAChannels: v.array(v.string()),
     webhookUrl: v.optional(v.string()),
     defaultExpiryMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
     assertValidEnabledMethodsConfig(args.enabledMethods)
+    const visibleVAChannels = sanitizeVisibleVAChannels(args.visibleVAChannels)
 
     const now = Date.now()
 
@@ -65,6 +80,7 @@ export const upsertConfig = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         enabledMethods: args.enabledMethods,
+        visibleVAChannels,
         webhookUrl: args.webhookUrl,
         defaultExpiryMinutes: args.defaultExpiryMinutes,
         updatedBy,
@@ -75,6 +91,7 @@ export const upsertConfig = mutation({
 
     return await ctx.db.insert("paymentProviderConfigs", {
       enabledMethods: args.enabledMethods,
+      visibleVAChannels,
       webhookUrl: args.webhookUrl,
       defaultExpiryMinutes: args.defaultExpiryMinutes,
       isActive: true,

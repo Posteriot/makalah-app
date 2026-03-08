@@ -4,6 +4,7 @@ import {
   isPaymentMethodEnabled,
   type CheckoutPaymentMethod,
 } from "./runtime-settings"
+import { isKnownVAChannel } from "./channel-options"
 
 export type SupportedRuntimePaymentType =
   | "credit_topup"
@@ -23,6 +24,19 @@ export function assertValidEnabledMethodsConfig(
   enabledMethods: readonly EnabledPaymentMethod[]
 ): void {
   assertEnabledMethodsConfig(enabledMethods)
+}
+
+export function assertVisibleVAChannel(
+  vaChannel: string,
+  visibleVAChannels: readonly string[]
+): void {
+  if (!isKnownVAChannel(vaChannel)) {
+    throw new Error("Channel Virtual Account tidak valid")
+  }
+
+  if (!visibleVAChannels.includes(vaChannel)) {
+    throw new Error("Channel Virtual Account tidak tersedia")
+  }
 }
 
 export function assertSupportedRuntimePaymentType(
