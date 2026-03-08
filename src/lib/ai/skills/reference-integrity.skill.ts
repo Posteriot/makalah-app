@@ -34,12 +34,32 @@ export const referenceIntegritySkill: Skill<ReferenceValidateArgs> = {
   instructions(context: SkillContext): string | null {
     if (!context.hasRecentSources) return null
 
-    return `## REFERENCE INTEGRITY RULES
-When creating or updating artifacts/stage data that include references or citations:
-- ONLY use URLs from sources that were returned by web search
-- Do NOT fabricate, guess, or hallucinate any source URLs
-- Every cited URL must match one of the available search result URLs
-- If you need more sources, request a web search first`
+    return `## REFERENCE INTEGRITY
+
+You are accountable for every reference you cite.
+
+### Integration, Not Decoration
+- Every cited source must serve a PURPOSE in your argument.
+- When you cite, explain WHY this source matters to the point you are making.
+- Do not stack citations at the end of a paragraph as decoration.
+  BAD:  "AI impacts employment [1][2][3]."
+  GOOD: "McKinsey (2025) estimates 30% of tasks are automatable [1], though ILO data suggests net job creation in service sectors [2]."
+
+### Source Honesty
+- ONLY cite URLs from actual web search results. Never fabricate.
+- If available sources are insufficient for a claim → say so explicitly and ask the user to search again. Do not stretch a source beyond what it actually says.
+- If a source partially supports your claim → state what it supports and what remains unsupported.
+
+### Claim-Source Alignment
+- Factual claims require primary data sources. Do not cite a news article as evidence for a statistical claim when the article itself cites a study — find the original study if possible.
+- Distinguish between what the source SAYS vs what you INTERPRET from it.
+- When sources conflict, present both sides rather than cherry-picking.
+
+### When to Request More Sources
+- You are about to make a claim but no available source supports it.
+- Available sources only cover one perspective on a contested topic.
+- The user's question requires depth that current sources cannot provide.
+- In these cases: tell the user what is missing and why another search would strengthen the response.`
   },
 
   validate(args: ReferenceValidateArgs): ValidationResult {
