@@ -1116,6 +1116,16 @@ export default defineSchema({
     outputTokens: v.optional(v.number()),
     skillResolverFallback: v.optional(v.boolean()),
     isSkillRuntime: v.optional(v.boolean()),
+    // Search skill telemetry fields
+    searchSkillApplied: v.optional(v.boolean()),
+    searchSkillName: v.optional(v.string()),
+    searchSkillAction: v.optional(v.string()),
+    sourcesScored: v.optional(v.number()),
+    sourcesFiltered: v.optional(v.number()),
+    sourcesPassedTiers: v.optional(v.string()),
+    referencesClaimed: v.optional(v.number()),
+    referencesMatched: v.optional(v.number()),
+    diversityWarning: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_created", ["createdAt"])

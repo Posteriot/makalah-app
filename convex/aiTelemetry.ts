@@ -89,7 +89,9 @@ function isSkillRuntimeRecord(record: {
   stageInstructionSource?: "skill" | "fallback" | "none"
   stageScope?: StageScope
   skillResolverFallback?: boolean
+  searchSkillApplied?: boolean
 }): boolean {
+  if (record.searchSkillApplied) return true
   if (record.stageInstructionSource !== undefined) return true
   if (record.stageScope !== undefined) return true
   return record.mode === "paper" && record.skillResolverFallback !== undefined
@@ -125,6 +127,15 @@ export const log = mutation({
     inputTokens: v.optional(v.number()),
     outputTokens: v.optional(v.number()),
     skillResolverFallback: v.optional(v.boolean()),
+    searchSkillApplied: v.optional(v.boolean()),
+    searchSkillName: v.optional(v.string()),
+    searchSkillAction: v.optional(v.string()),
+    sourcesScored: v.optional(v.number()),
+    sourcesFiltered: v.optional(v.number()),
+    sourcesPassedTiers: v.optional(v.string()),
+    referencesClaimed: v.optional(v.number()),
+    referencesMatched: v.optional(v.number()),
+    diversityWarning: v.optional(v.string()),
   },
   handler: async ({ db }, args) => {
     const isSkillRuntime = isSkillRuntimeRecord({
@@ -132,6 +143,7 @@ export const log = mutation({
       stageInstructionSource: args.stageInstructionSource,
       stageScope: args.stageScope,
       skillResolverFallback: args.skillResolverFallback,
+      searchSkillApplied: args.searchSkillApplied,
     })
 
     const id = await db.insert("aiTelemetry", {

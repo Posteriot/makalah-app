@@ -25,6 +25,15 @@ type TelemetryParams = {
   activeSkillId?: string
   activeSkillVersion?: number
   fallbackReason?: string
+  searchSkillApplied?: boolean
+  searchSkillName?: string
+  searchSkillAction?: string
+  sourcesScored?: number
+  sourcesFiltered?: number
+  sourcesPassedTiers?: string
+  referencesClaimed?: number
+  referencesMatched?: number
+  diversityWarning?: string
 }
 
 /**
