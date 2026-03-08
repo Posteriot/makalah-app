@@ -16,6 +16,8 @@ export function HeroResearchMock() {
         width={769}
         height={768}
         className="h-auto w-full rounded-md"
+        priority
+        loading="eager"
       />
     </div>
   )
