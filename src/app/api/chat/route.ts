@@ -1787,28 +1787,6 @@ Aturan:
         let shouldForceSubmitValidation = false
         let missingArtifactNote = ""
 
-        // Hoisted: web search behavior note + message sanitizer (used in both primary and fallback)
-        const webSearchBehaviorSystemNote = `⚠️ WEB SEARCH MODE ACTIVE — READ CAREFULLY!
-
-CRITICAL TECHNICAL CONSTRAINT:
-- This is web search mode. The search model handles search natively (no tools).
-- Other tools (createArtifact, updateArtifact, updateStageData, submitStageForValidation, renameConversationTitle) are NOT AVAILABLE in this turn.
-- Do NOT attempt to call any tool in this turn.
-
-WHAT YOU MUST DO IN THIS TURN:
-1) Answer the user's question using web search (the search model handles search automatically)
-2) Summarize your findings from the search
-3) END your response here — do NOT attempt to save data or create artifacts
-
-WHAT TO DO IN THE NEXT TURN (after the user responds):
-- Only in the next turn can you save drafts (updateStageData) or create artifacts (createArtifact)
-- Those tools will become available again after the search turn is complete
-
-SEARCH TIPS:
-- Avoid listing/tag/homepage pages as primary sources
-- Prefer specific article or press release URLs
-- Write factual claims concisely per sentence`
-
         // Helper: sanitize messages for cross-model compatibility
         // Strips tool call/result messages that Perplexity/Grok don't understand
         const sanitizeMessagesForSearch = (msgs: typeof fullMessagesBase): typeof fullMessagesBase => {
@@ -2184,7 +2162,6 @@ SEARCH TIPS:
             const fullMessagesGateway = enableWebSearch
                 ? [
                     fullMessagesBase[0],
-                    { role: "system" as const, content: webSearchBehaviorSystemNote },
                     // Inject research incomplete note if applicable (ACTIVE stage override)
                     ...(activeStageSearchNote && activeStageSearchReason === "research_incomplete"
                         ? [{ role: "system" as const, content: activeStageSearchNote }]
@@ -3234,11 +3211,7 @@ SEARCH TIPS:
             try {
                 const fallbackSearchModel = await getWebSearchFallbackModel()
                 const fallbackSearchModelName = webSearchConfig.webSearchFallbackModel ?? "x-ai/grok-3-mini"
-                const sanitizedFallbackMessages = sanitizeMessagesForSearch([
-                    fullMessagesBase[0],
-                    { role: "system" as const, content: webSearchBehaviorSystemNote },
-                    ...fullMessagesBase.slice(1),
-                ])
+                const sanitizedFallbackMessages = sanitizeMessagesForSearch(fullMessagesBase)
 
                 // Generate unique IDs for stream parts
                 const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`

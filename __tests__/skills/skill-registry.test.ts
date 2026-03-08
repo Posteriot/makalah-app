@@ -10,7 +10,7 @@ import type { SkillContext, ValidationResult, ToolExample } from "@/lib/ai/skill
 
 describe("Skill Registry", () => {
   describe("composeSkillInstructions", () => {
-    it("should return only SOURCE QUALITY CRITERIA when no recent sources", () => {
+    it("should return only RESEARCH SOURCE STRATEGY when no recent sources", () => {
       const context: SkillContext = {
         isPaperMode: false,
         currentStage: null,
@@ -20,7 +20,7 @@ describe("Skill Registry", () => {
 
       const result = composeSkillInstructions(context)
 
-      expect(result).toContain("SOURCE QUALITY CRITERIA")
+      expect(result).toContain("RESEARCH SOURCE STRATEGY")
       expect(result).not.toContain("REFERENCE INTEGRITY")
     })
 
@@ -37,7 +37,7 @@ describe("Skill Registry", () => {
       const result = composeSkillInstructions(context)
 
       expect(result).toContain("REFERENCE INTEGRITY")
-      expect(result).toContain("SOURCE QUALITY CRITERIA")
+      expect(result).toContain("RESEARCH SOURCE STRATEGY")
     })
   })
 
