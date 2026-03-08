@@ -3251,22 +3251,26 @@ SEARCH TIPS:
                                     normalizedCitations = normalizeCitations(preferredMetadata, 'openrouter')
                                 }
 
-                                // Pre-filter garbage URLs before low-value filter
-                                const nonGarbageCitations = normalizedCitations.filter(c => !isGarbageUrl(c.url))
+                                // Skill-based quality scoring (include publishedAt so it flows through)
+                                const grokQualityInput = normalizedCitations
+                                    .filter(c => !isVertexProxyUrl(c.url)) // Keep proxy filter (separate concern)
+                                    .map(c => ({
+                                        url: c.url,
+                                        title: c.title || c.url,
+                                    }))
+                                const grokQualityResult = validateWithScores({ sources: grokQualityInput })
 
-                                const filteredCitations = (() => {
-                                    const hasHighValue = nonGarbageCitations.some(
-                                        c => !isVertexProxyUrl(c.url) && !isLowValueCitationUrl(c.url)
-                                    )
-                                    if (hasHighValue) {
-                                        return nonGarbageCitations.filter(
-                                            c => !isVertexProxyUrl(c.url) && !isLowValueCitationUrl(c.url)
-                                        )
-                                    }
-                                    const hasNonProxy = nonGarbageCitations.some(c => !isVertexProxyUrl(c.url))
-                                    if (hasNonProxy) return nonGarbageCitations.filter(c => !isVertexProxyUrl(c.url))
-                                    return nonGarbageCitations
-                                })()
+                                const filteredCitations = grokQualityResult.scoredSources
+                                    ? grokQualityResult.scoredSources.map(s => {
+                                        // Re-attach full NormalizedCitation fields (endIndex, publishedAt, etc.)
+                                        const original = normalizedCitations.find(c => c.url === s.url)
+                                        return original ?? { url: s.url, title: s.title }
+                                    })
+                                    : normalizedCitations.filter(c => !isGarbageUrl(c.url) && !isVertexProxyUrl(c.url)) // fallback
+
+                                if (grokQualityResult.filteredOut?.length) {
+                                    console.log(`[source-quality:grok] Filtered ${grokQualityResult.filteredOut.length} low-quality sources`)
+                                }
                                 sourceCount = Math.max(sourceCount, filteredCitations.length)
                                 const hasAnyCitations = filteredCitations.length > 0
                                 closeSearchStatus(hasAnyCitations ? "done" : "off")
