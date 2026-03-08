@@ -301,24 +301,17 @@ export function GlobalHeader() {
             <button
               onClick={toggleTheme}
               className={cn(
-                // Structure for stripes animation
-                "group relative overflow-hidden",
-                // Base layout
-                "md:hidden inline-flex h-6 w-6 items-center justify-center rounded-action mr-2",
-                "bg-[color:var(--core-secondary)] text-[color:var(--core-secondary-foreground)]",
-                "hover:bg-[color:var(--core-accent)] hover:text-[color:var(--core-accent-foreground)]",
-                // Transition & focus
-                "transition-colors focus-ring"
+                "md:hidden inline-flex h-6 w-6 items-center justify-center mr-2",
+                "bg-transparent border-0 text-muted-foreground hover:text-foreground",
+                "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-0"
               )}
               type="button"
               title="Toggle theme"
               aria-label="Toggle theme"
               disabled={!isThemeReady}
             >
-              {/* Diagonal stripes overlay */}
-              <span className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0" aria-hidden="true" />
               {/* Icon */}
-              <span className="relative z-10">
+              <span>
                 {(resolvedTheme ?? "dark") === "dark" ? (
                   <SunLight className="h-3.5 w-3.5" />
                 ) : (
@@ -350,23 +343,16 @@ export function GlobalHeader() {
             <button
               onClick={toggleTheme}
               className={cn(
-                // Structure for stripes animation
-                "group relative overflow-hidden",
-                // Base layout
-                "hidden md:inline-flex h-7.5 w-7.5 items-center justify-center rounded-action",
-                "bg-[color:var(--core-secondary)] text-[color:var(--core-secondary-foreground)]",
-                "hover:bg-[color:var(--core-accent)] hover:text-[color:var(--core-accent-foreground)]",
-                // Transition & focus
-                "transition-colors focus-ring"
+                "hidden md:inline-flex h-7.5 w-7.5 items-center justify-center",
+                "bg-transparent border-0 text-muted-foreground hover:text-foreground",
+                "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-0"
               )}
               title="Toggle theme"
               aria-label="Toggle theme"
             >
-              {/* Diagonal stripes overlay */}
-              <span className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0" aria-hidden="true" />
               {/* Icons */}
-              <SunLight className="relative z-10 icon-interface block dark:hidden" />
-              <HalfMoon className="relative z-10 icon-interface hidden dark:block" />
+              <SunLight className="icon-interface block dark:hidden" />
+              <HalfMoon className="icon-interface hidden dark:block" />
             </button>
           ) : null}
 
