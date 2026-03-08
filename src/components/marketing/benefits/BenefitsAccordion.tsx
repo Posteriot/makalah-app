@@ -81,12 +81,12 @@ export function BenefitsAccordion({ items }: BenefitsAccordionProps) {
           <AccordionItem
             key={benefit.id}
             value={benefit.id}
-            className="group relative overflow-hidden rounded-md border-hairline bg-card/85 backdrop-blur-[1px] transition-all duration-300 hover:-translate-y-1 hover:bg-slate-200 hover:border-slate-400 dark:bg-slate-900/85 dark:hover:bg-slate-700 dark:hover:border-slate-600"
+            className="group relative overflow-hidden rounded-md border-hairline bg-card/85 backdrop-blur-[1px] transition-all duration-300 hover:-translate-y-1 hover:bg-accent hover:border-[color:var(--core-border-strong)]"
           >
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3">
                 {/* Blinking dot - matches desktop */}
-                <span className="h-2.5 w-2.5 min-w-2.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px] shadow-amber-500" />
+                <span className="h-2.5 w-2.5 min-w-2.5 rounded-full bg-warning animate-pulse shadow-[0_0_8px_var(--core-warning)]" />
                 <span className="text-narrative font-medium text-base text-foreground">
                   {benefit.title}
                 </span>

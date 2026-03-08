@@ -63,7 +63,7 @@ export function BentoBenefitsGrid({ items }: BentoBenefitsGridProps) {
       {benefitsData.map((benefit) => (
         <div
           key={benefit.id}
-          className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-card/85 p-comfort backdrop-blur-[1px] transition-all duration-300 hover:-translate-y-1 hover:bg-slate-200 hover:border-slate-400 dark:bg-slate-900/85 dark:hover:bg-slate-700 dark:hover:border-slate-600"
+          className="group relative col-span-8 flex flex-col rounded-shell border-hairline bg-card/85 p-comfort backdrop-blur-[1px] transition-all duration-300 hover:-translate-y-1 hover:bg-accent hover:border-[color:var(--core-border-strong)]"
         >
           <div className="relative flex-1 flex flex-col">
             <h3 className="text-narrative font-light text-3xl leading-[1.1] text-foreground m-0 mb-6">
@@ -72,7 +72,7 @@ export function BentoBenefitsGrid({ items }: BentoBenefitsGridProps) {
               {benefit.title[1]}
             </h3>
             <div className="flex items-start gap-3">
-              <span className="mt-1.5 h-2.5 w-2.5 min-w-2.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px] shadow-amber-500" />
+              <span className="mt-1.5 h-2.5 w-2.5 min-w-2.5 rounded-full bg-warning animate-pulse shadow-[0_0_8px_var(--core-warning)]" />
               <p className="text-interface text-xs leading-relaxed text-muted-foreground m-0">
                 {benefit.description}
               </p>
