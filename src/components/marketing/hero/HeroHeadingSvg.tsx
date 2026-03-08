@@ -21,7 +21,8 @@ export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
         alt="Ngobrol+Riset +Brainstorming +Kolaboratif =Paper_Akademik"
         width={520}
         height={246}
-        className="hidden dark:block w-full h-auto object-contain"
+        className="hidden object-contain dark:block"
+        style={{ width: "100%", height: "auto" }}
         priority
       />
       {/* Light mode heading (dark text) */}
@@ -30,7 +31,8 @@ export function HeroHeadingSvg({ className }: HeroHeadingSvgProps) {
         alt="Ngobrol+Riset +Brainstorming +Kolaboratif =Paper_Akademik"
         width={520}
         height={246}
-        className="block dark:hidden w-full h-auto object-contain"
+        className="block object-contain dark:hidden"
+        style={{ width: "100%", height: "auto" }}
         priority
       />
     </span>
