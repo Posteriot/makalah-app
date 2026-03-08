@@ -1,9 +1,12 @@
 import type {
   Skill,
+  SkillContext,
   ValidationResult,
   SourceEntry,
 } from "./types"
+import type { PaperStageId } from "@convex/paperSessions/constants"
 import { BLOCKED_DOMAINS } from "@/lib/ai/blocked-domains"
+import { ACTIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
 
 export interface SourceQualityValidateArgs {
   sources: SourceEntry[]
@@ -251,19 +254,74 @@ export function validateWithScores(
   }
 }
 
+function getStageGuidance(stage: PaperStageId | null): string {
+  switch (stage) {
+    case "gagasan":
+    case "topik":
+      return "Exploration phase: seek breadth, not depth. 3-5 diverse sources to map the landscape."
+    case "tinjauan_literatur":
+      return "Literature review phase: seek depth. Minimum 5 sources, prioritize academic/journals. Identify patterns across studies, gaps not yet addressed, and position the user's research within the existing landscape."
+    case "pendahuluan":
+      return "Framing phase: sources to build problem context. Use primary data to establish significance, academic sources for theoretical grounding."
+    case "metodologi":
+      return "Methodology phase: cite sources that justify the approach. Find studies using similar methods as precedent."
+    case "diskusi":
+      return "Discussion phase: sources for cross-referencing findings. Compare with other studies — what aligns, what differs, and why."
+    default:
+      return "Chat mode: match depth to the question. Casual = 2-3 sources sufficient. Serious inquiry = treat as mini literature review."
+  }
+}
+
 export const sourceQualitySkill: Skill<SourceQualityValidateArgs> = {
   name: "source-quality",
   wrappedTools: [],
 
-  instructions(): string | null {
-    return `## SOURCE QUALITY CRITERIA
-When evaluating and selecting web search sources:
-- Prefer academic sources (.edu, .ac.id, scholar.google.com, pubmed, arxiv, etc.)
-- Trust institutional sources (.gov, .go.id, WHO, World Bank, etc.)
-- Major news outlets are acceptable for current events
-- AVOID: Wikipedia, Reddit, Quora, personal blogs, content farms
-- Diversify sources across different domains and tiers
-- Prefer specific article pages over homepages`
+  instructions(context: SkillContext): string | null {
+    // Passive search stages: search is disabled, no instructions needed
+    if (
+      context.isPaperMode &&
+      context.currentStage &&
+      !ACTIVE_SEARCH_STAGES.includes(context.currentStage as PaperStageId)
+    ) {
+      return null
+    }
+
+    const stageGuidance = getStageGuidance(
+      context.isPaperMode ? (context.currentStage as PaperStageId | null) : null
+    )
+
+    const base = `## RESEARCH SOURCE STRATEGY
+
+You are a researcher, not a link collector.
+
+### Evaluate Source Substance
+Do not judge sources by domain alone. Evaluate:
+- Does the source present PRIMARY DATA (statistics, surveys, studies)?
+- Is there METHODOLOGY that can be assessed (sample size, method)?
+- Does the source provide ANALYSIS, not just opinion?
+- Sources without data/methodology = context only, not argument foundation.
+
+### Source Selection by Purpose
+- Factual/statistical claims → require primary data (BPS, World Bank, journals, studies)
+- Current trends/events → recent news, then cross-check with institutional data
+- Concepts/theory → academic literature, peer-reviewed journals
+- Never force one source type for all purposes.
+
+### Build Narrative FROM Sources
+- Every cited source must CONTRIBUTE to the argument — explain its relevance, do not just attach and move on.
+- Build from strongest to supporting: primary data → institutional analysis → news context.
+- When sources contradict each other — acknowledge it, do not ignore.
+- When available sources are insufficient for the claim you want to make → tell the user, request another search. Do not force weak sources.
+
+### Diversification
+- Minimum 2 different perspectives/domains for substantive claims
+- Do not use 3+ sources from the same domain unless it is the specialist authority on that topic`
+
+    if (stageGuidance) {
+      return `${base}\n\n### Stage Context\n${stageGuidance}`
+    }
+
+    return base
   },
 
   validate(args: SourceQualityValidateArgs): ValidationResult {
