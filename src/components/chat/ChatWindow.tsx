@@ -369,7 +369,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   // Sentry: set user identity for error correlation
   useEffect(() => {
     if (currentUser) {
-      Sentry.setUser({ id: currentUser._id, email: currentUser.email })
+      Sentry.setUser({ id: currentUser._id })
     } else {
       Sentry.setUser(null)
     }

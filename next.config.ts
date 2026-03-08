@@ -36,6 +36,9 @@ export default withSentryConfig(nextConfig, {
   // Upload source maps for readable stack traces
   widenClientFileUpload: true,
 
+  // Remove source maps from public bundle after upload
+  deleteSourcemapsAfterUpload: true,
+
   // Suppress source map upload logs in CI unless debugging
   silent: !process.env.CI,
 });

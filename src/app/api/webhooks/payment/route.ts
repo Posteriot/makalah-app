@@ -74,10 +74,7 @@ export async function POST(req: NextRequest) {
     })
     // Return 200 to prevent provider from retrying
     // Log error for investigation
-    return NextResponse.json({
-      status: "error",
-      message: error instanceof Error ? error.message : "Unknown error",
-    })
+    return NextResponse.json({ status: "error" })
   }
 }
 
