@@ -45,7 +45,7 @@ import {
     type OperationType,
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
-import { referenceIntegritySkill, sourceQualitySkill, validateWithScores, getToolExamples, type SkillContext } from "@/lib/ai/skills"
+import { referenceIntegritySkill, validateWithScores, getToolExamples, composeSkillInstructions, type SkillContext } from "@/lib/ai/skills"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
@@ -688,10 +688,10 @@ export async function POST(req: Request) {
                     hasRecentSources: true,
                     availableSources: recentSourcesList,
                 }
-                const refInstructions = referenceIntegritySkill.instructions(skillContext)
+                const skillInstructions = composeSkillInstructions(skillContext)
                 sourcesContext = `AVAILABLE_WEB_SOURCES (dari hasil web search sebelumnya):
 ${sourcesJson}
-${refInstructions ?? ''}`
+${skillInstructions}`
             }
         } catch (sourcesError) {
             console.error("[route] Failed to fetch recent sources:", sourcesError)
@@ -2185,12 +2185,6 @@ SEARCH TIPS:
                 ? [
                     fullMessagesBase[0],
                     { role: "system" as const, content: webSearchBehaviorSystemNote },
-                    { role: "system" as const, content: sourceQualitySkill.instructions({
-                    isPaperMode: !!paperModePrompt,
-                    currentStage: paperSession?.currentStage ?? null,
-                    hasRecentSources: hasRecentSourcesInDb,
-                    availableSources: recentSourcesList,
-                }) ?? '' },
                     // Inject research incomplete note if applicable (ACTIVE stage override)
                     ...(activeStageSearchNote && activeStageSearchReason === "research_incomplete"
                         ? [{ role: "system" as const, content: activeStageSearchNote }]
@@ -3167,12 +3161,6 @@ SEARCH TIPS:
                 const sanitizedFallbackMessages = sanitizeMessagesForSearch([
                     fullMessagesBase[0],
                     { role: "system" as const, content: webSearchBehaviorSystemNote },
-                    { role: "system" as const, content: sourceQualitySkill.instructions({
-                    isPaperMode: !!paperModePrompt,
-                    currentStage: paperSession?.currentStage ?? null,
-                    hasRecentSources: hasRecentSourcesInDb,
-                    availableSources: recentSourcesList,
-                }) ?? '' },
                     ...fullMessagesBase.slice(1),
                 ])
 
