@@ -3,7 +3,7 @@
 import { Globe, WarningCircle } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
-export type SearchStatus = "searching" | "done" | "off" | "error"
+export type SearchStatus = "searching" | "composing" | "done" | "off" | "error"
 
 interface SearchStatusIndicatorProps {
     status: SearchStatus
@@ -11,13 +11,13 @@ interface SearchStatusIndicatorProps {
     message?: string
 }
 
-const SHIMMER_TEXTS = new Set(["Pencarian internet...", "Pencarian web"])
+const SHIMMER_TEXTS = new Set(["Pencarian internet...", "Pencarian web", "Menyusun jawaban..."])
 
 export function SearchStatusIndicator({ status, message }: SearchStatusIndicatorProps) {
     if (status === "off") return null
 
     const isError = status === "error"
-    const isProcessing = status === "searching" || status === "done"
+    const isProcessing = status === "searching" || status === "composing" || status === "done"
     const text = resolveText(status, message)
 
     return (
@@ -64,6 +64,7 @@ function resolveText(status: SearchStatus, customMessage?: string): string {
         return customMessage
     }
     if (status === "searching") return "Pencarian internet..."
+    if (status === "composing") return "Menyusun jawaban..."
     if (status === "error") return "Galat pada pencarian web"
     return "Pencarian web"
 }
