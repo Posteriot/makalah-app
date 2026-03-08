@@ -9,16 +9,18 @@ interface SearchStatusIndicatorProps {
     status: SearchStatus
     /** Optional custom message to display */
     message?: string
+    /** Number of sources found (used during composing status) */
+    sourceCount?: number
 }
 
 const SHIMMER_TEXTS = new Set(["Pencarian internet...", "Pencarian web", "Menyusun jawaban..."])
 
-export function SearchStatusIndicator({ status, message }: SearchStatusIndicatorProps) {
+export function SearchStatusIndicator({ status, message, sourceCount }: SearchStatusIndicatorProps) {
     if (status === "off") return null
 
     const isError = status === "error"
     const isProcessing = status === "searching" || status === "composing" || status === "done"
-    const text = resolveText(status, message)
+    const text = resolveText(status, message, sourceCount)
 
     return (
         <div
@@ -55,7 +57,7 @@ function StatusText({ text }: { text: string }) {
     )
 }
 
-function resolveText(status: SearchStatus, customMessage?: string): string {
+function resolveText(status: SearchStatus, customMessage?: string, sourceCount?: number): string {
     if (customMessage && customMessage.trim().length > 0) {
         const normalized = customMessage.trim().toLowerCase()
         if (status === "searching" && normalized === "pencarian") {
@@ -64,7 +66,9 @@ function resolveText(status: SearchStatus, customMessage?: string): string {
         return customMessage
     }
     if (status === "searching") return "Pencarian internet..."
-    if (status === "composing") return "Menyusun jawaban..."
+    if (status === "composing") {
+        return sourceCount ? `Menyusun jawaban dari ${sourceCount} sumber...` : "Menyusun jawaban..."
+    }
     if (status === "error") return "Galat pada pencarian web"
     return "Pencarian web"
 }
