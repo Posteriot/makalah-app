@@ -37,7 +37,9 @@ export default withSentryConfig(nextConfig, {
   widenClientFileUpload: true,
 
   // Remove source maps from public bundle after upload
-  deleteSourcemapsAfterUpload: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
 
   // Suppress source map upload logs in CI unless debugging
   silent: !process.env.CI,
