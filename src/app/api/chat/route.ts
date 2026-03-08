@@ -2265,7 +2265,29 @@ SEARCH TIPS:
                 })
                 primaryReasoningTraceController = reasoningTrace
 
-                // Perplexity Sonar: native search, NO tools, NO tool steps
+                const canonicalizeCitationUrl = (raw: string) => {
+                    try {
+                        const u = new URL(raw)
+                        for (const key of Array.from(u.searchParams.keys())) {
+                            if (/^utm_/i.test(key)) u.searchParams.delete(key)
+                        }
+                        u.hash = ""
+                        const out = u.toString()
+                        return out.endsWith("/") ? out.slice(0, -1) : out
+                    } catch {
+                        return raw
+                    }
+                }
+
+                type SourceEntry = {
+                    url: string
+                    title: string
+                    publishedAt?: number | null
+                }
+
+                // ────────────────────────────────────────────────────────────
+                // PHASE 1: Silent Perplexity search (await full result)
+                // ────────────────────────────────────────────────────────────
                 const perplexityResult = streamText({
                     model: webSearchModel,
                     messages: sanitizedMessages,
@@ -2273,12 +2295,119 @@ SEARCH TIPS:
                     ...samplingOptions,
                 })
 
+                // Await full text (not streamed to user)
+                const searchText = await perplexityResult.text
+                const searchUsage = await perplexityResult.usage
+
+                // Get sources with 4s timeout (same as before)
+                const rawSources = await (async () => {
+                    try {
+                        return await Promise.race([
+                            perplexityResult.sources,
+                            new Promise<undefined>((resolve) =>
+                                setTimeout(() => resolve(undefined), 4000)
+                            ),
+                        ])
+                    } catch {
+                        return undefined
+                    }
+                })()
+
+                // Source pipeline: normalize → score → enrich → dedup
+                const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
+
+                const qualityInput = normalizedCitations.map(c => ({
+                    url: normalizeWebSearchUrl(c.url),
+                    title: c.title || c.url,
+                }))
+                const qualityResult = validateWithScores({ sources: qualityInput })
+
+                let scoredSources: SourceEntry[] = qualityResult.scoredSources
+                    ? qualityResult.scoredSources.map(s => ({ url: s.url, title: s.title }))
+                    : qualityInput.filter(c => !isGarbageUrl(c.url)) // fallback to old behavior
+
+                if (qualityResult.filteredOut?.length) {
+                    console.log(`[source-quality] Filtered ${qualityResult.filteredOut.length} low-quality sources`)
+                }
+                if (qualityResult.diversityWarning) {
+                    console.log(`[source-quality] ${qualityResult.diversityWarning}`)
+                }
+
+                // Enrichment
+                if (scoredSources.length > 0) {
+                    scoredSources = await enrichSourcesWithFetchedTitles(scoredSources, {
+                        concurrency: 4,
+                        timeoutMs: 2500,
+                    })
+                    scoredSources = scoredSources.filter((s) => !(s as { _unreachable?: true })._unreachable)
+
+                    // Dedup
+                    const deduped = new Map<string, SourceEntry>()
+                    for (const src of scoredSources) {
+                        const key = canonicalizeCitationUrl(src.url)
+                        if (!deduped.has(key)) {
+                            deduped.set(key, src)
+                        }
+                    }
+                    scoredSources = Array.from(deduped.values())
+                }
+
+                const sourceCount = scoredSources.length
+                primaryReasoningSourceCount = sourceCount
+
+                // ────────────────────────────────────────────────────────────
+                // PHASE 2: Gemini compose with skill instructions
+                // ────────────────────────────────────────────────────────────
+                const { buildSearchResultsContext } = await import("@/lib/ai/search-results-context")
+
+                const skillContext: SkillContext = {
+                    isPaperMode: !!paperModePrompt,
+                    currentStage: paperSession?.currentStage ?? null,
+                    hasRecentSources: scoredSources.length > 0,
+                    availableSources: scoredSources.map(s => ({
+                        url: s.url,
+                        title: s.title,
+                        ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
+                    })),
+                }
+                const skillInstructions = composeSkillInstructions(skillContext)
+
+                const searchResultsContext = buildSearchResultsContext(
+                    qualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
+                    searchText
+                )
+
+                // Build compose messages: system + skills + search results + file context + conversation
+                const composeMessages: ModelMessage[] = [
+                    { role: "system" as const, content: systemPrompt },
+                    ...(paperModePrompt
+                        ? [{ role: "system" as const, content: paperModePrompt }]
+                        : []),
+                    ...(paperWorkflowReminder
+                        ? [{ role: "system" as const, content: paperWorkflowReminder }]
+                        : []),
+                    ...(skillInstructions
+                        ? [{ role: "system" as const, content: skillInstructions }]
+                        : []),
+                    { role: "system" as const, content: searchResultsContext },
+                    ...(fileContext
+                        ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
+                        : []),
+                    ...trimmedModelMessages,
+                ]
+
+                const composeModel = model
+                const composeResult = streamText({
+                    model: composeModel,
+                    messages: composeMessages,
+                    ...samplingOptions,
+                })
+
                 const stream = createUIMessageStream({
                     execute: async ({ writer }) => {
                         let started = false
-                        let sourceCount = 0
                         let searchStatusClosed = false
-                        let streamedText = ""
+                        let composedText = ""
 
                         const ensureStart = () => {
                             if (started) return
@@ -2296,14 +2425,14 @@ SEARCH TIPS:
                             }
                         }
 
-                        const closeSearchStatus = (finalStatus: "done" | "off" | "error") => {
+                        const closeSearchStatus = (finalStatus: "done" | "off" | "error" | "composing") => {
                             if (searchStatusClosed) return
-                            searchStatusClosed = true
+                            searchStatusClosed = finalStatus !== "composing" // only close on terminal states
                             ensureStart()
                             writer.write({
                                 type: "data-search",
                                 id: searchStatusId,
-                                data: { status: finalStatus },
+                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount } : {}) },
                             })
                         }
 
@@ -2314,7 +2443,7 @@ SEARCH TIPS:
                             enabled: isTransparentReasoning,
                         })
 
-                        // Show searching indicator immediately
+                        // Emit searching → composing status transition
                         ensureStart()
                         writer.write({
                             type: "data-search",
@@ -2323,10 +2452,16 @@ SEARCH TIPS:
                         })
                         emitTrace(reasoningTrace.initialEvents)
 
-                        for await (const chunk of perplexityResult.toUIMessageStream({
+                        // Phase 1 already complete — transition to composing
+                        if (sourceCount > 0) {
+                            emitTrace(reasoningTrace.markSourceDetected())
+                        }
+                        closeSearchStatus(sourceCount > 0 ? "composing" : "off")
+
+                        // Stream Gemini compose output to user
+                        for await (const chunk of composeResult.toUIMessageStream({
                             sendStart: false,
                             generateMessageId: () => messageId,
-                            sendSources: true,
                             sendReasoning: isTransparentReasoning,
                         })) {
                             if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
@@ -2340,107 +2475,30 @@ SEARCH TIPS:
                                 continue
                             }
 
-                            if (chunk.type === "source-url") {
-                                sourceCount += 1
-                                primaryReasoningSourceCount = sourceCount
-                                emitTrace(reasoningTrace.markSourceDetected())
-                            }
-
                             if (chunk.type === "text-delta") {
-                                streamedText += chunk.delta
+                                composedText += chunk.delta
                             }
 
                             if (chunk.type === "finish") {
                                 let didFinalizeForPersist = false
 
-                                type SourceEntry = {
-                                    url: string
-                                    title: string
-                                    publishedAt?: number | null
-                                }
-
-                                const canonicalizeCitationUrl = (raw: string) => {
-                                    try {
-                                        const u = new URL(raw)
-                                        for (const key of Array.from(u.searchParams.keys())) {
-                                            if (/^utm_/i.test(key)) u.searchParams.delete(key)
-                                        }
-                                        u.hash = ""
-                                        const out = u.toString()
-                                        return out.endsWith("/") ? out.slice(0, -1) : out
-                                    } catch {
-                                        return raw
-                                    }
-                                }
-
                                 try {
-                                    // Get sources from Perplexity via result.sources
-                                    const rawSources = await (async () => {
-                                        try {
-                                            return await Promise.race([
-                                                perplexityResult.sources,
-                                                new Promise<undefined>((resolve) =>
-                                                    setTimeout(() => resolve(undefined), 4000)
-                                                ),
-                                            ])
-                                        } catch {
-                                            return undefined
-                                        }
-                                    })()
+                                    const persistedSources = scoredSources.length > 0 ? scoredSources : undefined
 
-                                    // Normalize via normalizeCitations('perplexity') — applies domain filter
-                                    const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
-
-                                    // Skill-based quality scoring (replaces isGarbageUrl + isLowValueCitationUrl)
-                                    const qualityInput = normalizedCitations.map(c => ({
-                                        url: normalizeWebSearchUrl(c.url),
-                                        title: c.title || c.url,
-                                    }))
-                                    const qualityResult = validateWithScores({ sources: qualityInput })
-
-                                    let sources: SourceEntry[] = qualityResult.scoredSources
-                                        ? qualityResult.scoredSources.map(s => ({ url: s.url, title: s.title }))
-                                        : qualityInput.filter(c => !isGarbageUrl(c.url)) // fallback to old behavior
-
-                                    if (qualityResult.filteredOut?.length) {
-                                        console.log(`[source-quality] Filtered ${qualityResult.filteredOut.length} low-quality sources`)
-                                    }
-                                    if (qualityResult.diversityWarning) {
-                                        console.log(`[source-quality] ${qualityResult.diversityWarning}`)
-                                    }
-
-                                    // Enrichment (unchanged)
-                                    if (sources.length > 0) {
-                                        sources = await enrichSourcesWithFetchedTitles(sources, {
-                                            concurrency: 4,
-                                            timeoutMs: 2500,
-                                        })
-                                        sources = sources.filter((s) => !(s as { _unreachable?: true })._unreachable)
-
-                                        // Dedup (unchanged)
-                                        const deduped = new Map<string, SourceEntry>()
-                                        for (const src of sources) {
-                                            const key = canonicalizeCitationUrl(src.url)
-                                            if (!deduped.has(key)) {
-                                                deduped.set(key, src)
-                                            }
-                                        }
-                                        sources = Array.from(deduped.values())
-                                    }
-
-                                    // Citation anchors: Perplexity doesn't provide position data,
-                                    // so we use paragraph-end formatting only
-                                    const citationAnchors = sources.map((_, idx) => ({
+                                    // Citation anchors: paragraph-end formatting
+                                    const citationAnchors = scoredSources.map((_, idx) => ({
                                         position: null as number | null,
                                         sourceNumbers: [idx + 1],
                                     }))
                                     const textWithInlineCitations = formatParagraphEndCitations({
-                                        text: streamedText,
-                                        sources,
+                                        text: composedText,
+                                        sources: scoredSources,
                                         anchors: citationAnchors,
                                     })
                                     const userFacingPayload = buildUserFacingSearchPayload(textWithInlineCitations)
-                                    const persistedSources = sources.length > 0 ? sources : undefined
+
+                                    // Close search status as done
+                                    searchStatusClosed = false // reset so we can write terminal status
                                     closeSearchStatus(persistedSources && persistedSources.length > 0 ? "done" : "off")
 
                                     ensureStart()
@@ -2483,10 +2541,11 @@ SEARCH TIPS:
                                         ? reasoningTrace.getPersistedSnapshot()
                                         : undefined
 
+                                    // Persist with compose model name (Gemini wrote the text)
                                     await saveAssistantMessage(
                                         textWithInlineCitations,
                                         persistedSources,
-                                        webSearchModelName,
+                                        `${webSearchModelName}+${modelNames.primary.model}`,
                                         persistedReasoningTrace
                                     )
 
@@ -2521,25 +2580,27 @@ SEARCH TIPS:
                                             : 3,
                                     })
 
-                                    // ═══ BILLING: Record token usage (web search primary) ═══
+                                    // ═══ BILLING: Record combined search + compose tokens ═══
                                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    const finishUsage = (chunk as any).usage
-                                    if (finishUsage) {
+                                    const composeFinishUsage = (chunk as any).usage
+                                    const combinedInputTokens = (searchUsage?.inputTokens ?? 0) + (composeFinishUsage?.inputTokens ?? 0)
+                                    const combinedOutputTokens = (searchUsage?.outputTokens ?? 0) + (composeFinishUsage?.outputTokens ?? 0)
+                                    if (combinedInputTokens > 0 || combinedOutputTokens > 0) {
                                         await recordUsageAfterOperation({
                                             userId: billingContext.userId,
                                             conversationId: currentConversationId as Id<"conversations">,
                                             sessionId: paperSession?._id,
-                                            inputTokens: finishUsage.inputTokens ?? 0,
-                                            outputTokens: finishUsage.outputTokens ?? 0,
-                                            totalTokens: (finishUsage.inputTokens ?? 0) + (finishUsage.outputTokens ?? 0),
-                                            model: webSearchModelName,
+                                            inputTokens: combinedInputTokens,
+                                            outputTokens: combinedOutputTokens,
+                                            totalTokens: combinedInputTokens + combinedOutputTokens,
+                                            model: `${webSearchModelName}+${modelNames.primary.model}`,
                                             operationType: "web_search",
                                             convexToken,
                                         }).catch(err => console.error("[Billing] Failed to record usage:", err))
                                     }
                                     // ═══════════════════════════════════════════════════════════
 
-                                    // ═══ TELEMETRY: Primary websearch success ═══
+                                    // ═══ TELEMETRY: Primary websearch two-pass success ═══
                                     const sourceQualityTelemetry = {
                                         searchSkillApplied: true,
                                         searchSkillName: "source-quality",
@@ -2559,20 +2620,21 @@ SEARCH TIPS:
                                         userId: userId as Id<"users">,
                                         conversationId: currentConversationId as Id<"conversations">,
                                         provider: "openrouter",
-                                        model: webSearchModelName,
+                                        model: `${webSearchModelName}+${modelNames.primary.model}`,
                                         isPrimaryProvider: true,
                                         failoverUsed: false,
                                         toolUsed: "perplexity_search",
                                         mode: "websearch",
                                         success: true,
                                         latencyMs: Date.now() - telemetryStartTime,
-                                        inputTokens: finishUsage?.inputTokens,
-                                        outputTokens: finishUsage?.outputTokens,
+                                        inputTokens: combinedInputTokens,
+                                        outputTokens: combinedOutputTokens,
                                         ...telemetrySkillContext,
                                         ...sourceQualityTelemetry,
                                     })
                                     // ═════════════════════════════════════════════
                                 } catch (err) {
+                                    searchStatusClosed = false
                                     closeSearchStatus(sourceCount > 0 ? "done" : "off")
                                     console.error("[Chat API] Failed to compute inline citations:", err)
                                 }
@@ -2593,17 +2655,19 @@ SEARCH TIPS:
                             }
 
                             if (chunk.type === "error") {
+                                searchStatusClosed = false
                                 closeSearchStatus("error")
                                 emitTrace(reasoningTrace.finalize({
                                     outcome: "error",
                                     sourceCount,
-                                    errorNote: "primary-websearch-stream-error",
+                                    errorNote: "primary-websearch-compose-error",
                                 }))
                                 writer.write(chunk)
                                 break
                             }
 
                             if (chunk.type === "abort") {
+                                searchStatusClosed = false
                                 closeSearchStatus(sourceCount > 0 ? "done" : "off")
                                 const stoppedTraceEvents = reasoningTrace.finalize({
                                     outcome: "stopped",
@@ -2613,15 +2677,15 @@ SEARCH TIPS:
                                 const persistedReasoningTrace = reasoningTrace.enabled
                                     ? reasoningTrace.getPersistedSnapshot()
                                     : undefined
-                                if (streamedText.trim()) {
+                                if (composedText.trim()) {
                                     try {
                                         await saveAssistantMessage(
-                                            streamedText,
+                                            composedText,
                                             undefined,
-                                            webSearchModelName,
+                                            `${webSearchModelName}+${modelNames.primary.model}`,
                                             persistedReasoningTrace
                                         )
-                                        console.log("[Chat API] Saved partial message on stream abort")
+                                        console.log("[Chat API] Saved partial message on compose stream abort")
                                     } catch (err) {
                                         console.error("[Chat API] Failed to save partial message on abort:", err)
                                     }
@@ -2630,7 +2694,7 @@ SEARCH TIPS:
                                 break
                             }
 
-                            // Forward normal chunks
+                            // Forward Gemini compose chunks to user
                             ensureStart()
                             writer.write(chunk)
                         }
