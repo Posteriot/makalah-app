@@ -1678,6 +1678,8 @@ Aturan:
                 userId: userId as Id<"users">,
                 conversationId: currentConversationId as Id<"conversations">,
                 convexToken,
+                availableSources: recentSourcesList,
+                hasRecentSources: hasRecentSourcesInDb,
             }),
         } satisfies ToolSet
 

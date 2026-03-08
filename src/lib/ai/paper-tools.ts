@@ -12,6 +12,8 @@ export const createPaperTools = (context: {
     userId: Id<"users">,
     conversationId: Id<"conversations">
     convexToken?: string
+    availableSources?: Array<{ url: string; title: string; publishedAt?: number }>
+    hasRecentSources?: boolean
 }) => {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
@@ -145,6 +147,33 @@ PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' seb
                     // Option B Fix: Auto-fetch stage from session.currentStage
                     // This eliminates the possibility of AI specifying wrong stage
                     const stage = session.currentStage;
+
+                    // Reference integrity validation (if sources available)
+                    if (context.hasRecentSources && context.availableSources && context.availableSources.length > 0) {
+                        const refFields = ['referensiAwal', 'referensiPendukung', 'referensi', 'sitasiAPA', 'sitasiTambahan']
+                        const allRefs: Array<{ title: string; url?: string; authors?: string }> = []
+                        if (data) {
+                            for (const field of refFields) {
+                                const val = data[field]
+                                if (Array.isArray(val)) {
+                                    allRefs.push(...val.filter((r: unknown) => r && typeof r === 'object') as Array<{ title: string; url?: string; authors?: string }>)
+                                }
+                            }
+                        }
+
+                        if (allRefs.length > 0) {
+                            const { referenceIntegritySkill } = await import('@/lib/ai/skills')
+                            const refValidation = referenceIntegritySkill.validate({
+                                toolName: 'updateStageData',
+                                claimedReferences: allRefs,
+                                availableSources: context.availableSources,
+                                hasRecentSources: true,
+                            })
+                            if (!refValidation.valid) {
+                                return { success: false, error: refValidation.error }
+                            }
+                        }
+                    }
 
                     // Merge ringkasan + ringkasanDetail into data object
                     const mergedData = {
