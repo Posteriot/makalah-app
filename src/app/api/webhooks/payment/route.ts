@@ -14,12 +14,17 @@ import {
   sendPaymentSuccessEmail,
   sendPaymentFailedEmail,
 } from "@/lib/email/sendPaymentEmail"
+import * as Sentry from "@sentry/nextjs"
 
 const internalKey = process.env.CONVEX_INTERNAL_KEY
 
 export async function POST(req: NextRequest) {
   if (!internalKey) {
     console.error("[Payment Webhook] CONVEX_INTERNAL_KEY belum diset")
+    Sentry.captureMessage("CONVEX_INTERNAL_KEY not configured for payment webhook", {
+      level: "fatal",
+      tags: { "api.route": "webhook.payment" },
+    })
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 })
   }
 
@@ -60,12 +65,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: "processed" })
   } catch (error) {
     console.error("[Payment Webhook] Processing error:", error)
+    Sentry.captureException(error, {
+      tags: {
+        "api.route": "webhook.payment",
+        "payment.status": event.status,
+      },
+      extra: { providerPaymentId: event.providerPaymentId },
+    })
     // Return 200 to prevent provider from retrying
     // Log error for investigation
-    return NextResponse.json({
-      status: "error",
-      message: error instanceof Error ? error.message : "Unknown error",
-    })
+    return NextResponse.json({ status: "error" })
   }
 }
 
@@ -83,6 +92,10 @@ async function handlePaymentSuccess(event: WebhookEvent, internalKey: string) {
 
   if (!payment) {
     console.error(`[Payment] Payment not found in DB: ${providerPaymentId}`)
+    Sentry.captureMessage(`Payment not found in DB: ${providerPaymentId}`, {
+      level: "error",
+      tags: { "api.route": "webhook.payment" },
+    })
     return
   }
 
@@ -245,6 +258,9 @@ async function handlePaymentSuccess(event: WebhookEvent, internalKey: string) {
   } catch (emailError) {
     // Email failure should not break webhook processing
     console.error(`[Payment] Email notification failed:`, emailError)
+    Sentry.captureException(emailError, {
+      tags: { "api.route": "webhook.payment", subsystem: "email" },
+    })
   }
 }
 
@@ -299,6 +315,9 @@ async function handlePaymentFailed(event: WebhookEvent, internalKey: string) {
     } catch (emailError) {
       // Email failure should not break webhook processing
       console.error(`[Payment] Failed email notification failed:`, emailError)
+      Sentry.captureException(emailError, {
+        tags: { "api.route": "webhook.payment", subsystem: "email" },
+      })
     }
   }
 }
