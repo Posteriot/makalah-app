@@ -38,7 +38,7 @@ export function RefrasaFeatureCMS({ content }: RefrasaFeatureCMSProps) {
                 {content.badgeText && (
                   <SectionBadge>{content.badgeText}</SectionBadge>
                 )}
-                <p className="mt-4 text-signal text-xs font-bold uppercase tracking-[0.26em] text-[color:var(--amber-500)]">
+                <p className="mt-4 text-signal text-xs font-bold uppercase tracking-[0.26em] text-warning">
                   Refrasa
                 </p>
                 {content.title && (
@@ -49,7 +49,7 @@ export function RefrasaFeatureCMS({ content }: RefrasaFeatureCMSProps) {
               </div>
 
               {content.description && (
-                <p className="max-w-[580px] text-interface text-sm leading-relaxed text-slate-700 dark:text-slate-200">
+                <p className="max-w-[580px] text-interface text-sm leading-relaxed text-muted-foreground">
                   {content.description}
                 </p>
               )}
@@ -58,7 +58,7 @@ export function RefrasaFeatureCMS({ content }: RefrasaFeatureCMSProps) {
 
           {/* Right — Image/Mock */}
           <div className="order-2 lg:col-span-6">
-            <div className="relative mx-auto w-full max-w-[320px] rounded-xl shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.18)] dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.22)] sm:max-w-[360px] md:max-w-[420px] lg:mx-0 lg:ml-0 lg:mr-auto lg:max-w-[452px]">
+            <div className="relative mx-auto w-full max-w-[320px] rounded-xl shadow-lg sm:max-w-[360px] md:max-w-[420px] lg:mx-0 lg:ml-0 lg:mr-auto lg:max-w-[452px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={lightImageUrl ?? "/images/refrasa-feature-mock-light.png"}

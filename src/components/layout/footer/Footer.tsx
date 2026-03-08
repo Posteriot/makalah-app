@@ -154,7 +154,7 @@ export function Footer() {
 
   return (
     <div id="footer" className="bg-background text-foreground">
-      <footer className="relative overflow-hidden bg-[color:var(--footer-background)]">
+      <footer className="relative overflow-hidden bg-card">
         {/* Background patterns — conditional via CMS */}
         {footerConfig != null && footerConfig.showGridPattern !== false && <GridPattern className="z-0" />}
         {footerConfig != null && footerConfig.showDottedPattern !== false && <DottedPattern spacing={24} withRadialMask={false} className="z-0" />}
@@ -193,7 +193,7 @@ export function Footer() {
             </div>
           </div>
 
-          <div className="h-[0.5px] w-full bg-[color:var(--border-hairline)]" />
+          <div className="h-[0.5px] w-full bg-[color:var(--core-border-hairline)]" />
 
           {/* Bottom: Copyright + Socials */}
           <div className="flex flex-col items-center gap-6 pt-6 text-center md:flex-row md:justify-between md:text-left">
