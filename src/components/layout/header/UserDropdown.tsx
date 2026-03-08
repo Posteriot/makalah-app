@@ -203,15 +203,10 @@ export function UserDropdown({
             // Typography
             "text-sm font-medium text-narrative",
             // Light mode diam: dark button
-            "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
+            "border border-transparent bg-[color:var(--core-cta-bg)] text-[color:var(--core-cta-fg)]",
             // Light mode hover/expanded: text & border darken
-            "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
-            "aria-expanded:text-[color:var(--slate-800)] aria-expanded:border-[color:var(--slate-600)]",
-            // Dark mode diam: light button
-            "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
-            // Dark mode hover/expanded: text & border lighten
-            "dark:hover:text-[color:var(--slate-100)] dark:hover:border-[color:var(--slate-400)]",
-            "dark:aria-expanded:text-[color:var(--slate-100)] dark:aria-expanded:border-[color:var(--slate-400)]",
+            "hover:text-[color:var(--core-cta-hover-fg)] hover:border-[color:var(--core-cta-hover-border)]",
+            "aria-expanded:text-[color:var(--core-cta-hover-fg)] aria-expanded:border-[color:var(--core-cta-hover-border)]",
             // Transition & focus
             "transition-colors focus-ring"
           )}
