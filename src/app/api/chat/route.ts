@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { generateTitle } from "@/lib/ai/title-generator"
 import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, Output, tool, type ToolSet, type ModelMessage, stepCountIs } from "ai"
 import { z } from "zod"
@@ -87,6 +88,9 @@ export async function POST(req: Request) {
             }
         }
         if (!convexToken) {
+            Sentry.captureException(tokenError instanceof Error ? tokenError : new Error(String(tokenError)), {
+                tags: { "api.route": "chat", subsystem: "auth" },
+            })
             console.error("[Chat API] Failed to get Convex token after retry:", tokenError)
             return new Response("Session token unavailable. Please refresh and retry.", { status: 401 })
         }
@@ -252,7 +256,7 @@ export async function POST(req: Request) {
                         title: generatedTitle
                     })
                 })
-                .catch(err => console.error("Background title generation error:", err))
+                .catch(err => Sentry.captureException(err, { tags: { subsystem: "title_generation" } }))
         }
 
         // Helper: update judul conversation berdasarkan aturan AI rename (2x max)
@@ -1463,6 +1467,7 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
+                        Sentry.captureException(error, { tags: { subsystem: "artifact" } })
                         console.error("[createArtifact] Failed:", errorMessage)
                         return {
                             success: false,
@@ -1539,6 +1544,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
+                        Sentry.captureException(error, { tags: { subsystem: "artifact" } })
                         console.error("[updateArtifact] Failed:", errorMessage)
                         return {
                             success: false,
@@ -1592,6 +1598,7 @@ Artifact ID bisa didapat dari RINGKASAN ARTIFACT di system prompt atau dari getC
                         }
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error)
+                        Sentry.captureException(error, { tags: { subsystem: "artifact" } })
                         console.error("[readArtifact] Failed:", errorMessage)
                         return {
                             success: false,
@@ -2460,6 +2467,7 @@ SEARCH TIPS:
                                             })
                                             console.log(`[Paper] Auto-persisted ${persistedSources.length} search refs to stageData`)
                                         } catch (err) {
+                                            Sentry.captureException(err, { tags: { subsystem: "paper" } })
                                             console.error("[Paper] Failed to auto-persist search references:", err)
                                         }
                                     }
@@ -2490,7 +2498,7 @@ SEARCH TIPS:
                                             model: webSearchModelName,
                                             operationType: "web_search",
                                             convexToken,
-                                        }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                                        }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
                                     }
                                     // ═══════════════════════════════════════════════════════════
 
@@ -2514,6 +2522,7 @@ SEARCH TIPS:
                                     // ═════════════════════════════════════════════
                                 } catch (err) {
                                     closeSearchStatus(sourceCount > 0 ? "done" : "off")
+                                    Sentry.captureException(err, { tags: { subsystem: "citation" } })
                                     console.error("[Chat API] Failed to compute inline citations:", err)
                                 }
 
@@ -2563,6 +2572,7 @@ SEARCH TIPS:
                                         )
                                         console.log("[Chat API] Saved partial message on stream abort")
                                     } catch (err) {
+                                        Sentry.captureException(err, { tags: { subsystem: "chat.abort" } })
                                         console.error("[Chat API] Failed to save partial message on abort:", err)
                                     }
                                 }
@@ -2659,7 +2669,7 @@ SEARCH TIPS:
                                 model: modelNames.primary.model,
                                 operationType: billingContext.operationType,
                                 convexToken,
-                            }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                            }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
                         }
                         // ═══════════════════════════════════
 
@@ -2810,6 +2820,12 @@ SEARCH TIPS:
             }
         } catch (error) {
             console.error("Gateway stream failed, trying fallback:", error)
+            Sentry.addBreadcrumb({
+                category: "ai.failover",
+                message: `Primary provider failed, switching to fallback`,
+                level: "warning",
+                data: { errorType: classifyError(error).errorType },
+            })
 
             // ═══ TELEMETRY: Primary provider failure ═══
             const primaryErrorInfo = classifyError(error)
@@ -2951,7 +2967,7 @@ SEARCH TIPS:
                                 model: modelNames.fallback.model,
                                 operationType: billingContext.operationType,
                                 convexToken,
-                            }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                            }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
                         }
                         // ═══════════════════════════════════════════════
 
@@ -3346,6 +3362,7 @@ SEARCH TIPS:
                                             })
                                             console.log(`[Paper][Fallback] Auto-persisted ${persistedSources.length} search refs to stageData`)
                                         } catch (err) {
+                                            Sentry.captureException(err, { tags: { subsystem: "paper" } })
                                             console.error("[Paper][Fallback] Failed to auto-persist search references:", err)
                                         }
                                     }
@@ -3402,7 +3419,7 @@ SEARCH TIPS:
                                         model: fallbackSearchModelName,
                                         operationType: "web_search",
                                         convexToken,
-                                    }).catch(err => console.error("[Billing] Failed to record usage:", err))
+                                    }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
                                 }
                                 // ═══════════════════════════════════════════════════════════
 
@@ -3471,12 +3488,18 @@ SEARCH TIPS:
                 return createUIMessageStreamResponse({ stream })
             } catch (fallbackSearchError) {
                 // Fallback web search failed, graceful degradation to non-search mode
+                Sentry.captureException(fallbackSearchError, { tags: { subsystem: "ai.fallback" } })
                 console.error("[Fallback] Web search stream failed, retrying without search:", fallbackSearchError)
                 return runFallbackWithoutSearch()
             }
         }
 
     } catch (error) {
+        Sentry.captureException(error, {
+            tags: {
+                "api.route": "chat",
+            },
+        })
         console.error("Chat API Error:", error)
         return new Response("Internal Server Error", { status: 500 })
     }
