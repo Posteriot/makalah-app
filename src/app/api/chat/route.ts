@@ -1744,26 +1744,26 @@ Aturan:
         let missingArtifactNote = ""
 
         // Hoisted: web search behavior note + message sanitizer (used in both primary and fallback)
-        const webSearchBehaviorSystemNote = `⚠️ MODE PENCARIAN WEB AKTIF - BACA INI DENGAN TELITI!
+        const webSearchBehaviorSystemNote = `⚠️ WEB SEARCH MODE ACTIVE — READ CAREFULLY!
 
-CONSTRAINT TEKNIS PENTING:
-- Ini adalah mode pencarian web. Model pencarian menangani search secara native (tanpa tool).
-- Tool lain (createArtifact, updateArtifact, updateStageData, submitStageForValidation, renameConversationTitle) TIDAK TERSEDIA di turn ini.
-- JANGAN coba memanggil tool apapun di turn ini.
+CRITICAL TECHNICAL CONSTRAINT:
+- This is web search mode. The search model handles search natively (no tools).
+- Other tools (createArtifact, updateArtifact, updateStageData, submitStageForValidation, renameConversationTitle) are NOT AVAILABLE in this turn.
+- Do NOT attempt to call any tool in this turn.
 
-YANG HARUS ANDA LAKUKAN DI TURN INI:
-1) Jawab pertanyaan user dengan pencarian web (model pencarian menangani search otomatis)
-2) Rangkum temuan dari pencarian
-3) AKHIRI respons Anda di sini - JANGAN coba menyimpan data atau membuat artifact
+WHAT YOU MUST DO IN THIS TURN:
+1) Answer the user's question using web search (the search model handles search automatically)
+2) Summarize your findings from the search
+3) END your response here — do NOT attempt to save data or create artifacts
 
-YANG HARUS ANDA LAKUKAN DI TURN BERIKUTNYA (setelah user merespons):
-- Baru di turn berikutnya Anda bisa menyimpan draf (updateStageData) atau membuat artifact (createArtifact)
-- Tool-tool tersebut akan tersedia kembali setelah pencarian selesai
+WHAT TO DO IN THE NEXT TURN (after the user responds):
+- Only in the next turn can you save drafts (updateStageData) or create artifacts (createArtifact)
+- Those tools will become available again after the search turn is complete
 
-TIPS PENCARIAN:
-- Hindari halaman listing/tag/homepage sebagai sumber utama
-- Utamakan URL artikel/siaran pers yang spesifik
-- Tulis klaim faktual secara ringkas per kalimat`
+SEARCH TIPS:
+- Avoid listing/tag/homepage pages as primary sources
+- Prefer specific article or press release URLs
+- Write factual claims concisely per sentence`
 
         // Helper: sanitize messages for cross-model compatibility
         // Strips tool call/result messages that Perplexity/Grok don't understand
