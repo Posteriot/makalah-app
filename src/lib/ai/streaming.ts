@@ -2,7 +2,6 @@ import { streamText, type ModelMessage } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createGateway } from "@ai-sdk/gateway"
 import { configCache } from "./config-cache"
-import { initGoogleSearchTool } from "./google-search-tool"
 
 const MIN_THINKING_BUDGET = 0
 const MAX_THINKING_BUDGET = 32768
@@ -113,6 +112,8 @@ async function getProviderConfig() {
       fallbackEnabled: config.fallbackWebSearchEnabled,
       fallbackEngine: config.fallbackWebSearchEngine,
       fallbackMaxResults: config.fallbackWebSearchMaxResults,
+      webSearchModel: config.webSearchModel,
+      webSearchFallbackModel: config.webSearchFallbackModel,
     },
     // Context window settings (for W2 context budget monitor)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -154,6 +155,8 @@ export async function getWebSearchConfig() {
     fallbackEnabled: config.fallbackWebSearchEnabled,
     fallbackEngine: config.fallbackWebSearchEngine as "auto" | "native" | "exa",
     fallbackMaxResults: config.fallbackWebSearchMaxResults,
+    webSearchModel: config.webSearchModel,
+    webSearchFallbackModel: config.webSearchFallbackModel,
   }
 }
 
@@ -315,6 +318,51 @@ export async function getOpenRouterModel(options?: {
 }
 
 /**
+ * Primary web search model — Perplexity Sonar is a native search model,
+ * no special config needed. Uses OpenRouter as the provider.
+ */
+export async function getWebSearchModel() {
+  const config = await getProviderConfig()
+  const resolvedApiKey = config.fallback.apiKey || process.env.OPENROUTER_API_KEY
+
+  if (!resolvedApiKey) {
+    throw new Error("API key ENV tidak ditemukan untuk OpenRouter (web search model)")
+  }
+
+  const openrouter = createOpenRouter({
+    apiKey: resolvedApiKey,
+  })
+
+  return openrouter.chat(config.webSearch.webSearchModel)
+}
+
+/**
+ * Fallback web search model — needs web_search_options to enable search.
+ * Uses OpenRouter as the provider with search options passed via provider extras.
+ */
+export async function getWebSearchFallbackModel() {
+  const config = await getProviderConfig()
+  const resolvedApiKey = config.fallback.apiKey || process.env.OPENROUTER_API_KEY
+
+  if (!resolvedApiKey) {
+    throw new Error("API key ENV tidak ditemukan untuk OpenRouter (web search fallback model)")
+  }
+
+  const openrouter = createOpenRouter({
+    apiKey: resolvedApiKey,
+  })
+
+  return openrouter.chat(config.webSearch.webSearchFallbackModel, {
+    web_search_options: {
+      max_results: config.webSearch.fallbackMaxResults ?? 5,
+      engine: (config.webSearch.fallbackEngine === "native" || config.webSearch.fallbackEngine === "exa")
+        ? config.webSearch.fallbackEngine
+        : undefined,
+    },
+  })
+}
+
+/**
  * Get sampling settings from active config.
  */
 export async function getProviderSettings() {
@@ -407,19 +455,3 @@ export async function getModelNames() {
   }
 }
 
-/**
- * Get the Google Search tool definition
- * Returns null if initialization fails (graceful degradation)
- * Async to support dynamic imports (cleaner bundle/lint compliance)
- */
-export async function getGoogleSearchTool() {
-  const initResult = await initGoogleSearchTool()
-  if (initResult.status !== "ready") {
-    console.error("[Streaming] Failed to load Google Search tool:", {
-      reason: initResult.reason,
-      errorMessage: initResult.errorMessage,
-    })
-    return null
-  }
-  return initResult.tool
-}

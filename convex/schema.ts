@@ -417,6 +417,8 @@ export default defineSchema({
     fallbackWebSearchEnabled: v.optional(v.boolean()), // Enable web search for fallback :online (default: true)
     fallbackWebSearchEngine: v.optional(v.string()), // "native" | "exa" | "auto" (default: "auto")
     fallbackWebSearchMaxResults: v.optional(v.number()), // Max search results (default: 5, range: 1-10)
+    webSearchModel: v.optional(v.string()), // Dedicated web search model (default: "perplexity/sonar")
+    webSearchFallbackModel: v.optional(v.string()), // Fallback web search model (default: "x-ai/grok-3-mini")
 
     // ════════════════════════════════════════════════════════════════
     // Tool Visibility Settings (Admin maintenance toggle)
