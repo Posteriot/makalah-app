@@ -16,7 +16,7 @@ export function TeaserCard({ plan, isWaitlistMode }: { plan: TeaserPlan; isWaitl
           className={cn(
             "absolute -top-3 left-1/2 -translate-x-1/2 z-10",
             "transition-transform duration-300 group-hover:-translate-y-1",
-            "bg-[color:var(--emerald-500)] text-[color:var(--slate-50)]",
+            "bg-success text-success-foreground",
             "text-[11px] font-semibold uppercase tracking-wide",
             "px-3 py-1 rounded-full whitespace-nowrap"
           )}
@@ -28,11 +28,11 @@ export function TeaserCard({ plan, isWaitlistMode }: { plan: TeaserPlan; isWaitl
       <div
         className={cn(
           "relative overflow-hidden h-full min-h-[240px] md:min-h-[280px] flex flex-col p-comfort md:p-airy rounded-shell",
-          "bg-slate-50 dark:bg-slate-900",
-          "border-1 border-[color:var(--slate-400)]",
-          "group-hover:bg-slate-100 group-hover:border-[color:var(--slate-500)] dark:group-hover:bg-slate-800 dark:group-hover:border-[color:var(--slate-600)]",
+          "bg-card",
+          "border-1 border-border",
+          "group-hover:bg-accent group-hover:border-[color:var(--core-border-strong)]",
           "group-hover:-translate-y-1 transition-all duration-300",
-          plan.isHighlighted && "border-2 border-[color:var(--emerald-500)]"
+          plan.isHighlighted && "border-2 border-success"
         )}
       >
         {/* Plan name */}
@@ -52,7 +52,7 @@ export function TeaserCard({ plan, isWaitlistMode }: { plan: TeaserPlan; isWaitl
 
         {/* Description with dot indicator */}
         <div className="flex items-start gap-3">
-          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-[color:var(--rose-500)] animate-pulse shadow-[0_0_8px_var(--rose-500)]" />
+          <span className="w-2 h-2 min-w-2 rounded-full mt-3 bg-destructive animate-pulse shadow-[0_0_8px_var(--core-destructive)]" />
           <p className="text-interface font-normal text-sm leading-relaxed text-foreground">
             {plan.description}
           </p>
@@ -65,7 +65,7 @@ export function TeaserCard({ plan, isWaitlistMode }: { plan: TeaserPlan; isWaitl
 
         {effectiveDisabled && (
           <div className="mt-auto pt-4">
-            <span className="inline-flex items-center justify-center w-full px-4 py-2 text-signal text-[11px] font-bold uppercase tracking-widest rounded-action bg-slate-200 dark:bg-slate-700 text-muted-foreground">
+            <span className="inline-flex items-center justify-center w-full px-4 py-2 text-signal text-[11px] font-bold uppercase tracking-widest rounded-action bg-muted text-muted-foreground">
               SEGERA HADIR
             </span>
           </div>
