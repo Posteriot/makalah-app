@@ -46,7 +46,7 @@ import {
     type OperationType,
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
-import { enforceArtifactSourcesPolicy } from "@/lib/ai/artifact-sources-policy"
+import { referenceIntegritySkill } from "@/lib/ai/skills"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
@@ -672,6 +672,7 @@ export async function POST(req: Request) {
         // ════════════════════════════════════════════════════════════════
         let sourcesContext = ""
         let hasRecentSourcesInDb = false
+        let recentSourcesList: Array<{ url: string; title: string; publishedAt?: number }> = []
         try {
             const recentSources = await fetchQueryWithToken(api.messages.getRecentSources, {
                 conversationId: currentConversationId as Id<"conversations">,
@@ -680,6 +681,7 @@ export async function POST(req: Request) {
 
             if (recentSources && recentSources.length > 0) {
                 hasRecentSourcesInDb = true
+                recentSourcesList = recentSources
                 const sourcesJson = JSON.stringify(recentSources, null, 2)
                 sourcesContext = `
 AVAILABLE_WEB_SOURCES (dari hasil web search sebelumnya):
@@ -1415,15 +1417,16 @@ Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagr
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
-                        const policy = enforceArtifactSourcesPolicy({
-                            hasRecentSourcesInDb,
-                            sources,
-                            operation: "createArtifact",
+                        const refValidation = referenceIntegritySkill.validate({
+                            toolName: 'createArtifact',
+                            claimedSources: sources,
+                            availableSources: recentSourcesList,
+                            hasRecentSources: hasRecentSourcesInDb,
                         })
-                        if (!policy.allowed) {
+                        if (!refValidation.valid) {
                             return {
                                 success: false,
-                                error: policy.error,
+                                error: refValidation.error,
                             }
                         }
 
@@ -1507,15 +1510,16 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 }),
                 execute: async ({ artifactId, content, title, sources }) => {
                     try {
-                        const policy = enforceArtifactSourcesPolicy({
-                            hasRecentSourcesInDb,
-                            sources,
-                            operation: "updateArtifact",
+                        const refValidation = referenceIntegritySkill.validate({
+                            toolName: 'updateArtifact',
+                            claimedSources: sources,
+                            availableSources: recentSourcesList,
+                            hasRecentSources: hasRecentSourcesInDb,
                         })
-                        if (!policy.allowed) {
+                        if (!refValidation.valid) {
                             return {
                                 success: false,
-                                error: policy.error,
+                                error: refValidation.error,
                             }
                         }
 
