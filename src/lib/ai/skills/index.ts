@@ -34,5 +34,5 @@ export function getToolExamples(toolName: string): string {
 }
 
 export { referenceIntegritySkill } from "./reference-integrity.skill"
-export { sourceQualitySkill } from "./source-quality.skill"
+export { sourceQualitySkill, validateWithScores } from "./source-quality.skill"
 export type { SkillContext, ValidationResult, ToolExample } from "./types"

@@ -46,7 +46,7 @@ import {
     type OperationType,
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
-import { referenceIntegritySkill } from "@/lib/ai/skills"
+import { referenceIntegritySkill, sourceQualitySkill, validateWithScores, type SkillContext } from "@/lib/ai/skills"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
@@ -2354,25 +2354,33 @@ SEARCH TIPS:
                                     // Normalize via normalizeCitations('perplexity') — applies domain filter
                                     const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
 
-                                    // Layer 1: Structural pre-filter — remove garbage URLs
-                                    let sources: SourceEntry[] = normalizedCitations
-                                        .filter(c => !isGarbageUrl(c.url))
-                                        .map(c => ({
-                                            url: normalizeWebSearchUrl(c.url),
-                                            title: c.title || c.url,
-                                        }))
+                                    // Skill-based quality scoring (replaces isGarbageUrl + isLowValueCitationUrl)
+                                    const qualityInput = normalizedCitations.map(c => ({
+                                        url: normalizeWebSearchUrl(c.url),
+                                        title: c.title || c.url,
+                                    }))
+                                    const qualityResult = validateWithScores({ sources: qualityInput })
 
-                                    // Enrichment
+                                    let sources: SourceEntry[] = qualityResult.scoredSources
+                                        ? qualityResult.scoredSources.map(s => ({ url: s.url, title: s.title }))
+                                        : qualityInput.filter(c => !isGarbageUrl(c.url)) // fallback to old behavior
+
+                                    if (qualityResult.filteredOut?.length) {
+                                        console.log(`[source-quality] Filtered ${qualityResult.filteredOut.length} low-quality sources`)
+                                    }
+                                    if (qualityResult.diversityWarning) {
+                                        console.log(`[source-quality] ${qualityResult.diversityWarning}`)
+                                    }
+
+                                    // Enrichment (unchanged)
                                     if (sources.length > 0) {
                                         sources = await enrichSourcesWithFetchedTitles(sources, {
                                             concurrency: 4,
                                             timeoutMs: 2500,
                                         })
-
-                                        // Layer 2: Enrichment-based post-filter
                                         sources = sources.filter((s) => !(s as { _unreachable?: true })._unreachable)
 
-                                        // Dedup
+                                        // Dedup (unchanged)
                                         const deduped = new Map<string, SourceEntry>()
                                         for (const src of sources) {
                                             const key = canonicalizeCitationUrl(src.url)
@@ -2381,12 +2389,6 @@ SEARCH TIPS:
                                             }
                                         }
                                         sources = Array.from(deduped.values())
-
-                                        // Low-value filter
-                                        const hasHighValue = sources.some(s => !isLowValueCitationUrl(s.url))
-                                        if (hasHighValue) {
-                                            sources = sources.filter(s => !isLowValueCitationUrl(s.url))
-                                        }
                                     }
 
                                     // Citation anchors: Perplexity doesn't provide position data,
