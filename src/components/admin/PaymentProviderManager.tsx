@@ -53,9 +53,7 @@ export function PaymentProviderManager({ userId }: PaymentProviderManagerProps) 
     if (config) {
       setEnabledMethods([...(config.enabledMethods as PaymentMethod[])])
       setVisibleVAChannels(
-        config.visibleVAChannels?.length
-          ? [...config.visibleVAChannels]
-          : getDefaultVisibleVAChannels()
+        config.visibleVAChannels ? [...config.visibleVAChannels] : getDefaultVisibleVAChannels()
       )
     }
   }, [config])

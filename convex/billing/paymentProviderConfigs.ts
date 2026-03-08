@@ -37,10 +37,9 @@ export const getActiveConfig = query({
 
     return {
       enabledMethods: config.enabledMethods,
-      visibleVAChannels:
-        config.visibleVAChannels && config.visibleVAChannels.length > 0
-          ? sanitizeVisibleVAChannels(config.visibleVAChannels)
-          : getDefaultVisibleVAChannels(),
+      visibleVAChannels: Array.isArray(config.visibleVAChannels)
+        ? sanitizeVisibleVAChannels(config.visibleVAChannels)
+        : getDefaultVisibleVAChannels(),
       webhookUrl: config.webhookUrl ?? "/api/webhooks/payment",
       defaultExpiryMinutes: config.defaultExpiryMinutes ?? 30,
     }

@@ -144,9 +144,7 @@ function CheckoutPROContent() {
   const paymentConfig = useQuery(api.billing.paymentProviderConfigs.getActiveConfig)
   const enabledMethods = paymentConfig?.enabledMethods ?? DEFAULT_ENABLED_METHODS
   const visibleVAChannels =
-    paymentConfig?.visibleVAChannels?.length
-      ? paymentConfig.visibleVAChannels
-      : getDefaultVisibleVAChannels()
+    paymentConfig?.visibleVAChannels ?? getDefaultVisibleVAChannels()
   const availableMethods = getEnabledCheckoutMethods(enabledMethods, visibleVAChannels)
   const vaChannels = getVisibleVAChannels(visibleVAChannels)
 

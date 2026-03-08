@@ -114,9 +114,7 @@ export async function POST(req: NextRequest) {
       }
 
       const visibleVAChannels =
-        paymentConfig.visibleVAChannels?.length
-          ? paymentConfig.visibleVAChannels
-          : getDefaultVisibleVAChannels()
+        paymentConfig.visibleVAChannels ?? getDefaultVisibleVAChannels()
       assertVisibleVAChannel(body.vaChannel, visibleVAChannels)
     }
 
