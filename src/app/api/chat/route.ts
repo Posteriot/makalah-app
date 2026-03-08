@@ -12,7 +12,6 @@ import { retryMutation } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 import { normalizeCitations, type NormalizedCitation } from "@/lib/citations/normalizer"
-import { getSourcePolicyPrompt } from "@/lib/ai/search-source-policy"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { createPaperTools } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
@@ -683,13 +682,16 @@ export async function POST(req: Request) {
                 hasRecentSourcesInDb = true
                 recentSourcesList = recentSources
                 const sourcesJson = JSON.stringify(recentSources, null, 2)
-                sourcesContext = `
-AVAILABLE_WEB_SOURCES (dari hasil web search sebelumnya):
+                const skillContext: SkillContext = {
+                    isPaperMode: !!paperModePrompt,
+                    currentStage: paperSession?.currentStage ?? null,
+                    hasRecentSources: true,
+                    availableSources: recentSourcesList,
+                }
+                const refInstructions = referenceIntegritySkill.instructions(skillContext)
+                sourcesContext = `AVAILABLE_WEB_SOURCES (dari hasil web search sebelumnya):
 ${sourcesJson}
-
-PENTING: Jika kamu membuat artifact yang BERBASIS informasi dari sumber-sumber di atas,
-WAJIB pass array sources ini ke parameter 'sources' di tool createArtifact atau updateArtifact.
-Ini memungkinkan inline citation [1], [2] berfungsi dengan benar di artifact.`
+${refInstructions ?? ''}`
             }
         } catch (sourcesError) {
             console.error("[route] Failed to fetch recent sources:", sourcesError)
@@ -2147,7 +2149,12 @@ SEARCH TIPS:
                 ? [
                     fullMessagesBase[0],
                     { role: "system" as const, content: webSearchBehaviorSystemNote },
-                    { role: "system" as const, content: getSourcePolicyPrompt() },
+                    { role: "system" as const, content: sourceQualitySkill.instructions({
+                    isPaperMode: !!paperModePrompt,
+                    currentStage: paperSession?.currentStage ?? null,
+                    hasRecentSources: hasRecentSourcesInDb,
+                    availableSources: recentSourcesList,
+                }) ?? '' },
                     // Inject research incomplete note if applicable (ACTIVE stage override)
                     ...(activeStageSearchNote && activeStageSearchReason === "research_incomplete"
                         ? [{ role: "system" as const, content: activeStageSearchNote }]
@@ -3109,7 +3116,12 @@ SEARCH TIPS:
                 const sanitizedFallbackMessages = sanitizeMessagesForSearch([
                     fullMessagesBase[0],
                     { role: "system" as const, content: webSearchBehaviorSystemNote },
-                    { role: "system" as const, content: getSourcePolicyPrompt() },
+                    { role: "system" as const, content: sourceQualitySkill.instructions({
+                    isPaperMode: !!paperModePrompt,
+                    currentStage: paperSession?.currentStage ?? null,
+                    hasRecentSources: hasRecentSourcesInDb,
+                    availableSources: recentSourcesList,
+                }) ?? '' },
                     ...fullMessagesBase.slice(1),
                 ])
 
