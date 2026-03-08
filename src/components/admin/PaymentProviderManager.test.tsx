@@ -7,6 +7,15 @@ const mockUseMutation = vi.fn()
 const mutate = vi.fn()
 const configResult = {
   enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT", "EWALLET"] as const,
+  visibleVAChannels: [
+    "BJB_VIRTUAL_ACCOUNT",
+    "BNI_VIRTUAL_ACCOUNT",
+    "BRI_VIRTUAL_ACCOUNT",
+    "BSI_VIRTUAL_ACCOUNT",
+    "CIMB_VIRTUAL_ACCOUNT",
+    "MANDIRI_VIRTUAL_ACCOUNT",
+    "PERMATA_VIRTUAL_ACCOUNT",
+  ] as const,
   webhookUrl: "/api/webhooks/payment",
   defaultExpiryMinutes: 30,
 }
@@ -52,19 +61,44 @@ describe("PaymentProviderManager", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("saves enabled methods without activeProvider payload", async () => {
+  it("saves enabled methods and visible VA channels", async () => {
     render(<PaymentProviderManager userId={"user_123" as never} />)
 
     fireEvent.click(screen.getByLabelText("E-Wallet"))
+    fireEvent.click(screen.getByLabelText("Bank Mandiri"))
     fireEvent.click(screen.getByRole("button", { name: /simpan konfigurasi/i }))
 
     await waitFor(() => {
       expect(mutate).toHaveBeenCalledWith({
         requestorUserId: "user_123",
         enabledMethods: ["QRIS", "VIRTUAL_ACCOUNT"],
+        visibleVAChannels: [
+          "BJB_VIRTUAL_ACCOUNT",
+          "BNI_VIRTUAL_ACCOUNT",
+          "BRI_VIRTUAL_ACCOUNT",
+          "BSI_VIRTUAL_ACCOUNT",
+          "CIMB_VIRTUAL_ACCOUNT",
+          "PERMATA_VIRTUAL_ACCOUNT",
+        ],
         webhookUrl: "/api/webhooks/payment",
         defaultExpiryMinutes: 30,
       })
     })
+  })
+
+  it("shows warning when all VA channels are hidden while VA method is enabled", () => {
+    render(<PaymentProviderManager userId={"user_123" as never} />)
+
+    fireEvent.click(screen.getByLabelText("Bank BJB"))
+    fireEvent.click(screen.getByLabelText("Bank Negara Indonesia"))
+    fireEvent.click(screen.getByLabelText("Bank Rakyat Indonesia"))
+    fireEvent.click(screen.getByLabelText("Bank Syariah Indonesia"))
+    fireEvent.click(screen.getByLabelText("CIMB Niaga"))
+    fireEvent.click(screen.getByLabelText("Bank Mandiri"))
+    fireEvent.click(screen.getByLabelText("PermataBank"))
+
+    expect(
+      screen.getByText(/metode Virtual Account tidak akan ditampilkan/i)
+    ).toBeInTheDocument()
   })
 })

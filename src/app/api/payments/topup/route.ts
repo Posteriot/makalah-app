@@ -11,7 +11,11 @@ import type { Id } from "@convex/_generated/dataModel"
 import { randomUUID } from "crypto"
 import { isValidPackageType } from "@convex/billing/constants"
 import { createPaymentViaProvider } from "@/lib/payment/create-payment"
-import { assertEnabledPaymentMethod } from "@/lib/payment/request-validation"
+import {
+  assertEnabledPaymentMethod,
+  assertVisibleVAChannel,
+} from "@/lib/payment/request-validation"
+import { getDefaultVisibleVAChannels } from "@/lib/payment/channel-options"
 
 // Request body type
 interface TopUpRequest {
@@ -79,6 +83,18 @@ export async function POST(req: NextRequest) {
       convexOptions
     )
     assertEnabledPaymentMethod(paymentMethod, paymentConfig.enabledMethods)
+    if (paymentMethod === "va") {
+      if (!vaChannel) {
+        return NextResponse.json(
+          { error: "Channel Virtual Account wajib dipilih" },
+          { status: 400 }
+        )
+      }
+
+      const visibleVAChannels =
+        paymentConfig.visibleVAChannels ?? getDefaultVisibleVAChannels()
+      assertVisibleVAChannel(vaChannel, visibleVAChannels)
+    }
 
     // 7. Generate unique reference ID and idempotency key
     const referenceId = `topup_${convexUser._id}_${Date.now()}`
@@ -138,6 +154,17 @@ export async function POST(req: NextRequest) {
     console.error("[TopUp] Error:", error)
 
     if (error instanceof Error && error.message === "Metode pembayaran tidak tersedia") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      (error.message === "Channel Virtual Account tidak valid" ||
+        error.message === "Channel Virtual Account tidak tersedia")
+    ) {
       return NextResponse.json(
         { error: error.message },
         { status: 400 }

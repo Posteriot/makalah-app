@@ -10,7 +10,11 @@ import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 import { createPaymentViaProvider } from "@/lib/payment/create-payment"
 import { randomUUID } from "crypto"
-import { assertEnabledPaymentMethod } from "@/lib/payment/request-validation"
+import {
+  assertEnabledPaymentMethod,
+  assertVisibleVAChannel,
+} from "@/lib/payment/request-validation"
+import { getDefaultVisibleVAChannels } from "@/lib/payment/channel-options"
 
 type PlanType = "pro_monthly"
 const PRO_PLAN_TYPE: PlanType = "pro_monthly"
@@ -101,6 +105,18 @@ export async function POST(req: NextRequest) {
       convexOptions
     )
     assertEnabledPaymentMethod(body.paymentMethod, paymentConfig.enabledMethods)
+    if (body.paymentMethod === "va") {
+      if (!body.vaChannel) {
+        return NextResponse.json(
+          { error: "Channel Virtual Account wajib dipilih" },
+          { status: 400 }
+        )
+      }
+
+      const visibleVAChannels =
+        paymentConfig.visibleVAChannels ?? getDefaultVisibleVAChannels()
+      assertVisibleVAChannel(body.vaChannel, visibleVAChannels)
+    }
 
     // 6. Generate unique reference ID and idempotency key
     const referenceId = `sub_${convexUser._id}_${Date.now()}`
@@ -145,6 +161,17 @@ export async function POST(req: NextRequest) {
     console.error("[Subscribe] Error:", error)
 
     if (error instanceof Error && error.message === "Metode pembayaran tidak tersedia") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      (error.message === "Channel Virtual Account tidak valid" ||
+        error.message === "Channel Virtual Account tidak tersedia")
+    ) {
       return NextResponse.json(
         { error: error.message },
         { status: 400 }

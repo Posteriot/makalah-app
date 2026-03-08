@@ -37,6 +37,20 @@ describe("payment runtime settings", () => {
     expect(isPaymentMethodEnabled("va", ["QRIS"])).toBe(false)
   })
 
+  it("marks VA as unavailable when visible VA channels are empty", () => {
+    expect(getEnabledCheckoutMethods(["QRIS", "VIRTUAL_ACCOUNT"], [])).toEqual([
+      "qris",
+    ])
+    expect(isPaymentMethodEnabled("va", ["VIRTUAL_ACCOUNT"], [])).toBe(false)
+  })
+
+  it("keeps QRIS and E-Wallet behavior unaffected by VA visibility", () => {
+    expect(getEnabledCheckoutMethods(["QRIS", "EWALLET"], [])).toEqual([
+      "qris",
+      "ewallet",
+    ])
+  })
+
   it("returns xendit as the only runtime provider label", () => {
     expect(getRuntimeProviderLabel()).toBe("Xendit")
   })

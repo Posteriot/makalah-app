@@ -1021,6 +1021,7 @@ export default defineSchema({
     enabledMethods: v.array(
       v.union(v.literal("QRIS"), v.literal("VIRTUAL_ACCOUNT"), v.literal("EWALLET"))
     ),
+    visibleVAChannels: v.array(v.string()),
     webhookUrl: v.optional(v.string()),
     defaultExpiryMinutes: v.optional(v.number()),
     isActive: v.boolean(),
