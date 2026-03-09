@@ -4,6 +4,77 @@
 **Branch:** `marketing-pages-ui-design`
 **Date:** 2026-03-09
 
+## Session Handoff
+
+Bagian ini ditujukan agar dokumen ini bisa dipakai sebagai initial prompt atau konteks awal di sesi baru.
+
+### Ringkasan status branch
+
+- Branch aktif: `marketing-pages-ui-design`
+- Fokus aktif: migrasi styling system untuk area marketing
+- Scope halaman: `home`, `about`, `pricing`, `documentation`, `blog`
+- Scope redesign visual total: belum aktif, hanya dijalankan jika diminta eksplisit
+
+### Baseline yang sudah tervalidasi
+
+Pada branch ini, area `global header` sudah melewati rangkaian kerja berikut:
+
+- audit konteks
+- audit findings
+- design
+- implementation plan
+- implementasi kode
+- QA manual dasar
+- audit cleanup styling
+
+Komponen yang sudah tervalidasi sebagai contoh migration state:
+
+- [`src/components/layout/header/GlobalHeader.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/layout/header/GlobalHeader.tsx)
+- [`src/components/layout/header/UserDropdown.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/layout/header/UserDropdown.tsx)
+- [`src/components/ui/auth-button.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/ui/auth-button.tsx)
+- [`src/app/globals-new.css`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/app/globals-new.css)
+
+Fakta yang sudah terverifikasi:
+
+- auth CTA desktop dan mobile sudah memakai komponen bersama `AuthButton`
+- state auth header sudah mengikuti kontrak tunggal `loading`, `authenticated`, `unauthenticated`, `signingOut`
+- redirect login mempertahankan `pathname + query + hash`
+- dropdown default `UserDropdown` sudah bergerak lewat token semantik, bukan raw palette lama
+- mobile header sudah mengalami refinement tipografi, spacing, density panel akun, dan ikon menu
+- area header yang menjadi acuan marketing sekarang sudah lebih dekat ke target branch: Tailwind-compliant, tokenized, dan tidak lagi bertopang ke hover color legacy
+
+### Commit penting yang sudah ada
+
+- `619dfc0` `Refine global header auth contract`
+- `52d0389` `Polish auth button styling`
+- `d61ad10` `Refine mobile header account panel`
+- `7327f33` `Refine mobile menu typography and spacing`
+- `374cd38` `Clean up global header styling audit gaps`
+- `08b59bc` `Refresh marketing redesign baseline docs`
+
+### Hal yang belum selesai
+
+Dokumen ini tidak menyatakan bahwa seluruh halaman marketing sudah selesai dimigrasikan.
+
+Yang masih perlu dianggap sebagai area audit atau kerja lanjutan:
+
+- `about`
+- `pricing`
+- `documentation`
+- `blog`
+- utility atau class yang masih hanya hidup di `globals.css`
+- raw palette lama yang masih tertinggal di komponen target
+
+### Cara membaca branch ini di sesi baru
+
+Jika sesi baru dimulai dari dokumen ini, asumsi kerja yang aman adalah:
+
+- gunakan `home`, `chat`, dan `global header` sebagai baseline observasi
+- anggap `globals-new.css` sebagai jalur token target
+- anggap `globals.css` sebagai dependency legacy yang masih perlu dipetakan dan dilepas bertahap
+- jangan menganggap redesign visual total aktif kecuali diminta eksplisit
+- untuk komponen marketing berikutnya, lakukan pola kerja yang sama: audit konteks dulu, lalu findings, lalu design/plan, baru implementasi
+
 ## Purpose
 
 Dokumen konteks ini disusun sebagai fondasi awal untuk task:
