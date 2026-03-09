@@ -30,9 +30,22 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
   verbose: false,
 });
 
-async function sendSignupSuccessEmailSafely(email: string): Promise<void> {
+async function sendSignupSuccessEmailSafely(
+  ctxRef: GenericCtx<DataModel>,
+  email: string,
+  userName: string,
+): Promise<void> {
   try {
-    await sendSignupSuccessEmailFallback(email);
+    const rendered = await fetchAndRenderTemplate(ctxRef, "signup_success", {
+      userName,
+      appName: "Makalah AI",
+      loginUrl: (process.env.SITE_URL ?? "https://makalah.ai") + "/chat",
+    });
+    if (rendered) {
+      await sendViaResend(email, rendered.subject, rendered.html);
+    } else {
+      await sendSignupSuccessEmailFallback(email);
+    }
   } catch (error) {
     console.error("[Auth Email] Failed to send signup success email:", error);
   }
@@ -74,20 +87,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       },
       afterEmailVerification: async (user) => {
         if (typeof user.email === "string" && user.email.length > 0) {
-          const rendered = await fetchAndRenderTemplate(ctx, "signup_success", {
-            userName: user.email,
-            appName: "Makalah AI",
-            loginUrl: (process.env.SITE_URL ?? "https://makalah.ai") + "/chat",
-          });
-          if (rendered) {
-            try {
-              await sendViaResend(user.email, rendered.subject, rendered.html);
-            } catch (error) {
-              console.error("[Auth Email] Failed to send signup success email:", error);
-            }
-          } else {
-            await sendSignupSuccessEmailSafely(user.email);
-          }
+          await sendSignupSuccessEmailSafely(ctx, user.email, user.name ?? user.email);
         }
       },
     },
@@ -106,20 +106,8 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
             if (!email || user.emailVerified !== true) {
               return;
             }
-            const rendered = await fetchAndRenderTemplate(ctx, "signup_success", {
-              userName: email,
-              appName: "Makalah AI",
-              loginUrl: (process.env.SITE_URL ?? "https://makalah.ai") + "/chat",
-            });
-            if (rendered) {
-              try {
-                await sendViaResend(email, rendered.subject, rendered.html);
-              } catch (error) {
-                console.error("[Auth Email] Failed to send signup success email:", error);
-              }
-            } else {
-              await sendSignupSuccessEmailSafely(email);
-            }
+            const userName = (typeof user.name === "string" ? user.name : "") || email;
+            await sendSignupSuccessEmailSafely(ctx, email, userName);
           },
         },
       },
