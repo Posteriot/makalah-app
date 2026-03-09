@@ -1,60 +1,29 @@
-export type DomainTier =
-  | "academic"
-  | "institutional"
-  | "news-major"
-  | "news-local"
-  | "unknown"
-  | "blocked"
+/**
+ * Domain blocklist for web search source filtering.
+ *
+ * Only blocked domains are hard-filtered. Everything else passes through
+ * and the model evaluates credibility using SKILL.md guidance.
+ */
 
-export const BASE_SCORES: Record<DomainTier, number> = {
-  academic: 90,
-  institutional: 80,
-  "news-major": 70,
-  "news-local": 50,
-  unknown: 40,
-  blocked: 0,
-}
+export type DomainTier = "blocked" | "pass"
 
-export const MIN_QUALITY_SCORE = 30
-
-export const ACADEMIC_DOMAINS = [
-  "scholar.google.com",
-  "pubmed.ncbi.nlm.nih.gov",
-  "arxiv.org",
-  "jstor.org",
-  "researchgate.net",
-  "semanticscholar.org",
-  "sciencedirect.com",
-  "springer.com",
-  "nature.com",
-  "wiley.com",
-  "ieee.org",
-  "acm.org",
-  "plos.org",
-  "doi.org",
-]
-
-export const INSTITUTIONAL_DOMAINS = [
-  "who.int",
-  "worldbank.org",
-  "un.org",
-  "imf.org",
-  "oecd.org",
-  "bps.go.id",
-  "bi.go.id",
-]
-
-export const MAJOR_NEWS_DOMAINS = [
-  "reuters.com",
-  "apnews.com",
-  "bbc.com",
-  "nytimes.com",
-  "theguardian.com",
-  "washingtonpost.com",
-  "ft.com",
-  "bloomberg.com",
-  "economist.com",
-  "kompas.com",
-  "tempo.co",
-  "cnnindonesia.com",
+export const BLOCKED_DOMAINS_SKILL = [
+  // User-edited encyclopedias
+  "wikipedia.org",
+  "wikimedia.org",
+  "wiktionary.org",
+  // Self-publishing / blog platforms (no editorial oversight)
+  "blogspot.com",
+  "wordpress.com",
+  "medium.com",
+  "substack.com",
+  "tumblr.com",
+  // User-generated Q&A / forums
+  "quora.com",
+  "reddit.com",
+  "answers.yahoo.com",
+  // Homework help / content farms
+  "scribd.com",
+  "brainly.co.id",
+  "coursehero.com",
 ]

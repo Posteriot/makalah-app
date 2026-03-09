@@ -130,12 +130,10 @@ export const log = mutation({
     searchSkillApplied: v.optional(v.boolean()),
     searchSkillName: v.optional(v.string()),
     searchSkillAction: v.optional(v.string()),
-    sourcesScored: v.optional(v.number()),
-    sourcesFiltered: v.optional(v.number()),
-    sourcesPassedTiers: v.optional(v.string()),
+    sourcesPassed: v.optional(v.number()),
+    sourcesBlocked: v.optional(v.number()),
     referencesClaimed: v.optional(v.number()),
     referencesMatched: v.optional(v.number()),
-    diversityWarning: v.optional(v.string()),
   },
   handler: async ({ db }, args) => {
     const isSkillRuntime = isSkillRuntimeRecord({
@@ -810,40 +808,29 @@ export const getSearchSkillOverview = query({
     const searchSkillRecords = records.filter((r) => r.searchSkillApplied === true)
 
     let totalApplied = 0
-    let totalRejected = 0
-    let totalSourcesScored = 0
-    let totalSourcesFiltered = 0
-    const tierCounts: Record<string, number> = {}
-    const bySkill: Record<string, { applied: number; rejected: number }> = {}
+    let totalAllBlocked = 0
+    let totalSourcesPassed = 0
+    let totalSourcesBlocked = 0
+    const bySkill: Record<string, { applied: number; allBlocked: number }> = {}
 
     for (const r of searchSkillRecords) {
       totalApplied++
-      if (r.searchSkillAction === "rejected") totalRejected++
-      totalSourcesScored += r.sourcesScored ?? 0
-      totalSourcesFiltered += r.sourcesFiltered ?? 0
-
-      if (r.sourcesPassedTiers) {
-        try {
-          const tiers = JSON.parse(r.sourcesPassedTiers) as Record<string, number>
-          for (const [tier, count] of Object.entries(tiers)) {
-            tierCounts[tier] = (tierCounts[tier] ?? 0) + count
-          }
-        } catch { /* ignore parse errors */ }
-      }
+      if (r.searchSkillAction === "all-blocked") totalAllBlocked++
+      totalSourcesPassed += r.sourcesPassed ?? 0
+      totalSourcesBlocked += r.sourcesBlocked ?? 0
 
       const name = r.searchSkillName ?? "unknown"
-      if (!bySkill[name]) bySkill[name] = { applied: 0, rejected: 0 }
+      if (!bySkill[name]) bySkill[name] = { applied: 0, allBlocked: 0 }
       bySkill[name].applied++
-      if (r.searchSkillAction === "rejected") bySkill[name].rejected++
+      if (r.searchSkillAction === "all-blocked") bySkill[name].allBlocked++
     }
 
     return {
       totalApplied,
-      totalRejected,
-      rejectionRate: totalApplied > 0 ? totalRejected / totalApplied : 0,
-      totalSourcesScored,
-      totalSourcesFiltered,
-      tierDistribution: tierCounts,
+      totalAllBlocked,
+      blockRate: totalApplied > 0 ? totalAllBlocked / totalApplied : 0,
+      totalSourcesPassed,
+      totalSourcesBlocked,
       bySkill,
     }
   },
@@ -882,12 +869,10 @@ export const getSearchSkillTrace = query({
         conversationId: r.conversationId ?? null,
         searchSkillName: r.searchSkillName ?? "unknown",
         searchSkillAction: r.searchSkillAction ?? "unknown",
-        sourcesScored: r.sourcesScored ?? null,
-        sourcesFiltered: r.sourcesFiltered ?? null,
-        sourcesPassedTiers: r.sourcesPassedTiers ?? null,
+        sourcesPassed: r.sourcesPassed ?? null,
+        sourcesBlocked: r.sourcesBlocked ?? null,
         referencesClaimed: r.referencesClaimed ?? null,
         referencesMatched: r.referencesMatched ?? null,
-        diversityWarning: r.diversityWarning ?? null,
         stageScope: r.stageScope ?? null,
         mode: r.mode,
         success: r.success,

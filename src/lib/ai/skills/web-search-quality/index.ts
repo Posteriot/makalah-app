@@ -111,6 +111,11 @@ export const webSearchQualitySkill: WebSearchSkill = {
       parts.push(`## RESEARCH SOURCE STRATEGY\n\n${researchStrategy}`)
     }
 
+    const responseComposition = parsed.sections.get("RESPONSE COMPOSITION")
+    if (responseComposition) {
+      parts.push(`## RESPONSE COMPOSITION\n\n${responseComposition}`)
+    }
+
     const referenceIntegrity = parsed.sections.get("REFERENCE INTEGRITY")
     if (referenceIntegrity) {
       parts.push(`## REFERENCE INTEGRITY\n\n${referenceIntegrity}`)

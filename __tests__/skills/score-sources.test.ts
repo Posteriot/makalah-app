@@ -1,50 +1,25 @@
 import { describe, it, expect } from "vitest"
 import {
-  classifyDomain,
   scoreSources,
 } from "@/lib/ai/skills/web-search-quality/scripts/score-sources"
 
 describe("score-sources", () => {
-  describe("classifyDomain", () => {
-    it("classifies academic domains", () => {
-      expect(classifyDomain("https://arxiv.org/abs/2401.12345")).toBe("academic")
-      expect(classifyDomain("https://scholar.google.com/scholar?q=test")).toBe("academic")
-      expect(classifyDomain("https://repository.ui.ac.id/paper")).toBe("academic")
-    })
-
-    it("classifies institutional domains", () => {
-      expect(classifyDomain("https://bps.go.id/data")).toBe("institutional")
-      expect(classifyDomain("https://data.worldbank.org/indicator")).toBe("institutional")
-    })
-
-    it("classifies major news", () => {
-      expect(classifyDomain("https://kompas.com/article")).toBe("news-major")
-      expect(classifyDomain("https://reuters.com/world")).toBe("news-major")
-    })
-
-    it("classifies blocked domains", () => {
-      expect(classifyDomain("https://en.wikipedia.org/wiki/Test")).toBe("blocked")
-      expect(classifyDomain("https://reddit.com/r/test")).toBe("blocked")
-    })
-
-    it("classifies unknown domains", () => {
-      expect(classifyDomain("https://randomsite.com/article")).toBe("unknown")
-    })
-  })
-
   describe("scoreSources", () => {
-    it("filters sources below quality threshold", () => {
+    it("filters blocked domains and passes everything else", () => {
       const result = scoreSources([
         { url: "https://en.wikipedia.org/wiki/AI", title: "AI Wikipedia" },
         { url: "https://arxiv.org/abs/2401.12345", title: "Deep Learning Research Paper" },
+        { url: "https://kabarbursa.com/article", title: "Kabar Bursa Article" },
       ])
       expect(result.valid).toBe(true)
-      expect(result.scoredSources).toHaveLength(1)
-      expect(result.scoredSources[0].url).toContain("arxiv.org")
+      expect(result.scoredSources).toHaveLength(2)
+      expect(result.scoredSources[0].tier).toBe("pass")
+      expect(result.scoredSources[1].tier).toBe("pass")
       expect(result.filteredOut).toHaveLength(1)
+      expect(result.filteredOut[0].url).toContain("wikipedia.org")
     })
 
-    it("returns invalid when all sources are below threshold", () => {
+    it("returns invalid when all sources are blocked", () => {
       const result = scoreSources([
         { url: "https://en.wikipedia.org/wiki/AI", title: "AI" },
         { url: "https://reddit.com/r/ai", title: "Reddit AI" },
@@ -58,26 +33,31 @@ describe("score-sources", () => {
       expect(result.valid).toBe(true)
     })
 
-    it("detects low diversity (3+ from same domain)", () => {
+    it("passes all non-blocked sources regardless of domain", () => {
       const result = scoreSources([
-        { url: "https://kompas.com/article-1", title: "Article One About Topic" },
-        { url: "https://kompas.com/article-2", title: "Article Two About Topic" },
-        { url: "https://kompas.com/article-3", title: "Article Three About Topic" },
+        { url: "https://kompas.com/article-1", title: "Kompas Article" },
+        { url: "https://asosiasi.ai/report", title: "Asosiasi AI Report" },
+        { url: "https://tv.kontan.co.id/video", title: "Kontan Video" },
+        { url: "https://journal.appini.or.id/paper", title: "Journal Paper" },
+        { url: "https://cnbcindonesia.com/news", title: "CNBC Indonesia" },
       ])
       expect(result.valid).toBe(true)
-      expect(result.diversityWarning).toBeDefined()
-      expect(result.diversityWarning).toContain("kompas.com")
+      expect(result.scoredSources).toHaveLength(5)
+      expect(result.filteredOut).toHaveLength(0)
     })
 
-    it("applies scoring bonuses and penalties", () => {
+    it("blocks all blog/UGC platforms", () => {
       const result = scoreSources([
-        { url: "https://arxiv.org/", title: "ArXiv" },
-        { url: "https://arxiv.org/abs/2401.12345", title: "Deep Learning Research Paper" },
+        { url: "https://myblog.blogspot.com/post", title: "Blog Post" },
+        { url: "https://someone.wordpress.com/article", title: "WP Article" },
+        { url: "https://medium.com/@user/story", title: "Medium Story" },
+        { url: "https://substack.com/post", title: "Substack Post" },
+        { url: "https://quora.com/question", title: "Quora Question" },
+        { url: "https://brainly.co.id/tugas/123", title: "Brainly Answer" },
       ])
-      expect(result.scoredSources).toHaveLength(2)
-      const homepage = result.scoredSources.find(s => s.url === "https://arxiv.org/")!
-      const article = result.scoredSources.find(s => s.url.includes("abs"))!
-      expect(article.score).toBeGreaterThan(homepage.score)
+      expect(result.valid).toBe(false)
+      expect(result.scoredSources).toHaveLength(0)
+      expect(result.filteredOut).toHaveLength(6)
     })
   })
 })

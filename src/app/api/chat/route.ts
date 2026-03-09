@@ -2335,9 +2335,15 @@ Aturan:
                         let qualityResult: ReturnType<typeof skill.scoreSources> = { valid: true, scoredSources: [], filteredOut: [] }
 
                         try {
+                        const { getSearchSystemPrompt, augmentUserMessageForSearch } = await import("@/lib/ai/search-system-prompt")
+                        const searchMessages = augmentUserMessageForSearch([
+                            { role: "system" as const, content: getSearchSystemPrompt() },
+                            ...sanitizedMessages.filter(m => m.role !== "system"),
+                        ])
+
                         const perplexityResult = streamText({
                             model: webSearchModel,
-                            messages: sanitizedMessages,
+                            messages: searchMessages,
                             // No tools — Perplexity searches natively
                             ...samplingOptions,
                         })
@@ -2362,33 +2368,34 @@ Aturan:
 
                         // Source pipeline: normalize → score → enrich → dedup
                         const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
+                        console.log(`[SourcePipeline] raw=${Array.isArray(rawSources) ? rawSources.length : 'n/a'} → normalized=${normalizedCitations.length}`)
 
                         const qualityInput = normalizedCitations.map(c => ({
                             url: normalizeWebSearchUrl(c.url),
                             title: c.title || c.url,
                         }))
                         qualityResult = skill.scoreSources(qualityInput)
+                        console.log(`[SourcePipeline] scored: passed=${qualityResult.scoredSources?.length ?? 0}, blocked=${qualityResult.filteredOut?.length ?? 0}`)
 
                         scoredSources = qualityResult.scoredSources
                             ? qualityResult.scoredSources.map(s => ({ url: s.url, title: s.title }))
                             : qualityInput.filter(c => !isGarbageUrl(c.url)) // fallback to old behavior
 
-                        if (qualityResult.filteredOut?.length) {
-                            console.log(`[source-quality] Filtered ${qualityResult.filteredOut.length} low-quality sources`)
-                        }
-                        if (qualityResult.diversityWarning) {
-                            console.log(`[source-quality] ${qualityResult.diversityWarning}`)
-                        }
-
                         // Enrichment
                         if (scoredSources.length > 0) {
+                            const beforeEnrich = scoredSources.length
                             scoredSources = await enrichSourcesWithFetchedTitles(scoredSources, {
                                 concurrency: 4,
-                                timeoutMs: 2500,
+                                timeoutMs: 5000,
                             })
+                            const unreachable = scoredSources.filter((s) => (s as { _unreachable?: true })._unreachable)
+                            if (unreachable.length > 0) {
+                                console.log(`[SourcePipeline] unreachable (dropped): ${unreachable.map(s => s.url).join(', ')}`)
+                            }
                             scoredSources = scoredSources.filter((s) => !(s as { _unreachable?: true })._unreachable)
 
                             // Dedup
+                            const beforeDedup = scoredSources.length
                             const deduped = new Map<string, SourceEntry>()
                             for (const src of scoredSources) {
                                 const key = canonicalizeCitationUrl(src.url)
@@ -2397,6 +2404,7 @@ Aturan:
                                 }
                             }
                             scoredSources = Array.from(deduped.values())
+                            console.log(`[SourcePipeline] enrich: ${beforeEnrich} → reachable=${beforeDedup} → deduped=${scoredSources.length}`)
                         }
 
                         sourceCount = scoredSources.length
@@ -2437,18 +2445,30 @@ Aturan:
                         // ────────────────────────────────────────────────────────────
                         const { buildSearchResultsContext } = await import("@/lib/ai/search-results-context")
 
-                        const skillInstructions = composeSkillInstructions(buildSkillContext({
-                            hasRecentSources: scoredSources.length > 0,
-                            availableSources: scoredSources.map(s => ({
-                                url: s.url,
-                                title: s.title,
-                                ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
-                            })),
-                        }))
+                        let skillInstructions: string | null = null
+                        try {
+                            skillInstructions = composeSkillInstructions(buildSkillContext({
+                                hasRecentSources: scoredSources.length > 0,
+                                availableSources: scoredSources.map(s => ({
+                                    url: s.url,
+                                    title: s.title,
+                                    ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
+                                })),
+                            }))
+                        } catch (skillError) {
+                            console.error("[SearchSkill] composeSkillInstructions failed:", skillError)
+                        }
 
-                        const searchResultsContext = buildSearchResultsContext(
-                            qualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
-                        )
+                        let searchResultsContext: string
+                        try {
+                            searchResultsContext = buildSearchResultsContext(
+                                qualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
+                                searchText,
+                            )
+                        } catch (ctxError) {
+                            console.error("[SearchSkill] buildSearchResultsContext failed:", ctxError)
+                            searchResultsContext = "## SEARCH RESULTS\nNo sources available."
+                        }
 
                         // Build compose messages: system + skills + search results + file context + conversation
                         const composeMessages: ModelMessage[] = [
@@ -2623,16 +2643,9 @@ Aturan:
                                     const sourceQualityTelemetry = {
                                         searchSkillApplied: true,
                                         searchSkillName: "source-quality",
-                                        searchSkillAction: qualityResult.valid ? "scored" : "rejected",
-                                        sourcesScored: (qualityResult.scoredSources?.length ?? 0) + (qualityResult.filteredOut?.length ?? 0),
-                                        sourcesFiltered: qualityResult.filteredOut?.length ?? 0,
-                                        sourcesPassedTiers: JSON.stringify(
-                                            (qualityResult.scoredSources ?? []).reduce((acc: Record<string, number>, s) => {
-                                                acc[s.tier] = (acc[s.tier] ?? 0) + 1
-                                                return acc
-                                            }, {} as Record<string, number>)
-                                        ),
-                                        diversityWarning: qualityResult.diversityWarning,
+                                        searchSkillAction: qualityResult.valid ? "passed" : "all-blocked",
+                                        sourcesPassed: qualityResult.scoredSources?.length ?? 0,
+                                        sourcesBlocked: qualityResult.filteredOut?.length ?? 0,
                                     }
                                     logAiTelemetry({
                                         token: convexToken,
@@ -2656,7 +2669,7 @@ Aturan:
                                     searchStatusClosed = false
                                     closeSearchStatus(sourceCount > 0 ? "done" : "off")
                                     Sentry.captureException(err, { tags: { subsystem: "citation" } })
-                                    console.error("[Chat API] Failed to compute inline citations:", err)
+                                    console.error("[SearchSkill] Citation finalize failed:", err)
                                 }
 
                                 if (!didFinalizeForPersist) {
@@ -2675,6 +2688,7 @@ Aturan:
                             }
 
                             if (chunk.type === "error") {
+                                console.error("[SearchSkill] Compose stream error:", JSON.stringify(chunk).slice(0, 500))
                                 searchStatusClosed = false
                                 closeSearchStatus("error")
                                 emitTrace(reasoningTrace.finalize({
@@ -2767,7 +2781,7 @@ Aturan:
                         if (normalizedText.length > 0 && sources && sources.length > 0) {
                             sources = await enrichSourcesWithFetchedTitles(sources, {
                                 concurrency: 4,
-                                timeoutMs: 2500,
+                                timeoutMs: 5000,
                             })
                         }
 
@@ -3331,9 +3345,15 @@ Aturan:
                         let grokQualityResult: ReturnType<typeof skill.scoreSources> = { valid: true, scoredSources: [], filteredOut: [] }
 
                         try {
+                        const { getSearchSystemPrompt, augmentUserMessageForSearch } = await import("@/lib/ai/search-system-prompt")
+                        const grokSearchMessages = augmentUserMessageForSearch([
+                            { role: "system" as const, content: getSearchSystemPrompt() },
+                            ...sanitizedFallbackMessages.filter(m => m.role !== "system"),
+                        ])
+
                         const fallbackSearchResult = streamText({
                             model: fallbackSearchModel,
-                            messages: sanitizedFallbackMessages,
+                            messages: grokSearchMessages,
                             // No explicit tools — web_search_options configured in model init
                             ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
                             ...samplingOptions,
@@ -3381,10 +3401,7 @@ Aturan:
                             : normalizedCitations.filter(c => !isGarbageUrl(c.url) && !isVertexProxyUrl(c.url)) // fallback
 
                         if (grokQualityResult.filteredOut?.length) {
-                            console.log(`[source-quality:grok] Filtered ${grokQualityResult.filteredOut.length} low-quality sources`)
-                        }
-                        if (grokQualityResult.diversityWarning) {
-                            console.log(`[source-quality:grok] ${grokQualityResult.diversityWarning}`)
+                            console.log(`[source-quality:grok] Filtered ${grokQualityResult.filteredOut.length} blocked sources`)
                         }
 
                         scoredSources = filteredCitations.map((citation) => ({
@@ -3441,6 +3458,7 @@ Aturan:
 
                         const searchResultsContext = buildSearchResultsContext(
                             grokQualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
+                            searchText,
                         )
 
                         // Build compose messages: system + skills + search results + file context + conversation
@@ -3619,16 +3637,9 @@ Aturan:
                                     const grokSourceQualityTelemetry = {
                                         searchSkillApplied: true,
                                         searchSkillName: "source-quality",
-                                        searchSkillAction: grokQualityResult.valid ? "scored" : "rejected",
-                                        sourcesScored: (grokQualityResult.scoredSources?.length ?? 0) + (grokQualityResult.filteredOut?.length ?? 0),
-                                        sourcesFiltered: grokQualityResult.filteredOut?.length ?? 0,
-                                        sourcesPassedTiers: JSON.stringify(
-                                            (grokQualityResult.scoredSources ?? []).reduce((acc: Record<string, number>, s) => {
-                                                acc[s.tier] = (acc[s.tier] ?? 0) + 1
-                                                return acc
-                                            }, {} as Record<string, number>)
-                                        ),
-                                        diversityWarning: grokQualityResult.diversityWarning,
+                                        searchSkillAction: grokQualityResult.valid ? "passed" : "all-blocked",
+                                        sourcesPassed: grokQualityResult.scoredSources?.length ?? 0,
+                                        sourcesBlocked: grokQualityResult.filteredOut?.length ?? 0,
                                     }
                                     logAiTelemetry({
                                         token: convexToken,
