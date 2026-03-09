@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
   Menu,
-  Xmark,
+  MenuScale,
   SunLight,
   HalfMoon,
   User,
@@ -395,7 +395,7 @@ export function GlobalHeader() {
             aria-expanded={isMobileMenuOpen}
           >
             {isMobileMenuOpen ? (
-              <Xmark className="icon-interface" />
+              <MenuScale className="icon-interface" />
             ) : (
               <Menu className="icon-interface" />
             )}
@@ -484,14 +484,11 @@ export function GlobalHeader() {
 
           {/* SignedIn: Auth section */}
           {shouldShowAuthenticatedUi && (
-            <div className="mt-3 rounded-sm border-hairline border-border bg-muted p-4">
+            <div className="mt-3 rounded-sm border-hairline border-border bg-[color:color-mix(in_oklch,var(--core-card)_78%,var(--core-background))] px-2.5 py-2">
               <Accordion type="single" collapsible>
                 <AccordionItem value="user" className="border-none">
                   <AccordionTrigger className="items-center py-0 hover:no-underline [&>svg]:self-center [&>svg]:translate-y-0">
-                    <div className="flex min-h-12 w-full items-center gap-3 rounded-action px-3 py-3 text-left transition-colors hover:bg-accent">
-                      <div className={cn("h-8 w-8 rounded-action flex items-center justify-center text-xs font-semibold", segmentConfig.className)}>
-                        {initial}
-                      </div>
+                    <div className="flex min-h-9 w-full items-center gap-2 rounded-action px-1.5 py-1.5 text-left transition-colors hover:bg-accent">
                       <span className="flex-1 text-narrative text-xs font-medium text-foreground">
                         {fullName}
                       </span>
