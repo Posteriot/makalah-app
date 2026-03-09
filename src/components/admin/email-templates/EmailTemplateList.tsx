@@ -4,7 +4,7 @@ import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { useState } from "react"
-import { TEMPLATE_LABELS } from "@convex/emailTemplates"
+import { TEMPLATE_LABELS } from "@convex/emailTemplateConstants"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmailTemplateEditor } from "./EmailTemplateEditor"
 
