@@ -31,6 +31,14 @@ interface UserDropdownProps {
   placement?: "bottom-end" | "top-start" | "top-end"
   /** Optional callback after menu action completes (e.g., close mobile sheet) */
   onActionComplete?: () => void
+  /** Parent-provided display name to avoid local auth gating */
+  displayName?: string
+  /** Parent-provided admin override */
+  isAdminOverride?: boolean
+  /** Parent-provided sign out handler */
+  onSignOutOverride?: () => Promise<void> | void
+  /** Disable trigger and actions */
+  disabled?: boolean
 }
 
 export function UserDropdown({
@@ -40,8 +48,12 @@ export function UserDropdown({
   compactFill = false,
   placement = "bottom-end",
   onActionComplete,
+  displayName,
+  isAdminOverride,
+  onSignOutOverride,
+  disabled = false,
 }: UserDropdownProps) {
-  const { data: session } = useSession()
+  const { data: session, isPending: isSessionPending } = useSession()
   const [isOpen, setIsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [hasMounted, setHasMounted] = useState(false)
@@ -57,15 +69,6 @@ export function UserDropdown({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMounted(true)
   }, [])
-
-  // Cache last session — prevents skeleton flash on tab refocus
-  // when BetterAuth briefly re-validates session.
-  // Uses setState-during-render pattern (React-supported derived state).
-  const [lastSession, setLastSession] = useState(session)
-  if (session && session !== lastSession) {
-    setLastSession(session)
-  }
-  const stableSession = session ?? lastSession
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -91,9 +94,17 @@ export function UserDropdown({
     return () => document.removeEventListener("keydown", handleEscape)
   }, [])
 
-  // Show skeleton on SSR + first client paint (hasMounted=false) OR when no session yet.
-  // Both server and client render the same skeleton initially → no hydration mismatch.
-  if (!hasMounted || !stableSession) {
+  useEffect(() => {
+    if (disabled) {
+      setIsOpen(false)
+    }
+  }, [disabled])
+
+  const canRenderFromParent = typeof displayName === "string" && displayName.trim().length > 0
+
+  // Show skeleton on SSR + first client paint, while auth session is still pending,
+  // or when standalone usage has no authenticated session.
+  if (!hasMounted || isSessionPending || (!canRenderFromParent && !session)) {
     return variant === "compact"
       ? compactLabel === "first-name"
         ? <Skeleton className={cn("rounded-action", compactFill ? "h-11 w-full" : "h-8 w-[132px]")} />
@@ -101,10 +112,11 @@ export function UserDropdown({
       : <Skeleton className="h-[30px] w-[100px] rounded-action" />
   }
 
-  const firstName = convexUser?.firstName || stableSession?.user?.name?.split(" ")[0] || "User"
+  const firstName = displayName || convexUser?.firstName || session?.user?.name?.split(" ")[0] || "User"
 
   // isAdmin berdasarkan ROLE untuk menampilkan Admin Panel link
-  const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
+  const isAdmin =
+    isAdminOverride ?? (convexUser?.role === "admin" || convexUser?.role === "superadmin")
 
   const closeAfterAction = () => {
     setIsOpen(false)
@@ -118,9 +130,14 @@ export function UserDropdown({
   })()
 
   const handleSignOut = async () => {
-    if (isSigningOut) return
+    if (isSigningOut || disabled) return
     setIsSigningOut(true)
     closeAfterAction()
+
+    if (onSignOutOverride) {
+      await onSignOutOverride()
+      return
+    }
 
     // Clear browser cookie first — crossDomainClient clears localStorage
     // in its init hook (before POST), which can unmount this component.
@@ -143,18 +160,23 @@ export function UserDropdown({
       {variant === "compact" ? (
         compactLabel === "first-name" ? (
           <button
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => {
+              if (disabled) return
+              setIsOpen(!isOpen)
+            }}
             className={cn(
               "group relative inline-flex items-center gap-2 rounded-action border border-border bg-popover px-2.5",
               "text-sm font-medium text-foreground transition-colors duration-150 focus-ring",
               "hover:bg-accent",
               compactFill ? "min-h-11 w-full py-2 justify-start" : "h-8 max-w-[156px] py-1",
               isOpen && "bg-accent",
+              disabled && "cursor-not-allowed opacity-60",
               compactTriggerClassName
             )}
             aria-expanded={isOpen}
             aria-haspopup="true"
             aria-label="User menu"
+            disabled={disabled}
           >
             <span className="relative inline-flex h-5 w-5 items-center justify-center text-foreground">
               <User className="h-4 w-4" />
@@ -173,17 +195,22 @@ export function UserDropdown({
           </button>
         ) : (
           <button
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => {
+              if (disabled) return
+              setIsOpen(!isOpen)
+            }}
             className={cn(
               "relative flex items-center justify-center",
               "w-8 h-8 rounded-full",
               "text-muted-foreground hover:text-foreground hover:bg-accent/80",
               "transition-colors duration-150",
-              isOpen && "text-foreground bg-accent/80"
+              isOpen && "text-foreground bg-accent/80",
+              disabled && "cursor-not-allowed opacity-60"
             )}
             aria-expanded={isOpen}
             aria-haspopup="true"
             aria-label="User menu"
+            disabled={disabled}
           >
             <User className="h-[18px] w-[18px]" />
             <span
@@ -194,7 +221,10 @@ export function UserDropdown({
         )
       ) : (
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            if (disabled) return
+            setIsOpen(!isOpen)
+          }}
           className={cn(
             // Structure for stripes animation
             "group relative overflow-hidden",
@@ -208,10 +238,12 @@ export function UserDropdown({
             "hover:text-[color:var(--core-cta-hover-fg)] hover:border-[color:var(--core-cta-hover-border)]",
             "aria-expanded:text-[color:var(--core-cta-hover-fg)] aria-expanded:border-[color:var(--core-cta-hover-border)]",
             // Transition & focus
-            "transition-colors focus-ring"
+            "transition-colors focus-ring",
+            disabled && "cursor-not-allowed opacity-60"
           )}
           aria-expanded={isOpen}
           aria-haspopup="true"
+          disabled={disabled}
         >
           {/* Diagonal stripes overlay - slides in on hover or when expanded */}
           <span
@@ -235,7 +267,7 @@ export function UserDropdown({
       )}
 
       {/* Dropdown Menu */}
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className={cn("absolute w-48 rounded-md border border-border bg-popover shadow-md z-drawer py-2 px-2", menuPositionClass)}>
           <Link
             href="/settings"

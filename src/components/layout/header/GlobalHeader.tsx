@@ -21,12 +21,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { useConvexAuth, useQuery } from "convex/react"
+import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { Skeleton } from "@/components/ui/skeleton"
 import { signOut, useSession } from "@/lib/auth-client"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
@@ -47,6 +47,12 @@ const SCROLL_THRESHOLD = 100 // px before header changes state
 const SCROLL_DOWN_DELTA = 8  // px minimum to hide header (less sensitive)
 const SCROLL_UP_DELTA = 2    // px minimum to show header (more sensitive)
 
+type HeaderAuthViewState =
+  | "loading"
+  | "authenticated"
+  | "unauthenticated"
+  | "signingOut"
+
 /**
  * Segment configuration for user avatar and badge
  *
@@ -65,12 +71,14 @@ const SEGMENT_CONFIG: Record<EffectiveTier, { className: string }> = {
 export function GlobalHeader() {
   const { resolvedTheme, setTheme } = useTheme()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [isHidden, setIsHidden] = useState(false)
   const [mobileMenuState, setMobileMenuState] = useState(() => ({
     isOpen: false,
     pathname,
   }))
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [currentHash, setCurrentHash] = useState("")
   const lastScrollYRef = useRef(0)
   const isThemeReady = resolvedTheme !== undefined
   const shouldHideHeader = pathname?.startsWith("/chat")
@@ -98,6 +106,14 @@ export function GlobalHeader() {
   const logoIconLight = cmsLogoLightUrl ?? "/logo/logo-color-lightmode.png"
   const brandTextDark = cmsBrandDarkUrl ?? "/logo-makalah-ai-white.svg"
   const brandTextLight = cmsBrandLightUrl ?? "/logo-makalah-ai-black.svg"
+  const isHeaderConfigLoading = headerConfig === undefined
+  const isBrandAssetLoading =
+    isHeaderConfigLoading ||
+    (Boolean(headerConfig?.logoDarkId) && cmsLogoDarkUrl === undefined) ||
+    (Boolean(headerConfig?.logoLightId) && cmsLogoLightUrl === undefined) ||
+    (Boolean(headerConfig?.brandTextDarkId) && cmsBrandDarkUrl === undefined) ||
+    (Boolean(headerConfig?.brandTextLightId) && cmsBrandLightUrl === undefined)
+  const isNavLoading = isHeaderConfigLoading
 
   // CMS-driven nav links with hardcoded fallback
   const baseNavLinks = headerConfig?.navLinks
@@ -116,25 +132,25 @@ export function GlobalHeader() {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
   }, [mobileMenuState.isOpen, mobileMenuState.pathname, pathname])
 
-  // Auth state from Convex (replaces <Authenticated>/<Unauthenticated> wrappers)
-  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
-
-  // Track whether auth has resolved at least once — prevents skeleton flash
-  // on tab refocus when Convex re-validates JWT (briefly sets isLoading=true).
-  // React supports setState during render for derived state (replaces getDerivedStateFromProps).
-  const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
-  if (isAuthenticated && !hasBeenAuthenticated) {
-    setHasBeenAuthenticated(true)
-  }
-
-  // Only show skeleton on initial load, not on tab-refocus re-auth
-  const showAuthSkeleton = isAuthLoading && !hasBeenAuthenticated
-  // Keep showing authenticated UI during brief re-auth cycles
-  const showAsAuthenticated = isAuthenticated || hasBeenAuthenticated
-
   // Auth session and Convex user data for mobile menu
-  const { data: session } = useSession()
+  const { data: session, isPending: isSessionPending } = useSession()
   const { user: convexUser, isLoading: isConvexLoading } = useCurrentUser()
+  const isAuthenticated = Boolean(session?.user)
+
+  const authViewState: HeaderAuthViewState = isSigningOut
+    ? "signingOut"
+    : isSessionPending || (isAuthenticated && isConvexLoading)
+      ? "loading"
+      : isAuthenticated
+        ? "authenticated"
+        : "unauthenticated"
+
+  const shouldShowThemeToggle = authViewState === "authenticated"
+  const shouldShowAuthSkeleton = authViewState === "loading"
+  const shouldShowAuthenticatedUi = authViewState === "authenticated"
+
+  const currentSearch = searchParams.toString()
+  const redirectTarget = `${pathname}${currentSearch ? `?${currentSearch}` : ""}${currentHash}`
 
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY
@@ -182,6 +198,26 @@ export function GlobalHeader() {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [isMobileMenuOpen, pathname])
 
+  useEffect(() => {
+    setMobileMenuState((prev) => {
+      if (!prev.isOpen && prev.pathname === pathname) return prev
+      return { isOpen: false, pathname }
+    })
+  }, [pathname])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    setCurrentHash(window.location.hash)
+  }, [pathname, currentSearch])
+
+  useEffect(() => {
+    if (authViewState === "authenticated") return
+    setMobileMenuState((prev) => {
+      if (!prev.isOpen) return prev
+      return { isOpen: false, pathname }
+    })
+  }, [authViewState, pathname])
+
   const toggleTheme = () => {
     if (!isThemeReady) return // Prevent toggle before hydration
     setTheme(resolvedTheme === "dark" ? "light" : "dark")
@@ -197,6 +233,7 @@ export function GlobalHeader() {
   const handleSignOut = async () => {
     if (isSigningOut) return
     setIsSigningOut(true)
+    setMobileMenuState({ isOpen: false, pathname })
 
     // Clear browser cookie first — crossDomainClient clears localStorage
     // in its init hook (before POST), which can unmount this component.
@@ -240,20 +277,31 @@ export function GlobalHeader() {
       <div className="mx-auto grid w-full max-w-7xl grid-cols-16 items-center gap-4 px-4 py-3 lg:px-8">
         {/* Header Left - Logo & Brand */}
         <div className="col-span-8 md:col-span-4 flex items-center gap-dense flex-nowrap">
-          <Link href="/" className="flex items-center gap-3 shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoIconDark} alt="Makalah" className="h-6 w-6 rounded-[4px] hidden dark:block" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoIconLight} alt="Makalah" className="h-6 w-6 rounded-[4px] block dark:hidden" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={brandTextDark} alt="Makalah" className="h-[18px] w-auto hidden dark:block" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={brandTextLight} alt="Makalah" className="h-[18px] w-auto block dark:hidden" />
-          </Link>
+          {isBrandAssetLoading ? (
+            <div
+              data-testid="header-brand-skeleton"
+              className="flex items-center gap-3 shrink-0"
+              aria-hidden="true"
+            >
+              <Skeleton className="h-6 w-6 rounded-[4px]" />
+              <Skeleton className="h-[18px] w-32 rounded-action" />
+            </div>
+          ) : (
+            <Link href="/" className="flex items-center gap-3 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoIconDark} alt="Makalah" className="h-6 w-6 rounded-[4px] hidden dark:block" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoIconLight} alt="Makalah" className="h-6 w-6 rounded-[4px] block dark:hidden" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={brandTextDark} alt="Makalah" className="h-[18px] w-auto hidden dark:block" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={brandTextLight} alt="Makalah" className="h-[18px] w-auto block dark:hidden" />
+            </Link>
+          )}
           {/* Subscription Badge - shows when logged in */}
-          {showAuthSkeleton ? (
+          {shouldShowAuthSkeleton ? (
             <Skeleton className="h-5 w-12 rounded-badge shrink-0" />
-          ) : showAsAuthenticated ? (
+          ) : shouldShowAuthenticatedUi ? (
             isConvexLoading ? (
               <Skeleton className="h-5 w-12 rounded-badge shrink-0" />
             ) : convexUser ? (
@@ -269,35 +317,51 @@ export function GlobalHeader() {
         {/* Header Right - Nav, Theme Toggle & Auth */}
         <div className="col-span-8 md:col-span-12 flex items-center justify-end gap-comfort">
           {/* Navigation - Desktop only */}
-          <nav className="hidden md:flex items-center gap-4">
-            {visibleNavLinks.map((link) => {
-              const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
-              const openInNewTab = shouldOpenInNewTab(link.href)
-              const resolvedHref = resolveNavHref(link.href, showAsAuthenticated)
-              return (
-                <Link
+          {isNavLoading ? (
+            <div
+              data-testid="header-nav-skeleton"
+              className="hidden md:flex items-center gap-4"
+              aria-hidden="true"
+            >
+              {NAV_LINKS.map((link) => (
+                <Skeleton
                   key={link.href}
-                  href={resolvedHref}
-                  target={openInNewTab ? "_blank" : undefined}
-                  rel={openInNewTab ? "noopener noreferrer" : undefined}
-                  className={cn(
-                    "relative rounded-action px-2.5 py-1.5 text-narrative text-xs uppercase",
-                    "text-foreground transition-colors hover:bg-accent",
-                    "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-1",
-                    "after:border-b after:border-dotted after:border-current after:scale-x-0 after:origin-left after:transition-transform",
-                    "hover:after:scale-x-100",
-                    isActive && "text-muted-foreground after:scale-x-100"
-                  )}
-              >
-                {link.label}
-                </Link>
-              )
-            })}
-          </nav>
+                  className="h-8 rounded-action"
+                  style={{ width: `${Math.max(link.label.length * 11, 72)}px` }}
+                />
+              ))}
+            </div>
+          ) : (
+            <nav className="hidden md:flex items-center gap-4">
+              {visibleNavLinks.map((link) => {
+                const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+                const openInNewTab = shouldOpenInNewTab(link.href)
+                const resolvedHref = resolveNavHref(link.href, shouldShowAuthenticatedUi)
+                return (
+                  <Link
+                    key={link.href}
+                    href={resolvedHref}
+                    target={openInNewTab ? "_blank" : undefined}
+                    rel={openInNewTab ? "noopener noreferrer" : undefined}
+                    className={cn(
+                      "relative rounded-action px-2.5 py-1.5 text-narrative text-xs uppercase",
+                      "text-foreground transition-colors hover:bg-accent",
+                      "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-1",
+                      "after:border-b after:border-dotted after:border-current after:scale-x-0 after:origin-left after:transition-transform",
+                      "hover:after:scale-x-100",
+                      isActive && "text-muted-foreground after:scale-x-100"
+                    )}
+                >
+                  {link.label}
+                  </Link>
+                )
+              })}
+            </nav>
+          )}
           {/* Theme Toggle - Mobile (icon only, left of hamburger) */}
-          {showAuthSkeleton ? (
+          {shouldShowAuthSkeleton ? (
             <Skeleton className="md:hidden h-6 w-6 rounded-action mr-2" />
-          ) : showAsAuthenticated ? (
+          ) : shouldShowThemeToggle ? (
             <button
               onClick={toggleTheme}
               className={cn(
@@ -337,9 +401,9 @@ export function GlobalHeader() {
           </button>
 
           {/* Theme Toggle - Desktop only for logged-in users */}
-          {showAuthSkeleton ? (
+          {shouldShowAuthSkeleton ? (
             <Skeleton className="hidden md:block h-7.5 w-7.5 rounded-action" />
-          ) : showAsAuthenticated ? (
+          ) : shouldShowThemeToggle ? (
             <button
               onClick={toggleTheme}
               className={cn(
@@ -357,15 +421,19 @@ export function GlobalHeader() {
           ) : null}
 
           {/* Auth State - Desktop only (mobile shows in panel) */}
-          {showAuthSkeleton ? (
+          {shouldShowAuthSkeleton ? (
             <Skeleton className="hidden md:block h-[30px] w-[100px] rounded-action" />
-          ) : showAsAuthenticated ? (
+          ) : shouldShowAuthenticatedUi ? (
             <div className="hidden md:block">
-              <UserDropdown />
+              <UserDropdown
+                displayName={firstName}
+                isAdminOverride={isAdmin}
+                onSignOutOverride={handleSignOut}
+              />
             </div>
           ) : (
             <Link
-              href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
+              href={`/sign-in?redirect_url=${encodeURIComponent(redirectTarget)}`}
               className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-primary bg-primary px-2 py-1 text-xs font-medium text-narrative uppercase text-primary-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground focus-ring"
             >
               Masuk
@@ -382,7 +450,7 @@ export function GlobalHeader() {
           {visibleNavLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
             const openInNewTab = shouldOpenInNewTab(link.href)
-            const resolvedHref = resolveNavHref(link.href, showAsAuthenticated)
+            const resolvedHref = resolveNavHref(link.href, shouldShowAuthenticatedUi)
             return (
                 <Link
                   key={link.href}
@@ -402,9 +470,9 @@ export function GlobalHeader() {
           })}
 
           {/* SignedOut: Show login button */}
-          {!showAuthSkeleton && !showAsAuthenticated && (
+          {authViewState === "unauthenticated" && (
             <Link
-              href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
+              href={`/sign-in?redirect_url=${encodeURIComponent(redirectTarget)}`}
               className="mt-2 inline-flex items-center justify-center rounded-action border-main border-border px-3 py-2 text-signal text-[11px] font-bold uppercase tracking-widest text-foreground hover:bg-accent transition-colors"
               onClick={() => setMobileMenuState({ isOpen: false, pathname })}
             >
@@ -413,7 +481,7 @@ export function GlobalHeader() {
           )}
 
           {/* SignedIn: Auth section */}
-          {showAsAuthenticated && (
+          {shouldShowAuthenticatedUi && (
             <div className="mt-3 rounded-sm border-hairline border-border bg-muted p-4">
               <Accordion type="single" collapsible>
                 <AccordionItem value="user" className="border-none">
