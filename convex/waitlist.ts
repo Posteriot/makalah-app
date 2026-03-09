@@ -249,12 +249,23 @@ export const sendInviteEmail = action({
     })
     const signupUrl = `${appUrl}/sign-up?${params.toString()}`
 
-    // Send invite email via Resend
-    const { sendWaitlistInviteEmail } = await import("./authEmails")
-    await sendWaitlistInviteEmail(result.email, firstName, signupUrl)
+    // Send invite email — try DB template first, fallback to hardcoded
+    const { fetchAndRenderTemplate } = await import("./emailTemplateHelper")
+    const rendered = await fetchAndRenderTemplate(ctx, "waitlist_invite", {
+      firstName,
+      signupUrl,
+      appName: "Makalah AI",
+    })
+    if (rendered) {
+      const { sendViaResend } = await import("./authEmails")
+      await sendViaResend(result.email, rendered.subject, rendered.html)
+    } else {
+      const { sendWaitlistInviteEmail } = await import("./authEmails")
+      await sendWaitlistInviteEmail(result.email, firstName, signupUrl)
+    }
 
     // Notify admins about invite sent (direct call — avoids action-in-action overhead)
-    await resolveAndNotifyAdmins("invited", result.email, `${result.firstName ?? ""} ${result.lastName ?? ""}`.trim() || "Pengguna")
+    await resolveAndNotifyAdmins(ctx, "invited", result.email, `${result.firstName ?? ""} ${result.lastName ?? ""}`.trim() || "Pengguna")
 
     return { email: result.email }
   },
@@ -270,6 +281,8 @@ export const sendInviteEmail = action({
  * Also used by internalAction below (for scheduler calls from mutations).
  */
 async function resolveAndNotifyAdmins(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: { runQuery: any },
   event: "new_registration" | "invited" | "registered",
   entryEmail: string,
   entryName: string
@@ -292,8 +305,35 @@ async function resolveAndNotifyAdmins(
     return
   }
 
-  const { sendWaitlistAdminNotification } = await import("./authEmails")
-  await sendWaitlistAdminNotification(allAdmins, event, entryEmail, entryName)
+  // Try DB template first, fallback to hardcoded
+  const { fetchAndRenderTemplate } = await import("./emailTemplateHelper")
+
+  const eventLabels: Record<string, string> = {
+    new_registration: "PENDAFTAR BARU",
+    invited: "UNDANGAN TERKIRIM",
+    registered: "REGISTRASI SELESAI",
+  }
+
+  const rendered = await fetchAndRenderTemplate(ctx, "waitlist_admin", {
+    eventLabel: eventLabels[event] ?? event,
+    entryEmail,
+    entryName,
+    appName: "Makalah AI",
+  })
+
+  if (rendered) {
+    const { sendViaResend } = await import("./authEmails")
+    for (const adminEmail of allAdmins) {
+      try {
+        await sendViaResend(adminEmail, rendered.subject, rendered.html)
+      } catch (error) {
+        console.warn(`[Waitlist Admin] Failed to notify ${adminEmail}:`, error)
+      }
+    }
+  } else {
+    const { sendWaitlistAdminNotification } = await import("./authEmails")
+    await sendWaitlistAdminNotification(allAdmins, event, entryEmail, entryName)
+  }
 }
 
 /**
@@ -310,7 +350,7 @@ export const notifyAdminsWaitlistEvent = internalAction({
     entryEmail: v.string(),
     entryName: v.string(),
   },
-  handler: async (_ctx, args) => {
-    await resolveAndNotifyAdmins(args.event, args.entryEmail, args.entryName)
+  handler: async (ctx, args) => {
+    await resolveAndNotifyAdmins(ctx, args.event, args.entryEmail, args.entryName)
   },
 })

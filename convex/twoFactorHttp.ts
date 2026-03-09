@@ -3,6 +3,8 @@ import { internal } from "./_generated/api"
 import { createAuth } from "./auth"
 import { hashOtp } from "./twoFactorOtp"
 import { sendTwoFactorOtpEmail } from "./authEmails"
+import { fetchAndRenderTemplate } from "./emailTemplateHelper"
+import { sendViaResend } from "./authEmails"
 import { getAllowedCorsOrigin } from "./authOrigins"
 import { symmetricDecrypt, symmetricEncrypt } from "better-auth/crypto"
 
@@ -105,8 +107,16 @@ export const sendOtp = httpAction(async (ctx, request) => {
       )
     }
 
-    // Send email
-    await sendTwoFactorOtpEmail(email, otp)
+    // Send email — try DB template first, fallback to hardcoded
+    const rendered = await fetchAndRenderTemplate(ctx, "two_factor_otp", {
+      otpCode: otp,
+      appName: "Makalah AI",
+    })
+    if (rendered) {
+      await sendViaResend(email, rendered.subject, rendered.html)
+    } else {
+      await sendTwoFactorOtpEmail(email, otp)
+    }
 
     return new Response(
       JSON.stringify({ status: true }),
