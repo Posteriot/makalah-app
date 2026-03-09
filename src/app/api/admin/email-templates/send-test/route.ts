@@ -88,7 +88,8 @@ export async function POST(request: NextRequest) {
 
   try {
     // Render template
-    const rawHtml = await renderEmailTemplate(brandSettings, subject, sections)
+    const siteUrl = new URL(request.url).origin
+    const rawHtml = await renderEmailTemplate(brandSettings, subject, sections, siteUrl)
 
     // Build example data from placeholders
     const exampleData: Record<string, string> = {}

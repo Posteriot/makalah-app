@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const html = await renderEmailTemplate(brandSettings, subject, sections)
+    const siteUrl = new URL(request.url).origin
+    const html = await renderEmailTemplate(brandSettings, subject, sections, siteUrl)
     return NextResponse.json({ html })
   } catch (error) {
     console.error("[EmailTemplate Preview] Render failed:", error)
