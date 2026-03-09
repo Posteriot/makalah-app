@@ -543,9 +543,10 @@ Location: `/dashboard` → Email Templates tab (4 sub-tabs: Brand, Auth, Payment
 npx convex run migrations/seedEmailTemplates:seedEmailTemplates
 ```
 
-### Current Limitations
-- Auth emails (`convex/authEmails.ts`) still use hardcoded HTML — BetterAuth callbacks don't pass Convex `ctx` for DB access
-- Payment emails fully integrated with DB template + fallback
+### Integration Status
+- All 12 email senders integrated with DB template + hardcoded fallback
+- Convex-side senders (auth, waitlist, 2FA) use `fetchAndRenderTemplate()` from `convex/emailTemplateHelper.ts`
+- Next.js-side senders (payment, technical report) use `fetchTemplateAndRender()` from `src/lib/email/template-helpers.ts`
 - Templates seeded as `isActive: false` — admin must review, save (pre-render), and activate
 
 ## System Prompt Management
