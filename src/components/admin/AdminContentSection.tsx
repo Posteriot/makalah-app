@@ -11,6 +11,7 @@ import { UserList } from "./UserList"
 import { WaitlistEntries } from "./WaitlistEntries"
 import { WaitlistSettings } from "./WaitlistSettings"
 import { TechnicalReportManager } from "./TechnicalReportManager"
+import { EmailTemplatesManager } from "./email-templates/EmailTemplatesManager"
 import { ADMIN_SIDEBAR_ITEMS, findTabConfig, type AdminTabId } from "./adminPanelConfig"
 
 type AdminContentSectionProps = {
@@ -93,6 +94,19 @@ export function AdminContentSection({
 
         {activeTab === "technical-report" && (
           <TechnicalReportManager userId={userId} />
+        )}
+
+        {activeTab === "email-templates.brand" && (
+          <EmailTemplatesManager userId={userId} activeView="brand" />
+        )}
+        {activeTab === "email-templates.auth" && (
+          <EmailTemplatesManager userId={userId} activeView="auth" />
+        )}
+        {activeTab === "email-templates.payment" && (
+          <EmailTemplatesManager userId={userId} activeView="payment" />
+        )}
+        {activeTab === "email-templates.notification" && (
+          <EmailTemplatesManager userId={userId} activeView="notification" />
         )}
 
         {activeTab === "stats" && (

@@ -6,6 +6,7 @@ import {
   Cpu,
   EditPencil,
   CreditCard,
+  Mail,
   StatsReport,
   DesignNib,
   Clock,
@@ -134,6 +135,49 @@ export const ADMIN_SIDEBAR_ITEMS: AdminSidebarItem[] = [
     headerIcon: WarningCircle,
   },
   {
+    id: "email-templates",
+    label: "Email Templates",
+    icon: Mail,
+    headerTitle: "Email Templates",
+    headerDescription: "Kelola template email yang dikirim ke pengguna",
+    headerIcon: Mail,
+    defaultChildId: "email-templates.brand",
+    children: [
+      {
+        id: "email-templates.brand",
+        label: "Brand Settings",
+        icon: Settings,
+        headerTitle: "Email Brand Settings",
+        headerDescription: "Atur branding global untuk semua email",
+        headerIcon: Settings,
+      },
+      {
+        id: "email-templates.auth",
+        label: "Auth Emails",
+        icon: Mail,
+        headerTitle: "Auth Emails",
+        headerDescription: "Template email autentikasi (verifikasi, magic link, 2FA, dll)",
+        headerIcon: Mail,
+      },
+      {
+        id: "email-templates.payment",
+        label: "Payment Emails",
+        icon: CreditCard,
+        headerTitle: "Payment Emails",
+        headerDescription: "Template email pembayaran berhasil dan gagal",
+        headerIcon: CreditCard,
+      },
+      {
+        id: "email-templates.notification",
+        label: "Notification Emails",
+        icon: WarningCircle,
+        headerTitle: "Notification Emails",
+        headerDescription: "Template email notifikasi (waitlist, technical report)",
+        headerIcon: WarningCircle,
+      },
+    ],
+  },
+  {
     id: "stats",
     label: "Statistik",
     icon: StatsReport,
@@ -165,6 +209,11 @@ export type AdminTabId =
   | "waitlist.entries"
   | "waitlist.settings"
   | "technical-report"
+  | "email-templates"
+  | "email-templates.brand"
+  | "email-templates.auth"
+  | "email-templates.payment"
+  | "email-templates.notification"
   | "stats"
   | "cms"
 
