@@ -52,6 +52,19 @@ This is the core architectural principle, validated through iterative experiment
 - Simpler pipeline = more sources preserved = better Gemini output
 - Skill instructions are easier to update than code logic
 
+### Evidence: Anthropic Programmatic Tool Calling
+
+Anthropic's own research confirms this principle (`.references/programatic-tools-calling/`):
+
+> "Adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." — BrowseComp & DeepSearchQA benchmarks
+
+Key findings that validate our approach:
+- **"Tool results from programmatic calls are NOT added to Claude's context — only the final code output is."** Every intermediate pipeline step between tool output and LLM reasoning = data the LLM never sees. Our 6-step pipeline lost 50% of sources this way.
+- **LLM writes its own filtering logic** — Anthropic lets the LLM write `errors = [log for log in logs if "ERROR" in log]` instead of hardcoding filters. The LLM decides what's relevant, not the developer.
+- **"This approach enables workflows that would be impractical with traditional tool use"** — Traditional = developer-designed step-by-step pipeline. Modern = LLM reasons over raw data with skill guidance.
+
+Our architecture is philosophically identical: pass raw tool output to LLM + provide SKILL.md instructions for HOW to reason about it. No intermediate code processing.
+
 ## Blocklist Strategy
 
 **Blocklist lives in SKILL.md as natural language, NOT as programmatic code filter.**

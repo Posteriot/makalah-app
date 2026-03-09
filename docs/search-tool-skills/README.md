@@ -96,9 +96,29 @@ Jangan campur. Search quality nggak peduli apakah konteksnya paper atau chat. Pa
 | Simplifikasi | 3-step (normalize → blacklist code → Gemini) | 12 sources |
 | SKILL.md blocklist | 2-step (normalize → Gemini + SKILL.md blocklist) | 14 sources, 0 blocked cited |
 
+## Prinsip #6: LLM Harus Reasoning, Bukan Pipeline
+
+> "Adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." — Anthropic, Programmatic Tool Calling docs
+
+Anthropic sendiri membuktikan di BrowseComp dan DeepSearchQA benchmarks: yang meningkatkan performa bukan tools yang lebih canggih, tapi **membiarkan LLM reasoning atas hasil tools** — bukan pipeline yang kita hardcode.
+
+Tiga insight kunci dari Anthropic Programmatic Tool Calling:
+
+1. **"Tool results from programmatic calls are NOT added to Claude's context — only the final code output is."** Setiap intermediate processing step yang kita taruh antara tool output dan LLM input = data yang hilang sebelum LLM sempat reasoning. Pipeline 6-step kita kehilangan 50% source karena ini.
+
+2. **LLM menulis logika filtering sendiri** — dalam contoh Anthropic, Claude menulis `errors = [log for log in logs if "ERROR" in log]`. Bukan developer yang hardcode filter. LLM decide apa yang relevan, bukan code.
+
+3. **"This approach enables workflows that would be impractical with traditional tool use"** — Traditional = kita design pipeline step-by-step. Programmatic = LLM decide flow-nya sendiri.
+
+Implikasi untuk Makalah:
+- Pipeline `normalize → pass ALL to Gemini + SKILL.md` = kita membiarkan Gemini reasoning atas raw data
+- SKILL.md = instruksi HOW to reason, bukan hardcoded logic
+- Blocklist di SKILL.md = Gemini decide mana yang di-exclude, bukan code yang preemptively buang
+
 ## Referensi
 
 - Anthropic: "The Complete Guide to Building Skills for Claude"
+- Anthropic: "Programmatic Tool Calling" (`.references/programatic-tools-calling/`)
 - Boris Cherny: tools + freedom > rigid workflows
 - `architecture-constraints.md` — aturan teknis (bahasa, scope, separasi)
 - `web-search-quality-skill-design.md` — detail arsitektur skill

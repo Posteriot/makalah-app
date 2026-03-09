@@ -33,3 +33,11 @@ Saat paper workflow skill dibuat nanti, ikuti prinsip yang sama:
 - **Skill instructions di SKILL.md** (natural language) — bukan hardcoded strings di route.ts
 - **Tools tetap simple** — mode switching adalah concern skill, bukan tool
 - **Minimal code pipeline** — hindari deterministic enforcement yang membatasi LLM intelligence
+- **LLM harus reasoning, bukan pipeline** — Anthropic's Programmatic Tool Calling research menunjukkan bahwa membiarkan LLM reasoning atas raw tool output jauh lebih efektif daripada pipeline step-by-step yang memproses data sebelum sampai ke LLM
+
+### Peringatan untuk Paper Workflow Skill
+
+System notes (`PAPER_TOOLS_ONLY_NOTE`, `getResearchIncompleteNote`, `getFunctionToolsModeNote`) saat ini adalah hardcoded strings yang di-inject ke prompt. Saat migrasi ke skill:
+- Jangan buat pipeline deterministik yang memutuskan mode switching — biarkan LLM reasoning atas state
+- Skill instructions cukup menjelaskan: "if research incomplete, search first; if search done, use function tools"
+- Referensi: Anthropic Programmatic Tool Calling (`.references/programatic-tools-calling/`) — evidence bahwa LLM reasoning > hardcoded pipelines
