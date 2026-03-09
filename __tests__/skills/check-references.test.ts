@@ -50,7 +50,7 @@ describe("check-references", () => {
         hasRecentSources: true,
       })
       expect(result.valid).toBe(false)
-      expect(result.error).toContain("fabricated.com")
+      if (!result.valid) expect(result.error).toContain("fabricated.com")
     })
 
     it("requires sources when search results are available for createArtifact", () => {
