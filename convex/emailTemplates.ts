@@ -2,8 +2,9 @@ import { v } from "convex/values"
 import { query, mutation, internalQuery } from "./_generated/server"
 import { requireRole } from "./permissions"
 
-// Re-export constants from separate file (safe for browser import)
-export { TEMPLATE_GROUPS, TEMPLATE_LABELS } from "./emailTemplateConstants"
+// Import constants (used in queries below) + re-export for consumers
+import { TEMPLATE_GROUPS, TEMPLATE_LABELS } from "./emailTemplateConstants"
+export { TEMPLATE_GROUPS, TEMPLATE_LABELS }
 
 // ============================================================================
 // SHARED VALIDATORS
