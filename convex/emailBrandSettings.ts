@@ -6,14 +6,15 @@ import { requireRole } from "./permissions"
 // DEFAULTS
 // ============================================================================
 
+// Colors from globals-new.css core slate palette (OKLCH chroma=0 → hex)
 const DEFAULTS = {
   appName: "Makalah AI",
   primaryColor: "#2563eb",
   secondaryColor: "#16a34a",
-  backgroundColor: "#f8fafc",
-  contentBackgroundColor: "#ffffff",
-  textColor: "#1e293b",
-  mutedTextColor: "#64748b",
+  backgroundColor: "#fafafa",         // slate-50 oklch(0.984)
+  contentBackgroundColor: "#ffffff",  // neutral-0
+  textColor: "#070707",               // slate-950 oklch(0.129)
+  mutedTextColor: "#545454",          // slate-600 oklch(0.446)
   fontFamily: "Geist, Arial, sans-serif",
   footerText: "© 2026 Makalah AI. All rights reserved.",
   footerLinks: [

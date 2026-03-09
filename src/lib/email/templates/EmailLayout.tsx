@@ -12,12 +12,13 @@ import {
 } from "@react-email/components"
 import * as React from "react"
 
+// Light mode colors from globals-new.css core slate palette (OKLCH→hex)
 const colors = {
-  background: "#f8fafc",
-  contentBackground: "#ffffff",
-  text: "#1e293b",
-  textMuted: "#64748b",
-  border: "#e2e8f0",
+  background: "#fafafa",         // slate-50 oklch(0.984)
+  contentBackground: "#ffffff",  // neutral-0
+  text: "#070707",               // slate-950 oklch(0.129)
+  textMuted: "#545454",          // slate-600 oklch(0.446)
+  border: "#d4d4d4",             // slate-300 oklch(0.869)
   primary: "#2563eb",
 }
 
@@ -27,18 +28,19 @@ interface EmailLayoutProps {
   siteUrl?: string
 }
 
+// Dark mode colors from globals-new.css core slate palette (OKLCH→hex)
 function DarkModeStyles() {
   return (
     <style>{`
       @media (prefers-color-scheme: dark) {
-        .em-body { background-color: #0f172a !important; }
-        .em-container { background-color: #1e293b !important; }
-        .em-header { background-color: #0f172a !important; border-bottom-color: #334155 !important; }
+        .em-body { background-color: #181818 !important; }
+        .em-container { background-color: #292929 !important; }
+        .em-header { background-color: #181818 !important; border-bottom-color: #404040 !important; }
         .em-header-light { display: none !important; }
         .em-header-dark { display: inline-block !important; }
-        .em-text { color: #e2e8f0 !important; }
-        .em-muted { color: #94a3b8 !important; }
-        .em-divider { border-color: #334155 !important; }
+        .em-text { color: #f4f4f4 !important; }
+        .em-muted { color: #9f9f9f !important; }
+        .em-divider { border-color: #404040 !important; }
         .em-link { color: #60a5fa !important; }
       }
     `}</style>

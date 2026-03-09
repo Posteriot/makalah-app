@@ -50,8 +50,14 @@ export interface EmailSection {
 }
 
 // ---------------------------------------------------------------------------
-// Dark mode CSS — static constant, NOT user input
-// Adapts header, body, footer to system dark theme.
+// Dark mode CSS — static constant, NOT user input.
+// Color values derived from globals-new.css core slate palette (OKLCH→hex):
+//   dark-slate-900 (#181818) = background
+//   dark-slate-800 (#292929) = card/container
+//   dark-slate-700 (#404040) = border
+//   dark-slate-300 (#9f9f9f) = muted-foreground
+//   dark-slate-100 (#f4f4f4) = foreground
+//   dark-slate-50  (#fafafa) = heading
 // Works in Apple Mail, iOS Mail, Outlook.com.
 // Gmail ignores this (shows light mode default) — acceptable.
 // ---------------------------------------------------------------------------
@@ -60,21 +66,21 @@ function DarkModeStyles() {
   return (
     <style>{`
       @media (prefers-color-scheme: dark) {
-        .em-body { background-color: #0f172a !important; }
-        .em-container { background-color: #1e293b !important; }
-        .em-header { background-color: #0f172a !important; border-bottom-color: #334155 !important; }
+        .em-body { background-color: #181818 !important; }
+        .em-container { background-color: #292929 !important; }
+        .em-header { background-color: #181818 !important; border-bottom-color: #404040 !important; }
         .em-header-light { display: none !important; }
         .em-header-dark { display: inline-block !important; }
-        .em-heading { color: #f1f5f9 !important; }
-        .em-text { color: #e2e8f0 !important; }
-        .em-muted { color: #94a3b8 !important; }
-        .em-divider { border-color: #334155 !important; }
-        .em-info-box { background-color: #0f172a !important; border: 1px solid #334155 !important; }
-        .em-footer-divider { border-color: #334155 !important; }
+        .em-heading { color: #fafafa !important; }
+        .em-text { color: #f4f4f4 !important; }
+        .em-muted { color: #9f9f9f !important; }
+        .em-divider { border-color: #404040 !important; }
+        .em-info-box { background-color: #292929 !important; border: 1px solid #404040 !important; }
+        .em-footer-divider { border-color: #404040 !important; }
         .em-link { color: #60a5fa !important; }
-        .em-otp { color: #f1f5f9 !important; }
-        .em-detail-label { color: #94a3b8 !important; }
-        .em-detail-value { color: #e2e8f0 !important; }
+        .em-otp { color: #fafafa !important; }
+        .em-detail-label { color: #9f9f9f !important; }
+        .em-detail-value { color: #f4f4f4 !important; }
       }
     `}</style>
   )
@@ -162,7 +168,7 @@ function renderSection(section: EmailSection, brand: BrandSettings): React.React
         <Hr
           key={section.id}
           className="em-divider"
-          style={{ borderColor: "#e2e8f0", margin: "16px 0" }}
+          style={{ borderColor: "#d4d4d4", margin: "16px 0" }}
         />
       )
     }
@@ -170,7 +176,7 @@ function renderSection(section: EmailSection, brand: BrandSettings): React.React
     case "info_box": {
       const style = mergeStyle(
         {
-          backgroundColor: "#f9fafb",
+          backgroundColor: "#f4f4f4",
           borderRadius: "8px",
           padding: "16px",
           margin: "16px 0",
@@ -306,7 +312,7 @@ function EmailTemplate({
             className="em-header"
             style={{
               padding: "20px 32px",
-              borderBottom: "1px solid #e2e8f0",
+              borderBottom: "1px solid #d4d4d4",
             }}
           >
             <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto" }}>
@@ -363,7 +369,7 @@ function EmailTemplate({
           {/* Footer */}
           <Hr
             className="em-footer-divider"
-            style={{ borderColor: "#e2e8f0", margin: "0" }}
+            style={{ borderColor: "#d4d4d4", margin: "0" }}
           />
           <Section style={{ padding: "24px 32px" }}>
             <Text
