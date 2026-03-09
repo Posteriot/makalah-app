@@ -23,6 +23,7 @@ Standar desain yang dipakai sebagai acuan dalam konteks ini adalah:
 
 - `home`
 - halaman `chat` yang sudah memakai token mandiri di `globals-new.css`
+- `global header` marketing yang pada branch ini sudah dibersihkan dari gap styling audit dan sudah memakai jalur token `globals-new.css`
 
 Misi yang menjadi landasan dokumen konteks ini:
 
@@ -199,7 +200,24 @@ Pola ini terlihat di:
 - [`src/components/marketing/documentation/DocumentationPage.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/marketing/documentation/DocumentationPage.tsx)
 - [`src/components/marketing/blog/BlogLandingPage.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/marketing/blog/BlogLandingPage.tsx)
 
-### 7. Background helper marketing sudah terenkapsulasi di komponen
+### 7. `GlobalHeader` menjadi contoh migrasi yang sudah tervalidasi
+
+Pada branch ini, `GlobalHeader` dan `UserDropdown` sudah melalui audit, desain, implementation plan, patch cleanup, dan verifikasi test.
+
+Temuan yang bisa dicatat secara faktual dari hasil tersebut:
+
+- auth CTA desktop dan mobile sudah memakai komponen bersama [`src/components/ui/auth-button.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/ui/auth-button.tsx)
+- hover stripes dan state auth header sudah memakai token `core` di [`src/app/globals-new.css`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/app/globals-new.css)
+- item dropdown default `UserDropdown` sudah memakai semantic token seperti `foreground`, `accent`, `destructive`, dan `success`
+- dead import, dead code, dan palette raw yang sebelumnya tersisa di area header sudah dibersihkan
+
+Karena itu, `GlobalHeader` pada branch ini dapat dibaca sebagai contoh nyata komponen marketing yang sudah lebih dekat ke target branch:
+
+- Tailwind-compliant
+- berbasis token `globals-new.css`
+- tidak lagi mengandalkan class hover/warna dari jalur legacy untuk state utamanya
+
+### 8. Background helper marketing sudah terenkapsulasi di komponen
 
 Pattern visual utama untuk background halaman marketing berada di komponen:
 
@@ -208,6 +226,19 @@ Pattern visual utama untuk background halaman marketing berada di komponen:
 - [`DiagonalStripes.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/marketing/SectionBackground/DiagonalStripes.tsx)
 
 Ketiga helper ini memakai nilai visual yang sudah dibakukan di level komponen, bukan class global utilitas biasa.
+
+### 9. Kontrak styling yang sudah tampak stabil di jalur baru
+
+Dari pembacaan `home`, `chat`, shell marketing, dan header yang sudah dibersihkan, ada kontrak styling yang sudah terlihat stabil untuk dipakai sebagai acuan observasi pada komponen marketing lain:
+
+- scope styling aktif memakai `data-ui-scope="core"` untuk marketing pages
+- token warna utama bergerak lewat `core`, bukan raw palette per-komponen
+- utility semantik tetap dipakai untuk menyatakan peran visual, misalnya `text-narrative`, `text-interface`, `rounded-shell`, `rounded-action`, `border-hairline`
+- state hover, active, dan destructive yang penting sudah bisa dinyatakan lewat token semantik seperti `accent`, `foreground`, `destructive`, `success`
+- pattern dekoratif seperti diagonal stripes diposisikan sebagai layer efek berbasis token, bukan warna hardcoded di komponen
+- loading state penting sudah mulai memakai skeleton agar konsisten dengan kontrak UI yang sedang dibangun
+
+Bagian ini bukan rekomendasi implementasi rinci, tetapi rangkuman atas pola yang sekarang sudah benar-benar terlihat di kode branch ini.
 
 ## Halaman Target per Kondisi Saat Ini
 
@@ -235,6 +266,20 @@ Ketergantungan legacy paling jelas ada pada search input sidebar melalui `blog-n
 
 `blog` page juga sudah berada di shell marketing baru.
 Ketergantungan legacy yang paling terlihat ada pada search/filter/newsletter input melalui `blog-neutral-input`.
+
+## Nilai Acuan untuk Halaman atau Komponen Lain
+
+Jika dokumen ini dipakai sebagai pijakan untuk audit komponen marketing lain di branch yang sama, ada tiga lapisan acuan yang saat ini paling kuat secara kode:
+
+- `home` untuk bahasa visual marketing utama
+- `chat` untuk pola token mandiri berbasis scope
+- `global header` untuk contoh komponen lintas-breakpoint yang sudah dibersihkan dari gap auth state, state loading, dan styling legacy
+
+Dengan kata lain, halaman atau komponen marketing lain dapat dibandingkan terhadap tiga acuan ini untuk melihat:
+
+- apakah tokennya sudah bergerak lewat `globals-new.css`
+- apakah state pentingnya sudah memakai semantic token alih-alih raw palette lama
+- apakah utility semantik dan shell visualnya masih satu bahasa dengan marketing frontpage
 
 ## Dokumen dan Referensi Desain yang Terkait
 

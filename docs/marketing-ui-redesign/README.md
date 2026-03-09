@@ -26,13 +26,19 @@ Misi utama yang menjadi payung dokumen di folder ini:
 - melepas seluruh ketergantungan dari [`globals.css`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/app/globals.css)
 - migrasi ke [`globals-new.css`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/app/globals-new.css)
 
+Status acuan saat ini di branch:
+
+- `home` tetap menjadi referensi visual marketing utama
+- `chat` tetap menjadi referensi pola token mandiri berbasis scope
+- `global header` sudah melewati audit, redesign terbatas, cleanup styling, dan verifikasi, sehingga sekarang bisa dipakai sebagai referensi implementasi komponen marketing yang sudah lebih dekat ke target migration state
+
 ## Dokumen
 
 ### 1. Context
 
 - [`context.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/context.md)
-  - Fungsi: dokumen riset netral untuk memetakan kondisi styling saat ini, source of truth token, dependency legacy, dan area target branch ini.
-  - Catatan: belum berisi rekomendasi implementasi rinci.
+  - Fungsi: dokumen riset netral untuk memetakan kondisi styling saat ini, source of truth token, dependency legacy, dan baseline styling yang sudah tervalidasi di branch ini.
+  - Catatan: tetap netral, tetapi sekarang bisa dipakai sebagai acuan audit konsistensi untuk halaman atau komponen marketing lain.
 
 ### 2. Header Audit Context
 
@@ -56,7 +62,13 @@ Misi utama yang menjadi payung dokumen di folder ini:
 
 - [`global-header/implementation-plan.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/implementation-plan.md)
   - Fungsi: rencana implementasi bertahap untuk menurunkan desain header ke task eksekusi.
-  - Catatan: belum dieksekusi ke kode aplikasi.
+  - Catatan: sudah menjadi basis eksekusi header pada branch ini.
+
+### 6. Header QA Checklist
+
+- [`global-header/qa-checklist.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/qa-checklist.md)
+  - Fungsi: checklist QA manual untuk memverifikasi perilaku auth, menu, redirect, loading state, dan mobile/desktop header.
+  - Catatan: bisa dipakai ulang sebagai pola verifikasi UI untuk komponen marketing lain yang punya state penting.
 
 ## Cara Pakai
 
@@ -66,7 +78,17 @@ Urutan baca yang dipakai untuk branch ini saat ini:
 2. Untuk audit header, lanjut baca [`global-header/readme-header.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/readme-header.md).
 3. Lanjut ke [`global-header/audit-findings.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/audit-findings.md) untuk melihat bug dan risk yang ditemukan.
 4. Lanjut ke [`global-header/design.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/design.md) untuk keputusan desain yang sudah disetujui.
-5. Gunakan [`global-header/implementation-plan.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/implementation-plan.md) saat masuk tahap eksekusi.
+5. Gunakan [`global-header/implementation-plan.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/implementation-plan.md) untuk menelusuri patch yang sudah dieksekusi dan struktur task-nya.
+6. Gunakan [`global-header/qa-checklist.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/qa-checklist.md) sebagai pola verifikasi UI manual.
+
+## Cara Memakai Sebagai Acuan Styling
+
+Untuk halaman atau komponen marketing lain, dokumen folder ini sekarang bisa dipakai dengan urutan praktis berikut:
+
+1. Cocokkan komponen target terhadap baseline di [`context.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/context.md): `home`, `chat`, dan `global header`.
+2. Periksa apakah token dan state styling target sudah bergerak lewat [`globals-new.css`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/app/globals-new.css), bukan masih bertopang ke [`globals.css`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/app/globals.css).
+3. Gunakan paket dokumen `global-header` sebagai contoh lengkap alur kerja: konteks → findings → design → implementation plan → QA checklist.
+4. Perlakukan utility semantik, state token, dan skeleton/loading yang sudah tervalidasi di header sebagai indikator konsistensi, bukan sekadar detail khusus header.
 
 ## Status Folder
 
@@ -77,6 +99,7 @@ Status dokumentasi saat ini:
 - `global-header/audit-findings.md` sudah tersedia
 - `global-header/design.md` sudah tersedia
 - `global-header/implementation-plan.md` sudah tersedia
-- dokumen keputusan teknis lanjutan belum dibuat
+- `global-header/qa-checklist.md` sudah tersedia
+- dokumen keputusan teknis lanjutan untuk page lain belum dibuat
 
 README ini akan menjadi indeks tetap untuk semua dokumen yang ditambahkan berikutnya di folder `docs/marketing-ui-redesign`.
