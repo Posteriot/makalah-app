@@ -2437,7 +2437,6 @@ Aturan:
 
                         const searchResultsContext = buildSearchResultsContext(
                             qualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
-                            searchText
                         )
 
                         // Build compose messages: system + skills + search results + file context + conversation
@@ -3425,7 +3424,6 @@ Aturan:
 
                         const searchResultsContext = buildSearchResultsContext(
                             grokQualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
-                            searchText
                         )
 
                         // Build compose messages: system + skills + search results + file context + conversation

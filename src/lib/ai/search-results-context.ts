@@ -7,7 +7,6 @@ interface SearchSource {
 
 export function buildSearchResultsContext(
   sources: SearchSource[],
-  rawSearchText: string
 ): string {
   if (sources.length === 0) {
     return `## SEARCH RESULTS\nNo sources found from web search. Answer based on your knowledge and inform the user that no web sources were available.`
@@ -25,8 +24,5 @@ You have the following sources from web search.
 Use ONLY these sources for citations. Do not fabricate or guess URLs.
 
 Sources:
-${sourceList}
-
-Raw search summary (use as reference for context, compose your own narrative):
-${rawSearchText}`
+${sourceList}`
 }

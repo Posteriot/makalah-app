@@ -7,9 +7,8 @@ describe("buildSearchResultsContext", () => {
       { url: "https://bps.go.id/stats", title: "BPS Statistics 2025", tier: "institutional" as const, score: 80 },
       { url: "https://arxiv.org/paper", title: "AI Impact Study", tier: "academic" as const, score: 90 },
     ]
-    const rawText = "AI has significant impact on employment..."
 
-    const result = buildSearchResultsContext(sources, rawText)
+    const result = buildSearchResultsContext(sources)
 
     expect(result).toContain("SEARCH RESULTS")
     expect(result).toContain("BPS Statistics 2025")
@@ -17,12 +16,12 @@ describe("buildSearchResultsContext", () => {
     expect(result).toContain("institutional")
     expect(result).toContain("AI Impact Study")
     expect(result).toContain("academic")
-    expect(result).toContain("AI has significant impact")
     expect(result).toContain("ONLY these sources")
+    expect(result).not.toContain("Raw search summary")
   })
 
   it("should handle empty sources gracefully", () => {
-    const result = buildSearchResultsContext([], "some text")
+    const result = buildSearchResultsContext([])
     expect(result).toContain("No sources found")
   })
 
@@ -30,7 +29,7 @@ describe("buildSearchResultsContext", () => {
     const sources = [
       { url: "https://example.com/article", title: "Some Article" },
     ]
-    const result = buildSearchResultsContext(sources, "text")
+    const result = buildSearchResultsContext(sources)
     expect(result).toContain("Some Article")
     expect(result).toContain("https://example.com/article")
   })

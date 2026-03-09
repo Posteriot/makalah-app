@@ -1023,6 +1023,7 @@ export default defineSchema({
     ),
     webhookUrl: v.optional(v.string()),
     defaultExpiryMinutes: v.optional(v.number()),
+    visibleVAChannels: v.optional(v.array(v.string())),
     isActive: v.boolean(),
     updatedBy: v.optional(v.string()),
     createdAt: v.number(),
