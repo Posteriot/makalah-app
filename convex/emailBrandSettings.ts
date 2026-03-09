@@ -16,10 +16,10 @@ const DEFAULTS = {
   textColor: "#070707",               // slate-950 oklch(0.129)
   mutedTextColor: "#545454",          // slate-600 oklch(0.446)
   fontFamily: "Geist, Arial, sans-serif",
-  footerText: "© 2026 Makalah AI. All rights reserved.",
+  footerText: "© 2026 Makalah AI | Produk PT The Management Asia | Hak cipta dilindungi.",
   footerLinks: [
-    { label: "Website", url: "https://makalah.ai" },
-    { label: "Bantuan", url: "https://makalah.ai/documentation" },
+    { label: "www.makalah.ai", url: "https://www.makalah.ai" },
+    { label: "dukungan@makalah.ai", url: "mailto:dukungan@makalah.ai" },
   ],
 }
 

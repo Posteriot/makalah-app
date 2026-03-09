@@ -113,19 +113,16 @@ export function EmailLayout({ preview, children, siteUrl }: EmailLayoutProps) {
           <Hr className="em-divider" style={hr} />
           <Section style={footer}>
             <Text className="em-muted" style={footerTextStyle}>
-              Email ini dikirim oleh Makalah AI
-            </Text>
-            <Text className="em-muted" style={footerTextStyle}>
-              <Link href="https://makalah.ai" className="em-link" style={footerLink}>
-                makalah.ai
+              <Link href="https://www.makalah.ai" className="em-link" style={footerLink}>
+                www.makalah.ai
               </Link>
               {" | "}
-              <Link href="https://makalah.ai/documentation" className="em-link" style={footerLink}>
-                Bantuan
+              <Link href="mailto:dukungan@makalah.ai" className="em-link" style={footerLink}>
+                dukungan@makalah.ai
               </Link>
             </Text>
             <Text className="em-muted" style={copyrightStyle}>
-              &copy; {new Date().getFullYear()} Makalah AI. All rights reserved.
+              &copy; {new Date().getFullYear()} Makalah AI | Produk PT The Management Asia | Hak cipta dilindungi.
             </Text>
           </Section>
         </Container>

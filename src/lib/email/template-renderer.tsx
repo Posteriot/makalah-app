@@ -372,18 +372,6 @@ function EmailTemplate({
             style={{ borderColor: "#d4d4d4", margin: "0" }}
           />
           <Section style={{ padding: "24px 32px" }}>
-            <Text
-              className="em-muted"
-              style={{
-                color: brand.mutedTextColor,
-                fontSize: "12px",
-                lineHeight: "16px",
-                margin: "4px 0",
-                textAlign: "center" as const,
-              }}
-            >
-              {brand.footerText}
-            </Text>
             {brand.footerLinks.length > 0 && (
               <Text
                 className="em-muted"
@@ -412,6 +400,18 @@ function EmailTemplate({
                 ))}
               </Text>
             )}
+            <Text
+              className="em-muted"
+              style={{
+                color: brand.mutedTextColor,
+                fontSize: "11px",
+                lineHeight: "16px",
+                margin: "16px 0 0",
+                textAlign: "center" as const,
+              }}
+            >
+              {brand.footerText}
+            </Text>
           </Section>
         </Container>
       </Body>
