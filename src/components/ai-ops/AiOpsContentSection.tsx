@@ -25,6 +25,7 @@ import { SkillMonitorSummaryPanel } from "./panels/SkillMonitorSummaryPanel"
 import { AttachmentOverviewPanel } from "./panels/AttachmentOverviewPanel"
 import { AttachmentFailuresPanel } from "./panels/AttachmentFailuresPanel"
 import { WebsearchToolMonitorPanel } from "./panels/WebsearchToolMonitorPanel"
+import { SearchSkillMonitorPanel } from "./panels/SearchSkillMonitorPanel"
 
 type Period = "1h" | "24h" | "7d"
 
@@ -53,6 +54,7 @@ export function AiOpsContentSection({
   const isToolsMonitorTab = activeTab.startsWith("tools.")
   const isAttachmentTab = activeTab.startsWith("attachment.")
   const isSkillMonitorTab = activeTab === "skill.monitor"
+  const isSearchSkillTab = activeTab === "skill.search"
   const isOverview = activeTab === "overview"
 
   // ── Paper workflow queries (skip when not on relevant tab) ──
@@ -153,6 +155,18 @@ export function AiOpsContentSection({
       ? { requestorUserId: userId, period, limit: 60 }
       : "skip"
   )
+  const searchSkillOverview = useQuery(
+    api.aiTelemetry.getSearchSkillOverview,
+    isSearchSkillTab
+      ? { requestorUserId: userId, period }
+      : "skip"
+  )
+  const searchSkillTrace = useQuery(
+    api.aiTelemetry.getSearchSkillTrace,
+    isSearchSkillTab
+      ? { requestorUserId: userId, period, limit: 60 }
+      : "skip"
+  )
 
   return (
     <main className="col-span-1 pt-4 md:col-span-12">
@@ -169,7 +183,7 @@ export function AiOpsContentSection({
             </p>
           </div>
 
-          {(isModelTab || isToolsMonitorTab || isSkillMonitorTab || isOverview || isAttachmentTab) && (
+          {(isModelTab || isToolsMonitorTab || isSkillMonitorTab || isSearchSkillTab || isOverview || isAttachmentTab) && (
             <div className="flex items-center gap-1 rounded-[8px] border border-border p-0.5">
               {PERIOD_OPTIONS.map((opt) => (
                 <button
@@ -267,6 +281,13 @@ export function AiOpsContentSection({
             <SkillRuntimeOverviewPanel data={skillRuntimeOverview ?? undefined} />
             <SkillRuntimeTracePanel data={skillRuntimeTrace ?? undefined} />
           </div>
+        )}
+
+        {activeTab === "skill.search" && (
+          <SearchSkillMonitorPanel
+            overview={searchSkillOverview ?? undefined}
+            trace={searchSkillTrace ?? undefined}
+          />
         )}
       </div>
     </main>

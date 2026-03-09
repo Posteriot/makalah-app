@@ -269,22 +269,24 @@ export function MessageBubble({
 
     const extractSearchStatus = (
         uiMessage: UIMessage
-    ): { status: SearchStatus; message?: string } | null => {
+    ): { status: SearchStatus; message?: string; sourceCount?: number } | null => {
         for (const part of uiMessage.parts ?? []) {
             if (!part || typeof part !== "object") continue
             const maybeDataPart = part as unknown as { type?: string; data?: unknown }
             if (maybeDataPart.type !== "data-search") continue
 
-            const data = maybeDataPart.data as { status?: unknown; message?: unknown } | null
+            const data = maybeDataPart.data as { status?: unknown; message?: unknown; sourceCount?: unknown } | null
             if (!data || typeof data !== "object") continue
 
             const status = data.status
-            if (status === "searching" || status === "done" || status === "off" || status === "error") {
+            if (status === "searching" || status === "composing" || status === "done" || status === "off" || status === "error") {
+                const sourceCount = typeof data.sourceCount === "number" ? data.sourceCount : undefined
                 return {
                     status,
                     ...(typeof data.message === "string" && data.message.trim().length > 0
                         ? { message: data.message }
                         : {}),
+                    ...(sourceCount !== undefined ? { sourceCount } : {}),
                 }
             }
         }
@@ -740,6 +742,7 @@ export function MessageBubble({
                                 <SearchStatusIndicator
                                     status={searchStatus.status}
                                     message={searchStatus.message}
+                                    sourceCount={searchStatus.sourceCount}
                                 />
                             )}
                             {searchTools.map((tool, index) => (

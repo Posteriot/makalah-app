@@ -1,3 +1,8 @@
+/**
+ * @deprecated Absorbed by referenceIntegritySkill in src/lib/ai/skills/reference-integrity.skill.ts
+ * This file is kept for reference during transition. Safe to delete after skill pilot validates.
+ */
+
 export type ArtifactSource = {
   url: string;
   title: string;

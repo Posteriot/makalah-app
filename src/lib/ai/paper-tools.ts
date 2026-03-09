@@ -1,4 +1,5 @@
 import { tool } from "ai"
+import { getToolExamples } from "@/lib/ai/skills"
 import { z } from "zod"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
@@ -12,6 +13,8 @@ export const createPaperTools = (context: {
     userId: Id<"users">,
     conversationId: Id<"conversations">
     convexToken?: string
+    availableSources?: Array<{ url: string; title: string; publishedAt?: number }>
+    hasRecentSources?: boolean
 }) => {
     const convexOptions = context.convexToken ? { token: context.convexToken } : undefined
     return {
@@ -114,7 +117,9 @@ Contoh data untuk tahap 'outline':
   totalWordCount: 5000,
   completenessScore: 0
 }
-PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' sebagai angka (BUKAN 'wordCount' string). JANGAN tambah field 'checked' atau 'subSections'.`,
+PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' sebagai angka (BUKAN 'wordCount' string). JANGAN tambah field 'checked' atau 'subSections'.${getToolExamples("updateStageData") ? `
+
+${getToolExamples("updateStageData")}` : ""}`,
             inputSchema: z.object({
                 // NOTE: 'stage' parameter REMOVED - auto-fetched from session.currentStage
                 // This prevents AI from specifying wrong stage (Option B fix for stage confusion bug)
@@ -145,6 +150,33 @@ PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' seb
                     // Option B Fix: Auto-fetch stage from session.currentStage
                     // This eliminates the possibility of AI specifying wrong stage
                     const stage = session.currentStage;
+
+                    // Reference integrity validation (if sources available)
+                    if (context.hasRecentSources && context.availableSources && context.availableSources.length > 0) {
+                        const refFields = ['referensiAwal', 'referensiPendukung', 'referensi', 'sitasiAPA', 'sitasiTambahan']
+                        const allRefs: Array<{ title: string; url?: string; authors?: string }> = []
+                        if (data) {
+                            for (const field of refFields) {
+                                const val = data[field]
+                                if (Array.isArray(val)) {
+                                    allRefs.push(...val.filter((r: unknown) => r && typeof r === 'object') as Array<{ title: string; url?: string; authors?: string }>)
+                                }
+                            }
+                        }
+
+                        if (allRefs.length > 0) {
+                            const { referenceIntegritySkill } = await import('@/lib/ai/skills')
+                            const refValidation = referenceIntegritySkill.validate({
+                                toolName: 'updateStageData',
+                                claimedReferences: allRefs,
+                                availableSources: context.availableSources,
+                                hasRecentSources: true,
+                            })
+                            if (!refValidation.valid) {
+                                return { success: false, error: refValidation.error }
+                            }
+                        }
+                    }
 
                     // Merge ringkasan + ringkasanDetail into data object
                     const mergedData = {

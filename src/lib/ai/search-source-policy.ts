@@ -1,3 +1,7 @@
+/**
+ * @deprecated Absorbed by sourceQualitySkill in src/lib/ai/skills/source-quality.skill.ts
+ * This file is kept for reference during transition. Safe to delete after skill pilot validates.
+ */
 export function getSourcePolicyPrompt(): string {
   return `Search GLOBALLY. Cast a wide net across all credible source types — news media,
 academic journals, think tanks, international organizations, and government data.
