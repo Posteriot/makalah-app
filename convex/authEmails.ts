@@ -3,6 +3,18 @@
 // Helper to send emails via Resend API (used by BetterAuth callbacks in convex/auth.ts)
 // BetterAuth callbacks run in Convex HTTP action context where fetch is available.
 
+// NOTE: DB Template Migration Plan
+// ─────────────────────────────────
+// These auth email functions are called from BetterAuth callbacks without Convex `ctx`.
+// They currently use hardcoded HTML (the fallback path).
+// When DB email templates are active, migration options:
+// 1. Pass `ctx` from BetterAuth callbacks to enable DB template fetching via
+//    `getActiveTemplateInternal` (see convex/emailTemplates.ts), OR
+// 2. Use a separate email dispatch mechanism that has DB access.
+// For now, admins can edit auth templates in the admin panel, and they'll be
+// ready when the callback architecture is refactored.
+// See: docs/email-templates/2026-03-09-email-templates-design.md
+
 const FROM_EMAIL = "Makalah AI <noreply@makalah.ai>";
 const DEFAULT_APP_URL = "https://makalah.ai";
 

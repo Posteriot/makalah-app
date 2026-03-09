@@ -4,6 +4,7 @@ import { Resend } from "resend"
 import { render } from "@react-email/components"
 import { PaymentSuccessEmail } from "./templates/PaymentSuccessEmail"
 import { PaymentFailedEmail } from "./templates/PaymentFailedEmail"
+import { fetchTemplateAndRender } from "./template-helpers"
 
 const resendApiKey = process.env.RESEND_API_KEY
 const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@makalah.ai"
@@ -70,23 +71,48 @@ export async function sendPaymentSuccessEmail(
   }
 
   try {
-    const html = await render(
-      PaymentSuccessEmail({
-        userName: params.userName,
-        amount: params.amount,
-        credits: params.credits,
-        newTotalCredits: params.newTotalCredits,
-        subscriptionPlanLabel: params.subscriptionPlanLabel,
-        transactionId: params.transactionId,
-        paidAt: formatDate(params.paidAt),
-        appUrl,
-      })
-    )
+    // Try DB template first, fallback to React Email component
+    let subject: string
+    let html: string
+
+    const rendered = await fetchTemplateAndRender("payment_success", {
+      userName: params.userName ?? "Pengguna",
+      amount: `Rp ${params.amount.toLocaleString("id-ID")}`,
+      credits: params.credits ? `${params.credits} kredit` : "-",
+      newTotalCredits: params.newTotalCredits
+        ? `${params.newTotalCredits} kredit`
+        : "-",
+      subscriptionPlanLabel: params.subscriptionPlanLabel ?? "-",
+      transactionId: params.transactionId,
+      paidAt: formatDate(params.paidAt),
+      appUrl,
+      appName: "Makalah AI",
+    })
+
+    if (rendered) {
+      subject = rendered.subject
+      html = rendered.html
+    } else {
+      // Fallback to React Email component (existing behavior)
+      subject = "Pembayaran Berhasil - Makalah AI"
+      html = await render(
+        PaymentSuccessEmail({
+          userName: params.userName,
+          amount: params.amount,
+          credits: params.credits,
+          newTotalCredits: params.newTotalCredits,
+          subscriptionPlanLabel: params.subscriptionPlanLabel,
+          transactionId: params.transactionId,
+          paidAt: formatDate(params.paidAt),
+          appUrl,
+        })
+      )
+    }
 
     const result = await client.emails.send({
       from: fromEmail,
       to: params.to,
-      subject: "Pembayaran Berhasil - Makalah AI",
+      subject,
       html,
     })
 
@@ -119,20 +145,40 @@ export async function sendPaymentFailedEmail(
   }
 
   try {
-    const html = await render(
-      PaymentFailedEmail({
-        userName: params.userName,
-        amount: params.amount,
-        failureReason: params.failureReason,
-        transactionId: params.transactionId,
-        appUrl,
-      })
-    )
+    // Try DB template first, fallback to React Email component
+    let subject: string
+    let html: string
+
+    const rendered = await fetchTemplateAndRender("payment_failed", {
+      userName: params.userName ?? "Pengguna",
+      amount: `Rp ${params.amount.toLocaleString("id-ID")}`,
+      failureReason: params.failureReason ?? "Pembayaran tidak dapat diproses",
+      transactionId: params.transactionId,
+      appUrl,
+      appName: "Makalah AI",
+    })
+
+    if (rendered) {
+      subject = rendered.subject
+      html = rendered.html
+    } else {
+      // Fallback to React Email component (existing behavior)
+      subject = "Pembayaran Gagal - Makalah AI"
+      html = await render(
+        PaymentFailedEmail({
+          userName: params.userName,
+          amount: params.amount,
+          failureReason: params.failureReason,
+          transactionId: params.transactionId,
+          appUrl,
+        })
+      )
+    }
 
     const result = await client.emails.send({
       from: fromEmail,
       to: params.to,
-      subject: "Pembayaran Gagal - Makalah AI",
+      subject,
       html,
     })
 

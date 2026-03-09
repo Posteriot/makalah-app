@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
+import { query, mutation, internalQuery } from "./_generated/server"
 import { requireRole } from "./permissions"
 
 // ============================================================================
@@ -144,6 +144,22 @@ export const getTemplatesByGroup = query({
  * Returns single active template or null.
  */
 export const getActiveTemplate = query({
+  args: { templateType: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("emailTemplates")
+      .withIndex("by_active", (q) =>
+        q.eq("isActive", true).eq("templateType", args.templateType)
+      )
+      .first()
+  },
+})
+
+/**
+ * Internal query for fetching active template from Convex actions/internal functions.
+ * For use by auth email senders when ctx is available (future migration).
+ */
+export const getActiveTemplateInternal = internalQuery({
   args: { templateType: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
