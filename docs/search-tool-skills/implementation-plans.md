@@ -66,7 +66,6 @@ export interface WebSearchOrchestratorConfig {
   systemPrompt: string
   paperModePrompt?: string
   paperWorkflowReminder?: string
-  skillContext: { hasRecentSources: boolean; availableSources: NormalizedCitation[] }
   fileContext?: string
 
   samplingOptions: { temperature?: number; topP?: number }
@@ -732,6 +731,10 @@ Before writing orchestrator.ts, read these sections of route.ts to understand th
 
 **Step 2: Create orchestrator.ts**
 
+Architecture decision: **Phase 1 runs BEFORE stream creation.** This ensures:
+- Phase 2 compose errors propagate to route.ts for retry with fallback model (GAP 1 fix)
+- Clean separation: Phase 1 is fully awaited, Phase 2 is streamed
+
 ```typescript
 // src/lib/ai/web-search/orchestrator.ts
 import {
@@ -742,6 +745,7 @@ import {
 import { getSearchSystemPrompt, augmentUserMessageForSearch } from "@/lib/ai/search-system-prompt"
 import { buildSearchResultsContext } from "@/lib/ai/search-results-context"
 import { composeSkillInstructions, buildSkillContext } from "@/lib/ai/skills"
+import { formatParagraphEndCitations } from "@/lib/citations/formatter"
 import { sanitizeMessagesForSearch, canonicalizeCitationUrls } from "./utils"
 import type { WebSearchOrchestratorConfig, WebSearchResult } from "./types"
 import type { NormalizedCitation } from "@/lib/citations/types"
@@ -749,22 +753,26 @@ import type { NormalizedCitation } from "@/lib/citations/types"
 /**
  * Execute web search with retriever failover chain + Gemini compose.
  *
- * Flow:
- * 1. Phase 1: Iterate retrieverChain, first successful retriever wins
- * 2. Phase 2: Compose response with Gemini using search results + SKILL.md
- * 3. Stream composed response to user with citations
+ * Architecture:
+ * - Phase 1 runs BEFORE stream creation (fully awaited, silent)
+ * - Phase 2 runs INSIDE stream (streamed to user)
+ * - If Phase 1 all-fail → returns error Response (no throw)
+ * - If Phase 2 compose fails → throws to caller (route.ts catches + retries)
  *
- * On Phase 1 all-fail: returns error response (caller handles persistence)
- * On Phase 2 fail: throws (caller catches + retries with fallback compose model)
+ * This separation ensures compose errors propagate to route.ts
+ * for retry with fallback compose model.
  */
-export function executeWebSearch(config: WebSearchOrchestratorConfig): Response {
-  const stream = createUIMessageStream({
-    execute: async ({ writeMessage, mergeStream, close }) => {
-      // --- Phase 1: Search (silent) ---
-      const searchResult = await executeSearchPhase(config)
+export async function executeWebSearch(
+  config: WebSearchOrchestratorConfig
+): Promise<Response> {
+  // --- Phase 1: Search (silent, before stream) ---
+  const searchResult = await executeSearchPhase(config)
 
-      if (!searchResult) {
-        // All retrievers failed
+  if (!searchResult) {
+    // All retrievers failed — return error response
+    // Route.ts onFinish handles persistence/telemetry for this case separately
+    const stream = createUIMessageStream({
+      execute: ({ writeMessage }) => {
         writeMessage({
           role: "assistant",
           content: [{
@@ -772,61 +780,82 @@ export function executeWebSearch(config: WebSearchOrchestratorConfig): Response 
             text: "Maaf, terjadi kesalahan saat mencari sumber. Silakan coba lagi.",
           }],
         })
-        close()
-        return
-      }
+      },
+    })
+    return createUIMessageStreamResponse({ stream })
+  }
 
-      const { text: searchText, sources, searchUsage, retrieverName, retrieverIndex, attemptedRetrievers } = searchResult
+  const {
+    text: searchText, sources, searchUsage,
+    retrieverName, retrieverIndex, attemptedRetrievers,
+  } = searchResult
 
-      // --- Phase 2: Compose (streamed) ---
-      const searchResultsContext = buildSearchResultsContext(sources, searchText)
-      const skillInstructions = composeSkillInstructions(
-        buildSkillContext({
-          hasRecentSources: sources.length > 0,
-          availableSources: sources,
-        })
-      )
+  // --- Phase 2: Compose (streamed to user) ---
+  // Build skill context from ACTUAL Phase 1 results (not from config)
+  const searchResultsContext = buildSearchResultsContext(sources, searchText)
+  const skillInstructions = composeSkillInstructions(
+    buildSkillContext({
+      hasRecentSources: sources.length > 0,
+      availableSources: sources,
+    })
+  )
 
-      // Build compose message array matching route.ts pattern
-      const composeSystemMessages: Array<{ role: "system"; content: string }> = []
+  // Build compose message array matching route.ts pattern
+  const composeSystemMessages: Array<{ role: "system"; content: string }> = []
+  composeSystemMessages.push({ role: "system", content: config.systemPrompt })
+  if (config.paperModePrompt) {
+    composeSystemMessages.push({ role: "system", content: config.paperModePrompt })
+  }
+  if (config.paperWorkflowReminder) {
+    composeSystemMessages.push({ role: "system", content: config.paperWorkflowReminder })
+  }
+  if (skillInstructions) {
+    composeSystemMessages.push({ role: "system", content: skillInstructions })
+  }
+  composeSystemMessages.push({ role: "system", content: searchResultsContext })
+  if (config.fileContext) {
+    composeSystemMessages.push({ role: "system", content: config.fileContext })
+  }
 
-      composeSystemMessages.push({ role: "system", content: config.systemPrompt })
+  // Start compose streamText — this may throw (propagates to route.ts for retry)
+  const composeResult = streamText({
+    model: config.composeModel,
+    messages: [...composeSystemMessages, ...config.composeMessages],
+    temperature: config.samplingOptions.temperature,
+    topP: config.samplingOptions.topP,
+    providerOptions: config.reasoningProviderOptions,
+  })
 
-      if (config.paperModePrompt) {
-        composeSystemMessages.push({ role: "system", content: config.paperModePrompt })
-      }
-      if (config.paperWorkflowReminder) {
-        composeSystemMessages.push({ role: "system", content: config.paperWorkflowReminder })
-      }
-      if (skillInstructions) {
-        composeSystemMessages.push({ role: "system", content: skillInstructions })
-      }
-
-      composeSystemMessages.push({ role: "system", content: searchResultsContext })
-
-      if (config.fileContext) {
-        composeSystemMessages.push({ role: "system", content: config.fileContext })
-      }
-
-      const composeResult = streamText({
-        model: config.composeModel,
-        messages: [...composeSystemMessages, ...config.composeMessages],
-        temperature: config.samplingOptions.temperature,
-        topP: config.samplingOptions.topP,
-        providerOptions: config.reasoningProviderOptions,
-      })
+  const stream = createUIMessageStream({
+    execute: async ({ writeData, mergeStream }) => {
+      // Emit "searching" status for UI search widget
+      // (Read route.ts to find exact data event format — likely writeData with custom type)
+      writeData({ type: "search-status", status: "searching" })
 
       // Stream compose output to user
       mergeStream(composeResult.toUIMessageStream())
 
-      // Wait for compose to finish, then handle citations + onFinish
-      const finalResult = await composeResult
+      // Wait for compose to finish
+      const finalText = await composeResult.text
+      const composeUsage = await composeResult.usage
 
-      const composeUsage = finalResult.usage
+      // Stream citation data events (data-cited-text, data-cited-sources)
+      // Read route.ts for exact formatParagraphEndCitations pattern and replicate
+      if (sources.length > 0) {
+        const formatted = formatParagraphEndCitations({
+          text: finalText,
+          sources,
+        })
+        writeData({ type: "data-cited-text", text: formatted.text })
+        writeData({ type: "data-cited-sources", sources: formatted.sources })
+      }
+
+      // Emit search complete status
+      writeData({ type: "search-status", status: "complete" })
 
       // Prepare WebSearchResult for onFinish callback
       const webSearchResult: WebSearchResult = {
-        text: await finalResult.text,
+        text: finalText,
         sources,
         usage: composeUsage
           ? {
@@ -891,15 +920,16 @@ async function executeSearchPhase(
         await retriever.extractSources(result)
       )
 
-      const usage = result.usage
-        ? { inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens }
-        : undefined
+      // Await usage (AI SDK v6: usage may be a promise after streamText)
+      const usage = await result.usage
 
       if (text || sources.length > 0) {
         return {
           text,
           sources,
-          searchUsage: usage,
+          searchUsage: usage
+            ? { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }
+            : undefined,
           retrieverName: retriever.name,
           retrieverIndex: i,
           attemptedRetrievers,
@@ -917,10 +947,12 @@ async function executeSearchPhase(
 ```
 
 **IMPORTANT NOTES for implementer:**
-- The exact streaming pattern (mergeStream vs manual write) must match the current route.ts behavior. Read route.ts lines 2500-2650 to verify how `createUIMessageStream`, `writeMessage`, and `mergeStream` interact.
-- Citation streaming (`data-cited-text`, `data-cited-sources`) is currently handled inside route.ts's stream. The orchestrator may need to emit these as well — check route.ts for the exact pattern and replicate.
-- `result.usage` in AI SDK v6 may need `await` — verify by checking the `StreamTextResult` type.
-- The `composeMessages` in config should already be the trimmed model messages (not including system). System messages are constructed inside the orchestrator.
+- `executeWebSearch` is now `async` and returns `Promise<Response>`. Route.ts must `await` it or `return` it (both work since route handlers can return Response or Promise<Response>).
+- Phase 1 runs BEFORE stream creation. If Phase 2 `streamText()` call itself fails (model error), it throws before the stream is created — propagating to route.ts for retry with fallback compose model.
+- **Search status events:** The `writeData({ type: "search-status" })` pattern must match what route.ts currently emits. Read route.ts to find the exact format (may be a custom annotation or data stream event). Adjust the `writeData` calls to match.
+- **Citation streaming:** The `formatParagraphEndCitations` import and `writeData` format for `data-cited-text`/`data-cited-sources` must match route.ts's current implementation. Read route.ts lines 2550-2650 for the exact pattern.
+- **`await result.usage`:** In AI SDK v6, after `await result.text`, `result.usage` should be resolved. But use `await` defensively to handle both sync and async cases.
+- `composeMessages` should be trimmed model messages (not including system). System messages are constructed inside the orchestrator.
 
 **Step 3: Verify TypeScript compiles**
 
@@ -1051,7 +1083,9 @@ if (enableWebSearch) {
     })
   }
 
-  return executeWebSearch({
+  // executeWebSearch is async — await it.
+  // If Phase 2 compose throws, error propagates here for retry with fallback model.
+  return await executeWebSearch({
     retrieverChain: chain,
     messages: fullMessagesForSearch,
     composeMessages: trimmedModelMessages,
@@ -1059,7 +1093,6 @@ if (enableWebSearch) {
     systemPrompt,
     paperModePrompt,
     paperWorkflowReminder,
-    skillContext: { hasRecentSources: true, availableSources: [] },
     fileContext,
     samplingOptions: { temperature, topP },
     reasoningTraceEnabled,
