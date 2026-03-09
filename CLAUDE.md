@@ -510,6 +510,44 @@ Primary web search uses Perplexity Sonar (native search model). Fallback uses Gr
 - `src/lib/ai/blocked-domains.ts` → Blocked domain list for search filtering
 - `src/lib/citations/normalizer.ts` → `normalizeCitations()`
 
+## Email Templates
+
+Database-driven email template system with admin panel editor and fallback to hardcoded HTML.
+
+### Architecture
+- **Brand Settings**: Global branding (colors, fonts, footer) in `emailBrandSettings` table
+- **Templates**: 12 email templates with sections + pre-rendered HTML in `emailTemplates` table
+- **Pre-render**: On admin save, React Email renders sections → HTML stored in DB
+- **Send**: Fetch pre-rendered HTML → replace `{{placeholders}}` → send via Resend
+- **Fallback**: If template not found → use hardcoded HTML + log `systemAlerts`
+
+### Key Files
+- `convex/emailBrandSettings.ts` — Brand settings CRUD
+- `convex/emailTemplates.ts` — Template CRUD + `getActiveTemplate()` + `replacePlaceholders()`
+- `src/lib/email/template-renderer.tsx` — Dynamic React Email renderer
+- `src/lib/email/template-helpers.ts` — `fetchTemplateAndRender()`, `replacePlaceholders()`
+- `src/components/admin/email-templates/` — Admin UI components
+- `src/app/api/admin/email-templates/` — Preview, render, send-test API routes
+- `convex/migrations/seedEmailTemplates.ts` — Seed default templates
+
+### Admin Panel
+Location: `/dashboard` → Email Templates tab (4 sub-tabs: Brand, Auth, Payment, Notification)
+
+### Template Types
+- **Auth (6)**: verification, magic_link, password_reset, two_factor_otp, signup_success, waitlist_confirmation
+- **Payment (2)**: payment_success, payment_failed
+- **Notification (4)**: waitlist_invite, waitlist_admin, technical_report_dev, technical_report_user
+
+### First-Time Setup
+```bash
+npx convex run migrations/seedEmailTemplates:seedEmailTemplates
+```
+
+### Current Limitations
+- Auth emails (`convex/authEmails.ts`) still use hardcoded HTML — BetterAuth callbacks don't pass Convex `ctx` for DB access
+- Payment emails fully integrated with DB template + fallback
+- Templates seeded as `isActive: false` — admin must review, save (pre-render), and activate
+
 ## System Prompt Management
 
 Database-driven system prompt dengan fallback monitoring.
