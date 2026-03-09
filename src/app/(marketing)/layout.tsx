@@ -7,7 +7,7 @@ export default async function MarketingLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div data-ui-scope="core" className="min-h-screen bg-background text-foreground">
       <GlobalHeader />
       <main className="global-main">{children}</main>
       <Footer />
