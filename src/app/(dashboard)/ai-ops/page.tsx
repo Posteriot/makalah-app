@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { AiOpsContainer } from "@/components/ai-ops/AiOpsContainer"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -35,5 +36,18 @@ export default function AiOpsPage() {
     )
   }
 
-  return <AiOpsContainer userId={user._id} />
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-sm text-muted-foreground font-mono">Memuat panel AI Ops...</p>
+          </div>
+        </div>
+      }
+    >
+      <AiOpsContainer userId={user._id} />
+    </Suspense>
+  )
 }
