@@ -20,6 +20,21 @@ export const TEMPLATE_GROUPS = {
   ],
 } as const
 
+export const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
+  verification: "Dikirim saat user mendaftar untuk memverifikasi alamat email",
+  magic_link: "Link login tanpa password, berlaku 5 menit",
+  password_reset: "Dikirim saat user meminta reset password",
+  two_factor_otp: "Kode OTP 6 digit untuk verifikasi 2FA",
+  signup_success: "Konfirmasi pendaftaran berhasil setelah email terverifikasi",
+  waitlist_confirmation: "Konfirmasi pendaftaran di waiting list",
+  waitlist_invite: "Undangan untuk mendaftar setelah giliran tiba",
+  waitlist_admin: "Notifikasi ke admin tentang aktivitas waiting list",
+  technical_report_dev: "Laporan teknis dikirim ke developer/support",
+  technical_report_user: "Update status laporan teknis ke user",
+  payment_success: "Konfirmasi pembayaran berhasil (kredit atau langganan)",
+  payment_failed: "Notifikasi pembayaran gagal dengan alasan",
+}
+
 export const TEMPLATE_LABELS: Record<string, string> = {
   verification: "Verifikasi Email",
   magic_link: "Magic Link",

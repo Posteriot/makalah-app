@@ -60,10 +60,7 @@ export const seedEmailTemplates = internalMutationGeneric({
       mutedTextColor: "#64748b",
       fontFamily: "Geist, Arial, sans-serif",
       footerText: "\u00a9 2026 Makalah AI. All rights reserved.",
-      footerLinks: [
-        { label: "Website", url: "https://makalah.ai" },
-        { label: "Bantuan", url: "https://makalah.ai/documentation" },
-      ],
+      footerLinks: [],
       updatedBy: superadmin._id,
       updatedAt: now,
     })
@@ -80,8 +77,11 @@ export const seedEmailTemplates = internalMutationGeneric({
         subject: "Verifikasi Email \u2014 {{appName}}",
         sections: [
           { id: "s1", type: "heading", content: "Verifikasi Email Anda" },
-          { id: "s2", type: "paragraph", content: "Klik tombol di bawah untuk verifikasi email Anda:" },
-          { id: "s3", type: "button", label: "Verifikasi Email", url: "{{verificationUrl}}" },
+          { id: "s2", type: "paragraph", content: "Halo {{userName}}," },
+          { id: "s3", type: "paragraph", content: "Terima kasih telah mendaftar di {{appName}}. Klik tombol di bawah untuk memverifikasi alamat email Anda dan mengaktifkan akun." },
+          { id: "s4", type: "button", label: "Verifikasi Email", url: "{{verificationUrl}}" },
+          { id: "s5", type: "divider" },
+          { id: "s6", type: "paragraph", content: "Jika Anda tidak merasa mendaftar di {{appName}}, abaikan email ini." },
         ],
         availablePlaceholders: [
           { key: "userName", description: "Nama user", example: "Erik" },
@@ -95,10 +95,13 @@ export const seedEmailTemplates = internalMutationGeneric({
         templateType: "magic_link",
         subject: "Masuk ke {{appName}}",
         sections: [
-          { id: "s1", type: "heading", content: "Masuk ke Makalah AI" },
-          { id: "s2", type: "paragraph", content: "Klik tombol di bawah untuk masuk ke akun Anda." },
-          { id: "s3", type: "button", label: "Masuk Sekarang", url: "{{magicLinkUrl}}" },
-          { id: "s4", type: "paragraph", content: "Link ini berlaku selama {{expiryMinutes}} menit." },
+          { id: "s1", type: "heading", content: "Masuk ke {{appName}}" },
+          { id: "s2", type: "paragraph", content: "Halo," },
+          { id: "s3", type: "paragraph", content: "Anda meminta link untuk masuk ke akun {{appName}}. Klik tombol di bawah untuk masuk tanpa password." },
+          { id: "s4", type: "button", label: "Masuk Sekarang", url: "{{magicLinkUrl}}" },
+          { id: "s5", type: "info_box", content: "Link ini berlaku selama {{expiryMinutes}} menit dan hanya bisa digunakan satu kali." },
+          { id: "s6", type: "divider" },
+          { id: "s7", type: "paragraph", content: "Jika Anda tidak meminta link ini, abaikan email ini. Akun Anda tetap aman." },
         ],
         availablePlaceholders: [
           { key: "email", description: "Email user", example: "erik@example.com" },
@@ -114,8 +117,10 @@ export const seedEmailTemplates = internalMutationGeneric({
         subject: "Reset Password \u2014 {{appName}}",
         sections: [
           { id: "s1", type: "heading", content: "Reset Password" },
-          { id: "s2", type: "paragraph", content: "Klik tombol di bawah untuk reset password Anda:" },
+          { id: "s2", type: "paragraph", content: "Anda meminta untuk mereset password akun {{appName}}. Klik tombol di bawah untuk membuat password baru." },
           { id: "s3", type: "button", label: "Reset Password", url: "{{resetUrl}}" },
+          { id: "s4", type: "divider" },
+          { id: "s5", type: "paragraph", content: "Jika Anda tidak meminta reset password, abaikan email ini. Password Anda tidak akan berubah." },
         ],
         availablePlaceholders: [
           { key: "resetUrl", description: "Link reset password", example: "https://makalah.ai/reset?token=example" },
@@ -128,10 +133,12 @@ export const seedEmailTemplates = internalMutationGeneric({
         templateType: "two_factor_otp",
         subject: "Kode Verifikasi 2FA \u2014 {{appName}}",
         sections: [
-          { id: "s1", type: "heading", content: "Verifikasi 2FA" },
-          { id: "s2", type: "paragraph", content: "Masukkan kode berikut untuk menyelesaikan login:" },
+          { id: "s1", type: "heading", content: "Kode Verifikasi 2FA" },
+          { id: "s2", type: "paragraph", content: "Masukkan kode berikut untuk menyelesaikan proses verifikasi:" },
           { id: "s3", type: "otp_code", content: "{{otpCode}}" },
-          { id: "s4", type: "paragraph", content: "Kode berlaku selama 5 menit. Jangan bagikan kode ini ke siapapun." },
+          { id: "s4", type: "info_box", content: "Kode ini berlaku selama 5 menit. Jangan bagikan kode ini ke siapapun." },
+          { id: "s5", type: "divider" },
+          { id: "s6", type: "paragraph", content: "Jika Anda tidak meminta kode ini, segera amankan akun Anda dengan mengganti password." },
         ],
         availablePlaceholders: [
           { key: "otpCode", description: "Kode OTP 6 digit", example: "123456" },
@@ -144,10 +151,12 @@ export const seedEmailTemplates = internalMutationGeneric({
         templateType: "signup_success",
         subject: "Pendaftaran Berhasil \u2014 {{appName}}",
         sections: [
-          { id: "s1", type: "heading", content: "Pendaftaran Berhasil!" },
-          { id: "s2", type: "paragraph", content: "Halo {{userName}}, pendaftaran akun kamu berhasil." },
-          { id: "s3", type: "paragraph", content: "Sekarang kamu bisa mulai menyusun paper dengan Makalah AI." },
-          { id: "s4", type: "button", label: "Mulai Sekarang", url: "{{loginUrl}}" },
+          { id: "s1", type: "heading", content: "Selamat Datang di {{appName}}!" },
+          { id: "s2", type: "paragraph", content: "Halo {{userName}}," },
+          { id: "s3", type: "paragraph", content: "Pendaftaran akun Anda berhasil! Sekarang Anda bisa mulai menyusun paper akademik dengan bantuan AI." },
+          { id: "s4", type: "button", label: "Mulai Menyusun Paper", url: "{{loginUrl}}" },
+          { id: "s5", type: "divider" },
+          { id: "s6", type: "paragraph", content: "Jika ada pertanyaan, hubungi kami di support@makalah.ai" },
         ],
         availablePlaceholders: [
           { key: "userName", description: "Nama user", example: "Erik" },
@@ -161,9 +170,10 @@ export const seedEmailTemplates = internalMutationGeneric({
         templateType: "waitlist_confirmation",
         subject: "Pendaftaran Waiting List Berhasil - {{appName}}",
         sections: [
-          { id: "s1", type: "heading", content: "Terima Kasih!" },
-          { id: "s2", type: "paragraph", content: "Halo {{firstName}}, kamu sudah terdaftar di waiting list Makalah AI." },
-          { id: "s3", type: "paragraph", content: "Kami akan mengirimkan undangan segera setelah giliran kamu tiba." },
+          { id: "s1", type: "heading", content: "Terima Kasih Telah Mendaftar!" },
+          { id: "s2", type: "paragraph", content: "Halo {{firstName}}," },
+          { id: "s3", type: "paragraph", content: "Anda sudah terdaftar di waiting list {{appName}}. Kami akan mengirimkan undangan segera setelah giliran Anda tiba." },
+          { id: "s4", type: "info_box", content: "Anda akan menerima email undangan dengan link untuk mendaftar. Pastikan inbox Anda tidak memblokir email dari noreply@makalah.ai" },
         ],
         availablePlaceholders: [
           { key: "firstName", description: "Nama depan", example: "Erik" },

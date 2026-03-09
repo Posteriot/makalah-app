@@ -4,7 +4,7 @@ import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { useState } from "react"
-import { TEMPLATE_LABELS } from "@convex/emailTemplateConstants"
+import { TEMPLATE_DESCRIPTIONS, TEMPLATE_LABELS } from "@convex/emailTemplateConstants"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmailTemplateEditor } from "./EmailTemplateEditor"
 
@@ -74,6 +74,10 @@ export function EmailTemplateList({ userId, group }: EmailTemplateListProps) {
             <h3 className="text-interface text-sm font-medium text-foreground">
               {TEMPLATE_LABELS[template.templateType] ?? template.templateType}
             </h3>
+
+            <p className="text-interface text-xs text-muted-foreground">
+              {TEMPLATE_DESCRIPTIONS[template.templateType] ?? ""}
+            </p>
 
             <p className="text-interface font-mono text-xs text-muted-foreground truncate">
               Subject: {template.subject}
