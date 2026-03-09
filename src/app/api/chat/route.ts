@@ -46,7 +46,7 @@ import {
     type OperationType,
 } from "@/lib/billing/enforcement"
 import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
-import { referenceIntegritySkill, validateWithScores, getToolExamples, composeSkillInstructions, type SkillContext } from "@/lib/ai/skills"
+import { getSearchSkill, composeSkillInstructions, type SkillContext } from "@/lib/ai/skills"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
@@ -355,6 +355,19 @@ export async function POST(req: Request) {
         // Update billing context with paper session info
         if (paperSession) {
             billingContext.operationType = "paper_generation"
+        }
+
+        // Unified search skill instance
+        const skill = getSearchSkill()
+
+        function buildSkillContext(overrides?: Partial<SkillContext>): SkillContext {
+            return {
+                isPaperMode: !!paperModePrompt,
+                currentStage: paperSession?.currentStage ?? null,
+                hasRecentSources: false,
+                availableSources: [],
+                ...overrides,
+            }
         }
 
         // Flow Detection: Auto-detect paper intent and inject reminder if no session
@@ -686,16 +699,8 @@ export async function POST(req: Request) {
                 hasRecentSourcesInDb = true
                 recentSourcesList = recentSources
                 const sourcesJson = JSON.stringify(recentSources, null, 2)
-                const skillContext: SkillContext = {
-                    isPaperMode: !!paperModePrompt,
-                    currentStage: paperSession?.currentStage ?? null,
-                    hasRecentSources: true,
-                    availableSources: recentSourcesList,
-                }
-                const skillInstructions = composeSkillInstructions(skillContext)
                 sourcesContext = `AVAILABLE_WEB_SOURCES (dari hasil web search sebelumnya):
-${sourcesJson}
-${skillInstructions}`
+${sourcesJson}`
             }
         } catch (sourcesError) {
             console.error("[route] Failed to fetch recent sources:", sourcesError)
@@ -722,6 +727,14 @@ ${skillInstructions}`
             ...(sourcesContext
                 ? [{ role: "system" as const, content: sourcesContext }]
                 : []),
+            ...(() => {
+                if (!hasRecentSourcesInDb) return []
+                const instr = composeSkillInstructions(buildSkillContext({
+                    hasRecentSources: true,
+                    availableSources: recentSourcesList,
+                }))
+                return instr ? [{ role: "system" as const, content: instr }] : []
+            })(),
             ...trimmedModelMessages,
         ]
 
@@ -1400,11 +1413,7 @@ sequenceDiagram
     U->>S: Request
     S-->>U: Response
 
-Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagram, gantt, mindmap, timeline, journey, gitgraph, quadrantChart, xychart, block-beta, sankey-beta.
-
-📚 SOURCES: Jika konten artifact BERASAL dari hasil web search sebelumnya, WAJIB pass parameter 'sources' dengan URL dan judul dari referensi yang digunakan. Ini memastikan inline citations [1], [2] di artifact terhubung ke sumber yang benar.${getToolExamples("createArtifact") ? `
-
-${getToolExamples("createArtifact")}` : ""}`,
+Supported types: flowchart, sequenceDiagram, classDiagram, stateDiagram, erDiagram, gantt, mindmap, timeline, journey, gitgraph, quadrantChart, xychart, block-beta, sankey-beta.`,
                 inputSchema: z.object({
                     type: z.enum(["code", "outline", "section", "table", "citation", "formula", "chart"])
                         .describe("The type of artifact to create"),
@@ -1425,7 +1434,7 @@ ${getToolExamples("createArtifact")}` : ""}`,
                 }),
                 execute: async ({ type, title, content, format, description, sources }) => {
                     try {
-                        const refValidation = referenceIntegritySkill.validate({
+                        const refValidation = skill.checkReferences({
                             toolName: 'createArtifact',
                             claimedSources: sources,
                             availableSources: recentSourcesList,
@@ -1517,8 +1526,6 @@ Tool ini akan:
 2. Versi baru otomatis bersih dari flag invalidation
 3. Versi lama tetap tersimpan sebagai history
 
-📚 SOURCES: Jika update konten BERASAL dari hasil web search, WAJIB pass parameter 'sources' dengan array sumber referensi. Sources dari versi sebelumnya akan otomatis dipertahankan jika tidak di-pass.
-
 PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan AI sebelumnya.`,
                 inputSchema: z.object({
                     artifactId: z.string()
@@ -1536,7 +1543,7 @@ PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan A
                 }),
                 execute: async ({ artifactId, content, title, sources }) => {
                     try {
-                        const refValidation = referenceIntegritySkill.validate({
+                        const refValidation = skill.checkReferences({
                             toolName: 'updateArtifact',
                             claimedSources: sources,
                             availableSources: recentSourcesList,
@@ -2325,7 +2332,7 @@ Aturan:
                         let searchUsage: Awaited<ReturnType<typeof streamText>["usage"]> | undefined
                         let scoredSources: SourceEntry[] = []
                         let sourceCount = 0
-                        let qualityResult: ReturnType<typeof validateWithScores> = { valid: true }
+                        let qualityResult: ReturnType<typeof skill.scoreSources> = { valid: true, scoredSources: [], filteredOut: [] }
 
                         try {
                         const perplexityResult = streamText({
@@ -2360,7 +2367,7 @@ Aturan:
                             url: normalizeWebSearchUrl(c.url),
                             title: c.title || c.url,
                         }))
-                        qualityResult = validateWithScores({ sources: qualityInput })
+                        qualityResult = skill.scoreSources(qualityInput)
 
                         scoredSources = qualityResult.scoredSources
                             ? qualityResult.scoredSources.map(s => ({ url: s.url, title: s.title }))
@@ -2430,17 +2437,14 @@ Aturan:
                         // ────────────────────────────────────────────────────────────
                         const { buildSearchResultsContext } = await import("@/lib/ai/search-results-context")
 
-                        const skillContext: SkillContext = {
-                            isPaperMode: !!paperModePrompt,
-                            currentStage: paperSession?.currentStage ?? null,
+                        const skillInstructions = composeSkillInstructions(buildSkillContext({
                             hasRecentSources: scoredSources.length > 0,
                             availableSources: scoredSources.map(s => ({
                                 url: s.url,
                                 title: s.title,
                                 ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
                             })),
-                        }
-                        const skillInstructions = composeSkillInstructions(skillContext)
+                        }))
 
                         const searchResultsContext = buildSearchResultsContext(
                             qualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
@@ -3324,7 +3328,7 @@ Aturan:
                         }
                         let scoredSources: SourceEntry[] = []
                         let sourceCount = 0
-                        let grokQualityResult: ReturnType<typeof validateWithScores> = { valid: true }
+                        let grokQualityResult: ReturnType<typeof skill.scoreSources> = { valid: true, scoredSources: [], filteredOut: [] }
 
                         try {
                         const fallbackSearchResult = streamText({
@@ -3366,7 +3370,7 @@ Aturan:
                                 url: c.url,
                                 title: c.title || c.url,
                             }))
-                        grokQualityResult = validateWithScores({ sources: grokQualityInput })
+                        grokQualityResult = skill.scoreSources(grokQualityInput)
 
                         const filteredCitations = grokQualityResult.scoredSources
                             ? grokQualityResult.scoredSources.map(s => {
@@ -3426,17 +3430,14 @@ Aturan:
                         // ────────────────────────────────────────────────────────────
                         const { buildSearchResultsContext } = await import("@/lib/ai/search-results-context")
 
-                        const skillContext: SkillContext = {
-                            isPaperMode: !!paperModePrompt,
-                            currentStage: paperSession?.currentStage ?? null,
+                        const skillInstructions = composeSkillInstructions(buildSkillContext({
                             hasRecentSources: scoredSources.length > 0,
                             availableSources: scoredSources.map(s => ({
                                 url: s.url,
                                 title: s.title,
                                 ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
                             })),
-                        }
-                        const skillInstructions = composeSkillInstructions(skillContext)
+                        }))
 
                         const searchResultsContext = buildSearchResultsContext(
                             grokQualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
