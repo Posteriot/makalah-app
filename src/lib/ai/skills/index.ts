@@ -1,38 +1,14 @@
-import type { Skill, SkillContext } from "./types"
-import { referenceIntegritySkill } from "./reference-integrity.skill"
-import { sourceQualitySkill } from "./source-quality.skill"
+import { webSearchQualitySkill, type WebSearchSkill } from "./web-search-quality"
+import type { SkillContext } from "./types"
 
-const skills: Skill<unknown>[] = [
-  referenceIntegritySkill as Skill<unknown>,
-  sourceQualitySkill as Skill<unknown>,
-]
+export function getSearchSkill(): WebSearchSkill {
+  return webSearchQualitySkill
+}
 
 export function composeSkillInstructions(context: SkillContext): string {
-  return skills
-    .map((skill) => skill.instructions(context))
-    .filter((text): text is string => text !== null)
-    .join("\n\n")
+  return webSearchQualitySkill.getInstructions(context) ?? ""
 }
 
-export function getSkill<T>(name: string): Skill<T> | undefined {
-  return skills.find((s) => s.name === name) as Skill<T> | undefined
-}
-
-export function getToolExamples(toolName: string): string {
-  const relevantExamples = skills
-    .flatMap((s) => s.examples)
-    .filter((e) => e.toolName === toolName)
-
-  if (relevantExamples.length === 0) return ""
-
-  return relevantExamples
-    .map(
-      (e) =>
-        `Example (${e.scenario}):\n${JSON.stringify(e.correctArgs, null, 2)}\n→ ${e.explanation}`
-    )
-    .join("\n\n")
-}
-
-export { referenceIntegritySkill } from "./reference-integrity.skill"
-export { sourceQualitySkill, validateWithScores } from "./source-quality.skill"
-export type { SkillContext, ValidationResult, ToolExample } from "./types"
+export { webSearchQualitySkill } from "./web-search-quality"
+export type { WebSearchSkill } from "./web-search-quality"
+export type { SkillContext, ValidationResult, SourceEntry } from "./types"
