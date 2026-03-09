@@ -24,7 +24,10 @@ let cached: ParsedSkill | null = null
 function parseSkillMd(): ParsedSkill {
   if (cached) return cached
 
-  const raw = fs.readFileSync(path.join(__dirname, "SKILL.md"), "utf-8")
+  const raw = fs.readFileSync(
+    path.join(process.cwd(), "src/lib/ai/skills/web-search-quality/SKILL.md"),
+    "utf-8"
+  )
   const { data, content } = matter(raw)
 
   // Split body by ## headers
