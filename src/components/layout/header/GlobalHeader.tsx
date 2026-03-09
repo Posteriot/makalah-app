@@ -29,6 +29,7 @@ import { signOut, useSession } from "@/lib/auth-client"
 import { usePathname, useSearchParams } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
+import { AuthButton } from "@/components/ui/auth-button"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { getEffectiveTier } from "@/lib/utils/subscription"
 import type { EffectiveTier } from "@/lib/utils/subscription"
@@ -432,12 +433,13 @@ export function GlobalHeader() {
               />
             </div>
           ) : (
-            <Link
+            <AuthButton
               href={`/sign-in?redirect_url=${encodeURIComponent(redirectTarget)}`}
-              className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-primary bg-primary px-2 py-1 text-xs font-medium text-narrative uppercase text-primary-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground focus-ring"
+              className="hidden md:inline-flex"
+              contentClassName="text-xs font-medium text-narrative uppercase"
             >
               Masuk
-            </Link>
+            </AuthButton>
           )}
         </div>
       </div>

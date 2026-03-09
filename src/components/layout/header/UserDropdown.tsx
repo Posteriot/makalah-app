@@ -17,6 +17,7 @@ import {
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AuthButton } from "@/components/ui/auth-button"
 
 interface UserDropdownProps {
   /** "default" = text + chevron (marketing/dashboard), "compact" = compact trigger */
@@ -220,50 +221,31 @@ export function UserDropdown({
           </button>
         )
       ) : (
-        <button
+        <AuthButton
           onClick={() => {
             if (disabled) return
             setIsOpen(!isOpen)
           }}
-          className={cn(
-            // Structure for stripes animation
-            "group relative overflow-hidden",
-            // Base layout
-            "flex items-center justify-center gap-2 rounded-action px-2 py-1",
-            // Typography
-            "text-sm font-medium text-narrative",
-            // Light mode diam: dark button
-            "border border-transparent bg-[color:var(--core-cta-bg)] text-[color:var(--core-cta-fg)]",
-            // Light mode hover/expanded: text & border darken
-            "hover:text-[color:var(--core-cta-hover-fg)] hover:border-[color:var(--core-cta-hover-border)]",
-            "aria-expanded:text-[color:var(--core-cta-hover-fg)] aria-expanded:border-[color:var(--core-cta-hover-border)]",
-            // Transition & focus
-            "transition-colors focus-ring",
-            disabled && "cursor-not-allowed opacity-60"
-          )}
-          aria-expanded={isOpen}
-          aria-haspopup="true"
+          className="inline-flex"
+          contentClassName="text-sm font-medium text-narrative"
+          active={isOpen}
           disabled={disabled}
+          ariaExpanded={isOpen}
+          ariaHaspopup="menu"
         >
-          {/* Diagonal stripes overlay - slides in on hover or when expanded */}
-          <span
-            className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0 group-aria-expanded:translate-x-0"
-            aria-hidden="true"
-          />
-
           {/* Name (hidden on mobile) */}
-          <span className="relative z-10 hidden sm:block text-sm font-medium text-narrative max-w-[120px] truncate">
+          <span className="max-w-[120px] truncate">
             {firstName}
           </span>
 
           {/* Chevron */}
           <NavArrowDown
             className={cn(
-              "relative z-10 icon-interface transition-transform duration-200",
+              "icon-interface transition-transform duration-200",
               isOpen && "rotate-180"
             )}
           />
-        </button>
+        </AuthButton>
       )}
 
       {/* Dropdown Menu */}
