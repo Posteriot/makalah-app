@@ -39,13 +39,9 @@ export function SectionCTA({
     // Typography
     "text-signal text-xs font-medium uppercase tracking-widest",
     // Light mode diam: dark button
-    "border border-transparent bg-[color:var(--slate-800)] text-[color:var(--slate-100)]",
+    "border border-transparent bg-[color:var(--core-cta-bg)] text-[color:var(--core-cta-fg)]",
     // Light mode hover: text & border darken
-    "hover:text-[color:var(--slate-800)] hover:border-[color:var(--slate-600)]",
-    // Dark mode diam: light button
-    "dark:bg-[color:var(--slate-100)] dark:text-[color:var(--slate-800)]",
-    // Dark mode hover: text & border lighten
-    "dark:hover:text-[color:var(--slate-100)] dark:hover:border-[color:var(--slate-400)]",
+    "hover:text-[color:var(--core-cta-hover-fg)] hover:border-[color:var(--core-cta-hover-border)]",
     // Transition & focus
     "transition-colors focus-ring",
     // Keep text and icon aligned in one line

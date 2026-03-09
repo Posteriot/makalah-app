@@ -33,7 +33,7 @@ export function WorkflowFeatureCMS({ content }: WorkflowFeatureCMSProps) {
         <div className="grid w-full grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-16">
           {/* Left — Image/Mock (same layout order as static) */}
           <div className="order-2 lg:order-1 lg:col-span-6">
-            <div className="relative mx-auto w-full max-w-[320px] rounded-xl shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.18)] dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.22)] sm:max-w-[360px] md:max-w-[420px] lg:mx-0 lg:ml-auto lg:mr-0 lg:max-w-[452px]">
+            <div className="relative mx-auto w-full max-w-[320px] rounded-xl shadow-lg sm:max-w-[360px] md:max-w-[420px] lg:mx-0 lg:ml-auto lg:mr-0 lg:max-w-[452px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={lightImageUrl ?? "/images/workflow-feature-mock-light.png"}
@@ -56,7 +56,7 @@ export function WorkflowFeatureCMS({ content }: WorkflowFeatureCMSProps) {
                 {content.badgeText && (
                   <SectionBadge>{content.badgeText}</SectionBadge>
                 )}
-                <p className="mt-4 text-signal text-xs font-bold uppercase tracking-[0.26em] text-[color:var(--amber-500)]">
+                <p className="mt-4 text-signal text-xs font-bold uppercase tracking-[0.26em] text-warning">
                   Workflow
                 </p>
                 {content.title && (
@@ -67,7 +67,7 @@ export function WorkflowFeatureCMS({ content }: WorkflowFeatureCMSProps) {
               </div>
 
               {content.description && (
-                <p className="max-w-[580px] text-interface text-sm leading-relaxed text-slate-700 dark:text-slate-200">
+                <p className="max-w-[580px] text-interface text-sm leading-relaxed text-muted-foreground">
                   {content.description}
                 </p>
               )}

@@ -36,7 +36,8 @@ import {
 } from "@/lib/payment/runtime-settings"
 import {
   ACTIVE_EWALLET_CHANNELS,
-  ACTIVE_VA_CHANNELS,
+  getDefaultVisibleVAChannels,
+  getVisibleVAChannels,
 } from "@/lib/payment/channel-options"
 import { getVAChannelFullLabel } from "@/lib/payment/channel-labels"
 import { mapPaymentCreationErrorMessage } from "@/lib/payment/provider-error-messages"
@@ -67,7 +68,6 @@ const PAYMENT_METHODS = [
   { id: "va" as const, label: "Virtual Account", icon: Building, description: "Transfer bank" },
   { id: "ewallet" as const, label: "E-Wallet", icon: Wallet, description: "OVO" },
 ]
-const VA_CHANNELS = ACTIVE_VA_CHANNELS
 const EWALLET_CHANNELS = ACTIVE_EWALLET_CHANNELS
 
 const shellPanelClass = "rounded-shell border border-border/70 bg-card/95"
@@ -143,7 +143,10 @@ function CheckoutPROContent() {
   const proPricing = useQuery(api.billing.pricingHelpers.getProPricing)
   const paymentConfig = useQuery(api.billing.paymentProviderConfigs.getActiveConfig)
   const enabledMethods = paymentConfig?.enabledMethods ?? DEFAULT_ENABLED_METHODS
-  const availableMethods = getEnabledCheckoutMethods(enabledMethods)
+  const visibleVAChannels =
+    paymentConfig?.visibleVAChannels ?? getDefaultVisibleVAChannels()
+  const availableMethods = getEnabledCheckoutMethods(enabledMethods, visibleVAChannels)
+  const vaChannels = getVisibleVAChannels(visibleVAChannels)
 
   const backRoute = getSubscriptionBackRoute(searchParams.get("from"))
   const handleBackToSubscription = useCallback(() => {
@@ -175,7 +178,9 @@ function CheckoutPROContent() {
   )
 
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("qris")
-  const [selectedVAChannel, setSelectedVAChannel] = useState(VA_CHANNELS[0].code)
+  const [selectedVAChannel, setSelectedVAChannel] = useState(
+    getDefaultVisibleVAChannels()[0] ?? ""
+  )
   const [selectedEWalletChannel, setSelectedEWalletChannel] = useState(EWALLET_CHANNELS[0].code)
   const [mobileNumber, setMobileNumber] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -196,11 +201,22 @@ function CheckoutPROContent() {
   }, [paymentStatus?.status, paymentResult])
 
   useEffect(() => {
-    const nextMethod = resolveCheckoutMethodSelection(selectedMethod, enabledMethods)
+    const nextMethod = resolveCheckoutMethodSelection(
+      selectedMethod,
+      enabledMethods,
+      visibleVAChannels
+    )
     if (nextMethod && nextMethod !== selectedMethod) {
       setSelectedMethod(nextMethod)
     }
-  }, [enabledMethods, selectedMethod])
+  }, [enabledMethods, selectedMethod, visibleVAChannels])
+
+  useEffect(() => {
+    if (!vaChannels.length) return
+    if (!vaChannels.some((channel) => channel.code === selectedVAChannel)) {
+      setSelectedVAChannel(vaChannels[0].code)
+    }
+  }, [selectedVAChannel, vaChannels])
 
   const handleSubscribe = useCallback(async () => {
     if (isProcessing) return
@@ -552,7 +568,7 @@ function CheckoutPROContent() {
                     <div className="mt-3 border-t border-border/60 pt-3">
                       <p className="text-interface mb-2 text-xs text-muted-foreground">Pilih Bank</p>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                        {VA_CHANNELS.map((channel) => (
+                        {vaChannels.map((channel) => (
                           <button
                             key={channel.code}
                             onClick={() => setSelectedVAChannel(channel.code)}

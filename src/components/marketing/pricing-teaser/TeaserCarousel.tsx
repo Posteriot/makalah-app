@@ -95,8 +95,8 @@ export function TeaserCarousel({ plans }: { plans: TeaserPlan[] }) {
               "w-2 h-2 rounded-full border-none cursor-pointer",
               "transition-colors duration-200",
               activeSlide === index
-                ? "bg-brand"
-                : "bg-black/20 dark:bg-white/30"
+                ? "bg-primary"
+                : "bg-muted-foreground/30"
             )}
             aria-label={`Slide ${index + 1}`}
           />

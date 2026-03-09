@@ -1021,6 +1021,7 @@ export default defineSchema({
     enabledMethods: v.array(
       v.union(v.literal("QRIS"), v.literal("VIRTUAL_ACCOUNT"), v.literal("EWALLET"))
     ),
+    visibleVAChannels: v.array(v.string()),
     webhookUrl: v.optional(v.string()),
     defaultExpiryMinutes: v.optional(v.number()),
     isActive: v.boolean(),
@@ -1114,8 +1115,17 @@ export default defineSchema({
     latencyMs: v.number(),
     inputTokens: v.optional(v.number()),
     outputTokens: v.optional(v.number()),
+    searchSkillName: v.optional(v.string()),
+    searchSkillApplied: v.optional(v.boolean()),
+    searchSkillAction: v.optional(v.string()),
+    sourcesScored: v.optional(v.number()),
+    sourcesFiltered: v.optional(v.number()),
+    sourcesPassedTiers: v.optional(v.string()),
+    diversityWarning: v.optional(v.string()),
     skillResolverFallback: v.optional(v.boolean()),
     isSkillRuntime: v.optional(v.boolean()),
+    referencesClaimed: v.optional(v.number()),
+    referencesMatched: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_created", ["createdAt"])

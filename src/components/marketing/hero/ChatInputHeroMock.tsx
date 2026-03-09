@@ -201,11 +201,10 @@ export function ChatInputHeroMock() {
   // Unified Style with Shell Stone-200
   const cardStyles = cn(
     "hidden md:block absolute w-full max-w-[440px] transition-all duration-300",
-    "bg-stone-200 border-stone-300", // Shell: Stone-200, Border: Stone-300
+    "bg-card border-border", // Shell: Stone-200, Border: Stone-300
     "border-[1px] rounded-md",
     // Sharp Shadow - Diagonal Bottom-Left (-12px 12px)
-    "dark:shadow-[-12px_12px_0px_0px_rgba(168,162,158,0.2)]",
-    "shadow-[-12px_12px_0px_0px_rgba(68,64,60,0.3)]",
+    "shadow-lg",
     // layer-front positioning
     "z-20 top-1/2 right-0 -translate-y-1/2"
   )
@@ -215,22 +214,22 @@ export function ChatInputHeroMock() {
     return (
       <div className={cardStyles} aria-hidden="true">
         <div className={cn(
-          "flex items-center gap-4 p-3 rounded-t-md border-b-[0.5px] border-stone-600 bg-stone-500" // Header: Stone-500
+          "flex items-center gap-4 p-3 rounded-t-md border-b-[0.5px] border-[color:var(--core-border-strong)] bg-secondary" // Header: Stone-500
         )}>
           <div className="flex gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-rose-500" />
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="w-2 h-2 rounded-full bg-destructive" />
+            <span className="w-2 h-2 rounded-full bg-warning" />
+            <span className="w-2 h-2 rounded-full bg-success" />
           </div>
         </div>
         <div className="relative min-h-[120px] flex flex-col justify-start p-6 pr-[60px]">
           <div className={cn(
-            "absolute top-6 left-6 font-mono text-xs tracking-wider text-stone-500" // Muted for Stone-200 bg
+            "absolute top-6 left-6 font-mono text-xs tracking-wider text-muted-foreground" // Muted for Stone-200 bg
           )}>
             <span>Ketik obrolan...</span>
           </div>
           <div className={cn(
-            "absolute bottom-4 right-4 w-9 h-9 border-[0.5px] rounded-none flex items-center justify-center bg-stone-500 border-stone-600 text-stone-100"
+            "absolute bottom-4 right-4 w-9 h-9 border-[0.5px] rounded-none flex items-center justify-center bg-secondary border-[color:var(--core-border-strong)] text-foreground"
           )}>
             <Send className="w-4 h-4" />
           </div>
@@ -243,12 +242,12 @@ export function ChatInputHeroMock() {
     <div ref={containerRef} className={cardStyles} aria-hidden="true">
       {/* Header - Stone-500 */}
       <div className={cn(
-        "flex items-center gap-4 p-3 rounded-t-md border-b-[0.5px] border-stone-600 bg-stone-500"
+        "flex items-center gap-4 p-3 rounded-t-md border-b-[0.5px] border-[color:var(--core-border-strong)] bg-secondary"
       )}>
         <div className="flex gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-rose-500" />
-          <span className="w-2 h-2 rounded-full bg-amber-500" />
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="w-2 h-2 rounded-full bg-destructive" />
+          <span className="w-2 h-2 rounded-full bg-warning" />
+          <span className="w-2 h-2 rounded-full bg-success" />
         </div>
       </div>
 
@@ -257,7 +256,7 @@ export function ChatInputHeroMock() {
         {/* Placeholder - Total Mono */}
         <div
           className={cn(
-            "absolute top-6 left-6 font-mono text-xs flex items-center transition-all tracking-wider text-stone-500",
+            "absolute top-6 left-6 font-mono text-xs flex items-center transition-all tracking-wider text-muted-foreground",
             showPlaceholder ? "opacity-100" : "opacity-0"
           )}
         >
@@ -272,13 +271,13 @@ export function ChatInputHeroMock() {
         {/* Typewriter - Total Mono with Widest Tracking */}
         <div
           className={cn(
-            "absolute top-6 left-6 right-[60px] font-mono text-xs whitespace-pre-wrap leading-relaxed transition-all tracking-widest text-stone-950",
+            "absolute top-6 left-6 right-[60px] font-mono text-xs whitespace-pre-wrap leading-relaxed transition-all tracking-widest text-foreground",
             !showPlaceholder ? "opacity-100" : "opacity-0"
           )}
         >
           <span>{typedText}</span>
           <span className={cn(
-            "inline-block w-1.5 h-[1.1em] ml-1 translate-y-0.5 bg-stone-950",
+            "inline-block w-1.5 h-[1.1em] ml-1 translate-y-0.5 bg-foreground",
             phase === "hold" && "animate-pulse"
           )} />
         </div>
@@ -288,10 +287,10 @@ export function ChatInputHeroMock() {
           className={cn(
             "absolute bottom-4 right-4 w-9 h-9 border-[1px] transition-all duration-200 flex items-center justify-center rounded-none", // Core: rounded-none
             sendClicked
-              ? "bg-stone-800 border-stone-700 text-stone-500 scale-95 translate-y-0.5"
+              ? "bg-accent border-border text-muted-foreground scale-95 translate-y-0.5"
               : sendHovered
-                ? "bg-stone-700 border-stone-600 text-stone-100 shadow-lg shadow-stone-800/20 scale-105"
-                : "bg-stone-500 border-stone-600 text-stone-100"
+                ? "bg-accent border-[color:var(--core-border-strong)] text-foreground shadow-lg shadow-black/15 scale-105"
+                : "bg-secondary border-[color:var(--core-border-strong)] text-foreground"
           )}
         >
           <Send className="w-4.5 h-4.5" />
@@ -303,7 +302,7 @@ export function ChatInputHeroMock() {
             "absolute w-5 h-5 pointer-events-none z-50 transition-all duration-800",
             cursorVisible ? "opacity-100" : "opacity-0",
             cursorAtTarget ? "bottom-6 right-6" : "bottom-[60px] right-[80px]",
-            "text-stone-950", // Standard color: Stone-950
+            "text-foreground", // Standard color: Stone-950
             cursorClicking && "scale-90 opacity-80" // Scale down on click
           )}
         >

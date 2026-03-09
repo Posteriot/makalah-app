@@ -5,6 +5,7 @@ import {
   Dashboard,
   List,
   Page,
+  Search,
   StatsReport,
   Timer,
   WarningTriangle,
@@ -49,6 +50,14 @@ export const AI_OPS_SIDEBAR_ITEMS: AiOpsSidebarItem[] = [
     headerTitle: "Skill Runtime Monitoring",
     headerDescription: "Pantau skill aktif vs fallback pada workflow 14 stage",
     headerIcon: Brain,
+  },
+  {
+    id: "skill.search",
+    label: "Search Skill",
+    icon: Search,
+    headerTitle: "Search Skill Monitor",
+    headerDescription: "Pantau source quality dan reference integrity pada web search",
+    headerIcon: Search,
   },
   {
     id: "paper",
@@ -171,6 +180,7 @@ export const AI_OPS_SIDEBAR_ITEMS: AiOpsSidebarItem[] = [
 export type AiOpsTabId =
   | "overview"
   | "skill.monitor"
+  | "skill.search"
   | "paper.sessions"
   | "paper.memory"
   | "paper.artifacts"

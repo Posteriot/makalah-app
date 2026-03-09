@@ -56,10 +56,10 @@ const SCROLL_UP_DELTA = 2    // px minimum to show header (more sensitive)
  * - Tier determination via shared getEffectiveTier() utility
  */
 const SEGMENT_CONFIG: Record<EffectiveTier, { className: string }> = {
-  gratis: { className: "bg-segment-gratis text-white" },
-  bpp: { className: "bg-segment-bpp text-white" },
-  pro: { className: "bg-segment-pro text-white" },
-  unlimited: { className: "bg-segment-unlimited text-white dark:text-black" },
+  gratis: { className: "bg-segment-gratis text-primary-foreground" },
+  bpp: { className: "bg-segment-bpp text-primary-foreground" },
+  pro: { className: "bg-segment-pro text-primary-foreground" },
+  unlimited: { className: "bg-segment-unlimited text-primary-foreground" },
 }
 
 export function GlobalHeader() {
@@ -282,7 +282,7 @@ export function GlobalHeader() {
                   rel={openInNewTab ? "noopener noreferrer" : undefined}
                   className={cn(
                     "relative rounded-action px-2.5 py-1.5 text-narrative text-xs uppercase",
-                    "text-foreground transition-colors hover:bg-slate-200 dark:hover:bg-slate-800",
+                    "text-foreground transition-colors hover:bg-accent",
                     "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-1",
                     "after:border-b after:border-dotted after:border-current after:scale-x-0 after:origin-left after:transition-transform",
                     "hover:after:scale-x-100",
@@ -301,30 +301,17 @@ export function GlobalHeader() {
             <button
               onClick={toggleTheme}
               className={cn(
-                // Structure for stripes animation
-                "group relative overflow-hidden",
-                // Base layout
-                "md:hidden inline-flex h-6 w-6 items-center justify-center rounded-action mr-2",
-                // Light mode diam: dark button
-                "border border-transparent bg-slate-800 text-slate-100",
-                // Light mode hover: text & border darken
-                "hover:text-slate-800 hover:border-slate-600",
-                // Dark mode diam: light button
-                "dark:bg-slate-100 dark:text-slate-800",
-                // Dark mode hover: text & border lighten
-                "dark:hover:text-slate-100 dark:hover:border-slate-400",
-                // Transition & focus
-                "transition-colors focus-ring"
+                "md:hidden inline-flex h-6 w-6 items-center justify-center mr-2",
+                "bg-transparent border-0 text-muted-foreground hover:text-foreground",
+                "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-0"
               )}
               type="button"
               title="Toggle theme"
               aria-label="Toggle theme"
               disabled={!isThemeReady}
             >
-              {/* Diagonal stripes overlay */}
-              <span className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0" aria-hidden="true" />
               {/* Icon */}
-              <span className="relative z-10">
+              <span>
                 {(resolvedTheme ?? "dark") === "dark" ? (
                   <SunLight className="h-3.5 w-3.5" />
                 ) : (
@@ -356,29 +343,16 @@ export function GlobalHeader() {
             <button
               onClick={toggleTheme}
               className={cn(
-                // Structure for stripes animation
-                "group relative overflow-hidden",
-                // Base layout
-                "hidden md:inline-flex h-7.5 w-7.5 items-center justify-center rounded-action",
-                // Light mode diam: dark button
-                "border border-transparent bg-slate-800 text-slate-100",
-                // Light mode hover: text & border darken
-                "hover:text-slate-800 hover:border-slate-600",
-                // Dark mode diam: light button
-                "dark:bg-slate-100 dark:text-slate-800",
-                // Dark mode hover: text & border lighten
-                "dark:hover:text-slate-100 dark:hover:border-slate-400",
-                // Transition & focus
-                "transition-colors focus-ring"
+                "hidden md:inline-flex h-7.5 w-7.5 items-center justify-center",
+                "bg-transparent border-0 text-muted-foreground hover:text-foreground",
+                "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-0"
               )}
               title="Toggle theme"
               aria-label="Toggle theme"
             >
-              {/* Diagonal stripes overlay */}
-              <span className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0" aria-hidden="true" />
               {/* Icons */}
-              <SunLight className="relative z-10 icon-interface block dark:hidden" />
-              <HalfMoon className="relative z-10 icon-interface hidden dark:block" />
+              <SunLight className="icon-interface block dark:hidden" />
+              <HalfMoon className="icon-interface hidden dark:block" />
             </button>
           ) : null}
 
@@ -392,7 +366,7 @@ export function GlobalHeader() {
           ) : (
             <Link
               href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
-              className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-slate-950 bg-slate-950 px-2 py-1 text-xs font-medium text-narrative uppercase text-slate-50 transition-colors hover:bg-slate-900 dark:border-slate-50 dark:bg-slate-50 dark:text-slate-950 dark:hover:bg-slate-200 focus-ring"
+              className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-primary bg-primary px-2 py-1 text-xs font-medium text-narrative uppercase text-primary-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground focus-ring"
             >
               Masuk
             </Link>
@@ -403,7 +377,7 @@ export function GlobalHeader() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <nav className="absolute top-full left-0 right-0 z-40 flex flex-col border-b border-slate-300 bg-slate-100 p-4 shadow-sm dark:border-slate-800 dark:bg-background md:hidden">
+        <nav className="absolute top-full left-0 right-0 z-40 flex flex-col border-b border-border bg-card p-4 shadow-sm md:hidden">
           {/* Main Navigation Links */}
           {visibleNavLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
@@ -417,7 +391,7 @@ export function GlobalHeader() {
                   rel={openInNewTab ? "noopener noreferrer" : undefined}
                   className={cn(
                     "flex min-h-11 items-center rounded-action px-3 py-2.5 text-[11px] text-narrative uppercase tracking-wider",
-                    "text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800",
+                    "text-foreground transition-colors hover:bg-accent",
                     isActive && "text-muted-foreground"
                   )}
                   onClick={() => setMobileMenuState({ isOpen: false, pathname })}
@@ -440,11 +414,11 @@ export function GlobalHeader() {
 
           {/* SignedIn: Auth section */}
           {showAsAuthenticated && (
-            <div className="mt-3 rounded-sm border-hairline border-slate-300 bg-slate-200 dark:border-slate-700 dark:bg-slate-900 p-4">
+            <div className="mt-3 rounded-sm border-hairline border-border bg-muted p-4">
               <Accordion type="single" collapsible>
                 <AccordionItem value="user" className="border-none">
                   <AccordionTrigger className="items-center py-0 hover:no-underline [&>svg]:self-center [&>svg]:translate-y-0">
-                    <div className="flex min-h-12 w-full items-center gap-3 rounded-action px-3 py-3 text-left transition-colors hover:bg-slate-300 dark:hover:bg-slate-800">
+                    <div className="flex min-h-12 w-full items-center gap-3 rounded-action px-3 py-3 text-left transition-colors hover:bg-accent">
                       <div className={cn("h-8 w-8 rounded-action flex items-center justify-center text-xs font-semibold", segmentConfig.className)}>
                         {initial}
                       </div>
@@ -457,7 +431,7 @@ export function GlobalHeader() {
                     <Link
                       href="/settings"
                       onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
+                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-accent"
                     >
                       <User className="icon-interface" />
                       <span>Atur Akun</span>
@@ -465,7 +439,7 @@ export function GlobalHeader() {
 
                     <Link
                       href="/subscription/overview"
-                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
+                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-accent"
                       onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                     >
                       <CreditCard className="icon-interface" />
@@ -474,7 +448,7 @@ export function GlobalHeader() {
 
                     <Link
                       href="/support/technical-report?source=support-page"
-                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
+                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-accent"
                       onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                     >
                       <WarningTriangle className="icon-interface" />
@@ -484,7 +458,7 @@ export function GlobalHeader() {
                     {isAdmin && (
                         <Link
                           href="/dashboard"
-                          className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-slate-300 dark:hover:bg-slate-800"
+                          className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-accent"
                           onClick={() => setMobileMenuState({ isOpen: false, pathname })}
                         >
                           <Settings className="icon-interface" />
@@ -499,7 +473,7 @@ export function GlobalHeader() {
                         "flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative transition-colors",
                         isSigningOut
                           ? "text-muted-foreground cursor-not-allowed"
-                          : "text-rose-500 hover:bg-rose-500/10"
+                          : "text-destructive hover:bg-destructive/10"
                       )}
                       type="button"
                     >

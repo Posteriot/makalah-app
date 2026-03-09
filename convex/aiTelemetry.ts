@@ -89,7 +89,9 @@ function isSkillRuntimeRecord(record: {
   stageInstructionSource?: "skill" | "fallback" | "none"
   stageScope?: StageScope
   skillResolverFallback?: boolean
+  searchSkillApplied?: boolean
 }): boolean {
+  if (record.searchSkillApplied) return true
   if (record.stageInstructionSource !== undefined) return true
   if (record.stageScope !== undefined) return true
   return record.mode === "paper" && record.skillResolverFallback !== undefined
@@ -125,6 +127,15 @@ export const log = mutation({
     inputTokens: v.optional(v.number()),
     outputTokens: v.optional(v.number()),
     skillResolverFallback: v.optional(v.boolean()),
+    searchSkillApplied: v.optional(v.boolean()),
+    searchSkillName: v.optional(v.string()),
+    searchSkillAction: v.optional(v.string()),
+    sourcesScored: v.optional(v.number()),
+    sourcesFiltered: v.optional(v.number()),
+    sourcesPassedTiers: v.optional(v.string()),
+    referencesClaimed: v.optional(v.number()),
+    referencesMatched: v.optional(v.number()),
+    diversityWarning: v.optional(v.string()),
   },
   handler: async ({ db }, args) => {
     const isSkillRuntime = isSkillRuntimeRecord({
@@ -132,6 +143,7 @@ export const log = mutation({
       stageInstructionSource: args.stageInstructionSource,
       stageScope: args.stageScope,
       skillResolverFallback: args.skillResolverFallback,
+      searchSkillApplied: args.searchSkillApplied,
     })
 
     const id = await db.insert("aiTelemetry", {
@@ -771,6 +783,115 @@ export const getDashboardReport = query({
       failoverCauses: failoverCausesResult,
       failoverTimeline,
     }
+  },
+})
+
+/**
+ * Search skill observability overview (applied vs rejected, tier distribution).
+ * Admin/superadmin only.
+ */
+export const getSearchSkillOverview = query({
+  args: {
+    requestorUserId: v.id("users"),
+    period: periodValidator,
+  },
+  handler: async ({ db }, { requestorUserId, period }) => {
+    await requireRole(db, requestorUserId, "admin")
+
+    const cutoff = Date.now() - periodToMs(period)
+
+    const records = await db
+      .query("aiTelemetry")
+      .withIndex("by_skill_runtime_created", (q) =>
+        q.eq("isSkillRuntime", true).gte("createdAt", cutoff)
+      )
+      .collect()
+
+    const searchSkillRecords = records.filter((r) => r.searchSkillApplied === true)
+
+    let totalApplied = 0
+    let totalRejected = 0
+    let totalSourcesScored = 0
+    let totalSourcesFiltered = 0
+    const tierCounts: Record<string, number> = {}
+    const bySkill: Record<string, { applied: number; rejected: number }> = {}
+
+    for (const r of searchSkillRecords) {
+      totalApplied++
+      if (r.searchSkillAction === "rejected") totalRejected++
+      totalSourcesScored += r.sourcesScored ?? 0
+      totalSourcesFiltered += r.sourcesFiltered ?? 0
+
+      if (r.sourcesPassedTiers) {
+        try {
+          const tiers = JSON.parse(r.sourcesPassedTiers) as Record<string, number>
+          for (const [tier, count] of Object.entries(tiers)) {
+            tierCounts[tier] = (tierCounts[tier] ?? 0) + count
+          }
+        } catch { /* ignore parse errors */ }
+      }
+
+      const name = r.searchSkillName ?? "unknown"
+      if (!bySkill[name]) bySkill[name] = { applied: 0, rejected: 0 }
+      bySkill[name].applied++
+      if (r.searchSkillAction === "rejected") bySkill[name].rejected++
+    }
+
+    return {
+      totalApplied,
+      totalRejected,
+      rejectionRate: totalApplied > 0 ? totalRejected / totalApplied : 0,
+      totalSourcesScored,
+      totalSourcesFiltered,
+      tierDistribution: tierCounts,
+      bySkill,
+    }
+  },
+})
+
+/**
+ * Search skill trace for debugging search source policy behavior.
+ * Admin/superadmin only.
+ */
+export const getSearchSkillTrace = query({
+  args: {
+    requestorUserId: v.id("users"),
+    period: periodValidator,
+    limit: v.optional(v.number()),
+  },
+  handler: async ({ db }, { requestorUserId, period, limit }) => {
+    await requireRole(db, requestorUserId, "admin")
+
+    const effectiveLimit = limit ?? 30
+    const cutoff = Date.now() - periodToMs(period)
+
+    const records = await db
+      .query("aiTelemetry")
+      .withIndex("by_skill_runtime_created", (q) =>
+        q.eq("isSkillRuntime", true).gte("createdAt", cutoff)
+      )
+      .order("desc")
+      .collect()
+
+    return records
+      .filter((r) => r.searchSkillApplied === true)
+      .slice(0, effectiveLimit)
+      .map((r) => ({
+        _id: r._id,
+        createdAt: r.createdAt,
+        conversationId: r.conversationId ?? null,
+        searchSkillName: r.searchSkillName ?? "unknown",
+        searchSkillAction: r.searchSkillAction ?? "unknown",
+        sourcesScored: r.sourcesScored ?? null,
+        sourcesFiltered: r.sourcesFiltered ?? null,
+        sourcesPassedTiers: r.sourcesPassedTiers ?? null,
+        referencesClaimed: r.referencesClaimed ?? null,
+        referencesMatched: r.referencesMatched ?? null,
+        diversityWarning: r.diversityWarning ?? null,
+        stageScope: r.stageScope ?? null,
+        mode: r.mode,
+        success: r.success,
+      }))
   },
 })
 
