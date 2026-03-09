@@ -13,6 +13,7 @@ import { retryMutation } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 import { normalizeCitations, type NormalizedCitation } from "@/lib/citations/normalizer"
+import { isBlockedSourceDomain } from "@/lib/ai/blocked-domains"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { createPaperTools } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
@@ -2332,7 +2333,7 @@ Aturan:
                         let searchUsage: Awaited<ReturnType<typeof streamText>["usage"]> | undefined
                         let scoredSources: SourceEntry[] = []
                         let sourceCount = 0
-                        let qualityResult: ReturnType<typeof skill.scoreSources> = { valid: true, scoredSources: [], filteredOut: [] }
+                        let blockedCount = 0
 
                         try {
                         const { getSearchSystemPrompt, augmentUserMessageForSearch } = await import("@/lib/ai/search-system-prompt")
@@ -2366,46 +2367,12 @@ Aturan:
                             }
                         })()
 
-                        // Source pipeline: normalize → score → enrich → dedup
+                        // Source pipeline: normalize → blacklist → pass to Gemini
+                        // Quality judgment delegated to Gemini via SKILL.md
                         const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
-                        console.log(`[SourcePipeline] raw=${Array.isArray(rawSources) ? rawSources.length : 'n/a'} → normalized=${normalizedCitations.length}`)
-
-                        const qualityInput = normalizedCitations.map(c => ({
-                            url: normalizeWebSearchUrl(c.url),
-                            title: c.title || c.url,
-                        }))
-                        qualityResult = skill.scoreSources(qualityInput)
-                        console.log(`[SourcePipeline] scored: passed=${qualityResult.scoredSources?.length ?? 0}, blocked=${qualityResult.filteredOut?.length ?? 0}`)
-
-                        scoredSources = qualityResult.scoredSources
-                            ? qualityResult.scoredSources.map(s => ({ url: s.url, title: s.title }))
-                            : qualityInput.filter(c => !isGarbageUrl(c.url)) // fallback to old behavior
-
-                        // Enrichment
-                        if (scoredSources.length > 0) {
-                            const beforeEnrich = scoredSources.length
-                            scoredSources = await enrichSourcesWithFetchedTitles(scoredSources, {
-                                concurrency: 4,
-                                timeoutMs: 5000,
-                            })
-                            const unreachable = scoredSources.filter((s) => (s as { _unreachable?: true })._unreachable)
-                            if (unreachable.length > 0) {
-                                console.log(`[SourcePipeline] unreachable (dropped): ${unreachable.map(s => s.url).join(', ')}`)
-                            }
-                            scoredSources = scoredSources.filter((s) => !(s as { _unreachable?: true })._unreachable)
-
-                            // Dedup
-                            const beforeDedup = scoredSources.length
-                            const deduped = new Map<string, SourceEntry>()
-                            for (const src of scoredSources) {
-                                const key = canonicalizeCitationUrl(src.url)
-                                if (!deduped.has(key)) {
-                                    deduped.set(key, src)
-                                }
-                            }
-                            scoredSources = Array.from(deduped.values())
-                            console.log(`[SourcePipeline] enrich: ${beforeEnrich} → reachable=${beforeDedup} → deduped=${scoredSources.length}`)
-                        }
+                        const allSources = normalizedCitations.map(c => ({ url: c.url, title: c.title || c.url }))
+                        scoredSources = allSources.filter(c => !isBlockedSourceDomain(c.url))
+                        blockedCount = allSources.length - scoredSources.length
 
                         sourceCount = scoredSources.length
                         primaryReasoningSourceCount = sourceCount
@@ -2462,7 +2429,7 @@ Aturan:
                         let searchResultsContext: string
                         try {
                             searchResultsContext = buildSearchResultsContext(
-                                qualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
+                                scoredSources.map(s => ({ url: s.url, title: s.title })),
                                 searchText,
                             )
                         } catch (ctxError) {
@@ -2643,9 +2610,9 @@ Aturan:
                                     const sourceQualityTelemetry = {
                                         searchSkillApplied: true,
                                         searchSkillName: "source-quality",
-                                        searchSkillAction: qualityResult.valid ? "passed" : "all-blocked",
-                                        sourcesPassed: qualityResult.scoredSources?.length ?? 0,
-                                        sourcesBlocked: qualityResult.filteredOut?.length ?? 0,
+                                        searchSkillAction: scoredSources.length > 0 ? "passed" : "all-blocked",
+                                        sourcesPassed: scoredSources.length,
+                                        sourcesBlocked: blockedCount,
                                     }
                                     logAiTelemetry({
                                         token: convexToken,
@@ -3342,7 +3309,7 @@ Aturan:
                         }
                         let scoredSources: SourceEntry[] = []
                         let sourceCount = 0
-                        let grokQualityResult: ReturnType<typeof skill.scoreSources> = { valid: true, scoredSources: [], filteredOut: [] }
+                        let grokBlockedCount = 0
 
                         try {
                         const { getSearchSystemPrompt, augmentUserMessageForSearch } = await import("@/lib/ai/search-system-prompt")
@@ -3377,38 +3344,22 @@ Aturan:
                             }
                         })()
 
-                        // Source pipeline: normalize → score → filter (no enrichment for Grok)
+                        // Source pipeline: normalize → blacklist → pass to Gemini
+                        // Quality judgment delegated to Gemini via SKILL.md
                         let normalizedCitations: NormalizedCitation[] = []
                         if (providerMetadataFromResult) {
                             normalizedCitations = normalizeCitations(providerMetadataFromResult, 'openrouter')
                         }
 
-                        // Skill-based quality scoring (include publishedAt so it flows through)
-                        const grokQualityInput = normalizedCitations
-                            .filter(c => !isVertexProxyUrl(c.url)) // Keep proxy filter (separate concern)
+                        const allGrokSources = normalizedCitations
+                            .filter(c => !isVertexProxyUrl(c.url))
                             .map(c => ({
                                 url: c.url,
                                 title: c.title || c.url,
+                                ...(c.publishedAt ? { publishedAt: c.publishedAt } : {}),
                             }))
-                        grokQualityResult = skill.scoreSources(grokQualityInput)
-
-                        const filteredCitations = grokQualityResult.scoredSources
-                            ? grokQualityResult.scoredSources.map(s => {
-                                // Re-attach full NormalizedCitation fields (endIndex, publishedAt, etc.)
-                                const original = normalizedCitations.find(c => c.url === s.url)
-                                return original ?? { url: s.url, title: s.title }
-                            })
-                            : normalizedCitations.filter(c => !isGarbageUrl(c.url) && !isVertexProxyUrl(c.url)) // fallback
-
-                        if (grokQualityResult.filteredOut?.length) {
-                            console.log(`[source-quality:grok] Filtered ${grokQualityResult.filteredOut.length} blocked sources`)
-                        }
-
-                        scoredSources = filteredCitations.map((citation) => ({
-                            url: citation.url,
-                            title: citation.title || citation.url,
-                            ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),
-                        }))
+                        scoredSources = allGrokSources.filter(c => !isBlockedSourceDomain(c.url))
+                        grokBlockedCount = allGrokSources.length - scoredSources.length
 
                         sourceCount = scoredSources.length
 
@@ -3457,7 +3408,7 @@ Aturan:
                         }))
 
                         const searchResultsContext = buildSearchResultsContext(
-                            grokQualityResult.scoredSources ?? scoredSources.map(s => ({ ...s })),
+                            scoredSources.map(s => ({ url: s.url, title: s.title })),
                             searchText,
                         )
 
@@ -3637,9 +3588,9 @@ Aturan:
                                     const grokSourceQualityTelemetry = {
                                         searchSkillApplied: true,
                                         searchSkillName: "source-quality",
-                                        searchSkillAction: grokQualityResult.valid ? "passed" : "all-blocked",
-                                        sourcesPassed: grokQualityResult.scoredSources?.length ?? 0,
-                                        sourcesBlocked: grokQualityResult.filteredOut?.length ?? 0,
+                                        searchSkillAction: scoredSources.length > 0 ? "passed" : "all-blocked",
+                                        sourcesPassed: scoredSources.length,
+                                        sourcesBlocked: grokBlockedCount,
                                     }
                                     logAiTelemetry({
                                         token: convexToken,

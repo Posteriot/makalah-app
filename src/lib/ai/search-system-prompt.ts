@@ -23,9 +23,8 @@ Provide thorough, well-sourced answers with inline citations from diverse source
  * Perplexity uses the user message as its search query basis,
  * so this directly influences retrieval behavior.
  */
-export function augmentUserMessageForSearch(messages: Array<{ role: string; content: unknown }>): typeof messages {
+export function augmentUserMessageForSearch<T extends { role: string; content: unknown }>(messages: T[]): T[] {
   const result = [...messages]
-  // Find last user message
   for (let i = result.length - 1; i >= 0; i--) {
     if (result[i].role === "user" && typeof result[i].content === "string") {
       result[i] = {
