@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
@@ -38,57 +38,115 @@ interface EmailTemplateEditorProps {
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Loader (handles query + loading skeleton)
 // ---------------------------------------------------------------------------
 
 export function EmailTemplateEditor({ templateType, userId, onBack }: EmailTemplateEditorProps) {
   const template = useQuery(api.emailTemplates.getTemplateByType, { templateType })
   const brand = useQuery(api.emailBrandSettings.getBrandSettings)
+
+  // ── Loading state ────────────────────────────────────────────
+  if (template === undefined || brand === undefined) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-6 w-64" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    )
+  }
+
+  // Derive brand settings (strip _id for API)
+  const brandSettings = {
+    appName: brand.appName,
+    primaryColor: brand.primaryColor,
+    secondaryColor: brand.secondaryColor,
+    backgroundColor: brand.backgroundColor,
+    contentBackgroundColor: brand.contentBackgroundColor,
+    textColor: brand.textColor,
+    mutedTextColor: brand.mutedTextColor,
+    fontFamily: brand.fontFamily,
+    footerText: brand.footerText,
+    footerLinks: brand.footerLinks,
+    logoUrl: brand.logoUrl,
+  }
+
+  return (
+    <EmailTemplateEditorForm
+      templateType={templateType}
+      userId={userId}
+      onBack={onBack}
+      initialTemplate={template}
+      brandSettings={brandSettings}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Form (receives loaded data, owns local state)
+// ---------------------------------------------------------------------------
+
+interface BrandSettings {
+  appName: string
+  primaryColor: string
+  secondaryColor: string
+  backgroundColor: string
+  contentBackgroundColor: string
+  textColor: string
+  mutedTextColor: string
+  fontFamily: string
+  footerText: string
+  footerLinks: { label: string; url: string }[]
+  logoUrl?: string
+}
+
+interface EmailTemplateEditorFormProps {
+  templateType: string
+  userId: Id<"users">
+  onBack: () => void
+  initialTemplate: {
+    _id: Id<"emailTemplates">
+    subject: string
+    sections: unknown[]
+    isActive: boolean
+    availablePlaceholders?: unknown[]
+  } | null
+  brandSettings: BrandSettings
+}
+
+function EmailTemplateEditorForm({
+  templateType,
+  userId,
+  onBack,
+  initialTemplate,
+  brandSettings,
+}: EmailTemplateEditorFormProps) {
   const upsertTemplate = useMutation(api.emailTemplates.upsertTemplate)
   const session = useSession()
   const adminEmail = session.data?.user?.email ?? ""
 
-  // ── State ────────────────────────────────────────────────────
-  const [subject, setSubject] = useState("")
-  const [sections, setSections] = useState<EmailSection[]>([])
-  const [isActive, setIsActive] = useState(false)
+  // ── State (initialized from loaded template) ───────────────
+  const [subject, setSubject] = useState(
+    initialTemplate?.subject ?? "",
+  )
+  const [sections, setSections] = useState<EmailSection[]>(
+    (initialTemplate?.sections as EmailSection[]) ?? [],
+  )
+  const [isActive, setIsActive] = useState(
+    initialTemplate?.isActive ?? false,
+  )
   const [placeholders, setPlaceholders] = useState<
     { key: string; description: string; example: string }[]
-  >([])
-  const [initialized, setInitialized] = useState(false)
-
-  // ── Initialize from query ────────────────────────────────────
-  useEffect(() => {
-    if (template === undefined) return // still loading
-    if (initialized) return
-
-    if (template) {
-      setSubject(template.subject)
-      setSections(template.sections as EmailSection[])
-      setIsActive(template.isActive)
-      setPlaceholders(
-        (template.availablePlaceholders as { key: string; description: string; example: string }[]) ?? [],
-      )
-    }
-    setInitialized(true)
-  }, [template, initialized])
-
-  // ── Derived brand settings (strip _id for API) ──────────────
-  const brandSettings = brand
-    ? {
-        appName: brand.appName,
-        primaryColor: brand.primaryColor,
-        secondaryColor: brand.secondaryColor,
-        backgroundColor: brand.backgroundColor,
-        contentBackgroundColor: brand.contentBackgroundColor,
-        textColor: brand.textColor,
-        mutedTextColor: brand.mutedTextColor,
-        fontFamily: brand.fontFamily,
-        footerText: brand.footerText,
-        footerLinks: brand.footerLinks,
-        logoUrl: brand.logoUrl,
-      }
-    : null
+  >(
+    (initialTemplate?.availablePlaceholders as { key: string; description: string; example: string }[]) ?? [],
+  )
 
   // ── Section CRUD ─────────────────────────────────────────────
   const handleSectionChange = useCallback(
@@ -190,11 +248,6 @@ export function EmailTemplateEditor({ templateType, userId, onBack }: EmailTempl
 
   // ── Save handler ─────────────────────────────────────────────
   const handleSave = async () => {
-    if (!brandSettings) {
-      toast.error("Brand settings belum dimuat")
-      return
-    }
-
     if (!subject.trim()) {
       toast.error("Subject email tidak boleh kosong")
       return
@@ -217,7 +270,7 @@ export function EmailTemplateEditor({ templateType, userId, onBack }: EmailTempl
     // 2. Upsert to Convex
     await upsertTemplate({
       requestorId: userId,
-      id: template?._id as Id<"emailTemplates"> | undefined,
+      id: initialTemplate?._id as Id<"emailTemplates"> | undefined,
       templateType,
       subject,
       sections,
@@ -225,24 +278,6 @@ export function EmailTemplateEditor({ templateType, userId, onBack }: EmailTempl
       preRenderedHtml,
       isActive,
     })
-  }
-
-  // ── Loading state ────────────────────────────────────────────
-  if (template === undefined || brand === undefined) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-6 w-64" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
-    )
   }
 
   // ── Render ───────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 "use client"
 
+import { useCallback, useRef } from "react"
 import { Plus } from "iconoir-react"
 import {
   DropdownMenu,
@@ -24,8 +25,10 @@ interface AddSectionButtonProps {
 }
 
 export function AddSectionButton({ onAdd }: AddSectionButtonProps) {
-  const handleAdd = (type: string) => {
-    const id = `s${Date.now()}`
+  const counterRef = useRef(0)
+  const handleAdd = useCallback((type: string) => {
+    counterRef.current += 1
+    const id = `s${counterRef.current}_${Math.random().toString(36).slice(2, 8)}`
     const base: EmailSection = { id, type }
 
     switch (type) {
@@ -51,7 +54,7 @@ export function AddSectionButton({ onAdd }: AddSectionButtonProps) {
     }
 
     onAdd(base)
-  }
+  }, [onAdd])
 
   return (
     <DropdownMenu>

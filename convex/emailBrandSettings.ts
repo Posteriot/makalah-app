@@ -105,7 +105,7 @@ export const upsertBrandSettings = mutation({
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorId, "admin")
 
-    const { requestorId, ...fields } = args
+    const { requestorId: _requestorId, ...fields } = args
 
     // Remove undefined fields so we only patch what's provided
     const cleanFields: Record<string, unknown> = {}
@@ -118,12 +118,18 @@ export const upsertBrandSettings = mutation({
     const existing = await ctx.db.query("emailBrandSettings").first()
 
     if (existing) {
-      await ctx.db.patch(existing._id, cleanFields)
+      await ctx.db.patch(existing._id, {
+        ...cleanFields,
+        updatedAt: Date.now(),
+        updatedBy: args.requestorId,
+      })
       return existing._id
     } else {
       return await ctx.db.insert("emailBrandSettings", {
         ...DEFAULTS,
         ...cleanFields,
+        updatedAt: Date.now(),
+        updatedBy: args.requestorId,
       })
     }
   },
