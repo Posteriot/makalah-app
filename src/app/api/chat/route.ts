@@ -13,7 +13,7 @@ import { retryMutation } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
 import { normalizeCitations, type NormalizedCitation } from "@/lib/citations/normalizer"
-import { isBlockedSourceDomain } from "@/lib/ai/blocked-domains"
+// isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { createPaperTools } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
@@ -2333,7 +2333,7 @@ Aturan:
                         let searchUsage: Awaited<ReturnType<typeof streamText>["usage"]> | undefined
                         let scoredSources: SourceEntry[] = []
                         let sourceCount = 0
-                        let blockedCount = 0
+                        // blockedCount removed — blocklist enforcement via SKILL.md
 
                         try {
                         const { getSearchSystemPrompt, augmentUserMessageForSearch } = await import("@/lib/ai/search-system-prompt")
@@ -2367,12 +2367,10 @@ Aturan:
                             }
                         })()
 
-                        // Source pipeline: normalize → blacklist → pass to Gemini
-                        // Quality judgment delegated to Gemini via SKILL.md
+                        // Source pipeline: normalize → pass ALL to Gemini
+                        // Blocklist enforcement delegated to Gemini via SKILL.md
                         const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
-                        const allSources = normalizedCitations.map(c => ({ url: c.url, title: c.title || c.url }))
-                        scoredSources = allSources.filter(c => !isBlockedSourceDomain(c.url))
-                        blockedCount = allSources.length - scoredSources.length
+                        scoredSources = normalizedCitations.map(c => ({ url: c.url, title: c.title || c.url }))
 
                         sourceCount = scoredSources.length
                         primaryReasoningSourceCount = sourceCount
@@ -2612,7 +2610,7 @@ Aturan:
                                         searchSkillName: "source-quality",
                                         searchSkillAction: scoredSources.length > 0 ? "passed" : "all-blocked",
                                         sourcesPassed: scoredSources.length,
-                                        sourcesBlocked: blockedCount,
+                                        sourcesBlocked: 0, // blocklist via SKILL.md, not programmatic
                                     }
                                     logAiTelemetry({
                                         token: convexToken,
@@ -3309,7 +3307,7 @@ Aturan:
                         }
                         let scoredSources: SourceEntry[] = []
                         let sourceCount = 0
-                        let grokBlockedCount = 0
+                        // grokBlockedCount removed — blocklist enforcement via SKILL.md
 
                         try {
                         const { getSearchSystemPrompt, augmentUserMessageForSearch } = await import("@/lib/ai/search-system-prompt")
@@ -3358,8 +3356,8 @@ Aturan:
                                 title: c.title || c.url,
                                 ...(c.publishedAt ? { publishedAt: c.publishedAt } : {}),
                             }))
-                        scoredSources = allGrokSources.filter(c => !isBlockedSourceDomain(c.url))
-                        grokBlockedCount = allGrokSources.length - scoredSources.length
+                        // Blocklist enforcement delegated to Gemini via SKILL.md
+                        scoredSources = allGrokSources
 
                         sourceCount = scoredSources.length
 
@@ -3590,7 +3588,7 @@ Aturan:
                                         searchSkillName: "source-quality",
                                         searchSkillAction: scoredSources.length > 0 ? "passed" : "all-blocked",
                                         sourcesPassed: scoredSources.length,
-                                        sourcesBlocked: grokBlockedCount,
+                                        sourcesBlocked: 0, // blocklist via SKILL.md, not programmatic
                                     }
                                     logAiTelemetry({
                                         token: convexToken,

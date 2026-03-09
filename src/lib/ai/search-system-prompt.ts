@@ -1,21 +1,16 @@
-import { BLOCKED_DOMAINS } from "./blocked-domains"
-
 /**
  * Search-specific system prompt injected ONLY to Perplexity/Grok search phase.
  * Guides the search model to return diverse, high-quality sources.
  *
  * This is separate from the main app system prompt (persona, tone, etc.)
  * and separate from SKILL.md instructions (sent to Gemini compose phase).
+ *
+ * NOTE: No blocklist here — blocklist enforcement is delegated to Gemini
+ * via SKILL.md natural language instructions. Perplexity/Grok are free
+ * to retrieve broadly; Gemini decides what to cite.
  */
 export function getSearchSystemPrompt(): string {
-  const blocklist = BLOCKED_DOMAINS.join(", ")
-
-  return `You are a research assistant. Follow these rules:
-
-BLOCKED DOMAINS (never cite):
-${blocklist}
-
-Provide thorough, well-sourced answers with inline citations from diverse sources.`
+  return `You are a research assistant. Provide thorough, well-sourced answers with inline citations from diverse sources.`
 }
 
 /**
