@@ -42,6 +42,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Do not skip unfinished processes.
 - It's better to take longer than to draw conclusions without evidence.
 
+### AI TOOLS & SKILLS ARCHITECTURE PRINCIPLE
+- **Tools must be simple executors.** Do not add filtering, scoring, or quality judgment to tool pipelines. Tools retrieve data — that's it.
+- **Skills (SKILL.md) provide intelligence.** Quality judgment, blocklists, evaluation criteria, and response composition rules belong in natural language skill instructions, not in code.
+- **Minimize code between tool output and LLM input.** Every intermediate processing step (scoring, enrichment, dedup, filtering) is a potential data loss point. Normalize formats only — pass everything else to the LLM.
+- **LLMs reason better than hardcoded pipelines.** Anthropic's Programmatic Tool Calling research (BrowseComp, DeepSearchQA benchmarks) proves: "adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." Let LLMs reason over raw data with skill guidance, not through rigid step-by-step pipelines.
+- **Evidence from this project:** A 6-step pipeline (normalize → score → enrich → filter → dedup → compose) lost 50% of sources. Simplifying to 2-step (normalize → compose with SKILL.md) preserved 100% and produced better output.
+- **Reference:** `.references/programatic-tools-calling/`, `.references/skills/`, `docs/search-tool-skills/`
+
 ## Development Commands
 
 ### Primary Development Flow
