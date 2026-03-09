@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
   Menu,
-  Xmark,
+  MenuScale,
   SunLight,
   HalfMoon,
   User,
@@ -21,17 +21,16 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { useConvexAuth, useQuery } from "convex/react"
+import { useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { Skeleton } from "@/components/ui/skeleton"
 import { signOut, useSession } from "@/lib/auth-client"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { UserDropdown } from "./UserDropdown"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
+import { AuthButton } from "@/components/ui/auth-button"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { getEffectiveTier } from "@/lib/utils/subscription"
-import type { EffectiveTier } from "@/lib/utils/subscription"
 import { resolveChatEntryHref } from "@/lib/utils/chatEntryRouting"
 import { cn } from "@/lib/utils"
 
@@ -47,30 +46,23 @@ const SCROLL_THRESHOLD = 100 // px before header changes state
 const SCROLL_DOWN_DELTA = 8  // px minimum to hide header (less sensitive)
 const SCROLL_UP_DELTA = 2    // px minimum to show header (more sensitive)
 
-/**
- * Segment configuration for user avatar and badge
- *
- * ATURAN WARNA:
- * - Warna avatar dan badge berdasarkan SUBSCRIPTION TIER, bukan role
- * - Admin dan Superadmin diperlakukan sebagai UNLIMITED (slate)
- * - Tier determination via shared getEffectiveTier() utility
- */
-const SEGMENT_CONFIG: Record<EffectiveTier, { className: string }> = {
-  gratis: { className: "bg-segment-gratis text-primary-foreground" },
-  bpp: { className: "bg-segment-bpp text-primary-foreground" },
-  pro: { className: "bg-segment-pro text-primary-foreground" },
-  unlimited: { className: "bg-segment-unlimited text-primary-foreground" },
-}
+type HeaderAuthViewState =
+  | "loading"
+  | "authenticated"
+  | "unauthenticated"
+  | "signingOut"
 
 export function GlobalHeader() {
   const { resolvedTheme, setTheme } = useTheme()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [isHidden, setIsHidden] = useState(false)
   const [mobileMenuState, setMobileMenuState] = useState(() => ({
     isOpen: false,
     pathname,
   }))
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [currentHash, setCurrentHash] = useState("")
   const lastScrollYRef = useRef(0)
   const isThemeReady = resolvedTheme !== undefined
   const shouldHideHeader = pathname?.startsWith("/chat")
@@ -98,6 +90,14 @@ export function GlobalHeader() {
   const logoIconLight = cmsLogoLightUrl ?? "/logo/logo-color-lightmode.png"
   const brandTextDark = cmsBrandDarkUrl ?? "/logo-makalah-ai-white.svg"
   const brandTextLight = cmsBrandLightUrl ?? "/logo-makalah-ai-black.svg"
+  const isHeaderConfigLoading = headerConfig === undefined
+  const isBrandAssetLoading =
+    isHeaderConfigLoading ||
+    (Boolean(headerConfig?.logoDarkId) && cmsLogoDarkUrl === undefined) ||
+    (Boolean(headerConfig?.logoLightId) && cmsLogoLightUrl === undefined) ||
+    (Boolean(headerConfig?.brandTextDarkId) && cmsBrandDarkUrl === undefined) ||
+    (Boolean(headerConfig?.brandTextLightId) && cmsBrandLightUrl === undefined)
+  const isNavLoading = isHeaderConfigLoading
 
   // CMS-driven nav links with hardcoded fallback
   const baseNavLinks = headerConfig?.navLinks
@@ -116,25 +116,25 @@ export function GlobalHeader() {
     return mobileMenuState.isOpen && mobileMenuState.pathname === pathname
   }, [mobileMenuState.isOpen, mobileMenuState.pathname, pathname])
 
-  // Auth state from Convex (replaces <Authenticated>/<Unauthenticated> wrappers)
-  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth()
-
-  // Track whether auth has resolved at least once — prevents skeleton flash
-  // on tab refocus when Convex re-validates JWT (briefly sets isLoading=true).
-  // React supports setState during render for derived state (replaces getDerivedStateFromProps).
-  const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
-  if (isAuthenticated && !hasBeenAuthenticated) {
-    setHasBeenAuthenticated(true)
-  }
-
-  // Only show skeleton on initial load, not on tab-refocus re-auth
-  const showAuthSkeleton = isAuthLoading && !hasBeenAuthenticated
-  // Keep showing authenticated UI during brief re-auth cycles
-  const showAsAuthenticated = isAuthenticated || hasBeenAuthenticated
-
   // Auth session and Convex user data for mobile menu
-  const { data: session } = useSession()
+  const { data: session, isPending: isSessionPending } = useSession()
   const { user: convexUser, isLoading: isConvexLoading } = useCurrentUser()
+  const isAuthenticated = Boolean(session?.user)
+
+  const authViewState: HeaderAuthViewState = isSigningOut
+    ? "signingOut"
+    : isSessionPending || (isAuthenticated && isConvexLoading)
+      ? "loading"
+      : isAuthenticated
+        ? "authenticated"
+        : "unauthenticated"
+
+  const shouldShowThemeToggle = authViewState === "authenticated"
+  const shouldShowAuthSkeleton = authViewState === "loading"
+  const shouldShowAuthenticatedUi = authViewState === "authenticated"
+
+  const currentSearch = searchParams.toString()
+  const redirectTarget = `${pathname}${currentSearch ? `?${currentSearch}` : ""}${currentHash}`
 
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY
@@ -182,6 +182,26 @@ export function GlobalHeader() {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [isMobileMenuOpen, pathname])
 
+  useEffect(() => {
+    setMobileMenuState((prev) => {
+      if (!prev.isOpen && prev.pathname === pathname) return prev
+      return { isOpen: false, pathname }
+    })
+  }, [pathname])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    setCurrentHash(window.location.hash)
+  }, [pathname, currentSearch])
+
+  useEffect(() => {
+    if (authViewState === "authenticated") return
+    setMobileMenuState((prev) => {
+      if (!prev.isOpen) return prev
+      return { isOpen: false, pathname }
+    })
+  }, [authViewState, pathname])
+
   const toggleTheme = () => {
     if (!isThemeReady) return // Prevent toggle before hydration
     setTheme(resolvedTheme === "dark" ? "light" : "dark")
@@ -197,6 +217,7 @@ export function GlobalHeader() {
   const handleSignOut = async () => {
     if (isSigningOut) return
     setIsSigningOut(true)
+    setMobileMenuState({ isOpen: false, pathname })
 
     // Clear browser cookie first — crossDomainClient clears localStorage
     // in its init hook (before POST), which can unmount this component.
@@ -219,9 +240,6 @@ export function GlobalHeader() {
   const firstName = convexUser?.firstName || session?.user?.name?.split(" ")[0] || "User"
   const lastName = convexUser?.lastName || session?.user?.name?.split(" ").slice(1).join(" ") || ""
   const fullName = `${firstName} ${lastName}`.trim()
-  const initial = firstName.charAt(0).toUpperCase()
-  const segment = getEffectiveTier(convexUser?.role, convexUser?.subscriptionStatus)
-  const segmentConfig = SEGMENT_CONFIG[segment]
   // isAdmin berdasarkan ROLE (bukan segment), karena segment sekarang hanya subscription tier
   const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
 
@@ -231,29 +249,40 @@ export function GlobalHeader() {
     <header
       data-global-header
       className={cn(
-        "fixed top-0 left-0 right-0 z-drawer h-[54px] bg-[var(--header-background)]",
+        "fixed top-0 left-0 right-0 z-drawer h-[60px] md:h-[54px] bg-[var(--header-background)]",
         "flex items-center transition-transform duration-200",
         isHidden && "-translate-y-full"
       )}
     >
       {/* Inner container - matches hero max-width for alignment */}
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-16 items-center gap-4 px-4 py-3 lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-16 items-center gap-4 px-4 py-3.5 md:py-3 lg:px-8">
         {/* Header Left - Logo & Brand */}
         <div className="col-span-8 md:col-span-4 flex items-center gap-dense flex-nowrap">
-          <Link href="/" className="flex items-center gap-3 shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoIconDark} alt="Makalah" className="h-6 w-6 rounded-[4px] hidden dark:block" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoIconLight} alt="Makalah" className="h-6 w-6 rounded-[4px] block dark:hidden" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={brandTextDark} alt="Makalah" className="h-[18px] w-auto hidden dark:block" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={brandTextLight} alt="Makalah" className="h-[18px] w-auto block dark:hidden" />
-          </Link>
+          {isBrandAssetLoading ? (
+            <div
+              data-testid="header-brand-skeleton"
+              className="flex items-center gap-3 shrink-0"
+              aria-hidden="true"
+            >
+              <Skeleton className="h-6 w-6 rounded-[4px]" />
+              <Skeleton className="h-[18px] w-32 rounded-action" />
+            </div>
+          ) : (
+            <Link href="/" className="flex items-center gap-3 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoIconDark} alt="Makalah" className="h-6 w-6 rounded-[4px] hidden dark:block" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoIconLight} alt="Makalah" className="h-6 w-6 rounded-[4px] block dark:hidden" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={brandTextDark} alt="Makalah" className="h-[18px] w-auto hidden dark:block" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={brandTextLight} alt="Makalah" className="h-[18px] w-auto block dark:hidden" />
+            </Link>
+          )}
           {/* Subscription Badge - shows when logged in */}
-          {showAuthSkeleton ? (
+          {shouldShowAuthSkeleton ? (
             <Skeleton className="h-5 w-12 rounded-badge shrink-0" />
-          ) : showAsAuthenticated ? (
+          ) : shouldShowAuthenticatedUi ? (
             isConvexLoading ? (
               <Skeleton className="h-5 w-12 rounded-badge shrink-0" />
             ) : convexUser ? (
@@ -269,35 +298,51 @@ export function GlobalHeader() {
         {/* Header Right - Nav, Theme Toggle & Auth */}
         <div className="col-span-8 md:col-span-12 flex items-center justify-end gap-comfort">
           {/* Navigation - Desktop only */}
-          <nav className="hidden md:flex items-center gap-4">
-            {visibleNavLinks.map((link) => {
-              const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
-              const openInNewTab = shouldOpenInNewTab(link.href)
-              const resolvedHref = resolveNavHref(link.href, showAsAuthenticated)
-              return (
-                <Link
+          {isNavLoading ? (
+            <div
+              data-testid="header-nav-skeleton"
+              className="hidden md:flex items-center gap-4"
+              aria-hidden="true"
+            >
+              {NAV_LINKS.map((link) => (
+                <Skeleton
                   key={link.href}
-                  href={resolvedHref}
-                  target={openInNewTab ? "_blank" : undefined}
-                  rel={openInNewTab ? "noopener noreferrer" : undefined}
-                  className={cn(
-                    "relative rounded-action px-2.5 py-1.5 text-narrative text-xs uppercase",
-                    "text-foreground transition-colors hover:bg-accent",
-                    "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-1",
-                    "after:border-b after:border-dotted after:border-current after:scale-x-0 after:origin-left after:transition-transform",
-                    "hover:after:scale-x-100",
-                    isActive && "text-muted-foreground after:scale-x-100"
-                  )}
-              >
-                {link.label}
-                </Link>
-              )
-            })}
-          </nav>
+                  className="h-8 rounded-action"
+                  style={{ width: `${Math.max(link.label.length * 11, 72)}px` }}
+                />
+              ))}
+            </div>
+          ) : (
+            <nav className="hidden md:flex items-center gap-4">
+              {visibleNavLinks.map((link) => {
+                const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+                const openInNewTab = shouldOpenInNewTab(link.href)
+                const resolvedHref = resolveNavHref(link.href, shouldShowAuthenticatedUi)
+                return (
+                  <Link
+                    key={link.href}
+                    href={resolvedHref}
+                    target={openInNewTab ? "_blank" : undefined}
+                    rel={openInNewTab ? "noopener noreferrer" : undefined}
+                    className={cn(
+                      "relative rounded-action px-2.5 py-1.5 text-narrative text-xs uppercase",
+                      "text-foreground transition-colors hover:bg-accent",
+                      "after:content-[''] after:absolute after:left-2 after:right-2 after:bottom-1",
+                      "after:border-b after:border-dotted after:border-current after:scale-x-0 after:origin-left after:transition-transform",
+                      "hover:after:scale-x-100",
+                      isActive && "text-muted-foreground after:scale-x-100"
+                    )}
+                >
+                  {link.label}
+                  </Link>
+                )
+              })}
+            </nav>
+          )}
           {/* Theme Toggle - Mobile (icon only, left of hamburger) */}
-          {showAuthSkeleton ? (
+          {shouldShowAuthSkeleton ? (
             <Skeleton className="md:hidden h-6 w-6 rounded-action mr-2" />
-          ) : showAsAuthenticated ? (
+          ) : shouldShowThemeToggle ? (
             <button
               onClick={toggleTheme}
               className={cn(
@@ -324,22 +369,22 @@ export function GlobalHeader() {
           {/* Mobile Menu Toggle */}
           <button
             onClick={toggleMobileMenu}
-            className="md:hidden inline-flex h-9 w-9 items-center justify-center text-foreground transition-opacity hover:opacity-70"
+            className="md:hidden inline-flex h-10 w-10 items-center justify-center text-foreground transition-opacity hover:opacity-70"
             type="button"
             aria-label={isMobileMenuOpen ? "Tutup menu" : "Buka menu"}
             aria-expanded={isMobileMenuOpen}
           >
             {isMobileMenuOpen ? (
-              <Xmark className="icon-interface" />
+              <MenuScale className="icon-interface" />
             ) : (
               <Menu className="icon-interface" />
             )}
           </button>
 
           {/* Theme Toggle - Desktop only for logged-in users */}
-          {showAuthSkeleton ? (
+          {shouldShowAuthSkeleton ? (
             <Skeleton className="hidden md:block h-7.5 w-7.5 rounded-action" />
-          ) : showAsAuthenticated ? (
+          ) : shouldShowThemeToggle ? (
             <button
               onClick={toggleTheme}
               className={cn(
@@ -357,19 +402,24 @@ export function GlobalHeader() {
           ) : null}
 
           {/* Auth State - Desktop only (mobile shows in panel) */}
-          {showAuthSkeleton ? (
+          {shouldShowAuthSkeleton ? (
             <Skeleton className="hidden md:block h-[30px] w-[100px] rounded-action" />
-          ) : showAsAuthenticated ? (
+          ) : shouldShowAuthenticatedUi ? (
             <div className="hidden md:block">
-              <UserDropdown />
+              <UserDropdown
+                displayName={firstName}
+                isAdminOverride={isAdmin}
+                onSignOutOverride={handleSignOut}
+              />
             </div>
           ) : (
-            <Link
-              href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
-              className="hidden md:inline-flex items-center justify-center gap-2 rounded-action border-main border-primary bg-primary px-2 py-1 text-xs font-medium text-narrative uppercase text-primary-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground focus-ring"
+            <AuthButton
+              href={`/sign-in?redirect_url=${encodeURIComponent(redirectTarget)}`}
+              className="hidden md:inline-flex"
+              contentClassName="text-xs font-medium text-narrative uppercase"
             >
               Masuk
-            </Link>
+            </AuthButton>
           )}
         </div>
       </div>
@@ -379,50 +429,50 @@ export function GlobalHeader() {
       {isMobileMenuOpen && (
         <nav className="absolute top-full left-0 right-0 z-40 flex flex-col border-b border-border bg-card p-4 shadow-sm md:hidden">
           {/* Main Navigation Links */}
-          {visibleNavLinks.map((link) => {
-            const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
-            const openInNewTab = shouldOpenInNewTab(link.href)
-            const resolvedHref = resolveNavHref(link.href, showAsAuthenticated)
-            return (
+          <div className="flex flex-col gap-1.5">
+            {visibleNavLinks.map((link) => {
+              const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+              const openInNewTab = shouldOpenInNewTab(link.href)
+              const resolvedHref = resolveNavHref(link.href, shouldShowAuthenticatedUi)
+              return (
                 <Link
                   key={link.href}
                   href={resolvedHref}
                   target={openInNewTab ? "_blank" : undefined}
                   rel={openInNewTab ? "noopener noreferrer" : undefined}
                   className={cn(
-                    "flex min-h-11 items-center rounded-action px-3 py-2.5 text-[11px] text-narrative uppercase tracking-wider",
-                    "text-foreground transition-colors hover:bg-accent",
-                    isActive && "text-muted-foreground"
+                    "flex min-h-[52px] items-center rounded-action border border-transparent px-3.5 py-3",
+                    "text-base font-medium text-narrative tracking-tight text-foreground",
+                    "transition-colors hover:bg-accent/60",
+                    isActive && "border-hairline bg-accent/40 text-foreground"
                   )}
                   onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-              >
-                {link.label}
-              </Link>
-            )
-          })}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
+          </div>
 
           {/* SignedOut: Show login button */}
-          {!showAuthSkeleton && !showAsAuthenticated && (
-            <Link
-              href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
-              className="mt-2 inline-flex items-center justify-center rounded-action border-main border-border px-3 py-2 text-signal text-[11px] font-bold uppercase tracking-widest text-foreground hover:bg-accent transition-colors"
-              onClick={() => setMobileMenuState({ isOpen: false, pathname })}
+          {authViewState === "unauthenticated" && (
+            <AuthButton
+              href={`/sign-in?redirect_url=${encodeURIComponent(redirectTarget)}`}
+              className="mt-2 w-full"
+              contentClassName="text-[11px] font-bold uppercase tracking-widest text-narrative"
             >
               Masuk
-            </Link>
+            </AuthButton>
           )}
 
           {/* SignedIn: Auth section */}
-          {showAsAuthenticated && (
-            <div className="mt-3 rounded-sm border-hairline border-border bg-muted p-4">
+          {shouldShowAuthenticatedUi && (
+            <div className="mt-3 rounded-sm border-hairline border-border bg-[color:color-mix(in_oklch,var(--core-card)_78%,var(--core-background))] px-2.5 py-2">
               <Accordion type="single" collapsible>
                 <AccordionItem value="user" className="border-none">
                   <AccordionTrigger className="items-center py-0 hover:no-underline [&>svg]:self-center [&>svg]:translate-y-0">
-                    <div className="flex min-h-12 w-full items-center gap-3 rounded-action px-3 py-3 text-left transition-colors hover:bg-accent">
-                      <div className={cn("h-8 w-8 rounded-action flex items-center justify-center text-xs font-semibold", segmentConfig.className)}>
-                        {initial}
-                      </div>
-                      <span className="flex-1 text-narrative text-xs font-medium text-foreground">
+                    <div className="flex min-h-9 w-full items-center gap-2 rounded-action px-1.5 py-1.5 text-left transition-colors hover:bg-accent">
+                      <span className="flex-1 text-narrative text-sm font-medium text-foreground">
                         {fullName}
                       </span>
                     </div>

@@ -286,6 +286,12 @@
   --core-cta-fg: var(--core-card);
   --core-cta-hover-fg: var(--core-primary);
   --core-cta-hover-border: var(--core-muted-foreground);
+  --core-auth-btn-bg: var(--core-primary);
+  --core-auth-btn-fg: var(--core-card);
+  --core-auth-btn-hover-fg: var(--ref-core-color-slate-50);
+  --core-auth-btn-hover-border: color-mix(in oklch, var(--core-foreground) 34%, transparent);
+  --core-auth-btn-hover-stripe: color-mix(in oklch, var(--core-primary) 32%, transparent);
+  --core-auth-btn-hover-surface: color-mix(in oklch, var(--core-card) 10%, transparent);
 
   --core-u-border-hairline-width: var(--ref-core-border-hairline-width);
   --core-u-border-main-width: var(--ref-core-border-main-width);
@@ -315,6 +321,12 @@
   --core-cta-fg: var(--core-card);
   --core-cta-hover-fg: var(--core-primary);
   --core-cta-hover-border: var(--core-muted-foreground);
+  --core-auth-btn-bg: var(--core-primary);
+  --core-auth-btn-fg: var(--core-card);
+  --core-auth-btn-hover-fg: var(--ref-core-dark-color-slate-50);
+  --core-auth-btn-hover-border: color-mix(in oklch, var(--core-foreground) 38%, transparent);
+  --core-auth-btn-hover-stripe: color-mix(in oklch, var(--core-primary) 26%, transparent);
+  --core-auth-btn-hover-surface: color-mix(in oklch, var(--core-card) 8%, transparent);
 }
 
 /* Core-scoped utility classes migrated from globals.css */
@@ -415,6 +427,17 @@
     transparent var(--core-u-stripe-stop-a),
     var(--core-muted-foreground) var(--core-u-stripe-stop-a),
     var(--core-muted-foreground) var(--core-u-stripe-stop-b)
+  );
+}
+
+[data-ui-scope="core"] .auth-btn-stripes-pattern {
+  background-color: var(--core-auth-btn-hover-surface);
+  background-image: repeating-linear-gradient(
+    var(--core-u-stripe-angle),
+    transparent,
+    transparent var(--core-u-stripe-stop-a),
+    var(--core-auth-btn-hover-stripe) var(--core-u-stripe-stop-a),
+    var(--core-auth-btn-hover-stripe) var(--core-u-stripe-stop-b)
   );
 }
 

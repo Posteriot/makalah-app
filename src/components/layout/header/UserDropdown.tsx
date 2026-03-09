@@ -17,6 +17,7 @@ import {
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AuthButton } from "@/components/ui/auth-button"
 
 interface UserDropdownProps {
   /** "default" = text + chevron (marketing/dashboard), "compact" = compact trigger */
@@ -31,6 +32,14 @@ interface UserDropdownProps {
   placement?: "bottom-end" | "top-start" | "top-end"
   /** Optional callback after menu action completes (e.g., close mobile sheet) */
   onActionComplete?: () => void
+  /** Parent-provided display name to avoid local auth gating */
+  displayName?: string
+  /** Parent-provided admin override */
+  isAdminOverride?: boolean
+  /** Parent-provided sign out handler */
+  onSignOutOverride?: () => Promise<void> | void
+  /** Disable trigger and actions */
+  disabled?: boolean
 }
 
 export function UserDropdown({
@@ -40,8 +49,12 @@ export function UserDropdown({
   compactFill = false,
   placement = "bottom-end",
   onActionComplete,
+  displayName,
+  isAdminOverride,
+  onSignOutOverride,
+  disabled = false,
 }: UserDropdownProps) {
-  const { data: session } = useSession()
+  const { data: session, isPending: isSessionPending } = useSession()
   const [isOpen, setIsOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [hasMounted, setHasMounted] = useState(false)
@@ -57,15 +70,6 @@ export function UserDropdown({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMounted(true)
   }, [])
-
-  // Cache last session — prevents skeleton flash on tab refocus
-  // when BetterAuth briefly re-validates session.
-  // Uses setState-during-render pattern (React-supported derived state).
-  const [lastSession, setLastSession] = useState(session)
-  if (session && session !== lastSession) {
-    setLastSession(session)
-  }
-  const stableSession = session ?? lastSession
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -91,9 +95,17 @@ export function UserDropdown({
     return () => document.removeEventListener("keydown", handleEscape)
   }, [])
 
-  // Show skeleton on SSR + first client paint (hasMounted=false) OR when no session yet.
-  // Both server and client render the same skeleton initially → no hydration mismatch.
-  if (!hasMounted || !stableSession) {
+  useEffect(() => {
+    if (disabled) {
+      setIsOpen(false)
+    }
+  }, [disabled])
+
+  const canRenderFromParent = typeof displayName === "string" && displayName.trim().length > 0
+
+  // Show skeleton on SSR + first client paint, while auth session is still pending,
+  // or when standalone usage has no authenticated session.
+  if (!hasMounted || isSessionPending || (!canRenderFromParent && !session)) {
     return variant === "compact"
       ? compactLabel === "first-name"
         ? <Skeleton className={cn("rounded-action", compactFill ? "h-11 w-full" : "h-8 w-[132px]")} />
@@ -101,10 +113,11 @@ export function UserDropdown({
       : <Skeleton className="h-[30px] w-[100px] rounded-action" />
   }
 
-  const firstName = convexUser?.firstName || stableSession?.user?.name?.split(" ")[0] || "User"
+  const firstName = displayName || convexUser?.firstName || session?.user?.name?.split(" ")[0] || "User"
 
   // isAdmin berdasarkan ROLE untuk menampilkan Admin Panel link
-  const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
+  const isAdmin =
+    isAdminOverride ?? (convexUser?.role === "admin" || convexUser?.role === "superadmin")
 
   const closeAfterAction = () => {
     setIsOpen(false)
@@ -116,11 +129,18 @@ export function UserDropdown({
     if (placement === "top-end") return "right-0 bottom-full mb-2"
     return "right-0 top-full mt-2"
   })()
+  const menuItemClassName =
+    "flex items-center gap-dense rounded-action p-dense text-sm font-medium text-narrative text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
 
   const handleSignOut = async () => {
-    if (isSigningOut) return
+    if (isSigningOut || disabled) return
     setIsSigningOut(true)
     closeAfterAction()
+
+    if (onSignOutOverride) {
+      await onSignOutOverride()
+      return
+    }
 
     // Clear browser cookie first — crossDomainClient clears localStorage
     // in its init hook (before POST), which can unmount this component.
@@ -143,23 +163,28 @@ export function UserDropdown({
       {variant === "compact" ? (
         compactLabel === "first-name" ? (
           <button
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => {
+              if (disabled) return
+              setIsOpen(!isOpen)
+            }}
             className={cn(
               "group relative inline-flex items-center gap-2 rounded-action border border-border bg-popover px-2.5",
               "text-sm font-medium text-foreground transition-colors duration-150 focus-ring",
               "hover:bg-accent",
               compactFill ? "min-h-11 w-full py-2 justify-start" : "h-8 max-w-[156px] py-1",
               isOpen && "bg-accent",
+              disabled && "cursor-not-allowed opacity-60",
               compactTriggerClassName
             )}
             aria-expanded={isOpen}
             aria-haspopup="true"
             aria-label="User menu"
+            disabled={disabled}
           >
             <span className="relative inline-flex h-5 w-5 items-center justify-center text-foreground">
               <User className="h-4 w-4" />
               <span
-                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-500"
+                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-success"
                 aria-hidden="true"
               />
             </span>
@@ -173,74 +198,65 @@ export function UserDropdown({
           </button>
         ) : (
           <button
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => {
+              if (disabled) return
+              setIsOpen(!isOpen)
+            }}
             className={cn(
               "relative flex items-center justify-center",
               "w-8 h-8 rounded-full",
               "text-muted-foreground hover:text-foreground hover:bg-accent/80",
               "transition-colors duration-150",
-              isOpen && "text-foreground bg-accent/80"
+              isOpen && "text-foreground bg-accent/80",
+              disabled && "cursor-not-allowed opacity-60"
             )}
             aria-expanded={isOpen}
             aria-haspopup="true"
             aria-label="User menu"
+            disabled={disabled}
           >
             <User className="h-[18px] w-[18px]" />
             <span
-              className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[color:var(--section-bg-alt)]"
+              className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-success"
               aria-hidden="true"
             />
           </button>
         )
       ) : (
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className={cn(
-            // Structure for stripes animation
-            "group relative overflow-hidden",
-            // Base layout
-            "flex items-center justify-center gap-2 rounded-action px-2 py-1",
-            // Typography
-            "text-sm font-medium text-narrative",
-            // Light mode diam: dark button
-            "border border-transparent bg-[color:var(--core-cta-bg)] text-[color:var(--core-cta-fg)]",
-            // Light mode hover/expanded: text & border darken
-            "hover:text-[color:var(--core-cta-hover-fg)] hover:border-[color:var(--core-cta-hover-border)]",
-            "aria-expanded:text-[color:var(--core-cta-hover-fg)] aria-expanded:border-[color:var(--core-cta-hover-border)]",
-            // Transition & focus
-            "transition-colors focus-ring"
-          )}
-          aria-expanded={isOpen}
-          aria-haspopup="true"
+        <AuthButton
+          onClick={() => {
+            if (disabled) return
+            setIsOpen(!isOpen)
+          }}
+          className="inline-flex"
+          contentClassName="text-sm font-medium text-narrative"
+          active={isOpen}
+          disabled={disabled}
+          ariaExpanded={isOpen}
+          ariaHaspopup="menu"
         >
-          {/* Diagonal stripes overlay - slides in on hover or when expanded */}
-          <span
-            className="btn-stripes-pattern absolute inset-0 pointer-events-none translate-x-[101%] transition-transform duration-300 ease-out group-hover:translate-x-0 group-aria-expanded:translate-x-0"
-            aria-hidden="true"
-          />
-
           {/* Name (hidden on mobile) */}
-          <span className="relative z-10 hidden sm:block text-sm font-medium text-narrative max-w-[120px] truncate">
+          <span className="max-w-[120px] truncate">
             {firstName}
           </span>
 
           {/* Chevron */}
           <NavArrowDown
             className={cn(
-              "relative z-10 icon-interface transition-transform duration-200",
+              "icon-interface transition-transform duration-200",
               isOpen && "rotate-180"
             )}
           />
-        </button>
+        </AuthButton>
       )}
 
       {/* Dropdown Menu */}
-      {isOpen && (
-        <div className={cn("absolute w-48 rounded-md border border-border bg-popover shadow-md z-drawer py-2 px-2", menuPositionClass)}>
+      {isOpen && !disabled && (
+        <div className={cn("absolute z-drawer w-48 rounded-md border border-border bg-popover px-2 py-2 shadow-md", menuPositionClass)}>
           <Link
             href="/settings"
             onClick={closeAfterAction}
-            className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors w-full rounded-action"
+            className={cn(menuItemClassName, "w-full")}
           >
             <User className="icon-interface" />
             <span>Atur Akun</span>
@@ -250,7 +266,7 @@ export function UserDropdown({
           <Link
             href="/subscription/overview"
             onClick={closeAfterAction}
-            className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors rounded-action"
+            className={menuItemClassName}
           >
             <CreditCard className="icon-interface" />
             <span>Subskripsi</span>
@@ -259,7 +275,7 @@ export function UserDropdown({
           <Link
             href="/support/technical-report?source=support-page"
             onClick={closeAfterAction}
-            className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors rounded-action"
+            className={menuItemClassName}
           >
             <WarningTriangle className="icon-interface" />
             <span>Lapor Masalah</span>
@@ -271,7 +287,7 @@ export function UserDropdown({
               <Link
                 href="/dashboard"
                 onClick={closeAfterAction}
-                className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
+                className={menuItemClassName}
               >
                 <Settings className="icon-interface" />
                 <span>Admin Panel</span>
@@ -279,7 +295,7 @@ export function UserDropdown({
               <Link
                 href="/cms"
                 onClick={closeAfterAction}
-                className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
+                className={menuItemClassName}
               >
                 <Journal className="icon-interface" />
                 <span>Content CMS</span>
@@ -287,7 +303,7 @@ export function UserDropdown({
               <Link
                 href="/ai-ops"
                 onClick={closeAfterAction}
-                className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
+                className={menuItemClassName}
               >
                 <Activity className="icon-interface" />
                 <span>AI Ops</span>
@@ -303,7 +319,7 @@ export function UserDropdown({
               "w-full flex items-center gap-dense p-dense text-sm font-medium text-narrative transition-colors rounded-action",
               isSigningOut
                 ? "text-muted-foreground cursor-not-allowed"
-                : "text-rose-400 hover:bg-rose-900 hover:text-rose-50"
+                : "text-destructive hover:bg-destructive/10 hover:text-destructive"
             )}
           >
             {isSigningOut ? (

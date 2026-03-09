@@ -36,7 +36,7 @@ Integrasi utama:
 ## Komponen dan Tanggung Jawab
 
 - `GlobalHeader.tsx`: header global, memuat logo + nav + auth state + theme toggle + mobile menu. Hidden otomatis di route `/chat/*`.
-- `UserDropdown.tsx`: dropdown user di desktop (akun, subskripsi, admin panel, sign out). Trigger dengan diagonal stripes animation.
+- `UserDropdown.tsx`: dropdown user di desktop (akun, subskripsi, admin panel, sign out). Variant default memakai `AuthButton` dengan hover stripes berbasis token `core`.
 
 ## Perilaku Ringkas
 
@@ -49,10 +49,10 @@ Integrasi utama:
 - Nav links aktif bila `pathname === href` atau `pathname.startsWith(href + "/")`.
 - Theme toggle hanya tampil saat `SignedIn`.
 - Desktop:
-  - `SignedOut` menampilkan tombol "Masuk" (`/sign-in?redirect_url=<pathname>`).
+  - `SignedOut` menampilkan tombol "Masuk" (`/sign-in?redirect_url=<pathname+query+hash>`).
   - `SignedIn` menampilkan `UserDropdown`.
 - Mobile menu:
-  - Toggle via ikon hamburger (Menu/Xmark dari iconoir).
+  - Toggle via ikon hamburger (Menu/MenuScale dari iconoir).
   - Menu tertutup saat klik di luar elemen `[data-global-header]`.
   - Menu memuat auth section berbasis `Accordion`.
   - "Atur Akun" → navigasi ke `/settings`.
@@ -60,11 +60,11 @@ Integrasi utama:
   - "Admin Panel" → `/dashboard` (hanya jika role admin/superadmin).
 - SegmentBadge:
   - Muncul di samping logo saat `SignedIn` (mobile dan desktop).
-  - Menampilkan spinner `RefreshDouble` selama Convex user loading.
+  - Menampilkan skeleton selama Convex user loading.
 - Sign out:
   - `signOut()` dari BetterAuth.
   - Loading state dengan spinner + disabled button.
-  - Jika gagal, tampil toast error "Gagal keluar. Silakan coba lagi."
+  - Cookie session dibersihkan lebih dulu, lalu redirect paksa ke `/` setelah alur keluar selesai.
 
 **UserDropdown**
 - Render hanya setelah mount (`mounted`) untuk mencegah hydration mismatch.
@@ -72,8 +72,8 @@ Integrasi utama:
 - Trigger button:
   - Menampilkan nama user (hidden di bawah breakpoint `sm`).
   - Chevron `NavArrowDown` dengan rotasi 180° saat terbuka.
-  - Diagonal stripes animation (`btn-stripes-pattern`) pada hover dan expanded state.
-  - Theme-aware styling: dark button (light mode) / light button (dark mode).
+  - Variant default memakai `AuthButton` dengan `auth-btn-stripes-pattern` dari `globals-new.css`.
+  - State hover dan expanded mengikuti token `core`, bukan raw palette per-komponen.
 - Menu berisi:
   - "Atur Akun" → navigasi ke `/settings`.
   - "Subskripsi" → `/subscription/overview`.
@@ -92,11 +92,7 @@ Integrasi utama:
 - `SCROLL_THRESHOLD = 100`
 - `SCROLL_DOWN_DELTA = 8`
 - `SCROLL_UP_DELTA = 2`
-- `EffectiveTier`: `"gratis" | "bpp" | "pro"` (dari `@/lib/utils/subscription`)
-- `SEGMENT_CONFIG`: Record<EffectiveTier, { className }> untuk avatar warna di mobile menu.
-- `getEffectiveTier(role, subscriptionStatus)` (dari `@/lib/utils/subscription`):
-  - Admin/superadmin diperlakukan sebagai `pro`.
-  - `subscriptionStatus` "pro" → `pro`, "bpp" → `bpp`, default `gratis`.
+- `HeaderAuthViewState`: `"loading" | "authenticated" | "unauthenticated" | "signingOut"`.
 
 ## Konten yang Ditampilkan
 
@@ -109,7 +105,7 @@ Integrasi utama:
 - Mobile menu:
   - Link navigasi sama seperti desktop.
   - CTA "Masuk" saat `SignedOut`.
-  - Section auth saat `SignedIn` berisi nama user, avatar berwarna sesuai segment, dan menu akun.
+  - Section auth saat `SignedIn` berisi nama user dan menu akun accordion yang dipadatkan.
 
 **UserDropdown**
 - Trigger menampilkan nama user + chevron (nama hidden di mobile via `hidden sm:block`).
@@ -120,18 +116,20 @@ Integrasi utama:
 Komponen menggunakan Tailwind utility classes secara langsung (bukan custom CSS class).
 
 Pola styling utama:
-- Header wrapper: `data-global-header` attribute, `fixed top-0`, `z-drawer`, `h-[54px]`, `bg-[var(--header-background)]`.
+- Header wrapper: `data-global-header` attribute, `fixed top-0`, `z-drawer`, `h-[60px]` di mobile dan `md:h-[54px]`, `bg-[var(--header-background)]`.
 - Grid: `grid-cols-16` dengan `max-w-7xl`.
 - Scroll hide: `transition-transform duration-200`, `-translate-y-full` saat tersembunyi.
-- Nav links: `text-narrative text-xs uppercase` dengan dotted underline animation on hover.
-- Theme toggle: `btn-stripes-pattern` overlay (45° diagonal stripes dari `globals.css`), inverted color scheme (dark button di light mode, sebaliknya).
-- Mobile menu: `absolute top-full`, `bg-background border-b border-hairline`.
-- UserDropdown trigger: `btn-stripes-pattern` overlay + `aria-expanded` state styling.
-- UserDropdown menu: `rounded-md border-border bg-popover shadow-md z-drawer`.
+- Nav links desktop: `text-narrative text-xs uppercase` dengan dotted underline animation on hover.
+- Nav links mobile: `text-base font-medium tracking-tight` dengan active state `border-hairline bg-accent/40`.
+- Auth CTA desktop dan mobile: `AuthButton` dengan hover stripes dan token dari `globals-new.css`.
+- Theme toggle: icon-only button dengan token `foreground/muted-foreground`.
+- Mobile menu: `absolute top-full`, `bg-card border-b border-border`.
+- UserDropdown trigger default: `AuthButton` + `aria-expanded` state styling.
+- UserDropdown menu: `rounded-md border-border bg-popover shadow-md z-drawer` dengan item `hover:bg-accent`.
 
 Catatan:
 - `SegmentBadge` muncul di mobile dan desktop (samping logo) saat `SignedIn`.
-- Avatar warna di mobile menu memakai `SEGMENT_CONFIG`.
+- Pola visual auth header sudah dipusatkan ke token `core` di `src/app/globals-new.css`.
 
 ## Client Components
 
@@ -141,14 +139,13 @@ Komponen yang memakai `"use client"`:
 
 ## Dependencies
 
-- `next/link`, `next/image`
+- `next/link`
 - `next-themes` (`useTheme`)
 - `@/lib/auth-client` (`useSession`, `signOut`)
-- `next/navigation` (`usePathname`)
-- `iconoir-react` (`Menu`, `Xmark`, `SunLight`, `HalfMoon`, `User`, `CreditCard`, `Settings`, `LogOut`, `RefreshDouble`, `NavArrowDown`)
-- `sonner` (`toast`)
+- `next/navigation` (`usePathname`, `useSearchParams`)
+- `iconoir-react` (`Menu`, `MenuScale`, `SunLight`, `HalfMoon`, `User`, `CreditCard`, `WarningTriangle`, `Settings`, `LogOut`, `RefreshDouble`, `NavArrowDown`)
 - `@/components/ui/accordion`
+- `@/components/ui/auth-button`
 - `@/components/ui/SegmentBadge`
 - `@/lib/hooks/useCurrentUser`
 - `@/lib/utils` (`cn`)
-- `@/lib/utils/subscription` (`getEffectiveTier`, `EffectiveTier`)
