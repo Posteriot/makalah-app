@@ -102,11 +102,7 @@ export default function SignInPage() {
   const [forgotPasswordCaptchaResetCounter, setForgotPasswordCaptchaResetCounter] = useState(0)
   const [isClientReady, setIsClientReady] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
-  const [isOTTFlow] = useState(() => {
-    if (typeof window === "undefined") return false
-    const params = new URLSearchParams(window.location.search)
-    return params.has("ott") && !params.get("error")
-  })
+  const isOTTFlow = searchParams.has("ott") && !searchParams.get("error")
   const [ottTimedOut, setOttTimedOut] = useState(false)
 
   useEffect(() => {
@@ -131,7 +127,7 @@ export default function SignInPage() {
 
   const isAuthTransition =
     isRedirecting ||
-    (isOTTFlow && !ottTimedOut && !session)
+    (isOTTFlow && !ottTimedOut)
 
   useEffect(() => {
     if (verifiedEmail) {
@@ -305,6 +301,7 @@ export default function SignInPage() {
       })
       // Navigates away — no need to setIsLoading(false)
     } catch {
+      setIsRedirecting(false)
       toast.error("Gagal masuk dengan Google. Silakan coba lagi.")
       setIsLoading(false)
     }

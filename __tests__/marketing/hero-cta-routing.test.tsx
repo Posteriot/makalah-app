@@ -37,7 +37,7 @@ describe("HeroCTA routing", () => {
     render(<HeroCTA ctaText="MULAI" />)
 
     const cta = screen.getByRole("link", { name: "MULAI" })
-    expect(cta).toHaveAttribute("href", "/sign-up?redirect_url=%2Fchat")
+    expect(cta).toHaveAttribute("href", "/sign-in?redirect_url=%2Fchat")
     expect(cta).toHaveAttribute("target", "_blank")
     expect(cta).toHaveAttribute("rel", "noopener noreferrer")
   })
