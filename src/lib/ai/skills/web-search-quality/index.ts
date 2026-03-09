@@ -86,8 +86,9 @@ export const webSearchQualitySkill: WebSearchSkill = {
   getInstructions(context: SkillContext): string | null {
     const parsed = parseSkillMd()
 
-    // In paper mode, check if stage is active
-    if (context.isPaperMode && context.currentStage) {
+    // In paper mode, only return instructions for active search stages
+    if (context.isPaperMode) {
+      if (!context.currentStage) return null
       const isActive = ACTIVE_SEARCH_STAGES.includes(
         context.currentStage as (typeof ACTIVE_SEARCH_STAGES)[number]
       )

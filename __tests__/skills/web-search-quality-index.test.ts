@@ -39,6 +39,16 @@ describe("web-search-quality skill", () => {
     expect(result).toContain("STAGE CONTEXT")
   })
 
+  it("returns null for paper mode with no stage set", () => {
+    const result = webSearchQualitySkill.getInstructions({
+      isPaperMode: true,
+      currentStage: null,
+      hasRecentSources: true,
+      availableSources: [{ url: "https://arxiv.org/abs/123", title: "Test" }],
+    })
+    expect(result).toBeNull()
+  })
+
   it("returns null when no recent sources and not paper mode", () => {
     const result = webSearchQualitySkill.getInstructions({
       isPaperMode: false,
