@@ -269,13 +269,13 @@ export function GlobalHeader() {
     <header
       data-global-header
       className={cn(
-        "fixed top-0 left-0 right-0 z-drawer h-[54px] bg-[var(--header-background)]",
+        "fixed top-0 left-0 right-0 z-drawer h-[60px] md:h-[54px] bg-[var(--header-background)]",
         "flex items-center transition-transform duration-200",
         isHidden && "-translate-y-full"
       )}
     >
       {/* Inner container - matches hero max-width for alignment */}
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-16 items-center gap-4 px-4 py-3 lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-16 items-center gap-4 px-4 py-3.5 md:py-3 lg:px-8">
         {/* Header Left - Logo & Brand */}
         <div className="col-span-8 md:col-span-4 flex items-center gap-dense flex-nowrap">
           {isBrandAssetLoading ? (
@@ -389,7 +389,7 @@ export function GlobalHeader() {
           {/* Mobile Menu Toggle */}
           <button
             onClick={toggleMobileMenu}
-            className="md:hidden inline-flex h-9 w-9 items-center justify-center text-foreground transition-opacity hover:opacity-70"
+            className="md:hidden inline-flex h-10 w-10 items-center justify-center text-foreground transition-opacity hover:opacity-70"
             type="button"
             aria-label={isMobileMenuOpen ? "Tutup menu" : "Buka menu"}
             aria-expanded={isMobileMenuOpen}
@@ -449,27 +449,30 @@ export function GlobalHeader() {
       {isMobileMenuOpen && (
         <nav className="absolute top-full left-0 right-0 z-40 flex flex-col border-b border-border bg-card p-4 shadow-sm md:hidden">
           {/* Main Navigation Links */}
-          {visibleNavLinks.map((link) => {
-            const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
-            const openInNewTab = shouldOpenInNewTab(link.href)
-            const resolvedHref = resolveNavHref(link.href, shouldShowAuthenticatedUi)
-            return (
+          <div className="flex flex-col gap-1.5">
+            {visibleNavLinks.map((link) => {
+              const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+              const openInNewTab = shouldOpenInNewTab(link.href)
+              const resolvedHref = resolveNavHref(link.href, shouldShowAuthenticatedUi)
+              return (
                 <Link
                   key={link.href}
                   href={resolvedHref}
                   target={openInNewTab ? "_blank" : undefined}
                   rel={openInNewTab ? "noopener noreferrer" : undefined}
                   className={cn(
-                    "flex min-h-11 items-center rounded-action px-3 py-2.5 text-[11px] text-narrative uppercase tracking-wider",
-                    "text-foreground transition-colors hover:bg-accent",
-                    isActive && "text-muted-foreground"
+                    "flex min-h-[52px] items-center rounded-action border border-transparent px-3.5 py-3",
+                    "text-base font-medium text-narrative tracking-tight text-foreground",
+                    "transition-colors hover:bg-accent/60",
+                    isActive && "border-hairline bg-accent/40 text-foreground"
                   )}
                   onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-              >
-                {link.label}
-              </Link>
-            )
-          })}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
+          </div>
 
           {/* SignedOut: Show login button */}
           {authViewState === "unauthenticated" && (
@@ -489,7 +492,7 @@ export function GlobalHeader() {
                 <AccordionItem value="user" className="border-none">
                   <AccordionTrigger className="items-center py-0 hover:no-underline [&>svg]:self-center [&>svg]:translate-y-0">
                     <div className="flex min-h-9 w-full items-center gap-2 rounded-action px-1.5 py-1.5 text-left transition-colors hover:bg-accent">
-                      <span className="flex-1 text-narrative text-xs font-medium text-foreground">
+                      <span className="flex-1 text-narrative text-sm font-medium text-foreground">
                         {fullName}
                       </span>
                     </div>
