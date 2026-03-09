@@ -5,7 +5,7 @@ import { internalMutationGeneric } from "convex/server"
  *
  * Run with: npx convex run migrations/seedEmailTemplates:seedEmailTemplates
  *
- * Creates brand settings and 12 email templates (all inactive).
+ * Creates brand settings and 14 email templates (all inactive).
  * Templates must be reviewed and activated by admin before use.
  */
 export const seedEmailTemplates = internalMutationGeneric({
@@ -68,7 +68,7 @@ export const seedEmailTemplates = internalMutationGeneric({
     console.log("[Migration] Brand settings created")
 
     // ── Email Templates ────────────────────────────────────────
-    console.log("[Migration] Creating 12 email templates...")
+    console.log("[Migration] Creating 14 email templates...")
 
     const templates = [
       // 1. verification
@@ -156,7 +156,7 @@ export const seedEmailTemplates = internalMutationGeneric({
           { id: "s3", type: "paragraph", content: "Pendaftaran akun Anda berhasil! Sekarang Anda bisa mulai menyusun paper akademik dengan bantuan AI." },
           { id: "s4", type: "button", label: "Mulai Menyusun Paper", url: "{{loginUrl}}" },
           { id: "s5", type: "divider" },
-          { id: "s6", type: "paragraph", content: "Jika ada pertanyaan, hubungi kami di support@makalah.ai" },
+          { id: "s6", type: "paragraph", content: "Jika ada pertanyaan, hubungi kami di dukungan@makalah.ai" },
         ],
         availablePlaceholders: [
           { key: "userName", description: "Nama user", example: "Erik" },
@@ -274,46 +274,90 @@ export const seedEmailTemplates = internalMutationGeneric({
         ],
       },
 
-      // 11. payment_success
+      // 11. payment_success_bpp
       {
-        templateType: "payment_success",
-        subject: "Pembayaran Berhasil - {{appName}}",
+        templateType: "payment_success_bpp",
+        subject: "Pembelian Kredit Berhasil \u2014 {{appName}}",
         sections: [
-          { id: "s1", type: "heading", content: "Pembayaran Berhasil!" },
-          { id: "s2", type: "paragraph", content: "Halo {{userName}}, terima kasih! Pembayaran Anda telah berhasil diproses." },
+          { id: "s1", type: "heading", content: "Pembelian Kredit Berhasil!" },
+          { id: "s2", type: "paragraph", content: "Halo {{userName}}," },
+          { id: "s3", type: "paragraph", content: "Terima kasih! Pembelian kredit Anda telah berhasil diproses." },
           {
-            id: "s3",
+            id: "s4",
             type: "detail_row",
             rows: [
               { label: "Total Pembayaran", value: "{{amount}}" },
-              { label: "Kredit/Langganan", value: "{{credits}}" },
+              { label: "Kredit Dibeli", value: "{{credits}}" },
+              { label: "Total Kredit Anda", value: "{{newTotalCredits}}" },
               { label: "ID Transaksi", value: "{{transactionId}}" },
-              { label: "Waktu", value: "{{paidAt}}" },
+              { label: "Waktu Pembayaran", value: "{{paidAt}}" },
             ],
           },
-          { id: "s4", type: "button", label: "Mulai Menyusun Paper", url: "{{appUrl}}/chat" },
+          { id: "s5", type: "divider" },
+          { id: "s6", type: "info_box", content: "Kredit yang Anda beli tidak memiliki masa kadaluarsa dan dapat digunakan kapan saja." },
+          { id: "s7", type: "paragraph", content: "Kredit Anda sudah siap digunakan. Mulai menyusun paper akademik dengan bantuan AI sekarang!" },
+          { id: "s8", type: "button", label: "Mulai Menyusun Paper", url: "{{appUrl}}/chat" },
+          { id: "s9", type: "divider" },
+          { id: "s10", type: "paragraph", content: "Jika ada pertanyaan tentang transaksi ini, hubungi kami di dukungan@makalah.ai dengan menyertakan ID transaksi." },
         ],
         availablePlaceholders: [
           { key: "userName", description: "Nama user", example: "Erik" },
           { key: "amount", description: "Jumlah pembayaran", example: "Rp 80.000" },
           { key: "credits", description: "Kredit dibeli", example: "300 kredit" },
-          { key: "newTotalCredits", description: "Total kredit", example: "500 kredit" },
-          { key: "subscriptionPlanLabel", description: "Label langganan", example: "Pro Bulanan" },
-          { key: "transactionId", description: "ID transaksi", example: "TXN-123" },
-          { key: "paidAt", description: "Waktu bayar", example: "9 Mar 2026, 10:00" },
+          { key: "newTotalCredits", description: "Total kredit setelah pembelian", example: "500 kredit" },
+          { key: "transactionId", description: "ID transaksi", example: "TXN-20260310-001" },
+          { key: "paidAt", description: "Waktu pembayaran", example: "10 Mar 2026, 10:00" },
           { key: "appUrl", description: "URL aplikasi", example: "https://makalah.ai" },
+          { key: "appName", description: "Nama aplikasi", example: "Makalah AI" },
         ],
       },
 
-      // 12. payment_failed
+      // 12. payment_success_pro
       {
-        templateType: "payment_failed",
-        subject: "Pembayaran Gagal - {{appName}}",
+        templateType: "payment_success_pro",
+        subject: "Langganan Pro Berhasil \u2014 {{appName}}",
         sections: [
-          { id: "s1", type: "heading", content: "Pembayaran Gagal" },
-          { id: "s2", type: "paragraph", content: "Halo {{userName}}, mohon maaf, pembayaran Anda tidak dapat diproses." },
+          { id: "s1", type: "heading", content: "Langganan Pro Aktif!" },
+          { id: "s2", type: "paragraph", content: "Halo {{userName}}," },
+          { id: "s3", type: "paragraph", content: "Terima kasih! Pembayaran langganan {{subscriptionPlanLabel}} Anda telah berhasil." },
           {
-            id: "s3",
+            id: "s4",
+            type: "detail_row",
+            rows: [
+              { label: "Paket Langganan", value: "{{subscriptionPlanLabel}}" },
+              { label: "Total Pembayaran", value: "{{amount}}" },
+              { label: "ID Transaksi", value: "{{transactionId}}" },
+              { label: "Waktu Pembayaran", value: "{{paidAt}}" },
+            ],
+          },
+          { id: "s5", type: "divider" },
+          { id: "s6", type: "info_box", content: "Langganan Pro memberikan kuota 5.000 kredit per bulan yang di-reset setiap periode billing. Kuota yang tidak terpakai tidak diakumulasi ke bulan berikutnya." },
+          { id: "s7", type: "paragraph", content: "Nikmati semua fitur premium sekarang! Mulai menyusun paper akademik tanpa batas." },
+          { id: "s8", type: "button", label: "Mulai Menggunakan Pro", url: "{{appUrl}}/chat" },
+          { id: "s9", type: "divider" },
+          { id: "s10", type: "paragraph", content: "Jika ada pertanyaan tentang transaksi ini, hubungi kami di dukungan@makalah.ai dengan menyertakan ID transaksi." },
+        ],
+        availablePlaceholders: [
+          { key: "userName", description: "Nama user", example: "Erik" },
+          { key: "amount", description: "Jumlah pembayaran", example: "Rp 200.000" },
+          { key: "subscriptionPlanLabel", description: "Label paket langganan", example: "Pro Bulanan" },
+          { key: "transactionId", description: "ID transaksi", example: "TXN-20260310-001" },
+          { key: "paidAt", description: "Waktu pembayaran", example: "10 Mar 2026, 10:00" },
+          { key: "appUrl", description: "URL aplikasi", example: "https://makalah.ai" },
+          { key: "appName", description: "Nama aplikasi", example: "Makalah AI" },
+        ],
+      },
+
+      // 13. payment_failed_bpp
+      {
+        templateType: "payment_failed_bpp",
+        subject: "Pembelian Kredit Gagal \u2014 {{appName}}",
+        sections: [
+          { id: "s1", type: "heading", content: "Pembelian Kredit Gagal" },
+          { id: "s2", type: "paragraph", content: "Halo {{userName}}," },
+          { id: "s3", type: "paragraph", content: "Mohon maaf, pembelian kredit Anda tidak dapat diproses." },
+          {
+            id: "s4",
             type: "detail_row",
             rows: [
               { label: "Jumlah", value: "{{amount}}" },
@@ -321,15 +365,56 @@ export const seedEmailTemplates = internalMutationGeneric({
               { label: "ID Transaksi", value: "{{transactionId}}" },
             ],
           },
-          { id: "s4", type: "paragraph", content: "Anda bisa mencoba kembali dengan metode pembayaran yang berbeda." },
-          { id: "s5", type: "button", label: "Coba Lagi", url: "{{appUrl}}/subscription/plans" },
+          { id: "s5", type: "divider" },
+          { id: "s6", type: "info_box", content: "Pastikan saldo mencukupi dan metode pembayaran masih aktif. Jika menggunakan kartu, periksa tanggal kadaluarsa dan limit transaksi." },
+          { id: "s7", type: "paragraph", content: "Anda bisa mencoba kembali dengan metode pembayaran yang berbeda." },
+          { id: "s8", type: "button", label: "Coba Lagi", url: "{{appUrl}}/checkout/bpp" },
+          { id: "s9", type: "divider" },
+          { id: "s10", type: "paragraph", content: "Jika masalah berlanjut, hubungi kami di dukungan@makalah.ai dengan menyertakan ID transaksi di atas." },
         ],
         availablePlaceholders: [
           { key: "userName", description: "Nama user", example: "Erik" },
-          { key: "amount", description: "Jumlah", example: "Rp 80.000" },
+          { key: "amount", description: "Jumlah pembayaran", example: "Rp 80.000" },
           { key: "failureReason", description: "Alasan gagal", example: "Saldo tidak mencukupi" },
-          { key: "transactionId", description: "ID transaksi", example: "TXN-123" },
+          { key: "transactionId", description: "ID transaksi", example: "TXN-20260310-001" },
           { key: "appUrl", description: "URL aplikasi", example: "https://makalah.ai" },
+          { key: "appName", description: "Nama aplikasi", example: "Makalah AI" },
+        ],
+      },
+
+      // 14. payment_failed_pro
+      {
+        templateType: "payment_failed_pro",
+        subject: "Langganan Pro Gagal \u2014 {{appName}}",
+        sections: [
+          { id: "s1", type: "heading", content: "Pembayaran Langganan Gagal" },
+          { id: "s2", type: "paragraph", content: "Halo {{userName}}," },
+          { id: "s3", type: "paragraph", content: "Mohon maaf, pembayaran untuk langganan {{subscriptionPlanLabel}} tidak dapat diproses." },
+          {
+            id: "s4",
+            type: "detail_row",
+            rows: [
+              { label: "Paket", value: "{{subscriptionPlanLabel}}" },
+              { label: "Jumlah", value: "{{amount}}" },
+              { label: "Alasan Gagal", value: "{{failureReason}}" },
+              { label: "ID Transaksi", value: "{{transactionId}}" },
+            ],
+          },
+          { id: "s5", type: "divider" },
+          { id: "s6", type: "info_box", content: "Pastikan saldo mencukupi dan metode pembayaran masih aktif. Langganan Pro tidak akan aktif sampai pembayaran berhasil." },
+          { id: "s7", type: "paragraph", content: "Anda bisa mencoba kembali dengan metode pembayaran yang berbeda." },
+          { id: "s8", type: "button", label: "Coba Lagi", url: "{{appUrl}}/checkout/pro" },
+          { id: "s9", type: "divider" },
+          { id: "s10", type: "paragraph", content: "Jika masalah berlanjut, hubungi kami di dukungan@makalah.ai dengan menyertakan ID transaksi di atas." },
+        ],
+        availablePlaceholders: [
+          { key: "userName", description: "Nama user", example: "Erik" },
+          { key: "amount", description: "Jumlah pembayaran", example: "Rp 200.000" },
+          { key: "subscriptionPlanLabel", description: "Label paket langganan", example: "Pro Bulanan" },
+          { key: "failureReason", description: "Alasan gagal", example: "Saldo tidak mencukupi" },
+          { key: "transactionId", description: "ID transaksi", example: "TXN-20260310-001" },
+          { key: "appUrl", description: "URL aplikasi", example: "https://makalah.ai" },
+          { key: "appName", description: "Nama aplikasi", example: "Makalah AI" },
         ],
       },
     ]
@@ -354,7 +439,7 @@ export const seedEmailTemplates = internalMutationGeneric({
     return {
       success: true,
       templateCount: templateIds.length,
-      message: "12 email templates + brand settings created successfully (all templates inactive)",
+      message: "14 email templates + brand settings created successfully (all templates inactive)",
     }
   },
 })

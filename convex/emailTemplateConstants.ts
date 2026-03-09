@@ -11,7 +11,12 @@ export const TEMPLATE_GROUPS = {
     "signup_success",
     "waitlist_confirmation",
   ],
-  payment: ["payment_success", "payment_failed"],
+  payment: [
+    "payment_success_bpp",
+    "payment_success_pro",
+    "payment_failed_bpp",
+    "payment_failed_pro",
+  ],
   notification: [
     "waitlist_invite",
     "waitlist_admin",
@@ -31,8 +36,10 @@ export const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
   waitlist_admin: "Notifikasi ke admin tentang aktivitas waiting list",
   technical_report_dev: "Laporan teknis dikirim ke developer/support",
   technical_report_user: "Update status laporan teknis ke user",
-  payment_success: "Konfirmasi pembayaran berhasil (kredit atau langganan)",
-  payment_failed: "Notifikasi pembayaran gagal dengan alasan",
+  payment_success_bpp: "Konfirmasi pembelian kredit BPP berhasil",
+  payment_success_pro: "Konfirmasi pembayaran langganan Pro berhasil",
+  payment_failed_bpp: "Notifikasi pembelian kredit BPP gagal",
+  payment_failed_pro: "Notifikasi pembayaran langganan Pro gagal",
 }
 
 export const TEMPLATE_LABELS: Record<string, string> = {
@@ -46,6 +53,8 @@ export const TEMPLATE_LABELS: Record<string, string> = {
   waitlist_admin: "Notifikasi Admin Waitlist",
   technical_report_dev: "Laporan Teknis (Developer)",
   technical_report_user: "Laporan Teknis (User)",
-  payment_success: "Pembayaran Berhasil",
-  payment_failed: "Pembayaran Gagal",
+  payment_success_bpp: "Pembelian Kredit Berhasil",
+  payment_success_pro: "Langganan Pro Berhasil",
+  payment_failed_bpp: "Pembelian Kredit Gagal",
+  payment_failed_pro: "Langganan Pro Gagal",
 }

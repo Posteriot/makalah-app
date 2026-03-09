@@ -73,6 +73,7 @@ import type * as migrations_seedPricingPlans from "../migrations/seedPricingPlan
 import type * as migrations_seedRichTextPages from "../migrations/seedRichTextPages.js";
 import type * as migrations_seedSiteConfig from "../migrations/seedSiteConfig.js";
 import type * as migrations_seedWaitlistConfig from "../migrations/seedWaitlistConfig.js";
+import type * as migrations_splitPaymentTemplates from "../migrations/splitPaymentTemplates.js";
 import type * as migrations_updateAIConfigForToolCalling from "../migrations/updateAIConfigForToolCalling.js";
 import type * as migrations_updateDocumentationChatAgentS5 from "../migrations/updateDocumentationChatAgentS5.js";
 import type * as migrations_updateDocumentationConceptsS4 from "../migrations/updateDocumentationConceptsS4.js";
@@ -186,6 +187,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedRichTextPages": typeof migrations_seedRichTextPages;
   "migrations/seedSiteConfig": typeof migrations_seedSiteConfig;
   "migrations/seedWaitlistConfig": typeof migrations_seedWaitlistConfig;
+  "migrations/splitPaymentTemplates": typeof migrations_splitPaymentTemplates;
   "migrations/updateAIConfigForToolCalling": typeof migrations_updateAIConfigForToolCalling;
   "migrations/updateDocumentationChatAgentS5": typeof migrations_updateDocumentationChatAgentS5;
   "migrations/updateDocumentationConceptsS4": typeof migrations_updateDocumentationConceptsS4;
