@@ -1287,4 +1287,25 @@
     animation: none;
     background-position: 50% 0;
   }
+
+  .animate-ellipsis::after {
+    animation: none;
+    content: "...";
+  }
+}
+
+/* ==========================================================================
+ * AUTH TRANSITION — ELLIPSIS ANIMATION
+ * Typing-style dots for loading states (e.g. auth transition "PROSES...")
+ * ========================================================================== */
+@keyframes ellipsis {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+}
+
+.animate-ellipsis::after {
+  content: "";
+  animation: ellipsis 1.2s steps(1) infinite;
 }

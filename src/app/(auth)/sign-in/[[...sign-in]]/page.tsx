@@ -101,15 +101,37 @@ export default function SignInPage() {
   const [magicLinkCaptchaResetCounter, setMagicLinkCaptchaResetCounter] = useState(0)
   const [forgotPasswordCaptchaResetCounter, setForgotPasswordCaptchaResetCounter] = useState(0)
   const [isClientReady, setIsClientReady] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [isOTTFlow] = useState(() => {
+    if (typeof window === "undefined") return false
+    const params = new URLSearchParams(window.location.search)
+    return params.has("ott") && !params.get("error")
+  })
+  const [ottTimedOut, setOttTimedOut] = useState(false)
 
   useEffect(() => {
     setIsClientReady(true)
+    // Reset isRedirecting when user navigates back via browser (bfcache restore)
+    const handlePopState = () => setIsRedirecting(false)
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
   }, [])
 
   useEffect(() => {
     if (!isClientReady || isSessionPending || !session) return
+    setIsRedirecting(true)
     window.location.replace(callbackURL)
   }, [callbackURL, isClientReady, isSessionPending, session])
+
+  useEffect(() => {
+    if (!isOTTFlow || session) return
+    const timer = setTimeout(() => setOttTimedOut(true), 5000)
+    return () => clearTimeout(timer)
+  }, [isOTTFlow, session])
+
+  const isAuthTransition =
+    isRedirecting ||
+    (isOTTFlow && !ottTimedOut && !session)
 
   useEffect(() => {
     if (verifiedEmail) {
@@ -249,10 +271,12 @@ export default function SignInPage() {
           // can exchange the OTT for a real session on the frontend.
           const url = new URL(data.url as string)
           url.searchParams.set("ott", data.token as string)
+          setIsRedirecting(true)
           window.location.href = url.toString()
           return
         }
         // Non cross-domain fallback
+        setIsRedirecting(true)
         window.location.href = callbackURL
         return
       }
@@ -267,16 +291,17 @@ export default function SignInPage() {
     clearError()
     setIsLoading(true)
     try {
-      const errorParams = new URLSearchParams()
+      const params = new URLSearchParams()
       if (redirectParam) {
-        errorParams.set("redirect_url", redirectParam)
+        params.set("redirect_url", redirectParam)
       }
-      const errorCallbackURL = `${window.location.origin}/sign-in${errorParams.size > 0 ? `?${errorParams.toString()}` : ""}`
+      const signInCallback = `${window.location.origin}/sign-in${params.size > 0 ? `?${params.toString()}` : ""}`
 
+      setIsRedirecting(true)
       await signIn.social({
         provider: "google",
-        callbackURL,
-        errorCallbackURL,
+        callbackURL: signInCallback,
+        errorCallbackURL: signInCallback,
       })
       // Navigates away — no need to setIsLoading(false)
     } catch {
@@ -464,6 +489,30 @@ export default function SignInPage() {
   }
 
   const { title, subtitle } = titles[mode]
+
+  if (isAuthTransition) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo/makalah_logo_dark.svg"
+            alt="Makalah"
+            className="h-8 w-auto animate-pulse dark:hidden"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo/makalah_logo_light.svg"
+            alt="Makalah"
+            className="hidden h-8 w-auto animate-pulse dark:block"
+          />
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            PROSES<span className="inline-flex w-[1.5em]"><span className="animate-ellipsis" /></span>
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   if (!isClientReady) {
     return (

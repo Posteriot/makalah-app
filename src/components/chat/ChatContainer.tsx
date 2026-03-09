@@ -93,14 +93,33 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     }
   }, [artifacts, artifactTabs, updateArtifactTabTitle])
 
+  const [ottGracePeriod, setOttGracePeriod] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return new URLSearchParams(window.location.search).has('ott')
+  })
+
   useEffect(() => {
-    if (isSessionPending || session) return
+    if (!ottGracePeriod) return
+    if (session) {
+      setOttGracePeriod(false)
+      // Strip consumed OTT token from URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete("ott")
+      window.history.replaceState({}, "", url.toString())
+      return
+    }
+    const timer = setTimeout(() => setOttGracePeriod(false), 5000)
+    return () => clearTimeout(timer)
+  }, [ottGracePeriod, session])
+
+  useEffect(() => {
+    if (isSessionPending || session || ottGracePeriod) return
 
     const redirectPath = `${window.location.pathname}${window.location.search}`
     window.location.replace(
       `/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`
     )
-  }, [isSessionPending, session])
+  }, [isSessionPending, session, ottGracePeriod])
 
   // Deep link: auto-open artifact panel when navigating via ?artifact=<id>
   useEffect(() => {
