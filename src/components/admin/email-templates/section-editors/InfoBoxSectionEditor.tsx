@@ -1,0 +1,78 @@
+"use client"
+
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Trash } from "iconoir-react"
+import type { EmailSection } from "@/lib/email/template-renderer"
+
+interface SectionEditorProps {
+  section: EmailSection
+  onChange: (updated: EmailSection) => void
+  onDelete: () => void
+}
+
+export function InfoBoxSectionEditor({
+  section,
+  onChange,
+  onDelete,
+}: SectionEditorProps) {
+  return (
+    <div className="rounded-action border border-border bg-card/60 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground cursor-grab">≡</span>
+          <span className="text-signal rounded-badge bg-muted/50 px-1.5 py-0.5 text-[9px] font-bold">
+            INFO BOX
+          </span>
+        </div>
+        <button
+          onClick={onDelete}
+          className="text-muted-foreground hover:text-destructive transition-colors"
+        >
+          <Trash className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <Textarea
+        value={section.content ?? ""}
+        onChange={(e) => onChange({ ...section, content: e.target.value })}
+        placeholder="Teks info box..."
+        rows={2}
+      />
+      <div className="space-y-1.5">
+        <label className="text-interface text-xs font-medium text-muted-foreground">
+          Warna Latar
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={section.style?.backgroundColor ?? "#f5f5f5"}
+            onChange={(e) =>
+              onChange({
+                ...section,
+                style: {
+                  ...section.style,
+                  backgroundColor: e.target.value,
+                },
+              })
+            }
+            className="h-9 w-12 cursor-pointer rounded-action border border-border"
+          />
+          <Input
+            value={section.style?.backgroundColor ?? ""}
+            onChange={(e) =>
+              onChange({
+                ...section,
+                style: {
+                  ...section.style,
+                  backgroundColor: e.target.value,
+                },
+              })
+            }
+            placeholder="#f5f5f5"
+            className="font-mono text-xs"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
