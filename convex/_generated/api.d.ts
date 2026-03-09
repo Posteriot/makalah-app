@@ -39,6 +39,10 @@ import type * as conversations from "../conversations.js";
 import type * as createPasswordEndpoint from "../createPasswordEndpoint.js";
 import type * as crons from "../crons.js";
 import type * as documentationSections from "../documentationSections.js";
+import type * as emailBrandSettings from "../emailBrandSettings.js";
+import type * as emailTemplateConstants from "../emailTemplateConstants.js";
+import type * as emailTemplateHelper from "../emailTemplateHelper.js";
+import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as lib_betterAuthIdentityGuard from "../lib/betterAuthIdentityGuard.js";
@@ -61,6 +65,7 @@ import type * as migrations_seedAboutContent from "../migrations/seedAboutConten
 import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultAIConfig.js";
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
 import type * as migrations_seedDocumentationSections from "../migrations/seedDocumentationSections.js";
+import type * as migrations_seedEmailTemplates from "../migrations/seedEmailTemplates.js";
 import type * as migrations_seedHomeContent from "../migrations/seedHomeContent.js";
 import type * as migrations_seedPembaruanAbstrakSkill from "../migrations/seedPembaruanAbstrakSkill.js";
 import type * as migrations_seedPolicyContent from "../migrations/seedPolicyContent.js";
@@ -147,6 +152,10 @@ declare const fullApi: ApiFromModules<{
   createPasswordEndpoint: typeof createPasswordEndpoint;
   crons: typeof crons;
   documentationSections: typeof documentationSections;
+  emailBrandSettings: typeof emailBrandSettings;
+  emailTemplateConstants: typeof emailTemplateConstants;
+  emailTemplateHelper: typeof emailTemplateHelper;
+  emailTemplates: typeof emailTemplates;
   files: typeof files;
   http: typeof http;
   "lib/betterAuthIdentityGuard": typeof lib_betterAuthIdentityGuard;
@@ -169,6 +178,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedDefaultAIConfig": typeof migrations_seedDefaultAIConfig;
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
   "migrations/seedDocumentationSections": typeof migrations_seedDocumentationSections;
+  "migrations/seedEmailTemplates": typeof migrations_seedEmailTemplates;
   "migrations/seedHomeContent": typeof migrations_seedHomeContent;
   "migrations/seedPembaruanAbstrakSkill": typeof migrations_seedPembaruanAbstrakSkill;
   "migrations/seedPolicyContent": typeof migrations_seedPolicyContent;
