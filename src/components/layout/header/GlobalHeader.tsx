@@ -31,8 +31,6 @@ import { UserDropdown } from "./UserDropdown"
 import { SegmentBadge } from "@/components/ui/SegmentBadge"
 import { AuthButton } from "@/components/ui/auth-button"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { getEffectiveTier } from "@/lib/utils/subscription"
-import type { EffectiveTier } from "@/lib/utils/subscription"
 import { resolveChatEntryHref } from "@/lib/utils/chatEntryRouting"
 import { cn } from "@/lib/utils"
 
@@ -53,21 +51,6 @@ type HeaderAuthViewState =
   | "authenticated"
   | "unauthenticated"
   | "signingOut"
-
-/**
- * Segment configuration for user avatar and badge
- *
- * ATURAN WARNA:
- * - Warna avatar dan badge berdasarkan SUBSCRIPTION TIER, bukan role
- * - Admin dan Superadmin diperlakukan sebagai UNLIMITED (slate)
- * - Tier determination via shared getEffectiveTier() utility
- */
-const SEGMENT_CONFIG: Record<EffectiveTier, { className: string }> = {
-  gratis: { className: "bg-segment-gratis text-primary-foreground" },
-  bpp: { className: "bg-segment-bpp text-primary-foreground" },
-  pro: { className: "bg-segment-pro text-primary-foreground" },
-  unlimited: { className: "bg-segment-unlimited text-primary-foreground" },
-}
 
 export function GlobalHeader() {
   const { resolvedTheme, setTheme } = useTheme()
@@ -257,9 +240,6 @@ export function GlobalHeader() {
   const firstName = convexUser?.firstName || session?.user?.name?.split(" ")[0] || "User"
   const lastName = convexUser?.lastName || session?.user?.name?.split(" ").slice(1).join(" ") || ""
   const fullName = `${firstName} ${lastName}`.trim()
-  const initial = firstName.charAt(0).toUpperCase()
-  const segment = getEffectiveTier(convexUser?.role, convexUser?.subscriptionStatus)
-  const segmentConfig = SEGMENT_CONFIG[segment]
   // isAdmin berdasarkan ROLE (bukan segment), karena segment sekarang hanya subscription tier
   const isAdmin = convexUser?.role === "admin" || convexUser?.role === "superadmin"
 
@@ -476,13 +456,13 @@ export function GlobalHeader() {
 
           {/* SignedOut: Show login button */}
           {authViewState === "unauthenticated" && (
-            <Link
+            <AuthButton
               href={`/sign-in?redirect_url=${encodeURIComponent(redirectTarget)}`}
-              className="mt-2 inline-flex items-center justify-center rounded-action border-main border-border px-3 py-2 text-signal text-[11px] font-bold uppercase tracking-widest text-foreground hover:bg-accent transition-colors"
-              onClick={() => setMobileMenuState({ isOpen: false, pathname })}
+              className="mt-2 w-full"
+              contentClassName="text-[11px] font-bold uppercase tracking-widest text-narrative"
             >
               Masuk
-            </Link>
+            </AuthButton>
           )}
 
           {/* SignedIn: Auth section */}

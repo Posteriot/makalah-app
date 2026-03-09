@@ -129,6 +129,8 @@ export function UserDropdown({
     if (placement === "top-end") return "right-0 bottom-full mb-2"
     return "right-0 top-full mt-2"
   })()
+  const menuItemClassName =
+    "flex items-center gap-dense rounded-action p-dense text-sm font-medium text-narrative text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
 
   const handleSignOut = async () => {
     if (isSigningOut || disabled) return
@@ -182,7 +184,7 @@ export function UserDropdown({
             <span className="relative inline-flex h-5 w-5 items-center justify-center text-foreground">
               <User className="h-4 w-4" />
               <span
-                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-500"
+                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-success"
                 aria-hidden="true"
               />
             </span>
@@ -215,7 +217,7 @@ export function UserDropdown({
           >
             <User className="h-[18px] w-[18px]" />
             <span
-              className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[color:var(--section-bg-alt)]"
+              className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-success"
               aria-hidden="true"
             />
           </button>
@@ -250,11 +252,11 @@ export function UserDropdown({
 
       {/* Dropdown Menu */}
       {isOpen && !disabled && (
-        <div className={cn("absolute w-48 rounded-md border border-border bg-popover shadow-md z-drawer py-2 px-2", menuPositionClass)}>
+        <div className={cn("absolute z-drawer w-48 rounded-md border border-border bg-popover px-2 py-2 shadow-md", menuPositionClass)}>
           <Link
             href="/settings"
             onClick={closeAfterAction}
-            className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors w-full rounded-action"
+            className={cn(menuItemClassName, "w-full")}
           >
             <User className="icon-interface" />
             <span>Atur Akun</span>
@@ -264,7 +266,7 @@ export function UserDropdown({
           <Link
             href="/subscription/overview"
             onClick={closeAfterAction}
-            className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors rounded-action"
+            className={menuItemClassName}
           >
             <CreditCard className="icon-interface" />
             <span>Subskripsi</span>
@@ -273,7 +275,7 @@ export function UserDropdown({
           <Link
             href="/support/technical-report?source=support-page"
             onClick={closeAfterAction}
-            className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors rounded-action"
+            className={menuItemClassName}
           >
             <WarningTriangle className="icon-interface" />
             <span>Lapor Masalah</span>
@@ -285,7 +287,7 @@ export function UserDropdown({
               <Link
                 href="/dashboard"
                 onClick={closeAfterAction}
-                className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
+                className={menuItemClassName}
               >
                 <Settings className="icon-interface" />
                 <span>Admin Panel</span>
@@ -293,7 +295,7 @@ export function UserDropdown({
               <Link
                 href="/cms"
                 onClick={closeAfterAction}
-                className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
+                className={menuItemClassName}
               >
                 <Journal className="icon-interface" />
                 <span>Content CMS</span>
@@ -301,7 +303,7 @@ export function UserDropdown({
               <Link
                 href="/ai-ops"
                 onClick={closeAfterAction}
-                className="flex items-center gap-dense p-dense text-sm font-medium text-narrative text-foreground dark:text-slate-50 hover:bg-slate-900 hover:text-slate-50 transition-colors rounded-action dark:hover:bg-slate-100 dark:hover:text-slate-900"
+                className={menuItemClassName}
               >
                 <Activity className="icon-interface" />
                 <span>AI Ops</span>
@@ -317,7 +319,7 @@ export function UserDropdown({
               "w-full flex items-center gap-dense p-dense text-sm font-medium text-narrative transition-colors rounded-action",
               isSigningOut
                 ? "text-muted-foreground cursor-not-allowed"
-                : "text-rose-400 hover:bg-rose-900 hover:text-rose-50"
+                : "text-destructive hover:bg-destructive/10 hover:text-destructive"
             )}
           >
             {isSigningOut ? (
