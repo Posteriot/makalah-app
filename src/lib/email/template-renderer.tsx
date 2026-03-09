@@ -6,6 +6,7 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
@@ -49,6 +50,37 @@ export interface EmailSection {
 }
 
 // ---------------------------------------------------------------------------
+// Dark mode CSS — static constant, NOT user input
+// Adapts header, body, footer to system dark theme.
+// Works in Apple Mail, iOS Mail, Outlook.com.
+// Gmail ignores this (shows light mode default) — acceptable.
+// ---------------------------------------------------------------------------
+
+function DarkModeStyles() {
+  return (
+    <style>{`
+      @media (prefers-color-scheme: dark) {
+        .em-body { background-color: #0f172a !important; }
+        .em-container { background-color: #1e293b !important; }
+        .em-header { background-color: #0f172a !important; border-bottom-color: #334155 !important; }
+        .em-header-light { display: none !important; }
+        .em-header-dark { display: inline-block !important; }
+        .em-heading { color: #f1f5f9 !important; }
+        .em-text { color: #e2e8f0 !important; }
+        .em-muted { color: #94a3b8 !important; }
+        .em-divider { border-color: #334155 !important; }
+        .em-info-box { background-color: #0f172a !important; border: 1px solid #334155 !important; }
+        .em-footer-divider { border-color: #334155 !important; }
+        .em-link { color: #60a5fa !important; }
+        .em-otp { color: #f1f5f9 !important; }
+        .em-detail-label { color: #94a3b8 !important; }
+        .em-detail-value { color: #e2e8f0 !important; }
+      }
+    `}</style>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Section renderers
 // ---------------------------------------------------------------------------
 
@@ -80,7 +112,7 @@ function renderSection(section: EmailSection, brand: BrandSettings): React.React
         section.style,
       )
       return (
-        <Heading key={section.id} style={style}>
+        <Heading key={section.id} className="em-heading" style={style}>
           {section.content ?? ""}
         </Heading>
       )
@@ -97,7 +129,7 @@ function renderSection(section: EmailSection, brand: BrandSettings): React.React
         section.style,
       )
       return (
-        <Text key={section.id} style={style}>
+        <Text key={section.id} className="em-text" style={style}>
           {section.content ?? ""}
         </Text>
       )
@@ -126,7 +158,13 @@ function renderSection(section: EmailSection, brand: BrandSettings): React.React
     }
 
     case "divider": {
-      return <Hr key={section.id} style={{ borderColor: "#e5e7eb", margin: "16px 0" }} />
+      return (
+        <Hr
+          key={section.id}
+          className="em-divider"
+          style={{ borderColor: "#e2e8f0", margin: "16px 0" }}
+        />
+      )
     }
 
     case "info_box": {
@@ -140,8 +178,9 @@ function renderSection(section: EmailSection, brand: BrandSettings): React.React
         section.style,
       )
       return (
-        <Section key={section.id} style={style}>
+        <Section key={section.id} className="em-info-box" style={style}>
           <Text
+            className="em-text"
             style={{
               color: brand.textColor,
               fontSize: "14px",
@@ -169,7 +208,7 @@ function renderSection(section: EmailSection, brand: BrandSettings): React.React
         section.style,
       )
       return (
-        <Text key={section.id} style={style}>
+        <Text key={section.id} className="em-otp" style={style}>
           {section.content ?? ""}
         </Text>
       )
@@ -185,6 +224,7 @@ function renderSection(section: EmailSection, brand: BrandSettings): React.React
           {section.rows.map((row, i) => (
             <React.Fragment key={`${section.id}-row-${i}`}>
               <Text
+                className="em-detail-label"
                 style={{
                   color: brand.mutedTextColor,
                   fontSize: "12px",
@@ -196,6 +236,7 @@ function renderSection(section: EmailSection, brand: BrandSettings): React.React
                 {row.label}
               </Text>
               <Text
+                className="em-detail-value"
                 style={{
                   color: brand.textColor,
                   fontSize: "16px",
@@ -224,46 +265,94 @@ function EmailTemplate({
   brand,
   subject,
   sections,
+  siteUrl,
 }: {
   brand: BrandSettings
   subject: string
   sections: EmailSection[]
+  siteUrl: string
 }) {
+  // Logo URLs — light mode (default) and dark mode (swapped via CSS)
+  const logoIconLight = `${siteUrl}/logo/logo-color-lightmode.png`
+  const logoIconDark = `${siteUrl}/logo/logo-color-darkmode.png`
+  const brandTextLight = `${siteUrl}/logo/email-brand-text-black.png`
+  const brandTextDark = `${siteUrl}/logo/email-brand-text-white.png`
+
   return (
     <Html>
-      <Head />
+      <Head>
+        <DarkModeStyles />
+      </Head>
       <Preview>{subject}</Preview>
       <Body
+        className="em-body"
         style={{
           backgroundColor: brand.backgroundColor,
           fontFamily: brand.fontFamily,
+          margin: "0",
+          padding: "0",
         }}
       >
         <Container
+          className="em-container"
           style={{
             maxWidth: "600px",
             margin: "0 auto",
             backgroundColor: brand.contentBackgroundColor,
           }}
         >
-          {/* Header */}
+          {/* Header — adaptive light/dark via CSS image swap */}
           <Section
+            className="em-header"
             style={{
-              padding: "24px 32px",
-              borderBottom: "1px solid #e5e7eb",
+              padding: "20px 32px",
+              borderBottom: "1px solid #e2e8f0",
             }}
           >
-            <Heading
-              style={{
-                color: brand.primaryColor,
-                fontSize: "24px",
-                fontWeight: "bold",
-                margin: "0",
-                textAlign: "center" as const,
-              }}
-            >
-              {brand.appName}
-            </Heading>
+            <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto" }}>
+              <tbody>
+                <tr>
+                  <td style={{ paddingRight: "12px", verticalAlign: "middle" }}>
+                    {/* Light mode icon (default) */}
+                    <Img
+                      className="em-header-light"
+                      src={logoIconLight}
+                      alt=""
+                      width="28"
+                      height="28"
+                      style={{ borderRadius: "4px", display: "inline-block", verticalAlign: "middle" }}
+                    />
+                    {/* Dark mode icon (hidden by default, shown via CSS) */}
+                    <Img
+                      className="em-header-dark"
+                      src={logoIconDark}
+                      alt=""
+                      width="28"
+                      height="28"
+                      style={{ borderRadius: "4px", display: "none", verticalAlign: "middle" }}
+                    />
+                  </td>
+                  <td style={{ verticalAlign: "middle" }}>
+                    {/* Light mode brand text (default) */}
+                    <Img
+                      className="em-header-light"
+                      src={brandTextLight}
+                      alt="Makalah"
+                      height="18"
+                      style={{ display: "inline-block", verticalAlign: "middle" }}
+                    />
+                    {/* Dark mode brand text (hidden by default, shown via CSS) */}
+                    <Img
+                      className="em-header-dark"
+                      src={brandTextDark}
+                      alt="Makalah"
+                      height="18"
+                      style={{ display: "none", verticalAlign: "middle" }}
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </Section>
 
           {/* Content sections */}
@@ -272,9 +361,13 @@ function EmailTemplate({
           </Section>
 
           {/* Footer */}
-          <Hr style={{ borderColor: "#e5e7eb", margin: "0" }} />
+          <Hr
+            className="em-footer-divider"
+            style={{ borderColor: "#e2e8f0", margin: "0" }}
+          />
           <Section style={{ padding: "24px 32px" }}>
             <Text
+              className="em-muted"
               style={{
                 color: brand.mutedTextColor,
                 fontSize: "12px",
@@ -287,6 +380,7 @@ function EmailTemplate({
             </Text>
             {brand.footerLinks.length > 0 && (
               <Text
+                className="em-muted"
                 style={{
                   color: brand.mutedTextColor,
                   fontSize: "12px",
@@ -300,6 +394,7 @@ function EmailTemplate({
                     {i > 0 && " | "}
                     <Link
                       href={link.url}
+                      className="em-link"
                       style={{
                         color: brand.primaryColor,
                         textDecoration: "underline",
@@ -326,9 +421,16 @@ export async function renderEmailTemplate(
   brandSettings: BrandSettings,
   subject: string,
   sections: EmailSection[],
+  siteUrl?: string,
 ): Promise<string> {
+  const resolvedSiteUrl = siteUrl ?? process.env.SITE_URL ?? "https://makalah.ai"
   const html = await render(
-    <EmailTemplate brand={brandSettings} subject={subject} sections={sections} />,
+    <EmailTemplate
+      brand={brandSettings}
+      subject={subject}
+      sections={sections}
+      siteUrl={resolvedSiteUrl}
+    />,
   )
   return html
 }
