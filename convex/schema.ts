@@ -1141,7 +1141,6 @@ export default defineSchema({
     isSkillRuntime: v.optional(v.boolean()),
     referencesClaimed: v.optional(v.number()),
     referencesMatched: v.optional(v.number()),
-    attemptedRetrievers: v.optional(v.array(v.string())),
     retrieverName: v.optional(v.string()),
     createdAt: v.number(),
   })
