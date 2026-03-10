@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
-import { isAuthenticated } from "@/lib/auth-server"
+import { isAuthenticated, getToken } from "@/lib/auth-server"
+import { fetchQuery } from "convex/nextjs"
+import { api } from "@convex/_generated/api"
 import {
   renderEmailTemplate,
   type BrandSettings,
@@ -40,6 +42,21 @@ function checkRateLimit(email: string): boolean {
 export async function POST(request: NextRequest) {
   if (!(await isAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const convexToken = await getToken()
+  if (!convexToken) {
+    return NextResponse.json({ error: "Convex token missing" }, { status: 500 })
+  }
+
+  try {
+    const convexUser = await fetchQuery(api.users.getMyUser, {}, { token: convexToken })
+    if (!convexUser || (convexUser.role !== "admin" && convexUser.role !== "superadmin")) {
+      return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 })
+    }
+  } catch (error) {
+    console.error("[EmailTemplate SendTest] Permission check failed:", error)
+    return NextResponse.json({ error: "Permission check failed" }, { status: 500 })
   }
 
   let templateType: string
