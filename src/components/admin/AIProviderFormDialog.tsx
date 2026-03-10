@@ -33,10 +33,12 @@ import {
   ShieldCheck,
   ShieldXmark,
   InfoCircle,
+  DataTransferBoth,
 } from "iconoir-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Id } from "@convex/_generated/dataModel"
 import { useGatewayModels } from "@/lib/hooks/useGatewayModels"
+import { RETRIEVER_PRESETS, getModelIdForKey } from "./web-search-presets"
 
 const PROVIDER_OPTIONS = [
   { value: "vercel-gateway", label: "Vercel AI Gateway" },
@@ -75,6 +77,7 @@ interface AIProviderConfig {
   fallbackWebSearchMaxResults?: number
   webSearchModel?: string
   webSearchFallbackModel?: string
+  webSearchRetrievers?: Array<{ name: string; enabled: boolean; modelId: string; priority: number }>
   version: number
 }
 
@@ -163,13 +166,27 @@ export function AIProviderFormDialog({
   const [primaryContextWindow, setPrimaryContextWindow] = useState<number | undefined>(undefined)
   const [fallbackContextWindow, setFallbackContextWindow] = useState<number | undefined>(undefined)
 
-  // Web search settings
-  const [primaryWebSearchEnabled, setPrimaryWebSearchEnabled] = useState(true)
-  const [fallbackWebSearchEnabled, setFallbackWebSearchEnabled] = useState(true)
-  const [fallbackWebSearchEngine, setFallbackWebSearchEngine] = useState("auto")
-  const [fallbackWebSearchMaxResults, setFallbackWebSearchMaxResults] = useState(5)
-  const [webSearchModel, setWebSearchModel] = useState("perplexity/sonar")
-  const [webSearchFallbackModel, setWebSearchFallbackModel] = useState("x-ai/grok-3-mini")
+  // Web search retrievers (dropdown-based)
+  const initPrimaryRetriever = (() => {
+    const retrievers = config?.webSearchRetrievers as Array<{ name: string; enabled: boolean; priority: number }> | undefined
+    if (retrievers && retrievers.length > 0) {
+      const primary = retrievers.find((r) => r.priority === 0) ?? retrievers[0]
+      return primary.enabled ? primary.name : ""
+    }
+    if (config?.primaryWebSearchEnabled === false) return ""
+    return "perplexity"
+  })()
+  const initFallbackRetriever = (() => {
+    const retrievers = config?.webSearchRetrievers as Array<{ name: string; enabled: boolean; priority: number }> | undefined
+    if (retrievers && retrievers.length > 0) {
+      const fallback = retrievers.find((r) => r.priority === 1) ?? (retrievers.length > 1 ? retrievers[1] : undefined)
+      return fallback?.enabled ? fallback.name : ""
+    }
+    if (config?.fallbackWebSearchEnabled === false) return ""
+    return "grok"
+  })()
+  const [primaryRetriever, setPrimaryRetriever] = useState(initPrimaryRetriever)
+  const [fallbackRetriever, setFallbackRetriever] = useState(initFallbackRetriever)
 
   // UI state
   const [isLoading, setIsLoading] = useState(false)
@@ -215,13 +232,19 @@ export function AIProviderFormDialog({
         // Context window settings
         setPrimaryContextWindow(config.primaryContextWindow)
         setFallbackContextWindow(config.fallbackContextWindow)
-        // Web search settings (use defaults if not set)
-        setPrimaryWebSearchEnabled(config.primaryWebSearchEnabled ?? true)
-        setFallbackWebSearchEnabled(config.fallbackWebSearchEnabled ?? true)
-        setFallbackWebSearchEngine(config.fallbackWebSearchEngine ?? "auto")
-        setFallbackWebSearchMaxResults(config.fallbackWebSearchMaxResults ?? 5)
-        setWebSearchModel(config.webSearchModel ?? "perplexity/sonar")
-        setWebSearchFallbackModel(config.webSearchFallbackModel ?? "x-ai/grok-3-mini")
+        // Web search retrievers
+        {
+          const retrievers = config.webSearchRetrievers as Array<{ name: string; enabled: boolean; priority: number }> | undefined
+          if (retrievers && retrievers.length > 0) {
+            const primary = retrievers.find((r) => r.priority === 0) ?? retrievers[0]
+            setPrimaryRetriever(primary.enabled ? primary.name : "")
+            const fallback = retrievers.find((r) => r.priority === 1) ?? (retrievers.length > 1 ? retrievers[1] : undefined)
+            setFallbackRetriever(fallback?.enabled ? fallback.name : "")
+          } else {
+            setPrimaryRetriever(config.primaryWebSearchEnabled === false ? "" : "perplexity")
+            setFallbackRetriever(config.fallbackWebSearchEnabled === false ? "" : "grok")
+          }
+        }
         // API keys: tidak di-populate (security)
         setGatewayApiKey("")
         setOpenrouterApiKey("")
@@ -251,13 +274,9 @@ export function AIProviderFormDialog({
         // Context window defaults
         setPrimaryContextWindow(undefined)
         setFallbackContextWindow(undefined)
-        // Web search settings defaults
-        setPrimaryWebSearchEnabled(true)
-        setFallbackWebSearchEnabled(true)
-        setFallbackWebSearchEngine("auto")
-        setFallbackWebSearchMaxResults(5)
-        setWebSearchModel("perplexity/sonar")
-        setWebSearchFallbackModel("x-ai/grok-3-mini")
+        // Web search retriever defaults
+        setPrimaryRetriever("perplexity")
+        setFallbackRetriever("grok")
       }
       // Reset validation state
       setPrimaryValidation("idle")
@@ -499,8 +518,8 @@ export function AIProviderFormDialog({
       return
     }
 
-    if (fallbackWebSearchMaxResults < 1 || fallbackWebSearchMaxResults > 10) {
-      toast.error("Max Search Results harus antara 1 dan 10")
+    if (primaryRetriever && fallbackRetriever && primaryRetriever === fallbackRetriever) {
+      toast.error("Primary dan fallback retriever tidak boleh sama")
       return
     }
 
@@ -556,25 +575,15 @@ export function AIProviderFormDialog({
           updateArgs.reasoningTraceMode = reasoningTraceMode
         }
 
-        // Web search settings
-        if (primaryWebSearchEnabled !== (config.primaryWebSearchEnabled ?? true)) {
-          updateArgs.primaryWebSearchEnabled = primaryWebSearchEnabled
+        // Build webSearchRetrievers array
+        const newRetrievers: Array<{ name: string; enabled: boolean; modelId: string; priority: number }> = []
+        if (primaryRetriever) {
+          newRetrievers.push({ name: primaryRetriever, enabled: true, modelId: getModelIdForKey(primaryRetriever), priority: 0 })
         }
-        if (fallbackWebSearchEnabled !== (config.fallbackWebSearchEnabled ?? true)) {
-          updateArgs.fallbackWebSearchEnabled = fallbackWebSearchEnabled
+        if (fallbackRetriever) {
+          newRetrievers.push({ name: fallbackRetriever, enabled: true, modelId: getModelIdForKey(fallbackRetriever), priority: 1 })
         }
-        if (fallbackWebSearchEngine !== (config.fallbackWebSearchEngine ?? "auto")) {
-          updateArgs.fallbackWebSearchEngine = fallbackWebSearchEngine
-        }
-        if (fallbackWebSearchMaxResults !== (config.fallbackWebSearchMaxResults ?? 5)) {
-          updateArgs.fallbackWebSearchMaxResults = fallbackWebSearchMaxResults
-        }
-        if (webSearchModel !== (config.webSearchModel ?? "perplexity/sonar")) {
-          updateArgs.webSearchModel = webSearchModel
-        }
-        if (webSearchFallbackModel !== (config.webSearchFallbackModel ?? "x-ai/grok-3-mini")) {
-          updateArgs.webSearchFallbackModel = webSearchFallbackModel
-        }
+        updateArgs.webSearchRetrievers = newRetrievers
 
         const result = await updateMutation(updateArgs)
         toast.success(result.message)
@@ -600,13 +609,17 @@ export function AIProviderFormDialog({
           // Context window settings
           primaryContextWindow,
           fallbackContextWindow,
-          // Web search settings
-          primaryWebSearchEnabled,
-          fallbackWebSearchEnabled,
-          fallbackWebSearchEngine,
-          fallbackWebSearchMaxResults,
-          webSearchModel,
-          webSearchFallbackModel,
+          // Web search retrievers
+          webSearchRetrievers: (() => {
+            const retrievers: Array<{ name: string; enabled: boolean; modelId: string; priority: number }> = []
+            if (primaryRetriever) {
+              retrievers.push({ name: primaryRetriever, enabled: true, modelId: getModelIdForKey(primaryRetriever), priority: 0 })
+            }
+            if (fallbackRetriever) {
+              retrievers.push({ name: fallbackRetriever, enabled: true, modelId: getModelIdForKey(fallbackRetriever), priority: 1 })
+            }
+            return retrievers
+          })(),
         })
         toast.success(result.message)
       }
@@ -636,12 +649,8 @@ export function AIProviderFormDialog({
     reasoningTraceMode !== (config.reasoningTraceMode ?? "curated") ||
     primaryContextWindow !== config.primaryContextWindow ||
     fallbackContextWindow !== config.fallbackContextWindow ||
-    primaryWebSearchEnabled !== (config.primaryWebSearchEnabled ?? true) ||
-    fallbackWebSearchEnabled !== (config.fallbackWebSearchEnabled ?? true) ||
-    fallbackWebSearchEngine !== (config.fallbackWebSearchEngine ?? "auto") ||
-    fallbackWebSearchMaxResults !== (config.fallbackWebSearchMaxResults ?? 5) ||
-    webSearchModel !== (config.webSearchModel ?? "perplexity/sonar") ||
-    webSearchFallbackModel !== (config.webSearchFallbackModel ?? "x-ai/grok-3-mini") ||
+    primaryRetriever !== initPrimaryRetriever ||
+    fallbackRetriever !== initFallbackRetriever ||
     gatewayApiKey.trim() !== "" ||
     openrouterApiKey.trim() !== "" ||
     gatewayUseEnvKey ||
@@ -1179,135 +1188,97 @@ export function AIProviderFormDialog({
 
           <Separator />
 
-          {/* Web Search Settings */}
+          {/* ── Web Search Retrievers ── */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Web Search Settings</h3>
-            <p className="text-sm text-muted-foreground">
-              Kontrol fitur web search untuk primary dan fallback provider.
-            </p>
+            <div className="space-y-1">
+              <h3 className="text-narrative text-base font-medium tracking-tight text-foreground">
+                Web Search Retrievers
+              </h3>
+              <p className="text-interface text-xs text-muted-foreground">
+                Pilih retriever untuk pencarian web. Primary dicoba pertama, fallback jika gagal.
+              </p>
+            </div>
 
-            {/* Info banner */}
-            <div className="flex items-start gap-2.5 rounded-md border border-sky-200 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950/30">
+            <div className="flex items-start gap-2.5 rounded-action border border-sky-200 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950/30">
               <InfoCircle className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
-              <p className="text-xs text-sky-700 dark:text-sky-300">
-                Semua pencarian web dirutekan melalui OpenRouter
+              <p className="text-interface text-xs text-sky-700 dark:text-sky-300">
+                Pencarian web via OpenRouter atau Google Grounding Gemini
               </p>
             </div>
 
             <div className="space-y-4">
-              {/* Primary Web Search Toggle */}
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor="primaryWebSearchEnabled" className="text-base">
-                    Enable Primary Web Search
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Aktifkan pencarian web utama (Perplexity Sonar via OpenRouter)
-                  </p>
-                </div>
-                <Switch
-                  id="primaryWebSearchEnabled"
-                  checked={primaryWebSearchEnabled}
-                  onCheckedChange={setPrimaryWebSearchEnabled}
+              <div className="space-y-2">
+                <Label htmlFor="primaryRetriever" className="text-interface text-xs font-medium">
+                  Primary Search Retriever
+                </Label>
+                <Select
+                  value={primaryRetriever || "__disabled__"}
+                  onValueChange={(v) => setPrimaryRetriever(v === "__disabled__" ? "" : v)}
                   disabled={isLoading}
-                />
+                >
+                  <SelectTrigger id="primaryRetriever" className="rounded-action">
+                    <SelectValue placeholder="Disabled" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__disabled__">Disabled</SelectItem>
+                    {RETRIEVER_PRESETS.map((p) => (
+                      <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {primaryRetriever && (
+                  <p className="text-interface text-[10px] text-muted-foreground">
+                    Model: {getModelIdForKey(primaryRetriever)}
+                  </p>
+                )}
               </div>
 
-              {/* Primary Web Search Model */}
-              {primaryWebSearchEnabled && (
-                <div className="space-y-2 pl-4 border-l-2 border-muted">
-                  <Label htmlFor="webSearchModel">Model Pencarian Web Utama</Label>
-                  <Input
-                    id="webSearchModel"
-                    type="text"
-                    value={webSearchModel}
-                    onChange={(e) => setWebSearchModel(e.target.value)}
-                    placeholder="perplexity/sonar"
-                    disabled={isLoading}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Model pencarian web utama (via OpenRouter), e.g. perplexity/sonar
-                  </p>
-                </div>
+              {primaryRetriever && fallbackRetriever && primaryRetriever === fallbackRetriever && (
+                <p className="text-interface text-[10px] text-destructive">
+                  Primary dan fallback tidak boleh sama
+                </p>
               )}
 
-              {/* Fallback Web Search Toggle */}
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor="fallbackWebSearchEnabled" className="text-base">
-                    Enable Fallback Web Search
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Aktifkan fallback pencarian web (via OpenRouter)
-                  </p>
-                </div>
-                <Switch
-                  id="fallbackWebSearchEnabled"
-                  checked={fallbackWebSearchEnabled}
-                  onCheckedChange={setFallbackWebSearchEnabled}
-                  disabled={isLoading}
-                />
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrimaryRetriever(fallbackRetriever)
+                    setFallbackRetriever(primaryRetriever)
+                  }}
+                  disabled={isLoading || (!primaryRetriever && !fallbackRetriever)}
+                  className="inline-flex h-7 items-center gap-1 rounded-action border border-border px-3 font-mono text-[10px] font-medium text-sky-600 transition-colors hover:bg-muted disabled:opacity-50 dark:text-sky-400"
+                >
+                  <DataTransferBoth className="h-4 w-4" />
+                  <span>Tukar Posisi</span>
+                </button>
               </div>
 
-              {/* Fallback Web Search Sub-settings */}
-              {fallbackWebSearchEnabled && (
-                <div className="space-y-4 pl-4 border-l-2 border-muted">
-                  {/* Fallback Web Search Model */}
-                  <div className="space-y-2">
-                    <Label htmlFor="webSearchFallbackModel">Model Pencarian Web Fallback</Label>
-                    <Input
-                      id="webSearchFallbackModel"
-                      type="text"
-                      value={webSearchFallbackModel}
-                      onChange={(e) => setWebSearchFallbackModel(e.target.value)}
-                      placeholder="x-ai/grok-3-mini"
-                      disabled={isLoading}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Fallback jika model utama gagal (via OpenRouter), e.g. x-ai/grok-3-mini
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fallbackWebSearchEngine">Fallback Search Engine</Label>
-                      <Select
-                        value={fallbackWebSearchEngine}
-                        onValueChange={setFallbackWebSearchEngine}
-                        disabled={isLoading}
-                      >
-                        <SelectTrigger id="fallbackWebSearchEngine">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Auto (OpenRouter Default)</SelectItem>
-                          <SelectItem value="native">Native</SelectItem>
-                          <SelectItem value="exa">Exa</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Engine untuk fallback web search
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="fallbackWebSearchMaxResults">Max Search Results</Label>
-                      <Input
-                        id="fallbackWebSearchMaxResults"
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={fallbackWebSearchMaxResults}
-                        onChange={(e) => setFallbackWebSearchMaxResults(parseInt(e.target.value, 10) || 5)}
-                        disabled={isLoading}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Jumlah hasil pencarian (1-10)
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="fallbackRetriever" className="text-interface text-xs font-medium">
+                  Fallback Search Retriever
+                </Label>
+                <Select
+                  value={fallbackRetriever || "__disabled__"}
+                  onValueChange={(v) => setFallbackRetriever(v === "__disabled__" ? "" : v)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="fallbackRetriever" className="rounded-action">
+                    <SelectValue placeholder="Disabled" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__disabled__">Disabled</SelectItem>
+                    {RETRIEVER_PRESETS.map((p) => (
+                      <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fallbackRetriever && (
+                  <p className="text-interface text-[10px] text-muted-foreground">
+                    Model: {getModelIdForKey(fallbackRetriever)}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
