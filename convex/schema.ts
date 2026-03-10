@@ -420,6 +420,18 @@ export default defineSchema({
     webSearchModel: v.optional(v.string()), // Dedicated web search model (default: "perplexity/sonar")
     webSearchFallbackModel: v.optional(v.string()), // Fallback web search model (default: "x-ai/grok-3-mini")
 
+    // New retriever-based web search config (coexists with legacy fields above)
+    webSearchRetrievers: v.optional(v.array(v.object({
+      name: v.string(),
+      enabled: v.boolean(),
+      modelId: v.string(),
+      priority: v.number(),
+      providerOptions: v.optional(v.object({
+        maxResults: v.optional(v.number()),
+        engine: v.optional(v.string()),
+      })),
+    }))),
+
     // ════════════════════════════════════════════════════════════════
     // Tool Visibility Settings (Admin maintenance toggle)
     // ════════════════════════════════════════════════════════════════
