@@ -6,6 +6,17 @@ const MIN_THINKING_BUDGET = 0
 const MAX_THINKING_BUDGET = 32768
 const REASONING_TRACE_MODES = new Set(["off", "curated", "transparent"])
 
+const webSearchRetrieverValidator = v.object({
+  name: v.string(),
+  enabled: v.boolean(),
+  modelId: v.string(),
+  priority: v.number(),
+  providerOptions: v.optional(v.object({
+    maxResults: v.optional(v.number()),
+    engine: v.optional(v.string()),
+  })),
+})
+
 /**
  * Get the currently active AI provider configuration
  * No auth required - used by chat API
@@ -176,6 +187,7 @@ export const createConfig = mutation({
     fallbackWebSearchMaxResults: v.optional(v.number()),
     webSearchModel: v.optional(v.string()),
     webSearchFallbackModel: v.optional(v.string()),
+    webSearchRetrievers: v.optional(v.array(webSearchRetrieverValidator)),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
@@ -241,6 +253,7 @@ export const createConfig = mutation({
       fallbackWebSearchMaxResults: args.fallbackWebSearchMaxResults,
       webSearchModel: args.webSearchModel,
       webSearchFallbackModel: args.webSearchFallbackModel,
+      webSearchRetrievers: args.webSearchRetrievers,
       version: 1,
       isActive: false, // Not active by default
       parentId: undefined,
@@ -295,6 +308,7 @@ export const updateConfig = mutation({
     fallbackWebSearchMaxResults: v.optional(v.number()),
     webSearchModel: v.optional(v.string()),
     webSearchFallbackModel: v.optional(v.string()),
+    webSearchRetrievers: v.optional(v.array(webSearchRetrieverValidator)),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx.db, args.requestorUserId, "admin")
@@ -354,6 +368,8 @@ export const updateConfig = mutation({
       args.webSearchModel ?? oldConfig.webSearchModel
     const webSearchFallbackModel =
       args.webSearchFallbackModel ?? oldConfig.webSearchFallbackModel
+    const webSearchRetrievers =
+      args.webSearchRetrievers !== undefined ? args.webSearchRetrievers : oldConfig.webSearchRetrievers
 
     // Validate inputs
     if (!name.trim()) {
@@ -418,6 +434,7 @@ export const updateConfig = mutation({
       fallbackWebSearchMaxResults,
       webSearchModel,
       webSearchFallbackModel,
+      webSearchRetrievers,
       version: newVersion,
       isActive: false, // Not active yet
       parentId: args.configId,
@@ -550,6 +567,7 @@ export const swapProviders = mutation({
       // Dedicated web search models (not tied to primary/fallback slots)
       webSearchModel: config.webSearchModel,
       webSearchFallbackModel: config.webSearchFallbackModel,
+      webSearchRetrievers: config.webSearchRetrievers,
       version: newVersion,
       isActive: false,
       parentId: configId,
