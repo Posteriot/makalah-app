@@ -15,8 +15,8 @@ export function WorkspaceManagerHeader() {
             Workspace Manager
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--chat-muted-foreground)]">
-            Kelola seluruh percakapan dari workspace chat lo lewat area manajemen penuh
-            yang terpisah dari sidebar 50 riwayat terbaru.
+            Area manajemen penuh untuk percakapan workspace chat yang dipisahkan
+            dari sidebar 50 riwayat terbaru.
           </p>
         </div>
         <Link

@@ -47,7 +47,7 @@ describe("workspace manager conversations", () => {
       />
     )
 
-    fireEvent.click(screen.getByLabelText("Pilih conversation Chat 1"))
+    fireEvent.click(screen.getByLabelText("Pilih percakapan Chat 1"))
     expect(
       screen.getByRole("button", { name: /hapus pilihan/i })
     ).not.toBeDisabled()

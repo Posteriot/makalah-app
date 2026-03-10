@@ -20,16 +20,14 @@ vi.mock("@/lib/hooks/useCurrentUser", () => ({
 }))
 
 describe("workspace manager shell", () => {
-  it("merender area manager dengan tab awal Percakapan dan modul lanjutan non-aktif", () => {
+  it("merender card percakapan tunggal dengan link kembali ke chat", () => {
     render(<WorkspaceManagerShell />)
 
+    expect(screen.getByRole("link", { name: /kembali ke chat/i })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Kelola Percakapan" })).toBeInTheDocument()
     expect(
-      screen.getByRole("heading", { name: "Workspace Manager" })
-    ).toBeInTheDocument()
-    expect(screen.getByRole("heading", { name: "Percakapan" })).toBeInTheDocument()
-    expect(screen.getAllByText("Paper").length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Lampiran").length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Knowledge Base").length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThan(0)
+      screen.queryByText(/Daftar penuh percakapan, paginasi, seleksi halaman aktif/i)
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "Workspace Manager" })).not.toBeInTheDocument()
   })
 })

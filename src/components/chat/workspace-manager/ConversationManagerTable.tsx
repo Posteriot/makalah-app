@@ -93,7 +93,7 @@ export function ConversationManagerTable({
               Manajemen percakapan
             </p>
             <p className="mt-1 text-sm text-[var(--chat-muted-foreground)]">
-              {totalCount} conversation tersedia di workspace ini.
+              {totalCount} percakapan tersedia pada workspace ini.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -135,7 +135,7 @@ export function ConversationManagerTable({
         <div className="grid grid-cols-[40px_minmax(0,1fr)_140px] items-center gap-3 border-b border-[color:var(--chat-border)] px-4 py-3 text-[10px] font-mono font-semibold uppercase tracking-[0.18em] text-[var(--chat-muted-foreground)]">
           <label className="flex items-center justify-center">
             <input
-              aria-label="Pilih semua conversation di halaman aktif"
+              aria-label="Pilih semua percakapan di halaman aktif"
               type="checkbox"
               checked={allSelected}
               onChange={toggleSelectAll}
@@ -159,7 +159,7 @@ export function ConversationManagerTable({
               >
                 <span className="flex items-center justify-center">
                   <input
-                    aria-label={`Pilih conversation ${item.title}`}
+                    aria-label={`Pilih percakapan ${item.title}`}
                     type="checkbox"
                     checked={scopedSelectedIds.includes(item._id)}
                     onChange={() => toggleSelection(item._id)}

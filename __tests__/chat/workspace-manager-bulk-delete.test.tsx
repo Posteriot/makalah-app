@@ -31,7 +31,7 @@ describe("workspace manager bulk delete", () => {
       />
     )
 
-    await user.click(screen.getByLabelText("Pilih conversation Chat 1"))
+    await user.click(screen.getByLabelText("Pilih percakapan Chat 1"))
     await user.click(screen.getByRole("button", { name: /hapus pilihan/i }))
 
     expect(screen.getByText(/1 percakapan terpilih/i)).toBeInTheDocument()
