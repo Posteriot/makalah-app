@@ -135,6 +135,7 @@ export const log = mutation({
     referencesClaimed: v.optional(v.number()),
     referencesMatched: v.optional(v.number()),
     attemptedRetrievers: v.optional(v.array(v.string())),
+    retrieverName: v.optional(v.string()),
   },
   handler: async ({ db }, args) => {
     const isSkillRuntime = isSkillRuntimeRecord({

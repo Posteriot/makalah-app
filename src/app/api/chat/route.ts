@@ -2274,6 +2274,7 @@ Aturan:
                             sourcesPassed: result.sources.length,
                             sourcesBlocked: 0,
                             attemptedRetrievers: result.attemptedRetrievers,
+                            retrieverName: result.retrieverName,
                         })
                     },
                 })

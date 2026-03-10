@@ -33,6 +33,7 @@ type TelemetryParams = {
   referencesClaimed?: number
   referencesMatched?: number
   attemptedRetrievers?: string[]
+  retrieverName?: string
 }
 
 /**
