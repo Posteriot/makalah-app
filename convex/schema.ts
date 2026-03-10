@@ -1120,6 +1120,7 @@ export default defineSchema({
     searchSkillAction: v.optional(v.string()),
     sourcesScored: v.optional(v.number()),
     sourcesFiltered: v.optional(v.number()),
+    sourcesPassed: v.optional(v.number()),
     sourcesPassedTiers: v.optional(v.string()),
     diversityWarning: v.optional(v.string()),
     skillResolverFallback: v.optional(v.boolean()),
