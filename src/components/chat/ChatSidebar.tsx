@@ -235,7 +235,7 @@ export function ChatSidebar({
             <button
               type="button"
               className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]",
+                "inline-flex h-8 w-8 items-center justify-center rounded-action bg-transparent",
                 "text-[var(--chat-muted-foreground)] transition-colors duration-150",
                 "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
               )}

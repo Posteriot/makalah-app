@@ -1,7 +1,7 @@
 "use client"
 
 import { type ReactNode } from "react"
-import { Xmark } from "iconoir-react"
+import { Settings, Xmark } from "iconoir-react"
 import { cn } from "@/lib/utils"
 
 interface WorkspacePanelShellProps {
@@ -26,9 +26,14 @@ export function WorkspacePanelShell({
       )}
     >
       <header className="flex shrink-0 items-center justify-between border-b border-[color:var(--chat-border)] px-5 py-4">
-        <h2 className="text-base font-semibold tracking-tight text-[var(--chat-foreground)]">
-          {title}
-        </h2>
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-action bg-transparent text-[var(--chat-muted-foreground)]">
+            <Settings className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <h2 className="text-base font-semibold tracking-tight text-[var(--chat-foreground)]">
+            {title}
+          </h2>
+        </div>
         <button
           type="button"
           onClick={onClose}

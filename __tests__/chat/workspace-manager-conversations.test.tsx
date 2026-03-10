@@ -55,6 +55,24 @@ describe("workspace manager conversations", () => {
     expect(screen.getByRole("button", { name: /hapus pilihan/i })).not.toBeDisabled()
   })
 
+  it("menyembunyikan checkbox utama saat belum ada percakapan", () => {
+    render(
+      <ConversationManagerTable
+        items={[]}
+        totalCount={0}
+        page={1}
+        pageSize={10}
+        isLoading={false}
+        onPageChange={vi.fn()}
+        onDeleteSingle={vi.fn()}
+      />
+    )
+
+    expect(
+      screen.queryByLabelText("Pilih semua percakapan di halaman aktif")
+    ).not.toBeInTheDocument()
+  })
+
   it("reset selection saat pindah ke halaman aktif lain", () => {
     const onPageChange = vi.fn()
     const { rerender } = render(

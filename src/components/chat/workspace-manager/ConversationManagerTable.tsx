@@ -109,18 +109,20 @@ export function ConversationManagerTable({
       <div className="sticky top-0 z-10 border-b border-[color:var(--chat-border)] bg-[var(--chat-card)] px-5 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <input
-              aria-label="Pilih semua percakapan di halaman aktif"
-              type="checkbox"
-              checked={allSelected}
-              ref={(node) => {
-                if (node) {
-                  node.indeterminate = isPartiallySelected
-                }
-              }}
-              onChange={toggleSelectAll}
-              className="h-4 w-4 rounded border border-[color:var(--chat-border)] bg-[var(--chat-background)]"
-            />
+            {totalCount > 0 ? (
+              <input
+                aria-label="Pilih semua percakapan di halaman aktif"
+                type="checkbox"
+                checked={allSelected}
+                ref={(node) => {
+                  if (node) {
+                    node.indeterminate = isPartiallySelected
+                  }
+                }}
+                onChange={toggleSelectAll}
+                className="h-4 w-4 rounded border border-[color:var(--chat-border)] bg-[var(--chat-background)]"
+              />
+            ) : null}
             <span className="truncate text-xs font-mono font-semibold uppercase tracking-[0.16em] text-[var(--chat-muted-foreground)]">
               {selectedCount > 0 ? `${selectedCount} terpilih` : `${totalCount} percakapan`}
             </span>
@@ -135,21 +137,6 @@ export function ConversationManagerTable({
               className={cn(
                 "inline-flex h-8 w-8 items-center justify-center rounded-action transition-colors duration-150",
                 selectedCount === 0
-                  ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-50"
-                  : "text-[var(--chat-destructive)] hover:bg-[var(--chat-accent)]"
-              )}
-            >
-              <Trash className="h-4 w-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label="Hapus semua"
-              title="Hapus semua"
-              disabled={totalCount === 0}
-              onClick={() => setDeleteAllOpen(true)}
-              className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-action transition-colors duration-150",
-                totalCount === 0
                   ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-50"
                   : "text-[var(--chat-destructive)] hover:bg-[var(--chat-accent)]"
               )}
@@ -204,27 +191,43 @@ export function ConversationManagerTable({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center justify-between border-t border-[color:var(--chat-border)] px-5 py-3">
-        <button
-          type="button"
-          onClick={() => onPageChange(Math.max(1, page - 1))}
-          disabled={page <= 1}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-foreground)] transition-colors hover:bg-[var(--chat-accent)] disabled:cursor-not-allowed disabled:text-[var(--chat-muted-foreground)]"
-          aria-label="Halaman sebelumnya"
-        >
-          <NavArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </button>
+      <div className="flex shrink-0 items-center justify-between gap-4 border-t border-[color:var(--chat-border)] px-5 py-3">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.max(1, page - 1))}
+            disabled={page <= 1}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-foreground)] transition-colors hover:bg-[var(--chat-accent)] disabled:cursor-not-allowed disabled:text-[var(--chat-muted-foreground)]"
+            aria-label="Halaman sebelumnya"
+          >
+            <NavArrowLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+            disabled={page >= totalPages}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-foreground)] transition-colors hover:bg-[var(--chat-accent)] disabled:cursor-not-allowed disabled:text-[var(--chat-muted-foreground)]"
+            aria-label="Halaman berikutnya"
+          >
+            <NavArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
         <span className="text-xs font-mono text-[var(--chat-muted-foreground)]">
           Menampilkan {pageStart}-{pageEnd} dari {totalCount}
         </span>
         <button
           type="button"
-          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-          disabled={page >= totalPages}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-foreground)] transition-colors hover:bg-[var(--chat-accent)] disabled:cursor-not-allowed disabled:text-[var(--chat-muted-foreground)]"
-          aria-label="Halaman berikutnya"
+          aria-label="Hapus semua"
+          disabled={totalCount === 0}
+          onClick={() => setDeleteAllOpen(true)}
+          className={cn(
+            "inline-flex h-8 items-center rounded-action px-3 text-xs font-medium transition-colors duration-150",
+            totalCount === 0
+              ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-50"
+              : "text-[var(--chat-destructive)] hover:bg-[var(--chat-accent)]"
+          )}
         >
-          <NavArrowRight className="h-4 w-4" aria-hidden="true" />
+          Hapus semua
         </button>
       </div>
       </section>
