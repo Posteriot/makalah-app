@@ -16,7 +16,6 @@ import {
 } from "./utils"
 import type {
   WebSearchOrchestratorConfig,
-  WebSearchResult,
   RetrieverChainEntry,
 } from "./types"
 import type { SkillContext } from "@/lib/ai/skills/types"

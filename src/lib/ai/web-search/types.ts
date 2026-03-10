@@ -1,7 +1,6 @@
 import type { LanguageModel, streamText } from "ai"
 import type { NormalizedCitation } from "@/lib/citations/types"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyStreamTextResult = ReturnType<typeof streamText>
 
 export interface RetrieverConfig {
