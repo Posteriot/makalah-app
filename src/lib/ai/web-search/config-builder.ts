@@ -27,12 +27,12 @@ interface BuildChainInput {
 
 export function buildRetrieverChain(input: BuildChainInput): RetrieverChainEntry[] {
   const retrievers = input.webSearchRetrievers
-    ? fromNewFormat(input)
-    : fromLegacyFormat(input)
+    ? fromRetrieverArray(input)
+    : fromTwoSlotFields(input)
   return retrievers
 }
 
-function fromNewFormat(input: BuildChainInput): RetrieverChainEntry[] {
+function fromRetrieverArray(input: BuildChainInput): RetrieverChainEntry[] {
   if (!input.webSearchRetrievers) return []
 
   const chain: RetrieverChainEntry[] = []
@@ -66,7 +66,7 @@ function fromNewFormat(input: BuildChainInput): RetrieverChainEntry[] {
   return chain
 }
 
-function fromLegacyFormat(input: BuildChainInput): RetrieverChainEntry[] {
+function fromTwoSlotFields(input: BuildChainInput): RetrieverChainEntry[] {
   const chain: RetrieverChainEntry[] = []
   const legacy = input.legacyConfig ?? {}
 
