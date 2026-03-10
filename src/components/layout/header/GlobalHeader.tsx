@@ -468,7 +468,7 @@ export function GlobalHeader() {
             {/* SignedIn: Auth section */}
             {shouldShowAuthenticatedUi && (
               <div className="mt-3 rounded-shell border-main border-border bg-[color:color-mix(in_oklch,var(--core-card)_78%,var(--core-background))] p-2.5">
-                <Accordion type="single" collapsible defaultValue="user">
+                <Accordion type="single" collapsible>
                   <AccordionItem value="user" className="border-none">
                     <AccordionTrigger className="items-center rounded-action py-0 hover:no-underline [&>svg]:self-center [&>svg]:translate-y-0">
                       <div className="flex min-h-11 w-full items-center gap-3 rounded-action px-2 py-2 text-left transition-colors hover:bg-accent">
