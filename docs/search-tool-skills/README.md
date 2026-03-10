@@ -1,134 +1,163 @@
-# Search Tool Skills — Insights & Lessons Learned
+# Tools + Skills Architecture — Principles & Evidence
 
-## Insight Utama: Tools Sederhana, Skills Cerdas
+## Core Insight: Simple Tools, Smart Skills
 
-Prinsip ini terbukti melalui eksperimen iteratif di branch `search-tool-skills`:
+Validated through iterative experimentation on the `search-tool-skills` branch:
 
-> **Tools yang ruwet membatasi kecerdasan LLM. Biarkan tools sederhana, berikan kecerdasan melalui skills.**
+> **Complex tool pipelines limit LLM intelligence. Keep tools simple, deliver intelligence through skills.**
 
-### Apa Bedanya?
+### The Three Layers
 
-| Layer | Peran | Contoh |
-|-------|-------|--------|
-| **Tool** | Eksekutor sederhana — ambil data, nggak menilai | Perplexity retrieve sources, Grok search web |
-| **Skill** | Layer pengetahuan — ajarkan LLM BAGAIMANA menilai | SKILL.md: evaluasi kredibilitas, blocklist, narasi |
-| **Code Pipeline** | Transformasi deterministik minimal | Normalize URL, format citation |
+| Layer | Role | Example |
+|-------|------|---------|
+| **Tool** | Simple executor — fetch data, no judgment | Perplexity retrieve sources, Grok search web, Google Grounding |
+| **Skill** | Knowledge layer — teach LLM HOW to judge | SKILL.md: credibility evaluation, blocklist, narration rules |
+| **Code Pipeline** | Minimal deterministic transform | Normalize URLs, format citations, resolve redirects |
 
-### Kenapa Ini Penting?
+### Where This Applies
 
-Sebelumnya, pipeline search kita 6 langkah:
-```
-Perplexity → normalize → score by domain tier → enrich titles →
-filter unreachable → dedup by final URL → Gemini
-```
+This architecture is not search-specific. Any domain where an LLM needs knowledge guidance follows the same pattern:
 
-Hasilnya: **50% source hilang** (12 → 6). Setiap langkah code = potensi kehilangan data.
+| Domain | Tools (Simple Executors) | Skills (Knowledge Layer) | Code Pipeline |
+|--------|--------------------------|--------------------------|---------------|
+| **Web Search** | Perplexity, Grok, Google Grounding retrievers | `web-search-quality/SKILL.md` | Normalize citations, resolve proxy URLs |
+| **Paper Stages** | `startPaperSession`, `updateStageData`, `submitStageForValidation` | Stage instructions in `paper-stages/*.ts` (migration candidate) | `formatStageData` context injection |
+| **Future domains** | Any data-fetching tool | SKILL.md with domain-specific guidance | Format normalization only |
 
-Setelah simplifikasi:
-```
-Perplexity → normalize → pass ALL to Gemini + SKILL.md
-```
-
-Hasilnya: **14 source terpakai, 0 blocked domain dikutip.**
-
-## Prinsip #1: Tools Harus Bebas
+## Principle 1: Tools Must Be Free
 
 > "AI works better when you give tools and freedom instead of forcing them into rigid, hand-designed workflows" — Boris Cherny
 
-**Jangan batasi apa yang tool bisa kumpulkan.** Perplexity yang diberi blocklist di system prompt-nya = Perplexity yang retrieval-nya terkekang. Perplexity yang bebas = lebih banyak source, lebih beragam.
+**Don't constrain what tools can gather.** A retriever with a blocklist in its system prompt = a retriever with hobbled retrieval. A free retriever = more sources, more diversity.
 
-Praktiknya:
-- ❌ Blocklist di system prompt Perplexity (membatasi retrieval)
-- ❌ Domain name spesifik di instruksi ("cari di BPS, World Bank, McKinsey")
-- ✅ Diversity hint generik di user message ("search broadly, cite 10+ sources")
-- ✅ Perplexity/Grok bebas retrieve dari mana saja
+In practice:
+- ❌ Blocklist in search model's system prompt (constrains retrieval)
+- ❌ Specific domain names in instructions ("search BPS, World Bank, McKinsey")
+- ✅ Generic diversity hints in user message ("search broadly, cite 10+ sources")
+- ✅ Retrievers free to gather from anywhere
 
-## Prinsip #2: Skills Memberikan Kecerdasan
+**Paper stage equivalent:**
+- ❌ Hardcoded validation that blocks stage progression based on rigid field counts
+- ✅ Skill instructions that teach LLM when research is insufficient and what to do about it
 
-**Judgment kualitas = tugas LLM, bukan tugas code.**
+## Principle 2: Skills Provide Intelligence
 
-LLM seperti Gemini dilatih untuk mengikuti instruksi. Blocklist yang ditulis "NEVER cite wikipedia.org" di SKILL.md sama efektifnya dengan `isBlockedSourceDomain()` di code — tapi tanpa risiko kehilangan source di pipeline.
+**Quality judgment = LLM's job, not code's job.**
 
-Praktiknya:
-- ❌ `isBlockedSourceDomain()` filter di code pipeline
+LLMs like Gemini are trained to follow instructions. A blocklist written as "NEVER cite wikipedia.org" in SKILL.md is as effective as `isBlockedSourceDomain()` in code — but without the risk of losing sources in a pipeline.
+
+In practice:
+- ❌ `isBlockedSourceDomain()` filter in code pipeline
 - ❌ Domain tier scoring (academic: 90, news: 70, blog: 30)
-- ❌ Diversity enforcement algoritma
-- ✅ Blocklist sebagai natural language di SKILL.md
-- ✅ Instruksi evaluasi kredibilitas (primary data, authorship, methodology)
-- ✅ Instruksi diversifikasi ("mix data, news, expert analysis")
+- ❌ Diversity enforcement algorithm
+- ✅ Blocklist as natural language in SKILL.md
+- ✅ Credibility evaluation instructions (primary data, authorship, methodology)
+- ✅ Diversification instructions ("mix data, news, expert analysis")
 
-## Prinsip #3: Code Pipeline Harus Minimal
+**Paper stage equivalent:**
+- ❌ Hardcoded `PAPER_TOOLS_ONLY_NOTE` strings in `paper-search-helpers.ts`
+- ❌ Deterministic `isStageResearchIncomplete()` with hardcoded field/count requirements
+- ✅ Skill instructions that explain research completeness criteria per stage
+- ✅ LLM decides when research is sufficient based on skill guidance
 
-**Setiap langkah code antara output tool dan input LLM = potensi kehilangan data.**
+## Principle 3: Code Pipeline Must Be Minimal
 
-Code hanya untuk transformasi yang benar-benar deterministik dan tidak mengurangi data:
+**Every code step between tool output and LLM input = potential data loss.**
+
+Code should only perform deterministic transforms that don't reduce data:
 - ✅ Normalize URL format
-- ✅ Normalize citation format (Perplexity format → standard format)
+- ✅ Normalize citation format (provider-specific → standard)
+- ✅ Resolve redirect URLs (vertex proxy → actual)
+- ✅ Dedup exact URL duplicates
 - ❌ Score/rank sources
 - ❌ Enrich titles via fetch (timeout = source loss)
-- ❌ Dedup by final URL (redirect resolution = false dedup)
 - ❌ Filter by reachability (slow servers ≠ bad sources)
 
-## Prinsip #4: Perplexity Behavior
+### Evidence: Pipeline Simplification
 
-Hal spesifik tentang Perplexity Sonar yang perlu dipahami:
+| Pipeline | Steps | Sources Preserved |
+|----------|-------|-------------------|
+| Complex (original) | normalize → score → enrich → filter → dedup → Gemini | 6 of 12 (50% lost) |
+| Simplified | normalize → Gemini + SKILL.md | 14 of 14 (0% lost) |
 
-1. **System prompt mempengaruhi TEXT response, BUKAN retrieval.** Perplexity search independently dari system prompt.
-2. **User message = search query basis.** Diversity hints di user message langsung mempengaruhi apa yang Perplexity cari.
-3. **Nama domain spesifik di instruksi = penjara.** "Cari di BPS, McKinsey" = Perplexity hanya ambil dari situ.
-4. **Instruksi generik lebih efektif.** "Search broadly, include domestic and international sources" > "Search BPS and World Bank".
+## Principle 4: LLM Should Reason, Not Pipeline
 
-## Prinsip #5: Pisahkan Concern
+> "Adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." — Anthropic, BrowseComp & DeepSearchQA benchmarks
 
-| Concern | Tempat | Contoh |
-|---------|--------|--------|
-| **Search quality** | `web-search-quality` skill | Evaluasi sumber, blocklist, narasi, integritas |
-| **Workflow control** | route.ts + paper-search-helpers | Kapan search boleh jalan, mode switching |
-| **Tool execution** | streaming.ts | Model mana yang dipanggil, API key, config |
+Three key findings from Anthropic's Programmatic Tool Calling research:
 
-Jangan campur. Search quality nggak peduli apakah konteksnya paper atau chat. Paper workflow nggak peduli bagaimana sumber dinilai.
+1. **"Tool results from programmatic calls are NOT added to Claude's context — only the final code output is."** Every intermediate processing step between tool output and LLM reasoning = data the LLM never sees.
 
-## Timeline Eksperimen
+2. **LLM writes its own filtering logic** — In Anthropic's examples, Claude writes `errors = [log for log in logs if "ERROR" in log]`. The LLM decides what's relevant, not the developer.
 
-| Commit | Perubahan | Hasil |
-|--------|-----------|-------|
-| Awal | 6-step pipeline (normalize → score → enrich → filter → dedup → Gemini) | 6 sources, banyak source hilang |
-| Simplifikasi | 3-step (normalize → blacklist code → Gemini) | 12 sources |
-| SKILL.md blocklist | 2-step (normalize → Gemini + SKILL.md blocklist) | 14 sources, 0 blocked cited |
+3. **"This approach enables workflows that would be impractical with traditional tool use."** Traditional = developer-designed step-by-step pipeline. Modern = LLM reasons over raw data with skill guidance.
 
-## Prinsip #6: LLM Harus Reasoning, Bukan Pipeline
+Our architecture follows this: pass raw tool output to LLM + provide SKILL.md instructions for HOW to reason about it.
 
-> "Adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." — Anthropic, Programmatic Tool Calling docs
+## Principle 5: Separate Concerns
 
-Anthropic sendiri membuktikan di BrowseComp dan DeepSearchQA benchmarks: yang meningkatkan performa bukan tools yang lebih canggih, tapi **membiarkan LLM reasoning atas hasil tools** — bukan pipeline yang kita hardcode.
+| Concern | Owner | Example |
+|---------|-------|---------|
+| **Quality judgment** | Skills (SKILL.md) | Source evaluation, blocklist, narration, integrity |
+| **Workflow control** | Route logic + helpers | When search runs, mode switching, stage enforcement |
+| **Tool execution** | Provider config | Which model, API key, retriever chain |
 
-Tiga insight kunci dari Anthropic Programmatic Tool Calling:
+Don't mix. Search quality doesn't care whether context is paper or chat. Paper workflow doesn't care how sources are evaluated.
 
-1. **"Tool results from programmatic calls are NOT added to Claude's context — only the final code output is."** Setiap intermediate processing step yang kita taruh antara tool output dan LLM input = data yang hilang sebelum LLM sempat reasoning. Pipeline 6-step kita kehilangan 50% source karena ini.
+## Principle 6: Retriever-Specific Behavior
 
-2. **LLM menulis logika filtering sendiri** — dalam contoh Anthropic, Claude menulis `errors = [log for log in logs if "ERROR" in log]`. Bukan developer yang hardcode filter. LLM decide apa yang relevan, bukan code.
+Each retriever has unique characteristics that tools must handle at the normalization layer:
 
-3. **"This approach enables workflows that would be impractical with traditional tool use"** — Traditional = kita design pipeline step-by-step. Programmatic = LLM decide flow-nya sendiri.
+| Retriever | Citation Source | Special Handling |
+|-----------|----------------|------------------|
+| **Perplexity Sonar** | `result.sources` (native) | Most citations (~16), cheapest (~Rp 80/search) |
+| **Grok** | `result.sources` via `:online` suffix | Fewer citations (~5), moderate cost ($5/K) |
+| **Google Grounding** | `result.providerMetadata` (gateway) | Vertex proxy URLs need redirect resolution, dedup, cap at 20 |
 
-Implikasi untuk Makalah:
-- Pipeline `normalize → pass ALL to Gemini + SKILL.md` = kita membiarkan Gemini reasoning atas raw data
-- SKILL.md = instruksi HOW to reason, bukan hardcoded logic
-- Blocklist di SKILL.md = Gemini decide mana yang di-exclude, bukan code yang preemptively buang
+These differences belong in the **tool layer** (retriever implementations), not in skills or pipeline.
 
-## Referensi
+## Current State: Two Domains, Two Patterns
 
-- Anthropic: "The Complete Guide to Building Skills for Claude"
+### Web Search — Skills Pattern (implemented)
+
+```
+Retriever (tool) → normalize citations → pass ALL to Gemini + SKILL.md
+```
+
+- `src/lib/ai/skills/web-search-quality/SKILL.md` — knowledge layer
+- `src/lib/ai/web-search/orchestrator.ts` — two-pass flow
+- `src/lib/ai/web-search/retrievers/*.ts` — strategy pattern tools
+
+### Paper Stages — Hardcoded Instructions (migration candidate)
+
+```
+Paper tool calls → hardcoded stage instructions → formatStageData context injection
+```
+
+- `src/lib/ai/paper-stages/*.ts` — hardcoded TypeScript instruction strings
+- `src/lib/ai/paper-search-helpers.ts` — hardcoded system notes + deterministic checks
+- `src/lib/ai/paper-mode-prompt.ts` — prompt injection
+
+See `future-paper-workflow-skill-notes.md` for migration analysis.
+
+## References
+
+- Anthropic: "The Complete Guide to Building Skills for Claude" (`.references/skills/`)
 - Anthropic: "Programmatic Tool Calling" (`.references/programatic-tools-calling/`)
 - Boris Cherny: tools + freedom > rigid workflows
-- `architecture-constraints.md` — aturan teknis (bahasa, scope, separasi)
-- `web-search-quality-skill-design.md` — detail arsitektur skill
-- `future-paper-workflow-skill-notes.md` — catatan untuk paper workflow skill
+- `architecture-constraints.md` — technical constraints and rules
+- `web-search-quality-skill-design.md` — skill architecture detail
+- `future-paper-workflow-skill-notes.md` — paper stage skill migration analysis
 
-## Files
+## File Index
 
-| File | Deskripsi |
-|------|-----------|
-| `README.md` | Dokumen ini — insight dan prinsip |
-| `architecture-constraints.md` | Aturan arsitektur: bahasa, scope, tools vs skills |
-| `web-search-quality-skill-design.md` | Detail desain skill web-search-quality |
-| `future-paper-workflow-skill-notes.md` | Catatan system notes untuk paper workflow skill |
+| File | Description |
+|------|-------------|
+| `README.md` | This document — principles and evidence |
+| `architecture-constraints.md` | Architecture rules: language, scope, tools vs skills |
+| `web-search-quality-skill-design.md` | Web search quality skill design |
+| `future-paper-workflow-skill-notes.md` | Paper stage skill migration analysis |
+| `web-search-orchestrator-design.md` | Orchestrator + retriever chain design |
+| `web-search-orchestrator-implementation-plans.md` | Orchestrator implementation plan |
+| `admin-panel-search-redesign-design.md` | Admin panel N-retriever redesign |
+| `admin-panel-search-redesign-implementation-plans.md` | Admin panel redesign implementation plan |
