@@ -163,10 +163,7 @@ export async function getWebSearchConfig() {
     webSearchFallbackModel: config.webSearchFallbackModel,
     openrouterApiKey,
     // New N-retriever config (will be populated from DB when admin panel supports it)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    webSearchRetrievers: (config as any).webSearchRetrievers as
-      | Array<{ name: string; enabled: boolean; modelId: string; priority: number; providerOptions?: { maxResults?: number; engine?: string } }>
-      | undefined,
+    webSearchRetrievers: config.webSearchRetrievers,
   }
 }
 
