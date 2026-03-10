@@ -264,7 +264,7 @@ export function ChatInput({
     const renderSendButton = (size: "sm" | "md" = "md") => {
         const baseBtnClass = cn(
             "flex items-center justify-center rounded-action transition-colors duration-150",
-            size === "sm" ? "w-8 h-8" : "w-9 h-9",
+            size === "sm" ? "h-8 w-8" : "h-[34px] w-[34px]",
         )
 
         if (isGenerating) {
@@ -275,19 +275,19 @@ export function ChatInput({
                     className={cn(
                         baseBtnClass,
                         "chat-pause-button group",
-                        "relative border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] text-[var(--chat-foreground)] shadow-sm",
-                        "transition-[color,background-color,border-color,box-shadow,transform] duration-150",
+                        "relative border text-[var(--chat-info)] shadow-sm",
+                        "border-[color:color-mix(in_oklch,var(--chat-info)_38%,var(--chat-border))]",
+                        "bg-[color:color-mix(in_oklch,var(--chat-info)_14%,var(--chat-card))]",
+                        "transition-[color,background-color,border-color,transform] duration-150",
                         "hover:border-[color:var(--chat-info)] hover:bg-[var(--chat-info)] hover:text-[var(--chat-info-foreground)]",
-                        "hover:shadow-[0_0_0_3px_color-mix(in_oklch,var(--chat-info)_28%,transparent)]",
                         "hover:-translate-y-px active:scale-95",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-info)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--chat-card)]"
                     )}
                     aria-label="Stop generating response"
                 >
-                    <span aria-hidden="true" className="chat-pause-hover-halo" />
                     <span
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-[-3px] rounded-[10px] border border-[color:var(--chat-muted-foreground)]/60 animate-chat-pause-ring"
+                        className="pointer-events-none absolute inset-[-1px] rounded-[9px] border border-[color:color-mix(in_oklch,var(--chat-info)_52%,transparent)]/80 animate-chat-pause-ring"
                     />
                     <PauseSolid className={cn("chat-pause-icon relative z-10 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110", size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4")} />
                 </button>
@@ -323,14 +323,14 @@ export function ChatInput({
                         {renderContextTray("desktop", "px-1 pb-1")}
                         <div
                             data-testid="desktop-input-row"
-                            className="flex items-end gap-2 px-1 pt-2.5"
+                            className="flex items-end gap-2 px-1 pt-1 pb-1"
                         >
                             <textarea
                                 data-testid="desktop-chat-input-textarea"
                                 ref={textareaRef}
                                 className={cn(
                                     "w-full resize-none bg-transparent focus:outline-none",
-                                    "px-2 py-1 text-sm leading-6 text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)]",
+                                    "pl-0 pr-2 py-2 text-sm leading-5 text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)]",
                                     "max-h-[120px] overflow-y-auto",
                                     thinScrollbarClassName
                                 )}
