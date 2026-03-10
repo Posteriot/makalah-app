@@ -13,6 +13,12 @@ import { CmsImageUpload } from "./CmsImageUpload"
 import { X as XIcon, Linkedin, Instagram, Upload, Globe } from "iconoir-react"
 import type { ComponentType, SVGProps } from "react"
 import { CmsSaveButton } from "./CmsSaveButton"
+import {
+  stripSystemFooterLinks,
+  FOOTER_RESOURCE_SECTION,
+  FOOTER_SUPPORT_LABEL,
+  type FooterSectionItem,
+} from "@/components/layout/footer/footer-config"
 
 // Map platform names to iconoir icons (same as frontend Footer)
 const PLATFORM_ICON_MAP: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
@@ -187,7 +193,9 @@ function FooterConfigForm({
   // Initialize from section prop; when null use defaults
   const [footerSections, setFooterSections] = useState<FooterSection[]>(() => {
     if (section) {
-      const sections = (section.footerSections as FooterSection[] | undefined) ?? []
+      const sections = stripSystemFooterLinks(
+        (section.footerSections as FooterSectionItem[] | undefined) ?? []
+      ) as FooterSection[]
       return sections.length > 0 ? sections : DEFAULT_SECTIONS
     }
     return DEFAULT_SECTIONS
@@ -302,10 +310,12 @@ function FooterConfigForm({
   // --- Save ---
 
   async function handleSave() {
+    const sanitizedFooterSections = stripSystemFooterLinks(footerSections)
+
     await upsertConfig({
       requestorId: userId,
       key: "footer",
-      footerSections: footerSections.map((s) => ({
+      footerSections: sanitizedFooterSections.map((s) => ({
         title: s.title,
         links: s.links.map((link) => ({
           label: link.label,
@@ -343,6 +353,10 @@ function FooterConfigForm({
         <span className="text-signal mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Footer Sections
         </span>
+        <p className="text-interface text-xs text-muted-foreground">
+          Link sistem <strong>{FOOTER_SUPPORT_LABEL}</strong> selalu diinjeksi otomatis ke section{" "}
+          <strong>{FOOTER_RESOURCE_SECTION}</strong> pada render user-facing dan tidak diedit dari CMS.
+        </p>
 
         <Button
           variant="outline"

@@ -1135,6 +1135,7 @@ export default defineSchema({
     sourcesPassed: v.optional(v.number()),
     sourcesBlocked: v.optional(v.number()),
     sourcesPassedTiers: v.optional(v.string()),
+    attemptedRetrievers: v.optional(v.array(v.string())),
     diversityWarning: v.optional(v.string()),
     skillResolverFallback: v.optional(v.boolean()),
     isSkillRuntime: v.optional(v.boolean()),
