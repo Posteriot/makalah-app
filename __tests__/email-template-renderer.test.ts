@@ -19,7 +19,7 @@ describe("renderEmailTemplate", () => {
       { id: "1", type: "heading", content: "Hello World" },
     ])
     expect(html).toContain("Hello World")
-    expect(html).toContain("Test App") // brand name in header
+    expect(html).toContain('alt="Makalah"') // brand logo in header
   })
 
   it("renders paragraph section", async () => {
@@ -129,7 +129,7 @@ describe("renderEmailTemplate", () => {
       { id: "1", type: "unknown_type", content: "ignored" },
     ])
     // Should still render without errors
-    expect(html).toContain("Test App")
+    expect(html).toContain('alt="Makalah"')
     // Unknown content should not appear
     expect(html).not.toContain("ignored")
   })
