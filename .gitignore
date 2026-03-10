@@ -46,9 +46,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# test
-__tests__/
-
 # Docs
 installation-plan.txt
 stack-requirements.txt
