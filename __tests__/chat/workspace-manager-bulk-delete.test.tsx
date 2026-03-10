@@ -27,6 +27,7 @@ describe("workspace manager bulk delete", () => {
         pageSize={10}
         isLoading={false}
         onPageChange={vi.fn()}
+        onDeleteSingle={vi.fn()}
         onDeleteSelected={onDeleteSelected}
       />
     )

@@ -23,12 +23,36 @@ describe("workspace manager conversations", () => {
         pageSize={10}
         isLoading={false}
         onPageChange={vi.fn()}
+        onDeleteSingle={vi.fn()}
       />
     )
 
     expect(screen.getByText("Chat 1")).toBeInTheDocument()
     expect(screen.getByText("Chat 2")).toBeInTheDocument()
-    expect(screen.getByText("Halaman 1 dari 3")).toBeInTheDocument()
+    expect(screen.getByText("Menampilkan 1-10 dari 23")).toBeInTheDocument()
+  })
+
+  it("memakai checkbox utama untuk memilih semua item pada halaman aktif", () => {
+    render(
+      <ConversationManagerTable
+        items={[
+          buildConversation("conv-1", "Chat 1"),
+          buildConversation("conv-2", "Chat 2"),
+        ]}
+        totalCount={23}
+        page={1}
+        pageSize={10}
+        isLoading={false}
+        onPageChange={vi.fn()}
+        onDeleteSingle={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText("Pilih semua percakapan di halaman aktif"))
+
+    expect(screen.getByLabelText("Pilih percakapan Chat 1")).toBeChecked()
+    expect(screen.getByLabelText("Pilih percakapan Chat 2")).toBeChecked()
+    expect(screen.getByRole("button", { name: /hapus pilihan/i })).not.toBeDisabled()
   })
 
   it("reset selection saat pindah ke halaman aktif lain", () => {
@@ -44,6 +68,7 @@ describe("workspace manager conversations", () => {
         pageSize={10}
         isLoading={false}
         onPageChange={onPageChange}
+        onDeleteSingle={vi.fn()}
       />
     )
 
@@ -63,10 +88,11 @@ describe("workspace manager conversations", () => {
         pageSize={10}
         isLoading={false}
         onPageChange={onPageChange}
+        onDeleteSingle={vi.fn()}
       />
     )
 
     expect(screen.getByRole("button", { name: /hapus pilihan/i })).toBeDisabled()
-    expect(screen.getByText("Halaman 2 dari 3")).toBeInTheDocument()
+    expect(screen.getByText("Menampilkan 11-20 dari 23")).toBeInTheDocument()
   })
 })

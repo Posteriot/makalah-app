@@ -59,6 +59,8 @@ interface ChatSidebarProps {
   onCollapseSidebar?: () => void
   /** Callback when panel tab changes (mobile drawer tabs) */
   onPanelChange?: (panel: PanelType) => void
+  /** Callback to open conversation manager workspace panel */
+  onOpenConversationManager?: () => void
 }
 
 /**
@@ -92,6 +94,7 @@ export function ChatSidebar({
   onCollapseSidebar,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onPanelChange,
+  onOpenConversationManager,
 }: ChatSidebarProps) {
   const router = useRouter()
   const displayedConversationCount = conversations.length
@@ -229,19 +232,22 @@ export function ChatSidebar({
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Link
-              href="/chat/workspace-manager"
+            <button
+              type="button"
               className={cn(
                 "inline-flex h-8 w-8 items-center justify-center rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]",
                 "text-[var(--chat-muted-foreground)] transition-colors duration-150",
                 "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
               )}
-              aria-label="Buka Workspace Manager"
-              title="Buka Workspace Manager"
-              onClick={() => onCloseMobile?.()}
+              aria-label="Buka Kelola Percakapan"
+              title="Buka Kelola Percakapan"
+              onClick={() => {
+                onOpenConversationManager?.()
+                onCloseMobile?.()
+              }}
             >
               <Settings className="h-4 w-4" aria-hidden="true" />
-            </Link>
+            </button>
             {/* Mobile: SidebarCollapse to close drawer */}
             <button
               onClick={onCloseMobile}

@@ -13,6 +13,7 @@ describe("workspace manager delete all", () => {
         pageSize={10}
         isLoading={false}
         onPageChange={vi.fn()}
+        onDeleteSingle={vi.fn()}
       />
     )
 
@@ -31,6 +32,7 @@ describe("workspace manager delete all", () => {
         pageSize={10}
         isLoading={false}
         onPageChange={vi.fn()}
+        onDeleteSingle={vi.fn()}
         onDeleteAll={onDeleteAll}
       />
     )

@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Trash } from "iconoir-react"
+import { NavArrowLeft, NavArrowRight, Trash } from "iconoir-react"
 import { formatRelativeTime } from "@/lib/date/formatters"
 import { cn } from "@/lib/utils"
 import { DeleteAllConversationsDialog } from "./DeleteAllConversationsDialog"
@@ -20,6 +20,7 @@ interface ConversationManagerTableProps {
   pageSize: number
   isLoading: boolean
   onPageChange: (page: number) => void
+  onDeleteSingle: (id: string) => void | Promise<void>
   onDeleteSelected?: (ids: string[]) => void
   onDeleteAll?: () => void
 }
@@ -31,13 +32,17 @@ export function ConversationManagerTable({
   pageSize,
   isLoading,
   onPageChange,
+  onDeleteSingle,
   onDeleteSelected,
   onDeleteAll,
 }: ConversationManagerTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [deleteSelectedOpen, setDeleteSelectedOpen] = useState(false)
+  const [deleteSingleId, setDeleteSingleId] = useState<string | null>(null)
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const pageStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
+  const pageEnd = Math.min(totalCount, page * pageSize)
   const scopedSelectedIds = useMemo(
     () => selectedIds.filter((id) => items.some((item) => item._id === id)),
     [items, selectedIds]
@@ -48,6 +53,7 @@ export function ConversationManagerTable({
     () => items.length > 0 && items.every((item) => scopedSelectedIds.includes(item._id)),
     [items, scopedSelectedIds]
   )
+  const isPartiallySelected = selectedCount > 0 && !allSelected
 
   const toggleSelection = (id: string) => {
     setSelectedIds((current) =>
@@ -65,6 +71,13 @@ export function ConversationManagerTable({
     setSelectedIds([])
   }
 
+  const handleDeleteSingleConfirm = async () => {
+    if (!deleteSingleId) return
+    await onDeleteSingle(deleteSingleId)
+    setDeleteSingleId(null)
+    setSelectedIds((current) => current.filter((id) => id !== deleteSingleId))
+  }
+
   const handleDeleteAllConfirm = async () => {
     await onDeleteAll?.()
     setDeleteAllOpen(false)
@@ -74,10 +87,17 @@ export function ConversationManagerTable({
   return (
     <>
       <DeleteSelectedDialog
-        open={deleteSelectedOpen}
-        count={selectedCount}
-        onOpenChange={setDeleteSelectedOpen}
-        onConfirm={handleDeleteSelectedConfirm}
+        open={deleteSelectedOpen || deleteSingleId !== null}
+        count={deleteSingleId ? 1 : selectedCount}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteSelectedOpen(false)
+            setDeleteSingleId(null)
+          } else if (deleteSingleId === null) {
+            setDeleteSelectedOpen(true)
+          }
+        }}
+        onConfirm={deleteSingleId ? handleDeleteSingleConfirm : handleDeleteSelectedConfirm}
       />
       <DeleteAllConversationsDialog
         open={deleteAllOpen}
@@ -85,79 +105,74 @@ export function ConversationManagerTable({
         onOpenChange={setDeleteAllOpen}
         onConfirm={handleDeleteAllConfirm}
       />
-      <section className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] p-4">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.18em] text-[var(--chat-muted-foreground)]">
-              Manajemen percakapan
-            </p>
-            <p className="mt-1 text-sm text-[var(--chat-muted-foreground)]">
-              {totalCount} percakapan tersedia pada workspace ini.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-2 py-1 text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[var(--chat-muted-foreground)]">
-              {selectedCount} terpilih
+      <section className="flex h-full flex-col">
+      <div className="sticky top-0 z-10 border-b border-[color:var(--chat-border)] bg-[var(--chat-card)] px-5 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <input
+              aria-label="Pilih semua percakapan di halaman aktif"
+              type="checkbox"
+              checked={allSelected}
+              ref={(node) => {
+                if (node) {
+                  node.indeterminate = isPartiallySelected
+                }
+              }}
+              onChange={toggleSelectAll}
+              className="h-4 w-4 rounded border border-[color:var(--chat-border)] bg-[var(--chat-background)]"
+            />
+            <span className="truncate text-xs font-mono font-semibold uppercase tracking-[0.16em] text-[var(--chat-muted-foreground)]">
+              {selectedCount > 0 ? `${selectedCount} terpilih` : `${totalCount} percakapan`}
             </span>
+          </div>
+          <div className="flex items-center gap-1">
             <button
               type="button"
+              aria-label="Hapus pilihan"
+              title="Hapus pilihan"
               disabled={selectedCount === 0}
               onClick={() => setDeleteSelectedOpen(true)}
               className={cn(
-                "inline-flex h-8 items-center gap-2 rounded-action border px-3 text-xs font-medium transition-colors",
+                "inline-flex h-8 w-8 items-center justify-center rounded-action transition-colors duration-150",
                 selectedCount === 0
-                  ? "cursor-not-allowed border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)] opacity-60"
-                  : "border-[color:var(--chat-destructive)] bg-[var(--chat-background)] text-[var(--chat-destructive)] hover:bg-[var(--chat-accent)]"
+                  ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-50"
+                  : "text-[var(--chat-destructive)] hover:bg-[var(--chat-accent)]"
               )}
             >
               <Trash className="h-4 w-4" aria-hidden="true" />
-              Hapus pilihan
             </button>
             <button
               type="button"
+              aria-label="Hapus semua"
+              title="Hapus semua"
               disabled={totalCount === 0}
               onClick={() => setDeleteAllOpen(true)}
               className={cn(
-                "inline-flex h-8 items-center gap-2 rounded-action border px-3 text-xs font-medium transition-colors",
+                "inline-flex h-8 w-8 items-center justify-center rounded-action transition-colors duration-150",
                 totalCount === 0
-                  ? "cursor-not-allowed border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)] opacity-60"
-                  : "border-[color:var(--chat-destructive)] bg-[var(--chat-destructive)] text-[var(--chat-destructive-foreground)] hover:opacity-90"
+                  ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-50"
+                  : "text-[var(--chat-destructive)] hover:bg-[var(--chat-accent)]"
               )}
             >
-              Hapus semua
+              <Trash className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)]">
-        <div className="grid grid-cols-[40px_minmax(0,1fr)_140px] items-center gap-3 border-b border-[color:var(--chat-border)] px-4 py-3 text-[10px] font-mono font-semibold uppercase tracking-[0.18em] text-[var(--chat-muted-foreground)]">
-          <label className="flex items-center justify-center">
-            <input
-              aria-label="Pilih semua percakapan di halaman aktif"
-              type="checkbox"
-              checked={allSelected}
-              onChange={toggleSelectAll}
-              className="h-4 w-4 rounded border border-[color:var(--chat-border)] bg-[var(--chat-background)]"
-            />
-          </label>
-          <span>Judul</span>
-          <span>Aktivitas</span>
-        </div>
-
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="px-4 py-6 text-sm text-[var(--chat-muted-foreground)]">Memuat percakapan...</div>
+          <div className="px-5 py-6 text-sm text-[var(--chat-muted-foreground)]">Memuat percakapan...</div>
         ) : items.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-[var(--chat-muted-foreground)]">Belum ada percakapan.</div>
+          <div className="px-5 py-6 text-sm text-[var(--chat-muted-foreground)]">Belum ada percakapan.</div>
         ) : (
           <div className="divide-y divide-[color:var(--chat-border)]">
             {items.map((item) => (
-              <label
+              <div
                 key={item._id}
-                className="grid grid-cols-[40px_minmax(0,1fr)_140px] items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--chat-accent)]"
+                className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-[var(--chat-accent)]"
               >
-                <span className="flex items-center justify-center">
+                <span className="flex shrink-0 items-center justify-center">
                   <input
                     aria-label={`Pilih percakapan ${item.title}`}
                     type="checkbox"
@@ -166,37 +181,50 @@ export function ConversationManagerTable({
                     className="h-4 w-4 rounded border border-[color:var(--chat-border)] bg-[var(--chat-background)]"
                   />
                 </span>
-                <span className="min-w-0 truncate text-sm font-medium text-[var(--chat-foreground)]">
-                  {item.title}
-                </span>
-                <span className="text-xs font-mono text-[var(--chat-muted-foreground)]">
-                  {formatRelativeTime(item.lastMessageAt)}
-                </span>
-              </label>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-[var(--chat-foreground)]">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 text-[11px] font-mono text-[var(--chat-muted-foreground)]">
+                    {formatRelativeTime(item.lastMessageAt)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Hapus percakapan ${item.title}`}
+                  title={`Hapus percakapan ${item.title}`}
+                  onClick={() => setDeleteSingleId(item._id)}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors duration-150 hover:bg-[var(--chat-accent)] hover:text-[var(--chat-destructive)]"
+                >
+                  <Trash className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between border-t border-[color:var(--chat-border)] px-5 py-3">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className="inline-flex h-8 items-center rounded-action border border-[color:var(--chat-border)] px-3 text-xs font-medium text-[var(--chat-foreground)] transition-colors hover:bg-[var(--chat-accent)] disabled:cursor-not-allowed disabled:text-[var(--chat-muted-foreground)]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-foreground)] transition-colors hover:bg-[var(--chat-accent)] disabled:cursor-not-allowed disabled:text-[var(--chat-muted-foreground)]"
+          aria-label="Halaman sebelumnya"
         >
-          Sebelumnya
+          <NavArrowLeft className="h-4 w-4" aria-hidden="true" />
         </button>
         <span className="text-xs font-mono text-[var(--chat-muted-foreground)]">
-          Halaman {page} dari {totalPages}
+          Menampilkan {pageStart}-{pageEnd} dari {totalCount}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
-          className="inline-flex h-8 items-center rounded-action border border-[color:var(--chat-border)] px-3 text-xs font-medium text-[var(--chat-foreground)] transition-colors hover:bg-[var(--chat-accent)] disabled:cursor-not-allowed disabled:text-[var(--chat-muted-foreground)]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-action text-[var(--chat-foreground)] transition-colors hover:bg-[var(--chat-accent)] disabled:cursor-not-allowed disabled:text-[var(--chat-muted-foreground)]"
+          aria-label="Halaman berikutnya"
         >
-          Berikutnya
+          <NavArrowRight className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
       </section>

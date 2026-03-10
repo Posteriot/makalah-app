@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, type ReactNode } from "react"
+import { useState, useCallback, useEffect, useRef, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { ActivityBar, type PanelType } from "../shell/ActivityBar"
 import { TopBar } from "../shell/TopBar"
@@ -10,6 +10,7 @@ import { useConversations } from "@/lib/hooks/useConversations"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { ConversationManagerPanel } from "../workspace-panel/ConversationManagerPanel"
 
 /**
  * ChatLayout - 6-column CSS Grid orchestrator
@@ -87,6 +88,14 @@ export function ChatLayout({
   onMobileSidebarOpenChange,
 }: ChatLayoutProps) {
   const router = useRouter()
+  const [workspacePanelMode, setWorkspacePanelMode] = useState<"conversation-manager" | null>(null)
+  const preservedArtifactRef = useRef<{
+    wasOpen: boolean
+    artifactId: Id<"artifacts"> | null
+  }>({
+    wasOpen: false,
+    artifactId: null,
+  })
 
   // Layout state
   const [activePanel, setActivePanel] = useState<PanelType>("chat-history")
@@ -95,9 +104,17 @@ export function ChatLayout({
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
   const [internalMobileOpen, setInternalMobileOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
 
   const isMobileOpen = mobileSidebarOpen ?? internalMobileOpen
   const setIsMobileOpen = onMobileSidebarOpenChange ?? setInternalMobileOpen
+  const isConversationManagerOpen = workspacePanelMode === "conversation-manager"
+  const activeRightPanelMode = isConversationManagerOpen
+    ? "conversation-manager"
+    : isArtifactPanelOpen
+      ? "artifact"
+      : null
+  const isRightPanelOpen = activeRightPanelMode !== null
 
   // Conversations hook
   const {
@@ -120,16 +137,52 @@ export function ChatLayout({
     }
   }, [conversationId])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const media = window.matchMedia("(max-width: 767px)")
+    const sync = () => setIsMobileViewport(media.matches)
+    sync()
+    media.addEventListener("change", sync)
+    return () => media.removeEventListener("change", sync)
+  }, [])
+
+  useEffect(() => {
+    if (!isConversationManagerOpen || !isArtifactPanelOpen) return
+
+    const preservedArtifact = preservedArtifactRef.current
+    if (!preservedArtifact.wasOpen) {
+      setWorkspacePanelMode(null)
+      return
+    }
+
+    if (activeArtifactId && activeArtifactId !== preservedArtifact.artifactId) {
+      setWorkspacePanelMode(null)
+    }
+  }, [activeArtifactId, isArtifactPanelOpen, isConversationManagerOpen])
+
+  useEffect(() => {
+    if (!isConversationManagerOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setWorkspacePanelMode(null)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isConversationManagerOpen])
+
   // Sidebar max width — derived from MIN_MAIN_CONTENT_WIDTH guarantee
   const getSidebarMaxWidth = useCallback(() => {
     if (typeof window === "undefined") return DEFAULT_SIDEBAR_WIDTH
     const resizerLeft = RESIZER_WIDTH
-    const resizerRight = isArtifactPanelOpen ? RESIZER_WIDTH : 0
-    const currentPanel = isArtifactPanelOpen ? panelWidth : 0
+    const resizerRight = isRightPanelOpen ? RESIZER_WIDTH : 0
+    const currentPanel = isRightPanelOpen ? panelWidth : 0
     const available =
       window.innerWidth - ACTIVITY_BAR_WIDTH - resizerLeft - resizerRight - currentPanel - MIN_MAIN_CONTENT_WIDTH
     return Math.max(MIN_SIDEBAR_WIDTH, available)
-  }, [isArtifactPanelOpen, panelWidth])
+  }, [isRightPanelOpen, panelWidth])
 
   // Panel max width — considers sidebar width and guarantees min main content
   const getPanelMaxWidth = useCallback(() => {
@@ -149,16 +202,16 @@ export function ChatLayout({
     if (sidebarWidth > maxSidebar) {
       setSidebarWidth(maxSidebar)
     }
-  }, [isArtifactPanelOpen, panelWidth, getSidebarMaxWidth, sidebarWidth, isSidebarCollapsed])
+  }, [isRightPanelOpen, panelWidth, getSidebarMaxWidth, sidebarWidth, isSidebarCollapsed])
 
   // Auto-clamp panel when sidebar expands or resizes
   useEffect(() => {
-    if (typeof window === "undefined" || !isArtifactPanelOpen) return
+    if (typeof window === "undefined" || !isRightPanelOpen) return
     const maxPanel = getPanelMaxWidth()
     if (panelWidth > maxPanel) {
       setPanelWidth(maxPanel)
     }
-  }, [isSidebarCollapsed, sidebarWidth, getPanelMaxWidth, panelWidth, isArtifactPanelOpen])
+  }, [isSidebarCollapsed, sidebarWidth, getPanelMaxWidth, panelWidth, isRightPanelOpen])
 
   // Sidebar resize handler
   const handleSidebarResize = useCallback(
@@ -259,10 +312,29 @@ export function ChatLayout({
 
   // Handle panel expand
   const handleExpandPanel = useCallback(() => {
+    if (isConversationManagerOpen) {
+      setWorkspacePanelMode(null)
+      if (!isArtifactPanelOpen && onArtifactPanelToggle) {
+        onArtifactPanelToggle()
+      }
+      return
+    }
     if (onArtifactPanelToggle) {
       onArtifactPanelToggle()
     }
-  }, [onArtifactPanelToggle])
+  }, [isArtifactPanelOpen, isConversationManagerOpen, onArtifactPanelToggle])
+
+  const handleOpenConversationManager = useCallback(() => {
+    preservedArtifactRef.current = {
+      wasOpen: isArtifactPanelOpen,
+      artifactId: activeArtifactId ?? null,
+    }
+    setWorkspacePanelMode("conversation-manager")
+  }, [activeArtifactId, isArtifactPanelOpen])
+
+  const handleCloseConversationManager = useCallback(() => {
+    setWorkspacePanelMode(null)
+  }, [])
 
   // Dynamic grid columns based on collapsed state and resizing
   const getGridTemplateColumns = () => {
@@ -270,13 +342,13 @@ export function ChatLayout({
     const sidebar = isSidebarCollapsed ? "0px" : `${sidebarWidth}px`
     const leftResizer = isSidebarCollapsed ? "0px" : `${RESIZER_WIDTH}px`
     const main = "1fr"
-    const rightResizer = isArtifactPanelOpen ? `${RESIZER_WIDTH}px` : "0px"
-    const panel = isArtifactPanelOpen ? `${panelWidth}px` : "0px"
+    const rightResizer = isRightPanelOpen ? `${RESIZER_WIDTH}px` : "0px"
+    const panel = isRightPanelOpen ? `${panelWidth}px` : "0px"
 
     return `${activityBar} ${sidebar} ${leftResizer} ${main} ${rightResizer} ${panel}`
   }
 
-  const chatInlinePadding = !isSidebarCollapsed && isArtifactPanelOpen
+  const chatInlinePadding = !isSidebarCollapsed && isRightPanelOpen
     ? "max(3rem, calc((100% - var(--chat-main-content-max-width)) / 2))"
     : "max(1rem, calc((100% - var(--chat-main-content-max-width)) / 2))"
 
@@ -304,7 +376,7 @@ export function ChatLayout({
           "hidden md:grid flex-1 min-h-0 overflow-hidden",
           "transition-[grid-template-columns] duration-300 ease-in-out",
           isSidebarCollapsed && "sidebar-collapsed",
-          !isArtifactPanelOpen && "panel-collapsed"
+          !isRightPanelOpen && "panel-collapsed"
         )}
         style={{
           gridTemplateColumns: getGridTemplateColumns(),
@@ -342,6 +414,7 @@ export function ChatLayout({
             isLoading={isLoading}
             isCreating={isCreating}
             onCollapseSidebar={handleToggleSidebar}
+            onOpenConversationManager={handleOpenConversationManager}
           />
         </aside>
 
@@ -361,7 +434,7 @@ export function ChatLayout({
           <TopBar
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={handleToggleSidebar}
-            isPanelCollapsed={!isArtifactPanelOpen}
+            isPanelCollapsed={activeRightPanelMode !== "artifact"}
             onTogglePanel={handleExpandPanel}
             artifactCount={artifactCount}
           />
@@ -369,7 +442,7 @@ export function ChatLayout({
         </main>
 
         {/* Column 5: Right Resizer */}
-        {isArtifactPanelOpen ? (
+        {isRightPanelOpen ? (
           <PanelResizer
             position="right"
             onResize={handlePanelResize}
@@ -379,15 +452,22 @@ export function ChatLayout({
           <div />
         )}
 
-        {/* Column 6: Artifact Panel */}
+        {/* Column 6: Right Workspace Panel */}
         <aside
           className={cn(
             "flex flex-col overflow-hidden",
             "border-l border-[color:var(--chat-border)] bg-[var(--chat-card)]",
-            !isArtifactPanelOpen && "w-0 border-l-0"
+            !isRightPanelOpen && "w-0 border-l-0"
           )}
         >
-          {artifactPanel}
+          {activeRightPanelMode === "conversation-manager" ? (
+            <ConversationManagerPanel
+              currentConversationId={conversationId}
+              onClose={handleCloseConversationManager}
+            />
+          ) : (
+            artifactPanel
+          )}
         </aside>
       </div>
 
@@ -414,6 +494,26 @@ export function ChatLayout({
             isLoading={isLoading}
             isCreating={isCreating}
             onPanelChange={handlePanelChange}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={isMobileViewport && isConversationManagerOpen} onOpenChange={(open) => {
+        if (!open) {
+          handleCloseConversationManager()
+        }
+      }}>
+        <SheetContent
+          side="right"
+          className="md:hidden w-[92vw] max-w-[420px] p-0 [&>[data-slot='sheet-close']]:hidden"
+          data-chat-scope=""
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Kelola Percakapan</SheetTitle>
+          </SheetHeader>
+          <ConversationManagerPanel
+            currentConversationId={conversationId}
+            onClose={handleCloseConversationManager}
           />
         </SheetContent>
       </Sheet>

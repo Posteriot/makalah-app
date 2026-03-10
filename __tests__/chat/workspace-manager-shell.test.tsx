@@ -19,12 +19,18 @@ vi.mock("@/lib/hooks/useCurrentUser", () => ({
   }),
 }))
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}))
+
 describe("workspace manager shell", () => {
   it("merender card percakapan tunggal dengan link kembali ke chat", () => {
     render(<WorkspaceManagerShell />)
 
     expect(screen.getByRole("link", { name: /kembali ke chat/i })).toBeInTheDocument()
-    expect(screen.getByRole("heading", { name: "Kelola Percakapan" })).toBeInTheDocument()
+    expect(screen.getAllByRole("heading", { name: "Kelola Percakapan" }).length).toBeGreaterThan(0)
     expect(
       screen.queryByText(/Daftar penuh percakapan, paginasi, seleksi halaman aktif/i)
     ).not.toBeInTheDocument()
