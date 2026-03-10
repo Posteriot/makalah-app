@@ -74,7 +74,7 @@ type SkillRuntimeRecord = {
   mode: "normal" | "websearch" | "paper"
   toolUsed?: string
   success: boolean
-  provider: "vercel-gateway" | "openrouter"
+  provider: "vercel-gateway" | "openrouter" | "google-ai-studio"
   model: string
   failoverUsed: boolean
   latencyMs: number
@@ -114,7 +114,7 @@ export const log = mutation({
     activeSkillId: v.optional(v.string()),
     activeSkillVersion: v.optional(v.number()),
     fallbackReason: v.optional(v.string()),
-    provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter")),
+    provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter"), v.literal("google-ai-studio")),
     model: v.string(),
     isPrimaryProvider: v.boolean(),
     failoverUsed: v.boolean(),
@@ -134,6 +134,7 @@ export const log = mutation({
     sourcesBlocked: v.optional(v.number()),
     referencesClaimed: v.optional(v.number()),
     referencesMatched: v.optional(v.number()),
+    attemptedRetrievers: v.optional(v.array(v.string())),
   },
   handler: async ({ db }, args) => {
     const isSkillRuntime = isSkillRuntimeRecord({

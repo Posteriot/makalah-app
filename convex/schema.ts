@@ -1115,7 +1115,7 @@ export default defineSchema({
     activeSkillId: v.optional(v.string()),
     activeSkillVersion: v.optional(v.number()),
     fallbackReason: v.optional(v.string()),
-    provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter")),
+    provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter"), v.literal("google-ai-studio")),
     model: v.string(),
     isPrimaryProvider: v.boolean(),
     failoverUsed: v.boolean(),
@@ -1136,6 +1136,7 @@ export default defineSchema({
     isSkillRuntime: v.optional(v.boolean()),
     referencesClaimed: v.optional(v.number()),
     referencesMatched: v.optional(v.number()),
+    attemptedRetrievers: v.optional(v.array(v.string())),
     createdAt: v.number(),
   })
     .index("by_created", ["createdAt"])

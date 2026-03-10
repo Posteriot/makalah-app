@@ -2163,6 +2163,7 @@ Aturan:
                         fallbackWebSearchMaxResults: webSearchConfig.fallbackMaxResults,
                     },
                     openrouterApiKey: webSearchConfig.openrouterApiKey ?? "",
+                    googleApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
                 })
 
                 if (retrieverChain.length === 0) {
@@ -2253,7 +2254,7 @@ Aturan:
                             token: convexToken,
                             userId: userId as Id<"users">,
                             conversationId: currentConversationId as Id<"conversations">,
-                            provider: "openrouter",
+                            provider: result.retrieverName === "google-grounding" ? "google-ai-studio" : "openrouter",
                             model: combinedModelName,
                             isPrimaryProvider: isPrimary,
                             failoverUsed: !isPrimary,
@@ -2269,6 +2270,7 @@ Aturan:
                             searchSkillAction: result.sources.length > 0 ? "passed" : "all-blocked",
                             sourcesPassed: result.sources.length,
                             sourcesBlocked: 0,
+                            attemptedRetrievers: result.attemptedRetrievers,
                         })
                     },
                 })
