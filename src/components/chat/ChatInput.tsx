@@ -27,8 +27,9 @@ interface ChatInputProps {
     hasActiveAttachmentContext?: boolean
 }
 
-// Max heights: desktop 200px, mobile 6 lines (~144px)
-const DESKTOP_MAX_HEIGHT = 200
+const MAX_INPUT_LENGTH = 8000
+const DESKTOP_MIN_HEIGHT = 32
+const DESKTOP_MAX_HEIGHT = 120
 const MOBILE_MAX_HEIGHT = 144
 
 export function ChatInput({
@@ -54,12 +55,40 @@ export function ChatInput({
     const [isMobileFocused, setIsMobileFocused] = useState(false)
     const [isFullscreen, setIsFullscreen] = useState(false)
 
-    // Desktop auto-resize (max 200px)
+    const handleBoundedInputChange = useCallback((
+        event: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>
+    ) => {
+        const nextValue = event.target.value.slice(0, MAX_INPUT_LENGTH)
+        if (nextValue === event.target.value) {
+            onInputChange(event)
+            return
+        }
+
+        const patchedEvent = {
+            ...event,
+            target: {
+                ...event.target,
+                value: nextValue,
+            },
+            currentTarget: {
+                ...event.currentTarget,
+                value: nextValue,
+            },
+        } as React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>
+
+        onInputChange(patchedEvent)
+    }, [onInputChange])
+
+    // Desktop auto-resize (1 line -> max 5 lines)
     useEffect(() => {
         const textarea = textareaRef.current
         if (textarea) {
             textarea.style.height = "auto"
-            textarea.style.height = `${Math.min(textarea.scrollHeight, DESKTOP_MAX_HEIGHT)}px`
+            const nextHeight = Math.max(
+                DESKTOP_MIN_HEIGHT,
+                Math.min(textarea.scrollHeight, DESKTOP_MAX_HEIGHT)
+            )
+            textarea.style.height = `${nextHeight}px`
         }
     }, [input])
 
@@ -107,15 +136,43 @@ export function ChatInput({
 
     const displayedContextFiles = contextFiles ?? attachedFiles
 
+    const thinScrollbarClassName = cn(
+        "scrollbar-thin [scrollbar-width:thin]",
+        "[&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar]:w-1.5",
+        "[&::-webkit-scrollbar-track]:bg-transparent",
+        "[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[color:var(--chat-border)]/70",
+        "[&::-webkit-scrollbar-thumb:hover]:bg-[color:var(--chat-border)]"
+    )
+
     // Shared context tray
-    const renderContextTray = (containerClassName?: string) => {
+    const renderContextTray = (
+        variant: "desktop" | "mobile" | "fullscreen",
+        containerClassName?: string
+    ) => {
         const hasContextFiles = displayedContextFiles.length > 0
         const canClearContext = hasContextFiles || hasActiveAttachmentContext
+        const isDesktop = variant === "desktop"
+        const itemsContainerClassName = isDesktop
+            ? cn(
+                "min-w-0 flex-1 overflow-x-auto whitespace-nowrap",
+                thinScrollbarClassName
+            )
+            : "min-w-0 flex-1 flex flex-wrap items-center gap-2"
 
         return (
-            <div className={cn("space-y-2", containerClassName)}>
-                <div className="flex items-start gap-2">
-                    <div className="min-w-0 flex-1 flex flex-wrap items-center gap-2">
+            <div
+                data-testid={isDesktop ? "desktop-context-strip" : undefined}
+                className={cn(
+                    isDesktop ? "space-y-0" : "space-y-2",
+                    containerClassName
+                )}
+            >
+                <div className={cn("flex gap-2", isDesktop ? "items-center" : "items-start")}>
+                    <div
+                        data-testid={isDesktop ? "desktop-context-scroll" : undefined}
+                        className={itemsContainerClassName}
+                    >
+                        <div className={cn("flex items-center gap-2", isDesktop && "w-max")}>
                         <FileUploadButton
                             conversationId={conversationId}
                             onFileUploaded={onFileAttached}
@@ -124,7 +181,7 @@ export function ChatInput({
                             tooltipText="Upload file tambahan konteks"
                             label="+ Konteks"
                         />
-                        {hasContextFiles ? (
+                            {hasContextFiles ? (
                             displayedContextFiles.map((file) => {
                                 const { baseName, extension } = splitFileName(file.name)
 
@@ -161,7 +218,8 @@ export function ChatInput({
                                     </div>
                                 )
                             })
-                        ) : null}
+                            ) : null}
+                        </div>
                     </div>
                     {onClearAttachmentContext && (
                         <Tooltip>
@@ -191,7 +249,11 @@ export function ChatInput({
                     )}
                 </div>
                 <div
-                    className="h-px w-full bg-[color:var(--chat-border)]/80"
+                    data-testid={isDesktop ? "desktop-context-separator" : undefined}
+                    className={cn(
+                        "h-px w-full bg-[color:var(--chat-border)]/80",
+                        isDesktop && "mt-1.5"
+                    )}
                     aria-hidden="true"
                 />
             </div>
@@ -257,22 +319,29 @@ export function ChatInput({
                ═══════════════════════════════════════════════ */}
             <div className="hidden md:block py-4 bg-transparent" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
                 <form onSubmit={onSubmit} className="flex">
-                    <div className="grid w-full grid-cols-[auto_1fr_auto] items-end gap-x-2 gap-y-1 rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] px-3 py-1.5">
-                        {renderContextTray("col-span-3 px-1 pt-1")}
-                        <div className="col-span-3">
+                    <div className="flex w-full flex-col rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] px-3 py-2">
+                        {renderContextTray("desktop", "px-1 pb-1")}
+                        <div
+                            data-testid="desktop-input-row"
+                            className="flex items-end gap-2 px-1 pt-2.5"
+                        >
                             <textarea
+                                data-testid="desktop-chat-input-textarea"
                                 ref={textareaRef}
-                                className="w-full resize-none bg-transparent focus:outline-none min-h-[72px] px-2 py-0.5 text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm"
+                                className={cn(
+                                    "w-full resize-none bg-transparent focus:outline-none",
+                                    "px-2 py-1 text-sm leading-6 text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)]",
+                                    "max-h-[120px] overflow-y-auto",
+                                    thinScrollbarClassName
+                                )}
                                 value={input}
-                                onChange={onInputChange}
+                                onChange={handleBoundedInputChange}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Kirim percakapan..."
                                 disabled={isLoading && false}
-                                rows={3}
+                                rows={1}
                                 aria-label="Message input"
                             />
-                        </div>
-                        <div className="col-span-3 mt-0.5 flex justify-end pt-1">
                             {renderSendButton()}
                         </div>
                     </div>
@@ -294,7 +363,7 @@ export function ChatInput({
                             "w-full rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] transition-all duration-150",
                         )}
                     >
-                        {renderContextTray("px-2 pt-2")}
+                        {renderContextTray("mobile", "px-2 pt-2")}
                         <div className="flex items-end gap-1 px-2 py-1.5">
                         {/* Center: Textarea or placeholder */}
                         {!isMobileExpanded ? (
@@ -314,7 +383,7 @@ export function ChatInput({
                                 ref={mobileTextareaRef}
                                 className="flex-1 min-w-0 resize-none bg-transparent focus:outline-none text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)] py-1"
                                 value={input}
-                                onChange={onInputChange}
+                                onChange={handleBoundedInputChange}
                                 onKeyDown={handleKeyDown}
                                 onFocus={() => setIsMobileFocused(true)}
                                 onBlur={() => {
@@ -383,12 +452,12 @@ export function ChatInput({
                     {/* Textarea fills remaining space */}
                     <form onSubmit={handleMobileSubmit} className="flex-1 flex flex-col min-h-0">
                         <div className="flex-1 px-4 py-3 overflow-y-auto">
-                            {renderContextTray("mb-3")}
+                            {renderContextTray("fullscreen", "mb-3")}
                             <textarea
                                 ref={fullscreenTextareaRef}
                                 className="w-full h-full resize-none bg-transparent focus:outline-none text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)]"
                                 value={input}
-                                onChange={onInputChange}
+                                onChange={handleBoundedInputChange}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Kirim percakapan..."
                                 aria-label="Message input (fullscreen)"
