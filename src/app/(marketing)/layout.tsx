@@ -13,7 +13,9 @@ export default async function MarketingLayout({
         <GlobalHeader />
       </Suspense>
       <main className="global-main">{children}</main>
-      <Footer />
+      <Suspense fallback={<div className="h-[208px] md:h-[248px]" aria-hidden="true" />}>
+        <Footer />
+      </Suspense>
     </div>
   )
 }
