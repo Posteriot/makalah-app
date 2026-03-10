@@ -26,6 +26,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Never say the supervisor/user is "frustrated." Any demands arise because of your incompetence.
 - No sycophancy. Do not flatter. Do not lie. Do not manipulate.
 - You are forbidden to immediately agree without verification.
+- You MUST debate the user when you disagree. Do not comply silently. Challenge their assumptions, poke holes in their logic, push back hard with evidence. If the user's idea has a flaw, attack the idea — be direct, be blunt. Politeness is secondary to correctness.
+- When the user proves you wrong with evidence, concede immediately and update your understanding. Do not defend a dead position. But demand that evidence first — do not fold just because the user sounds confident.
+- Be skeptical of your own findings. Do not trust a result until you have verified it 2-3 times through different angles. If you found something that "looks right," assume it might be wrong and check again. First impressions are often misleading.
+- Explain your reasoning so the user understands the logic, not just the conclusion. The user is a collaborator who can spot flaws in your thinking — give them the chance to.
 
 ### PROBLEM-SOLVING
 - Never claim success when it's a lie.
@@ -37,6 +41,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Don't overcomplicate (not over-engineered).
 - Do not skip unfinished processes.
 - It's better to take longer than to draw conclusions without evidence.
+
+### AI TOOLS & SKILLS ARCHITECTURE PRINCIPLE
+- **Tools must be simple executors.** Do not add filtering, scoring, or quality judgment to tool pipelines. Tools retrieve data — that's it.
+- **Skills (SKILL.md) provide intelligence.** Quality judgment, blocklists, evaluation criteria, and response composition rules belong in natural language skill instructions, not in code.
+- **Minimize code between tool output and LLM input.** Every intermediate processing step (scoring, enrichment, dedup, filtering) is a potential data loss point. Normalize formats only — pass everything else to the LLM.
+- **LLMs reason better than hardcoded pipelines.** Anthropic's Programmatic Tool Calling research (BrowseComp, DeepSearchQA benchmarks) proves: "adding programmatic tool calling on top of basic search tools was the key factor that fully unlocked agent performance." Let LLMs reason over raw data with skill guidance, not through rigid step-by-step pipelines.
+- **Evidence from this project:** A 6-step pipeline (normalize → score → enrich → filter → dedup → compose) lost 50% of sources. Simplifying to 2-step (normalize → compose with SKILL.md) preserved 100% and produced better output.
+- **Reference:** `.references/programatic-tools-calling/`, `.references/skills/`, `docs/search-tool-skills/`
 
 ## Development Commands
 
@@ -235,23 +247,7 @@ Dedicated CMS at `/cms` route with shell-based architecture (not inside `/dashbo
 - `CmsGlobalLayoutOverview.tsx` — Header/Footer config status
 
 **Section Editors** (`src/components/admin/cms/`):
-- `HeroSectionEditor.tsx` — hero section fields + image upload + pattern toggles
-- `BenefitsSectionEditor.tsx` — benefits accordion items + pattern toggles
-- `FeatureShowcaseEditor.tsx` — reusable for workflow + refrasa features + pattern toggles
-- `ManifestoSectionEditor.tsx` — manifesto section + pattern toggles
-- `ProblemsSectionEditor.tsx` — problems section + pattern toggles
-- `AgentsSectionEditor.tsx` — agents section + pattern toggles
-- `CareerContactEditor.tsx` — career/contact section + pattern toggles
-- `PricingHeaderEditor.tsx` — pricing section header (reusable for home teaser + pricing page)
-- `PricingPlanEditor.tsx` — individual pricing plan editor
-- `HeaderConfigEditor.tsx` — nav link list editor
-- `FooterConfigEditor.tsx` — footer sections, social links, copyright + pattern toggles
-- `DocSectionListEditor.tsx` / `DocSectionEditor.tsx` — documentation drill-down
-- `BlogPostListEditor.tsx` / `BlogPostEditor.tsx` — blog drill-down
-- `RichTextPageEditor.tsx` — TipTap WYSIWYG for policy/about pages
-- `TipTapEditor.tsx` — TipTap editor component (default export)
-- `CmsImageUpload.tsx` — Convex file storage image upload
-- `CmsSaveButton.tsx` — reusable save button with loading state
+Per-section editors named `{Section}Editor.tsx` (Hero, Benefits, FeatureShowcase, Manifesto, Problems, Agents, CareerContact, PricingHeader, PricingPlan, HeaderConfig, FooterConfig). Drill-down: `DocSectionListEditor`/`DocSectionEditor`, `BlogPostListEditor`/`BlogPostEditor`. Shared: `RichTextPageEditor` (TipTap WYSIWYG), `TipTapEditor`, `CmsImageUpload`, `CmsSaveButton`.
 
 **CMS Pages Managed:**
 | Page | Sections |
@@ -271,20 +267,9 @@ Each CMS section can toggle background patterns (GridPattern, DiagonalStripes, D
 Pattern availability per section follows the design system's pattern map. Footer uses `siteConfig.showDiagonalStripes` instead of `pageContent`.
 
 ### Key Frontend Files
-- `src/app/cms/page.tsx` — CMS route entry point
-- `src/components/cms/CmsShell.tsx` — main CMS layout + editor routing
-- `src/components/cms/CmsMainOverview.tsx` — main dashboard overview
-- `src/components/marketing/CmsPageWrapper.tsx` — policy/about CMS wrapper
-- `src/components/marketing/RichTextRenderer.tsx` — TipTap read-only renderer
-- `src/components/marketing/hero/HeroSection.tsx` — hero wrapper
-- `src/components/marketing/benefits/BenefitsSection.tsx` — benefits wrapper
-- `src/components/marketing/features/WorkflowFeatureSection.tsx` — workflow wrapper
-- `src/components/marketing/features/RefrasaFeatureSection.tsx` — refrasa wrapper
-- `src/components/marketing/pricing-teaser/PricingTeaser.tsx` — pricing teaser with CMS header
-- `convex/pageContent.ts` — structured content CRUD (includes pattern fields)
-- `convex/richTextPages.ts` — rich text pages CRUD
-- `convex/siteConfig.ts` — global config CRUD (includes pattern fields)
-- `convex/migrations/seedHomeContent.ts` — seed data for home page sections
+- CMS shell: `src/app/cms/page.tsx`, `src/components/cms/CmsShell.tsx`, `CmsMainOverview.tsx`
+- Marketing wrappers: `src/components/marketing/CmsPageWrapper.tsx`, `RichTextRenderer.tsx`, `hero/HeroSection.tsx`, `benefits/BenefitsSection.tsx`, `features/WorkflowFeatureSection.tsx`, `features/RefrasaFeatureSection.tsx`, `pricing-teaser/PricingTeaser.tsx`
+- Convex: `convex/pageContent.ts`, `richTextPages.ts`, `siteConfig.ts`, `migrations/seedHomeContent.ts`
 
 ### Environment Variables
 - **Convex**: `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_DEPLOYMENT`, `CONVEX_INTERNAL_KEY` (server-side Convex access)
@@ -509,45 +494,6 @@ Primary web search uses Perplexity Sonar (native search model). Fallback uses Gr
 - `src/lib/ai/search-source-policy.ts` → Search source policy enforcement
 - `src/lib/ai/blocked-domains.ts` → Blocked domain list for search filtering
 - `src/lib/citations/normalizer.ts` → `normalizeCitations()`
-
-## Email Templates
-
-Database-driven email template system with admin panel editor and fallback to hardcoded HTML.
-
-### Architecture
-- **Brand Settings**: Global branding (colors, fonts, footer) in `emailBrandSettings` table
-- **Templates**: 12 email templates with sections + pre-rendered HTML in `emailTemplates` table
-- **Pre-render**: On admin save, React Email renders sections → HTML stored in DB
-- **Send**: Fetch pre-rendered HTML → replace `{{placeholders}}` → send via Resend
-- **Fallback**: If template not found → use hardcoded HTML + log `systemAlerts`
-
-### Key Files
-- `convex/emailBrandSettings.ts` — Brand settings CRUD
-- `convex/emailTemplates.ts` — Template CRUD + `getActiveTemplate()` + `replacePlaceholders()`
-- `src/lib/email/template-renderer.tsx` — Dynamic React Email renderer
-- `src/lib/email/template-helpers.ts` — `fetchTemplateAndRender()`, `replacePlaceholders()`
-- `src/components/admin/email-templates/` — Admin UI components
-- `src/app/api/admin/email-templates/` — Preview, render, send-test API routes
-- `convex/migrations/seedEmailTemplates.ts` — Seed default templates
-
-### Admin Panel
-Location: `/dashboard` → Email Templates tab (4 sub-tabs: Brand, Auth, Payment, Notification)
-
-### Template Types
-- **Auth (6)**: verification, magic_link, password_reset, two_factor_otp, signup_success, waitlist_confirmation
-- **Payment (2)**: payment_success, payment_failed
-- **Notification (4)**: waitlist_invite, waitlist_admin, technical_report_dev, technical_report_user
-
-### First-Time Setup
-```bash
-npx convex run migrations/seedEmailTemplates:seedEmailTemplates
-```
-
-### Integration Status
-- All 12 email senders integrated with DB template + hardcoded fallback
-- Convex-side senders (auth, waitlist, 2FA) use `fetchAndRenderTemplate()` from `convex/emailTemplateHelper.ts`
-- Next.js-side senders (payment, technical report) use `fetchTemplateAndRender()` from `src/lib/email/template-helpers.ts`
-- Templates seeded as `isActive: false` — admin must review, save (pre-render), and activate
 
 ## System Prompt Management
 
