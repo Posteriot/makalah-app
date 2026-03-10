@@ -102,6 +102,7 @@ export function ChatLayout({
   // Conversations hook
   const {
     conversations,
+    totalConversationCount,
     createNewConversation,
     deleteConversation,
     updateConversationTitle,
@@ -329,6 +330,7 @@ export function ChatLayout({
           <ChatSidebar
             activePanel={activePanel}
             conversations={conversations}
+            totalConversationCount={totalConversationCount}
             currentConversationId={conversationId}
             onNewChat={handleNewChat}
             onDeleteConversation={handleDeleteConversation}
@@ -399,6 +401,7 @@ export function ChatLayout({
             className="w-full border-none"
             activePanel={activePanel}
             conversations={conversations}
+            totalConversationCount={totalConversationCount}
             currentConversationId={conversationId}
             onNewChat={handleNewChat}
             onDeleteConversation={handleDeleteConversation}

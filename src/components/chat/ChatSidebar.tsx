@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft, SidebarCollapse } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, Settings, SidebarCollapse } from "iconoir-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -29,6 +29,8 @@ interface ChatSidebarProps {
     title: string
     lastMessageAt: number
   }>
+  /** Exact total conversation count */
+  totalConversationCount?: number
   /** Currently selected conversation ID */
   currentConversationId: string | null
   /** Callback to create new chat */
@@ -74,6 +76,7 @@ interface ChatSidebarProps {
 export function ChatSidebar({
   activePanel = "chat-history",
   conversations,
+  totalConversationCount = 0,
   currentConversationId,
   onNewChat,
   onDeleteConversation,
@@ -91,6 +94,12 @@ export function ChatSidebar({
   onPanelChange,
 }: ChatSidebarProps) {
   const router = useRouter()
+  const displayedConversationCount = conversations.length
+  const resolvedTotalConversationCount = Math.max(
+    totalConversationCount,
+    displayedConversationCount
+  )
+  const historyCountLabel = `${displayedConversationCount} dari ${resolvedTotalConversationCount}`
 
   // Render sidebar content based on active panel
   const renderContent = () => {
@@ -186,7 +195,7 @@ export function ChatSidebar({
       {/* Section header — Riwayat label with count badge */}
       {activePanel === "chat-history" && (
         <div className="shrink-0 flex items-center justify-between bg-[var(--chat-accent)] px-3 py-2.5">
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/"
               aria-label="Home"
@@ -208,21 +217,40 @@ export function ChatSidebar({
                 className="block dark:hidden"
               />
             </Link>
-            <span className="inline-flex h-8 items-center gap-2 rounded-md border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] pl-3 pr-1.5 text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
-              Riwayat
-              <span className="inline-flex h-5 min-w-6 items-center justify-center rounded-md border border-[color:var(--chat-success)] bg-[var(--chat-success)] px-1.5 text-[10px] font-mono font-bold text-[var(--chat-background)]">
-                {conversations.length}
-              </span>
-            </span>
+            <div className="min-w-0 rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] px-3 py-1.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
+                  Riwayat
+                </span>
+                <span className="shrink-0 rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-2 py-0.5 text-[10px] font-mono font-semibold text-[var(--chat-muted-foreground)]">
+                  {historyCountLabel}
+                </span>
+              </div>
+            </div>
           </div>
-          {/* Mobile: SidebarCollapse to close drawer */}
-          <button
-            onClick={onCloseMobile}
-            className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
-            aria-label="Close sidebar"
-          >
-            <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />
-          </button>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/chat/workspace-manager"
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]",
+                "text-[var(--chat-muted-foreground)] transition-colors duration-150",
+                "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
+              )}
+              aria-label="Buka Workspace Manager"
+              title="Buka Workspace Manager"
+              onClick={() => onCloseMobile?.()}
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+            </Link>
+            {/* Mobile: SidebarCollapse to close drawer */}
+            <button
+              onClick={onCloseMobile}
+              className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
+              aria-label="Close sidebar"
+            >
+              <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
       )}
 
