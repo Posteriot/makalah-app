@@ -9,9 +9,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <GlobalHeader />
       </Suspense>
       <main className="dashboard-main">{children}</main>
-      <Suspense fallback={<div className="h-[208px] md:h-[248px]" aria-hidden="true" />}>
-        <Footer />
-      </Suspense>
+      <Footer />
     </div>
   )
 }

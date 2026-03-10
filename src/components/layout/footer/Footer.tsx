@@ -34,6 +34,10 @@ function SocialIcon({ iconId, icon: IconComponent, label }: {
     iconId ? { storageId: iconId } : "skip"
   )
 
+  if (iconId && iconUrl === undefined) {
+    return <Skeleton data-testid="footer-social-icon-skeleton" className="h-4 w-4 rounded-full" />
+  }
+
   if (iconUrl) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={iconUrl} alt={label} className="h-4 w-4" />
