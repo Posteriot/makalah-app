@@ -2014,7 +2014,10 @@ Aturan:
                     ],
             })
             console.log(
-                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}, primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
+                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}`,
+                webSearchConfig.webSearchRetrievers
+                    ? `retrievers=[${webSearchConfig.webSearchRetrievers.map((r: { name: string; enabled: boolean }) => `${r.name}:${r.enabled}`).join(",")}]`
+                    : `primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
             )
             let searchUnavailableReasonCode: string | undefined
 
