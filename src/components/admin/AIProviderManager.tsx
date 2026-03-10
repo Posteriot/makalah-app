@@ -388,12 +388,7 @@ function ConfigCard({
         {config.maxTokens !== undefined && (
           <SettingChip label="Max Tokens" value={config.maxTokens.toLocaleString()} />
         )}
-        <WebSearchChip
-          primaryEnabled={config.primaryWebSearchEnabled ?? true}
-          fallbackEnabled={config.fallbackWebSearchEnabled ?? true}
-          primaryModel={config.webSearchModel ?? "perplexity/sonar"}
-          fallbackModel={config.webSearchFallbackModel ?? "x-ai/grok-3-mini"}
-        />
+        <WebSearchChip config={config} />
       </div>
 
       {/* Row 4: Actions + Metadata */}
@@ -485,16 +480,30 @@ function SettingChip({ label, value }: { label: string; value: string }) {
 }
 
 function WebSearchChip({
-  primaryEnabled,
-  fallbackEnabled,
-  primaryModel,
-  fallbackModel,
+  config,
 }: {
-  primaryEnabled: boolean
-  fallbackEnabled: boolean
-  primaryModel: string
-  fallbackModel: string
+  config: {
+    primaryWebSearchEnabled?: boolean
+    fallbackWebSearchEnabled?: boolean
+    webSearchModel?: string
+    webSearchFallbackModel?: string
+    webSearchRetrievers?: Array<{ name: string; enabled: boolean; modelId: string; priority: number }>
+  }
 }) {
+  let primaryLabel = "off"
+  let fallbackLabel = "off"
+
+  if (config.webSearchRetrievers && config.webSearchRetrievers.length > 0) {
+    const sorted = [...config.webSearchRetrievers].sort((a, b) => a.priority - b.priority)
+    const primary = sorted[0]
+    const fallback = sorted[1]
+    if (primary?.enabled) primaryLabel = primary.name
+    if (fallback?.enabled) fallbackLabel = fallback.name
+  } else {
+    if (config.primaryWebSearchEnabled ?? true) primaryLabel = config.webSearchModel ?? "perplexity/sonar"
+    if (config.fallbackWebSearchEnabled ?? true) fallbackLabel = config.webSearchFallbackModel ?? "x-ai/grok-3-mini"
+  }
+
   return (
     <div className="flex items-center gap-1.5">
       <Globe className="h-3 w-3 text-slate-400 dark:text-slate-500" />
@@ -502,9 +511,7 @@ function WebSearchChip({
         Search
       </span>
       <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300">
-        {primaryEnabled ? `P: ${primaryModel}` : "P: off"}
-        {"  "}
-        {fallbackEnabled ? `F: ${fallbackModel}` : "F: off"}
+        P: {primaryLabel}{"  "}F: {fallbackLabel}
       </span>
     </div>
   )
