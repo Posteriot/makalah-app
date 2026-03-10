@@ -84,8 +84,8 @@ export function InlineCitationChip({ sources }: { sources: CitationSource[] }) {
         <InlineCitationCarouselIndex />
       </InlineCitationCarouselHeader>
       <InlineCitationCarouselContent>
-        {safeSources.map((source) => (
-          <InlineCitationCarouselItem key={source.url}>
+        {safeSources.map((source, idx) => (
+          <InlineCitationCarouselItem key={`${source.url}-${idx}`}>
             <InlineCitationSource
               title={source.title}
               url={source.url}

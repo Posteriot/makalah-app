@@ -55,6 +55,7 @@ import type * as migrations_backfillProviderKeys from "../migrations/backfillPro
 import type * as migrations_backfillWorkingTitle from "../migrations/backfillWorkingTitle.js";
 import type * as migrations_checkDocumentationOrdering from "../migrations/checkDocumentationOrdering.js";
 import type * as migrations_cleanupDuplicateSeedUser from "../migrations/cleanupDuplicateSeedUser.js";
+import type * as migrations_cleanupOldSearchSkillTelemetryFields from "../migrations/cleanupOldSearchSkillTelemetryFields.js";
 import type * as migrations_createContractAlignedSystemPrompt from "../migrations/createContractAlignedSystemPrompt.js";
 import type * as migrations_enableTwoFactorAllUsers from "../migrations/enableTwoFactorAllUsers.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
@@ -169,6 +170,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillWorkingTitle": typeof migrations_backfillWorkingTitle;
   "migrations/checkDocumentationOrdering": typeof migrations_checkDocumentationOrdering;
   "migrations/cleanupDuplicateSeedUser": typeof migrations_cleanupDuplicateSeedUser;
+  "migrations/cleanupOldSearchSkillTelemetryFields": typeof migrations_cleanupOldSearchSkillTelemetryFields;
   "migrations/createContractAlignedSystemPrompt": typeof migrations_createContractAlignedSystemPrompt;
   "migrations/enableTwoFactorAllUsers": typeof migrations_enableTwoFactorAllUsers;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;

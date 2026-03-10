@@ -12,34 +12,59 @@ import { api } from "@convex/_generated/api"
  */
 export function useCurrentUser() {
   const { data: session, isPending: isSessionPending } = useSession()
+  const sessionUserId = session?.user?.id ?? null
 
   const convexUser = useQuery(
     api.users.getUserByBetterAuthId,
-    session?.user?.id ? { betterAuthUserId: session.user.id } : "skip"
+    sessionUserId ? { betterAuthUserId: sessionUserId } : "skip"
   )
 
   const createAppUser = useMutation(api.users.createAppUser)
   const creationAttemptedRef = useRef(false)
+  const lastKnownUserSessionIdRef = useRef<string | null>(sessionUserId)
 
-  // Cache last known user — prevents flash when queries briefly re-load
-  // on tab refocus (Convex re-authenticates JWT, queries return undefined).
-  // Uses setState-during-render pattern (React-supported derived state).
+  // Cache user only for the active session. The cache may smooth brief Convex
+  // revalidation, but it must not survive logout or a session switch.
   const [lastKnownUser, setLastKnownUser] = useState(convexUser ?? null)
-  if (convexUser && convexUser !== lastKnownUser) {
+
+  useEffect(() => {
+    if (!sessionUserId) {
+      lastKnownUserSessionIdRef.current = null
+      setLastKnownUser(null)
+      creationAttemptedRef.current = false
+      return
+    }
+
+    if (lastKnownUserSessionIdRef.current !== sessionUserId) {
+      lastKnownUserSessionIdRef.current = sessionUserId
+      setLastKnownUser(null)
+      creationAttemptedRef.current = false
+    }
+  }, [sessionUserId])
+
+  useEffect(() => {
+    if (!convexUser || !sessionUserId) return
+    lastKnownUserSessionIdRef.current = sessionUserId
     setLastKnownUser(convexUser)
-  }
+  }, [convexUser, sessionUserId])
+
+  const cachedUser =
+    sessionUserId && lastKnownUserSessionIdRef.current === sessionUserId
+      ? lastKnownUser
+      : null
 
   // Auto-create app user if authenticated but no Convex record yet
   useEffect(() => {
     if (
-      session?.user?.id &&
+      sessionUserId &&
+      session?.user &&
       convexUser === null &&
       !creationAttemptedRef.current
     ) {
       creationAttemptedRef.current = true
       const nameParts = session.user.name?.split(" ") ?? []
       createAppUser({
-        betterAuthUserId: session.user.id,
+        betterAuthUserId: sessionUserId,
         email: session.user.email,
         firstName: nameParts[0] || undefined,
         lastName: nameParts.slice(1).join(" ") || undefined,
@@ -48,12 +73,12 @@ export function useCurrentUser() {
         creationAttemptedRef.current = false
       })
     }
-  }, [session, convexUser, createAppUser])
+  }, [session, sessionUserId, convexUser, createAppUser])
 
   // Session still loading — return cached user if available
   if (isSessionPending) {
-    return lastKnownUser
-      ? { user: lastKnownUser, isLoading: false }
+    return cachedUser
+      ? { user: cachedUser, isLoading: false }
       : { user: null, isLoading: true }
   }
 
@@ -64,8 +89,8 @@ export function useCurrentUser() {
 
   // Convex query still loading — return cached user if available
   if (convexUser === undefined) {
-    return lastKnownUser
-      ? { user: lastKnownUser, isLoading: false }
+    return cachedUser
+      ? { user: cachedUser, isLoading: false }
       : { user: null, isLoading: true }
   }
 

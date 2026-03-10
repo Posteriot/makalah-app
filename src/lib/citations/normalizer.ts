@@ -216,12 +216,18 @@ const extractAnnotations = (response: unknown): OpenAIAnnotation[] => {
     return message.annotations.filter(isRecord) as OpenAIAnnotation[]
   }
 
-  // Nested under experimental_providerMetadata.openrouter
+  // Nested under openrouter key (AI SDK v5 providerMetadata format)
+  const openrouter = response.openrouter
+  if (isRecord(openrouter) && Array.isArray(openrouter.annotations)) {
+    return openrouter.annotations.filter(isRecord) as OpenAIAnnotation[]
+  }
+
+  // Nested under experimental_providerMetadata.openrouter (legacy AI SDK format)
   const providerMeta = response.experimental_providerMetadata
   if (isRecord(providerMeta)) {
-    const openrouter = providerMeta.openrouter
-    if (isRecord(openrouter) && Array.isArray(openrouter.annotations)) {
-      return openrouter.annotations.filter(isRecord) as OpenAIAnnotation[]
+    const orLegacy = providerMeta.openrouter
+    if (isRecord(orLegacy) && Array.isArray(orLegacy.annotations)) {
+      return orLegacy.annotations.filter(isRecord) as OpenAIAnnotation[]
     }
   }
 

@@ -4,49 +4,49 @@ import {
 } from "./search-execution-mode"
 
 describe("resolveSearchExecutionMode", () => {
-  it("selects primary_perplexity when search required and web search model configured", () => {
+  it("selects first enabled retriever when search required", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      webSearchEnabled: true,
-      webSearchModel: "perplexity/sonar",
-      fallbackWebSearchEnabled: true,
-      webSearchFallbackModel: "x-ai/grok-3-mini",
+      retrievers: [
+        { name: "perplexity", enabled: true, modelId: "perplexity/sonar" },
+        { name: "grok", enabled: true, modelId: "x-ai/grok-3-mini" },
+      ],
     })
 
-    expect(mode).toBe("primary_perplexity")
+    expect(mode).toBe("perplexity")
   })
 
-  it("selects fallback_web_search when primary disabled but fallback enabled", () => {
+  it("selects fallback when primary disabled", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      webSearchEnabled: false,
-      webSearchModel: "perplexity/sonar",
-      fallbackWebSearchEnabled: true,
-      webSearchFallbackModel: "x-ai/grok-3-mini",
+      retrievers: [
+        { name: "perplexity", enabled: false, modelId: "perplexity/sonar" },
+        { name: "grok", enabled: true, modelId: "x-ai/grok-3-mini" },
+      ],
     })
 
-    expect(mode).toBe("fallback_web_search")
+    expect(mode).toBe("grok")
   })
 
-  it("selects fallback_web_search when primary enabled but model undefined", () => {
+  it("selects fallback when primary enabled but model undefined", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      webSearchEnabled: true,
-      webSearchModel: undefined,
-      fallbackWebSearchEnabled: true,
-      webSearchFallbackModel: "x-ai/grok-3-mini",
+      retrievers: [
+        { name: "perplexity", enabled: true, modelId: undefined },
+        { name: "grok", enabled: true, modelId: "x-ai/grok-3-mini" },
+      ],
     })
 
-    expect(mode).toBe("fallback_web_search")
+    expect(mode).toBe("grok")
   })
 
   it("selects blocked mode when search required but no models available", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      webSearchEnabled: true,
-      webSearchModel: undefined,
-      fallbackWebSearchEnabled: false,
-      webSearchFallbackModel: undefined,
+      retrievers: [
+        { name: "perplexity", enabled: true, modelId: undefined },
+        { name: "grok", enabled: false, modelId: undefined },
+      ],
     })
 
     expect(mode).toBe("blocked_unavailable")
@@ -55,10 +55,10 @@ describe("resolveSearchExecutionMode", () => {
   it("never returns off when search is required", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      webSearchEnabled: false,
-      webSearchModel: undefined,
-      fallbackWebSearchEnabled: false,
-      webSearchFallbackModel: undefined,
+      retrievers: [
+        { name: "perplexity", enabled: false, modelId: undefined },
+        { name: "grok", enabled: false, modelId: undefined },
+      ],
     })
 
     expect(mode).not.toBe("off")
@@ -67,10 +67,10 @@ describe("resolveSearchExecutionMode", () => {
   it("returns off when search is not required", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: false,
-      webSearchEnabled: true,
-      webSearchModel: "perplexity/sonar",
-      fallbackWebSearchEnabled: true,
-      webSearchFallbackModel: "x-ai/grok-3-mini",
+      retrievers: [
+        { name: "perplexity", enabled: true, modelId: "perplexity/sonar" },
+        { name: "grok", enabled: true, modelId: "x-ai/grok-3-mini" },
+      ],
     })
 
     expect(mode).toBe("off")
@@ -79,12 +79,23 @@ describe("resolveSearchExecutionMode", () => {
   it("returns blocked when both enabled but both models undefined", () => {
     const mode = resolveSearchExecutionMode({
       searchRequired: true,
-      webSearchEnabled: true,
-      webSearchModel: undefined,
-      fallbackWebSearchEnabled: true,
-      webSearchFallbackModel: undefined,
+      retrievers: [
+        { name: "perplexity", enabled: true, modelId: undefined },
+        { name: "grok", enabled: true, modelId: undefined },
+      ],
     })
     expect(mode).toBe("blocked_unavailable")
   })
-})
 
+  it("supports N retrievers in priority order", () => {
+    const mode = resolveSearchExecutionMode({
+      searchRequired: true,
+      retrievers: [
+        { name: "perplexity", enabled: false, modelId: "perplexity/sonar" },
+        { name: "grok", enabled: false, modelId: "x-ai/grok-3-mini" },
+        { name: "google-grounding", enabled: true, modelId: "google/gemini-2.5-flash" },
+      ],
+    })
+    expect(mode).toBe("google-grounding")
+  })
+})

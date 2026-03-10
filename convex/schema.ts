@@ -420,6 +420,18 @@ export default defineSchema({
     webSearchModel: v.optional(v.string()), // Dedicated web search model (default: "perplexity/sonar")
     webSearchFallbackModel: v.optional(v.string()), // Fallback web search model (default: "x-ai/grok-3-mini")
 
+    // New retriever-based web search config (coexists with legacy fields above)
+    webSearchRetrievers: v.optional(v.array(v.object({
+      name: v.string(),
+      enabled: v.boolean(),
+      modelId: v.string(),
+      priority: v.number(),
+      providerOptions: v.optional(v.object({
+        maxResults: v.optional(v.number()),
+        engine: v.optional(v.string()),
+      })),
+    }))),
+
     // ════════════════════════════════════════════════════════════════
     // Tool Visibility Settings (Admin maintenance toggle)
     // ════════════════════════════════════════════════════════════════
@@ -1103,7 +1115,7 @@ export default defineSchema({
     activeSkillId: v.optional(v.string()),
     activeSkillVersion: v.optional(v.number()),
     fallbackReason: v.optional(v.string()),
-    provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter")),
+    provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter"), v.literal("google-ai-studio")),
     model: v.string(),
     isPrimaryProvider: v.boolean(),
     failoverUsed: v.boolean(),
@@ -1120,12 +1132,16 @@ export default defineSchema({
     searchSkillAction: v.optional(v.string()),
     sourcesScored: v.optional(v.number()),
     sourcesFiltered: v.optional(v.number()),
+    sourcesPassed: v.optional(v.number()),
+    sourcesBlocked: v.optional(v.number()),
     sourcesPassedTiers: v.optional(v.string()),
+    attemptedRetrievers: v.optional(v.array(v.string())),
     diversityWarning: v.optional(v.string()),
     skillResolverFallback: v.optional(v.boolean()),
     isSkillRuntime: v.optional(v.boolean()),
     referencesClaimed: v.optional(v.number()),
     referencesMatched: v.optional(v.number()),
+    retrieverName: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_created", ["createdAt"])

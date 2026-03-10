@@ -33,6 +33,14 @@ export interface AIProviderConfig {
   // Dedicated web search models (with defaults from getActiveConfig)
   webSearchModel: string // default: "perplexity/sonar"
   webSearchFallbackModel: string // default: "x-ai/grok-3-mini"
+  // N-retriever array config (takes precedence over two-slot fields when present)
+  webSearchRetrievers?: Array<{
+    name: string
+    enabled: boolean
+    modelId: string
+    priority: number
+    providerOptions?: { maxResults?: number; engine?: string }
+  }>
   version: number
   isActive: boolean
   createdBy: Id<"users">

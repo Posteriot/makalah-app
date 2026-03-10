@@ -1,5 +1,5 @@
 import { tool } from "ai"
-import { getToolExamples } from "@/lib/ai/skills"
+
 import { z } from "zod"
 import { fetchQuery, fetchMutation } from "convex/nextjs"
 import { api } from "../../../convex/_generated/api"
@@ -117,9 +117,7 @@ Contoh data untuk tahap 'outline':
   totalWordCount: 5000,
   completenessScore: 0
 }
-PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' sebagai angka (BUKAN 'wordCount' string). JANGAN tambah field 'checked' atau 'subSections'.${getToolExamples("updateStageData") ? `
-
-${getToolExamples("updateStageData")}` : ""}`,
+PENTING untuk outline: Gunakan 'judul' (BUKAN 'title'), 'estimatedWordCount' sebagai angka (BUKAN 'wordCount' string). JANGAN tambah field 'checked' atau 'subSections'.`,
             inputSchema: z.object({
                 // NOTE: 'stage' parameter REMOVED - auto-fetched from session.currentStage
                 // This prevents AI from specifying wrong stage (Option B fix for stage confusion bug)
@@ -165,8 +163,8 @@ ${getToolExamples("updateStageData")}` : ""}`,
                         }
 
                         if (allRefs.length > 0) {
-                            const { referenceIntegritySkill } = await import('@/lib/ai/skills')
-                            const refValidation = referenceIntegritySkill.validate({
+                            const { getSearchSkill } = await import('@/lib/ai/skills')
+                            const refValidation = getSearchSkill().checkReferences({
                                 toolName: 'updateStageData',
                                 claimedReferences: allRefs,
                                 availableSources: context.availableSources,
