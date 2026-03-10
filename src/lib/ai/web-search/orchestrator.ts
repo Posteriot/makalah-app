@@ -77,6 +77,8 @@ export async function executeWebSearch(
       const rawCitations = await retriever.extractSources(searchResult)
       sources = canonicalizeCitationUrls(rawCitations)
 
+      console.log(`[Orchestrator] success: ${retriever.name}, citations=${sources.length}, text=${searchText.length}chars`)
+
       successRetrieverName = retriever.name
       successRetrieverIndex = i
       break
@@ -103,6 +105,12 @@ export async function executeWebSearch(
   // ────────────────────────────────────────────────────────────
   // Build compose context (BEFORE stream creation)
   // ────────────────────────────────────────────────────────────
+  // Strip vertex proxy URLs from searchText — real URLs are in sources array
+  const cleanSearchText = searchText.replace(
+    /https?:\/\/vertexaisearch\.cloud\.google\.com\/grounding-api-redirect\/\S+/g,
+    "",
+  )
+
   const scoredSources = sources.map((c) => ({
     url: c.url,
     title: c.title || c.url,
@@ -131,7 +139,7 @@ export async function executeWebSearch(
   try {
     searchResultsContext = buildSearchResultsContext(
       scoredSources.map((s) => ({ url: s.url, title: s.title })),
-      searchText,
+      cleanSearchText,
     )
   } catch (ctxError) {
     console.error("[Orchestrator] buildSearchResultsContext failed:", ctxError)

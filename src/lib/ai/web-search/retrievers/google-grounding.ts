@@ -30,13 +30,12 @@ async function resolveRedirect(url: string): Promise<string> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), REDIRECT_TIMEOUT_MS)
     const resp = await fetch(url, {
-      method: "GET",
+      method: "HEAD",
       redirect: "follow",
       signal: controller.signal,
-      headers: { "User-Agent": "Mozilla/5.0" },
     })
     clearTimeout(timeout)
-    // response.url is the final URL after all redirects
+    // resp.url is the final URL after following all redirects
     return resp.url || url
   } catch {
     return url
@@ -57,6 +56,7 @@ async function resolveVertexProxyUrls(
   if (proxyIndices.length === 0) return citations
 
   // Resolve in batches
+  let resolvedCount = 0
   const resolved = [...citations]
   for (let i = 0; i < proxyIndices.length; i += REDIRECT_CONCURRENCY) {
     const batch = proxyIndices.slice(i, i + REDIRECT_CONCURRENCY)
@@ -64,10 +64,12 @@ async function resolveVertexProxyUrls(
       batch.map((idx) => resolveRedirect(resolved[idx].url))
     )
     for (let j = 0; j < batch.length; j++) {
+      if (results[j] !== resolved[batch[j]].url) resolvedCount++
       resolved[batch[j]] = { ...resolved[batch[j]], url: results[j] }
     }
   }
 
+  console.log(`[google-grounding] proxy resolve: ${resolvedCount}/${proxyIndices.length} resolved`)
   return resolved
 }
 
@@ -120,10 +122,11 @@ export const googleGroundingRetriever: SearchRetriever = {
       // Step 3: Dedup again by actual URL (multiple proxies may point to same site)
       const final = deduplicateByUrl(resolved)
 
-      // Step 4: Cap at maximum
-      const capped = final.slice(0, MAX_CITATIONS)
+      // Step 4: Remove any remaining unresolved proxy URLs, then cap
+      const clean = final.filter((c) => !isVertexProxyUrl(c.url))
+      const capped = clean.slice(0, MAX_CITATIONS)
 
-      console.log(`[google-grounding] raw=${raw.length}, deduped=${deduped.length}, final=${final.length}, capped=${capped.length}`)
+      console.log(`[google-grounding] raw=${raw.length}, deduped=${deduped.length}, final=${final.length}, clean=${clean.length}, capped=${capped.length}`)
 
       return capped
     } catch {
