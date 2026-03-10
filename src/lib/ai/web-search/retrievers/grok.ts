@@ -22,30 +22,20 @@ export const grokRetriever: SearchRetriever = {
 
   buildStreamConfig(config: RetrieverConfig) {
     const openrouter = createOpenRouter({ apiKey: config.apiKey })
-    const maxResults = (config.providerOptions?.maxResults as number) ?? 5
-    const engine = config.providerOptions?.engine as string | undefined
-
-    return {
-      model: openrouter.chat(config.modelId, {
-        web_search_options: {
-          max_results: maxResults,
-          ...(engine && engine !== "auto" ? { search_engine: engine } : {}),
-        },
-      }),
-    }
+    return { model: openrouter.chat(config.modelId) }
   },
 
   async extractSources(
     result: AnyStreamTextResult
   ): Promise<NormalizedCitation[]> {
     try {
-      const metadata = await Promise.race([
-        result.providerMetadata,
+      const rawSources = await Promise.race([
+        result.sources,
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Grok metadata timeout")), SOURCE_TIMEOUT_MS)
+          setTimeout(() => reject(new Error("Grok sources timeout")), SOURCE_TIMEOUT_MS)
         ),
       ])
-      const citations = normalizeCitations(metadata, "openrouter")
+      const citations = normalizeCitations(rawSources, "perplexity")
       return citations.filter((c) => !isVertexProxyUrl(c.url))
     } catch {
       console.warn("[grok] Failed to extract sources within timeout")

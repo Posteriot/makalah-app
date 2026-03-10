@@ -1,6 +1,6 @@
 export const RETRIEVER_PRESETS = [
   { key: "perplexity",       label: "Perplexity Sonar",        modelId: "perplexity/sonar",   provider: "openrouter" },
-  { key: "grok",             label: "Grok Mini",               modelId: "x-ai/grok-3-mini",   provider: "openrouter" },
+  { key: "grok",             label: "Grok Mini",               modelId: "x-ai/grok-3-mini:online",   provider: "openrouter" },
   { key: "google-grounding", label: "Google Grounding Gemini",  modelId: "gemini-2.5-flash",   provider: "google-ai-studio" },
   { key: "openai-search",    label: "OpenAI GPT-4o Mini",      modelId: "openai/gpt-4o-mini", provider: "openrouter" },
 ] as const
