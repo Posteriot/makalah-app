@@ -147,8 +147,12 @@ export async function getWebSearchConfig() {
       fallbackEnabled: true,
       fallbackEngine: "auto" as const,
       fallbackMaxResults: 5,
+      openrouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
     }
   }
+
+  const openrouterApiKey =
+    config.openrouterApiKey?.trim() || process.env.OPENROUTER_API_KEY || ""
 
   return {
     primaryEnabled: config.primaryWebSearchEnabled,
@@ -157,6 +161,12 @@ export async function getWebSearchConfig() {
     fallbackMaxResults: config.fallbackWebSearchMaxResults,
     webSearchModel: config.webSearchModel,
     webSearchFallbackModel: config.webSearchFallbackModel,
+    openrouterApiKey,
+    // New N-retriever config (will be populated from DB when admin panel supports it)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    webSearchRetrievers: (config as any).webSearchRetrievers as
+      | Array<{ name: string; enabled: boolean; modelId: string; priority: number; providerOptions?: { maxResults?: number; engine?: string } }>
+      | undefined,
   }
 }
 
@@ -315,51 +325,6 @@ export async function getOpenRouterModel(options?: {
     modelId,
     config.fallback.apiKey
   )
-}
-
-/**
- * Primary web search model — Perplexity Sonar is a native search model,
- * no special config needed. Uses OpenRouter as the provider.
- */
-export async function getWebSearchModel() {
-  const config = await getProviderConfig()
-  const resolvedApiKey = config.fallback.apiKey || process.env.OPENROUTER_API_KEY
-
-  if (!resolvedApiKey) {
-    throw new Error("API key ENV tidak ditemukan untuk OpenRouter (web search model)")
-  }
-
-  const openrouter = createOpenRouter({
-    apiKey: resolvedApiKey,
-  })
-
-  return openrouter.chat(config.webSearch.webSearchModel)
-}
-
-/**
- * Fallback web search model — needs web_search_options to enable search.
- * Uses OpenRouter as the provider with search options passed via provider extras.
- */
-export async function getWebSearchFallbackModel() {
-  const config = await getProviderConfig()
-  const resolvedApiKey = config.fallback.apiKey || process.env.OPENROUTER_API_KEY
-
-  if (!resolvedApiKey) {
-    throw new Error("API key ENV tidak ditemukan untuk OpenRouter (web search fallback model)")
-  }
-
-  const openrouter = createOpenRouter({
-    apiKey: resolvedApiKey,
-  })
-
-  return openrouter.chat(config.webSearch.webSearchFallbackModel, {
-    web_search_options: {
-      max_results: config.webSearch.fallbackMaxResults ?? 10,
-      engine: (config.webSearch.fallbackEngine === "native" || config.webSearch.fallbackEngine === "exa")
-        ? config.webSearch.fallbackEngine
-        : undefined,
-    },
-  })
 }
 
 /**

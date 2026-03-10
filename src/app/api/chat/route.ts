@@ -12,9 +12,8 @@ import { Id } from "../../../../convex/_generated/dataModel"
 import { retryMutation } from "@/lib/convex/retry"
 import { normalizeWebSearchUrl } from "@/lib/citations/apaWeb"
 import { enrichSourcesWithFetchedTitles } from "@/lib/citations/webTitle"
-import { normalizeCitations, type NormalizedCitation } from "@/lib/citations/normalizer"
 // isBlockedSourceDomain removed — blocklist enforcement via SKILL.md natural language
-import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
+// formatParagraphEndCitations now handled by orchestrator
 import { createPaperTools } from "@/lib/ai/paper-tools"
 import { getPaperModeSystemPrompt } from "@/lib/ai/paper-mode-prompt"
 import { hasPaperWritingIntent } from "@/lib/ai/paper-intent-detector"
@@ -50,7 +49,7 @@ import { logAiTelemetry, classifyError } from "@/lib/ai/telemetry"
 import { getSearchSkill, composeSkillInstructions, type SkillContext } from "@/lib/ai/skills"
 import { createCuratedTraceController, type PersistedCuratedTraceSnapshot } from "@/lib/ai/curated-trace"
 import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
-import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
+// buildUserFacingSearchPayload now handled by orchestrator
 import { resolveEffectiveFileIds } from "@/lib/chat/effective-file-ids"
 import {
     classifyAttachmentHealth,
@@ -59,7 +58,12 @@ import {
 } from "@/lib/chat/attachment-health"
 import {
     resolveSearchExecutionMode,
+    type SearchExecutionMode,
 } from "@/lib/ai/search-execution-mode"
+import {
+    executeWebSearch,
+    buildRetrieverChain,
+} from "@/lib/ai/web-search"
 
 export async function POST(req: Request) {
     try {
@@ -748,8 +752,6 @@ ${sourcesJson}`
             buildReasoningProviderOptions,
             getModelNames,
             getWebSearchConfig,
-            getWebSearchModel,
-            getWebSearchFallbackModel,
         } = await import("@/lib/ai/streaming")
         const { streamText } = await import("ai")
         const providerSettings = await getProviderSettings()
@@ -1802,32 +1804,6 @@ Aturan:
         let shouldForceSubmitValidation = false
         let missingArtifactNote = ""
 
-        // Helper: sanitize messages for cross-model compatibility
-        // Strips tool call/result messages that Perplexity/Grok don't understand
-        const sanitizeMessagesForSearch = (msgs: typeof fullMessagesBase): typeof fullMessagesBase => {
-            return msgs
-                .filter((msg) => {
-                    if (msg.role === "system" || msg.role === "user") return true
-                    if (msg.role === "assistant") return true
-                    return false
-                })
-                .map((msg) => {
-                    if (msg.role !== "assistant") return msg
-                    if (Array.isArray(msg.content)) {
-                        const textParts = (msg.content as Array<{ type: string; text?: string }>).filter(
-                            (part) => typeof part === "object" && part !== null && "type" in part && part.type === "text"
-                        )
-                        if (textParts.length === 0) return null
-                        const textContent = textParts
-                            .filter((p): p is { type: "text"; text: string } => "text" in p && typeof p.text === "string")
-                            .map((p) => p.text)
-                            .join("\n")
-                        return { ...msg, content: textContent }
-                    }
-                    return msg
-                })
-                .filter((msg): msg is NonNullable<typeof msg> => msg !== null)
-        }
         const createSearchUnavailableResponse = async (input: {
             reasonCode: string
             message: string
@@ -1881,70 +1857,6 @@ Aturan:
             })
 
             return createUIMessageStreamResponse({ stream })
-        }
-
-        const isVertexProxyUrl = (raw: string) => {
-            try {
-                const u = new URL(raw)
-                const host = u.hostname.toLowerCase()
-                return host === "vertexaisearch.cloud.google.com" || host.startsWith("vertexaisearch.cloud.google.")
-            } catch {
-                return false
-            }
-        }
-
-        const _isLowValueCitationUrl = (raw: string) => {
-            try {
-                const u = new URL(raw)
-                const host = u.hostname.toLowerCase()
-                const path = u.pathname || "/"
-                const trimmedPath = path.replace(/\/+$/, "") || "/"
-                const segments = trimmedPath.split("/").filter(Boolean)
-
-                if (path === "/" || path === "") return true
-                if (/(^|\/)(tag|tags|topik|topic|search)(\/|$)/i.test(path)) return true
-                if (segments.length === 1) {
-                    const only = segments[0].toLowerCase()
-                    if (["berita", "news", "artikel", "articles", "posts", "post"].includes(only)) return true
-                }
-                if ((host === "google.com" || host === "www.google.com") && path === "/search") return true
-
-                return false
-            } catch {
-                return false
-            }
-        }
-
-        const KNOWN_GENERIC_TLDS = new Set([
-            "com", "net", "org", "edu", "gov", "mil", "int",
-            "io", "ai", "co", "app", "dev", "info", "biz", "me",
-            "tv", "online", "site", "web", "cloud", "tech", "store",
-            "news", "blog", "media", "digital", "agency", "studio",
-            "design", "academy", "health", "science", "finance",
-            "global", "world", "today", "live", "pro", "plus",
-            "one", "top", "xyz", "space", "page", "link",
-        ])
-
-        const isGarbageUrl = (raw: string): boolean => {
-            try {
-                const u = new URL(raw)
-                const host = u.hostname.toLowerCase()
-                if (!host || !host.includes(".")) return true
-                if (u.protocol !== "http:" && u.protocol !== "https:") return true
-
-                const labels = host.split(".")
-                const tld = labels[labels.length - 1]
-
-                if (!/^[a-z]+$/.test(tld)) return true
-
-                // All 2-letter TLDs are valid IANA country codes
-                if (tld.length === 2) return false
-
-                // 3+ letter TLDs: check against known-good list
-                return !KNOWN_GENERIC_TLDS.has(tld)
-            } catch {
-                return true
-            }
         }
 
         try {
@@ -2092,25 +2004,28 @@ Aturan:
 
             const searchExecutionMode = resolveSearchExecutionMode({
                 searchRequired: searchRequestedByPolicy,
-                webSearchEnabled: webSearchConfig.primaryEnabled,
-                webSearchModel: webSearchConfig.webSearchModel,
-                fallbackWebSearchEnabled: webSearchConfig.fallbackEnabled,
-                webSearchFallbackModel: webSearchConfig.webSearchFallbackModel,
+                retrievers: webSearchConfig.webSearchRetrievers
+                    ? webSearchConfig.webSearchRetrievers
+                        .sort((a: { priority: number }, b: { priority: number }) => a.priority - b.priority)
+                        .map((r: { name: string; enabled: boolean; modelId: string }) => ({ name: r.name as SearchExecutionMode, enabled: r.enabled, modelId: r.modelId }))
+                    : [
+                        { name: "perplexity" as const, enabled: webSearchConfig.primaryEnabled, modelId: webSearchConfig.webSearchModel },
+                        { name: "grok" as const, enabled: webSearchConfig.fallbackEnabled, modelId: webSearchConfig.webSearchFallbackModel },
+                    ],
             })
             console.log(
                 `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}, primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
             )
             let searchUnavailableReasonCode: string | undefined
 
-            if (searchExecutionMode === "primary_perplexity") {
-                enableWebSearch = true
-            } else if (searchExecutionMode === "fallback_web_search") {
-                enableWebSearch = true
-            } else if (searchExecutionMode === "blocked_unavailable") {
+            if (searchExecutionMode === "blocked_unavailable") {
                 enableWebSearch = false
                 searchUnavailableReasonCode = "search_required_but_unavailable"
-            } else {
+            } else if (searchExecutionMode === "off") {
                 enableWebSearch = false
+            } else {
+                // Any retriever name means web search is enabled
+                enableWebSearch = true
             }
 
             if (!enableWebSearch && paperModePrompt && !activeStageSearchNote) {
@@ -2232,476 +2147,131 @@ Aturan:
             }
 
             // ════════════════════════════════════════════════════════════════
-            // PRIMARY WEB SEARCH: Perplexity Sonar via OpenRouter
-            // Native search model — no tools, no tool steps.
-            // Must be checked BEFORE creating the gateway streamText call
-            // to avoid a wasted (eager) API request.
+            // WEB SEARCH: Orchestrator-based two-pass flow
+            // Phase 1: Silent search via retriever chain (Perplexity → Grok → ...)
+            // Phase 2: Compose with skill instructions, stream to client
             // ════════════════════════════════════════════════════════════════
             if (enableWebSearch) {
-                const webSearchModel = await getWebSearchModel()
-                const webSearchModelName = webSearchConfig.webSearchModel ?? "perplexity/sonar"
-                const sanitizedMessages = sanitizeMessagesForSearch(fullMessagesGateway)
-
-                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-                const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
-                const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
-                const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
-                const internalThoughtId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-internal-thought`
-                const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
-                const reasoningTrace = createCuratedTraceController({
-                    enabled: reasoningTraceEnabled,
-                    traceId,
-                    mode: getTraceModeLabel(!!paperModePrompt, true),
-                    stage: currentStage && currentStage !== "completed" ? currentStage : undefined,
-                    webSearchEnabled: true,
+                const retrieverChain = buildRetrieverChain({
+                    webSearchRetrievers: webSearchConfig.webSearchRetrievers,
+                    legacyConfig: {
+                        primaryWebSearchEnabled: webSearchConfig.primaryEnabled,
+                        fallbackWebSearchEnabled: webSearchConfig.fallbackEnabled,
+                        webSearchModel: webSearchConfig.webSearchModel,
+                        webSearchFallbackModel: webSearchConfig.webSearchFallbackModel,
+                        fallbackWebSearchEngine: webSearchConfig.fallbackEngine,
+                        fallbackWebSearchMaxResults: webSearchConfig.fallbackMaxResults,
+                    },
+                    openrouterApiKey: webSearchConfig.openrouterApiKey ?? "",
                 })
-                primaryReasoningTraceController = reasoningTrace
 
-                const canonicalizeCitationUrl = (raw: string) => {
-                    try {
-                        const u = new URL(raw)
-                        for (const key of Array.from(u.searchParams.keys())) {
-                            if (/^utm_/i.test(key)) u.searchParams.delete(key)
-                        }
-                        u.hash = ""
-                        const out = u.toString()
-                        return out.endsWith("/") ? out.slice(0, -1) : out
-                    } catch {
-                        return raw
-                    }
+                if (retrieverChain.length === 0) {
+                    return createSearchUnavailableResponse({
+                        reasonCode: "no_retrievers_configured",
+                        message: "Pencarian web tidak tersedia saat ini. Saya belum bisa memberikan jawaban faktual tanpa sumber. Coba lagi beberapa saat.",
+                        usedModel: modelNames.primary.model,
+                        telemetryFallbackReason: "no_retrievers_configured",
+                    })
                 }
 
-                type SourceEntry = {
-                    url: string
-                    title: string
-                    publishedAt?: number | null
-                }
+                return await executeWebSearch({
+                    retrieverChain,
+                    messages: fullMessagesGateway,
+                    composeMessages: trimmedModelMessages,
+                    composeModel: model,
+                    systemPrompt,
+                    paperModePrompt: paperModePrompt || undefined,
+                    paperWorkflowReminder: paperWorkflowReminder || undefined,
+                    fileContext: fileContext || undefined,
+                    samplingOptions,
+                    reasoningTraceEnabled,
+                    isTransparentReasoning,
+                    traceMode: getTraceModeLabel(!!paperModePrompt, true),
+                    onFinish: async (result) => {
+                        const retrieverModelName = result.retrieverName || "unknown"
+                        const combinedModelName = `${retrieverModelName}+${modelNames.primary.model}`
 
-                const stream = createUIMessageStream({
-                    execute: async ({ writer }) => {
-                        let started = false
-                        let searchStatusClosed = false
-                        let composedText = ""
+                        // ──── Save assistant message ────
+                        await saveAssistantMessage(
+                            result.text,
+                            result.sources.length > 0 ? result.sources : undefined,
+                            combinedModelName,
+                        )
 
-                        const ensureStart = () => {
-                            if (started) return
-                            started = true
-                            writer.write({ type: "start", messageId })
-                        }
-
-                        const emitTrace = (events: ReturnType<typeof reasoningTrace.markToolRunning>) => {
-                            if (!reasoningTrace.enabled) return
-                            capturePrimaryReasoningSnapshot()
-                            if (events.length === 0) return
-                            ensureStart()
-                            for (const event of events) {
-                                writer.write(event)
-                            }
-                        }
-
-                        const closeSearchStatus = (finalStatus: "done" | "off" | "error" | "composing", count?: number) => {
-                            if (searchStatusClosed) return
-                            searchStatusClosed = finalStatus !== "composing" // only close on terminal states
-                            ensureStart()
-                            writer.write({
-                                type: "data-search",
-                                id: searchStatusId,
-                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount: count ?? 0 } : {}) },
-                            })
-                        }
-
-                        const reasoningAccumulator = createReasoningAccumulator({
-                            traceId,
-                            writer,
-                            ensureStart,
-                            enabled: isTransparentReasoning,
-                        })
-
-                        // Emit "searching" status — user sees "Mencari sumber..." immediately
-                        ensureStart()
-                        writer.write({
-                            type: "data-search",
-                            id: searchStatusId,
-                            data: { status: "searching" },
-                        })
-                        emitTrace(reasoningTrace.initialEvents)
-
-                        // ────────────────────────────────────────────────────────────
-                        // PHASE 1: Silent Perplexity search (runs while user sees "Mencari sumber...")
-                        // ────────────────────────────────────────────────────────────
-                        let searchText: string
-                        let searchUsage: Awaited<ReturnType<typeof streamText>["usage"]> | undefined
-                        let scoredSources: SourceEntry[] = []
-                        let sourceCount = 0
-                        // blockedCount removed — blocklist enforcement via SKILL.md
-
-                        try {
-                        const { getSearchSystemPrompt, augmentUserMessageForSearch } = await import("@/lib/ai/search-system-prompt")
-                        const searchMessages = augmentUserMessageForSearch([
-                            { role: "system" as const, content: getSearchSystemPrompt() },
-                            ...sanitizedMessages.filter(m => m.role !== "system"),
-                        ])
-
-                        const perplexityResult = streamText({
-                            model: webSearchModel,
-                            messages: searchMessages,
-                            // No tools — Perplexity searches natively
-                            ...samplingOptions,
-                        })
-
-                        // Await full text (not streamed to user)
-                        searchText = await perplexityResult.text
-                        searchUsage = await perplexityResult.usage
-
-                        // Get sources with 4s timeout (same as before)
-                        const rawSources = await (async () => {
+                        // ──── Auto-persist search references to paper stageData ────
+                        if (paperSession && result.sources.length > 0) {
                             try {
-                                return await Promise.race([
-                                    perplexityResult.sources,
-                                    new Promise<undefined>((resolve) =>
-                                        setTimeout(() => resolve(undefined), 4000)
-                                    ),
-                                ])
-                            } catch {
-                                return undefined
+                                await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
+                                    sessionId: paperSession._id,
+                                    references: result.sources.map(s => ({
+                                        url: s.url,
+                                        title: s.title,
+                                        ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
+                                            ? { publishedAt: s.publishedAt }
+                                            : {}),
+                                    })),
+                                })
+                                console.log(`[Paper] Auto-persisted ${result.sources.length} search refs to stageData`)
+                            } catch (err) {
+                                Sentry.captureException(err, { tags: { subsystem: "paper" } })
+                                console.error("[Paper] Failed to auto-persist search references:", err)
                             }
-                        })()
-
-                        // Source pipeline: normalize → pass ALL to Gemini
-                        // Blocklist enforcement delegated to Gemini via SKILL.md
-                        const normalizedCitations = normalizeCitations(rawSources, 'perplexity')
-                        scoredSources = normalizedCitations.map(c => ({ url: c.url, title: c.title || c.url }))
-
-                        sourceCount = scoredSources.length
-                        primaryReasoningSourceCount = sourceCount
-
-                        // Phase 1 complete — transition to composing
-                        if (sourceCount > 0) {
-                            emitTrace(reasoningTrace.markSourceDetected())
-                        }
-                        searchStatusClosed = false
-                        closeSearchStatus(sourceCount > 0 ? "composing" : "off", sourceCount)
-
-                        } catch (phase1Error) {
-                            // Phase 1 failed — emit error status so UI doesn't freeze
-                            console.error("[Chat API] Phase 1 Perplexity search failed:", phase1Error)
-                            searchStatusClosed = false
-                            closeSearchStatus("error")
-                            emitTrace(reasoningTrace.finalize({
-                                outcome: "error",
-                                sourceCount: 0,
-                                errorNote: "primary-websearch-phase1-error",
-                            }))
-                            ensureStart()
-                            writer.write({
-                                type: "text-delta",
-                                id: messageId,
-                                delta: "Maaf, terjadi kesalahan saat mencari sumber. Silakan coba lagi.",
-                            })
-                            writer.write({
-                                type: "finish",
-                                finishReason: "error",
-                            })
-                            return
                         }
 
-                        // ────────────────────────────────────────────────────────────
-                        // PHASE 2: Gemini compose with skill instructions
-                        // ────────────────────────────────────────────────────────────
-                        const { buildSearchResultsContext } = await import("@/lib/ai/search-results-context")
-
-                        let skillInstructions: string | null = null
-                        try {
-                            skillInstructions = composeSkillInstructions(buildSkillContext({
-                                hasRecentSources: scoredSources.length > 0,
-                                availableSources: scoredSources.map(s => ({
-                                    url: s.url,
-                                    title: s.title,
-                                    ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
-                                })),
-                            }))
-                        } catch (skillError) {
-                            console.error("[SearchSkill] composeSkillInstructions failed:", skillError)
-                        }
-
-                        let searchResultsContext: string
-                        try {
-                            searchResultsContext = buildSearchResultsContext(
-                                scoredSources.map(s => ({ url: s.url, title: s.title })),
-                                searchText,
-                            )
-                        } catch (ctxError) {
-                            console.error("[SearchSkill] buildSearchResultsContext failed:", ctxError)
-                            searchResultsContext = "## SEARCH RESULTS\nNo sources available."
-                        }
-
-                        // Build compose messages: system + skills + search results + file context + conversation
-                        const composeMessages: ModelMessage[] = [
-                            { role: "system" as const, content: systemPrompt },
-                            ...(paperModePrompt
-                                ? [{ role: "system" as const, content: paperModePrompt }]
-                                : []),
-                            ...(paperWorkflowReminder
-                                ? [{ role: "system" as const, content: paperWorkflowReminder }]
-                                : []),
-                            ...(skillInstructions
-                                ? [{ role: "system" as const, content: skillInstructions }]
-                                : []),
-                            { role: "system" as const, content: searchResultsContext },
-                            ...(fileContext
-                                ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
-                                : []),
-                            ...trimmedModelMessages,
-                        ]
-
-                        const composeModel = model
-                        const composeResult = streamText({
-                            model: composeModel,
-                            messages: composeMessages,
-                            ...samplingOptions,
+                        // ──── Auto-title generation ────
+                        const minPairsForFinalTitle = Number.parseInt(
+                            process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
+                            10
+                        )
+                        await maybeUpdateTitleFromAI({
+                            assistantText: result.text,
+                            minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
+                                ? minPairsForFinalTitle
+                                : 3,
                         })
 
-                        // Stream Gemini compose output to user
-                        for await (const chunk of composeResult.toUIMessageStream({
-                            sendStart: false,
-                            generateMessageId: () => messageId,
-                            sendReasoning: isTransparentReasoning,
-                        })) {
-                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
-                                if (chunk.type === "reasoning-delta") {
-                                    reasoningAccumulator.onReasoningDelta(
-                                        typeof (chunk as { delta?: unknown }).delta === "string"
-                                            ? (chunk as { delta?: unknown }).delta as string
-                                            : ""
-                                    )
-                                }
-                                continue
-                            }
-
-                            if (chunk.type === "text-delta") {
-                                composedText += chunk.delta
-                            }
-
-                            if (chunk.type === "finish") {
-                                let didFinalizeForPersist = false
-
-                                try {
-                                    const persistedSources = scoredSources.length > 0 ? scoredSources : undefined
-
-                                    // Citation anchors: paragraph-end formatting
-                                    const citationAnchors = scoredSources.map((_, idx) => ({
-                                        position: null as number | null,
-                                        sourceNumbers: [idx + 1],
-                                    }))
-                                    const textWithInlineCitations = formatParagraphEndCitations({
-                                        text: composedText,
-                                        sources: scoredSources,
-                                        anchors: citationAnchors,
-                                    })
-                                    const userFacingPayload = buildUserFacingSearchPayload(textWithInlineCitations)
-
-                                    // Close search status as done
-                                    searchStatusClosed = false // reset so we can write terminal status
-                                    closeSearchStatus(persistedSources && persistedSources.length > 0 ? "done" : "off")
-
-                                    ensureStart()
-                                    writer.write({
-                                        type: "data-cited-text",
-                                        id: citedTextId,
-                                        data: { text: userFacingPayload.citedText },
-                                    })
-                                    if (userFacingPayload.internalThoughtText) {
-                                        ensureStart()
-                                        writer.write({
-                                            type: "data-internal-thought",
-                                            id: internalThoughtId,
-                                            data: { text: userFacingPayload.internalThoughtText },
-                                        })
-                                    }
-
-                                    if (persistedSources && persistedSources.length > 0) {
-                                        ensureStart()
-                                        writer.write({
-                                            type: "data-cited-sources",
-                                            id: citedSourcesId,
-                                            data: { sources: persistedSources },
-                                        })
-                                    }
-
-                                    if (reasoningAccumulator.hasReasoning()) {
-                                        emitTrace(reasoningTrace.populateFromReasoning(
-                                            reasoningAccumulator.getFullReasoning()
-                                        ))
-                                    }
-
-                                    const doneTraceEvents = reasoningTrace.finalize({
-                                        outcome: "done",
-                                        sourceCount,
-                                    })
-                                    emitTrace(doneTraceEvents)
-                                    didFinalizeForPersist = true
-                                    const persistedReasoningTrace = reasoningTrace.enabled
-                                        ? reasoningTrace.getPersistedSnapshot()
-                                        : undefined
-
-                                    // Persist with compose model name (Gemini wrote the text)
-                                    await saveAssistantMessage(
-                                        textWithInlineCitations,
-                                        persistedSources,
-                                        `${webSearchModelName}+${modelNames.primary.model}`,
-                                        persistedReasoningTrace
-                                    )
-
-                                    // ──── Auto-persist search references to paper stageData ────
-                                    if (paperSession && persistedSources && persistedSources.length > 0) {
-                                        try {
-                                            await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
-                                                sessionId: paperSession._id,
-                                                references: persistedSources.map(s => ({
-                                                    url: s.url,
-                                                    title: s.title,
-                                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
-                                                        ? { publishedAt: s.publishedAt }
-                                                        : {}),
-                                                })),
-                                            })
-                                            console.log(`[Paper] Auto-persisted ${persistedSources.length} search refs to stageData`)
-                                        } catch (err) {
-                                            Sentry.captureException(err, { tags: { subsystem: "paper" } })
-                                            console.error("[Paper] Failed to auto-persist search references:", err)
-                                        }
-                                    }
-                                    // ───────────────────────────────────────────────────────────
-
-                                    const minPairsForFinalTitle = Number.parseInt(
-                                        process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
-                                        10
-                                    )
-                                    await maybeUpdateTitleFromAI({
-                                        assistantText: textWithInlineCitations,
-                                        minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
-                                            ? minPairsForFinalTitle
-                                            : 3,
-                                    })
-
-                                    // ═══ BILLING: Record combined search + compose tokens ═══
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    const composeFinishUsage = (chunk as any).usage
-                                    const combinedInputTokens = (searchUsage?.inputTokens ?? 0) + (composeFinishUsage?.inputTokens ?? 0)
-                                    const combinedOutputTokens = (searchUsage?.outputTokens ?? 0) + (composeFinishUsage?.outputTokens ?? 0)
-                                    if (combinedInputTokens > 0 || combinedOutputTokens > 0) {
-                                        await recordUsageAfterOperation({
-                                            userId: billingContext.userId,
-                                            conversationId: currentConversationId as Id<"conversations">,
-                                            sessionId: paperSession?._id,
-                                            inputTokens: combinedInputTokens,
-                                            outputTokens: combinedOutputTokens,
-                                            totalTokens: combinedInputTokens + combinedOutputTokens,
-                                            model: `${webSearchModelName}+${modelNames.primary.model}`,
-                                            operationType: "web_search",
-                                            convexToken,
-                                        }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
-                                    }
-                                    // ═══════════════════════════════════════════════════════════
-
-                                    // ═══ TELEMETRY: Primary websearch two-pass success ═══
-                                    const sourceQualityTelemetry = {
-                                        searchSkillApplied: true,
-                                        searchSkillName: "source-quality",
-                                        searchSkillAction: scoredSources.length > 0 ? "passed" : "all-blocked",
-                                        sourcesPassed: scoredSources.length,
-                                        sourcesBlocked: 0, // blocklist via SKILL.md, not programmatic
-                                    }
-                                    logAiTelemetry({
-                                        token: convexToken,
-                                        userId: userId as Id<"users">,
-                                        conversationId: currentConversationId as Id<"conversations">,
-                                        provider: "openrouter",
-                                        model: `${webSearchModelName}+${modelNames.primary.model}`,
-                                        isPrimaryProvider: true,
-                                        failoverUsed: false,
-                                        toolUsed: "two_pass_search",
-                                        mode: "websearch",
-                                        success: true,
-                                        latencyMs: Date.now() - telemetryStartTime,
-                                        inputTokens: combinedInputTokens,
-                                        outputTokens: combinedOutputTokens,
-                                        ...telemetrySkillContext,
-                                        ...sourceQualityTelemetry,
-                                    })
-                                    // ═════════════════════════════════════════════
-                                } catch (err) {
-                                    searchStatusClosed = false
-                                    closeSearchStatus(sourceCount > 0 ? "done" : "off")
-                                    Sentry.captureException(err, { tags: { subsystem: "citation" } })
-                                    console.error("[SearchSkill] Citation finalize failed:", err)
-                                }
-
-                                if (!didFinalizeForPersist) {
-                                    if (reasoningAccumulator.hasReasoning()) {
-                                        emitTrace(reasoningTrace.populateFromReasoning(
-                                            reasoningAccumulator.getFullReasoning()
-                                        ))
-                                    }
-                                    emitTrace(reasoningTrace.finalize({
-                                        outcome: "done",
-                                        sourceCount,
-                                    }))
-                                }
-                                writer.write(chunk)
-                                break
-                            }
-
-                            if (chunk.type === "error") {
-                                console.error("[SearchSkill] Compose stream error:", JSON.stringify(chunk).slice(0, 500))
-                                searchStatusClosed = false
-                                closeSearchStatus("error")
-                                emitTrace(reasoningTrace.finalize({
-                                    outcome: "error",
-                                    sourceCount,
-                                    errorNote: "primary-websearch-compose-error",
-                                }))
-                                writer.write(chunk)
-                                break
-                            }
-
-                            if (chunk.type === "abort") {
-                                searchStatusClosed = false
-                                closeSearchStatus(sourceCount > 0 ? "done" : "off")
-                                const stoppedTraceEvents = reasoningTrace.finalize({
-                                    outcome: "stopped",
-                                    sourceCount,
-                                })
-                                emitTrace(stoppedTraceEvents)
-                                const persistedReasoningTrace = reasoningTrace.enabled
-                                    ? reasoningTrace.getPersistedSnapshot()
-                                    : undefined
-                                if (composedText.trim()) {
-                                    try {
-                                        await saveAssistantMessage(
-                                            composedText,
-                                            undefined,
-                                            `${webSearchModelName}+${modelNames.primary.model}`,
-                                            persistedReasoningTrace
-                                        )
-                                        console.log("[Chat API] Saved partial message on compose stream abort")
-                                    } catch (err) {
-                                        Sentry.captureException(err, { tags: { subsystem: "chat.abort" } })
-                                        console.error("[Chat API] Failed to save partial message on abort:", err)
-                                    }
-                                }
-                                writer.write(chunk)
-                                break
-                            }
-
-                            // Forward Gemini compose chunks to user
-                            ensureStart()
-                            writer.write(chunk)
+                        // ──── BILLING: Record combined search + compose tokens ────
+                        const combinedInputTokens = result.usage?.inputTokens ?? 0
+                        const combinedOutputTokens = result.usage?.outputTokens ?? 0
+                        if (combinedInputTokens > 0 || combinedOutputTokens > 0) {
+                            await recordUsageAfterOperation({
+                                userId: billingContext.userId,
+                                conversationId: currentConversationId as Id<"conversations">,
+                                sessionId: paperSession?._id,
+                                inputTokens: combinedInputTokens,
+                                outputTokens: combinedOutputTokens,
+                                totalTokens: combinedInputTokens + combinedOutputTokens,
+                                model: combinedModelName,
+                                operationType: "web_search",
+                                convexToken,
+                            }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
                         }
+
+                        // ──── TELEMETRY: Orchestrator two-pass search ────
+                        const isPrimary = result.retrieverIndex === 0
+                        logAiTelemetry({
+                            token: convexToken,
+                            userId: userId as Id<"users">,
+                            conversationId: currentConversationId as Id<"conversations">,
+                            provider: "openrouter",
+                            model: combinedModelName,
+                            isPrimaryProvider: isPrimary,
+                            failoverUsed: !isPrimary,
+                            toolUsed: "two_pass_search",
+                            mode: "websearch",
+                            success: true,
+                            latencyMs: Date.now() - telemetryStartTime,
+                            inputTokens: combinedInputTokens,
+                            outputTokens: combinedOutputTokens,
+                            ...telemetrySkillContext,
+                            searchSkillApplied: true,
+                            searchSkillName: "source-quality",
+                            searchSkillAction: result.sources.length > 0 ? "passed" : "all-blocked",
+                            sourcesPassed: result.sources.length,
+                            sourcesBlocked: 0,
+                        })
                     },
                 })
-
-                return createUIMessageStreamResponse({ stream })
             }
 
             const result = streamText({
@@ -2962,21 +2532,15 @@ Aturan:
             // ════════════════════════════════════════════
 
             // ════════════════════════════════════════════════════════════════
-            // FALLBACK: OpenRouter with optional web search (Grok w/ web_search_options)
+            // FALLBACK: OpenRouter without web search
+            // (Web search failover is now handled by the orchestrator's retriever chain)
             // ════════════════════════════════════════════════════════════════
 
-            // Determine if web search should be enabled in fallback
-            // Requires: 1) primary path wanted web search, AND 2) fallback web search is enabled in config
-            const fallbackEnableWebSearch =
-                enableWebSearch
-                && webSearchConfig.fallbackEnabled
-                && !!webSearchConfig.webSearchFallbackModel
             const fallbackTelemetryContext = skillTelemetryContext
-
             const fallbackReasoningProviderOptions = buildReasoningProviderOptions({
                 settings: reasoningSettings,
                 target: "fallback",
-                profile: fallbackEnableWebSearch ? "tool-heavy" : "narrative",
+                profile: "narrative",
             })
 
             // Task 2.6: Helper to run fallback WITHOUT web search (for error recovery)
@@ -3219,482 +2783,9 @@ Aturan:
                 return createUIMessageStreamResponse({ stream })
             }
 
-            // Task 2.2: Non-web-search fallback (unchanged behavior)
-            if (!fallbackEnableWebSearch) {
-                return runFallbackWithoutSearch()
-            }
-
-            // Fallback web search: Grok with web_search_options via OpenRouter
-            try {
-                const fallbackSearchModel = await getWebSearchFallbackModel()
-                const fallbackSearchModelName = webSearchConfig.webSearchFallbackModel ?? "x-ai/grok-3-mini"
-                const sanitizedFallbackMessages = sanitizeMessagesForSearch(fullMessagesBase)
-
-                // Generate unique IDs for stream parts
-                const messageId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-                const searchStatusId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-search`
-                const citedTextId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-text`
-                const citedSourcesId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-cited-sources`
-                const internalThoughtId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-internal-thought`
-                const traceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
-                const reasoningTrace = createCuratedTraceController({
-                    enabled: reasoningTraceEnabled,
-                    traceId,
-                    mode: getTraceModeLabel(!!paperModePrompt, true),
-                    stage: paperSession?.currentStage && paperSession.currentStage !== "completed"
-                        ? paperSession.currentStage
-                        : undefined,
-                    webSearchEnabled: true,
-                })
-
-                const stream = createUIMessageStream({
-                    execute: async ({ writer }) => {
-                        let started = false
-                        let searchStatusClosed = false
-                        let composedText = ""
-
-                        const ensureStart = () => {
-                            if (started) return
-                            started = true
-                            writer.write({ type: "start", messageId })
-                        }
-
-                        const emitTrace = (events: ReturnType<typeof reasoningTrace.markToolRunning>) => {
-                            if (!reasoningTrace.enabled || events.length === 0) return
-                            ensureStart()
-                            for (const event of events) {
-                                writer.write(event)
-                            }
-                        }
-
-                        const closeSearchStatus = (finalStatus: "done" | "off" | "error" | "composing", count?: number) => {
-                            if (searchStatusClosed) return
-                            searchStatusClosed = finalStatus !== "composing" // only close on terminal states
-                            ensureStart()
-                            writer.write({
-                                type: "data-search",
-                                id: searchStatusId,
-                                data: { status: finalStatus, ...(finalStatus === "composing" ? { sourceCount: count ?? 0 } : {}) },
-                            })
-                        }
-
-                        const fallbackTransparent = isTransparentReasoning && reasoningSettings.fallback.supported
-                        const reasoningAccumulator = createReasoningAccumulator({
-                            traceId,
-                            writer,
-                            ensureStart,
-                            enabled: fallbackTransparent,
-                        })
-
-                        // Emit "searching" status — user sees "Mencari sumber..." immediately
-                        ensureStart()
-                        writer.write({
-                            type: "data-search",
-                            id: searchStatusId,
-                            data: { status: "searching" },
-                        })
-                        emitTrace(reasoningTrace.initialEvents)
-
-                        // ────────────────────────────────────────────────────────────
-                        // PHASE 1: Silent Grok search (runs while user sees "Mencari sumber...")
-                        // ────────────────────────────────────────────────────────────
-                        let searchText: string
-                        let searchUsage: Awaited<ReturnType<typeof streamText>["usage"]> | undefined
-                        type SourceEntry = {
-                            url: string
-                            title: string
-                            publishedAt?: number | null
-                        }
-                        let scoredSources: SourceEntry[] = []
-                        let sourceCount = 0
-                        // grokBlockedCount removed — blocklist enforcement via SKILL.md
-
-                        try {
-                        const { getSearchSystemPrompt, augmentUserMessageForSearch } = await import("@/lib/ai/search-system-prompt")
-                        const grokSearchMessages = augmentUserMessageForSearch([
-                            { role: "system" as const, content: getSearchSystemPrompt() },
-                            ...sanitizedFallbackMessages.filter(m => m.role !== "system"),
-                        ])
-
-                        const fallbackSearchResult = streamText({
-                            model: fallbackSearchModel,
-                            messages: grokSearchMessages,
-                            // No explicit tools — web_search_options configured in model init
-                            ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
-                            ...samplingOptions,
-                        })
-
-                        // Await full text (not streamed to user)
-                        searchText = await fallbackSearchResult.text
-                        searchUsage = await fallbackSearchResult.usage
-
-                        // Get provider metadata with 8s timeout (OpenRouter annotations)
-                        const providerMetadataFromResult = await (async () => {
-                            try {
-                                return await Promise.race([
-                                    fallbackSearchResult.providerMetadata,
-                                    new Promise<undefined>((resolve) =>
-                                        setTimeout(() => resolve(undefined), 8000)
-                                    ),
-                                ])
-                            } catch {
-                                return undefined
-                            }
-                        })()
-
-                        // Source pipeline: normalize → blacklist → pass to Gemini
-                        // Quality judgment delegated to Gemini via SKILL.md
-                        let normalizedCitations: NormalizedCitation[] = []
-                        if (providerMetadataFromResult) {
-                            normalizedCitations = normalizeCitations(providerMetadataFromResult, 'openrouter')
-                        }
-
-                        const allGrokSources = normalizedCitations
-                            .filter(c => !isVertexProxyUrl(c.url))
-                            .map(c => ({
-                                url: c.url,
-                                title: c.title || c.url,
-                                ...(c.publishedAt ? { publishedAt: c.publishedAt } : {}),
-                            }))
-                        // Blocklist enforcement delegated to Gemini via SKILL.md
-                        scoredSources = allGrokSources
-
-                        sourceCount = scoredSources.length
-
-                        // Phase 1 complete — transition to composing
-                        if (sourceCount > 0) {
-                            emitTrace(reasoningTrace.markSourceDetected())
-                        }
-                        searchStatusClosed = false
-                        closeSearchStatus(sourceCount > 0 ? "composing" : "off", sourceCount)
-
-                        } catch (phase1Error) {
-                            // Phase 1 failed — emit error status so UI doesn't freeze
-                            console.error("[Chat API] Phase 1 Grok search failed:", phase1Error)
-                            searchStatusClosed = false
-                            closeSearchStatus("error")
-                            emitTrace(reasoningTrace.finalize({
-                                outcome: "error",
-                                sourceCount: 0,
-                                errorNote: "fallback-websearch-phase1-error",
-                            }))
-                            ensureStart()
-                            writer.write({
-                                type: "text-delta",
-                                id: messageId,
-                                delta: "Maaf, terjadi kesalahan saat mencari sumber. Silakan coba lagi.",
-                            })
-                            writer.write({
-                                type: "finish",
-                                finishReason: "error",
-                            })
-                            return
-                        }
-
-                        // ────────────────────────────────────────────────────────────
-                        // PHASE 2: Compose with skill instructions (fallback model)
-                        // ────────────────────────────────────────────────────────────
-                        const { buildSearchResultsContext } = await import("@/lib/ai/search-results-context")
-
-                        const skillInstructions = composeSkillInstructions(buildSkillContext({
-                            hasRecentSources: scoredSources.length > 0,
-                            availableSources: scoredSources.map(s => ({
-                                url: s.url,
-                                title: s.title,
-                                ...(typeof s.publishedAt === "number" ? { publishedAt: s.publishedAt } : {}),
-                            })),
-                        }))
-
-                        const searchResultsContext = buildSearchResultsContext(
-                            scoredSources.map(s => ({ url: s.url, title: s.title })),
-                            searchText,
-                        )
-
-                        // Build compose messages: system + skills + search results + file context + conversation
-                        const composeMessages: ModelMessage[] = [
-                            { role: "system" as const, content: systemPrompt },
-                            ...(paperModePrompt
-                                ? [{ role: "system" as const, content: paperModePrompt }]
-                                : []),
-                            ...(paperWorkflowReminder
-                                ? [{ role: "system" as const, content: paperWorkflowReminder }]
-                                : []),
-                            ...(skillInstructions
-                                ? [{ role: "system" as const, content: skillInstructions }]
-                                : []),
-                            { role: "system" as const, content: searchResultsContext },
-                            ...(fileContext
-                                ? [{ role: "system" as const, content: `File Context:\n\n${fileContext}` }]
-                                : []),
-                            ...trimmedModelMessages,
-                        ]
-
-                        const composeModel = await getOpenRouterModel({ enableWebSearch: false })
-                        const composeResult = streamText({
-                            model: composeModel,
-                            messages: composeMessages,
-                            ...(fallbackReasoningProviderOptions ? { providerOptions: fallbackReasoningProviderOptions } : {}),
-                            ...samplingOptions,
-                        })
-
-                        // Stream compose output to user
-                        for await (const chunk of composeResult.toUIMessageStream({
-                            sendStart: false,
-                            generateMessageId: () => messageId,
-                            sendReasoning: fallbackTransparent,
-                        })) {
-                            if (chunk.type === "reasoning-start" || chunk.type === "reasoning-delta" || chunk.type === "reasoning-end") {
-                                if (chunk.type === "reasoning-delta") {
-                                    reasoningAccumulator.onReasoningDelta(
-                                        typeof (chunk as { delta?: unknown }).delta === "string"
-                                            ? (chunk as { delta?: unknown }).delta as string
-                                            : ""
-                                    )
-                                }
-                                continue
-                            }
-
-                            if (chunk.type === "text-delta") {
-                                composedText += chunk.delta
-                            }
-
-                            if (chunk.type === "finish") {
-                                let didFinalizeForPersist = false
-
-                                try {
-                                    const persistedSources = scoredSources.length > 0 ? scoredSources : undefined
-
-                                    // Citation anchors: paragraph-end formatting
-                                    const citationAnchors = scoredSources.map((_, idx) => ({
-                                        position: null as number | null,
-                                        sourceNumbers: [idx + 1],
-                                    }))
-                                    const textWithCitations = formatParagraphEndCitations({
-                                        text: composedText,
-                                        sources: scoredSources,
-                                        anchors: citationAnchors,
-                                    })
-                                    const userFacingPayload = buildUserFacingSearchPayload(textWithCitations)
-
-                                    // Close search status as done
-                                    searchStatusClosed = false // reset so we can write terminal status
-                                    closeSearchStatus(persistedSources && persistedSources.length > 0 ? "done" : "off")
-
-                                    ensureStart()
-                                    writer.write({
-                                        type: "data-cited-text",
-                                        id: citedTextId,
-                                        data: { text: userFacingPayload.citedText },
-                                    })
-                                    if (userFacingPayload.internalThoughtText) {
-                                        ensureStart()
-                                        writer.write({
-                                            type: "data-internal-thought",
-                                            id: internalThoughtId,
-                                            data: { text: userFacingPayload.internalThoughtText },
-                                        })
-                                    }
-
-                                    if (persistedSources && persistedSources.length > 0) {
-                                        ensureStart()
-                                        writer.write({
-                                            type: "data-cited-sources",
-                                            id: citedSourcesId,
-                                            data: { sources: persistedSources },
-                                        })
-                                    }
-
-                                    if (reasoningAccumulator.hasReasoning()) {
-                                        emitTrace(reasoningTrace.populateFromReasoning(
-                                            reasoningAccumulator.getFullReasoning()
-                                        ))
-                                    }
-
-                                    const doneTraceEvents = reasoningTrace.finalize({
-                                        outcome: "done",
-                                        sourceCount,
-                                    })
-                                    emitTrace(doneTraceEvents)
-                                    didFinalizeForPersist = true
-                                    const persistedReasoningTrace = reasoningTrace.enabled
-                                        ? reasoningTrace.getPersistedSnapshot()
-                                        : undefined
-
-                                    const combinedModelName = `${fallbackSearchModelName}+${modelNames.fallback.model}`
-
-                                    // Persist with combined model name (Grok searched, fallback composed)
-                                    await saveAssistantMessage(
-                                        textWithCitations,
-                                        persistedSources,
-                                        combinedModelName,
-                                        persistedReasoningTrace
-                                    )
-
-                                    // ──── Auto-persist search references to paper stageData ────
-                                    if (paperSession && persistedSources && persistedSources.length > 0) {
-                                        try {
-                                            await fetchMutationWithToken(api.paperSessions.appendSearchReferences, {
-                                                sessionId: paperSession._id,
-                                                references: persistedSources.map(s => ({
-                                                    url: s.url,
-                                                    title: s.title,
-                                                    ...(typeof s.publishedAt === "number" && Number.isFinite(s.publishedAt)
-                                                        ? { publishedAt: s.publishedAt }
-                                                        : {}),
-                                                })),
-                                            })
-                                            console.log(`[Paper][Fallback] Auto-persisted ${persistedSources.length} search refs to stageData`)
-                                        } catch (err) {
-                                            Sentry.captureException(err, { tags: { subsystem: "paper" } })
-                                            console.error("[Paper][Fallback] Failed to auto-persist search references:", err)
-                                        }
-                                    }
-                                    // ───────────────────────────────────────────────────────────
-
-                                    const minPairsForFinalTitle = Number.parseInt(
-                                        process.env.CHAT_TITLE_FINAL_MIN_PAIRS ?? "3",
-                                        10
-                                    )
-                                    await maybeUpdateTitleFromAI({
-                                        assistantText: textWithCitations,
-                                        minPairsForFinalTitle: Number.isFinite(minPairsForFinalTitle)
-                                            ? minPairsForFinalTitle
-                                            : 3,
-                                    })
-
-                                    // ═══ BILLING: Record combined search + compose tokens ═══
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    const composeFinishUsage = (chunk as any).usage
-                                    const combinedInputTokens = (searchUsage?.inputTokens ?? 0) + (composeFinishUsage?.inputTokens ?? 0)
-                                    const combinedOutputTokens = (searchUsage?.outputTokens ?? 0) + (composeFinishUsage?.outputTokens ?? 0)
-                                    if (combinedInputTokens > 0 || combinedOutputTokens > 0) {
-                                        await recordUsageAfterOperation({
-                                            userId: billingContext.userId,
-                                            conversationId: currentConversationId as Id<"conversations">,
-                                            sessionId: paperSession?._id,
-                                            inputTokens: combinedInputTokens,
-                                            outputTokens: combinedOutputTokens,
-                                            totalTokens: combinedInputTokens + combinedOutputTokens,
-                                            model: combinedModelName,
-                                            operationType: "web_search",
-                                            convexToken,
-                                        }).catch(err => console.error("[Billing] Failed to record usage:", err))
-                                    }
-                                    // ═══════════════════════════════════════════════════════════
-
-                                    // ═══ TELEMETRY: Fallback websearch two-pass success ═══
-                                    const grokSourceQualityTelemetry = {
-                                        searchSkillApplied: true,
-                                        searchSkillName: "source-quality",
-                                        searchSkillAction: scoredSources.length > 0 ? "passed" : "all-blocked",
-                                        sourcesPassed: scoredSources.length,
-                                        sourcesBlocked: 0, // blocklist via SKILL.md, not programmatic
-                                    }
-                                    logAiTelemetry({
-                                        token: convexToken,
-                                        userId: userId as Id<"users">,
-                                        conversationId: currentConversationId as Id<"conversations">,
-                                        provider: "openrouter",
-                                        model: combinedModelName,
-                                        isPrimaryProvider: false,
-                                        failoverUsed: true,
-                                        toolUsed: "two_pass_search_fallback",
-                                        mode: "websearch",
-                                        success: true,
-                                        latencyMs: Date.now() - telemetryStartTime,
-                                        inputTokens: combinedInputTokens,
-                                        outputTokens: combinedOutputTokens,
-                                        ...fallbackTelemetryContext,
-                                        ...grokSourceQualityTelemetry,
-                                    })
-
-                                    recordUsageAfterOperation({
-                                        userId: billingContext.userId,
-                                        conversationId: currentConversationId as Id<"conversations">,
-                                        sessionId: paperSession?._id,
-                                        inputTokens: combinedInputTokens,
-                                        outputTokens: combinedOutputTokens,
-                                        totalTokens: combinedInputTokens + combinedOutputTokens,
-                                        model: combinedModelName,
-                                        operationType: "web_search",
-                                        convexToken,
-                                    }).catch(err => Sentry.captureException(err, { tags: { subsystem: "billing" } }))
-                                    // ═════════════════════════════════════════════
-                                } catch (err) {
-                                    searchStatusClosed = false
-                                    closeSearchStatus(sourceCount > 0 ? "done" : "off")
-                                    console.error("[Chat API] Failed to compute inline citations (fallback):", err)
-                                }
-
-                                if (!didFinalizeForPersist) {
-                                    if (reasoningAccumulator.hasReasoning()) {
-                                        emitTrace(reasoningTrace.populateFromReasoning(
-                                            reasoningAccumulator.getFullReasoning()
-                                        ))
-                                    }
-                                    emitTrace(reasoningTrace.finalize({
-                                        outcome: "done",
-                                        sourceCount,
-                                    }))
-                                }
-                                writer.write(chunk)
-                                break
-                            }
-
-                            if (chunk.type === "error") {
-                                searchStatusClosed = false
-                                closeSearchStatus("error")
-                                emitTrace(reasoningTrace.finalize({
-                                    outcome: "error",
-                                    sourceCount,
-                                    errorNote: "fallback-websearch-compose-error",
-                                }))
-                                writer.write(chunk)
-                                break
-                            }
-
-                            if (chunk.type === "abort") {
-                                searchStatusClosed = false
-                                closeSearchStatus(sourceCount > 0 ? "done" : "off")
-                                const stoppedTraceEvents = reasoningTrace.finalize({
-                                    outcome: "stopped",
-                                    sourceCount,
-                                })
-                                emitTrace(stoppedTraceEvents)
-                                const persistedReasoningTrace = reasoningTrace.enabled
-                                    ? reasoningTrace.getPersistedSnapshot()
-                                    : undefined
-                                if (composedText.trim()) {
-                                    try {
-                                        await saveAssistantMessage(
-                                            composedText,
-                                            undefined,
-                                            `${fallbackSearchModelName}+${modelNames.fallback.model}`,
-                                            persistedReasoningTrace
-                                        )
-                                        console.log("[Chat API] Saved partial message on fallback compose stream abort")
-                                    } catch (err) {
-                                        console.error("[Chat API] Failed to save partial message on abort:", err)
-                                    }
-                                }
-                                writer.write(chunk)
-                                break
-                            }
-
-                            // Forward compose chunks to user
-                            ensureStart()
-                            writer.write(chunk)
-                        }
-                    },
-                })
-
-                return createUIMessageStreamResponse({ stream })
-            } catch (fallbackSearchError) {
-                // Fallback web search failed, graceful degradation to non-search mode
-                Sentry.captureException(fallbackSearchError, { tags: { subsystem: "ai.fallback" } })
-                console.error("[Fallback] Web search stream failed, retrying without search:", fallbackSearchError)
-                return runFallbackWithoutSearch()
-            }
+            // Fallback always runs without web search
+            // (web search failover is handled by the orchestrator's retriever chain)
+            return runFallbackWithoutSearch()
         }
 
     } catch (error) {
