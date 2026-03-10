@@ -249,6 +249,10 @@ describe("GlobalHeader auth contract", () => {
 
     expect(await screen.findByText("Makalah Admin")).toBeInTheDocument()
     expect(screen.getAllByText("PRO")).toHaveLength(2)
+    expect(screen.queryByRole("button", { name: "Ganti tema" })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /Makalah Admin/i }))
+
     expect(screen.getByRole("button", { name: "Ganti tema" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Keluar" })).toBeInTheDocument()
   })
