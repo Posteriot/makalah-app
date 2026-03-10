@@ -1,5 +1,5 @@
 /**
- * @deprecated Absorbed by sourceQualitySkill in src/lib/ai/skills/source-quality.skill.ts
+ * @deprecated Absorbed by web-search-quality skill (src/lib/ai/skills/web-search-quality/).
  * This file is kept for reference during transition. Safe to delete after skill pilot validates.
  */
 export function getSourcePolicyPrompt(): string {

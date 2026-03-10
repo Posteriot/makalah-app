@@ -53,7 +53,6 @@ export interface WebSearchResult {
 export type SearchExecutionMode =
   | "perplexity"
   | "grok"
-  | "openai-search"
   | "google-grounding"
   | "blocked_unavailable"
   | "off"

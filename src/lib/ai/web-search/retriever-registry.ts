@@ -12,7 +12,3 @@ const registry = new Map<string, SearchRetriever>([
 export function getRetriever(name: string): SearchRetriever | undefined {
   return registry.get(name)
 }
-
-export function getRetrieverNames(): string[] {
-  return Array.from(registry.keys())
-}

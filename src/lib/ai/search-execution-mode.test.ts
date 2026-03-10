@@ -93,10 +93,9 @@ describe("resolveSearchExecutionMode", () => {
       retrievers: [
         { name: "perplexity", enabled: false, modelId: "perplexity/sonar" },
         { name: "grok", enabled: false, modelId: "x-ai/grok-3-mini" },
-        { name: "openai-search", enabled: true, modelId: "openai/gpt-4o-search-preview" },
         { name: "google-grounding", enabled: true, modelId: "google/gemini-2.5-flash" },
       ],
     })
-    expect(mode).toBe("openai-search")
+    expect(mode).toBe("google-grounding")
   })
 })
