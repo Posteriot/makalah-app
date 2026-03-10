@@ -22,7 +22,7 @@ function isVertexProxyUrl(url: string): boolean {
 
 /**
  * Resolve a single vertex proxy redirect URL to the actual destination.
- * Uses GET + redirect:follow so response.url is the final destination.
+ * Uses HEAD + redirect:follow so response.url is the final destination.
  * Returns original URL if resolution fails.
  */
 async function resolveRedirect(url: string): Promise<string> {
@@ -69,7 +69,6 @@ async function resolveVertexProxyUrls(
     }
   }
 
-  console.log(`[google-grounding] proxy resolve: ${resolvedCount}/${proxyIndices.length} resolved`)
   return resolved
 }
 
@@ -125,8 +124,6 @@ export const googleGroundingRetriever: SearchRetriever = {
       // Step 4: Remove any remaining unresolved proxy URLs, then cap
       const clean = final.filter((c) => !isVertexProxyUrl(c.url))
       const capped = clean.slice(0, MAX_CITATIONS)
-
-      console.log(`[google-grounding] raw=${raw.length}, deduped=${deduped.length}, final=${final.length}, clean=${clean.length}, capped=${capped.length}`)
 
       return capped
     } catch {

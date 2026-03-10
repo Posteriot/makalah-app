@@ -26,10 +26,9 @@ interface BuildChainInput {
 }
 
 export function buildRetrieverChain(input: BuildChainInput): RetrieverChainEntry[] {
-  const retrievers = input.webSearchRetrievers
+  return input.webSearchRetrievers
     ? fromRetrieverArray(input)
     : fromTwoSlotFields(input)
-  return retrievers
 }
 
 function fromRetrieverArray(input: BuildChainInput): RetrieverChainEntry[] {
