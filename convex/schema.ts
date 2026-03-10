@@ -419,6 +419,12 @@ export default defineSchema({
     fallbackWebSearchMaxResults: v.optional(v.number()), // Max search results (default: 5, range: 1-10)
     webSearchModel: v.optional(v.string()), // Dedicated web search model (default: "perplexity/sonar")
     webSearchFallbackModel: v.optional(v.string()), // Fallback web search model (default: "x-ai/grok-3-mini")
+    webSearchRetrievers: v.optional(v.array(v.object({
+      enabled: v.boolean(),
+      modelId: v.string(),
+      name: v.string(),
+      priority: v.number(),
+    }))), // Legacy retriever config kept optional to unblock older dev records
 
     // ════════════════════════════════════════════════════════════════
     // Tool Visibility Settings (Admin maintenance toggle)
@@ -1103,7 +1109,11 @@ export default defineSchema({
     activeSkillId: v.optional(v.string()),
     activeSkillVersion: v.optional(v.number()),
     fallbackReason: v.optional(v.string()),
-    provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter")),
+    provider: v.union(
+      v.literal("vercel-gateway"),
+      v.literal("openrouter"),
+      v.literal("google-ai-studio")
+    ),
     model: v.string(),
     isPrimaryProvider: v.boolean(),
     failoverUsed: v.boolean(),
@@ -1124,6 +1134,7 @@ export default defineSchema({
     sourcesBlocked: v.optional(v.number()),
     sourcesPassedTiers: v.optional(v.string()),
     attemptedRetrievers: v.optional(v.array(v.string())),
+    retrieverName: v.optional(v.string()),
     diversityWarning: v.optional(v.string()),
     skillResolverFallback: v.optional(v.boolean()),
     isSkillRuntime: v.optional(v.boolean()),

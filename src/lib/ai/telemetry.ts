@@ -7,7 +7,7 @@ type TelemetryParams = {
   token: string
   userId: Id<"users">
   conversationId?: Id<"conversations">
-  provider: "vercel-gateway" | "openrouter"
+  provider: "vercel-gateway" | "openrouter" | "google-ai-studio"
   model: string
   isPrimaryProvider: boolean
   failoverUsed: boolean
@@ -31,6 +31,7 @@ type TelemetryParams = {
   sourcesScored?: number
   sourcesFiltered?: number
   sourcesPassedTiers?: string
+  retrieverName?: string
   referencesClaimed?: number
   referencesMatched?: number
   diversityWarning?: string
