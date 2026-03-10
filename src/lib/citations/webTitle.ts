@@ -260,7 +260,7 @@ export async function fetchWebPageMetadata(
   if (isDisallowedHost(parsed.hostname)) return { title: null, finalUrl: null, publishedAt: null, reachable: false }
 
   const controller = new AbortController()
-  const timeoutMs = options?.timeoutMs ?? 2500
+  const timeoutMs = options?.timeoutMs ?? 5000
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
@@ -373,7 +373,7 @@ export async function enrichSourcesWithFetchedTitles<
   options?: { concurrency?: number; timeoutMs?: number }
 ): Promise<Array<T & { _unreachable?: true }>> {
   const concurrency = options?.concurrency ?? 4
-  const timeoutMs = options?.timeoutMs ?? 2500
+  const timeoutMs = options?.timeoutMs ?? 5000
 
   return await mapWithConcurrency(sources, concurrency, async (src) => {
     const meta = await fetchWebPageMetadata(src.url, { timeoutMs })
@@ -384,7 +384,9 @@ export async function enrichSourcesWithFetchedTitles<
     return {
       ...src,
       ...(meta.title ? { title: meta.title } : {}),
-      ...(meta.finalUrl ? { url: meta.finalUrl } : {}),
+      // Keep original URL — do not replace with finalUrl.
+      // Redirect-resolved URLs cause false dedup (multiple Perplexity sources
+      // resolving to the same final URL get collapsed into one).
       ...(meta.publishedAt ? { publishedAt: meta.publishedAt } : {}),
     }
   })
