@@ -18,3 +18,9 @@ export function getModelIdForKey(key: string): string {
 export function getLabelForKey(key: string): string {
   return getPresetByKey(key)?.label ?? key
 }
+
+export function getProviderLabelForKey(key: string): string {
+  const preset = getPresetByKey(key)
+  if (!preset) return ""
+  return preset.provider === "openrouter" ? "OpenRouter" : "Google AI Studio (Direct)"
+}

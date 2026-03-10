@@ -30,7 +30,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Id } from "@convex/_generated/dataModel"
 import { useGatewayModels } from "@/lib/hooks/useGatewayModels"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
-import { RETRIEVER_PRESETS, getModelIdForKey } from "./web-search-presets"
+import { RETRIEVER_PRESETS, getModelIdForKey, getProviderLabelForKey } from "./web-search-presets"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1217,11 +1217,12 @@ export function AIProviderConfigEditor({
               <div className="flex items-start gap-2.5 rounded-action border border-sky-200 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950/30">
                 <InfoCircle className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
                 <p className="text-interface text-xs text-sky-700 dark:text-sky-300">
-                  Pencarian web via OpenRouter atau Google Grounding Gemini
+                  Perplexity, Grok, dan GPT-4o via OpenRouter. Google Grounding Gemini via API direct.
                 </p>
               </div>
 
-              <div className="space-y-4">
+              {/* Side-by-side: Primary (left) — Swap — Fallback (right) */}
+              <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-6">
                 {/* Primary Search Retriever */}
                 <div className="space-y-2">
                   <Label htmlFor="primaryRetriever" className="text-interface text-xs font-medium">
@@ -1232,45 +1233,36 @@ export function AIProviderConfigEditor({
                     onValueChange={(v) => setPrimaryRetriever(v === "__disabled__" ? "" : v)}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="primaryRetriever" className="rounded-action">
+                    <SelectTrigger id="primaryRetriever" className="w-full rounded-action">
                       <SelectValue placeholder="Disabled" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="top" sideOffset={4} align="start">
                       <SelectItem value="__disabled__">Disabled</SelectItem>
                       {RETRIEVER_PRESETS.map((p) => (
                         <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {primaryRetriever && (
+                  {primaryRetriever ? (
                     <p className="text-interface text-[10px] text-muted-foreground">
-                      Model: {getModelIdForKey(primaryRetriever)}
+                      {getModelIdForKey(primaryRetriever)} · {getProviderLabelForKey(primaryRetriever)}
                     </p>
-                  )}
+                  ) : <p className="text-interface text-[10px] text-muted-foreground">&nbsp;</p>}
                 </div>
-
-                {/* Duplicate validation */}
-                {primaryRetriever && fallbackRetriever && primaryRetriever === fallbackRetriever && (
-                  <p className="text-interface text-[10px] text-destructive">
-                    Primary dan fallback tidak boleh sama
-                  </p>
-                )}
 
                 {/* Swap Button */}
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPrimaryRetriever(fallbackRetriever)
-                      setFallbackRetriever(primaryRetriever)
-                    }}
-                    disabled={isLoading || (!primaryRetriever && !fallbackRetriever)}
-                    className="inline-flex h-7 items-center gap-1 rounded-action border border-border px-3 font-mono text-[10px] font-medium text-sky-600 transition-colors hover:bg-muted disabled:opacity-50 dark:text-sky-400"
-                  >
-                    <DataTransferBoth className="h-4 w-4" />
-                    <span>Tukar Posisi</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrimaryRetriever(fallbackRetriever)
+                    setFallbackRetriever(primaryRetriever)
+                  }}
+                  disabled={isLoading || (!primaryRetriever && !fallbackRetriever)}
+                  className="mt-[22px] inline-flex h-9 w-9 items-center justify-center rounded-action border border-border text-sky-600 transition-colors hover:bg-muted disabled:opacity-50 dark:text-sky-400"
+                  title="Tukar Posisi"
+                >
+                  <DataTransferBoth className="h-4 w-4" />
+                </button>
 
                 {/* Fallback Search Retriever */}
                 <div className="space-y-2">
@@ -1282,23 +1274,30 @@ export function AIProviderConfigEditor({
                     onValueChange={(v) => setFallbackRetriever(v === "__disabled__" ? "" : v)}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="fallbackRetriever" className="rounded-action">
+                    <SelectTrigger id="fallbackRetriever" className="w-full rounded-action">
                       <SelectValue placeholder="Disabled" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="top" sideOffset={4} align="start">
                       <SelectItem value="__disabled__">Disabled</SelectItem>
                       {RETRIEVER_PRESETS.map((p) => (
                         <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {fallbackRetriever && (
+                  {fallbackRetriever ? (
                     <p className="text-interface text-[10px] text-muted-foreground">
-                      Model: {getModelIdForKey(fallbackRetriever)}
+                      {getModelIdForKey(fallbackRetriever)} · {getProviderLabelForKey(fallbackRetriever)}
                     </p>
-                  )}
+                  ) : <p className="text-interface text-[10px] text-muted-foreground">&nbsp;</p>}
                 </div>
               </div>
+
+              {/* Duplicate validation */}
+              {primaryRetriever && fallbackRetriever && primaryRetriever === fallbackRetriever && (
+                <p className="text-interface text-[10px] text-destructive">
+                  Primary dan fallback tidak boleh sama
+                </p>
+              )}
             </div>
           </form>
         </div>
