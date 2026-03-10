@@ -70,6 +70,36 @@ Status acuan saat ini di branch:
   - Fungsi: checklist QA manual untuk memverifikasi perilaku auth, menu, redirect, loading state, dan mobile/desktop header.
   - Catatan: bisa dipakai ulang sebagai pola verifikasi UI untuk komponen marketing lain yang punya state penting.
 
+### 7. Footer Audit Context
+
+- [`footer/readme-footer.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/readme-footer.md)
+  - Fungsi: konteks awal untuk audit footer non-chat, termasuk sentralisasi komponen, kontrak CMS, auth-gated support link, dan hotspot styling terhadap token `core`.
+  - Catatan: masih berupa fondasi audit, belum berisi keputusan migrasi atau redesign footer.
+
+### 8. Footer Audit Findings
+
+- [`footer/audit-findings.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/audit-findings.md)
+  - Fungsi: hasil audit awal footer non-chat, berisi risk dan inkonsistensi yang terverifikasi dari pembacaan kode.
+  - Catatan: belum berisi keputusan implementasi atau patch footer.
+
+### 9. Footer Migration Checklist
+
+- [`footer/migration-checklist.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/migration-checklist.md)
+  - Fungsi: menurunkan findings footer menjadi fase migrasi yang urut dan bisa dieksekusi.
+  - Catatan: menjadi jembatan antara audit footer, design doc, dan implementation plan.
+
+### 10. Footer Design
+
+- [`footer/design.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/design.md)
+  - Fungsi: keputusan desain untuk cleanup/migration footer sebelum redesign visual dilakukan.
+  - Catatan: fokus pada kontrak shell, token, CMS authority, fallback, dan testing.
+
+### 11. Footer Implementation Plan
+
+- [`footer/implementation-plan.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/implementation-plan.md)
+  - Fungsi: rencana implementasi bertahap untuk menurunkan desain migrasi footer ke task eksekusi.
+  - Catatan: belum mengeksekusi perubahan kode aplikasi.
+
 ## Cara Pakai
 
 Urutan baca yang dipakai untuk branch ini saat ini:
@@ -80,6 +110,15 @@ Urutan baca yang dipakai untuk branch ini saat ini:
 4. Lanjut ke [`global-header/design.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/design.md) untuk keputusan desain yang sudah disetujui.
 5. Gunakan [`global-header/implementation-plan.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/implementation-plan.md) untuk menelusuri patch yang sudah dieksekusi dan struktur task-nya.
 6. Gunakan [`global-header/qa-checklist.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/global-header/qa-checklist.md) sebagai pola verifikasi UI manual.
+
+Untuk audit footer, urutan baca praktisnya:
+
+1. Baca [`context.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/context.md) untuk baseline styling branch.
+2. Lanjut ke [`footer/readme-footer.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/readme-footer.md) untuk konteks audit footer non-chat.
+3. Lanjut ke [`footer/audit-findings.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/audit-findings.md) untuk melihat gap sentralisasi, kontrak token, dan kontrak CMS footer yang sudah terverifikasi.
+4. Gunakan [`footer/migration-checklist.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/migration-checklist.md) untuk menerjemahkan findings menjadi urutan cleanup.
+5. Lanjut ke [`footer/design.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/design.md) untuk keputusan desain migrasi footer.
+6. Gunakan [`footer/implementation-plan.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/implementation-plan.md) sebagai basis eksekusi.
 
 ## Cara Memakai Sebagai Acuan Styling
 
@@ -100,6 +139,11 @@ Status dokumentasi saat ini:
 - `global-header/design.md` sudah tersedia
 - `global-header/implementation-plan.md` sudah tersedia
 - `global-header/qa-checklist.md` sudah tersedia
+- `footer/readme-footer.md` sudah tersedia
+- `footer/audit-findings.md` sudah tersedia
+- `footer/migration-checklist.md` sudah tersedia
+- `footer/design.md` sudah tersedia
+- `footer/implementation-plan.md` sudah tersedia
 - dokumen keputusan teknis lanjutan untuk page lain belum dibuat
 
 README ini akan menjadi indeks tetap untuk semua dokumen yang ditambahkan berikutnya di folder `docs/marketing-ui-redesign`.
