@@ -31,6 +31,7 @@ Status acuan saat ini di branch:
 - `home` tetap menjadi referensi visual marketing utama
 - `chat` tetap menjadi referensi pola token mandiri berbasis scope
 - `global header` sudah melewati audit, redesign terbatas, cleanup styling, dan verifikasi, sehingga sekarang bisa dipakai sebagai referensi implementasi komponen marketing yang sudah lebih dekat ke target migration state
+- `footer` non-chat sudah melewati audit, migration checklist, design, implementation, review fix, dan verifikasi, sehingga sekarang menjadi referensi kedua untuk migrasi komponen lintas-shell non-chat ke `globals-new.css`
 
 ## Dokumen
 
@@ -98,7 +99,7 @@ Status acuan saat ini di branch:
 
 - [`footer/implementation-plan.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/implementation-plan.md)
   - Fungsi: rencana implementasi bertahap untuk menurunkan desain migrasi footer ke task eksekusi.
-  - Catatan: belum mengeksekusi perubahan kode aplikasi.
+  - Catatan: sudah dieksekusi pada branch ini dan sekarang berfungsi sebagai jejak task implementasi footer yang selesai.
 
 ## Cara Pakai
 
@@ -119,6 +120,7 @@ Untuk audit footer, urutan baca praktisnya:
 4. Gunakan [`footer/migration-checklist.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/migration-checklist.md) untuk menerjemahkan findings menjadi urutan cleanup.
 5. Lanjut ke [`footer/design.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/design.md) untuk keputusan desain migrasi footer.
 6. Gunakan [`footer/implementation-plan.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/footer/implementation-plan.md) sebagai basis eksekusi.
+7. Anggap hasil implementasi footer di kode sebagai baseline komponen non-chat kedua setelah header: shell `core` seragam, kontrak CMS lebih eksplisit, fallback lebih aman, dan regression test sudah tracked di source tree.
 
 ## Cara Memakai Sebagai Acuan Styling
 
@@ -126,8 +128,8 @@ Untuk halaman atau komponen marketing lain, dokumen folder ini sekarang bisa dip
 
 1. Cocokkan komponen target terhadap baseline di [`context.md`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/docs/marketing-ui-redesign/context.md): `home`, `chat`, dan `global header`.
 2. Periksa apakah token dan state styling target sudah bergerak lewat [`globals-new.css`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/app/globals-new.css), bukan masih bertopang ke [`globals.css`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/app/globals.css).
-3. Gunakan paket dokumen `global-header` sebagai contoh lengkap alur kerja: konteks → findings → design → implementation plan → QA checklist.
-4. Perlakukan utility semantik, state token, dan skeleton/loading yang sudah tervalidasi di header sebagai indikator konsistensi, bukan sekadar detail khusus header.
+3. Gunakan paket dokumen `global-header` dan `footer` sebagai contoh lengkap alur kerja: konteks → findings → checklist/design → implementation plan → verifikasi.
+4. Perlakukan utility semantik, state token, shell `core`, dan skeleton/loading yang sudah tervalidasi di header/footer sebagai indikator konsistensi, bukan sekadar detail khusus komponen tertentu.
 
 ## Status Folder
 
@@ -144,6 +146,7 @@ Status dokumentasi saat ini:
 - `footer/migration-checklist.md` sudah tersedia
 - `footer/design.md` sudah tersedia
 - `footer/implementation-plan.md` sudah tersedia
+- implementasi footer non-chat sudah selesai dan sudah merged ke `main`
 - dokumen keputusan teknis lanjutan untuk page lain belum dibuat
 
 README ini akan menjadi indeks tetap untuk semua dokumen yang ditambahkan berikutnya di folder `docs/marketing-ui-redesign`.

@@ -2,7 +2,7 @@
 
 **Status:** Research
 **Branch:** `marketing-pages-ui-design`
-**Date:** 2026-03-09
+**Date:** 2026-03-10
 
 ## Session Handoff
 
@@ -17,7 +17,9 @@ Bagian ini ditujukan agar dokumen ini bisa dipakai sebagai initial prompt atau k
 
 ### Baseline yang sudah tervalidasi
 
-Pada branch ini, area `global header` sudah melewati rangkaian kerja berikut:
+Pada branch ini, area `global header` dan `footer` non-chat sudah melewati rangkaian kerja audit-to-implementation.
+
+Untuk `global header`, rangkaian kerjanya:
 
 - audit konteks
 - audit findings
@@ -27,11 +29,24 @@ Pada branch ini, area `global header` sudah melewati rangkaian kerja berikut:
 - QA manual dasar
 - audit cleanup styling
 
+Untuk `footer` non-chat, rangkaian kerjanya:
+
+- audit konteks
+- audit findings
+- migration checklist
+- design
+- implementation plan
+- implementasi kode
+- review fix
+- verifikasi test dan typecheck
+
 Komponen yang sudah tervalidasi sebagai contoh migration state:
 
 - [`src/components/layout/header/GlobalHeader.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/layout/header/GlobalHeader.tsx)
 - [`src/components/layout/header/UserDropdown.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/layout/header/UserDropdown.tsx)
 - [`src/components/ui/auth-button.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/ui/auth-button.tsx)
+- [`src/components/layout/footer/Footer.tsx`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/layout/footer/Footer.tsx)
+- [`src/components/layout/footer/footer-config.ts`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/components/layout/footer/footer-config.ts)
 - [`src/app/globals-new.css`](/Users/eriksupit/Desktop/makalahapp/.worktrees/marketing-pages-ui-design/src/app/globals-new.css)
 
 Fakta yang sudah terverifikasi:
@@ -42,6 +57,10 @@ Fakta yang sudah terverifikasi:
 - dropdown default `UserDropdown` sudah bergerak lewat token semantik, bukan raw palette lama
 - mobile header sudah mengalami refinement tipografi, spacing, density panel akun, dan ikon menu
 - area header yang menjadi acuan marketing sekarang sudah lebih dekat ke target branch: Tailwind-compliant, tokenized, dan tidak lagi bertopang ke hover color legacy
+- footer non-chat sekarang hidup di shell `core` yang seragam pada shell yang memakainya
+- footer non-chat sudah memakai vocabulary footer-spesifik di `globals-new.css`, bukan bertumpu pada utility legacy `globals.css`
+- kontrak CMS footer dan link sistem `Lapor Masalah` sudah lebih eksplisit antara render user-facing dan editor CMS
+- regression tests footer sekarang tracked di source tree, bukan tertinggal di `__tests__/` yang di-ignore
 
 ### Commit penting yang sudah ada
 
@@ -51,6 +70,8 @@ Fakta yang sudah terverifikasi:
 - `7327f33` `Refine mobile menu typography and spacing`
 - `374cd38` `Clean up global header styling audit gaps`
 - `08b59bc` `Refresh marketing redesign baseline docs`
+- `5fb93e3` `Migrate non-chat footer to core scoped contract`
+- `084f498` `Fix footer review findings`
 
 ### Hal yang belum selesai
 
@@ -69,7 +90,7 @@ Yang masih perlu dianggap sebagai area audit atau kerja lanjutan:
 
 Jika sesi baru dimulai dari dokumen ini, asumsi kerja yang aman adalah:
 
-- gunakan `home`, `chat`, dan `global header` sebagai baseline observasi
+- gunakan `home`, `chat`, `global header`, dan `footer` non-chat sebagai baseline observasi
 - anggap `globals-new.css` sebagai jalur token target
 - anggap `globals.css` sebagai dependency legacy yang masih perlu dipetakan dan dilepas bertahap
 - jangan menganggap redesign visual total aktif kecuali diminta eksplisit
@@ -95,6 +116,7 @@ Standar desain yang dipakai sebagai acuan dalam konteks ini adalah:
 - `home`
 - halaman `chat` yang sudah memakai token mandiri di `globals-new.css`
 - `global header` marketing yang pada branch ini sudah dibersihkan dari gap styling audit dan sudah memakai jalur token `globals-new.css`
+- `footer` non-chat yang pada branch ini sudah dibersihkan dari kontrak styling legacy dan sudah memakai jalur footer-spesifik di `globals-new.css`
 
 Misi yang menjadi landasan dokumen konteks ini:
 
