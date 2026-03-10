@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { NavArrowLeft, NavArrowRight, Trash } from "iconoir-react"
+import { BinFull, BinMinusIn, NavArrowLeft, NavArrowRight, Trash } from "iconoir-react"
 import { formatRelativeTime } from "@/lib/date/formatters"
 import { cn } from "@/lib/utils"
 import { DeleteAllConversationsDialog } from "./DeleteAllConversationsDialog"
@@ -120,7 +120,7 @@ export function ConversationManagerTable({
                   }
                 }}
                 onChange={toggleSelectAll}
-                className="h-4 w-4 rounded border border-[color:var(--chat-border)] bg-[var(--chat-background)]"
+                className="h-4 w-4 rounded border border-slate-500/70 bg-[var(--chat-background)] accent-slate-700 dark:accent-slate-300"
               />
             ) : null}
             <span className="truncate text-xs font-mono font-semibold uppercase tracking-[0.16em] text-[var(--chat-muted-foreground)]">
@@ -141,7 +141,7 @@ export function ConversationManagerTable({
                   : "text-[var(--chat-destructive)] hover:bg-[var(--chat-accent)]"
               )}
             >
-              <Trash className="h-4 w-4" aria-hidden="true" />
+              <BinMinusIn className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -165,7 +165,7 @@ export function ConversationManagerTable({
                     type="checkbox"
                     checked={scopedSelectedIds.includes(item._id)}
                     onChange={() => toggleSelection(item._id)}
-                    className="h-4 w-4 rounded border border-[color:var(--chat-border)] bg-[var(--chat-background)]"
+                    className="h-4 w-4 rounded border border-slate-500/70 bg-[var(--chat-background)] accent-slate-700 dark:accent-slate-300"
                   />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -221,12 +221,13 @@ export function ConversationManagerTable({
           disabled={totalCount === 0}
           onClick={() => setDeleteAllOpen(true)}
           className={cn(
-            "inline-flex h-8 items-center rounded-action px-3 text-xs font-medium transition-colors duration-150",
+            "inline-flex h-8 items-center gap-1.5 rounded-action px-3 text-xs font-medium transition-colors duration-150",
             totalCount === 0
               ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-50"
               : "text-[var(--chat-destructive)] hover:bg-[var(--chat-accent)]"
           )}
         >
+          <BinFull className="h-4 w-4" aria-hidden="true" />
           Hapus semua
         </button>
       </div>
