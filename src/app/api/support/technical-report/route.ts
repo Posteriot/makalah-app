@@ -4,6 +4,7 @@ import { Resend } from "resend"
 import { fetchQuery } from "convex/nextjs"
 import { api } from "@convex/_generated/api"
 import { getToken, isAuthenticated } from "@/lib/auth-server"
+import { fetchTemplateAndRender } from "@/lib/email/template-helpers"
 
 export const runtime = "nodejs"
 
@@ -85,47 +86,79 @@ export async function POST(req: NextRequest) {
       ? JSON.stringify(contextSnapshot, null, 2)
       : "-"
 
-    const developerHtml = [
-      "<h2>Laporan Teknis (Fallback)</h2>",
-      "<p>Convex technical report belum tersedia di environment aktif. Laporan ini dikirim via API fallback.</p>",
-      `<p><strong>Report ID:</strong> ${escapeHtml(reportId)}</p>`,
-      `<p><strong>Sumber:</strong> ${escapeHtml(source)}</p>`,
-      `<p><strong>Waktu:</strong> ${escapeHtml(createdAt)}</p>`,
-      `<p><strong>User ID:</strong> ${escapeHtml(reporter.userId ?? "-")}</p>`,
-      `<p><strong>Email User:</strong> ${escapeHtml(reporter.email ?? "-")}</p>`,
-      `<p><strong>Nama User:</strong> ${escapeHtml(reporter.name ?? "-")}</p>`,
-      `<p><strong>Conversation ID:</strong> ${escapeHtml(conversationId ?? "-")}</p>`,
-      `<p><strong>Paper Session ID:</strong> ${escapeHtml(paperSessionId ?? "-")}</p>`,
-      `<h3>Deskripsi</h3>`,
-      `<p>${escapeHtml(description).replace(/\n/g, "<br/>")}</p>`,
-      "<h3>Snapshot Diagnostik</h3>",
-      `<pre>${escapeHtml(contextSnapshotString)}</pre>`,
-    ].join("")
-
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: SUPPORT_EMAIL,
-      subject: `[Technical Report Fallback] ${source} - ${reportId}`,
-      html: developerHtml,
+    const devRendered = await fetchTemplateAndRender("technical_report_dev", {
+      reportId,
+      status: "Pending",
+      userEmail: reporter.email ?? "-",
+      summary: description,
+      appUrl,
     })
 
-    if (reporter.email) {
-      const userHtml = [
-        "<p>Laporan teknis telah diterima.</p>",
-        `<p><strong>ID Laporan:</strong> ${escapeHtml(reportId)}</p>`,
+    if (devRendered) {
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: SUPPORT_EMAIL,
+        subject: devRendered.subject,
+        html: devRendered.html,
+      })
+    } else {
+      const developerHtml = [
+        "<h2>Laporan Teknis (Fallback)</h2>",
+        "<p>Convex technical report belum tersedia di environment aktif. Laporan ini dikirim via API fallback.</p>",
+        `<p><strong>Report ID:</strong> ${escapeHtml(reportId)}</p>`,
+        `<p><strong>Sumber:</strong> ${escapeHtml(source)}</p>`,
         `<p><strong>Waktu:</strong> ${escapeHtml(createdAt)}</p>`,
-        `<p>Tim dukungan akan meninjau laporan ini. Jika diperlukan, tindak lanjut dapat dilakukan melalui ${escapeHtml(
-          SUPPORT_EMAIL
-        )}.</p>`,
-        `<p><a href="${escapeHtml(appUrl)}/dashboard/support/technical-report">Buka halaman technical report</a></p>`,
+        `<p><strong>User ID:</strong> ${escapeHtml(reporter.userId ?? "-")}</p>`,
+        `<p><strong>Email User:</strong> ${escapeHtml(reporter.email ?? "-")}</p>`,
+        `<p><strong>Nama User:</strong> ${escapeHtml(reporter.name ?? "-")}</p>`,
+        `<p><strong>Conversation ID:</strong> ${escapeHtml(conversationId ?? "-")}</p>`,
+        `<p><strong>Paper Session ID:</strong> ${escapeHtml(paperSessionId ?? "-")}</p>`,
+        `<h3>Deskripsi</h3>`,
+        `<p>${escapeHtml(description).replace(/\n/g, "<br/>")}</p>`,
+        "<h3>Snapshot Diagnostik</h3>",
+        `<pre>${escapeHtml(contextSnapshotString)}</pre>`,
       ].join("")
 
       await resend.emails.send({
         from: FROM_EMAIL,
-        to: reporter.email,
-        subject: `Laporan Teknis Diterima (${reportId})`,
-        html: userHtml,
+        to: SUPPORT_EMAIL,
+        subject: `[Technical Report Fallback] ${source} - ${reportId}`,
+        html: developerHtml,
       })
+    }
+
+    if (reporter.email) {
+      const userRendered = await fetchTemplateAndRender("technical_report_user", {
+        reportId,
+        status: "Pending",
+        appName: "Makalah AI",
+      })
+
+      if (userRendered) {
+        await resend.emails.send({
+          from: FROM_EMAIL,
+          to: reporter.email,
+          subject: userRendered.subject,
+          html: userRendered.html,
+        })
+      } else {
+        const userHtml = [
+          "<p>Laporan teknis telah diterima.</p>",
+          `<p><strong>ID Laporan:</strong> ${escapeHtml(reportId)}</p>`,
+          `<p><strong>Waktu:</strong> ${escapeHtml(createdAt)}</p>`,
+          `<p>Tim dukungan akan meninjau laporan ini. Jika diperlukan, tindak lanjut dapat dilakukan melalui ${escapeHtml(
+            SUPPORT_EMAIL
+          )}.</p>`,
+          `<p><a href="${escapeHtml(appUrl)}/dashboard/support/technical-report">Buka halaman technical report</a></p>`,
+        ].join("")
+
+        await resend.emails.send({
+          from: FROM_EMAIL,
+          to: reporter.email,
+          subject: `Laporan Teknis Diterima (${reportId})`,
+          html: userHtml,
+        })
+      }
     }
 
     return NextResponse.json({

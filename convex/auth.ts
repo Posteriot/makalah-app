@@ -8,12 +8,14 @@ import { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
 import { getTrustedOrigins } from "./authOrigins";
 import {
-  sendVerificationEmail,
-  sendMagicLinkEmail,
-  sendPasswordResetEmail,
-  sendSignupSuccessEmail,
-  sendTwoFactorOtpEmail,
+  sendVerificationEmail as sendVerificationEmailFallback,
+  sendMagicLinkEmail as sendMagicLinkEmailFallback,
+  sendPasswordResetEmail as sendPasswordResetEmailFallback,
+  sendSignupSuccessEmail as sendSignupSuccessEmailFallback,
+  sendTwoFactorOtpEmail as sendTwoFactorOtpEmailFallback,
+  sendViaResend,
 } from "./authEmails";
+import { fetchAndRenderTemplate } from "./emailTemplateHelper";
 
 import { twoFactorCrossDomainBypass } from "./twoFactorBypass";
 import { createPasswordEndpoint } from "./createPasswordEndpoint";
@@ -28,9 +30,22 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
   verbose: false,
 });
 
-async function sendSignupSuccessEmailSafely(email: string): Promise<void> {
+async function sendSignupSuccessEmailSafely(
+  ctxRef: GenericCtx<DataModel>,
+  email: string,
+  userName: string,
+): Promise<void> {
   try {
-    await sendSignupSuccessEmail(email);
+    const rendered = await fetchAndRenderTemplate(ctxRef, "signup_success", {
+      userName,
+      appName: "Makalah AI",
+      loginUrl: (process.env.SITE_URL ?? "https://makalah.ai") + "/chat",
+    });
+    if (rendered) {
+      await sendViaResend(email, rendered.subject, rendered.html);
+    } else {
+      await sendSignupSuccessEmailFallback(email);
+    }
   } catch (error) {
     console.error("[Auth Email] Failed to send signup success email:", error);
   }
@@ -46,16 +61,33 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       enabled: true,
       requireEmailVerification: true,
       sendResetPassword: async ({ user, url }) => {
-        await sendPasswordResetEmail(user.email, url);
+        const rendered = await fetchAndRenderTemplate(ctx, "password_reset", {
+          resetUrl: url,
+          appName: "Makalah AI",
+        });
+        if (rendered) {
+          await sendViaResend(user.email, rendered.subject, rendered.html);
+        } else {
+          await sendPasswordResetEmailFallback(user.email, url);
+        }
       },
     },
     emailVerification: {
       sendVerificationEmail: async ({ user, url }) => {
-        await sendVerificationEmail(user.email, url);
+        const rendered = await fetchAndRenderTemplate(ctx, "verification", {
+          userName: user.name ?? user.email,
+          verificationUrl: url,
+          appName: "Makalah AI",
+        });
+        if (rendered) {
+          await sendViaResend(user.email, rendered.subject, rendered.html);
+        } else {
+          await sendVerificationEmailFallback(user.email, url);
+        }
       },
       afterEmailVerification: async (user) => {
         if (typeof user.email === "string" && user.email.length > 0) {
-          await sendSignupSuccessEmailSafely(user.email);
+          await sendSignupSuccessEmailSafely(ctx, user.email, user.name ?? user.email);
         }
       },
     },
@@ -74,7 +106,8 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
             if (!email || user.emailVerified !== true) {
               return;
             }
-            await sendSignupSuccessEmailSafely(email);
+            const userName = (typeof user.name === "string" ? user.name : "") || email;
+            await sendSignupSuccessEmailSafely(ctx, email, userName);
           },
         },
       },
@@ -90,7 +123,17 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       convex({ authConfig }),
       magicLink({
         sendMagicLink: async ({ email, url }) => {
-          await sendMagicLinkEmail(email, url);
+          const rendered = await fetchAndRenderTemplate(ctx, "magic_link", {
+            email,
+            magicLinkUrl: url,
+            appName: "Makalah AI",
+            expiryMinutes: "5",
+          });
+          if (rendered) {
+            await sendViaResend(email, rendered.subject, rendered.html);
+          } else {
+            await sendMagicLinkEmailFallback(email, url);
+          }
         },
         expiresIn: 300, // 5 minutes
       }),
@@ -100,7 +143,15 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
           sendOTP: async ({ user, otp }) => {
             // BetterAuth's built-in OTP sender — used for enable/disable flows.
             // Cross-domain sign-in flow uses custom endpoints instead.
-            await sendTwoFactorOtpEmail(user.email, otp);
+            const rendered = await fetchAndRenderTemplate(ctx, "two_factor_otp", {
+              otpCode: otp,
+              appName: "Makalah AI",
+            });
+            if (rendered) {
+              await sendViaResend(user.email, rendered.subject, rendered.html);
+            } else {
+              await sendTwoFactorOtpEmailFallback(user.email, otp);
+            }
           },
         },
       }),

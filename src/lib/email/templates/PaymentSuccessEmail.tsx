@@ -88,7 +88,7 @@ export function PaymentSuccessEmail({
 
       {/* Note */}
       <Text style={noteText}>
-        Jika ada pertanyaan tentang transaksi ini, hubungi kami di support@makalah.ai
+        Jika ada pertanyaan tentang transaksi ini, hubungi kami di dukungan@makalah.ai
       </Text>
     </EmailLayout>
   )

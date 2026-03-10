@@ -4,6 +4,7 @@ import { Resend } from "resend"
 import { render } from "@react-email/components"
 import { PaymentSuccessEmail } from "./templates/PaymentSuccessEmail"
 import { PaymentFailedEmail } from "./templates/PaymentFailedEmail"
+import { fetchTemplateAndRender } from "./template-helpers"
 
 const resendApiKey = process.env.RESEND_API_KEY
 const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@makalah.ai"
@@ -33,6 +34,7 @@ interface PaymentFailedParams {
   amount: number
   failureReason?: string
   transactionId: string
+  subscriptionPlanLabel?: string // Present = Pro payment, absent = BPP
 }
 
 interface SendResult {
@@ -59,7 +61,7 @@ function formatDate(date: Date | number): string {
 
 /**
  * Send payment success email
- * Called from webhook handler after successful payment
+ * Routes to BPP or Pro template based on subscriptionPlanLabel presence.
  */
 export async function sendPaymentSuccessEmail(
   params: PaymentSuccessParams
@@ -69,28 +71,63 @@ export async function sendPaymentSuccessEmail(
     return { success: false, error: "Email client not configured" }
   }
 
+  const isPro = !!params.subscriptionPlanLabel
+
   try {
-    const html = await render(
-      PaymentSuccessEmail({
-        userName: params.userName,
-        amount: params.amount,
-        credits: params.credits,
-        newTotalCredits: params.newTotalCredits,
-        subscriptionPlanLabel: params.subscriptionPlanLabel,
-        transactionId: params.transactionId,
-        paidAt: formatDate(params.paidAt),
-        appUrl,
-      })
-    )
+    let subject: string
+    let html: string
+
+    // Route to tier-specific template
+    const templateType = isPro ? "payment_success_pro" : "payment_success_bpp"
+    const templateData: Record<string, string> = {
+      userName: params.userName ?? "Pengguna",
+      amount: `Rp ${params.amount.toLocaleString("id-ID")}`,
+      transactionId: params.transactionId,
+      paidAt: formatDate(params.paidAt),
+      appUrl,
+      appName: "Makalah AI",
+    }
+    if (isPro) {
+      templateData.subscriptionPlanLabel = params.subscriptionPlanLabel!
+    } else {
+      templateData.credits = params.credits ? `${params.credits} kredit` : "-"
+      templateData.newTotalCredits = params.newTotalCredits
+        ? `${params.newTotalCredits} kredit`
+        : "-"
+    }
+
+    const rendered = await fetchTemplateAndRender(templateType, templateData)
+
+    if (rendered) {
+      subject = rendered.subject
+      html = rendered.html
+    } else {
+      // Fallback to React Email component (handles both BPP and Pro)
+      subject = isPro
+        ? "Langganan Pro Berhasil — Makalah AI"
+        : "Pembelian Kredit Berhasil — Makalah AI"
+      html = await render(
+        PaymentSuccessEmail({
+          userName: params.userName,
+          amount: params.amount,
+          credits: params.credits,
+          newTotalCredits: params.newTotalCredits,
+          subscriptionPlanLabel: params.subscriptionPlanLabel,
+          transactionId: params.transactionId,
+          paidAt: formatDate(params.paidAt),
+          appUrl,
+        })
+      )
+    }
 
     const result = await client.emails.send({
       from: fromEmail,
       to: params.to,
-      subject: "Pembayaran Berhasil - Makalah AI",
+      subject,
       html,
     })
 
-    console.log("[Email] Payment success email sent:", {
+    console.log(`[Email] Payment success email sent (${templateType}):`, {
       to: params.to,
       transactionId: params.transactionId,
       emailId: result.data?.id,
@@ -108,7 +145,7 @@ export async function sendPaymentSuccessEmail(
 
 /**
  * Send payment failed email
- * Called from webhook handler after failed payment
+ * Routes to BPP or Pro template based on subscriptionPlanLabel presence.
  */
 export async function sendPaymentFailedEmail(
   params: PaymentFailedParams
@@ -118,25 +155,55 @@ export async function sendPaymentFailedEmail(
     return { success: false, error: "Email client not configured" }
   }
 
+  const isPro = !!params.subscriptionPlanLabel
+
   try {
-    const html = await render(
-      PaymentFailedEmail({
-        userName: params.userName,
-        amount: params.amount,
-        failureReason: params.failureReason,
-        transactionId: params.transactionId,
-        appUrl,
-      })
-    )
+    let subject: string
+    let html: string
+
+    // Route to tier-specific template
+    const templateType = isPro ? "payment_failed_pro" : "payment_failed_bpp"
+    const templateData: Record<string, string> = {
+      userName: params.userName ?? "Pengguna",
+      amount: `Rp ${params.amount.toLocaleString("id-ID")}`,
+      failureReason: params.failureReason ?? "Pembayaran tidak dapat diproses",
+      transactionId: params.transactionId,
+      appUrl,
+      appName: "Makalah AI",
+    }
+    if (isPro) {
+      templateData.subscriptionPlanLabel = params.subscriptionPlanLabel!
+    }
+
+    const rendered = await fetchTemplateAndRender(templateType, templateData)
+
+    if (rendered) {
+      subject = rendered.subject
+      html = rendered.html
+    } else {
+      // Fallback to React Email component (handles both BPP and Pro)
+      subject = isPro
+        ? "Langganan Pro Gagal — Makalah AI"
+        : "Pembelian Kredit Gagal — Makalah AI"
+      html = await render(
+        PaymentFailedEmail({
+          userName: params.userName,
+          amount: params.amount,
+          failureReason: params.failureReason,
+          transactionId: params.transactionId,
+          appUrl,
+        })
+      )
+    }
 
     const result = await client.emails.send({
       from: fromEmail,
       to: params.to,
-      subject: "Pembayaran Gagal - Makalah AI",
+      subject,
       html,
     })
 
-    console.log("[Email] Payment failed email sent:", {
+    console.log(`[Email] Payment failed email sent (${templateType}):`, {
       to: params.to,
       transactionId: params.transactionId,
       emailId: result.data?.id,
