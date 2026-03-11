@@ -21,6 +21,47 @@ import type {
 import type { SkillContext } from "@/lib/ai/skills/types"
 
 /**
+ * Compose Phase Directive — injected into compose context to prevent
+ * the model from generating search promises instead of synthesizing results.
+ *
+ * Addresses:
+ * - RC-1: No compose-only directive (model doesn't know it's in compose phase)
+ * - RC-2: Tool references from systemPrompt/paperModePrompt without tools available
+ * - RC-3: Dialog-first instruction conflict
+ * - RC-4: Conversation pattern continuation
+ *
+ * Must be in English per architecture constraint (model instructions in English).
+ */
+const COMPOSE_PHASE_DIRECTIVE = `
+═══════════════════════════════════════════════════════════════════
+COMPOSE PHASE — SEARCH ALREADY COMPLETED
+═══════════════════════════════════════════════════════════════════
+
+You are in the COMPOSE phase of a two-pass search flow.
+Web search has ALREADY been executed. The search results are provided below.
+
+YOUR TASK:
+- Synthesize the search results into a comprehensive, well-cited response
+- Present your analysis and findings IMMEDIATELY in this response
+- Follow the SKILL.md composition guidelines (RESPONSE COMPOSITION, REFERENCE INTEGRITY)
+
+DO NOT:
+- Promise to search ("beri aku waktu", "saya akan mencari", "izinkan saya mencari")
+- Announce that you will perform a search
+- Ask for permission to search
+- Reference or attempt to use tools (no tools are available in this phase)
+
+OVERRIDE — the following instructions from other system messages DO NOT APPLY here:
+- Any "dialog first" / "tanya dulu sebelum generate" instructions — present results NOW
+- Any "web search mandatory" instructions — search is ALREADY DONE
+- Any tool usage instructions (startPaperSession, updateStageData, createArtifact, google_search) — NO tools available
+- Any "call startPaperSession IMMEDIATELY" instructions — not applicable
+
+The search results below are your source material. Use them.
+═══════════════════════════════════════════════════════════════════
+`.trim()
+
+/**
  * Execute a two-pass web search flow:
  *   Phase 1: Silent search via retriever chain (runs BEFORE stream creation)
  *   Phase 2: Compose with skill instructions, stream to client
@@ -146,18 +187,21 @@ export async function executeWebSearch(
     searchResultsContext = "## SEARCH RESULTS\nNo sources available."
   }
 
-  // Build compose messages: system + optional paper prompts + skills + search results + file context + conversation
+  // Build compose system messages
+  // NOTE: paperWorkflowReminder is EXCLUDED — it instructs "call startPaperSession
+  // IMMEDIATELY" which is irrelevant and harmful in compose phase (no tools available).
+  // COMPOSE_PHASE_DIRECTIVE overrides conflicting instructions from systemPrompt and
+  // paperModePrompt (tool references, dialog-first, web-search-mandatory).
   const composeSystemMessages: Array<{ role: "system"; content: string }> = [
     { role: "system", content: config.systemPrompt },
     ...(config.paperModePrompt
       ? [{ role: "system" as const, content: config.paperModePrompt }]
       : []),
-    ...(config.paperWorkflowReminder
-      ? [{ role: "system" as const, content: config.paperWorkflowReminder }]
-      : []),
+    // paperWorkflowReminder intentionally excluded from compose phase
     ...(skillInstructions
       ? [{ role: "system" as const, content: skillInstructions }]
       : []),
+    { role: "system", content: COMPOSE_PHASE_DIRECTIVE },
     { role: "system", content: searchResultsContext },
     ...(config.fileContext
       ? [{ role: "system" as const, content: `File Context:\n\n${config.fileContext}` }]
