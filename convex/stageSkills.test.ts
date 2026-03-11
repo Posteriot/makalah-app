@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   activateVersion,
   createOrUpdateDraft,
+  DEFAULT_ALLOWED_TOOLS,
   publishVersion,
   rollbackVersion,
 } from "./stageSkills";
@@ -120,14 +121,28 @@ Define a feasible research idea with clear novelty.
 ## Input Context
 Read user intent, prior approved summaries, and available references.
 
-## Tool Policy
+## Web Search
+Policy: active.
+When factual evidence, references, or literature data is needed, express your search
+intent clearly in your response (e.g., "Saya akan mencari referensi tentang X" or
+"Perlu mencari data pendukung untuk Y"). The orchestrator detects this intent and
+executes web search automatically in the next turn.
+IMPORTANT: Web search and function tools cannot run in the same turn. After search
+results arrive, use function tools to save findings.
+Do not fabricate references — if evidence is needed, request a search.
+
+## Function Tools
 Allowed:
-- google_search (active mode)
-- updateStageData
-- createArtifact
-- compileDaftarPustaka (mode: preview)
+- updateStageData — save stage progress (ringkasan required)
+- createArtifact — create stage output artifact
+- submitStageForValidation — submit for user approval (only after explicit user confirmation)
+- compileDaftarPustaka (mode: preview) — cross-stage bibliography audit without persistence
 Disallowed:
-- compileDaftarPustaka (mode: persist)
+- Stage jumping
+- compileDaftarPustaka (mode: persist) outside daftar_pustaka stage
+- Submission without ringkasan
+- Calling function tools in the same turn as web search
+- Fabricating references or factual claims
 
 ## Output Contract
 Required:
@@ -282,3 +297,13 @@ describe("stageSkills lifecycle", () => {
     expect(tables.get("stageSkillVersions") ?? []).toHaveLength(0);
   });
 });
+
+describe("DEFAULT_ALLOWED_TOOLS", () => {
+  it("does not include google_search", () => {
+    expect(DEFAULT_ALLOWED_TOOLS).not.toContain("google_search")
+    expect(DEFAULT_ALLOWED_TOOLS).toContain("updateStageData")
+    expect(DEFAULT_ALLOWED_TOOLS).toContain("createArtifact")
+    expect(DEFAULT_ALLOWED_TOOLS).toContain("submitStageForValidation")
+    expect(DEFAULT_ALLOWED_TOOLS).toContain("compileDaftarPustaka")
+  })
+})
