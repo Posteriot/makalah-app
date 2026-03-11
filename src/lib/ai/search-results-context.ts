@@ -26,7 +26,7 @@ export function buildSearchResultsContext(
 
   return `## SEARCH RESULTS (COMPLETED)
 Web search has been executed. The following sources were retrieved.
-You MUST synthesize these sources in your response. Do not fabricate or guess URLs.
+You MUST synthesize these sources in your response. Use ONLY these sources for citations. Do not fabricate or guess URLs.
 
 Sources:
 ${sourceList}${searchFindings}`
