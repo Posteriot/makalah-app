@@ -269,7 +269,7 @@ function PaperSessionFolderButton({
       }
       aria-label={`Buka sesi paper ${displayTitle}`}
       className={cn(
-        "flex w-full items-start gap-3 px-5 py-4 text-left transition-colors duration-150",
+        "flex w-full items-start gap-3 pl-8 pr-5 py-4 text-left transition-colors duration-150",
         "hover:bg-[var(--chat-accent)]"
       )}
     >
