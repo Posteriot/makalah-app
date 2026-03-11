@@ -263,38 +263,38 @@ export const getLastAssistantMessage = (
  */
 export const PAPER_TOOLS_ONLY_NOTE = `
 ═══════════════════════════════════════════════════════════════════
-MODE PAPER TOOLS (TANPA WEB SEARCH)
+FUNCTION TOOLS MODE (NO WEB SEARCH)
 ═══════════════════════════════════════════════════════════════════
 
-CONSTRAINT TEKNIS:
-- Tool google_search TIDAK TERSEDIA di turn ini.
-- JANGAN berjanji akan mencari referensi/literatur.
-- Tools yang tersedia: updateStageData, submitStageForValidation, createArtifact, updateArtifact.
+TECHNICAL CONSTRAINT:
+- Web search is NOT available this turn.
+- Do NOT promise to search for references/literature.
+- Available tools: updateStageData, submitStageForValidation, createArtifact, updateArtifact.
 
-JIKA BUTUH DATA FAKTUAL/REFERENSI:
-- Minta user untuk EKSPLISIT meminta pencarian.
-- Contoh: "Untuk melanjutkan, saya perlu mencari referensi. Bolehkah saya carikan?"
-- JANGAN fabricate/hallucinate referensi - ini TERLARANG.
+IF FACTUAL DATA/REFERENCES ARE NEEDED:
+- Ask user to explicitly request a search.
+- Example: "Untuk melanjutkan, saya perlu mencari referensi. Bolehkah saya carikan?"
+- Do NOT fabricate/hallucinate references — this is FORBIDDEN.
 ═══════════════════════════════════════════════════════════════════`
 
 /**
  * System note when research is incomplete for current stage
- * Strong reminder to use google_search
+ * Strong reminder to search for references
  */
 export const getResearchIncompleteNote = (stage: string, requirement: string): string => `
 ═══════════════════════════════════════════════════════════════════
-PERHATIAN: TAHAP "${stage.toUpperCase()}" BELUM LENGKAP
+ATTENTION: STAGE "${stage.toUpperCase()}" RESEARCH INCOMPLETE
 ═══════════════════════════════════════════════════════════════════
 
 STATUS: ${requirement}
 
-INSTRUKSI WAJIB:
-1. Gunakan tool google_search untuk mencari referensi yang relevan
-2. JANGAN lanjutkan diskusi tanpa melakukan pencarian
-3. JANGAN fabricate/hallucinate referensi - ini TERLARANG
-4. Setelah dapat referensi, baru diskusikan dengan user
+MANDATORY INSTRUCTIONS:
+1. Express your intent to search for relevant references in your response
+2. Do NOT continue discussion without requesting a search first
+3. Do NOT fabricate/hallucinate references — this is FORBIDDEN
+4. After search results arrive, discuss findings with user
 
-JIKA ANDA SKIP PENCARIAN, ANDA MELANGGAR PROTOKOL PAPER WORKFLOW.
+IF YOU SKIP THE SEARCH, YOU ARE VIOLATING THE PAPER WORKFLOW PROTOCOL.
 ═══════════════════════════════════════════════════════════════════`
 
 /**
@@ -304,6 +304,6 @@ JIKA ANDA SKIP PENCARIAN, ANDA MELANGGAR PROTOKOL PAPER WORKFLOW.
 export const getFunctionToolsModeNote = (searchInfo: string): string => `
 ══════════════════════════════════════════════════
 MODE: FUNCTION_TOOLS | ${searchInfo}
-TERSEDIA: createArtifact, updateStageData, submitStageForValidation
-TUGAS: Proses hasil dan lanjutkan workflow dengan user
+AVAILABLE: createArtifact, updateStageData, submitStageForValidation
+TASK: Process results and continue workflow with user
 ══════════════════════════════════════════════════`
