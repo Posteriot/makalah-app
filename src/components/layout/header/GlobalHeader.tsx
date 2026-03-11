@@ -56,6 +56,7 @@ export function GlobalHeader() {
   const { resolvedTheme, setTheme } = useTheme()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [hasMounted, setHasMounted] = useState(false)
   const [isHidden, setIsHidden] = useState(false)
   const [mobileMenuState, setMobileMenuState] = useState(() => ({
     isOpen: false,
@@ -119,13 +120,13 @@ export function GlobalHeader() {
   // Auth session and Convex user data for mobile menu
   const { data: session, isPending: isSessionPending } = useSession()
   const { user: convexUser, isLoading: isConvexLoading } = useCurrentUser()
-  const isAuthenticated = Boolean(session?.user)
+  const hasSession = Boolean(session?.user)
 
   const authViewState: HeaderAuthViewState = isSigningOut
     ? "signingOut"
-    : isSessionPending || (isAuthenticated && isConvexLoading)
+    : !hasMounted || isSessionPending || (hasSession && isConvexLoading)
       ? "loading"
-      : isAuthenticated
+      : hasSession
         ? "authenticated"
         : "unauthenticated"
 
@@ -135,6 +136,10 @@ export function GlobalHeader() {
 
   const currentSearch = searchParams.toString()
   const redirectTarget = `${pathname}${currentSearch ? `?${currentSearch}` : ""}${currentHash}`
+
+  const closeMobileMenu = useCallback(() => {
+    setMobileMenuState({ isOpen: false, pathname })
+  }, [pathname])
 
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY
@@ -163,6 +168,10 @@ export function GlobalHeader() {
   }, [])
 
   useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  useEffect(() => {
     window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
   }, [handleScroll])
@@ -174,13 +183,24 @@ export function GlobalHeader() {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
       if (!target.closest('[data-global-header]')) {
-        setMobileMenuState({ isOpen: false, pathname })
+        closeMobileMenu()
       }
     }
 
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
-  }, [isMobileMenuOpen, pathname])
+  }, [closeMobileMenu, isMobileMenuOpen])
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isMobileMenuOpen])
 
   useEffect(() => {
     setMobileMenuState((prev) => {
@@ -217,7 +237,7 @@ export function GlobalHeader() {
   const handleSignOut = async () => {
     if (isSigningOut) return
     setIsSigningOut(true)
-    setMobileMenuState({ isOpen: false, pathname })
+    closeMobileMenu()
 
     // Clear browser cookie first — crossDomainClient clears localStorage
     // in its init hook (before POST), which can unmount this component.
@@ -317,7 +337,7 @@ export function GlobalHeader() {
               {visibleNavLinks.map((link) => {
                 const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
                 const openInNewTab = shouldOpenInNewTab(link.href)
-                const resolvedHref = resolveNavHref(link.href, shouldShowAuthenticatedUi)
+                const resolvedHref = resolveNavHref(link.href, hasSession)
                 return (
                   <Link
                     key={link.href}
@@ -339,33 +359,6 @@ export function GlobalHeader() {
               })}
             </nav>
           )}
-          {/* Theme Toggle - Mobile (icon only, left of hamburger) */}
-          {shouldShowAuthSkeleton ? (
-            <Skeleton className="md:hidden h-6 w-6 rounded-action mr-2" />
-          ) : shouldShowThemeToggle ? (
-            <button
-              onClick={toggleTheme}
-              className={cn(
-                "md:hidden inline-flex h-6 w-6 items-center justify-center mr-2",
-                "bg-transparent border-0 text-muted-foreground hover:text-foreground",
-                "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-0"
-              )}
-              type="button"
-              title="Toggle theme"
-              aria-label="Toggle theme"
-              disabled={!isThemeReady}
-            >
-              {/* Icon */}
-              <span>
-                {(resolvedTheme ?? "dark") === "dark" ? (
-                  <SunLight className="h-3.5 w-3.5" />
-                ) : (
-                  <HalfMoon className="h-3.5 w-3.5" />
-                )}
-              </span>
-            </button>
-          ) : null}
-
           {/* Mobile Menu Toggle */}
           <button
             onClick={toggleMobileMenu}
@@ -427,119 +420,155 @@ export function GlobalHeader() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <nav className="absolute top-full left-0 right-0 z-40 flex flex-col border-b border-border bg-card p-4 shadow-sm md:hidden">
-          {/* Main Navigation Links */}
-          <div className="flex flex-col gap-1.5">
-            {visibleNavLinks.map((link) => {
-              const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
-              const openInNewTab = shouldOpenInNewTab(link.href)
-              const resolvedHref = resolveNavHref(link.href, shouldShowAuthenticatedUi)
-              return (
-                <Link
-                  key={link.href}
-                  href={resolvedHref}
-                  target={openInNewTab ? "_blank" : undefined}
-                  rel={openInNewTab ? "noopener noreferrer" : undefined}
-                  className={cn(
-                    "flex min-h-[52px] items-center rounded-action border border-transparent px-3.5 py-3",
-                    "text-base font-medium text-narrative tracking-tight text-foreground",
-                    "transition-colors hover:bg-accent/60",
-                    isActive && "border-hairline bg-accent/40 text-foreground"
-                  )}
-                  onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                >
-                  {link.label}
-                </Link>
-              )
-            })}
-          </div>
+        <>
+          <button
+            type="button"
+            aria-label="Tutup menu"
+            className="fixed inset-x-0 top-[60px] bottom-0 z-overlay bg-black/20 backdrop-blur-[2px] md:hidden"
+            onClick={closeMobileMenu}
+          />
+          <nav className="absolute top-full left-0 right-0 z-drawer flex max-h-[calc(100svh-60px)] flex-col overflow-y-auto overscroll-contain border-b border-border bg-card p-4 shadow-sm md:hidden">
+            {/* Main Navigation Links */}
+            <div className="flex flex-col gap-1.5">
+              {visibleNavLinks.map((link) => {
+                const isActive = pathname === link.href || pathname.startsWith(link.href + "/")
+                const openInNewTab = shouldOpenInNewTab(link.href)
+                const resolvedHref = resolveNavHref(link.href, hasSession)
+                return (
+                  <Link
+                    key={link.href}
+                    href={resolvedHref}
+                    target={openInNewTab ? "_blank" : undefined}
+                    rel={openInNewTab ? "noopener noreferrer" : undefined}
+                    className={cn(
+                      "flex min-h-[52px] items-center rounded-action border border-transparent px-3.5 py-3",
+                      "text-base font-medium text-narrative tracking-tight text-foreground",
+                      "transition-colors hover:bg-accent/60",
+                      isActive && "border-hairline bg-accent/40 text-foreground"
+                    )}
+                    onClick={closeMobileMenu}
+                  >
+                    {link.label}
+                  </Link>
+                )
+              })}
+            </div>
 
-          {/* SignedOut: Show login button */}
-          {authViewState === "unauthenticated" && (
-            <AuthButton
-              href={`/sign-in?redirect_url=${encodeURIComponent(redirectTarget)}`}
-              className="mt-2 w-full"
-              contentClassName="text-[11px] font-bold uppercase tracking-widest text-narrative"
-            >
-              Masuk
-            </AuthButton>
-          )}
+            {/* SignedOut: Show login button */}
+            {authViewState === "unauthenticated" && (
+              <AuthButton
+                href={`/sign-in?redirect_url=${encodeURIComponent(redirectTarget)}`}
+                className="mt-2 min-h-11 w-full"
+                contentClassName="text-sm font-medium uppercase tracking-widest text-narrative"
+              >
+                Masuk
+              </AuthButton>
+            )}
 
-          {/* SignedIn: Auth section */}
-          {shouldShowAuthenticatedUi && (
-            <div className="mt-3 rounded-sm border-hairline border-border bg-[color:color-mix(in_oklch,var(--core-card)_78%,var(--core-background))] px-2.5 py-2">
-              <Accordion type="single" collapsible>
-                <AccordionItem value="user" className="border-none">
-                  <AccordionTrigger className="items-center py-0 hover:no-underline [&>svg]:self-center [&>svg]:translate-y-0">
-                    <div className="flex min-h-9 w-full items-center gap-2 rounded-action px-1.5 py-1.5 text-left transition-colors hover:bg-accent">
-                      <span className="flex-1 text-narrative text-sm font-medium text-foreground">
-                        {fullName}
-                      </span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2">
-                    <Link
-                      href="/settings"
-                      onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-accent"
-                    >
-                      <User className="icon-interface" />
-                      <span>Atur Akun</span>
-                    </Link>
+            {/* SignedIn: Auth section */}
+            {shouldShowAuthenticatedUi && (
+              <div className="mt-3 rounded-shell border-main border-border bg-[color:color-mix(in_oklch,var(--core-card)_78%,var(--core-background))] p-2.5">
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="user" className="border-none">
+                    <AccordionTrigger className="items-center rounded-action py-0 hover:no-underline [&>svg]:self-center [&>svg]:translate-y-0">
+                      <div className="flex min-h-11 w-full items-center gap-3 rounded-action px-2 py-2 text-left transition-colors hover:bg-accent">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-action border border-border bg-background/70 text-foreground">
+                          <User className="icon-interface" />
+                        </span>
+                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                          <span className="truncate text-sm font-medium text-narrative text-foreground">
+                            {fullName}
+                          </span>
+                          {convexUser ? (
+                            <SegmentBadge
+                              role={convexUser.role}
+                              subscriptionStatus={convexUser.subscriptionStatus}
+                              className="w-fit shrink-0"
+                            />
+                          ) : null}
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-2">
+                      <button
+                        onClick={toggleTheme}
+                        className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-sm font-medium text-narrative text-foreground transition-colors hover:bg-accent"
+                        type="button"
+                        aria-label="Ganti tema"
+                        disabled={!isThemeReady}
+                      >
+                        {(resolvedTheme ?? "dark") === "dark" ? (
+                          <SunLight className="icon-interface" />
+                        ) : (
+                          <HalfMoon className="icon-interface" />
+                        )}
+                        <span>Ganti tema</span>
+                      </button>
 
-                    <Link
-                      href="/subscription/overview"
-                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-accent"
-                      onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                    >
-                      <CreditCard className="icon-interface" />
-                      <span>Subskripsi</span>
-                    </Link>
+                      <Link
+                        href="/settings"
+                        onClick={closeMobileMenu}
+                        className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-sm font-medium text-narrative text-foreground transition-colors hover:bg-accent"
+                      >
+                        <User className="icon-interface" />
+                        <span>Atur Akun</span>
+                      </Link>
 
-                    <Link
-                      href="/support/technical-report?source=support-page"
-                      className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-accent"
-                      onClick={() => setMobileMenuState({ isOpen: false, pathname })}
-                    >
-                      <WarningTriangle className="icon-interface" />
-                      <span>Lapor Masalah</span>
-                    </Link>
+                      <Link
+                        href="/subscription/overview"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-sm font-medium text-narrative text-foreground transition-colors hover:bg-accent"
+                        onClick={closeMobileMenu}
+                      >
+                        <CreditCard className="icon-interface" />
+                        <span>Subskripsi</span>
+                      </Link>
 
-                    {isAdmin && (
+                      <Link
+                        href="/support/technical-report?source=support-page"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-sm font-medium text-narrative text-foreground transition-colors hover:bg-accent"
+                        onClick={closeMobileMenu}
+                      >
+                        <WarningTriangle className="icon-interface" />
+                        <span>Lapor Masalah</span>
+                      </Link>
+
+                      {isAdmin && (
                         <Link
                           href="/dashboard"
-                          className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative text-foreground transition-colors hover:bg-accent"
-                          onClick={() => setMobileMenuState({ isOpen: false, pathname })}
+                          className="flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-sm font-medium text-narrative text-foreground transition-colors hover:bg-accent"
+                          onClick={closeMobileMenu}
                         >
                           <Settings className="icon-interface" />
                           <span>Admin Panel</span>
                         </Link>
-                    )}
+                      )}
 
-                    <button
-                      onClick={handleSignOut}
-                      disabled={isSigningOut}
-                      className={cn(
-                        "flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-xs text-narrative transition-colors",
-                        isSigningOut
-                          ? "text-muted-foreground cursor-not-allowed"
-                          : "text-destructive hover:bg-destructive/10"
-                      )}
-                      type="button"
-                    >
-                      {isSigningOut ? (
-                        <RefreshDouble className="icon-interface animate-spin" />
-                      ) : (
-                        <LogOut className="icon-interface" />
-                      )}
-                      <span>{isSigningOut ? "Keluar..." : "Sign out"}</span>
-                    </button>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
-          )}
-        </nav>
+                      <button
+                        onClick={handleSignOut}
+                        disabled={isSigningOut}
+                        className={cn(
+                          "flex min-h-11 w-full items-center gap-3 rounded-action px-3 py-2.5 text-sm font-medium text-narrative transition-colors",
+                          isSigningOut
+                            ? "cursor-not-allowed text-muted-foreground"
+                            : "text-destructive hover:bg-destructive/10"
+                        )}
+                        type="button"
+                        aria-label="Keluar"
+                      >
+                        {isSigningOut ? (
+                          <RefreshDouble className="icon-interface animate-spin" />
+                        ) : (
+                          <LogOut className="icon-interface" />
+                        )}
+                        <span>{isSigningOut ? "Keluar..." : "Keluar"}</span>
+                      </button>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
+            )}
+          </nav>
+        </>
       )}
 
     </header>

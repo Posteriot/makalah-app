@@ -5,12 +5,11 @@ import { useMemo, useState } from "react"
 
 type SearchSkillOverviewData = {
   totalApplied: number
-  totalRejected: number
-  rejectionRate: number
-  totalSourcesScored: number
-  totalSourcesFiltered: number
-  tierDistribution: Record<string, number>
-  bySkill: Record<string, { applied: number; rejected: number }>
+  totalAllBlocked: number
+  blockRate: number
+  totalSourcesPassed: number
+  totalSourcesBlocked: number
+  bySkill: Record<string, { applied: number; allBlocked: number }>
 }
 
 type SearchSkillTraceItem = {
@@ -19,12 +18,10 @@ type SearchSkillTraceItem = {
   conversationId: string | null
   searchSkillName: string
   searchSkillAction: string
-  sourcesScored: number | null
-  sourcesFiltered: number | null
-  sourcesPassedTiers: string | null
+  sourcesPassed: number | null
+  sourcesBlocked: number | null
   referencesClaimed: number | null
   referencesMatched: number | null
-  diversityWarning: string | null
   stageScope: string | null
   mode: string
   success: boolean
@@ -50,17 +47,9 @@ function formatTime(ts: number): string {
 
 function getDetailText(item: SearchSkillTraceItem): string {
   if (item.searchSkillName === "source-quality") {
-    const scored = item.sourcesScored ?? 0
-    const filtered = item.sourcesFiltered ?? 0
-    let detail = `${scored} scored, ${filtered} filtered`
-    if (item.sourcesPassedTiers) {
-      try {
-        const tiers = JSON.parse(item.sourcesPassedTiers) as Record<string, number>
-        const tierParts = Object.entries(tiers).map(([t, c]) => `${t}: ${c}`)
-        if (tierParts.length > 0) detail += ` (${tierParts.join(", ")})`
-      } catch { /* ignore */ }
-    }
-    return detail
+    const passed = item.sourcesPassed ?? 0
+    const blocked = item.sourcesBlocked ?? 0
+    return `${passed} passed, ${blocked} blocked`
   }
 
   if (item.searchSkillName === "reference-integrity") {
@@ -117,13 +106,13 @@ export function SearchSkillMonitorPanel({
           <div className="space-y-3">
             <StatRow label="Total Applied" value={overview.totalApplied} />
             <StatRow
-              label="Rejections"
-              value={overview.totalRejected}
-              suffix={`(${formatPercent(overview.rejectionRate)})`}
-              warn={overview.rejectionRate > 0.1}
+              label="All Blocked"
+              value={overview.totalAllBlocked}
+              suffix={`(${formatPercent(overview.blockRate)})`}
+              warn={overview.blockRate > 0.1}
             />
-            <StatRow label="Sources Scored" value={overview.totalSourcesScored} />
-            <StatRow label="Sources Filtered" value={overview.totalSourcesFiltered} />
+            <StatRow label="Sources Passed" value={overview.totalSourcesPassed} />
+            <StatRow label="Sources Blocked" value={overview.totalSourcesBlocked} />
 
             {Object.keys(overview.bySkill).length > 0 && (
               <div className="mt-4 border-t border-border pt-3">
@@ -135,22 +124,9 @@ export function SearchSkillMonitorPanel({
                     <div key={name} className="flex items-center justify-between gap-3 text-xs">
                       <span className="font-mono text-muted-foreground">{name}</span>
                       <span className="font-mono text-[10px] text-foreground">
-                        {stats.applied} applied, {stats.rejected} rejected
+                        {stats.applied} applied, {stats.allBlocked} all-blocked
                       </span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {Object.keys(overview.tierDistribution).length > 0 && (
-              <div className="mt-4 border-t border-border pt-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Tier Distribution
-                </span>
-                <div className="mt-2 space-y-2">
-                  {Object.entries(overview.tierDistribution).map(([tier, count]) => (
-                    <StatRow key={tier} label={tier} value={count} />
                   ))}
                 </div>
               </div>
@@ -229,11 +205,6 @@ export function SearchSkillMonitorPanel({
                         <span className="font-mono text-[10px] text-muted-foreground">
                           {getDetailText(item)}
                         </span>
-                        {item.diversityWarning && (
-                          <span className="ml-2 inline-flex rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-500">
-                            {item.diversityWarning}
-                          </span>
-                        )}
                       </td>
                     </tr>
                   ))}
@@ -278,11 +249,6 @@ export function SearchSkillMonitorPanel({
                         <span className="font-mono text-[10px] text-muted-foreground">
                           {getDetailText(item)}
                         </span>
-                        {item.diversityWarning && (
-                          <span className="mt-1 inline-flex rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-500">
-                            {item.diversityWarning}
-                          </span>
-                        )}
                       </td>
                     </tr>
                   ))}
@@ -328,11 +294,11 @@ function StatRow({
 
 function ActionBadge({ action, compact = false }: { action: string; compact?: boolean }) {
   const normalized = action.toLowerCase()
-  const isPositive = normalized === "scored" || normalized === "validated"
+  const isPositive = normalized === "passed" || normalized === "validated"
 
   const className = isPositive
     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
-    : normalized === "rejected"
+    : normalized === "all-blocked"
       ? "border-rose-500/30 bg-rose-500/10 text-rose-500"
       : "border-border bg-muted/40 text-muted-foreground"
 

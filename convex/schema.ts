@@ -420,11 +420,15 @@ export default defineSchema({
     webSearchModel: v.optional(v.string()), // Dedicated web search model (default: "perplexity/sonar")
     webSearchFallbackModel: v.optional(v.string()), // Fallback web search model (default: "x-ai/grok-3-mini")
     webSearchRetrievers: v.optional(v.array(v.object({
+      name: v.string(),
       enabled: v.boolean(),
       modelId: v.string(),
-      name: v.string(),
       priority: v.number(),
-    }))), // Legacy retriever config kept optional to unblock older dev records
+      providerOptions: v.optional(v.object({
+        maxResults: v.optional(v.number()),
+        engine: v.optional(v.string()),
+      })),
+    }))), // Backward-compatible: legacy records omit providerOptions
 
     // ════════════════════════════════════════════════════════════════
     // Tool Visibility Settings (Admin maintenance toggle)
@@ -1109,11 +1113,7 @@ export default defineSchema({
     activeSkillId: v.optional(v.string()),
     activeSkillVersion: v.optional(v.number()),
     fallbackReason: v.optional(v.string()),
-    provider: v.union(
-      v.literal("vercel-gateway"),
-      v.literal("openrouter"),
-      v.literal("google-ai-studio")
-    ),
+    provider: v.union(v.literal("vercel-gateway"), v.literal("openrouter"), v.literal("google-ai-studio")),
     model: v.string(),
     isPrimaryProvider: v.boolean(),
     failoverUsed: v.boolean(),
@@ -1336,4 +1336,63 @@ export default defineSchema({
     updatedBy: v.optional(v.id("users")),
   })
     .index("by_key", ["key"]),
+
+  // ── Email Template System ─────────────────────────────────
+
+  // Brand-level email settings (colors, fonts, footer)
+  emailBrandSettings: defineTable({
+    logoUrl: v.optional(v.string()),
+    logoStorageId: v.optional(v.id("_storage")),
+    appName: v.string(),
+    primaryColor: v.string(),
+    secondaryColor: v.string(),
+    backgroundColor: v.string(),
+    contentBackgroundColor: v.string(),
+    textColor: v.string(),
+    mutedTextColor: v.string(),
+    fontFamily: v.string(),
+    footerText: v.string(),
+    footerLinks: v.array(v.object({
+      label: v.string(),
+      url: v.string(),
+    })),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }),
+
+  // Per-type email templates with section-based content
+  emailTemplates: defineTable({
+    templateType: v.string(),
+    subject: v.string(),
+    sections: v.array(v.object({
+      id: v.string(),
+      type: v.string(),
+      content: v.optional(v.string()),
+      url: v.optional(v.string()),
+      label: v.optional(v.string()),
+      style: v.optional(v.object({
+        backgroundColor: v.optional(v.string()),
+        textColor: v.optional(v.string()),
+        fontSize: v.optional(v.string()),
+        textAlign: v.optional(v.string()),
+        padding: v.optional(v.string()),
+      })),
+      rows: v.optional(v.array(v.object({
+        label: v.string(),
+        value: v.string(),
+      }))),
+    })),
+    availablePlaceholders: v.array(v.object({
+      key: v.string(),
+      description: v.string(),
+      example: v.string(),
+    })),
+    preRenderedHtml: v.string(),
+    isActive: v.boolean(),
+    version: v.number(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_templateType", ["templateType"])
+    .index("by_active", ["isActive", "templateType"]),
 })

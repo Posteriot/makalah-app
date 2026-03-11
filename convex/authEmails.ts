@@ -3,10 +3,15 @@
 // Helper to send emails via Resend API (used by BetterAuth callbacks in convex/auth.ts)
 // BetterAuth callbacks run in Convex HTTP action context where fetch is available.
 
+// Auth email functions provide hardcoded HTML fallbacks.
+// When DB email templates are active, callers (convex/auth.ts, convex/twoFactorHttp.ts,
+// convex/waitlist.ts) fetch and render templates via emailTemplateHelper.ts first,
+// falling back to these functions if the template is not found or inactive.
+
 const FROM_EMAIL = "Makalah AI <noreply@makalah.ai>";
 const DEFAULT_APP_URL = "https://makalah.ai";
 
-async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
+export async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey) {
     console.warn("[Auth Email] RESEND_API_KEY not set, skipping email to:", to);

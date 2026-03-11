@@ -7,6 +7,7 @@ interface SearchSource {
 
 export function buildSearchResultsContext(
   sources: SearchSource[],
+  searchText?: string,
 ): string {
   if (sources.length === 0) {
     return `## SEARCH RESULTS\nNo sources found from web search. Answer based on your knowledge and inform the user that no web sources were available.`
@@ -19,10 +20,14 @@ export function buildSearchResultsContext(
     })
     .join("\n")
 
+  const searchFindings = searchText?.trim()
+    ? `\n\nSearch findings (raw, for your synthesis — do NOT copy verbatim, rewrite with your own analysis):\n${searchText.trim()}`
+    : ""
+
   return `## SEARCH RESULTS
 You have the following sources from web search.
 Use ONLY these sources for citations. Do not fabricate or guess URLs.
 
 Sources:
-${sourceList}`
+${sourceList}${searchFindings}`
 }

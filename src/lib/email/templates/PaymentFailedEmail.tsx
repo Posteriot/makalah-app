@@ -75,7 +75,7 @@ export function PaymentFailedEmail({
       <Section style={helpBox}>
         <Text style={helpTitle}>Butuh Bantuan?</Text>
         <Text style={helpText}>
-          Jika masalah berlanjut, hubungi kami di support@makalah.ai dengan menyertakan ID transaksi di atas.
+          Jika masalah berlanjut, hubungi kami di dukungan@makalah.ai dengan menyertakan ID transaksi di atas.
         </Text>
       </Section>
     </EmailLayout>

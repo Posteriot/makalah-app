@@ -39,6 +39,10 @@ import type * as conversations from "../conversations.js";
 import type * as createPasswordEndpoint from "../createPasswordEndpoint.js";
 import type * as crons from "../crons.js";
 import type * as documentationSections from "../documentationSections.js";
+import type * as emailBrandSettings from "../emailBrandSettings.js";
+import type * as emailTemplateConstants from "../emailTemplateConstants.js";
+import type * as emailTemplateHelper from "../emailTemplateHelper.js";
+import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as lib_betterAuthIdentityGuard from "../lib/betterAuthIdentityGuard.js";
@@ -51,6 +55,7 @@ import type * as migrations_backfillProviderKeys from "../migrations/backfillPro
 import type * as migrations_backfillWorkingTitle from "../migrations/backfillWorkingTitle.js";
 import type * as migrations_checkDocumentationOrdering from "../migrations/checkDocumentationOrdering.js";
 import type * as migrations_cleanupDuplicateSeedUser from "../migrations/cleanupDuplicateSeedUser.js";
+import type * as migrations_cleanupOldSearchSkillTelemetryFields from "../migrations/cleanupOldSearchSkillTelemetryFields.js";
 import type * as migrations_createContractAlignedSystemPrompt from "../migrations/createContractAlignedSystemPrompt.js";
 import type * as migrations_enableTwoFactorAllUsers from "../migrations/enableTwoFactorAllUsers.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
@@ -61,6 +66,7 @@ import type * as migrations_seedAboutContent from "../migrations/seedAboutConten
 import type * as migrations_seedDefaultAIConfig from "../migrations/seedDefaultAIConfig.js";
 import type * as migrations_seedDefaultSystemPrompt from "../migrations/seedDefaultSystemPrompt.js";
 import type * as migrations_seedDocumentationSections from "../migrations/seedDocumentationSections.js";
+import type * as migrations_seedEmailTemplates from "../migrations/seedEmailTemplates.js";
 import type * as migrations_seedHomeContent from "../migrations/seedHomeContent.js";
 import type * as migrations_seedPembaruanAbstrakSkill from "../migrations/seedPembaruanAbstrakSkill.js";
 import type * as migrations_seedPolicyContent from "../migrations/seedPolicyContent.js";
@@ -68,6 +74,7 @@ import type * as migrations_seedPricingPlans from "../migrations/seedPricingPlan
 import type * as migrations_seedRichTextPages from "../migrations/seedRichTextPages.js";
 import type * as migrations_seedSiteConfig from "../migrations/seedSiteConfig.js";
 import type * as migrations_seedWaitlistConfig from "../migrations/seedWaitlistConfig.js";
+import type * as migrations_splitPaymentTemplates from "../migrations/splitPaymentTemplates.js";
 import type * as migrations_updateAIConfigForToolCalling from "../migrations/updateAIConfigForToolCalling.js";
 import type * as migrations_updateDocumentationChatAgentS5 from "../migrations/updateDocumentationChatAgentS5.js";
 import type * as migrations_updateDocumentationConceptsS4 from "../migrations/updateDocumentationConceptsS4.js";
@@ -147,6 +154,10 @@ declare const fullApi: ApiFromModules<{
   createPasswordEndpoint: typeof createPasswordEndpoint;
   crons: typeof crons;
   documentationSections: typeof documentationSections;
+  emailBrandSettings: typeof emailBrandSettings;
+  emailTemplateConstants: typeof emailTemplateConstants;
+  emailTemplateHelper: typeof emailTemplateHelper;
+  emailTemplates: typeof emailTemplates;
   files: typeof files;
   http: typeof http;
   "lib/betterAuthIdentityGuard": typeof lib_betterAuthIdentityGuard;
@@ -159,6 +170,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillWorkingTitle": typeof migrations_backfillWorkingTitle;
   "migrations/checkDocumentationOrdering": typeof migrations_checkDocumentationOrdering;
   "migrations/cleanupDuplicateSeedUser": typeof migrations_cleanupDuplicateSeedUser;
+  "migrations/cleanupOldSearchSkillTelemetryFields": typeof migrations_cleanupOldSearchSkillTelemetryFields;
   "migrations/createContractAlignedSystemPrompt": typeof migrations_createContractAlignedSystemPrompt;
   "migrations/enableTwoFactorAllUsers": typeof migrations_enableTwoFactorAllUsers;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
@@ -169,6 +181,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedDefaultAIConfig": typeof migrations_seedDefaultAIConfig;
   "migrations/seedDefaultSystemPrompt": typeof migrations_seedDefaultSystemPrompt;
   "migrations/seedDocumentationSections": typeof migrations_seedDocumentationSections;
+  "migrations/seedEmailTemplates": typeof migrations_seedEmailTemplates;
   "migrations/seedHomeContent": typeof migrations_seedHomeContent;
   "migrations/seedPembaruanAbstrakSkill": typeof migrations_seedPembaruanAbstrakSkill;
   "migrations/seedPolicyContent": typeof migrations_seedPolicyContent;
@@ -176,6 +189,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/seedRichTextPages": typeof migrations_seedRichTextPages;
   "migrations/seedSiteConfig": typeof migrations_seedSiteConfig;
   "migrations/seedWaitlistConfig": typeof migrations_seedWaitlistConfig;
+  "migrations/splitPaymentTemplates": typeof migrations_splitPaymentTemplates;
   "migrations/updateAIConfigForToolCalling": typeof migrations_updateAIConfigForToolCalling;
   "migrations/updateDocumentationChatAgentS5": typeof migrations_updateDocumentationChatAgentS5;
   "migrations/updateDocumentationConceptsS4": typeof migrations_updateDocumentationConceptsS4;

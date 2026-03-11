@@ -32,9 +32,11 @@ type TelemetryParams = {
   sourcesFiltered?: number
   sourcesPassedTiers?: string
   retrieverName?: string
+  sourcesPassed?: number
+  sourcesBlocked?: number
   referencesClaimed?: number
   referencesMatched?: number
-  diversityWarning?: string
+  attemptedRetrievers?: string[]
 }
 
 /**

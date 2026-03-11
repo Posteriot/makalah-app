@@ -294,6 +294,20 @@ async function handlePaymentFailed(event: WebhookEvent, internalKey: string) {
   // 3. Send failure email
   if (payment) {
     try {
+      // Determine if Pro payment for template routing
+      const isPro =
+        payment.paymentType === "subscription_initial" ||
+        payment.paymentType === "subscription_renewal"
+      let subscriptionPlanLabel: string | undefined
+      if (isPro) {
+        try {
+          const proPricing = await fetchQuery(api.billing.pricingHelpers.getProPricing, {})
+          subscriptionPlanLabel = proPricing.label
+        } catch {
+          subscriptionPlanLabel = "Pro Bulanan"
+        }
+      }
+
       // Fetch user to get email
       const user = await fetchQuery(api.users.getUserById, {
         userId: payment.userId as Id<"users">,
@@ -306,6 +320,7 @@ async function handlePaymentFailed(event: WebhookEvent, internalKey: string) {
           amount: event.rawAmount ?? payment.amount,
           failureReason: event.failureCode,
           transactionId: providerPaymentId,
+          subscriptionPlanLabel,
         })
 
         console.log(`[Payment] Failed email notification result:`, emailResult)
