@@ -2,7 +2,7 @@
 
 **Tanggal:** 12 Maret 2026
 **Scope:** Desktop chat workspace
-**Status:** Draft tervalidasi obrolan, baseline sebelum audit compliance
+**Status:** Verified setelah audit compliance obrolan
 
 ---
 
@@ -128,6 +128,8 @@ Karena entry point-nya berbeda, affordance balik di artifact panel juga harus ko
   - root `Sesi Paper Lainnya`
   - folder parent nonaktif yang barusan dibuka
 
+Aturan origin ini berlaku untuk parent artifact maupun refrasa.
+
 ### 4.3 Rekomendasi bentuk affordance
 
 Pendekatan terbaik adalah breadcrumb fungsional pendek di area atas artifact panel.
@@ -156,6 +158,7 @@ Artinya:
 - sesi nonaktif tetap nonaktif
 - sesi itu tetap boleh tampil di `Sesi Paper Lainnya`
 - sidebar kiri tidak berubah hanya karena user sedang membaca readonly artifact
+- refrasa readonly mengikuti aturan status yang sama dengan parent artifact-nya
 
 ### 5.2 Navigasi ke chat sumber
 
@@ -195,6 +198,11 @@ Rekomendasi terbaik:
 - beri highlight singkat pada bubble atau artifact signal yang sesuai
 
 Ini yang paling deterministik dan paling jelas buat user.
+
+Target fokus ini berlaku untuk:
+
+- parent artifact
+- refrasa yang diturunkan dari parent artifact
 
 ---
 
@@ -244,6 +252,10 @@ Saat artifact dibuka dari subsistem paper, state tab artifact minimal harus memb
   - `session-manager-folder`
 - `sourceConversationId`
 - `sourceArtifactId` bila relevan
+- `sourceMessageId` atau trigger anchor yang bisa dipakai untuk scroll ke pemantik artifact di chat window
+- `sourceKind`
+  - `artifact`
+  - `refrasa`
 
 Untuk deterministic return ke chat source, jalur navigasi juga harus membawa metadata yang cukup untuk memfokuskan message pemantik artifact.
 
@@ -298,3 +310,21 @@ Desain ini dianggap terpenuhi jika:
 6. route tujuan membuka artifact panel dan memfokuskan pemantik artifact di chat window
 7. artifact orphan menampilkan `Percakapan tidak ditemukan` tanpa link aktif
 
+---
+
+## 12. Checklist Compliance
+
+Checklist ini dipakai untuk audit kesesuaian desain terhadap keputusan obrolan yang sudah divalidasi.
+
+- `workspace panel` diposisikan eksplisit sebagai `Sesi Paper Lainnya`
+- panel kanan tidak memuat sesi aktif
+- sidebar tetap eksklusif untuk sesi aktif
+- preview readonly tidak mengubah status sesi
+- hanya navigasi ke chat sumber yang mengubah sesi nonaktif menjadi aktif
+- artifact panel diperlakukan `origin-aware`
+- flow chat-generated tidak ikut dipaksa memakai rail paper
+- flow sidebar aktif dan flow panel sesi lainnya dibedakan dengan boundary yang jelas
+- artifact orphan tetap bisa dibuka
+- artifact orphan menampilkan `Percakapan tidak ditemukan`
+- `Lihat percakapan terkait` harus deterministik ke pemantik artifact, bukan sekadar ke percakapan umum
+- parent artifact dan refrasa mengikuti aturan navigasi yang sama
