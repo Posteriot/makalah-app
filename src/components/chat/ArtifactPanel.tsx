@@ -56,7 +56,7 @@ export function ArtifactPanel({
   onUpdateTabId,
 }: ArtifactPanelProps) {
   const [isFullsizeOpen, setIsFullsizeOpen] = useState(false)
-  const { user: currentUser } = useCurrentUser()
+  const { user: currentUser, isLoading: isUserLoading } = useCurrentUser()
 
   // Ref for ArtifactViewer actions
   const viewerRef = useRef<ArtifactViewerRef>(null)
@@ -181,6 +181,11 @@ export function ArtifactPanel({
             }}
             onVersionCreated={onUpdateTabId}
           />
+        ) : activeTabId && (isUserLoading || activeArtifact === undefined) ? (
+          <div className="flex h-full flex-col items-center justify-center p-8 text-[var(--chat-muted-foreground)]">
+            <span className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-[var(--chat-muted-foreground)] border-t-transparent" />
+            <p>Memuat artifak...</p>
+          </div>
         ) : activeTabId && !activeArtifact ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
             <Page className="h-10 w-10 text-[var(--chat-muted-foreground)]" />
