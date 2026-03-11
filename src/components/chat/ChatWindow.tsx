@@ -1807,7 +1807,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <div className="text-center text-[var(--chat-muted-foreground)]">
             {/* Mechanical Grace: Rose error color */}
             <WarningCircle className="h-12 w-12 mx-auto mb-4 text-[var(--chat-destructive)]" />
-            <p className="mb-2 font-sans">Percakapan tidak ditemukan</p>
+            <p className="mb-2 font-sans">Chat tidak ditemukan</p>
             <p className="text-sm opacity-75 font-sans">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
           </div>
         </div>
