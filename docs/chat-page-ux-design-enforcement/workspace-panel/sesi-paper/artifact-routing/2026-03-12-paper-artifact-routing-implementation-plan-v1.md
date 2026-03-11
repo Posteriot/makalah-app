@@ -10,6 +10,10 @@
 
 ---
 
+**Out of scope:** Mobile behavior, bulk session management, search/filter baru, merge panel sesi aktif dan sesi tidak aktif menjadi satu window.
+
+---
+
 ### Task 1: Definisikan model origin artifact paper
 
 **Files:**
@@ -161,6 +165,7 @@ Di `ChatLayout`, tambahkan state restore paper panel:
 - `paperPanelView: "root" | "session-folder"`
 - `paperPanelSessionId?: Id<"paperSessions">`
 - `paperPanelSessionTitle?: string`
+- `returnToPaperActiveSession?: boolean` untuk kasus artifact yang dibuka dari sidebar sesi aktif
 
 Saat artifact dari panel sesi lainnya dibuka:
 
@@ -173,6 +178,13 @@ Saat rail balik ditekan dari artifact panel:
 - tutup artifact panel
 - buka kembali workspace panel `paper-sessions-manager`
 - pulihkan `paperPanelView` yang sesuai
+
+Saat rail balik dari origin `paper-active-session` ditekan:
+
+- tutup artifact panel
+- pertahankan conversation route yang sekarang
+- aktifkan panel/sidebar `Sesi Paper` bila activity bar sedang bukan di mode itu
+- jangan buka `Sesi Paper Lainnya`
 
 Di `PaperSessionsManagerPanel`, terima props baru:
 
@@ -246,6 +258,7 @@ Aturan render:
 - `paper-session-manager-folder`: render `Sesi Paper Lainnya / [Nama Folder]`
 
 Pakai target klik minimal 44x44px dan `aria-label` jelas.
+Untuk origin `paper-active-session`, aksi klik harus mengembalikan user ke konteks sidebar aktif, bukan ke workspace panel kanan.
 
 **Step 4: Run tests to verify they pass**
 
@@ -304,6 +317,11 @@ Expected: FAIL karena source focus belum ada.
   - cari message bubble pemantik
   - scroll ke message itu
   - tambahkan class highlight sementara
+
+Jika `sourceMessageId` tidak ditemukan tetapi artifact masih ada:
+
+- fallback ke signal artifact terdekat di conversation source
+- tetap buka artifact panel terkait
 
 Tambahkan anchor/selector stabil di `MessageBubble`, misalnya:
 
@@ -467,6 +485,12 @@ Audit desktop flow ini:
     - panel artifact tujuan terbuka
     - bubble pemantik di-highlight
 
+Tambahkan audit khusus:
+
+13. buka artifact dari sidebar sesi aktif
+14. klik rail balik
+15. verifikasi user kembali ke konteks `Sesi Paper` aktif, bukan ke `Sesi Paper Lainnya`
+
 **Step 4: Commit**
 
 ```bash
@@ -474,3 +498,19 @@ git add <all changed files>
 git commit -m "feat: complete paper artifact routing workflow"
 ```
 
+---
+
+## Compliance Checklist
+
+Checklist ini dipakai untuk audit plan terhadap design doc verified.
+
+- ada boundary eksplisit antara sidebar sesi aktif dan panel `Sesi Paper Lainnya`
+- plan tidak pernah memindahkan sesi aktif ke panel kanan
+- plan mencakup rail untuk origin `paper-active-session`
+- plan mencakup rail untuk origin `paper-session-manager-folder`
+- plan mencakup return ke root `Sesi Paper Lainnya`
+- plan mencakup deterministic route ke pemantik artifact
+- plan mencakup fallback bila `sourceMessageId` tidak ditemukan
+- plan mencakup parent artifact dan refrasa
+- plan mencakup orphan state `Percakapan tidak ditemukan`
+- plan mencakup rename header panel menjadi `Sesi Paper Lainnya`
