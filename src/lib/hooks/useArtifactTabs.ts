@@ -3,6 +3,26 @@
 import { useState, useCallback } from "react"
 import { Id } from "../../../convex/_generated/dataModel"
 
+export type ArtifactOrigin =
+  | "chat"
+  | "paper-active-session"
+  | "paper-session-manager-root"
+  | "paper-session-manager-folder"
+
+export type ArtifactSourceKind = "artifact" | "refrasa"
+
+export interface ArtifactOpenOptions {
+  readOnly?: boolean
+  sourceConversationId?: Id<"conversations">
+  title?: string
+  type?: string
+  origin?: ArtifactOrigin
+  originSessionId?: Id<"paperSessions">
+  originSessionTitle?: string
+  sourceMessageId?: Id<"messages">
+  sourceKind?: ArtifactSourceKind
+}
+
 /**
  * Artifact tab representing an open artifact document
  */
@@ -16,9 +36,18 @@ export interface ArtifactTab {
   /** Source artifact ID — used for refrasa tab reuse */
   sourceArtifactId?: Id<"artifacts">
   /** Whether this tab is read-only (e.g., cross-session artifact preview) */
-  readOnly?: boolean
+  readOnly?: ArtifactOpenOptions["readOnly"]
   /** Source conversation ID — for cross-session artifact references */
-  sourceConversationId?: Id<"conversations">
+  sourceConversationId?: ArtifactOpenOptions["sourceConversationId"]
+  /** Origin surface that opened this artifact */
+  origin?: ArtifactOpenOptions["origin"]
+  /** Paper session origin metadata */
+  originSessionId?: ArtifactOpenOptions["originSessionId"]
+  originSessionTitle?: ArtifactOpenOptions["originSessionTitle"]
+  /** Message anchor for deterministic return to chat source */
+  sourceMessageId?: ArtifactOpenOptions["sourceMessageId"]
+  /** Whether this tab points to a parent artifact or refrasa artifact */
+  sourceKind?: ArtifactOpenOptions["sourceKind"]
 }
 
 /** Maximum number of open artifact tabs */
@@ -60,7 +89,7 @@ export function useArtifactTabs(): UseArtifactTabsReturn {
       const existing = prev.find((tab) => tab.id === artifact.id)
       if (existing) {
         return prev.map((tab) =>
-          tab.id === artifact.id ? { ...tab, title: artifact.title } : tab
+          tab.id === artifact.id ? { ...tab, ...artifact, title: artifact.title } : tab
         )
       }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef, type ReactNode } from "react"
+import { cloneElement, useState, useCallback, useEffect, useRef, type ReactElement, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { ActivityBar, type PanelType } from "../shell/ActivityBar"
 import { TopBar } from "../shell/TopBar"
@@ -9,6 +9,7 @@ import { PanelResizer } from "@/components/ui/PanelResizer"
 import { useConversations } from "@/lib/hooks/useConversations"
 import { useRouter } from "next/navigation"
 import { Id } from "../../../../convex/_generated/dataModel"
+import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { ConversationManagerPanel } from "../workspace-panel/ConversationManagerPanel"
 import { PaperSessionsManagerPanel } from "../workspace-panel/PaperSessionsManagerPanel"
@@ -41,11 +42,11 @@ interface ChatLayoutProps {
   /** Callback when artifact panel toggle is requested */
   onArtifactPanelToggle?: () => void
   /** Callback when artifact is selected */
-  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations">; title?: string; type?: string }) => void
+  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => void
   /** Currently active artifact in panel */
   activeArtifactId?: Id<"artifacts"> | null
   /** Artifact panel content (passed from parent) */
-  artifactPanel?: ReactNode
+  artifactPanel?: ReactElement<ArtifactPanelNavigationProps>
   /** Number of artifacts (for header badge) */
   artifactCount?: number
   /** Mobile sidebar open state (controlled) */
@@ -53,6 +54,14 @@ interface ChatLayoutProps {
   /** Mobile sidebar open state change (controlled) */
   onMobileSidebarOpenChange?: (open: boolean) => void
 }
+
+interface ArtifactPanelNavigationProps {
+  onReturnToPaperRoot?: () => void
+  onReturnToPaperSession?: () => void
+  onReturnToActivePaperSession?: () => void
+}
+
+type PaperPanelView = "root" | "session-folder"
 
 // Default dimensions
 const DEFAULT_SIDEBAR_WIDTH = 280
@@ -92,12 +101,26 @@ export function ChatLayout({
   const [workspacePanelMode, setWorkspacePanelMode] = useState<
     "conversation-manager" | "paper-sessions-manager" | null
   >(null)
+  const [paperPanelView, setPaperPanelView] = useState<PaperPanelView>("root")
+  const [paperPanelSessionId, setPaperPanelSessionId] = useState<Id<"paperSessions"> | null>(null)
+  const [paperPanelSessionTitle, setPaperPanelSessionTitle] = useState<string | null>(null)
   const preservedArtifactRef = useRef<{
     wasOpen: boolean
     artifactId: Id<"artifacts"> | null
   }>({
     wasOpen: false,
     artifactId: null,
+  })
+  const paperNavigationRef = useRef<{
+    returnToActiveSession: boolean
+    view: PaperPanelView
+    sessionId: Id<"paperSessions"> | null
+    sessionTitle: string | null
+  }>({
+    returnToActiveSession: false,
+    view: "root",
+    sessionId: null,
+    sessionTitle: null,
   })
 
   // Layout state
@@ -338,6 +361,15 @@ export function ChatLayout({
       wasOpen: isArtifactPanelOpen,
       artifactId: activeArtifactId ?? null,
     }
+    paperNavigationRef.current = {
+      returnToActiveSession: false,
+      view: "root",
+      sessionId: null,
+      sessionTitle: null,
+    }
+    setPaperPanelView("root")
+    setPaperPanelSessionId(null)
+    setPaperPanelSessionTitle(null)
     setWorkspacePanelMode("paper-sessions-manager")
   }, [activeArtifactId, isArtifactPanelOpen])
 
@@ -348,6 +380,90 @@ export function ChatLayout({
   const handleClosePaperSessionsManager = useCallback(() => {
     setWorkspacePanelMode(null)
   }, [])
+
+  const handlePaperPanelSelectionChange = useCallback((selection: {
+    view: PaperPanelView
+    sessionId?: Id<"paperSessions">
+    sessionTitle?: string
+  }) => {
+    if (selection.view === "root") {
+      setPaperPanelView("root")
+      setPaperPanelSessionId(null)
+      setPaperPanelSessionTitle(null)
+      return
+    }
+
+    setPaperPanelView("session-folder")
+    setPaperPanelSessionId(selection.sessionId ?? null)
+    setPaperPanelSessionTitle(selection.sessionTitle ?? null)
+  }, [])
+
+  const closeArtifactPanelForPaperReturn = useCallback(() => {
+    if (isArtifactPanelOpen && onArtifactPanelToggle) {
+      onArtifactPanelToggle()
+    }
+  }, [isArtifactPanelOpen, onArtifactPanelToggle])
+
+  const handleSidebarArtifactSelect = useCallback((artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => {
+    if (opts?.origin === "paper-active-session") {
+      paperNavigationRef.current = {
+        returnToActiveSession: true,
+        view: "root",
+        sessionId: opts.originSessionId ?? null,
+        sessionTitle: opts.originSessionTitle ?? null,
+      }
+    }
+
+    onArtifactSelect?.(artifactId, opts)
+  }, [onArtifactSelect])
+
+  const handlePaperPanelArtifactSelect = useCallback((artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => {
+    paperNavigationRef.current = {
+      returnToActiveSession: false,
+      view: paperPanelView,
+      sessionId: paperPanelSessionId ?? opts?.originSessionId ?? null,
+      sessionTitle: paperPanelSessionTitle ?? opts?.originSessionTitle ?? null,
+    }
+    setWorkspacePanelMode(null)
+    onArtifactSelect?.(artifactId, opts)
+  }, [onArtifactSelect, paperPanelSessionId, paperPanelSessionTitle, paperPanelView])
+
+  const handleReturnToPaperRoot = useCallback(() => {
+    closeArtifactPanelForPaperReturn()
+    setActivePanel("paper")
+    paperNavigationRef.current = {
+      returnToActiveSession: false,
+      view: "root",
+      sessionId: null,
+      sessionTitle: null,
+    }
+    setPaperPanelView("root")
+    setPaperPanelSessionId(null)
+    setPaperPanelSessionTitle(null)
+    setWorkspacePanelMode("paper-sessions-manager")
+  }, [closeArtifactPanelForPaperReturn])
+
+  const handleReturnToPaperSession = useCallback(() => {
+    const snapshot = paperNavigationRef.current
+    closeArtifactPanelForPaperReturn()
+    setActivePanel("paper")
+
+    if (snapshot.returnToActiveSession) {
+      setWorkspacePanelMode(null)
+      return
+    }
+
+    setPaperPanelView(snapshot.view)
+    setPaperPanelSessionId(snapshot.sessionId)
+    setPaperPanelSessionTitle(snapshot.sessionTitle)
+    setWorkspacePanelMode("paper-sessions-manager")
+  }, [closeArtifactPanelForPaperReturn])
+
+  const handleReturnToActivePaperSession = useCallback(() => {
+    closeArtifactPanelForPaperReturn()
+    setActivePanel("paper")
+    setWorkspacePanelMode(null)
+  }, [closeArtifactPanelForPaperReturn])
 
   // Dynamic grid columns based on collapsed state and resizing
   const getGridTemplateColumns = () => {
@@ -364,6 +480,14 @@ export function ChatLayout({
   const chatInlinePadding = !isSidebarCollapsed && isRightPanelOpen
     ? "max(3rem, calc((100% - var(--chat-main-content-max-width)) / 2))"
     : "max(1rem, calc((100% - var(--chat-main-content-max-width)) / 2))"
+
+  const renderedArtifactPanel = artifactPanel
+    ? cloneElement(artifactPanel, {
+        onReturnToPaperRoot: handleReturnToPaperRoot,
+        onReturnToPaperSession: handleReturnToPaperSession,
+        onReturnToActivePaperSession: handleReturnToActivePaperSession,
+      })
+    : null
 
   return (
     <div
@@ -420,7 +544,7 @@ export function ChatLayout({
             onNewChat={handleNewChat}
             onDeleteConversation={handleDeleteConversation}
             onUpdateConversationTitle={handleUpdateConversationTitle}
-            onArtifactSelect={onArtifactSelect}
+            onArtifactSelect={handleSidebarArtifactSelect}
             activeArtifactId={activeArtifactId}
             isArtifactPanelOpen={isArtifactPanelOpen}
             onArtifactPanelToggle={onArtifactPanelToggle}
@@ -483,10 +607,14 @@ export function ChatLayout({
             <PaperSessionsManagerPanel
               currentConversationId={conversationId}
               onClose={handleClosePaperSessionsManager}
-              onArtifactSelect={onArtifactSelect}
+              onArtifactSelect={handlePaperPanelArtifactSelect}
+              initialView={paperPanelView}
+              initialSessionId={paperPanelSessionId}
+              initialSessionTitle={paperPanelSessionTitle}
+              onSelectionChange={handlePaperPanelSelectionChange}
             />
           ) : (
-            artifactPanel
+            renderedArtifactPanel
           )}
         </aside>
       </div>

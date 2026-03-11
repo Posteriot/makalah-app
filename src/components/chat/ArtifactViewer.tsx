@@ -38,6 +38,7 @@ interface ArtifactViewerProps {
   artifactId: Id<"artifacts"> | null
   readOnly?: boolean
   sourceConversationId?: Id<"conversations">
+  sourceMessageId?: Id<"messages">
   onCloseReadOnlyTab?: () => void
   onOpenRefrasaTab?: (tab: { id: Id<"artifacts">; title: string; type: string; sourceArtifactId?: Id<"artifacts"> }) => void
   onVersionCreated?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
@@ -103,7 +104,7 @@ function getStageLabelSafe(stageId: string | undefined): string {
 }
 
 export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>(
-  function ArtifactViewer({ artifactId, readOnly, sourceConversationId, onCloseReadOnlyTab, onOpenRefrasaTab, onVersionCreated }, ref) {
+  function ArtifactViewer({ artifactId, readOnly, sourceConversationId, sourceMessageId, onCloseReadOnlyTab, onOpenRefrasaTab, onVersionCreated }, ref) {
     const [copied, setCopied] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -307,6 +308,16 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
     const language = artifact.format ? formatToLanguage[artifact.format] : undefined
     const shouldRenderMarkdown = !isMermaid && !isChartArtifact && !isCodeArtifact
     const isInvalidated = isArtifactInvalidated(artifact)
+    const sourceChatHref = (() => {
+      if (!sourceConversationId || !artifactId) return null
+
+      const params = new URLSearchParams({ artifact: String(artifactId) })
+      if (sourceMessageId) {
+        params.set("sourceMessage", String(sourceMessageId))
+      }
+
+      return `/chat/${sourceConversationId}?${params.toString()}`
+    })()
     const invalidatedStageLabel = artifact.invalidatedByRewindToStage
       ? getStageLabelSafe(artifact.invalidatedByRewindToStage)
       : null
@@ -401,11 +412,11 @@ export const ArtifactViewer = forwardRef<ArtifactViewerRef, ArtifactViewerProps>
                       <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
                       <span className="font-mono text-[11px] text-muted-foreground">
                         Artifak dari sesi lain. Mode hanya baca.
-                        {sourceConversationId && sourceConversation ? (
+                        {sourceConversationId && sourceConversation && sourceChatHref ? (
                           <>
                             {" "}
                             <Link
-                              href={`/chat/${sourceConversationId}?artifact=${artifactId}`}
+                              href={sourceChatHref}
                               onClick={() => onCloseReadOnlyTab?.()}
                               className="text-sky-500 hover:underline"
                             >

@@ -18,16 +18,10 @@ import { useEffect, useState, type MouseEvent } from "react"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { resolvePaperDisplayTitle } from "@/lib/paper/title-resolver"
 import { toast } from "sonner"
+import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 
 /** Options for artifact selection (supports read-only cross-session preview) */
-export interface ArtifactSelectOpts {
-  readOnly?: boolean
-  sourceConversationId?: Id<"conversations">
-  /** Artifact title — passed so tab can display it immediately without extra query */
-  title?: string
-  /** Artifact type — passed for tab metadata */
-  type?: string
-}
+export type ArtifactSelectOpts = ArtifactOpenOptions
 
 interface SidebarPaperSessionsProps {
   currentConversationId: string | null
@@ -56,6 +50,7 @@ interface ArtifactItem {
   type: string
   version: number
   conversationId: Id<"conversations">
+  messageId?: Id<"messages">
   invalidatedAt?: number
   sourceArtifactId?: Id<"artifacts">
   createdAt: number
@@ -494,6 +489,8 @@ function PaperFolderItem({
               <ArtifactTreeItem
                 key={artifact._id}
                 artifact={artifact}
+                sessionId={session._id}
+                sessionTitle={resolvedTitle}
                 conversationId={session.conversationId}
                 activeArtifactId={activeArtifactId}
                 onArtifactSelect={onArtifactSelect}
@@ -513,6 +510,8 @@ function PaperFolderItem({
  */
 function ArtifactTreeItem({
   artifact,
+  sessionId,
+  sessionTitle,
   conversationId,
   activeArtifactId,
   onArtifactSelect,
@@ -521,6 +520,8 @@ function ArtifactTreeItem({
   onCloseMobile,
 }: {
   artifact: ArtifactItem
+  sessionId: Id<"paperSessions">
+  sessionTitle: string
   conversationId: Id<"conversations">
   activeArtifactId?: Id<"artifacts"> | null
   onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactSelectOpts) => void
@@ -542,6 +543,12 @@ function ArtifactTreeItem({
       onArtifactSelect(artifact._id, {
         title: artifact.title,
         type: artifact.type,
+        origin: "paper-active-session",
+        originSessionId: sessionId,
+        originSessionTitle: sessionTitle,
+        sourceConversationId: conversationId,
+        sourceMessageId: artifact.messageId,
+        sourceKind: artifact.type === "refrasa" ? "refrasa" : "artifact",
       })
     }
     // Close mobile menu

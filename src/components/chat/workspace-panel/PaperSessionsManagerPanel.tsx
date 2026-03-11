@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from "react"
 import { useQuery } from "convex/react"
-import { ArrowLeft, Folder, NavArrowRight, Page } from "iconoir-react"
+import { Folder, NavArrowRight, Page } from "iconoir-react"
 import { api } from "@convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { resolvePaperDisplayTitle } from "@/lib/paper/title-resolver"
 import { cn } from "@/lib/utils"
+import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 import {
   STAGE_ORDER,
   getStageLabel,
@@ -20,14 +21,17 @@ import { WorkspacePanelShell } from "./WorkspacePanelShell"
 interface PaperSessionsManagerPanelProps {
   currentConversationId?: string | null
   onClose: () => void
+  initialView?: "root" | "session-folder"
+  initialSessionId?: Id<"paperSessions"> | null
+  initialSessionTitle?: string | null
+  onSelectionChange?: (selection: {
+    view: "root" | "session-folder"
+    sessionId?: Id<"paperSessions">
+    sessionTitle?: string
+  }) => void
   onArtifactSelect?: (
     artifactId: Id<"artifacts">,
-    opts?: {
-      readOnly?: boolean
-      sourceConversationId?: Id<"conversations">
-      title?: string
-      type?: string
-    }
+    opts?: ArtifactOpenOptions
   ) => void
 }
 
@@ -46,6 +50,7 @@ interface ArtifactItem {
   type: string
   version: number
   conversationId: Id<"conversations">
+  messageId?: Id<"messages">
   invalidatedAt?: number
   sourceArtifactId?: Id<"artifacts">
   createdAt: number
@@ -90,10 +95,16 @@ function getLatestArtifactVersions(artifacts: ArtifactItem[]): ArtifactItem[] {
 export function PaperSessionsManagerPanel({
   currentConversationId = null,
   onClose,
+  initialView = "root",
+  initialSessionId = null,
+  initialSessionTitle: _initialSessionTitle,
+  onSelectionChange,
   onArtifactSelect,
 }: PaperSessionsManagerPanelProps) {
   const { user, isLoading: isUserLoading } = useCurrentUser()
-  const [selectedSessionId, setSelectedSessionId] = useState<Id<"paperSessions"> | null>(null)
+  const [uncontrolledSelectedSessionId, setUncontrolledSelectedSessionId] = useState<Id<"paperSessions"> | null>(
+    initialView === "session-folder" ? initialSessionId : null
+  )
   const hasActiveConversation = Boolean(currentConversationId)
   const { session: activeSession, isLoading: rawSessionLoading } = usePaperSession(
     hasActiveConversation
@@ -125,6 +136,11 @@ export function PaperSessionsManagerPanel({
       return acc
     }, {})
   }, [allArtifacts])
+
+  const selectedSessionId =
+    onSelectionChange
+      ? (initialView === "session-folder" ? initialSessionId ?? null : null)
+      : uncontrolledSelectedSessionId
 
   const selectedSession = useMemo(
     () => otherSessions.find((session) => session._id === selectedSessionId) ?? null,
@@ -164,15 +180,21 @@ export function PaperSessionsManagerPanel({
 
     if (selectedSession && user) {
       return (
-        <PaperSessionArtifactsView
-          session={selectedSession}
-          artifacts={artifactsByConversation?.[String(selectedSession.conversationId)]}
-          onBack={() => setSelectedSessionId(null)}
-          onArtifactSelect={(artifactId, opts) => {
-            onArtifactSelect?.(artifactId, opts)
-            onClose()
-          }}
-        />
+          <PaperSessionArtifactsView
+            session={selectedSession}
+            artifacts={artifactsByConversation?.[String(selectedSession.conversationId)]}
+            onBack={() => {
+              if (onSelectionChange) {
+                onSelectionChange({ view: "root" })
+                return
+              }
+              setUncontrolledSelectedSessionId(null)
+            }}
+            onArtifactSelect={(artifactId, opts) => {
+              onArtifactSelect?.(artifactId, opts)
+              onClose()
+            }}
+          />
       )
     }
 
@@ -183,7 +205,13 @@ export function PaperSessionsManagerPanel({
             key={session._id}
             session={session}
             artifacts={artifactsByConversation?.[String(session.conversationId)]}
-            onSelect={() => setSelectedSessionId(session._id)}
+            onSelect={(selection) => {
+              if (onSelectionChange) {
+                onSelectionChange(selection)
+                return
+              }
+              setUncontrolledSelectedSessionId(selection.sessionId)
+            }}
           />
         ))}
       </div>
@@ -191,7 +219,7 @@ export function PaperSessionsManagerPanel({
   })()
 
   return (
-    <WorkspacePanelShell title="Sesi Paper" onClose={onClose}>
+    <WorkspacePanelShell title="Sesi Paper Lainnya" onClose={onClose}>
       {content}
     </WorkspacePanelShell>
   )
@@ -204,7 +232,11 @@ function PaperSessionFolderButton({
 }: {
   session: PaperSessionListItem
   artifacts?: ArtifactItem[]
-  onSelect: () => void
+  onSelect: (selection: {
+    view: "session-folder"
+    sessionId: Id<"paperSessions">
+    sessionTitle: string
+  }) => void
 }) {
   const conversation = useQuery(api.conversations.getConversation, {
     conversationId: session.conversationId,
@@ -228,7 +260,13 @@ function PaperSessionFolderButton({
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={() =>
+        onSelect({
+          view: "session-folder",
+          sessionId: session._id,
+          sessionTitle: displayTitle,
+        })
+      }
       aria-label={`Buka sesi paper ${displayTitle}`}
       className={cn(
         "flex w-full items-start gap-3 px-5 py-4 text-left transition-colors duration-150",
@@ -267,12 +305,7 @@ function PaperSessionArtifactsView({
   onBack: () => void
   onArtifactSelect?: (
     artifactId: Id<"artifacts">,
-    opts?: {
-      readOnly?: boolean
-      sourceConversationId?: Id<"conversations">
-      title?: string
-      type?: string
-    }
+    opts?: ArtifactOpenOptions
   ) => void
 }) {
   const conversation = useQuery(api.conversations.getConversation, {
@@ -289,28 +322,48 @@ function PaperSessionArtifactsView({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b border-[color:var(--chat-border)] px-5 py-4">
-        <button
-          type="button"
-          onClick={onBack}
-          className="mb-3 inline-flex items-center gap-2 rounded-action text-[11px] font-mono text-[var(--chat-muted-foreground)] transition-colors duration-150 hover:text-[var(--chat-foreground)]"
-          aria-label="Kembali ke daftar sesi paper"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Semua sesi
-        </button>
-        <div className="flex items-start gap-2">
-          <Folder
-            className="mt-0.5 h-[18px] w-[18px] shrink-0 text-sky-500 dark:text-sky-400 [&_path]:fill-current [&_path]:stroke-current"
-            aria-hidden="true"
-          />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-[var(--chat-foreground)]">
-              {displayTitle}
-            </p>
-            <p className="mt-1 text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-              {artifacts === undefined ? "Memuat artifak..." : `${latestArtifacts.length} artifak`}
-            </p>
-          </div>
+        <div className="flex flex-wrap items-center gap-0.5 text-[11px] font-mono">
+          <button
+            type="button"
+            onClick={onBack}
+            className={cn(
+              "inline-flex h-6 w-6 items-center justify-center rounded-action",
+              "text-sky-700 transition-colors duration-150 dark:text-sky-300",
+              "hover:bg-[var(--chat-accent)] hover:text-sky-800 dark:hover:text-sky-200"
+            )}
+            aria-label="Kembali ke daftar sesi paper"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M9 7 5 11l4 4" />
+              <path d="M5 11h8.5c3.75 0 5.5 1.75 5.5 5 0 2.15-1.1 3.85-3 5" />
+            </svg>
+          </button>
+          <span
+            className={cn(
+              "inline-flex min-h-8 items-center gap-1 rounded-action px-1.5 py-0.5 text-left text-[11px] font-mono font-medium leading-none",
+              "text-sky-700 dark:text-sky-300"
+            )}
+          >
+            <Folder
+              className="h-[15px] w-[15px] shrink-0 text-sky-500 dark:text-sky-400 [&_path]:fill-current [&_path]:stroke-current"
+              aria-hidden="true"
+            />
+            {displayTitle}
+          </span>
+        </div>
+        <div className="mt-2 pl-7">
+          <p className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
+            {artifacts === undefined ? "Memuat artifak..." : `${latestArtifacts.length} artifak`}
+          </p>
         </div>
       </div>
 
@@ -339,22 +392,27 @@ function PaperSessionArtifactsView({
                   onArtifactSelect?.(artifact._id, {
                     readOnly: true,
                     sourceConversationId: session.conversationId,
+                    origin: "paper-session-manager-folder",
+                    originSessionId: session._id,
+                    originSessionTitle: displayTitle,
+                    sourceMessageId: artifact.messageId,
+                    sourceKind: artifact.type === "refrasa" ? "refrasa" : "artifact",
                     title: artifact.title,
                     type: artifact.type,
                   })
                 }
                 aria-label={`Buka artifak ${artifact.title}`}
                 className={cn(
-                  "flex w-full items-center gap-3 px-5 py-4 text-left transition-colors duration-150",
+                  "flex w-full items-start gap-3 pl-11 pr-5 py-4 text-left transition-colors duration-150",
                   "hover:bg-[var(--chat-accent)]"
                 )}
               >
                 {artifact.type === "refrasa" ? (
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--chat-info)] text-[9px] font-mono font-bold text-[var(--chat-info-foreground)]">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--chat-info)] text-[9px] font-mono font-bold text-[var(--chat-info-foreground)]">
                     R
                   </span>
                 ) : (
-                  <Page className="h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]" />
+                  <Page className="mt-0.5 h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]" />
                 )}
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-sm font-medium text-[var(--chat-foreground)]">
@@ -365,7 +423,7 @@ function PaperSessionArtifactsView({
                   </span>
                 </span>
                 <NavArrowRight
-                  className="h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]"
                   aria-hidden="true"
                 />
               </button>

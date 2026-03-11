@@ -27,6 +27,7 @@ export function ArtifactIndicator({
     <button
       type="button"
       onClick={() => onSelect(artifactId)}
+      data-artifact-trigger-id={artifactId}
       className={cn(
         "group w-full cursor-pointer rounded-lg border px-3 py-2.5 text-left transition-colors duration-150",
         "border-[color:var(--chat-border)] bg-[var(--chat-card)] hover:bg-[var(--chat-accent)] hover:border-[color:var(--chat-border)]",

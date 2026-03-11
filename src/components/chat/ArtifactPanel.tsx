@@ -14,6 +14,7 @@ import { Page, Xmark } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { FullsizeArtifactModal } from "./FullsizeArtifactModal"
 import { Button } from "@/components/ui/button"
+import { ArtifactOriginRail } from "./ArtifactOriginRail"
 
 interface ArtifactPanelProps {
   conversationId: Id<"conversations"> | null
@@ -26,6 +27,9 @@ interface ArtifactPanelProps {
   onTabClose: (tabId: Id<"artifacts">) => void
   onOpenTab?: (tab: ArtifactTab) => void
   onUpdateTabId?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
+  onReturnToPaperRoot?: () => void
+  onReturnToPaperSession?: () => void
+  onReturnToActivePaperSession?: () => void
 }
 
 /**
@@ -54,6 +58,9 @@ export function ArtifactPanel({
   onTabClose,
   onOpenTab,
   onUpdateTabId,
+  onReturnToPaperRoot,
+  onReturnToPaperSession,
+  onReturnToActivePaperSession,
 }: ArtifactPanelProps) {
   const [isFullsizeOpen, setIsFullsizeOpen] = useState(false)
   const { user: currentUser, isLoading: isUserLoading } = useCurrentUser()
@@ -65,6 +72,7 @@ export function ArtifactPanel({
   const activeTabForQuery = activeTabId ? openTabs.find((t) => t.id === activeTabId) : null
   const isReadOnlyActive = activeTabForQuery?.readOnly ?? false
   const sourceConvId = activeTabForQuery?.sourceConversationId
+  const sourceMessageId = activeTabForQuery?.sourceMessageId
 
   // Resolve active artifact directly by ID so read-only/orphan artifacts remain
   // viewable even when the source conversation has been deleted.
@@ -156,6 +164,13 @@ export function ArtifactPanel({
 
       {/* Main viewer area */}
       <div className="flex-1 overflow-hidden">
+        <ArtifactOriginRail
+          origin={activeTab?.origin}
+          originSessionTitle={activeTab?.originSessionTitle}
+          onReturnToPaperRoot={onReturnToPaperRoot}
+          onReturnToPaperSession={onReturnToPaperSession}
+          onReturnToActivePaperSession={onReturnToActivePaperSession}
+        />
         {activeTabId && isRefrasaTab && conversationId && currentUser?._id ? (
           <RefrasaTabContent
             artifactId={activeTabId}
@@ -171,6 +186,7 @@ export function ArtifactPanel({
             artifactId={activeTabId}
             readOnly={isReadOnly}
             sourceConversationId={sourceConversationId}
+            sourceMessageId={sourceMessageId}
             onCloseReadOnlyTab={() => {
               if (activeTabId && isReadOnly) {
                 onTabClose(activeTabId)
@@ -232,11 +248,15 @@ export function ArtifactPanel({
           onVersionCreated={onUpdateTabId}
           readOnly={isReadOnly}
           sourceConversationId={sourceConversationId}
+          sourceMessageId={sourceMessageId}
           onCloseReadOnlyTab={() => {
             if (activeTabId && isReadOnly) {
               onTabClose(activeTabId)
             }
           }}
+          onReturnToPaperRoot={onReturnToPaperRoot}
+          onReturnToPaperSession={onReturnToPaperSession}
+          onReturnToActivePaperSession={onReturnToActivePaperSession}
         />
       )}
     </div>

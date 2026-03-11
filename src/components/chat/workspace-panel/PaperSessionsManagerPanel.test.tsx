@@ -60,6 +60,7 @@ describe("PaperSessionsManagerPanel", () => {
       />
     )
 
+    expect(screen.getByText("Sesi Paper Lainnya")).toBeInTheDocument()
     expect(screen.getByText("Belum ada sesi penyusunan paper.")).toBeInTheDocument()
     expect(screen.queryByText("Memuat sesi paper...")).not.toBeInTheDocument()
   })
@@ -164,6 +165,10 @@ describe("PaperSessionsManagerPanel", () => {
     expect(onArtifactSelect).toHaveBeenCalledWith("artifact-1", {
       readOnly: true,
       sourceConversationId: "conversation-other",
+      origin: "paper-session-manager-folder",
+      originSessionId: "session-other",
+      originSessionTitle: "Draft lain",
+      sourceKind: "artifact",
       title: "Pendahuluan",
       type: "section",
     })

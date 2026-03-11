@@ -171,4 +171,28 @@ describe("SidebarPaperSessions desktop", () => {
 
     expect(screen.getByText(/memuat artifak/i)).toBeInTheDocument()
   })
+
+  it("mengirim origin paper-active-session saat artifact sesi aktif diklik", () => {
+    const onArtifactSelect = vi.fn()
+
+    render(
+      <SidebarPaperSessions
+        currentConversationId="conversation-active"
+        onOpenPaperSessionsManager={vi.fn()}
+        onArtifactSelect={onArtifactSelect}
+      />
+    )
+
+    fireEvent.click(screen.getByText("Pendahuluan"))
+
+    expect(onArtifactSelect).toHaveBeenCalledWith("artifact-1", {
+      title: "Pendahuluan",
+      type: "section",
+      origin: "paper-active-session",
+      originSessionId: "session-active",
+      originSessionTitle: "Draft aktif",
+      sourceConversationId: "conversation-active",
+      sourceKind: "artifact",
+    })
+  })
 })

@@ -61,6 +61,10 @@ interface ChatWindowProps {
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
   /** All artifacts for this conversation (for persisted artifact signals after refresh) */
   artifacts?: ConversationArtifact[]
+  sourceFocusTarget?: {
+    artifactId: Id<"artifacts">
+    sourceMessageId?: Id<"messages">
+  } | null
 }
 
 type ChatListRow =
@@ -80,6 +84,41 @@ const VALIDATION_PANEL_COMPACT_WIDTH = 680
 interface PendingStarterPromptPayload {
   conversationId: string
   prompt: string
+}
+
+export function resolveArtifactSourceFocusTarget(
+  root: ParentNode,
+  params: {
+    artifactId?: string | null
+    sourceMessageId?: string | null
+  }
+) {
+  if (params.sourceMessageId) {
+    const messageNode = root.querySelector<HTMLElement>(
+      `[data-message-id="${params.sourceMessageId}"]`
+    )
+    if (messageNode) {
+      return {
+        element: messageNode,
+        highlightedMessageId: params.sourceMessageId,
+      }
+    }
+  }
+
+  if (params.artifactId) {
+    const triggerNode = root.querySelector<HTMLElement>(
+      `[data-artifact-trigger-id="${params.artifactId}"]`
+    )
+    if (triggerNode) {
+      const messageNode = triggerNode.closest<HTMLElement>("[data-message-id]")
+      return {
+        element: messageNode ?? triggerNode,
+        highlightedMessageId: messageNode?.dataset.messageId ?? null,
+      }
+    }
+  }
+
+  return null
 }
 
 function setPendingStarterPrompt(conversationId: string, prompt: string) {
@@ -362,7 +401,13 @@ function PendingAssistantLaneIndicator() {
   )
 }
 
-export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, artifacts: conversationArtifacts }: ChatWindowProps) {
+export function ChatWindow({
+  conversationId,
+  onMobileMenuClick,
+  onArtifactSelect,
+  artifacts: conversationArtifacts,
+  sourceFocusTarget,
+}: ChatWindowProps) {
   const router = useRouter()
   const { user: currentUser } = useCurrentUser()
 
@@ -390,6 +435,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
   const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
   const [chatViewportWidth, setChatViewportWidth] = useState(0)
   const [processUi, setProcessUi] = useState<{
@@ -406,6 +452,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const processIntervalRef = useRef<number | null>(null)
   const processHideTimeoutRef = useRef<number | null>(null)
   const processStartedAtRef = useRef<number | null>(null)
+  const sourceFocusTimeoutRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
   const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
@@ -730,6 +777,41 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     () => buildChatQuotaOfferFromError(error, effectiveTier),
     [error, effectiveTier]
   )
+
+  useEffect(() => {
+    if (!sourceFocusTarget) return
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      const target = resolveArtifactSourceFocusTarget(document, {
+        artifactId: String(sourceFocusTarget.artifactId),
+        sourceMessageId: sourceFocusTarget.sourceMessageId
+          ? String(sourceFocusTarget.sourceMessageId)
+          : null,
+      })
+
+      if (!target) return
+
+      target.element.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      })
+
+      if (sourceFocusTimeoutRef.current) {
+        window.clearTimeout(sourceFocusTimeoutRef.current)
+      }
+
+      if (target.highlightedMessageId) {
+        setHighlightedMessageId(target.highlightedMessageId)
+        sourceFocusTimeoutRef.current = window.setTimeout(() => {
+          setHighlightedMessageId(null)
+        }, 2200)
+      }
+    })
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame)
+    }
+  }, [messages, sourceFocusTarget])
 
   type AttachmentSendMode = "inherit" | "replace" | "clear"
 
@@ -1956,35 +2038,49 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                   index === messages.length - 1 &&
                   message.role === "assistant"
 
+                const renderedMessageId = historyMsg?._id ?? message.id
+
                 return (
-                  <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
+                  <div
+                    className="pb-4"
+                    data-message-id={renderedMessageId}
+                    style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}
+                  >
                     {shouldShowPendingIndicatorBeforeMessage && (
                       <div className="pb-2">
                         <PendingAssistantLaneIndicator />
                       </div>
                     )}
-                    <MessageBubble
-                      key={message.id}
-                      message={displayMessage}
-                      onEdit={handleEdit}
-                      onArtifactSelect={onArtifactSelect}
-                      persistProcessIndicators={
-                        isGenerating &&
-                        index === messages.length - 1 &&
-                        message.role === "assistant"
+                    <div
+                      className={
+                        highlightedMessageId === renderedMessageId
+                          ? "rounded-shell border border-sky-500/70 bg-sky-500/8 transition-colors duration-300"
+                          : undefined
                       }
-                      // Paper mode edit permission props
-                      isPaperMode={isPaperMode}
-                      messageIndex={index}
-                      currentStageStartIndex={currentStageStartIndex}
-                      allMessages={permissionMessages}
-                      stageData={stageData}
-                      // Persisted artifact signals (survive page refresh)
-                      persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
-                      // File name lookup for history messages
-                      fileNameMap={fileNameMap}
-                      fileMetaMap={fileMetaMap}
-                    />
+                    >
+                      <MessageBubble
+                        key={message.id}
+                        message={displayMessage}
+                        onEdit={handleEdit}
+                        onArtifactSelect={onArtifactSelect}
+                        persistProcessIndicators={
+                          isGenerating &&
+                          index === messages.length - 1 &&
+                          message.role === "assistant"
+                        }
+                        // Paper mode edit permission props
+                        isPaperMode={isPaperMode}
+                        messageIndex={index}
+                        currentStageStartIndex={currentStageStartIndex}
+                        allMessages={permissionMessages}
+                        stageData={stageData}
+                        // Persisted artifact signals (survive page refresh)
+                        persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
+                        // File name lookup for history messages
+                        fileNameMap={fileNameMap}
+                        fileMetaMap={fileMetaMap}
+                      />
+                    </div>
                   </div>
                 )
               }}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { Id } from "../../../convex/_generated/dataModel"
+import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 import { cn } from "@/lib/utils"
 import { SidebarChatHistory } from "./sidebar/SidebarChatHistory"
 import { SidebarPaperSessions } from "./sidebar/SidebarPaperSessions"
@@ -40,7 +41,7 @@ interface ChatSidebarProps {
   /** Callback to update conversation title */
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
   /** Callback when artifact is selected */
-  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations">; title?: string; type?: string }) => void
+  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => void
   /** Currently selected artifact ID in panel */
   activeArtifactId?: Id<"artifacts"> | null
   /** Whether artifact panel is open */
