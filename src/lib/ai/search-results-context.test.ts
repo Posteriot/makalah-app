@@ -16,7 +16,7 @@ describe("buildSearchResultsContext", () => {
     expect(result).toContain("institutional")
     expect(result).toContain("AI Impact Study")
     expect(result).toContain("academic")
-    expect(result).toContain("ONLY these sources")
+    expect(result).toContain("MUST synthesize these sources")
     expect(result).not.toContain("Raw search summary")
   })
 
