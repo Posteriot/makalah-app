@@ -4,7 +4,7 @@
 
 **Goal:** Fix compose model "hanging" by injecting a compose-phase directive that tells Gemini to synthesize search results immediately instead of generating search promises.
 
-**Architecture:** Two changes to the orchestrator's compose context assembly: (1) a new `COMPOSE_PHASE_DIRECTIVE` constant injected as a system message between SKILL.md instructions and search results, (2) exclusion of `paperWorkflowReminder` from compose context. Plus one minor change to strengthen `buildSearchResultsContext()` language. No regex, no string filtering, no new files.
+**Architecture:** Two changes to the orchestrator's compose context assembly: (1) a new `COMPOSE_PHASE_DIRECTIVE` constant injected as a system message between SKILL.md instructions and search results, (2) exclusion of `paperWorkflowReminder` from compose context. Plus one minor change to strengthen `buildSearchResultsContext()` language. No regex, no string filtering, no new source files (1 test file added).
 
 **Tech Stack:** TypeScript, AI SDK v5 (`streamText`), Vitest
 
@@ -12,12 +12,16 @@
 
 ---
 
-### Task 1: Add COMPOSE_PHASE_DIRECTIVE constant to orchestrator
+### Task 1: Add COMPOSE_PHASE_DIRECTIVE + inject into compose context
+
+> Tasks 1 and 2 from the original plan are merged because they modify the same file.
+> Splitting them would create an intermediate state where the constant is unused (ESLint `no-unused-vars` error).
 
 **Files:**
-- Modify: `src/lib/ai/web-search/orchestrator.ts:1-22` (imports/top of file area)
+- Modify: `src/lib/ai/web-search/orchestrator.ts:1-22` (add constant after imports)
+- Modify: `src/lib/ai/web-search/orchestrator.ts:149-165` (compose message assembly)
 
-**Step 1: Write the directive constant**
+**Step 1: Add the directive constant**
 
 Add after existing imports (after line 21), before the `executeWebSearch` function:
 
@@ -64,26 +68,7 @@ The search results below are your source material. Use them.
 `.trim()
 ```
 
-**Step 2: Verify no lint errors**
-
-Run: `cd /Users/eriksupit/Desktop/makalahapp/.worktrees/search-tool-skills-v2 && npx eslint src/lib/ai/web-search/orchestrator.ts --no-error-on-unmatched-pattern`
-Expected: No errors (constant is defined but not yet used — will be used in Task 2)
-
-**Step 3: Commit**
-
-```bash
-git add src/lib/ai/web-search/orchestrator.ts
-git commit -m "feat: add COMPOSE_PHASE_DIRECTIVE constant to orchestrator"
-```
-
----
-
-### Task 2: Inject directive + exclude paperWorkflowReminder in compose context
-
-**Files:**
-- Modify: `src/lib/ai/web-search/orchestrator.ts:149-165` (compose message assembly)
-
-**Step 1: Modify compose message assembly**
+**Step 2: Modify compose message assembly**
 
 Replace the current `composeSystemMessages` block (lines 150-165):
 
@@ -132,21 +117,21 @@ const composeSystemMessages: Array<{ role: "system"; content: string }> = [
   ]
 ```
 
-**Step 2: Verify no lint errors**
+**Step 3: Verify no lint errors**
 
 Run: `cd /Users/eriksupit/Desktop/makalahapp/.worktrees/search-tool-skills-v2 && npx eslint src/lib/ai/web-search/orchestrator.ts --no-error-on-unmatched-pattern`
 Expected: No errors
 
-**Step 3: Commit**
+**Step 4: Commit**
 
 ```bash
 git add src/lib/ai/web-search/orchestrator.ts
-git commit -m "feat: inject COMPOSE_PHASE_DIRECTIVE, exclude paperWorkflowReminder from compose"
+git commit -m "feat: add COMPOSE_PHASE_DIRECTIVE, inject into compose context, exclude paperWorkflowReminder"
 ```
 
 ---
 
-### Task 3: Strengthen buildSearchResultsContext language
+### Task 2: Strengthen buildSearchResultsContext language
 
 **Files:**
 - Modify: `src/lib/ai/search-results-context.ts:27-32`
@@ -256,7 +241,7 @@ instead of passive 'You have the following sources'."
 
 ---
 
-### Task 4: Run full lint + existing tests
+### Task 3: Run full lint + existing tests
 
 **Files:**
 - No file changes — verification only
@@ -281,7 +266,7 @@ git commit -m "chore: lint fixes"
 
 ---
 
-### Task 5: Manual verification checklist
+### Task 4: Manual verification checklist
 
 No code changes. Verify the implementation matches design doc success criteria.
 
