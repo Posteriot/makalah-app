@@ -110,7 +110,7 @@ FUNCTION TOOLS MODE (NO WEB SEARCH)
 TECHNICAL CONSTRAINT:
 - Web search is NOT available this turn.
 - Do NOT promise to search for references/literature.
-- Available tools: updateStageData, submitStageForValidation, createArtifact.
+- Available tools: updateStageData, submitStageForValidation, createArtifact, updateArtifact.
 
 IF FACTUAL DATA/REFERENCES ARE NEEDED:
 - Ask user to explicitly request a search.
@@ -150,6 +150,15 @@ TASK: Process results and continue workflow with user
 ══════════════════════════════════════════════════`
 ```
 
+## Additional Changes Required (Amendment)
+
+The following files were initially assumed unchanged but MUST be updated for the new section structure to work:
+
+| File | Change | Reason |
+|------|--------|--------|
+| `src/lib/ai/stage-skill-validator.ts` | Update `MANDATORY_SECTIONS`, `parseDeclaredSearchPolicy()`, `createArtifact` check, `hasDangerousOverridePhrase()` | Validator enforces `## Tool Policy` as mandatory section. New `## Web Search` + `## Function Tools` sections will fail validation without this update. |
+| `convex/stageSkills.ts` | Remove `google_search` from `DEFAULT_ALLOWED_TOOLS`, export the constant | `DEFAULT_ALLOWED_TOOLS` is used when creating new stage skills. Must not include phantom tool. |
+
 ## What Does NOT Change
 
 | Component | Reason |
@@ -162,7 +171,6 @@ TASK: Process results and continue workflow with user
 | `search-results-context.ts` | Imperative language fix already done |
 | `web-search-quality/SKILL.md` | Search quality skill — separate concern |
 | `stage-skill-resolver.ts` | Resolver logic — fetch, validate, inject |
-| `stage-skill-validator.ts` | Validator rules |
 | Non-Tool-Policy sections in stage skills | Objective, Input Context, Output Contract, Guardrails, Done Criteria unchanged |
 
 ## Update Mechanism
@@ -171,8 +179,9 @@ Stage skills live in Convex DB (`stageSkills` + `stageSkillVersions` tables). Up
 
 1. For each of 14 skills: fetch active version content
 2. Replace the `## Tool Policy` section with appropriate `## Web Search` + `## Function Tools` sections
-3. Create new version with status `active`, archive previous version
-4. Log the migration in `stageSkillAuditLogs`
+3. Create new version with status `active`, demote previous active version to `published`
+4. Update `allowedTools` on `stageSkills` catalog entry to remove `google_search`
+5. Log the migration in `stageSkillAuditLogs`
 
 Migration script is reproducible and reviewable before execution.
 
@@ -181,9 +190,11 @@ Migration script is reproducible and reviewable before execution.
 | File | Change Type | Description |
 |------|-------------|-------------|
 | `src/lib/ai/paper-search-helpers.ts` | MODIFY | Update 3 system notes: remove `google_search`, convert to English |
+| `src/lib/ai/stage-skill-validator.ts` | MODIFY | Accept `## Web Search` + `## Function Tools` instead of `## Tool Policy` |
+| `convex/stageSkills.ts` | MODIFY | Remove `google_search` from `DEFAULT_ALLOWED_TOOLS` |
 | `convex/migrations/updateStageSkillToolPolicy.ts` | CREATE | Migration script to update 14 stage skills in DB |
 
-**Total: 1 file modified, 1 file created. 14 DB records updated via migration.**
+**Total: 3 files modified, 1 file created. 14 DB records updated via migration (content + allowedTools).**
 
 ## Risk Assessment
 

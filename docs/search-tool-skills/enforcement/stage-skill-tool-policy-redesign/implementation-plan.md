@@ -12,9 +12,9 @@
 
 ---
 
-## IMPORTANT: Design Doc Amendment — Validator Update Required
+## Design Doc Amendment — Validator Update Required (APPLIED)
 
-The design doc says `stage-skill-validator.ts` does NOT change. **This is incorrect.** The validator enforces `## Tool Policy` as a mandatory section (line 5-12 in `MANDATORY_SECTIONS`). Replacing it with `## Web Search` + `## Function Tools` will break all 14 skills at publish/activate time. The validator MUST be updated.
+The design doc originally said `stage-skill-validator.ts` does NOT change. This was incorrect — the validator enforces `## Tool Policy` as a mandatory section. The design doc has been **already patched** with an "Additional Changes Required (Amendment)" section.
 
 Changes needed in validator:
 1. `MANDATORY_SECTIONS`: Replace `"Tool Policy"` with `"Web Search"` and `"Function Tools"`
@@ -318,6 +318,7 @@ describe("paper-search-helpers system notes", () => {
       expect(PAPER_TOOLS_ONLY_NOTE).toContain("updateStageData")
       expect(PAPER_TOOLS_ONLY_NOTE).toContain("submitStageForValidation")
       expect(PAPER_TOOLS_ONLY_NOTE).toContain("createArtifact")
+      expect(PAPER_TOOLS_ONLY_NOTE).toContain("updateArtifact")
     })
 
     it("does NOT contain Indonesian instructions", () => {
@@ -395,7 +396,7 @@ FUNCTION TOOLS MODE (NO WEB SEARCH)
 TECHNICAL CONSTRAINT:
 - Web search is NOT available this turn.
 - Do NOT promise to search for references/literature.
-- Available tools: updateStageData, submitStageForValidation, createArtifact.
+- Available tools: updateStageData, submitStageForValidation, createArtifact, updateArtifact.
 
 IF FACTUAL DATA/REFERENCES ARE NEEDED:
 - Ask user to explicitly request a search.
@@ -640,17 +641,23 @@ If any tests or lint issues found, fix and commit.
 
 ---
 
-### Task 7: Final Commit — Documentation Update
+### Task 7: Final Documentation Verification
 
-**Step 1: Update design doc to note validator amendment**
+The design doc has already been amended with the "Additional Changes Required" section during the pre-implementation audit. Verify no further doc changes are needed.
 
-Add a note to the design doc at `docs/search-tool-skills/enforcement/stage-skill-tool-policy-redesign/design.md` under "What Does NOT Change" table: move `stage-skill-validator.ts` to a new "What DOES Change (Amendment)" section.
+**Step 1: Verify design doc is current**
 
-**Step 2: Commit**
+Read `docs/search-tool-skills/enforcement/stage-skill-tool-policy-redesign/design.md` and confirm:
+- "Additional Changes Required (Amendment)" section exists with validator + stageSkills.ts entries
+- File Changes Summary lists 3 modified + 1 created
+- Update Mechanism includes `allowedTools` cleanup (step 4)
+- `PAPER_TOOLS_ONLY_NOTE` template includes `updateArtifact`
+
+**Step 2: Commit if any final adjustments needed**
 
 ```bash
-git add docs/search-tool-skills/enforcement/stage-skill-tool-policy-redesign/design.md
-git commit -m "docs: amend design doc — validator update was required"
+git add docs/search-tool-skills/enforcement/stage-skill-tool-policy-redesign/
+git commit -m "docs: finalize design doc and implementation plan after audit"
 ```
 
 ---
