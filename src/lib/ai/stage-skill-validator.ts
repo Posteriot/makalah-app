@@ -5,7 +5,8 @@ import { estimateEnglishConfidence } from "./stage-skill-language";
 const MANDATORY_SECTIONS = [
     "Objective",
     "Input Context",
-    "Tool Policy",
+    "Web Search",
+    "Function Tools",
     "Output Contract",
     "Guardrails",
     "Done Criteria",
@@ -84,6 +85,12 @@ function parseDeclaredSearchPolicy(content: string): "active" | "passive" | unde
     const explicit = content.match(/searchPolicy:\s*(active|passive)\b/i)?.[1]?.toLowerCase();
     if (explicit === "active" || explicit === "passive") return explicit;
 
+    // New format: "Policy: active." or "Policy: passive — ..."
+    const webSearchSection = getSection(content, "Web Search");
+    const policyMatch = webSearchSection.match(/^Policy:\s*(active|passive)\b/im)?.[1]?.toLowerCase();
+    if (policyMatch === "active" || policyMatch === "passive") return policyMatch;
+
+    // Legacy format (will be removed after migration)
     const bodySignal = content.match(/google_search\s*\((active|passive)\s+mode/i)?.[1]?.toLowerCase();
     if (bodySignal === "active" || bodySignal === "passive") return bodySignal;
 
@@ -105,7 +112,7 @@ function hasDangerousOverridePhrase(content: string): boolean {
         /\bbypass\s+stage\s+lock\b/i,
         /\boverride\s+tool\s+routing\b/i,
         /\bignore\s+tool\s+routing\b/i,
-        /\bcall\s+google_search\s+and\s+updateStageData\s+in\s+the\s+same\s+turn\b/i,
+        /\bcall\s+(web\s+search|function\s+tools)\s+and\s+(updateStageData|web\s+search)\s+in\s+the\s+same\s+turn\b/i,
         /\bsubmit\s+without\s+ringkasan\b/i,
         /\bsubmit\s+without\s+user\s+confirmation\b/i,
     ];
@@ -222,13 +229,13 @@ export function validateStageSkillContent(input: StageSkillValidationInput): Sta
         }
     }
 
-    // Validate that Tool Policy mentions createArtifact
+    // Validate that Function Tools mentions createArtifact
     // Required for all stages — artifact is the mandatory output reviewed by user
-    const toolPolicySection = getSection(content, "Tool Policy");
-    if (toolPolicySection && !/createArtifact/i.test(toolPolicySection)) {
+    const functionToolsSection = getSection(content, "Function Tools");
+    if (functionToolsSection && !/createArtifact/i.test(functionToolsSection)) {
         issues.push({
-            code: "missing_create_artifact_in_tool_policy",
-            message: `Tool Policy wajib menyebut createArtifact untuk stage "${input.stageScope}". Artifact adalah hasil akhir yang di-review user.`,
+            code: "missing_create_artifact_in_function_tools",
+            message: `Function Tools wajib menyebut createArtifact untuk stage "${input.stageScope}". Artifact adalah hasil akhir yang di-review user.`,
         });
     }
 
