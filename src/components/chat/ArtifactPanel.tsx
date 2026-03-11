@@ -66,23 +66,13 @@ export function ArtifactPanel({
   const isReadOnlyActive = activeTabForQuery?.readOnly ?? false
   const sourceConvId = activeTabForQuery?.sourceConversationId
 
-  // Fetch artifacts for this conversation
-  const artifacts = useQuery(
-    api.artifacts.listByConversation,
-    conversationId && currentUser?._id
+  // Resolve active artifact directly by ID so read-only/orphan artifacts remain
+  // viewable even when the source conversation has been deleted.
+  const activeArtifact = useQuery(
+    api.artifacts.get,
+    activeTabId && currentUser?._id
       ? {
-          conversationId,
-          userId: currentUser._id,
-        }
-      : "skip"
-  )
-
-  // Query artifacts from source conversation (for read-only cross-session preview)
-  const sourceConversationArtifacts = useQuery(
-    api.artifacts.listByConversation,
-    isReadOnlyActive && sourceConvId && currentUser?._id
-      ? {
-          conversationId: sourceConvId,
+          artifactId: activeTabId,
           userId: currentUser._id,
         }
       : "skip"
@@ -98,10 +88,6 @@ export function ArtifactPanel({
   const isRefrasaTab = activeTab?.type === "refrasa"
   const isReadOnly = isReadOnlyActive
   const sourceConversationId = sourceConvId
-  const activeArtifact = activeTabId
-    ? (artifacts?.find((a) => a._id === activeTabId)
-      ?? sourceConversationArtifacts?.find((a) => a._id === activeTabId))
-    : null
   const openTabCount = openTabs.length
   const isCodeArtifact = activeArtifact
     ? activeArtifact.type === "code" || activeArtifact.format === "latex"

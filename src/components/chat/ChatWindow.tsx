@@ -501,7 +501,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const activeAttachmentContext = useQuery(
     api.conversationAttachmentContexts.getByConversation,
-    safeConversationId && isAuthenticated ? { conversationId: safeConversationId } : "skip"
+    safeConversationId && isAuthenticated && conversation
+      ? { conversationId: safeConversationId }
+      : "skip"
   )
   const activeContextFileIds = useMemo(
     () => activeAttachmentContext?.activeFileIds ?? [],

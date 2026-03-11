@@ -65,32 +65,25 @@ export const listByConversation = queryGeneric({
     type: v.optional(artifactTypeValidator),
   },
   handler: async ({ db }, { conversationId, userId, type }) => {
-    // Verify conversation exists and user owns it
-    const conversation = await db.get(conversationId)
-    if (!conversation) {
-      // Return empty array instead of throwing error
-      // Ini handle race condition saat conversation dihapus sementara query sedang berjalan
-      return []
-    }
-    // Permission check: return empty instead of throwing
-    // Handles: user switch, direct URL access to other's conversation
-    if (conversation.userId !== userId) {
-      return []
-    }
-
-    // Query artifacts
+    // Query by user first because historical paper-session artifacts may outlive
+    // their conversation row or have stale conversation index state in older dev data.
     const artifacts = await db
       .query("artifacts")
-      .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .collect()
 
+    const targetConversationId = String(conversationId)
+    const ownedArtifacts = artifacts.filter(
+      (artifact) => String(artifact.conversationId) === targetConversationId
+    )
+
     // Filter by type if specified
     if (type) {
-      return artifacts.filter((a) => a.type === type)
+      return ownedArtifacts.filter((a) => a.type === type)
     }
 
-    return artifacts
+    return ownedArtifacts
   },
 })
 

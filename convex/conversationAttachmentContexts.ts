@@ -1,13 +1,14 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { requireConversationOwner } from "./authHelpers"
+import { getConversationIfOwner, requireConversationOwner } from "./authHelpers"
 
 export const getByConversation = query({
   args: {
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, { conversationId }) => {
-    await requireConversationOwner(ctx, conversationId)
+    const result = await getConversationIfOwner(ctx, conversationId)
+    if (!result) return null
 
     const context = await ctx.db
       .query("conversationAttachmentContexts")

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { ConversationManagerPanel } from "../workspace-panel/ConversationManagerPanel"
+import { PaperSessionsManagerPanel } from "../workspace-panel/PaperSessionsManagerPanel"
 
 /**
  * ChatLayout - 6-column CSS Grid orchestrator
@@ -88,7 +89,9 @@ export function ChatLayout({
   onMobileSidebarOpenChange,
 }: ChatLayoutProps) {
   const router = useRouter()
-  const [workspacePanelMode, setWorkspacePanelMode] = useState<"conversation-manager" | null>(null)
+  const [workspacePanelMode, setWorkspacePanelMode] = useState<
+    "conversation-manager" | "paper-sessions-manager" | null
+  >(null)
   const preservedArtifactRef = useRef<{
     wasOpen: boolean
     artifactId: Id<"artifacts"> | null
@@ -109,11 +112,9 @@ export function ChatLayout({
   const isMobileOpen = mobileSidebarOpen ?? internalMobileOpen
   const setIsMobileOpen = onMobileSidebarOpenChange ?? setInternalMobileOpen
   const isConversationManagerOpen = workspacePanelMode === "conversation-manager"
-  const activeRightPanelMode = isConversationManagerOpen
-    ? "conversation-manager"
-    : isArtifactPanelOpen
-      ? "artifact"
-      : null
+  const isWorkspacePanelOpen = workspacePanelMode !== null
+  const activeRightPanelMode =
+    workspacePanelMode ?? (isArtifactPanelOpen ? "artifact" : null)
   const isRightPanelOpen = activeRightPanelMode !== null
 
   // Conversations hook
@@ -147,7 +148,7 @@ export function ChatLayout({
   }, [])
 
   useEffect(() => {
-    if (!isConversationManagerOpen || !isArtifactPanelOpen) return
+    if (!isWorkspacePanelOpen || !isArtifactPanelOpen) return
 
     const preservedArtifact = preservedArtifactRef.current
     if (!preservedArtifact.wasOpen) {
@@ -158,10 +159,10 @@ export function ChatLayout({
     if (activeArtifactId && activeArtifactId !== preservedArtifact.artifactId) {
       setWorkspacePanelMode(null)
     }
-  }, [activeArtifactId, isArtifactPanelOpen, isConversationManagerOpen])
+  }, [activeArtifactId, isArtifactPanelOpen, isWorkspacePanelOpen])
 
   useEffect(() => {
-    if (!isConversationManagerOpen) return
+    if (!isWorkspacePanelOpen) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -171,7 +172,7 @@ export function ChatLayout({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isConversationManagerOpen])
+  }, [isWorkspacePanelOpen])
 
   // Sidebar max width — derived from MIN_MAIN_CONTENT_WIDTH guarantee
   const getSidebarMaxWidth = useCallback(() => {
@@ -312,7 +313,7 @@ export function ChatLayout({
 
   // Handle panel expand
   const handleExpandPanel = useCallback(() => {
-    if (isConversationManagerOpen) {
+    if (isWorkspacePanelOpen) {
       setWorkspacePanelMode(null)
       if (!isArtifactPanelOpen && onArtifactPanelToggle) {
         onArtifactPanelToggle()
@@ -322,7 +323,7 @@ export function ChatLayout({
     if (onArtifactPanelToggle) {
       onArtifactPanelToggle()
     }
-  }, [isArtifactPanelOpen, isConversationManagerOpen, onArtifactPanelToggle])
+  }, [isArtifactPanelOpen, isWorkspacePanelOpen, onArtifactPanelToggle])
 
   const handleOpenConversationManager = useCallback(() => {
     preservedArtifactRef.current = {
@@ -332,7 +333,19 @@ export function ChatLayout({
     setWorkspacePanelMode("conversation-manager")
   }, [activeArtifactId, isArtifactPanelOpen])
 
+  const handleOpenPaperSessionsManager = useCallback(() => {
+    preservedArtifactRef.current = {
+      wasOpen: isArtifactPanelOpen,
+      artifactId: activeArtifactId ?? null,
+    }
+    setWorkspacePanelMode("paper-sessions-manager")
+  }, [activeArtifactId, isArtifactPanelOpen])
+
   const handleCloseConversationManager = useCallback(() => {
+    setWorkspacePanelMode(null)
+  }, [])
+
+  const handleClosePaperSessionsManager = useCallback(() => {
     setWorkspacePanelMode(null)
   }, [])
 
@@ -415,6 +428,7 @@ export function ChatLayout({
             isCreating={isCreating}
             onCollapseSidebar={handleToggleSidebar}
             onOpenConversationManager={handleOpenConversationManager}
+            onOpenPaperSessionsManager={handleOpenPaperSessionsManager}
           />
         </aside>
 
@@ -464,6 +478,12 @@ export function ChatLayout({
             <ConversationManagerPanel
               currentConversationId={conversationId}
               onClose={handleCloseConversationManager}
+            />
+          ) : activeRightPanelMode === "paper-sessions-manager" ? (
+            <PaperSessionsManagerPanel
+              currentConversationId={conversationId}
+              onClose={handleClosePaperSessionsManager}
+              onArtifactSelect={onArtifactSelect}
             />
           ) : (
             artifactPanel

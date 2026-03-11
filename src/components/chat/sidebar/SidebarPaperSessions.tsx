@@ -6,7 +6,7 @@ import { api } from "../../../../convex/_generated/api"
 import { usePaperSession } from "@/lib/hooks/usePaperSession"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Page, Folder, NavArrowRight, EditPencil } from "iconoir-react"
+import { Page, Folder, NavArrowRight, EditPencil, Settings } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import {
   STAGE_ORDER,
@@ -14,16 +14,10 @@ import {
   getStageNumber,
   type PaperStageId,
 } from "../../../../convex/paperSessions/constants"
-import { useEffect, useMemo, useState, type MouseEvent } from "react"
+import { useEffect, useState, type MouseEvent } from "react"
 import { Id } from "../../../../convex/_generated/dataModel"
 import { resolvePaperDisplayTitle } from "@/lib/paper/title-resolver"
 import { toast } from "sonner"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 /** Options for artifact selection (supports read-only cross-session preview) */
 export interface ArtifactSelectOpts {
@@ -41,6 +35,7 @@ interface SidebarPaperSessionsProps {
   activeArtifactId?: Id<"artifacts"> | null
   isArtifactPanelOpen?: boolean
   onArtifactPanelToggle?: () => void
+  onOpenPaperSessionsManager?: () => void
   onCloseMobile?: () => void
 }
 
@@ -81,6 +76,7 @@ export function SidebarPaperSessions({
   activeArtifactId,
   isArtifactPanelOpen,
   onArtifactPanelToggle,
+  onOpenPaperSessionsManager,
   onCloseMobile,
 }: SidebarPaperSessionsProps) {
   const { user, isLoading: isUserLoading } = useCurrentUser()
@@ -101,17 +97,21 @@ export function SidebarPaperSessions({
     currentConversationId as Id<"conversations"> | undefined
   )
 
-  // Query ALL user sessions for dual-list layout
+  // Query all sessions for header count only.
   const allSessions = useQuery(
     api.paperSessions.getByUser,
     user?._id ? { userId: user._id } : "skip"
   )
-
-  // Derive other sessions (exclude active session)
-  const otherSessions = useMemo(() => {
-    if (!allSessions || !session) return allSessions ?? []
-    return allSessions.filter((s) => s._id !== session._id)
-  }, [allSessions, session])
+  const allArtifacts = useQuery(
+    api.artifacts.listByUser,
+    user?._id ? { userId: user._id } : "skip"
+  ) as ArtifactItem[] | undefined
+  const artifactsByConversation = allArtifacts?.reduce<Record<string, ArtifactItem[]>>((acc, artifact) => {
+    const key = String(artifact.conversationId)
+    if (!acc[key]) acc[key] = []
+    acc[key].push(artifact)
+    return acc
+  }, {})
 
   // Auto-expand active session when conversation changes
   const activeSessionId = (session?._id as Id<"paperSessions"> | undefined) ?? null
@@ -129,66 +129,20 @@ export function SidebarPaperSessions({
       : "skip"
   )
 
-  // Helper: render "Sesi Lainnya" section (reused across all render paths)
-  const renderOtherSessions = () => {
-    // When no active session, show ALL sessions as "other"
-    const sessionsToShow = otherSessions
-    if (!sessionsToShow.length || !user) return null
-    return (
-      <div className="pt-3">
-        <div className="px-4 pb-2">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">
-            Sesi Lainnya
-          </span>
-        </div>
-        {sessionsToShow.map((s) => (
-          <OtherSessionFolder
-            key={s._id}
-            session={{
-              _id: s._id as Id<"paperSessions">,
-              conversationId: s.conversationId as Id<"conversations">,
-              workingTitle: s.workingTitle,
-              paperTitle: s.paperTitle,
-              currentStage: s.currentStage as string,
-              stageStatus: s.stageStatus as string,
-              _creationTime: s._creationTime,
-              updatedAt: s.updatedAt,
-            }}
-            isExpanded={expandedFolderId === (s._id as Id<"paperSessions">)}
-            onToggle={() => setExpandedFolderId(prev => prev === (s._id as Id<"paperSessions">) ? null : (s._id as Id<"paperSessions">))}
-            onArtifactSelect={onArtifactSelect}
-            isArtifactPanelOpen={isArtifactPanelOpen}
-            onArtifactPanelToggle={onArtifactPanelToggle}
-            onCloseMobile={onCloseMobile}
-            userId={user._id}
-          />
-        ))}
-      </div>
-    )
-  }
-
   // Initial state before any conversation is selected
   if (!currentConversationId) {
     return (
       <div className="flex flex-col h-full">
-        <div className="pt-5 px-4 pb-3 border-b border-[color:var(--chat-border)]">
-          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">Sesi Paper</div>
-          <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] mt-1">
-            Folder Artifak{allSessions ? ` · ${allSessions.length} sesi` : ""}
-          </div>
+        <SidebarPaperSessionsHeader
+          sessionCount={allSessions?.length}
+          onOpenPaperSessionsManager={onOpenPaperSessionsManager}
+        />
+        <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
+          <Page className="h-8 w-8 text-[var(--chat-muted-foreground)] opacity-50 mb-2" />
+          <span className="text-sm text-[var(--chat-muted-foreground)] font-medium font-mono">
+            Belum ada sesi penyusunan paper.
+          </span>
         </div>
-        {otherSessions.length > 0 && user ? (
-          <div className="flex-1 overflow-y-auto">
-            {renderOtherSessions()}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
-            <Page className="h-8 w-8 text-[var(--chat-muted-foreground)] opacity-50 mb-2" />
-            <span className="text-sm text-[var(--chat-muted-foreground)] font-medium font-mono">
-              Belum ada sesi penyusunan paper.
-            </span>
-          </div>
-        )}
       </div>
     )
   }
@@ -221,22 +175,15 @@ export function SidebarPaperSessions({
   if (!isPaperMode || !session) {
     return (
       <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="pt-5 px-4 pb-3 border-b border-[color:var(--chat-border)]">
-          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]">Sesi Paper</div>
-          <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)] mt-1">
-            Folder Artifak{allSessions ? ` · ${allSessions.length} sesi` : ""}
-          </div>
-        </div>
+        <SidebarPaperSessionsHeader
+          sessionCount={allSessions?.length}
+          onOpenPaperSessionsManager={onOpenPaperSessionsManager}
+        />
         {/* No active session indicator */}
-        <div className="px-4 py-3 text-center border-b border-[color:var(--chat-border)]">
+        <div className="px-4 py-3 text-center">
           <span className="text-xs text-[var(--chat-muted-foreground)] opacity-60 font-mono">
             Percakapan ini belum memiliki sesi paper
           </span>
-        </div>
-        {/* Other sessions still shown */}
-        <div className="flex-1 overflow-y-auto">
-          {renderOtherSessions()}
         </div>
       </div>
     )
@@ -256,15 +203,12 @@ export function SidebarPaperSessions({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="pt-5 px-4 pb-3 border-b border-[color:var(--chat-border)]">
-        <div className="text-sm font-semibold">Sesi Paper</div>
-        <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-          Folder Artifak{allSessions ? ` · ${allSessions.length} sesi` : ""}
-        </div>
-      </div>
+      <SidebarPaperSessionsHeader
+        sessionCount={allSessions?.length}
+        onOpenPaperSessionsManager={onOpenPaperSessionsManager}
+      />
 
-      {/* Paper Folder - Active session + Other sessions */}
+      {/* Paper Folder - Active session only */}
       <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
         <PaperFolderItem
           session={sessionItem}
@@ -277,17 +221,41 @@ export function SidebarPaperSessions({
           onCloseMobile={onCloseMobile}
           conversationTitle={conversation?.title}
           onUpdateWorkingTitle={(title) => updateWorkingTitle(user!._id, title)}
-          userId={user!._id}
+          artifacts={artifactsByConversation?.[String(sessionItem.conversationId)]}
         />
-
-        {/* Separator — only when active session exists */}
-        {otherSessions.length > 0 && (
-          <div className="border-t border-[color:var(--chat-border)]" />
-        )}
-
-        {/* Sesi Lainnya — other paper sessions */}
-        {renderOtherSessions()}
       </div>
+    </div>
+  )
+}
+
+function SidebarPaperSessionsHeader({
+  sessionCount,
+  onOpenPaperSessionsManager,
+}: {
+  sessionCount?: number
+  onOpenPaperSessionsManager?: () => void
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-[color:var(--chat-border)] px-4 pb-3 pt-5">
+      <div className="min-w-0">
+        <div className="text-sm font-semibold">Sesi Paper</div>
+        <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
+          Folder Artifak{typeof sessionCount === "number" ? ` · ${sessionCount} sesi` : ""}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onOpenPaperSessionsManager}
+        className={cn(
+          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-action bg-transparent",
+          "text-[var(--chat-muted-foreground)] transition-colors duration-150",
+          "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
+        )}
+        aria-label="Buka panel sesi paper"
+        title="Buka panel sesi paper"
+      >
+        <Settings className="h-4 w-4" aria-hidden="true" />
+      </button>
     </div>
   )
 }
@@ -306,7 +274,7 @@ function PaperFolderItem({
   onCloseMobile,
   conversationTitle,
   onUpdateWorkingTitle,
-  userId,
+  artifacts,
 }: {
   session: PaperSessionItem
   isExpanded: boolean
@@ -318,14 +286,8 @@ function PaperFolderItem({
   onCloseMobile?: () => void
   conversationTitle?: string
   onUpdateWorkingTitle?: (title: string) => Promise<unknown> | undefined
-  userId: Id<"users">
+  artifacts?: ArtifactItem[]
 }) {
-  // Always query artifacts (needed for count badge when collapsed)
-  const artifacts = useQuery(
-    api.artifacts.listByConversation,
-    { conversationId: session.conversationId, userId }
-  ) as ArtifactItem[] | undefined
-
   const stageNumber = getStageNumber(
     session.currentStage as PaperStageId | "completed"
   )
@@ -500,7 +462,8 @@ function PaperFolderItem({
           </div>
           {!isExpanded && (
             <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] opacity-70 truncate">
-              Stage {stageNumber}/{STAGE_ORDER.length} · {latestArtifacts.length} artifak
+              Stage {stageNumber}/{STAGE_ORDER.length}
+              {artifacts === undefined ? " · Memuat artifak..." : ` · ${latestArtifacts.length} artifak`}
             </span>
           )}
         </div>
@@ -516,7 +479,11 @@ function PaperFolderItem({
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
-                {hasArtifacts ? `${latestArtifacts.length} artifak` : "Belum ada artifak"}
+                {artifacts === undefined
+                  ? "Memuat artifak..."
+                  : hasArtifacts
+                    ? `${latestArtifacts.length} artifak`
+                    : "Belum ada artifak"}
               </span>
             </div>
           </div>
@@ -624,248 +591,6 @@ function ArtifactTreeItem({
         </span>
       )}
     </Link>
-  )
-}
-
-/**
- * OtherSessionFolder - Collapsed folder for sessions NOT in the active conversation
- * Lazy-loads artifacts only when expanded. Title editing DISABLED.
- */
-function OtherSessionFolder({
-  session,
-  isExpanded,
-  onToggle,
-  onArtifactSelect,
-  isArtifactPanelOpen,
-  onArtifactPanelToggle,
-  onCloseMobile,
-  userId,
-}: {
-  session: PaperSessionItem
-  isExpanded: boolean
-  onToggle: () => void
-  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactSelectOpts) => void
-  isArtifactPanelOpen?: boolean
-  onArtifactPanelToggle?: () => void
-  onCloseMobile?: () => void
-  userId: Id<"users">
-}) {
-  // Always query artifacts (needed for count badge when collapsed)
-  const artifacts = useQuery(
-    api.artifacts.listByConversation,
-    { conversationId: session.conversationId, userId }
-  ) as ArtifactItem[] | undefined
-
-  const latestArtifacts = artifacts
-    ? getLatestArtifactVersions(artifacts)
-    : []
-
-  const isCompleted = session.currentStage === "completed"
-  const stageNumber = getStageNumber(
-    session.currentStage as PaperStageId | "completed"
-  )
-  const stageLabel = getStageLabel(
-    session.currentStage as PaperStageId | "completed"
-  )
-
-  const { displayTitle: resolvedTitle } = resolvePaperDisplayTitle({
-    paperTitle: session.paperTitle,
-    workingTitle: session.workingTitle,
-  })
-  const displayTitle = resolvedTitle.replace(/\s+/g, "_")
-
-  // Status dot: lower opacity for non-active sessions
-  const statusDotClass = isCompleted
-    ? "bg-[var(--chat-success)] opacity-60"
-    : "bg-sky-500 dark:bg-sky-400 opacity-60"
-
-  // Compact stage info for collapsed state
-  const compactStageLabel = isCompleted ? "Selesai" : `Stage ${stageNumber}/${STAGE_ORDER.length}`
-  const artifactCount = latestArtifacts.length
-  const hasArtifacts = artifactCount > 0
-
-  return (
-    <div
-      className={cn(
-        "mb-0.5 transition-colors",
-        isExpanded
-          ? "border-y border-[color:var(--chat-border)] bg-[var(--chat-sidebar-accent)]"
-          : ""
-      )}
-    >
-      {/* Folder Header */}
-      <div
-        className={cn(
-          "flex cursor-pointer items-center gap-2 px-4 py-2 transition-colors",
-          !isExpanded && "rounded-action hover:border-[color:var(--chat-border)] hover:bg-[var(--chat-sidebar-accent)]"
-        )}
-        onClick={onToggle}
-      >
-        {/* Chevron */}
-        <NavArrowRight
-          className={cn(
-            "h-4 w-4 text-[var(--chat-muted-foreground)] transition-transform duration-150 shrink-0",
-            isExpanded && "rotate-90"
-          )}
-        />
-
-        {/* Status Dot — lower opacity */}
-        <div className={cn("h-2 w-2 shrink-0 rounded-full", statusDotClass)} />
-
-        {/* Folder Icon — muted */}
-        <Folder className="h-[18px] w-[18px] shrink-0 text-[var(--chat-muted-foreground)]" />
-
-        {/* Title + compact info */}
-        <div className="flex flex-1 min-w-0 flex-col">
-          <span className="text-xs font-mono font-medium truncate text-[var(--chat-muted-foreground)]">
-            {displayTitle}
-          </span>
-          {!isExpanded && (
-            <span className="text-[10px] font-mono text-[var(--chat-muted-foreground)] truncate">
-              <span className="opacity-70">{compactStageLabel}</span>
-              <span className="opacity-70"> · </span>
-              <span className={hasArtifacts ? "text-[var(--chat-foreground)] opacity-90" : "opacity-50"}>
-                {artifactCount} artifak
-              </span>
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Expanded Content */}
-      {isExpanded && (
-        <div className="pl-6 pr-1.5">
-          {/* Stage Info */}
-          <div className="px-4 pt-1 pb-2">
-            <div className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-              {isCompleted ? "Selesai" : `Stage ${stageNumber}/${STAGE_ORDER.length} - ${stageLabel}`}
-            </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span className="rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-background)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--chat-muted-foreground)]">
-                {latestArtifacts.length > 0 ? `${latestArtifacts.length} artifak` : "Belum ada artifak"}
-              </span>
-            </div>
-          </div>
-
-          {/* Read-Only Artifact Items */}
-          {latestArtifacts.length > 0 &&
-            latestArtifacts.map((artifact) => (
-              <ReadOnlyArtifactTreeItem
-                key={artifact._id}
-                artifact={artifact}
-                conversationId={session.conversationId}
-                onArtifactSelect={onArtifactSelect}
-                isArtifactPanelOpen={isArtifactPanelOpen}
-                onArtifactPanelToggle={onArtifactPanelToggle}
-                onCloseMobile={onCloseMobile}
-              />
-            ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * ReadOnlyArtifactTreeItem - Artifact item with 3-dot menu for read-only preview.
- * Used in "Sesi Lainnya" section. Not directly clickable — opens via menu action.
- */
-function ReadOnlyArtifactTreeItem({
-  artifact,
-  conversationId,
-  onArtifactSelect,
-  isArtifactPanelOpen,
-  onArtifactPanelToggle,
-  onCloseMobile,
-}: {
-  artifact: ArtifactItem
-  conversationId: Id<"conversations">
-  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactSelectOpts) => void
-  isArtifactPanelOpen?: boolean
-  onArtifactPanelToggle?: () => void
-  onCloseMobile?: () => void
-}) {
-  const isFinal = !artifact.invalidatedAt
-
-  const handleViewArtifact = () => {
-    // Open artifact panel if not open
-    if (!isArtifactPanelOpen && onArtifactPanelToggle) {
-      onArtifactPanelToggle()
-    }
-    // Select artifact with readOnly metadata
-    if (onArtifactSelect) {
-      onArtifactSelect(artifact._id, {
-        readOnly: true,
-        sourceConversationId: conversationId,
-        title: artifact.title,
-        type: artifact.type,
-      })
-    }
-    onCloseMobile?.()
-  }
-
-  return (
-    <div
-      className={cn(
-        "group my-1 mr-3 flex items-center gap-2 rounded-action border px-3.5 py-2 transition-colors",
-        "border-transparent hover:bg-[var(--chat-sidebar-accent)]"
-      )}
-    >
-      {/* Document Icon / Refrasa Badge */}
-      {artifact.type === "refrasa" ? (
-        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--chat-info)] text-[9px] font-mono font-bold text-[var(--chat-info-foreground)]">
-          R
-        </span>
-      ) : (
-        <Page className="h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)] transition-colors group-hover:text-[var(--chat-foreground)]" />
-      )}
-
-      {/* File Name */}
-      <span className="flex-1 truncate text-xs font-mono text-[var(--chat-muted-foreground)] transition-colors group-hover:text-[var(--chat-foreground)]">
-        {artifact.title}
-      </span>
-
-      {/* Version Badge */}
-      <span className="shrink-0 rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-secondary)] px-1.5 py-0.5 text-[9px] font-mono font-medium text-[var(--chat-secondary-foreground)]">
-        v{artifact.version}
-      </span>
-
-      {/* Status Badge */}
-      {isFinal ? (
-        <span className="shrink-0 rounded-badge border border-[color:var(--chat-success)] bg-[var(--chat-success)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--chat-success-foreground)]">
-          FINAL
-        </span>
-      ) : (
-        <span className="shrink-0 rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-[var(--chat-muted-foreground)]">
-          REVISI
-        </span>
-      )}
-
-      {/* 3-dot menu — visible on hover */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="shrink-0 rounded-action p-0.5 text-[var(--chat-muted-foreground)] opacity-25 transition-opacity group-hover:opacity-100 hover:text-[var(--chat-foreground)] focus-visible:opacity-100 focus-visible:outline-none"
-            aria-label="Opsi artifak"
-          >
-            <svg width="4" height="16" viewBox="0 0 4 16" fill="currentColor" aria-hidden="true">
-              <circle cx="2" cy="2" r="2" />
-              <circle cx="2" cy="8" r="2" />
-              <circle cx="2" cy="14" r="2" />
-            </svg>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[140px]">
-          <DropdownMenuItem
-            onSelect={handleViewArtifact}
-            className="text-xs font-mono"
-          >
-            Lihat Artifak
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
   )
 }
 

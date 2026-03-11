@@ -189,6 +189,10 @@ export function FullsizeArtifactModal({
       ? { artifactId: activeArtifactId, userId: currentUser._id }
       : "skip"
   )
+  const sourceConversation = useQuery(
+    api.conversations.getConversation,
+    sourceConversationId ? { conversationId: sourceConversationId } : "skip"
+  )
   const artifactsInSession = useQuery(
     api.artifacts.listByConversation,
     artifact?.conversationId && currentUser?._id
@@ -747,7 +751,7 @@ export function FullsizeArtifactModal({
                         <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
                         <span className="font-mono text-[11px] text-muted-foreground">
                           Artifak dari sesi lain. Mode hanya baca.
-                          {sourceConversationId && (
+                          {sourceConversationId && sourceConversation ? (
                             <>
                               {" "}
                               <Link
@@ -761,7 +765,14 @@ export function FullsizeArtifactModal({
                                 Lihat percakapan terkait
                               </Link>
                             </>
-                          )}
+                          ) : sourceConversationId ? (
+                            <>
+                              {" "}
+                              <span className="text-[var(--chat-muted-foreground)]/80">
+                                Percakapan tidak ditemukan
+                              </span>
+                            </>
+                          ) : null}
                         </span>
                       </div>
                     )}

@@ -61,6 +61,8 @@ interface ChatSidebarProps {
   onPanelChange?: (panel: PanelType) => void
   /** Callback to open conversation manager workspace panel */
   onOpenConversationManager?: () => void
+  /** Callback to open paper sessions workspace panel */
+  onOpenPaperSessionsManager?: () => void
 }
 
 /**
@@ -95,6 +97,7 @@ export function ChatSidebar({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onPanelChange,
   onOpenConversationManager,
+  onOpenPaperSessionsManager,
 }: ChatSidebarProps) {
   const router = useRouter()
   const displayedConversationCount = conversations.length
@@ -115,6 +118,7 @@ export function ChatSidebar({
             activeArtifactId={activeArtifactId}
             isArtifactPanelOpen={isArtifactPanelOpen}
             onArtifactPanelToggle={onArtifactPanelToggle}
+            onOpenPaperSessionsManager={onOpenPaperSessionsManager}
             onCloseMobile={onCloseMobile}
           />
         )
