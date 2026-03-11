@@ -28,12 +28,15 @@ type TelemetryParams = {
   searchSkillApplied?: boolean
   searchSkillName?: string
   searchSkillAction?: string
+  sourcesScored?: number
+  sourcesFiltered?: number
+  sourcesPassedTiers?: string
+  retrieverName?: string
   sourcesPassed?: number
   sourcesBlocked?: number
   referencesClaimed?: number
   referencesMatched?: number
   attemptedRetrievers?: string[]
-  retrieverName?: string
 }
 
 /**

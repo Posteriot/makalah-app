@@ -1356,25 +1356,6 @@
   animation: chat-pause-ring 1.35s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 
-[data-chat-scope] .chat-pause-hover-halo {
-  position: absolute;
-  inset: -7px;
-  border-radius: 12px;
-  pointer-events: none;
-  opacity: 0;
-  transform: scale(0.96);
-  box-shadow:
-    0 0 0 3px color-mix(in oklch, var(--chat-info) 34%, transparent),
-    0 0 18px color-mix(in oklch, var(--chat-info) 50%, transparent);
-  transition: opacity 140ms ease, transform 140ms ease;
-}
-
-[data-chat-scope] .chat-pause-button:hover .chat-pause-hover-halo,
-[data-chat-scope] .chat-pause-button:focus-visible .chat-pause-hover-halo {
-  opacity: 1;
-  transform: scale(1);
-}
-
 [data-chat-scope] .chat-search-shimmer {
   position: relative;
   display: inline-block;

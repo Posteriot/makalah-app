@@ -20,6 +20,10 @@ export function useConversations() {
         api.conversations.listConversations,
         userId ? { userId } : "skip"
     )
+    const totalConversationCount = useQuery(
+        api.conversations.countConversations,
+        userId ? { userId } : "skip"
+    )
 
     // Create conversation mutation
     const createConversationMutation = useMutation(api.conversations.createConversation)
@@ -58,6 +62,8 @@ export function useConversations() {
 
     return {
         conversations: conversations ?? [],
+        totalConversationCount: totalConversationCount ?? 0,
+        displayedConversationCount: conversations?.length ?? 0,
         createNewConversation,
         deleteConversation,
         updateConversationTitle,

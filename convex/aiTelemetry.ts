@@ -82,6 +82,7 @@ type SkillRuntimeRecord = {
   isSkillRuntime?: boolean
   errorType?: string
   errorMessage?: string
+  retrieverName?: string
 }
 
 function isSkillRuntimeRecord(record: {
@@ -130,12 +131,15 @@ export const log = mutation({
     searchSkillApplied: v.optional(v.boolean()),
     searchSkillName: v.optional(v.string()),
     searchSkillAction: v.optional(v.string()),
+    sourcesScored: v.optional(v.number()),
+    sourcesFiltered: v.optional(v.number()),
+    sourcesPassedTiers: v.optional(v.string()),
+    retrieverName: v.optional(v.string()),
     sourcesPassed: v.optional(v.number()),
     sourcesBlocked: v.optional(v.number()),
     referencesClaimed: v.optional(v.number()),
     referencesMatched: v.optional(v.number()),
     attemptedRetrievers: v.optional(v.array(v.string())),
-    retrieverName: v.optional(v.string()),
   },
   handler: async ({ db }, args) => {
     const isSkillRuntime = isSkillRuntimeRecord({

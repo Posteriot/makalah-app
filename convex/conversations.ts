@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import type { MutationCtx } from "./_generated/server"
-import { requireAuthUserId, verifyAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
+import { requireAuthUser, requireAuthUserId, verifyAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
 import { Id } from "./_generated/dataModel"
 
 const DEFAULT_WORKING_TITLE = "Paper Tanpa Judul"
@@ -61,6 +61,19 @@ async function syncPaperSessionWorkingTitleIfEligible(
     })
 }
 
+async function deleteConversationCascade(ctx: MutationCtx, conversationId: Id<"conversations">) {
+    const messages = await ctx.db
+        .query("messages")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+        .collect()
+
+    for (const message of messages) {
+        await ctx.db.delete(message._id)
+    }
+
+    await ctx.db.delete(conversationId)
+}
+
 // List conversations for user
 export const listConversations = query({
     args: { userId: v.id("users") },
@@ -71,6 +84,54 @@ export const listConversations = query({
             .withIndex("by_user", (q) => q.eq("userId", userId))
             .order("desc")
             .take(50)
+    },
+})
+
+export const countConversations = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, { userId }) => {
+        if (!await verifyAuthUserId(ctx, userId)) return 0
+        const conversations = await ctx.db
+            .query("conversations")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .collect()
+        return conversations.length
+    },
+})
+
+export const listConversationsPaginated = query({
+    args: {
+        userId: v.id("users"),
+        page: v.number(),
+        pageSize: v.number(),
+    },
+    handler: async (ctx, { userId, page, pageSize }) => {
+        if (!await verifyAuthUserId(ctx, userId)) {
+            return {
+                items: [],
+                totalCount: 0,
+                page: 1,
+                pageSize,
+            }
+        }
+
+        const safePage = Math.max(1, Math.floor(page))
+        const safePageSize = Math.max(1, Math.floor(pageSize))
+        const allConversations = await ctx.db
+            .query("conversations")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .order("desc")
+            .collect()
+
+        const start = (safePage - 1) * safePageSize
+        const items = allConversations.slice(start, start + safePageSize)
+
+        return {
+            items,
+            totalCount: allConversations.length,
+            page: safePage,
+            pageSize: safePageSize,
+        }
     },
 })
 
@@ -244,18 +305,42 @@ export const deleteConversation = mutation({
     args: { conversationId: v.id("conversations") },
     handler: async (ctx, { conversationId }) => {
         await requireConversationOwner(ctx, conversationId)
-        // Delete all messages first
-        const messages = await ctx.db
-            .query("messages")
-            .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
-            .collect()
+        await deleteConversationCascade(ctx, conversationId)
+        return { deletedCount: 1 }
+    },
+})
 
-        for (const message of messages) {
-            await ctx.db.delete(message._id)
+export const bulkDeleteConversations = mutation({
+    args: { conversationIds: v.array(v.id("conversations")) },
+    handler: async (ctx, { conversationIds }) => {
+        const uniqueConversationIds = [...new Set(conversationIds)]
+
+        for (const conversationId of uniqueConversationIds) {
+            await requireConversationOwner(ctx, conversationId)
         }
 
-        // Delete conversation
-        await ctx.db.delete(conversationId)
+        for (const conversationId of uniqueConversationIds) {
+            await deleteConversationCascade(ctx, conversationId)
+        }
+
+        return { deletedCount: uniqueConversationIds.length }
+    },
+})
+
+export const deleteAllConversations = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const authUser = await requireAuthUser(ctx)
+        const conversations = await ctx.db
+            .query("conversations")
+            .withIndex("by_user", (q) => q.eq("userId", authUser._id))
+            .collect()
+
+        for (const conversation of conversations) {
+            await deleteConversationCascade(ctx, conversation._id)
+        }
+
+        return { deletedCount: conversations.length }
     },
 })
 

@@ -419,8 +419,6 @@ export default defineSchema({
     fallbackWebSearchMaxResults: v.optional(v.number()), // Max search results (default: 5, range: 1-10)
     webSearchModel: v.optional(v.string()), // Dedicated web search model (default: "perplexity/sonar")
     webSearchFallbackModel: v.optional(v.string()), // Fallback web search model (default: "x-ai/grok-3-mini")
-
-    // New retriever-based web search config (coexists with legacy fields above)
     webSearchRetrievers: v.optional(v.array(v.object({
       name: v.string(),
       enabled: v.boolean(),
@@ -430,7 +428,7 @@ export default defineSchema({
         maxResults: v.optional(v.number()),
         engine: v.optional(v.string()),
       })),
-    }))),
+    }))), // Backward-compatible: legacy records omit providerOptions
 
     // ════════════════════════════════════════════════════════════════
     // Tool Visibility Settings (Admin maintenance toggle)
@@ -1136,12 +1134,12 @@ export default defineSchema({
     sourcesBlocked: v.optional(v.number()),
     sourcesPassedTiers: v.optional(v.string()),
     attemptedRetrievers: v.optional(v.array(v.string())),
+    retrieverName: v.optional(v.string()),
     diversityWarning: v.optional(v.string()),
     skillResolverFallback: v.optional(v.boolean()),
     isSkillRuntime: v.optional(v.boolean()),
     referencesClaimed: v.optional(v.number()),
     referencesMatched: v.optional(v.number()),
-    retrieverName: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_created", ["createdAt"])
