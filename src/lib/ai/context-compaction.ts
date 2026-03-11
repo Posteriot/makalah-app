@@ -280,7 +280,7 @@ export async function runCompactionChain(
             if (summary) {
                 const summaryMsg: CompactableMessage = {
                     role: "system",
-                    content: `[RINGKASAN DISKUSI SEBELUMNYA]\n${summary}\n\nPercakapan berlanjut dari sini.`,
+                    content: `[PREVIOUS DISCUSSION SUMMARY]\n${summary}\n\nConversation continues from here.`,
                 }
 
                 result.messages = [...systemMessages, summaryMsg, ...toKeep]

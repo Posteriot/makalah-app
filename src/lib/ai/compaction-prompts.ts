@@ -10,15 +10,15 @@
  * Called when messages within a single paper stage exceed threshold.
  */
 export function getPaperMidStageSummaryPrompt(stageName: string): string {
-    return `Ringkas diskusi berikut jadi 3-5 bullet points dalam bahasa Indonesia.
-Fokus pada:
-- Keputusan yang disepakati user dan AI
-- Referensi atau data yang dibahas
-- Request user yang belum diselesaikan
-- Perubahan/revisi yang diminta
+    return `Summarize the following discussion into 3-5 bullet points in Indonesian (Bahasa Indonesia).
+Focus on:
+- Decisions agreed upon by user and AI
+- References or data discussed
+- Unresolved user requests
+- Changes or revisions requested
 
-Konteks: Tahap paper "${stageName}" sedang berlangsung.
-Max 500 karakter total. Hanya bullet points, tanpa pembuka/penutup.`
+Context: Paper stage "${stageName}" is currently in progress.
+Max 500 characters total. Bullet points only, no introduction or conclusion.`
 }
 
 /**
@@ -26,12 +26,12 @@ Max 500 karakter total. Hanya bullet points, tanpa pembuka/penutup.`
  * Called when conversation messages exceed threshold without paper context.
  */
 export function getGeneralChatSummaryPrompt(): string {
-    return `Ringkas percakapan berikut jadi 3-7 bullet points dalam bahasa Indonesia.
-Fokus pada:
-- Topik utama yang dibahas
-- Keputusan atau kesepakatan
-- File yang di-upload atau dibahas
-- Request yang belum selesai
+    return `Summarize the following conversation into 3-7 bullet points in Indonesian (Bahasa Indonesia).
+Focus on:
+- Main topics discussed
+- Decisions or agreements
+- Files uploaded or discussed
+- Unresolved requests
 
-Max 500 karakter total. Hanya bullet points, tanpa pembuka/penutup.`
+Max 500 characters total. Bullet points only, no introduction or conclusion.`
 }

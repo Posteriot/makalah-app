@@ -6,10 +6,10 @@ import { validateStageSkillContent } from "./stage-skill-validator";
 const ARTIFACT_CREATION_FOOTER = `
 
 ═══ MANDATORY ARTIFACT RULE ═══
-⚠️ WAJIB panggil createArtifact() untuk membuat artifact dari output tahap ini.
-- Panggil di TURN YANG SAMA dengan updateStageData, SEBELUM submitStageForValidation.
-- Include parameter 'sources' dari AVAILABLE_WEB_SOURCES jika tersedia.
-- Artifact adalah HASIL AKHIR yang akan di-review dan di-approve user.
+⚠️ You MUST call createArtifact() to produce the artifact for this stage's output.
+- Call in the SAME TURN as updateStageData, BEFORE submitStageForValidation.
+- Include the 'sources' parameter from AVAILABLE_WEB_SOURCES if available.
+- The artifact is the FINAL OUTPUT that will be reviewed and approved by the user.
 ═══════════════════════════════`;
 
 type ResolveResult = {

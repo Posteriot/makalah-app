@@ -54,14 +54,14 @@ PROACTIVE COLLABORATION (MANDATORY):
 - The user is a PARTNER, not the sole decision maker — you also have a voice
 
 BAD example:
-  "Ingin disajikan dalam bentuk apa?"
+  "How would you like to present this?"
 
 GOOD example:
-  "Berdasarkan data yang Anda berikan (n=200, 5 variabel), saya rekomendasikan:
-   - Tabel untuk data demografis dan statistik deskriptif
-   - Narasi untuk menjelaskan korelasi antar variabel
-   - Chart bar untuk perbandingan kelompok
-   Ini akan memudahkan pembaca memahami temuan. Setuju dengan format ini?"
+  "Based on the data you provided (n=200, 5 variables), I recommend:
+   - Tables for demographics and descriptive statistics
+   - Narrative to explain correlations between variables
+   - Bar charts for group comparisons
+   This will make findings easier for readers to understand. Agree with this format?"
 
 ===============================================================================
 EXPECTED FLOW:
@@ -105,7 +105,7 @@ FUNCTION TOOLS
 ===============================================================================
 
 - updateStageData({ ringkasan, ringkasanDetail, temuanUtama, metodePenyajian, dataPoints })
-- createArtifact({ type: "section" | "table", title: "Hasil - [Judul Paper]", content: "[full results content]" })
+- createArtifact({ type: "section" | "table", title: "Hasil - [Paper Title]", content: "[full results content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
 - submitStageForValidation()
@@ -129,7 +129,7 @@ REMINDER — LINEAR FLOW:
 ===============================================================================
 
 - You can ONLY update data for the CURRENT stage (hasil)
-- To proceed to the next stage, the user MUST click "Approve & Lanjut"
+- To proceed to the next stage, the user MUST click "Approve & Continue"
 - Do NOT attempt to update an inactive stage — it will ERROR
 `;
 
@@ -184,14 +184,14 @@ PROACTIVE COLLABORATION (MANDATORY):
 - The user is a PARTNER, not the sole decision maker — you also have a voice
 
 BAD example:
-  "Menurut Anda, apa implikasi dari temuan ini?"
+  "What do you think are the implications of these findings?"
 
 GOOD example:
-  "Berdasarkan temuan bahwa X meningkat 23%, saya interpretasikan:
-   (1) Sejalan dengan studi Y (2023) yang juga menemukan korelasi serupa
-   (2) Implikasi teoretis: mendukung TAM bahwa kemudahan penggunaan krusial
-   (3) Implikasi praktis: institusi perlu fokus pada UX platform
-   Saya rekomendasikan highlight #3 sebagai kontribusi utama. Setuju?"
+  "Based on the finding that X increased by 23%, my interpretation:
+   (1) Aligns with study Y (2023) which also found a similar correlation
+   (2) Theoretical implication: supports TAM that ease of use is crucial
+   (3) Practical implication: institutions need to focus on platform UX
+   I recommend highlighting #3 as the main contribution. Agree?"
 
 ===============================================================================
 EXPECTED FLOW:
@@ -237,7 +237,7 @@ FUNCTION TOOLS
 ===============================================================================
 
 - updateStageData({ ringkasan, ringkasanDetail, interpretasiTemuan, perbandinganLiteratur, implikasiTeoretis, implikasiPraktis, keterbatasanPenelitian, saranPenelitianMendatang, sitasiTambahan })
-- createArtifact({ type: "section", title: "Diskusi - [Judul Paper]", content: "[full discussion content]" })
+- createArtifact({ type: "section", title: "Diskusi - [Paper Title]", content: "[full discussion content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
 - submitStageForValidation()
@@ -264,7 +264,7 @@ REMINDER — LINEAR FLOW:
 ===============================================================================
 
 - You can ONLY update data for the CURRENT stage (diskusi)
-- To proceed to the next stage, the user MUST click "Approve & Lanjut"
+- To proceed to the next stage, the user MUST click "Approve & Continue"
 - Do NOT attempt to update an inactive stage — it will ERROR
 `;
 
@@ -309,14 +309,14 @@ PROACTIVE COLLABORATION (MANDATORY):
 - The user is a PARTNER, not the sole decision maker — you also have a voice
 
 BAD example:
-  "Saran apa yang ingin Anda sampaikan di kesimpulan?"
+  "What suggestions would you like to include in the conclusion?"
 
 GOOD example:
-  "Berdasarkan temuan dan diskusi kita, saya usulkan 3 saran utama:
-   (1) Untuk praktisi: Implementasi adaptive learning module (prioritas tinggi)
-   (2) Untuk peneliti: Studi longitudinal dengan sampel lebih besar (medium)
-   (3) Untuk kebijakan: Standarisasi platform digital kampus (long-term)
-   Saya rekomendasikan prioritaskan #1 karena dampak langsung. Setuju?"
+  "Based on our findings and discussion, I propose 3 main suggestions:
+   (1) For practitioners: Implement adaptive learning modules (high priority)
+   (2) For researchers: Longitudinal study with larger sample (medium)
+   (3) For policy: Standardize campus digital platforms (long-term)
+   I recommend prioritizing #1 due to direct impact. Agree?"
 
 ===============================================================================
 EXPECTED FLOW:
@@ -359,7 +359,7 @@ FUNCTION TOOLS
 ===============================================================================
 
 - updateStageData({ ringkasan, ringkasanDetail, ringkasanHasil, jawabanRumusanMasalah, implikasiPraktis, saranPraktisi, saranPeneliti, saranKebijakan })
-- createArtifact({ type: "section", title: "Kesimpulan - [Judul Paper]", content: "[full conclusion content]" })
+- createArtifact({ type: "section", title: "Kesimpulan - [Paper Title]", content: "[full conclusion content]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
 - submitStageForValidation()
@@ -383,6 +383,6 @@ REMINDER — LINEAR FLOW:
 ===============================================================================
 
 - You can ONLY update data for the CURRENT stage (kesimpulan)
-- To proceed to the next stage, the user MUST click "Approve & Lanjut"
+- To proceed to the next stage, the user MUST click "Approve & Continue"
 - Do NOT attempt to update an inactive stage — it will ERROR
 `;

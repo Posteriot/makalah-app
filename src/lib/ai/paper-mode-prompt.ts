@@ -37,7 +37,7 @@ function formatMemoryDigest(digest: PaperMemoryEntry[]): string {
 
     if (!entries) return "";
 
-    return `\nMEMORY DIGEST (keputusan tersimpan per tahap — JANGAN kontradiksi):\n${entries}\n`;
+    return `\nMEMORY DIGEST (saved decisions per stage — DO NOT contradict):\n${entries}\n`;
 }
 
 /**
@@ -50,17 +50,17 @@ function getInvalidatedArtifactsContext(artifacts: InvalidatedArtifact[]): strin
     }
 
     const artifactsList = artifacts
-        .map((a) => `  - ID: ${a._id} | Judul: "${a.title}" | Tipe: ${a.type}`)
+        .map((a) => `  - ID: ${a._id} | Title: "${a.title}" | Type: ${a.type}`)
         .join("\n");
 
     return `
-⚠️ ARTIFACT YANG PERLU DI-UPDATE (karena rewind):
+⚠️ ARTIFACTS REQUIRING UPDATE (due to rewind):
 ${artifactsList}
 
-INSTRUKSI PENTING:
-- WAJIB gunakan updateArtifact (BUKAN createArtifact) untuk merevisi artifact di atas
-- Artifact tersebut sudah ada tapi perlu diperbarui karena user melakukan rewind ke tahap sebelumnya
-- Pastikan konten baru konsisten dengan keputusan di tahap yang di-rewind
+IMPORTANT INSTRUCTIONS:
+- MUST use updateArtifact (NOT createArtifact) to revise the artifacts above
+- These artifacts already exist but need updating because the user rewound to a previous stage
+- Ensure new content is consistent with decisions made at the rewound stage
 `;
 }
 
@@ -170,16 +170,16 @@ export const getPaperModeSystemPrompt = async (
 
         // Inline revision context (simple, not over-prescriptive)
         const revisionNote = status === "revision"
-            ? "\n⚠️ MODE REVISI: User meminta perbaikan. Perhatikan feedback mereka di pesan terakhir.\n"
+            ? "\n⚠️ REVISION MODE: User requested changes. Pay attention to their feedback in the latest message.\n"
             : "";
 
         // Inline pending validation note
         const pendingNote = status === "pending_validation"
-            ? "\n⏳ MENUNGGU VALIDASI: Draf sudah dikirim. Tunggu user approve/revise sebelum lanjut.\n"
+            ? "\n⏳ AWAITING VALIDATION: Draft has been submitted. Wait for user to approve/revise before proceeding.\n"
             : "";
         const dirtyContextNote = `\n🔄 DIRTY CONTEXT: ${isDirty ? "true" : "false"}\n`;
         const dirtySyncContractNote = status === "pending_validation" && isDirty
-            ? "\n⚠️ KONTRAK SINKRONISASI: Data stage belum sinkron. Jika user minta sinkron/lanjut dari state, WAJIB jelaskan bahwa update belum bisa final sebelum user minta Agen Makalah melakukan revisi dulu.\n"
+            ? "\n⚠️ SYNC CONTRACT: Stage data is not yet synced. If user asks to sync or continue from state, you MUST explain that the update cannot be finalized until the user requests a revision first.\n"
             : "";
 
         // Query invalidated artifacts (Rewind Feature)
@@ -232,8 +232,8 @@ GENERAL RULES:
 
 ${stageInstructions}
 ${memoryDigest}
-KONTEKS TAHAP SELESAI & CHECKLIST:
-Catatan kompresi konteks aktif: refs maks 5, sitasi maks 5, ringkasan detail hanya 3 tahap selesai terakhir.
+COMPLETED STAGES CONTEXT & CHECKLIST:
+Context compression active: max 5 refs, max 5 citations, detailed summary only for last 3 completed stages.
 ${formattedData}
 ${artifactSummariesSection ? `\n${artifactSummariesSection}` : ""}
 ---

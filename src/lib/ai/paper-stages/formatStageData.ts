@@ -91,14 +91,14 @@ function formatWebSearchReferences(stageData: StageData, currentStage: PaperStag
     });
 
     return [
-        `REFERENSI WEB SEARCH TERSIMPAN (WAJIB gunakan, JANGAN fabricate):`,
+        `SAVED WEB SEARCH REFERENCES (MUST use, DO NOT fabricate):`,
         ...lines,
         ...(remainingRefs > 0
-            ? [`  ... dan ${remainingRefs} referensi lainnya (disingkat untuk efisiensi konteks).`]
+            ? [`  ... and ${remainingRefs} more references (truncated for context efficiency).`]
             : []),
         ``,
-        `SEMUA sitasi in-text HARUS merujuk ke referensi di atas.`,
-        `Jika butuh referensi tambahan, MINTA user untuk search terlebih dahulu.`,
+        `ALL in-text citations MUST refer to the references above.`,
+        `If additional references are needed, ASK the user to search first.`,
     ].join("\n");
 }
 
@@ -128,7 +128,7 @@ export function formatStageData(
     sections.push(formatOutlineChecklist(stageData.outline, currentStage));
 
     if (sections.length === 0) {
-        return "Belum ada data dari tahap sebelumnya.";
+        return "No data from previous stages yet.";
     }
 
     return sections.join("\n\n");
@@ -176,7 +176,7 @@ function formatRingkasanTahapSelesai(
 
         const ringkasanValue = typeof data.ringkasan === "string" && data.ringkasan.trim()
             ? data.ringkasan.trim()
-            : "Ringkasan belum tersedia.";
+            : "Summary not yet available.";
 
         summaries.push(`- ${getStageLabel(stageId)}: ${truncateRingkasan(ringkasanValue)}`);
 
@@ -192,10 +192,10 @@ function formatRingkasanTahapSelesai(
     });
 
     if (summaries.length === 0) {
-        return "RINGKASAN TAHAP SELESAI:\n- Belum ada tahap yang disetujui.";
+        return "COMPLETED STAGE SUMMARIES:\n- No stages approved yet.";
     }
 
-    return `RINGKASAN TAHAP SELESAI:\n${summaries.join("\n")}`;
+    return `COMPLETED STAGE SUMMARIES:\n${summaries.join("\n")}`;
 }
 
 function formatActiveStageData(
@@ -277,18 +277,18 @@ function normalizePercentage(value: number): number {
  * Format Gagasan stage data
  */
 function formatGagasanData(data: GagasanData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 1: ${getStageLabel("gagasan")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 1: ${getStageLabel("gagasan")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
-    if (data.ideKasar) output += `Ide Kasar: ${truncateText(data.ideKasar, summaryMode)}\n`;
-    if (data.analisis) output += `Analisis: ${truncateText(data.analisis, summaryMode)}\n`;
-    if (data.angle) output += `Angle Penulisan: ${truncateText(data.angle, summaryMode)}\n`;
-    if (data.novelty) output += `Kebaruan (Novelty): ${truncateText(data.novelty, summaryMode)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ideKasar) output += `Raw Idea: ${truncateText(data.ideKasar, summaryMode)}\n`;
+    if (data.analisis) output += `Analysis: ${truncateText(data.analisis, summaryMode)}\n`;
+    if (data.angle) output += `Writing Angle: ${truncateText(data.angle, summaryMode)}\n`;
+    if (data.novelty) output += `Novelty: ${truncateText(data.novelty, summaryMode)}\n`;
     if (data.referensiAwal && data.referensiAwal.length > 0) {
-        output += `Referensi Awal:\n`;
+        output += `Initial References:\n`;
         data.referensiAwal.forEach((ref, i) => {
             const authors = ref.authors ? ` - ${ref.authors}` : "";
             const year = ref.year ? ` (${ref.year})` : "";
@@ -303,18 +303,18 @@ function formatGagasanData(data: GagasanData, isCurrentStage: boolean, summaryMo
  * Format Topik stage data
  */
 function formatTopikData(data: TopikData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 2: ${getStageLabel("topik")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 2: ${getStageLabel("topik")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
-    if (data.definitif) output += `Topik Definitif: ${truncateText(data.definitif, summaryMode)}\n`;
-    if (data.angleSpesifik) output += `Angle Spesifik: ${truncateText(data.angleSpesifik, summaryMode)}\n`;
-    if (data.argumentasiKebaruan) output += `Argumentasi Kebaruan: ${truncateText(data.argumentasiKebaruan, summaryMode)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.definitif) output += `Definitive Topic: ${truncateText(data.definitif, summaryMode)}\n`;
+    if (data.angleSpesifik) output += `Specific Angle: ${truncateText(data.angleSpesifik, summaryMode)}\n`;
+    if (data.argumentasiKebaruan) output += `Novelty Argumentation: ${truncateText(data.argumentasiKebaruan, summaryMode)}\n`;
     if (data.researchGap) output += `Research Gap: ${truncateText(data.researchGap, summaryMode)}\n`;
     if (data.referensiPendukung && data.referensiPendukung.length > 0) {
-        output += `Referensi Pendukung:\n`;
+        output += `Supporting References:\n`;
         data.referensiPendukung.forEach((ref, i) => {
             const authors = ref.authors ? ` - ${ref.authors}` : "";
             const year = ref.year ? ` (${ref.year})` : "";
@@ -329,17 +329,17 @@ function formatTopikData(data: TopikData, isCurrentStage: boolean, summaryMode =
  * Format Abstrak stage data
  */
 function formatAbstrakData(data: AbstrakData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 4: ${getStageLabel("abstrak")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 4: ${getStageLabel("abstrak")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
-    if (data.ringkasanPenelitian) output += `Ringkasan Penelitian: ${truncateText(data.ringkasanPenelitian, summaryMode)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ringkasanPenelitian) output += `Research Summary: ${truncateText(data.ringkasanPenelitian, summaryMode)}\n`;
     if (data.keywords && data.keywords.length > 0) {
         output += `Keywords: ${data.keywords.join(", ")}\n`;
     }
-    if (data.wordCount) output += `Word Count: ${data.wordCount} kata\n`;
+    if (data.wordCount) output += `Word Count: ${data.wordCount} words\n`;
 
     return output.trim();
 }
@@ -348,29 +348,29 @@ function formatAbstrakData(data: AbstrakData, isCurrentStage: boolean, summaryMo
  * Format Pendahuluan stage data
  */
 function formatPendahuluanData(data: PendahuluanData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 5: ${getStageLabel("pendahuluan")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 5: ${getStageLabel("pendahuluan")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
-    if (data.latarBelakang) output += `Latar Belakang: ${truncateText(data.latarBelakang, summaryMode)}\n`;
-    if (data.rumusanMasalah) output += `Rumusan Masalah: ${truncateText(data.rumusanMasalah, summaryMode)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.latarBelakang) output += `Background: ${truncateText(data.latarBelakang, summaryMode)}\n`;
+    if (data.rumusanMasalah) output += `Problem Formulation: ${truncateText(data.rumusanMasalah, summaryMode)}\n`;
     if (data.researchGapAnalysis) output += `Research Gap Analysis: ${truncateText(data.researchGapAnalysis, summaryMode)}\n`;
-    if (data.tujuanPenelitian) output += `Tujuan Penelitian: ${truncateText(data.tujuanPenelitian, summaryMode)}\n`;
-    if (data.signifikansiPenelitian) output += `Signifikansi Penelitian: ${truncateText(data.signifikansiPenelitian, summaryMode)}\n`;
-    if (data.hipotesis) output += `Hipotesis: ${truncateText(data.hipotesis, summaryMode)}\n`;
+    if (data.tujuanPenelitian) output += `Research Objectives: ${truncateText(data.tujuanPenelitian, summaryMode)}\n`;
+    if (data.signifikansiPenelitian) output += `Research Significance: ${truncateText(data.signifikansiPenelitian, summaryMode)}\n`;
+    if (data.hipotesis) output += `Hypothesis: ${truncateText(data.hipotesis, summaryMode)}\n`;
     if (data.sitasiAPA && data.sitasiAPA.length > 0) {
         const citationsToShow = data.sitasiAPA.slice(0, CITATION_CAP);
         const remainingCitations = data.sitasiAPA.length - citationsToShow.length;
 
-        output += `Daftar Sitasi (ditampilkan ${citationsToShow.length}/${data.sitasiAPA.length}):\n`;
+        output += `Citations (showing ${citationsToShow.length}/${data.sitasiAPA.length}):\n`;
         citationsToShow.forEach((cite, i) => {
-            const citationUrl = cite.url ? ` — ${cite.url}` : " — URL tidak tersedia";
+            const citationUrl = cite.url ? ` — ${cite.url}` : " — URL not available";
             output += `  ${i + 1}. ${cite.inTextCitation} - ${cite.fullReference}${citationUrl}\n`;
         });
         if (remainingCitations > 0) {
-            output += `  ... dan ${remainingCitations} sitasi lainnya (disingkat untuk efisiensi konteks)\n`;
+            output += `  ... and ${remainingCitations} more citations (truncated for context efficiency)\n`;
         }
     }
 
@@ -381,18 +381,18 @@ function formatPendahuluanData(data: PendahuluanData, isCurrentStage: boolean, s
  * Format Tinjauan Literatur stage data
  */
 function formatTinjauanLiteraturData(data: TinjauanLiteraturData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 6: ${getStageLabel("tinjauan_literatur")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 6: ${getStageLabel("tinjauan_literatur")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
-    if (data.kerangkaTeoretis) output += `Kerangka Teoretis: ${truncateText(data.kerangkaTeoretis, summaryMode)}\n`;
-    if (data.reviewLiteratur) output += `Review Literatur: ${truncateText(data.reviewLiteratur, summaryMode)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.kerangkaTeoretis) output += `Theoretical Framework: ${truncateText(data.kerangkaTeoretis, summaryMode)}\n`;
+    if (data.reviewLiteratur) output += `Literature Review: ${truncateText(data.reviewLiteratur, summaryMode)}\n`;
     if (data.gapAnalysis) output += `Gap Analysis: ${truncateText(data.gapAnalysis, summaryMode)}\n`;
-    if (data.justifikasiPenelitian) output += `Justifikasi Penelitian: ${truncateText(data.justifikasiPenelitian, summaryMode)}\n`;
+    if (data.justifikasiPenelitian) output += `Research Justification: ${truncateText(data.justifikasiPenelitian, summaryMode)}\n`;
     if (data.referensi && data.referensi.length > 0) {
-        output += `Referensi (${data.referensi.length}):\n`;
+        output += `References (${data.referensi.length}):\n`;
         data.referensi.forEach((ref, i) => {
             const phase = ref.isFromPhase1 ? "[P1]" : "[NEW]";
             const authors = ref.authors ? ` - ${ref.authors}` : "";
@@ -408,18 +408,18 @@ function formatTinjauanLiteraturData(data: TinjauanLiteraturData, isCurrentStage
  * Format Metodologi stage data
  */
 function formatMetodologiData(data: MetodologiData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 7: ${getStageLabel("metodologi")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 7: ${getStageLabel("metodologi")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
-    if (data.pendekatanPenelitian) output += `Pendekatan: ${data.pendekatanPenelitian.toUpperCase()}\n`;
-    if (data.desainPenelitian) output += `Desain Penelitian: ${truncateText(data.desainPenelitian, summaryMode)}\n`;
-    if (data.metodePerolehanData) output += `Metode Perolehan Data: ${truncateText(data.metodePerolehanData, summaryMode)}\n`;
-    if (data.teknikAnalisis) output += `Teknik Analisis: ${truncateText(data.teknikAnalisis, summaryMode)}\n`;
-    if (data.alatInstrumen) output += `Alat/Instrumen: ${truncateText(data.alatInstrumen, summaryMode)}\n`;
-    if (data.etikaPenelitian) output += `Etika Penelitian: ${truncateText(data.etikaPenelitian, summaryMode)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.pendekatanPenelitian) output += `Approach: ${data.pendekatanPenelitian.toUpperCase()}\n`;
+    if (data.desainPenelitian) output += `Research Design: ${truncateText(data.desainPenelitian, summaryMode)}\n`;
+    if (data.metodePerolehanData) output += `Data Collection Method: ${truncateText(data.metodePerolehanData, summaryMode)}\n`;
+    if (data.teknikAnalisis) output += `Analysis Technique: ${truncateText(data.teknikAnalisis, summaryMode)}\n`;
+    if (data.alatInstrumen) output += `Tools/Instruments: ${truncateText(data.alatInstrumen, summaryMode)}\n`;
+    if (data.etikaPenelitian) output += `Research Ethics: ${truncateText(data.etikaPenelitian, summaryMode)}\n`;
 
     return output.trim();
 }
@@ -428,17 +428,17 @@ function formatMetodologiData(data: MetodologiData, isCurrentStage: boolean, sum
  * Format Hasil stage data
  */
 function formatHasilData(data: HasilData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 8: ${getStageLabel("hasil")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 8: ${getStageLabel("hasil")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.metodePenyajian) {
-        output += `Metode Penyajian: ${data.metodePenyajian.toUpperCase()}\n`;
+        output += `Presentation Method: ${data.metodePenyajian.toUpperCase()}\n`;
     }
     if (data.temuanUtama && data.temuanUtama.length > 0) {
-        output += `Temuan Utama:\n`;
+        output += `Key Findings:\n`;
         data.temuanUtama.forEach((item, i) => {
             output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
         });
@@ -459,20 +459,20 @@ function formatHasilData(data: HasilData, isCurrentStage: boolean, summaryMode =
  * Format Diskusi stage data
  */
 function formatDiskusiData(data: DiskusiData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 9: ${getStageLabel("diskusi")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 9: ${getStageLabel("diskusi")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
-    if (data.interpretasiTemuan) output += `Interpretasi Temuan: ${truncateText(data.interpretasiTemuan, summaryMode)}\n`;
-    if (data.perbandinganLiteratur) output += `Perbandingan Literatur: ${truncateText(data.perbandinganLiteratur, summaryMode)}\n`;
-    if (data.implikasiTeoretis) output += `Implikasi Teoretis: ${truncateText(data.implikasiTeoretis, summaryMode)}\n`;
-    if (data.implikasiPraktis) output += `Implikasi Praktis: ${truncateText(data.implikasiPraktis, summaryMode)}\n`;
-    if (data.keterbatasanPenelitian) output += `Keterbatasan Penelitian: ${truncateText(data.keterbatasanPenelitian, summaryMode)}\n`;
-    if (data.saranPenelitianMendatang) output += `Saran Penelitian Mendatang: ${truncateText(data.saranPenelitianMendatang, summaryMode)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.interpretasiTemuan) output += `Findings Interpretation: ${truncateText(data.interpretasiTemuan, summaryMode)}\n`;
+    if (data.perbandinganLiteratur) output += `Literature Comparison: ${truncateText(data.perbandinganLiteratur, summaryMode)}\n`;
+    if (data.implikasiTeoretis) output += `Theoretical Implications: ${truncateText(data.implikasiTeoretis, summaryMode)}\n`;
+    if (data.implikasiPraktis) output += `Practical Implications: ${truncateText(data.implikasiPraktis, summaryMode)}\n`;
+    if (data.keterbatasanPenelitian) output += `Research Limitations: ${truncateText(data.keterbatasanPenelitian, summaryMode)}\n`;
+    if (data.saranPenelitianMendatang) output += `Future Research Suggestions: ${truncateText(data.saranPenelitianMendatang, summaryMode)}\n`;
     if (data.sitasiTambahan && data.sitasiTambahan.length > 0) {
-        output += `Sitasi Tambahan: ${data.sitasiTambahan.length}\n`;
+        output += `Additional Citations: ${data.sitasiTambahan.length}\n`;
     }
 
     return output.trim();
@@ -482,23 +482,23 @@ function formatDiskusiData(data: DiskusiData, isCurrentStage: boolean, summaryMo
  * Format Kesimpulan stage data
  */
 function formatKesimpulanData(data: KesimpulanData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 10: ${getStageLabel("kesimpulan")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 10: ${getStageLabel("kesimpulan")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
-    if (data.ringkasanHasil) output += `Ringkasan Hasil: ${truncateText(data.ringkasanHasil, summaryMode)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ringkasanHasil) output += `Results Summary: ${truncateText(data.ringkasanHasil, summaryMode)}\n`;
     if (data.jawabanRumusanMasalah && data.jawabanRumusanMasalah.length > 0) {
-        output += `Jawaban Rumusan Masalah:\n`;
+        output += `Problem Formulation Answers:\n`;
         data.jawabanRumusanMasalah.forEach((item, i) => {
             output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
         });
     }
-    if (data.implikasiPraktis) output += `Implikasi Praktis: ${truncateText(data.implikasiPraktis, summaryMode)}\n`;
-    if (data.saranPraktisi) output += `Saran Praktisi: ${truncateText(data.saranPraktisi, summaryMode)}\n`;
-    if (data.saranPeneliti) output += `Saran Peneliti: ${truncateText(data.saranPeneliti, summaryMode)}\n`;
-    if (data.saranKebijakan) output += `Saran Kebijakan: ${truncateText(data.saranKebijakan, summaryMode)}\n`;
+    if (data.implikasiPraktis) output += `Practical Implications: ${truncateText(data.implikasiPraktis, summaryMode)}\n`;
+    if (data.saranPraktisi) output += `Practitioner Suggestions: ${truncateText(data.saranPraktisi, summaryMode)}\n`;
+    if (data.saranPeneliti) output += `Researcher Suggestions: ${truncateText(data.saranPeneliti, summaryMode)}\n`;
+    if (data.saranKebijakan) output += `Policy Suggestions: ${truncateText(data.saranKebijakan, summaryMode)}\n`;
 
     return output.trim();
 }
@@ -507,21 +507,21 @@ function formatKesimpulanData(data: KesimpulanData, isCurrentStage: boolean, sum
  * Format Pembaruan Abstrak stage data (Stage 11)
  */
 function formatPembaruanAbstrakData(data: PembaruanAbstrakData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 11: ${getStageLabel("pembaruan_abstrak")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 11: ${getStageLabel("pembaruan_abstrak")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
-    if (data.ringkasanPenelitianBaru) output += `Abstrak Baru: ${truncateText(data.ringkasanPenelitianBaru, summaryMode)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ringkasanPenelitianBaru) output += `Updated Abstract: ${truncateText(data.ringkasanPenelitianBaru, summaryMode)}\n`;
     if (data.perubahanUtama && data.perubahanUtama.length > 0) {
-        output += `Perubahan Utama:\n`;
+        output += `Key Changes:\n`;
         data.perubahanUtama.forEach((item, i) => {
             output += `  ${i + 1}. ${truncateText(item, summaryMode)}\n`;
         });
     }
     if (data.keywordsBaru && data.keywordsBaru.length > 0) {
-        output += `Keywords Baru: ${data.keywordsBaru.join(", ")}\n`;
+        output += `Updated Keywords: ${data.keywordsBaru.join(", ")}\n`;
     }
     if (data.wordCount !== undefined) output += `Word Count: ${data.wordCount}\n`;
 
@@ -532,26 +532,26 @@ function formatPembaruanAbstrakData(data: PembaruanAbstrakData, isCurrentStage: 
  * Format Daftar Pustaka stage data (Stage 12)
  */
 function formatDaftarPustakaData(data: DaftarPustakaData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 12: ${getStageLabel("daftar_pustaka")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 12: ${getStageLabel("daftar_pustaka")} [${status}${revisions}] ===\n`;
 
     // Stats
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.totalCount !== undefined) {
-        output += `Total Referensi: ${data.totalCount}\n`;
+        output += `Total References: ${data.totalCount}\n`;
     }
     if (data.incompleteCount !== undefined && data.incompleteCount > 0) {
-        output += `Referensi Incomplete: ${data.incompleteCount}\n`;
+        output += `Incomplete References: ${data.incompleteCount}\n`;
     }
     if (data.duplicatesMerged !== undefined && data.duplicatesMerged > 0) {
-        output += `Duplikat Digabung: ${data.duplicatesMerged}\n`;
+        output += `Duplicates Merged: ${data.duplicatesMerged}\n`;
     }
 
     // Entries list
     if (data.entries && data.entries.length > 0) {
-        output += `\nDaftar Referensi:\n`;
+        output += `\nReference List:\n`;
 
         const entriesToShow = summaryMode ? data.entries.slice(0, 5) : data.entries;
         entriesToShow.forEach((entry, idx) => {
@@ -568,7 +568,7 @@ function formatDaftarPustakaData(data: DaftarPustakaData, isCurrentStage: boolea
         });
 
         if (summaryMode && data.entries.length > 5) {
-            output += `  ... dan ${data.entries.length - 5} referensi lainnya\n`;
+            output += `  ... and ${data.entries.length - 5} more references\n`;
         }
     }
 
@@ -579,37 +579,37 @@ function formatDaftarPustakaData(data: DaftarPustakaData, isCurrentStage: boolea
  * Format Lampiran stage data (Stage 13)
  */
 function formatLampiranData(data: LampiranData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 13: ${getStageLabel("lampiran")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 13: ${getStageLabel("lampiran")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.tidakAdaLampiran) {
-        output += `Lampiran: Tidak ada\n`;
+        output += `Appendix: None\n`;
         if (data.alasanTidakAda) {
-            output += `Alasan: ${truncateText(data.alasanTidakAda, summaryMode)}\n`;
+            output += `Reason: ${truncateText(data.alasanTidakAda, summaryMode)}\n`;
         }
         return output.trim();
     }
     if (data.items && data.items.length > 0) {
-        output += `Total Lampiran: ${data.items.length}\n\n`;
+        output += `Total Appendices: ${data.items.length}\n\n`;
 
         const itemsToShow = summaryMode ? data.items.slice(0, 3) : data.items;
         itemsToShow.forEach((item) => {
             const tipeStr = item.tipe ? ` (${item.tipe})` : "";
-            output += `Lampiran ${item.label}: ${item.judul || "Untitled"}${tipeStr}\n`;
+            output += `Appendix ${item.label}: ${item.judul || "Untitled"}${tipeStr}\n`;
 
             if (!summaryMode && item.referencedInSections && item.referencedInSections.length > 0) {
-                output += `  -> Direferensikan di: ${item.referencedInSections.join(", ")}\n`;
+                output += `  -> Referenced in: ${item.referencedInSections.join(", ")}\n`;
             }
         });
 
         if (summaryMode && data.items.length > 3) {
-            output += `... dan ${data.items.length - 3} lampiran lainnya\n`;
+            output += `... and ${data.items.length - 3} more appendices\n`;
         }
     } else {
-        output += `Belum ada lampiran\n`;
+        output += `No appendices yet\n`;
     }
 
     return output.trim();
@@ -619,32 +619,32 @@ function formatLampiranData(data: LampiranData, isCurrentStage: boolean, summary
  * Format Judul stage data (Stage 14)
  */
 function formatJudulData(data: JudulData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 14: ${getStageLabel("judul")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 14: ${getStageLabel("judul")} [${status}${revisions}] ===\n`;
 
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     // Selected title (emphasized)
     if (data.judulTerpilih) {
-        output += `**JUDUL TERPILIH:** ${data.judulTerpilih}\n`;
+        output += `**SELECTED TITLE:** ${data.judulTerpilih}\n`;
         if (data.alasanPemilihan && !summaryMode) {
-            output += `Alasan: ${truncateText(data.alasanPemilihan, summaryMode)}\n`;
+            output += `Rationale: ${truncateText(data.alasanPemilihan, summaryMode)}\n`;
         }
     }
 
     // Options list
     if (data.opsiJudul && data.opsiJudul.length > 0 && !summaryMode) {
-        output += `\nOpsi Judul:\n`;
+        output += `\nTitle Options:\n`;
         data.opsiJudul.forEach((opsi, idx) => {
             const coverageStr = opsi.coverageScore !== undefined
                 ? ` (coverage: ${Math.round(normalizePercentage(opsi.coverageScore))}%)`
                 : "";
-            const selected = data.judulTerpilih === opsi.judul ? " [TERPILIH]" : "";
+            const selected = data.judulTerpilih === opsi.judul ? " [SELECTED]" : "";
             output += `  ${idx + 1}. ${opsi.judul}${coverageStr}${selected}\n`;
         });
     } else if (!data.judulTerpilih) {
-        output += `Judul belum dipilih\n`;
+        output += `Title not yet selected\n`;
     }
 
     return output.trim();
@@ -654,23 +654,23 @@ function formatJudulData(data: JudulData, isCurrentStage: boolean, summaryMode =
  * Format Outline stage data (Stage 3)
  */
 function formatOutlineData(data: OutlineData, isCurrentStage: boolean, summaryMode = false): string {
-    const status = data.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
-    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisi)` : "";
+    const status = data.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
+    const revisions = data.revisionCount ? ` (${data.revisionCount}x revisions)` : "";
 
-    let output = `=== TAHAP 3: ${getStageLabel("outline")} [${status}${revisions}] ===\n`;
+    let output = `=== STAGE 3: ${getStageLabel("outline")} [${status}${revisions}] ===\n`;
 
     // Stats
-    if (data.ringkasan) output += `Ringkasan: ${truncateRingkasan(data.ringkasan)}\n`;
+    if (data.ringkasan) output += `Summary: ${truncateRingkasan(data.ringkasan)}\n`;
     if (data.totalWordCount !== undefined) {
-        output += `Estimasi Total: ${data.totalWordCount} kata\n`;
+        output += `Estimated Total: ${data.totalWordCount} words\n`;
     }
     if (data.completenessScore !== undefined) {
-        output += `Kelengkapan: ${Math.round(normalizePercentage(data.completenessScore))}%\n`;
+        output += `Completeness: ${Math.round(normalizePercentage(data.completenessScore))}%\n`;
     }
 
     // Sections hierarchy
     if (data.sections && data.sections.length > 0) {
-        output += `\nStruktur Outline:\n`;
+        output += `\nOutline Structure:\n`;
 
         // Build hierarchy display
         const sectionsToShow = summaryMode
@@ -683,14 +683,14 @@ function formatOutlineData(data: OutlineData, isCurrentStage: boolean, summaryMo
                 : section.status === "partial" ? "[~]"
                 : "[_]";
             const wordCount = section.estimatedWordCount !== undefined
-                ? ` (~${section.estimatedWordCount} kata)`
+                ? ` (~${section.estimatedWordCount} words)`
                 : "";
 
             output += `${indent}${statusIcon} ${section.judul || section.id}${wordCount}\n`;
         });
 
         if (summaryMode && data.sections.length > 10) {
-            output += `  ... dan ${data.sections.length - 10} section lainnya\n`;
+            output += `  ... and ${data.sections.length - 10} more sections\n`;
         }
     }
 
@@ -708,12 +708,12 @@ function formatOutlineChecklist(
     currentStage: PaperStageId | "completed"
 ): string {
     const isCurrentStage = currentStage === "outline";
-    const status = outline?.validatedAt ? "DISETUJUI" : (isCurrentStage ? "DALAM PROSES" : "DRAFT");
+    const status = outline?.validatedAt ? "APPROVED" : (isCurrentStage ? "IN PROGRESS" : "DRAFT");
 
-    let output = `CHECKLIST OUTLINE (TAHAP 3: ${getStageLabel("outline")}) [${status}]:\n`;
+    let output = `OUTLINE CHECKLIST (STAGE 3: ${getStageLabel("outline")}) [${status}]:\n`;
 
     if (!outline?.sections || outline.sections.length === 0) {
-        output += "Checklist belum tersedia.";
+        output += "Checklist not yet available.";
         return output.trim();
     }
 
@@ -734,7 +734,7 @@ function formatOutlineChecklist(
 
     // Show indicator if content was truncated
     if (remainingCount > 0) {
-        output += `  ...dan ${remainingCount} section lainnya\n`;
+        output += `  ...and ${remainingCount} more sections\n`;
     }
 
     return output.trim();
@@ -766,5 +766,5 @@ export function formatArtifactSummaries(
     const summaries = artifacts
         .map((a) => formatArtifactSummary(a.content, a.stageLabel, a.version, a.title, a.artifactId));
 
-    return `RINGKASAN ARTIFACT TAHAP SELESAI (gunakan readArtifact untuk baca isi lengkap jika dibutuhkan):\n${summaries.join("\n")}`;
+    return `COMPLETED STAGE ARTIFACT SUMMARIES (use readArtifact to read full content if needed):\n${summaries.join("\n")}`;
 }

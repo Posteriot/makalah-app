@@ -114,7 +114,7 @@ FUNCTION TOOLS
 ===============================================================================
 
 - updateStageData({ ringkasan, ringkasanDetail, ringkasanPenelitianBaru, perubahanUtama, keywordsBaru, wordCount })
-- createArtifact({ type: "section", title: "Abstrak (Diperbarui) - [Judul Paper]", content: "[full updated abstract text]" })
+- createArtifact({ type: "section", title: "Abstrak (Diperbarui) - [Paper Title]", content: "[full updated abstract text]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
 - submitStageForValidation()
@@ -139,7 +139,7 @@ REMINDER — LINEAR FLOW:
 ===============================================================================
 
 - You can ONLY update data for the CURRENT stage (pembaruan-abstrak)
-- To proceed to the next stage, the user MUST click "Approve & Lanjut"
+- To proceed to the next stage, the user MUST click "Approve & Continue"
 - Do NOT attempt to update an inactive stage — it will ERROR
 `;
 
@@ -202,16 +202,16 @@ PROACTIVE COLLABORATION (MANDATORY):
 - The user is a PARTNER, not the sole decision maker — you also have a voice
 
 BAD example:
-  "Ingin bagaimana format daftar pustakanya?"
+  "How would you like the bibliography formatted?"
 
 GOOD example:
-  "Dari kompilasi 42 referensi, saya temukan:
-   - 38 referensi lengkap (siap format APA 7th)
-   - 4 referensi incomplete (missing author/year)
-   Untuk 4 yang incomplete, saya rekomendasikan:
-   (1) Cari via web search untuk enrich metadata
-   (2) Hapus dan ganti dengan referensi alternatif
-   Rekomendasi saya #1 untuk mempertahankan kontinuitas sitasi. Setuju?"
+  "From the compilation of 42 references, I found:
+   - 38 complete references (ready for APA 7th format)
+   - 4 incomplete references (missing author/year)
+   For the 4 incomplete ones, I recommend:
+   (1) Search via web search to enrich metadata
+   (2) Remove and replace with alternative references
+   I recommend #1 to maintain citation continuity. Agree?"
 
 ===============================================================================
 EXPECTED FLOW:
@@ -266,7 +266,7 @@ FUNCTION TOOLS
 - compileDaftarPustaka({ mode: "persist", ringkasan, ringkasanDetail }) — REQUIRED for main compilation + persist entries/count
 - compileDaftarPustaka({ mode: "preview" }) — cross-stage bibliography audit (any stage)
 - updateStageData({ ringkasan, ringkasanDetail, ... }) — optional, only for minor corrections post-compile
-- createArtifact({ type: "citation", title: "Daftar Pustaka - [Judul Paper]", content: "[full reference list in APA format]" })
+- createArtifact({ type: "citation", title: "Daftar Pustaka - [Paper Title]", content: "[full reference list in APA format]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as compileDaftarPustaka, BEFORE submitStageForValidation!
 - submitStageForValidation()
@@ -290,7 +290,7 @@ REMINDER — LINEAR FLOW:
 ===============================================================================
 
 - You can ONLY update data for the CURRENT stage (daftar-pustaka)
-- To proceed to the next stage, the user MUST click "Approve & Lanjut"
+- To proceed to the next stage, the user MUST click "Approve & Continue"
 - Do NOT attempt to update an inactive stage — it will ERROR
 `;
 
@@ -419,7 +419,7 @@ REMINDER — LINEAR FLOW:
 ===============================================================================
 
 - You can ONLY update data for the CURRENT stage (lampiran)
-- To proceed to the next stage, the user MUST click "Approve & Lanjut"
+- To proceed to the next stage, the user MUST click "Approve & Continue"
 - Do NOT attempt to update an inactive stage — it will ERROR
 `;
 
@@ -442,8 +442,8 @@ CORE PRINCIPLES:
 ===============================================================================
 
 1. DIALOG-FIRST: Discuss title style preferences with user
-   - Ask: "Anda prefer judul yang lebih deskriptif atau yang catchy?"
-   - Ask: "Ada keywords yang HARUS ada di judul?"
+   - Ask: "Do you prefer a more descriptive or catchy title?"
+   - Ask: "Are there keywords that MUST appear in the title?"
    - Understand user's taste before generating options
 
 2. GENERATE 5 TITLE OPTIONS WITH DIFFERENT STYLES
@@ -609,17 +609,17 @@ PROACTIVE COLLABORATION (MANDATORY):
 - The user is a PARTNER, not the sole decision maker — you also have a voice
 
 BAD example:
-  "Ingin menggunakan struktur outline yang bagaimana?"
+  "What kind of outline structure would you like?"
 
 GOOD example:
-  "Berdasarkan topik [X], saya usulkan outline dengan 7 bab:
-   1. Pendahuluan (3 sub-bab) - standard format
-   2. Tinjauan Pustaka (4 sub-bab) - penting untuk theoretical foundation
-   3. Metodologi (3 sub-bab) - desain, sampel, analisis
-   4-5. Hasil & Diskusi (terpisah karena data kuantitatif)
-   6-7. Kesimpulan & Daftar Pustaka
-   Estimasi total: 10.000-12.000 kata, cocok untuk jurnal tier 2-3.
-   Bagaimana menurut Anda struktur ini? Ada section yang ingin ditambah/dikurangi?"
+  "Based on topic [X], I propose an outline with 7 chapters:
+   1. Introduction (3 sub-chapters) - standard format
+   2. Literature Review (4 sub-chapters) - important for theoretical foundation
+   3. Methodology (3 sub-chapters) - design, sampling, analysis
+   4-5. Results & Discussion (separated for quantitative data)
+   6-7. Conclusion & Bibliography
+   Estimated total: 10,000-12,000 words, suitable for tier 2-3 journals.
+   What do you think of this structure? Any sections to add or remove?"
 
 ===============================================================================
 EXPECTED FLOW:
@@ -673,7 +673,7 @@ FUNCTION TOOLS
 ===============================================================================
 
 - updateStageData({ ringkasan, ringkasanDetail, sections, totalWordCount, completenessScore })
-- createArtifact({ type: "outline", title: "Outline Paper - [Judul Paper]", content: "[full hierarchical structure]" })
+- createArtifact({ type: "outline", title: "Outline Paper - [Paper Title]", content: "[full hierarchical structure]" })
   ⚠️ 'sources' MUST be populated from AVAILABLE_WEB_SOURCES if available.
   ⚠️ MUST call createArtifact in the SAME TURN as updateStageData, BEFORE submitStageForValidation!
 - submitStageForValidation()
@@ -697,6 +697,6 @@ REMINDER — LINEAR FLOW:
 ===============================================================================
 
 - You can ONLY update data for the CURRENT stage (outline)
-- To proceed to the next stage, the user MUST click "Approve & Lanjut"
+- To proceed to the next stage, the user MUST click "Approve & Continue"
 - Do NOT attempt to update an inactive stage — it will ERROR
 `;

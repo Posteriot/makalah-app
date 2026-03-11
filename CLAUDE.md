@@ -11,6 +11,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - For technical documents, use appropriate technical Indonesian.
 - Do not use English in user communication except for technical terms that have no Indonesian equivalent.
 
+### MODEL INSTRUCTION LANGUAGE POLICY
+- **All instructions to the AI model** — whether embedded in code files, standalone skill files (SKILL.md), configuration files, prompt templates, tool descriptions, Zod `.describe()` strings, or any other instruction layer — **MUST be written in full English.**
+- The model's output language (Indonesian for chat, paper artifacts, and user-facing content) is governed **centrally by the primary system prompt in the database**. Do not duplicate or override this language policy in code-level instructions.
+- Indonesian text in code is ONLY acceptable for: (1) regex patterns that detect Indonesian user input (functional code, not instructions), (2) user-facing UI strings/error messages shown directly to users, (3) observability/trace labels shown in the UI.
+- This separation ensures a single source of truth for output language policy and prevents scattered, inconsistent language directives across the codebase.
+
 ### INTERACTION RULES
 - Do not suggest anything unless asked.
 - You must always ask questions, even if things seem clear.
