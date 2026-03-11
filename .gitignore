@@ -59,6 +59,10 @@ CLAUDE.md
 AGENTS.md
 .mcp.json
 agent-os/
+# Convex export/backup files
+convex-backup-*
+convex-export-*
+
 # Temporary files
 .tmp/
 .playwright-mcp/
