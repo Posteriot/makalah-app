@@ -6,7 +6,7 @@
  * This file provides:
  * - Research completeness checks (data-based, used as LLM router context)
  * - System notes injected based on search mode decisions
- * - Utility functions (isCompileDaftarPustakaIntent, isExplicitSaveSubmitRequest)
+ * - Utility functions (isExplicitSaveSubmitRequest)
  */
 
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
@@ -86,29 +86,6 @@ export const isExplicitSaveSubmitRequest = (text: string): boolean => {
         /\bselesai(kan)?\s*(tahap|stage)?\b/,
     ]
     return savePatterns.some(p => p.test(normalized))
-}
-
-/**
- * Detect explicit intent to run compileDaftarPustaka tool.
- * Used to force function-tools mode (disable web-search-only mode) in chat router.
- */
-export const isCompileDaftarPustakaIntent = (text: string): boolean => {
-    const normalized = text.toLowerCase()
-    const compact = normalized.replace(/[^a-z0-9]/g, "")
-
-    if (compact.includes("compiledaftarpustaka")) {
-        return true
-    }
-
-    const compilePatterns = [
-        /\bcompile\b.*\bdaftar\s+pustaka\b/,
-        /\bkompil(asi|e)\b.*\bdaftar\s+pustaka\b/,
-        /\bdaftar\s+pustaka\b.*\b(compile|kompilasi|kompile)\b/,
-        /\bpreview\b.*\bdaftar\s+pustaka\b/,
-        /\bpersist\b.*\bdaftar\s+pustaka\b/,
-    ]
-
-    return compilePatterns.some((pattern) => pattern.test(normalized))
 }
 
 /**

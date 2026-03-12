@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest"
 import {
-    isCompileDaftarPustakaIntent,
     isStageResearchIncomplete,
 } from "@/lib/ai/paper-search-helpers"
 
@@ -49,25 +48,7 @@ const isExplicitSyncRequest = (text: string) => {
 }
 
 // ===========================================================================
-// 1. Pre-router guardrails: isCompileDaftarPustakaIntent
-// ===========================================================================
-describe("isCompileDaftarPustakaIntent", () => {
-    it.each([
-        ["compile daftar pustaka", true],
-        ["compiledaftarpustaka", true],
-        ["preview daftar pustaka", true],
-        ["kompilasi daftar pustaka", true],
-        ["cari referensi", false],
-        ["lanjut", false],
-        ["simpan data", false],
-        ["ya", false],
-    ])('"%s" → %s', (input, expected) => {
-        expect(isCompileDaftarPustakaIntent(input)).toBe(expected)
-    })
-})
-
-// ===========================================================================
-// 2. Pre-router guardrails: isStageResearchIncomplete
+// 1. Pre-router guardrails: isStageResearchIncomplete
 // ===========================================================================
 describe("isStageResearchIncomplete", () => {
     it("gagasan with empty referensiAwal → incomplete", () => {

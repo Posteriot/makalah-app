@@ -23,7 +23,6 @@ import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessio
 import {
     isStageResearchIncomplete,
     isExplicitSaveSubmitRequest,
-    isCompileDaftarPustakaIntent,
     PAPER_TOOLS_ONLY_NOTE,
     getResearchIncompleteNote,
     getFunctionToolsModeNote,
@@ -1827,7 +1826,6 @@ Aturan:
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
             const forcePaperToolsMode = !!paperWorkflowReminder && !paperModePrompt
-            const compileDaftarPustakaIntent = isCompileDaftarPustakaIntent(lastUserContent)
 
             // ════════════════════════════════════════════════════════════════
             // Search Mode Decision — Unified LLM Router
@@ -1839,12 +1837,7 @@ Aturan:
             let isSyncRequest = false
 
             // --- Pre-router guardrails (deterministic, structural) ---
-            if (compileDaftarPustakaIntent && !!paperModePrompt) {
-                searchRequestedByPolicy = false
-                activeStageSearchReason = "compile_daftar_pustaka_intent"
-                activeStageSearchNote = getFunctionToolsModeNote("Compile bibliography")
-                console.log("[SearchDecision] Compile intent override: enableWebSearch=false")
-            } else if (forcePaperToolsMode) {
+            if (forcePaperToolsMode) {
                 searchRequestedByPolicy = false
                 activeStageSearchReason = "force_paper_tools_mode"
                 console.log("[SearchDecision] Force paper tools: no session yet")
@@ -1909,6 +1902,17 @@ Aturan:
                     activeStageSearchReason = "sync_request"
                     activeStageSearchNote = getFunctionToolsModeNote("Session state sync")
                     console.log("[SearchDecision] Router detected sync request: enableWebSearch=false")
+                }
+
+                // Post-router compile detection via intentType
+                const isCompileIntent = !!paperModePrompt
+                    && webSearchDecision.intentType === "compile_daftar_pustaka"
+
+                if (isCompileIntent) {
+                    searchRequestedByPolicy = false
+                    activeStageSearchReason = "compile_daftar_pustaka"
+                    activeStageSearchNote = getFunctionToolsModeNote("Compile bibliography")
+                    console.log("[SearchDecision] Router detected compile intent: enableWebSearch=false")
                 }
             }
 
