@@ -39,6 +39,7 @@ import {
 import { getVAChannelFullLabel } from "@/lib/payment/channel-labels"
 import { mapPaymentCreationErrorMessage } from "@/lib/payment/provider-error-messages"
 import { normalizeOvoMobileNumber } from "@/lib/payment/mobile-number-format"
+import { PaymentTechnicalReportButton } from "@/components/technical-report/PaymentTechnicalReportButton"
 
 // ════════════════════════════════════════════════════════════════
 // Constants
@@ -190,6 +191,7 @@ function CheckoutBPPContent() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
 
   useEffect(() => {
     const nextMethod = resolveCheckoutMethodSelection(
@@ -223,6 +225,7 @@ function CheckoutBPPContent() {
 
     setIsProcessing(true)
     setError(null)
+    setErrorCode(null)
 
     try {
       const response = await fetch("/api/payments/topup", {
@@ -243,6 +246,7 @@ function CheckoutBPPContent() {
       const data = await response.json()
 
       if (!response.ok) {
+        setErrorCode(data.code ?? null)
         throw new Error(data.error || "Gagal membuat pembayaran")
       }
 
@@ -400,6 +404,21 @@ function CheckoutBPPContent() {
                     <li>Jangan tutup halaman ini sebelum status berubah berhasil.</li>
                   </ul>
                 </div>
+
+                <div className="text-center pt-2">
+                  <p className="text-narrative text-xs text-muted-foreground mb-1">
+                    Sudah bayar tapi status belum berubah?
+                  </p>
+                  <PaymentTechnicalReportButton
+                    source="payment-checkout"
+                    paymentContext={{
+                      transactionId: paymentResult.providerPaymentId,
+                      amount: paymentResult.amount,
+                      paymentMethod: selectedMethod,
+                      providerPaymentId: paymentResult.providerPaymentId,
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -429,10 +448,18 @@ function CheckoutBPPContent() {
             </div>
 
             {error && (
-              <CheckoutErrorBanner
-                title="Gagal memproses pembayaran"
-                message={error}
-              />
+              <div className="space-y-2">
+                <CheckoutErrorBanner
+                  title="Gagal memproses pembayaran"
+                  message={error}
+                />
+                {errorCode === "PAYMENT_SYSTEM_UNAVAILABLE" && (
+                  <PaymentTechnicalReportButton
+                    source="payment-preflight-error"
+                    paymentContext={{ errorCode }}
+                  />
+                )}
+              </div>
             )}
 
               <div className={sectionCardClass}>
