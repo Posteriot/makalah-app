@@ -22,7 +22,6 @@ import { ACTIVE_SEARCH_STAGES, PASSIVE_SEARCH_STAGES } from "@/lib/ai/stage-skil
 import { getStageLabel, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
     isStageResearchIncomplete,
-    isExplicitSaveSubmitRequest,
     PAPER_TOOLS_ONLY_NOTE,
     getResearchIncompleteNote,
     getFunctionToolsModeNote,
@@ -1835,6 +1834,7 @@ Aturan:
             let activeStageSearchNote = ""
             let searchRequestedByPolicy = false
             let isSyncRequest = false
+            let isSaveSubmitIntent = false
 
             // --- Pre-router guardrails (deterministic, structural) ---
             if (forcePaperToolsMode) {
@@ -1914,6 +1914,10 @@ Aturan:
                     activeStageSearchNote = getFunctionToolsModeNote("Compile bibliography")
                     console.log("[SearchDecision] Router detected compile intent: enableWebSearch=false")
                 }
+
+                // Post-router save/submit detection via intentType
+                isSaveSubmitIntent = !!paperModePrompt
+                    && webSearchDecision.intentType === "save_submit"
             }
 
             // Build retriever chain once — reused for both mode resolution and execution
@@ -1976,7 +1980,7 @@ Aturan:
             shouldForceSubmitValidation = !enableWebSearch
                 && !!paperModePrompt
                 && !shouldForceGetCurrentPaperState
-                && isExplicitSaveSubmitRequest(lastUserContent)
+                && isSaveSubmitIntent
                 && paperSession?.stageStatus === "drafting"
                 && hasStageRingkasan(paperSession)
                 && hasStageArtifact(paperSession)
@@ -1986,7 +1990,7 @@ Aturan:
                 && hasStageRingkasan(paperSession)
                 && !hasStageArtifact(paperSession)
                 && paperSession?.stageStatus === "drafting"
-                && isExplicitSaveSubmitRequest(lastUserContent)
+                && isSaveSubmitIntent
                 ? `\n⚠️ ARTIFACT NOT YET CREATED for this stage. You MUST call createArtifact() with the content saved in updateStageData BEFORE calling submitStageForValidation(). Make sure to include the 'sources' parameter if AVAILABLE_WEB_SOURCES exist.\n`
                 : ""
 

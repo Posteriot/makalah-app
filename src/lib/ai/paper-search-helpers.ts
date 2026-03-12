@@ -6,7 +6,7 @@
  * This file provides:
  * - Research completeness checks (data-based, used as LLM router context)
  * - System notes injected based on search mode decisions
- * - Utility functions (isExplicitSaveSubmitRequest)
+ * - Utility functions for stage data checks
  */
 
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
@@ -67,25 +67,6 @@ export const isStageResearchIncomplete = (
     }
 
     return { incomplete: false }
-}
-
-/**
- * Check if user explicitly requested save/submit (NOT general confirmation)
- */
-export const isExplicitSaveSubmitRequest = (text: string): boolean => {
-    const normalized = text.toLowerCase()
-    const savePatterns = [
-        /\b(simpan|save)\b/,
-        /\bsubmit\b/,
-        /\bapprove\s*(draf|draft)?\b/,
-        /\bapproved\b/,
-        /\bdisetujui\b/,
-        /\[\s*(approved|disetujui)\s*:/i,
-        /\blanjut\s*(ke\s*)?(tahap|stage)\s*(berikut|selanjut)/,
-        /\bapprove\s*&\s*lanjut\b/,
-        /\bselesai(kan)?\s*(tahap|stage)?\b/,
-    ]
-    return savePatterns.some(p => p.test(normalized))
 }
 
 /**
