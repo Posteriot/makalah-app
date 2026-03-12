@@ -417,43 +417,6 @@ export async function POST(req: Request) {
             })
         }
 
-        const isExplicitSearchRequest = (text: string) => {
-            const normalized = text.toLowerCase()
-            const patterns = [
-                /\bcari(kan)?\b/,
-                /\bmencari\b/,
-                /\bsearch\b/,
-                /\bpencarian\b/,
-                /\bgoogle\b/,
-                /\binternet\b/,
-                /\btautan\b/,
-                /\blink\b/,
-                /\burl\b/,
-                /\breferensi\b/,
-                /\bliteratur\b/,
-                /\bsumber\b/,
-                /\bdata terbaru\b/,
-                /\bberita terbaru\b/,
-            ]
-            return patterns.some((pattern) => pattern.test(normalized))
-        }
-
-        const isExplicitSyncRequest = (text: string) => {
-            if (!text.trim()) return false
-            if (isExplicitSearchRequest(text)) return false
-
-            const normalized = text.toLowerCase()
-            const patterns = [
-                /\bsinkron\b/,
-                /\bsinkronkan\b/,
-                /\bcek state\b/,
-                /\bstatus sesi\b/,
-                /\blanjut dari state\b/,
-                /\bstatus terbaru\b/,
-            ]
-            return patterns.some((pattern) => pattern.test(normalized))
-        }
-
         const getStageSearchPolicy = (stage: PaperStageId | "completed" | undefined | null) => {
             if (!stage || stage === "completed") return "none"
             if (ACTIVE_SEARCH_STAGES.includes(stage)) return "active"
@@ -1861,9 +1824,6 @@ Aturan:
             const stagePolicy = getStageSearchPolicy(currentStage)
             const searchAlreadyDone = hasPreviousSearchResults(modelMessages, paperSession)
                 || (!paperSession && hasRecentSourcesInDb)
-            const explicitSyncRequest = !!paperModePrompt
-                && isExplicitSyncRequest(lastUserContent)
-
             // Force disable web search if paper intent detected but no session yet
             // This allows AI to call startPaperSession tool first before any web search
             const forcePaperToolsMode = !!paperWorkflowReminder && !paperModePrompt
@@ -1876,6 +1836,7 @@ Aturan:
             let activeStageSearchReason = ""
             let activeStageSearchNote = ""
             let searchRequestedByPolicy = false
+            let isSyncRequest = false
 
             // --- Pre-router guardrails (deterministic, structural) ---
             if (compileDaftarPustakaIntent && !!paperModePrompt) {
@@ -1887,11 +1848,6 @@ Aturan:
                 searchRequestedByPolicy = false
                 activeStageSearchReason = "force_paper_tools_mode"
                 console.log("[SearchDecision] Force paper tools: no session yet")
-            } else if (explicitSyncRequest && !!paperModePrompt) {
-                searchRequestedByPolicy = false
-                activeStageSearchReason = "explicit_sync_request"
-                activeStageSearchNote = getFunctionToolsModeNote("Session state sync")
-                console.log("[SearchDecision] Explicit sync override: enableWebSearch=false")
             } else {
                 // --- Unified LLM router for ALL stages (ACTIVE + PASSIVE + chat) ---
                 const { incomplete, requirement } = paperSession
@@ -1912,26 +1868,14 @@ Aturan:
                     researchStatus: { incomplete, requirement },
                 })
 
-                const routerFailed = ["router_failure_safe_default", "router_invalid_json_shape", "router_json_parse_failed"].includes(
-                    webSearchDecision.reason
-                )
-                const explicitSearchRequest = lastUserContent
-                    ? isExplicitSearchRequest(lastUserContent)
-                    : false
-                const explicitSearchFallback = routerFailed && explicitSearchRequest
-
-                // For PASSIVE stages, trust the router (prompt says "ONLY if explicit request")
-                // plus keep explicitSearchRequest as fallback.
-                const stagePolicyAllowsSearch = !paperModePrompt
-                    ? true
-                    : stagePolicy === "active"
-                        ? true
-                        : stagePolicy === "passive"
-                            ? explicitSearchRequest || webSearchDecision.enableWebSearch
-                            : explicitSearchRequest
-
-                searchRequestedByPolicy = stagePolicyAllowsSearch
-                    && (webSearchDecision.enableWebSearch || explicitSearchFallback || explicitSearchRequest)
+                // Trust the router decision. Router prompt handles stage policy rules.
+                // PASSIVE stages: router prompt says "ONLY if user EXPLICITLY requests."
+                // Router failure: safe default (enableWebSearch=true) — search is never harmful.
+                searchRequestedByPolicy = !paperModePrompt
+                    ? webSearchDecision.enableWebSearch
+                    : stagePolicy === "none"
+                        ? false  // completed paper, no search
+                        : webSearchDecision.enableWebSearch
 
                 activeStageSearchReason = webSearchDecision.reason
 
@@ -1955,6 +1899,17 @@ Aturan:
                     `searchAlreadyDone: ${searchAlreadyDone}, ` +
                     `searchRequestedByPolicy: ${searchRequestedByPolicy}`
                 )
+
+                // Post-router sync detection via intentType
+                isSyncRequest = !!paperModePrompt
+                    && webSearchDecision.intentType === "sync_request"
+
+                if (isSyncRequest) {
+                    searchRequestedByPolicy = false
+                    activeStageSearchReason = "sync_request"
+                    activeStageSearchNote = getFunctionToolsModeNote("Session state sync")
+                    console.log("[SearchDecision] Router detected sync request: enableWebSearch=false")
+                }
             }
 
             // Build retriever chain once — reused for both mode resolution and execution
@@ -2011,7 +1966,7 @@ Aturan:
 
             shouldForceGetCurrentPaperState = !enableWebSearch
                 && !!paperModePrompt
-                && explicitSyncRequest
+                && isSyncRequest
 
             // Force submit validation when user explicitly requests save/submit
             shouldForceSubmitValidation = !enableWebSearch
