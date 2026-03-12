@@ -15,6 +15,7 @@ import type {
   WebhookEvent,
 } from "../types"
 import { ACTIVE_EWALLET_CHANNELS, ACTIVE_VA_CHANNELS } from "../channel-options"
+import * as Sentry from "@sentry/nextjs"
 
 // ════════════════════════════════════════════════════════════════
 // Xendit-specific types (private to this adapter)
@@ -313,11 +314,23 @@ export class XenditAdapter implements PaymentProvider {
 
     if (!expectedToken) {
       console.error("[XenditAdapter] XENDIT_WEBHOOK_TOKEN or XENDIT_WEBHOOK_SECRET is not configured")
+      Sentry.captureMessage("XENDIT_WEBHOOK_TOKEN/SECRET not configured — webhook cannot verify", {
+        level: "fatal",
+        tags: { "payment.adapter": "xendit", "payment.step": "verifyWebhook" },
+      })
       return null
     }
 
     if (callbackToken !== expectedToken) {
       console.error("[XenditAdapter] Invalid callback token")
+      Sentry.captureMessage("Xendit webhook token mismatch", {
+        level: "error",
+        tags: { "payment.adapter": "xendit", "payment.step": "verifyWebhook" },
+        extra: {
+          hasCallbackToken: !!callbackToken,
+          expectedTokenSource: rawToken ? "XENDIT_WEBHOOK_TOKEN" : "XENDIT_WEBHOOK_SECRET",
+        },
+      })
       return null
     }
 
