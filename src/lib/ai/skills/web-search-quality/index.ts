@@ -1,7 +1,6 @@
 import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
-import { ACTIVE_SEARCH_STAGES } from "@/lib/ai/stage-skill-contracts"
 import type { SkillContext, SourceEntry, ValidationResult } from "../types"
 import { scoreSources, type ScoreResult } from "./scripts/score-sources"
 import {
@@ -89,13 +88,12 @@ export const webSearchQualitySkill: WebSearchSkill = {
   getInstructions(context: SkillContext): string | null {
     const parsed = parseSkillMd()
 
-    // In paper mode, only return instructions for active search stages
-    if (context.isPaperMode) {
-      if (!context.currentStage) return null
-      const isActive = ACTIVE_SEARCH_STAGES.includes(
-        context.currentStage as (typeof ACTIVE_SEARCH_STAGES)[number]
-      )
-      if (!isActive) return null
+    // In paper mode, require a known stage (no stage = no skill)
+    // Both ACTIVE and PASSIVE stages get skill instructions — ACTIVE stages get
+    // stage-specific guidance, PASSIVE stages get "default" guidance via fallback
+    // at line 127. Search can happen in any stage; quality rules always apply.
+    if (context.isPaperMode && !context.currentStage) {
+      return null
     }
 
     // In chat mode with no recent sources, skill is not needed

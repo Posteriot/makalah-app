@@ -2079,6 +2079,7 @@ Aturan:
                     systemPrompt,
                     paperModePrompt: paperModePrompt || undefined,
                     paperWorkflowReminder: paperWorkflowReminder || undefined,
+                    currentStage: paperStageScope ?? undefined,
                     fileContext: fileContext || undefined,
                     samplingOptions,
                     reasoningTraceEnabled,

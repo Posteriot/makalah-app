@@ -31,6 +31,7 @@ export interface WebSearchOrchestratorConfig {
   systemPrompt: string
   paperModePrompt?: string
   paperWorkflowReminder?: string
+  currentStage?: string
   fileContext?: string
   samplingOptions: { temperature?: number; topP?: number }
   reasoningTraceEnabled: boolean

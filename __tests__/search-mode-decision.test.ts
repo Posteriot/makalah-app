@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
     isStageResearchIncomplete,
 } from "@/lib/ai/paper-search-helpers"
+import { composeSkillInstructions } from "@/lib/ai/skills"
 
 // ===========================================================================
 // 1. Pre-router guardrails: isStageResearchIncomplete
@@ -56,7 +57,75 @@ describe("isStageResearchIncomplete", () => {
 })
 
 // ===========================================================================
-// 2. Structural regression tests: deadlock prevention
+// 2. Skill instructions: ACTIVE and PASSIVE stages
+// ===========================================================================
+describe("composeSkillInstructions", () => {
+    const baseSources = [{ url: "https://example.com", title: "Test" }]
+
+    it.each([
+        "gagasan", "topik", "pendahuluan", "tinjauan_literatur", "metodologi", "diskusi",
+    ])("ACTIVE stage %s → returns skill instructions with stage guidance", (stage) => {
+        const result = composeSkillInstructions({
+            isPaperMode: true,
+            currentStage: stage,
+            hasRecentSources: true,
+            availableSources: baseSources,
+        })
+        expect(result).toBeTruthy()
+        expect(result).toContain("RESEARCH SOURCE STRATEGY")
+        expect(result).toContain("STAGE CONTEXT")
+        expect(result).toContain(stage)
+    })
+
+    it.each([
+        "outline", "abstrak", "hasil", "kesimpulan",
+    ])("PASSIVE stage %s → returns skill instructions with stage guidance", (stage) => {
+        const result = composeSkillInstructions({
+            isPaperMode: true,
+            currentStage: stage,
+            hasRecentSources: true,
+            availableSources: baseSources,
+        })
+        expect(result).toBeTruthy()
+        expect(result).toContain("RESEARCH SOURCE STRATEGY")
+        expect(result).toContain("STAGE CONTEXT")
+        expect(result).toContain(stage)
+    })
+
+    it("paper mode with no stage → returns empty", () => {
+        const result = composeSkillInstructions({
+            isPaperMode: true,
+            currentStage: null,
+            hasRecentSources: true,
+            availableSources: baseSources,
+        })
+        expect(result).toBeFalsy()
+    })
+
+    it("chat mode with sources → returns skill instructions", () => {
+        const result = composeSkillInstructions({
+            isPaperMode: false,
+            currentStage: null,
+            hasRecentSources: true,
+            availableSources: baseSources,
+        })
+        expect(result).toBeTruthy()
+        expect(result).toContain("RESEARCH SOURCE STRATEGY")
+    })
+
+    it("chat mode without sources → returns empty", () => {
+        const result = composeSkillInstructions({
+            isPaperMode: false,
+            currentStage: null,
+            hasRecentSources: false,
+            availableSources: [],
+        })
+        expect(result).toBeFalsy()
+    })
+})
+
+// ===========================================================================
+// 3. Structural regression tests: deadlock prevention
 // ===========================================================================
 describe("critical regression: deadlock prevention", () => {
     it("documents: user confirmation must NOT hard-block search", () => {

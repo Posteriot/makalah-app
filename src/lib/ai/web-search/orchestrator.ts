@@ -170,7 +170,7 @@ export async function executeWebSearch(
   try {
     const skillContext: SkillContext = {
       isPaperMode: !!config.paperModePrompt,
-      currentStage: null,
+      currentStage: config.currentStage ?? null,
       hasRecentSources: scoredSources.length > 0,
       availableSources: scoredSources.map((s) => ({
         url: s.url,
@@ -195,21 +195,23 @@ export async function executeWebSearch(
   }
 
   // Build compose system messages
-  // NOTE: paperWorkflowReminder is EXCLUDED — it instructs "call startPaperSession
-  // IMMEDIATELY" which is irrelevant and harmful in compose phase (no tools available).
-  // COMPOSE_PHASE_DIRECTIVE overrides conflicting instructions from systemPrompt and
-  // paperModePrompt (tool references, dialog-first, web-search-mandatory).
+  // EXCLUDED from compose phase:
+  // - paperModePrompt: Contains "ASK user to confirm search" and tool usage instructions
+  //   that conflict with compose behavior. The model follows these over COMPOSE_PHASE_DIRECTIVE
+  //   because they are longer and more specific. Compose phase only needs to synthesize
+  //   search results — it does not need paper workflow instructions.
+  // - paperWorkflowReminder: Instructs "call startPaperSession IMMEDIATELY" — irrelevant
+  //   and harmful in compose phase (no tools available).
+  // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
+  // When placed after systemPrompt/skillInstructions, the model treats those larger
+  // blocks as primary instructions and ignores the smaller directive.
   const composeSystemMessages: Array<{ role: "system"; content: string }> = [
+    { role: "system", content: COMPOSE_PHASE_DIRECTIVE },
+    { role: "system", content: searchResultsContext },
     { role: "system", content: config.systemPrompt },
-    ...(config.paperModePrompt
-      ? [{ role: "system" as const, content: config.paperModePrompt }]
-      : []),
-    // paperWorkflowReminder intentionally excluded from compose phase
     ...(skillInstructions
       ? [{ role: "system" as const, content: skillInstructions }]
       : []),
-    { role: "system", content: COMPOSE_PHASE_DIRECTIVE },
-    { role: "system", content: searchResultsContext },
     ...(config.fileContext
       ? [{ role: "system" as const, content: `File Context:\n\n${config.fileContext}` }]
       : []),
@@ -219,6 +221,7 @@ export async function executeWebSearch(
     ...composeSystemMessages,
     ...(config.composeMessages ?? []),
   ]
+
 
   // Start compose stream — may throw, which propagates to route.ts for retry
   const composeResult = streamText({
