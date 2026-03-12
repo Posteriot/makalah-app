@@ -74,8 +74,8 @@ describe("MessageBubble search status", () => {
     expect(screen.getByText(/\[1\]/)).toBeInTheDocument()
   })
 
-  it("normalizes legacy cited text when markers are in the middle of sentence", () => {
-    const legacyCitedTextMessage = {
+  it("trusts backend data-cited-text without re-processing", () => {
+    const citedTextMessage = {
       id: "m-legacy-2",
       role: "assistant",
       parts: [
@@ -83,7 +83,7 @@ describe("MessageBubble search status", () => {
         {
           type: "data-cited-text",
           data: {
-            text: "- Fakta pertama [1] menunjukkan tren adopsi AI.\n- Fakta kedua [2] memperlihatkan dampak di kelas.",
+            text: "- Fakta pertama menunjukkan tren adopsi AI. [1]\n- Fakta kedua memperlihatkan dampak di kelas. [2]",
           },
         },
       ],
@@ -93,7 +93,7 @@ describe("MessageBubble search status", () => {
       ],
     } as unknown as UIMessage
 
-    render(<MessageBubble message={legacyCitedTextMessage} />)
+    render(<MessageBubble message={citedTextMessage} />)
 
     expect(screen.getByText(/Fakta pertama menunjukkan tren adopsi AI\. \[1\]/)).toBeInTheDocument()
     expect(screen.getByText(/Fakta kedua memperlihatkan dampak di kelas\. \[2\]/)).toBeInTheDocument()

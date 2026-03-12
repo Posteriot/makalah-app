@@ -73,8 +73,11 @@ function isOrderedItem(line: string) {
 
 function isTableRow(line: string) {
   const trimmed = line.trim()
-  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return null
-  const cells = trimmed.slice(1, -1).split("|").map((c) => c.trim())
+  // Strip trailing citation markers (e.g. [1] or [1,2,3]) that the citation
+  // formatter may append after the closing |, breaking table detection.
+  const cleaned = trimmed.replace(/\s*\[\d+(?:\s*,\s*\d+)*\]\s*$/, "")
+  if (!cleaned.startsWith("|") || !cleaned.endsWith("|")) return null
+  const cells = cleaned.slice(1, -1).split("|").map((c) => c.trim())
   if (cells.length < 1) return null
   return cells
 }

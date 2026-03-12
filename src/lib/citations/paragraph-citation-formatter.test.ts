@@ -98,6 +98,27 @@ describe("formatParagraphEndCitations", () => {
     expect(lines[1]).toBe("- Implementasi kurikulum AI mulai diuji di kota besar. [2,3]")
   })
 
+  it("preserves domain names inside markdown table cells", () => {
+    const text = [
+      "| REFERENSI | DOMAIN/SUMBER | FOKUS UTAMA |",
+      "| --- | --- | --- |",
+      "| {journal.limudata.co.id} | Jurnal Indonesia | Positif: Personalisasi |",
+      "| {itb.ac.id} | Universitas ITB | Positif: Aksesibilitas |",
+    ].join("\n")
+
+    const output = formatParagraphEndCitations({
+      text,
+      sources: [
+        { url: "https://journal.limudata.co.id/article/123" },
+        { url: "https://itb.ac.id/research/456" },
+      ],
+      anchors: [],
+    })
+
+    expect(output).toContain("journal.limudata.co.id")
+    expect(output).toContain("itb.ac.id")
+  })
+
   it("moves heading-line citations to the nearest content line", () => {
     const text = [
       "Aspek-aspek Penting: [1]",
