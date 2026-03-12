@@ -57,6 +57,13 @@ OVERRIDE — the following instructions from other system messages DO NOT APPLY 
 - Any tool usage instructions (startPaperSession, updateStageData, createArtifact, google_search) — NO tools available
 - Any "call startPaperSession IMMEDIATELY" instructions — not applicable
 
+IMPORTANT — TOOL CALLS:
+- You have NO access to tools (updateStageData, createArtifact, submitStageForValidation) in this phase.
+- Do NOT output JSON tool calls as text. This will NOT work — it will appear as raw text to the user.
+- Present your synthesized findings to the user in this response.
+- Saving data (updateStageData, createArtifact) happens in a SUBSEQUENT turn when tools are available.
+- Simply present the results and discuss with the user. The save step comes next.
+
 The search results below are your source material. Use them.
 ═══════════════════════════════════════════════════════════════════
 `.trim()
