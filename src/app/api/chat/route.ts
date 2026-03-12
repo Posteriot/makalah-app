@@ -1863,7 +1863,7 @@ Aturan:
             const model = await getGatewayModel()
 
             // Router: tentukan apakah request ini perlu mode websearch.
-            // Web search uses separate models (Perplexity/Grok) — no tool mixing constraint.
+            // Web search uses separate models (Perplexity/Grok/Google Grounding Gemini) — no tool mixing constraint.
             const recentForRouter = modelMessages.slice(-8)
             const currentStage = paperSession?.currentStage as PaperStageId | "completed" | undefined
             const stagePolicy = getStageSearchPolicy(currentStage)
@@ -2151,7 +2151,7 @@ Aturan:
 
             // ════════════════════════════════════════════════════════════════
             // WEB SEARCH: Orchestrator-based two-pass flow
-            // Phase 1: Silent search via retriever chain (Perplexity → Grok → ...)
+            // Phase 1: Silent search via retriever chain (Perplexity → Grok → Google Grounding Gemini ...)
             // Phase 2: Compose with skill instructions, stream to client
             // ════════════════════════════════════════════════════════════════
             if (enableWebSearch) {

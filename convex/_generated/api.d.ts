@@ -60,6 +60,7 @@ import type * as migrations_createContractAlignedSystemPrompt from "../migration
 import type * as migrations_enableTwoFactorAllUsers from "../migrations/enableTwoFactorAllUsers.js";
 import type * as migrations_fix13TahapReference from "../migrations/fix13TahapReference.js";
 import type * as migrations_fixAgentPersonaAndCapabilities from "../migrations/fixAgentPersonaAndCapabilities.js";
+import type * as migrations_fixWebSearchInstructions from "../migrations/fixWebSearchInstructions.js";
 import type * as migrations_removeClerkFields from "../migrations/removeClerkFields.js";
 import type * as migrations_removeOldPaperWorkflowSection from "../migrations/removeOldPaperWorkflowSection.js";
 import type * as migrations_seedAboutContent from "../migrations/seedAboutContent.js";
@@ -176,6 +177,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/enableTwoFactorAllUsers": typeof migrations_enableTwoFactorAllUsers;
   "migrations/fix13TahapReference": typeof migrations_fix13TahapReference;
   "migrations/fixAgentPersonaAndCapabilities": typeof migrations_fixAgentPersonaAndCapabilities;
+  "migrations/fixWebSearchInstructions": typeof migrations_fixWebSearchInstructions;
   "migrations/removeClerkFields": typeof migrations_removeClerkFields;
   "migrations/removeOldPaperWorkflowSection": typeof migrations_removeOldPaperWorkflowSection;
   "migrations/seedAboutContent": typeof migrations_seedAboutContent;
