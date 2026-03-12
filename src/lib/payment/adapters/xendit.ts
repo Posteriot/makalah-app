@@ -307,7 +307,9 @@ export class XenditAdapter implements PaymentProvider {
   async verifyWebhook(request: Request): Promise<WebhookEvent | null> {
     // 1. Verify callback token
     const callbackToken = request.headers.get("x-callback-token")
-    const expectedToken = process.env.XENDIT_WEBHOOK_TOKEN || process.env.XENDIT_WEBHOOK_SECRET
+    const rawToken = process.env.XENDIT_WEBHOOK_TOKEN?.trim()
+    const rawSecret = process.env.XENDIT_WEBHOOK_SECRET?.trim()
+    const expectedToken = rawToken || rawSecret
 
     if (!expectedToken) {
       console.error("[XenditAdapter] XENDIT_WEBHOOK_TOKEN or XENDIT_WEBHOOK_SECRET is not configured")
