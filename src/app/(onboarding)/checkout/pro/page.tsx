@@ -28,6 +28,7 @@ import Link from "next/link"
 import { QRCodeSVG } from "qrcode.react"
 import { DottedPattern } from "@/components/marketing/SectionBackground"
 import { CheckoutErrorBanner } from "@/components/billing/CheckoutErrorBanner"
+import { PaymentTechnicalReportButton } from "@/components/technical-report/PaymentTechnicalReportButton"
 import {
   DEFAULT_ENABLED_METHODS,
   getEnabledCheckoutMethods,
@@ -186,6 +187,7 @@ function CheckoutPROContent() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
 
   const paymentStatus = useQuery(
     api.billing.payments.watchPaymentStatus,
@@ -229,6 +231,7 @@ function CheckoutPROContent() {
 
     setIsProcessing(true)
     setError(null)
+    setErrorCode(null)
 
     try {
       const response = await fetch("/api/payments/subscribe", {
@@ -247,7 +250,10 @@ function CheckoutPROContent() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || "Gagal membuat pembayaran")
+      if (!response.ok) {
+        setErrorCode(data.code ?? null)
+        throw new Error(data.error || "Gagal membuat pembayaran")
+      }
 
       setPaymentResult(data)
 
@@ -413,10 +419,18 @@ function CheckoutPROContent() {
             </div>
 
             {error && (
-              <CheckoutErrorBanner
-                title="Gagal memproses pembayaran"
-                message={error}
-              />
+              <div className="space-y-2">
+                <CheckoutErrorBanner
+                  title="Gagal memproses pembayaran"
+                  message={error}
+                />
+                {errorCode === "PAYMENT_SYSTEM_UNAVAILABLE" && (
+                  <PaymentTechnicalReportButton
+                    source="payment-preflight-error"
+                    paymentContext={{ errorCode }}
+                  />
+                )}
+              </div>
             )}
 
             <div className={sectionCardClass}>
@@ -504,6 +518,21 @@ function CheckoutPROContent() {
                 <button onClick={resetPayment} className="text-interface text-xs text-muted-foreground hover:text-foreground">
                   Batalkan & Pilih Ulang
                 </button>
+
+                <div className="pt-2">
+                  <p className="text-narrative text-xs text-muted-foreground mb-1">
+                    Sudah bayar tapi status belum berubah?
+                  </p>
+                  <PaymentTechnicalReportButton
+                    source="payment-checkout"
+                    paymentContext={{
+                      transactionId: paymentResult.providerPaymentId,
+                      amount: paymentResult.amount,
+                      paymentMethod: selectedMethod,
+                      providerPaymentId: paymentResult.providerPaymentId,
+                    }}
+                  />
+                </div>
               </div>
             )}
 
@@ -518,6 +547,21 @@ function CheckoutPROContent() {
                 >
                   Buat Pembayaran Baru
                 </button>
+                <div className="pt-2">
+                  <p className="text-narrative text-xs text-muted-foreground mb-1">
+                    {paymentState === "EXPIRED" ? "Sudah bayar tapi status belum berubah?" : "Merasa ini salah?"}
+                  </p>
+                  <PaymentTechnicalReportButton
+                    source="payment-checkout"
+                    paymentContext={{
+                      transactionId: paymentResult.providerPaymentId,
+                      amount: paymentResult.amount,
+                      paymentMethod: selectedMethod,
+                      providerPaymentId: paymentResult.providerPaymentId,
+                      errorCode: paymentState,
+                    }}
+                  />
+                </div>
               </div>
             )}
 
