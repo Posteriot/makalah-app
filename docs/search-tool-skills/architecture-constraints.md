@@ -25,7 +25,7 @@ Three independent concerns that must never be mixed:
 | Concern | Responsibility | Current Location |
 |---------|---------------|------------------|
 | **Quality/Knowledge** | HOW the LLM processes and presents results | `skills/web-search-quality/SKILL.md` |
-| **Workflow Control** | WHEN tools are available and what mode is active | `route.ts`, `paper-search-helpers.ts`, `search-execution-mode.ts` |
+| **Workflow Control** | WHEN tools are available and what mode is active | `route.ts` (LLM router + structural guardrails), `paper-search-helpers.ts` (system notes + data checks) |
 | **Tool Execution** | Simple data retrieval, no judgment | `web-search/retrievers/*.ts`, `paper-tools.ts` |
 
 These are independent:
@@ -100,19 +100,21 @@ Registry at `src/lib/ai/web-search/retriever-registry.ts`. New retrievers = impl
 
 ## Paper Stage Architecture (Current — Migration Candidate)
 
+Search mode decisions are now unified under a single LLM router (`decideWebSearchMode` in `route.ts`) for all stages. The regex-based 3-layer protection for ACTIVE stages has been removed — `paper-search-helpers.ts` no longer contains intent detection regex.
+
 Currently hardcoded TypeScript instruction strings, not SKILL.md:
 
 | Component | Location | Pattern |
 |-----------|----------|---------|
 | Stage instructions | `paper-stages/foundation.ts`, `core.ts`, `results.ts`, `finalization.ts` | Hardcoded template literal strings |
-| System notes | `paper-search-helpers.ts` | `PAPER_TOOLS_ONLY_NOTE`, `getResearchIncompleteNote()`, `getFunctionToolsModeNote()` |
+| System notes + data checks | `paper-search-helpers.ts` | Data-based research completeness checks, system notes (`PAPER_TOOLS_ONLY_NOTE`, `getResearchIncompleteNote()`, `getFunctionToolsModeNote()`), utility functions |
 | Context injection | `paper-stages/formatStageData.ts` | Deterministic formatting of stageData for prompt |
 | Stage routing | `paper-stages/index.ts` | `getStageInstructions(stage)` switch |
 
 This pattern works but has maintenance costs:
 - Instruction changes require code deployment
 - Logic scattered across multiple TypeScript files
-- Deterministic checks (`isStageResearchIncomplete`) bypass LLM reasoning
+- `isStageResearchIncomplete` now provides context to the LLM router, not a hard gate
 - No separation between knowledge (what to do) and workflow (when to do it)
 
 See `future-paper-workflow-skill-notes.md` for migration analysis.
