@@ -929,17 +929,11 @@ ${sourcesJson}`
                     .slice(-3)
 
                 for (const msg of recentAssistantMsgs) {
-                    const content = typeof msg.content === "string" ? msg.content : ""
-                    // Strong signal: message has actual sources data from web search
+                    // Data-based signal: message has actual sources data from web search
                     const hasSources = "sources" in msg
                         && Array.isArray((msg as { sources?: unknown }).sources)
                         && ((msg as { sources: unknown[] }).sources).length > 0
                     if (hasSources) return true
-                    // Weak signal: only trust explicit AI search-done phrases
-                    // (removed: [N] pattern and APA citation pattern — high false positive rate)
-                    if (/saya telah melakukan pencarian/i.test(content)) return true
-                    if (/berdasarkan hasil pencarian/i.test(content)) return true
-                    if (/rangkuman temuan/i.test(content)) return true
                 }
                 return false
             }
@@ -952,16 +946,11 @@ ${sourcesJson}`
                 .slice(-3)
 
             for (const msg of recentAssistantMsgs) {
-                const content = typeof msg.content === "string" ? msg.content : ""
-                // Strong signal: message has actual sources data from web search
+                // Data-based signal: message has actual sources data from web search
                 const hasSources = "sources" in msg
                     && Array.isArray((msg as { sources?: unknown }).sources)
                     && ((msg as { sources: unknown[] }).sources).length > 0
                 if (hasSources) return true
-                // Weak signal: explicit AI search-done phrases only
-                if (/berdasarkan hasil pencarian/i.test(content)) return true
-                if (/saya telah melakukan pencarian/i.test(content)) return true
-                if (/rangkuman temuan/i.test(content)) return true
             }
             return false
         }
