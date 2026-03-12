@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useQuery } from "convex/react"
 import {
   EditPencil,
-  Folder,
   NavArrowRight,
   Page,
   RefreshDouble,
@@ -157,26 +156,39 @@ function FileTypeBadge({ type }: { type: string }) {
 }
 
 function FolderNodeIcon({ solid }: { solid: boolean }) {
+  const folderPath =
+    "M3.75 7.1C3.75 5.86 4.76 4.85 6 4.85h3.23c.61 0 1.2.25 1.62.68l.9.92c.21.22.5.34.8.34H18c1.24 0 2.25 1.01 2.25 2.25v7.21A2.75 2.75 0 0 1 17.5 19H6.5a2.75 2.75 0 0 1-2.75-2.75V7.1Z"
+
   if (solid) {
     return (
       <svg
         viewBox="0 0 24 24"
-        className="h-4 w-4 text-[color:color-mix(in_oklab,var(--chat-info)_85%,white)] dark:text-[color:color-mix(in_oklab,var(--chat-info)_72%,white)]"
+        className="h-[1.12rem] w-[1.12rem] text-[color:color-mix(in_oklab,var(--chat-info)_85%,white)] dark:text-[color:color-mix(in_oklab,var(--chat-info)_72%,white)]"
         aria-hidden="true"
       >
         <path
           fill="currentColor"
-          d="M3.5 6.75A2.25 2.25 0 0 1 5.75 4.5h4.04c.6 0 1.18.24 1.6.67l1.1 1.08c.14.14.33.22.53.22h5.23a2.25 2.25 0 0 1 2.25 2.25v7.53a3.25 3.25 0 0 1-3.25 3.25H6.75A3.25 3.25 0 0 1 3.5 16.25V6.75Z"
+          d={folderPath}
         />
       </svg>
     )
   }
 
   return (
-    <Folder
-      className="h-4 w-4 text-[var(--chat-muted-foreground)]"
+    <svg
+      viewBox="0 0 24 24"
+      className="h-[1.12rem] w-[1.12rem] text-[var(--chat-muted-foreground)]"
       aria-hidden="true"
-    />
+    >
+      <path
+        d={folderPath}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 
@@ -444,7 +456,9 @@ export function SidebarChatHistory({
     return (
       <div className="flex h-full flex-col">
         <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
-          <Folder className="mb-2 h-8 w-8" />
+          <div className="mb-2">
+            <FolderNodeIcon solid={false} />
+          </div>
           <span className="text-xs">Belum ada percakapan</span>
         </div>
       </div>
@@ -521,7 +535,7 @@ export function SidebarChatHistory({
                         : "hover:bg-[var(--chat-sidebar-accent)]"
                     )}
                   >
-                    <div className="flex h-5 w-4 shrink-0 items-start justify-center pt-0.5">
+                    <div className="-mt-[1px] flex h-[1.12rem] w-4 shrink-0 items-center justify-center">
                       {hasChildren ? (
                         <button
                           type="button"
@@ -530,12 +544,12 @@ export function SidebarChatHistory({
                               current === node.conversationId ? null : node.conversationId
                             )
                           }
-                          className="rounded-action p-0.5 text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]"
+                          className="flex h-[1.12rem] w-[1.12rem] items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]"
                           aria-label={isExpanded ? "Tutup subtree percakapan" : "Buka subtree percakapan"}
                         >
                           <NavArrowRight
                             className={cn(
-                              "h-3.5 w-3.5 text-[var(--chat-info)] transition-transform duration-150",
+                              "h-[0.95rem] w-[0.95rem] text-[var(--chat-info)] transition-transform duration-150",
                               isExpanded && "rotate-90"
                             )}
                             aria-hidden="true"
@@ -558,7 +572,7 @@ export function SidebarChatHistory({
                       </div>
                     ) : null}
 
-                    <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
+                    <div className="-mt-[1px] flex h-[1.12rem] w-[1.12rem] shrink-0 items-center justify-center" aria-hidden="true">
                       <FolderNodeIcon solid={hasChildren} />
                     </div>
 
@@ -593,10 +607,10 @@ export function SidebarChatHistory({
                           className="block min-w-0"
                           aria-current={isActiveConversation ? "page" : undefined}
                         >
-                          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                          <div className="grid grid-cols-[minmax(0,1fr)] items-start">
                             <span
                               className={cn(
-                                "truncate text-xs leading-tight",
+                                "truncate text-[13.5px] leading-[1.2]",
                                 hasChildren
                                   ? "font-semibold text-[var(--chat-sidebar-foreground)]"
                                   : "font-medium text-[var(--chat-sidebar-foreground)]"
@@ -604,20 +618,9 @@ export function SidebarChatHistory({
                             >
                               {node.title}
                             </span>
-                            {node.paperSession && stageNumber ? (
-                              <PaperSessionBadge
-                                stageNumber={stageNumber}
-                                className="justify-self-end shrink-0"
-                              />
-                            ) : null}
                           </div>
                           <div
-                            className={cn(
-                              "mt-1 text-[11px] font-mono leading-[1.2]",
-                              hasChildren
-                                ? "text-[color:color-mix(in_oklab,var(--chat-info)_70%,var(--chat-muted-foreground))]"
-                                : "text-[var(--chat-muted-foreground)]"
-                            )}
+                            className="mt-1 text-[11px] font-sans leading-[1.2] text-[var(--chat-muted-foreground)]"
                           >
                             {metaLabel}
                           </div>
@@ -625,22 +628,40 @@ export function SidebarChatHistory({
                       )}
                     </div>
 
-                    {!isManageMode && onUpdateConversationTitle ? (
-                      <button
-                        type="button"
-                        onClick={() => handleStartEdit(node.conversationId, node.title)}
-                        className="mt-0.5 shrink-0 rounded-action p-1 text-[var(--chat-muted-foreground)] opacity-0 transition-all duration-150 hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] group-hover:opacity-100"
-                        aria-label={`Ubah judul percakapan ${node.title}`}
-                      >
-                        <EditPencil className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    ) : null}
+                    <div className="mt-0.5 flex shrink-0 items-start gap-1">
+                      {!isManageMode && onUpdateConversationTitle ? (
+                        <button
+                          type="button"
+                          onClick={() => handleStartEdit(node.conversationId, node.title)}
+                          className="rounded-action p-1 text-[var(--chat-muted-foreground)] opacity-0 transition-all duration-150 hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] group-hover:opacity-100"
+                          aria-label={`Ubah judul percakapan ${node.title}`}
+                        >
+                          <EditPencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      ) : null}
+                      {node.paperSession && stageNumber ? (
+                        <PaperSessionBadge
+                          stageNumber={stageNumber}
+                          className="shrink-0"
+                        />
+                      ) : null}
+                    </div>
                   </div>
 
                   {hasChildren && isExpanded ? (
-                    <div className="relative pb-1 pl-[3.35rem]">
+                    <div
+                      className={cn(
+                        "relative pb-1 pl-[2.95rem]",
+                        isActiveConversation && "bg-[var(--chat-sidebar-accent)]"
+                      )}
+                    >
                       <div
-                        className="absolute bottom-1 left-[1.7rem] top-0 w-px bg-[color:color-mix(in_oklab,var(--chat-info)_28%,transparent)]"
+                        className={cn(
+                          "absolute bottom-1 left-[2.75rem] top-[-0.9rem] w-px",
+                          isActiveConversation
+                            ? "bg-[color:color-mix(in_oklab,var(--chat-sidebar-foreground)_22%,var(--chat-sidebar-accent))]"
+                            : "bg-[var(--chat-border)]"
+                        )}
                         aria-hidden="true"
                       />
                       {node.latestFiles.map((file) => {
@@ -652,26 +673,54 @@ export function SidebarChatHistory({
                             type="button"
                             onClick={() => handleArtifactClick(node, file)}
                             className={cn(
-                              "group/file relative flex w-full items-start gap-2 rounded-action pl-4 pr-3 py-1.5 text-left transition-colors duration-150",
-                              "hover:bg-[var(--chat-accent)]",
-                              isActiveArtifact && "bg-[var(--chat-accent)]"
+                              "group/file relative flex w-full items-start gap-2 rounded-action pl-5 pr-3 py-1.5 text-left transition-colors duration-150",
+                              isActiveConversation
+                                ? "hover:bg-[color:color-mix(in_oklab,var(--chat-sidebar-accent)_78%,var(--chat-accent))]"
+                                : "hover:bg-[var(--chat-accent)]",
+                              isActiveConversation
+                                ? "bg-[color:color-mix(in_oklab,var(--chat-sidebar-accent)_38%,transparent)]"
+                                : null
                             )}
                           >
                             <span
-                              className="absolute left-[-1rem] top-3 h-px w-3 bg-[color:color-mix(in_oklab,var(--chat-info)_28%,transparent)]"
+                              className={cn(
+                                "absolute left-[-0.2rem] top-[0.95rem] h-px w-[1.05rem]",
+                                isActiveConversation
+                                  ? "bg-[color:color-mix(in_oklab,var(--chat-sidebar-foreground)_22%,var(--chat-sidebar-accent))]"
+                                  : "bg-[var(--chat-border)]"
+                              )}
                               aria-hidden="true"
                             />
                             <FileTypeBadge type={file.type} />
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[11px] font-medium leading-tight text-[var(--chat-sidebar-foreground)]">
+                              <span
+                                className={cn(
+                                  "block truncate text-[13.5px] font-medium leading-[1.2]",
+                                  isActiveArtifact
+                                    ? "text-[color:color-mix(in_oklab,var(--chat-info)_82%,white)] dark:text-[color:color-mix(in_oklab,var(--chat-info)_72%,white)]"
+                                    : "text-[var(--chat-sidebar-foreground)]"
+                                )}
+                              >
                                 {file.title}
                               </span>
-                              <span className="mt-0.5 block text-[10px] font-mono leading-[1.15] text-[var(--chat-muted-foreground)]">
+                              <span
+                                className={cn(
+                                  "mt-0.5 block text-[10px] font-mono leading-[1.15]",
+                                  isActiveArtifact
+                                    ? "text-[color:color-mix(in_oklab,var(--chat-info)_64%,var(--chat-muted-foreground))]"
+                                    : "text-[var(--chat-muted-foreground)]"
+                                )}
+                              >
                                 {file.type === "refrasa" ? "Refrasa" : "Artifak"} · v{file.version}
                               </span>
                             </span>
                             <NavArrowRight
-                              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--chat-muted-foreground)]"
+                              className={cn(
+                                "mt-0.5 h-3.5 w-3.5 shrink-0",
+                                isActiveArtifact
+                                  ? "text-[color:color-mix(in_oklab,var(--chat-info)_82%,white)] dark:text-[color:color-mix(in_oklab,var(--chat-info)_72%,white)]"
+                                  : "text-[var(--chat-muted-foreground)]"
+                              )}
                               aria-hidden="true"
                             />
                           </button>
