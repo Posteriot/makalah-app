@@ -72,9 +72,18 @@ export async function POST(req: NextRequest) {
       },
       extra: { providerPaymentId: event.providerPaymentId },
     })
-    // Return 200 to prevent provider from retrying
-    // Log error for investigation
-    return NextResponse.json({ status: "error" })
+
+    // Permanent errors (missing data) → 200 so provider doesn't retry uselessly
+    const message = error instanceof Error ? error.message : ""
+    if (message.includes("not found") || message.includes("tidak ditemukan")) {
+      return NextResponse.json({ status: "error", reason: message })
+    }
+
+    // Transient errors (DB timeout, network) → 500 so provider retries
+    return NextResponse.json(
+      { status: "error", reason: "transient" },
+      { status: 500 }
+    )
   }
 }
 

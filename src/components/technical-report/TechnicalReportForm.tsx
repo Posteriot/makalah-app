@@ -14,6 +14,13 @@ type TechnicalReportFormProps = {
   initialConversationId?: Id<"conversations">
   initialPaperSessionId?: Id<"paperSessions">
   initialSnapshot?: Record<string, unknown>
+  paymentContext?: {
+    transactionId?: string
+    amount?: number
+    paymentMethod?: string
+    providerPaymentId?: string
+    errorCode?: string
+  }
   onSubmitted?: (reportId: string) => void
 }
 
@@ -24,8 +31,10 @@ export function TechnicalReportForm({
   initialConversationId,
   initialPaperSessionId,
   initialSnapshot,
+  paymentContext,
   onSubmitted,
 }: TechnicalReportFormProps) {
+  const isPaymentScope = source.startsWith("payment-")
   const { contexts, submitReport, isSubmitting } = useTechnicalReport()
   const [description, setDescription] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -98,6 +107,7 @@ export function TechnicalReportForm({
               }),
             }
           : {}),
+        ...(paymentContext ? { paymentContext } : {}),
       })
 
       const submittedReportId = String(result.reportId)
@@ -136,27 +146,29 @@ export function TechnicalReportForm({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="technical-report-context"
-              className="text-interface text-xs font-medium text-foreground"
-            >
-              Sesi chat terkait
-            </label>
-            <select
-              id="technical-report-context"
-              value={contextValue}
-              onChange={(event) => setContextValue(event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm text-foreground transition-colors focus:border-border focus:outline-none focus:ring-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-600"
-            >
-              <option value="">Pilih sesi chat terkait (opsional)</option>
-              {contextOptions.map((context) => (
-                <option key={context.value} value={context.value}>
-                  {context.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!isPaymentScope && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="technical-report-context"
+                className="text-interface text-xs font-medium text-foreground"
+              >
+                Sesi chat terkait
+              </label>
+              <select
+                id="technical-report-context"
+                value={contextValue}
+                onChange={(event) => setContextValue(event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm text-foreground transition-colors focus:border-border focus:outline-none focus:ring-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-600"
+              >
+                <option value="">Pilih sesi chat terkait (opsional)</option>
+                {contextOptions.map((context) => (
+                  <option key={context.value} value={context.value}>
+                    {context.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <label className="inline-flex items-center gap-2 text-interface text-xs text-muted-foreground">
             <input
