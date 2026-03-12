@@ -57,12 +57,10 @@ import {
     resolveAttachmentRuntimeEnv,
 } from "@/lib/chat/attachment-health"
 import {
-    resolveSearchExecutionMode,
-    type SearchExecutionMode,
-} from "@/lib/ai/search-execution-mode"
-import {
     executeWebSearch,
     buildRetrieverChain,
+    resolveSearchExecutionMode,
+    type SearchExecutionMode,
 } from "@/lib/ai/web-search"
 
 export async function POST(req: Request) {
@@ -2002,22 +2000,32 @@ Aturan:
                 console.log("[SearchDecision] Explicit sync override: forced getCurrentPaperState path")
             }
 
+            // Build retriever chain once — reused for both mode resolution and execution
+            const retrieverChain = buildRetrieverChain({
+                webSearchRetrievers: webSearchConfig.webSearchRetrievers,
+                legacyConfig: {
+                    primaryWebSearchEnabled: webSearchConfig.primaryEnabled,
+                    fallbackWebSearchEnabled: webSearchConfig.fallbackEnabled,
+                    webSearchModel: webSearchConfig.webSearchModel,
+                    webSearchFallbackModel: webSearchConfig.webSearchFallbackModel,
+                    fallbackWebSearchEngine: webSearchConfig.fallbackEngine,
+                    fallbackWebSearchMaxResults: webSearchConfig.fallbackMaxResults,
+                },
+                openrouterApiKey: webSearchConfig.openrouterApiKey ?? "",
+                googleApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+            })
+
             const searchExecutionMode = resolveSearchExecutionMode({
                 searchRequired: searchRequestedByPolicy,
-                retrievers: webSearchConfig.webSearchRetrievers
-                    ? webSearchConfig.webSearchRetrievers
-                        .sort((a: { priority: number }, b: { priority: number }) => a.priority - b.priority)
-                        .map((r: { name: string; enabled: boolean; modelId: string }) => ({ name: r.name as SearchExecutionMode, enabled: r.enabled, modelId: r.modelId }))
-                    : [
-                        { name: "perplexity" as const, enabled: webSearchConfig.primaryEnabled, modelId: webSearchConfig.webSearchModel },
-                        { name: "grok" as const, enabled: webSearchConfig.fallbackEnabled, modelId: webSearchConfig.webSearchFallbackModel },
-                    ],
+                retrievers: retrieverChain.map((entry) => ({
+                    name: entry.retriever.name as SearchExecutionMode,
+                    enabled: true, // chain only contains enabled retrievers
+                    modelId: entry.retrieverConfig.modelId,
+                })),
             })
             console.log(
-                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy}`,
-                webSearchConfig.webSearchRetrievers
-                    ? `retrievers=[${webSearchConfig.webSearchRetrievers.map((r: { name: string; enabled: boolean }) => `${r.name}:${r.enabled}`).join(",")}]`
-                    : `primaryEnabled=${webSearchConfig.primaryEnabled}, fallbackEnabled=${webSearchConfig.fallbackEnabled}`
+                `[SearchExecution] mode=${searchExecutionMode}, searchRequired=${searchRequestedByPolicy},`,
+                `chain=[${retrieverChain.map((e) => e.retriever.name).join(",")}]`
             )
             let searchUnavailableReasonCode: string | undefined
 
@@ -2151,24 +2159,11 @@ Aturan:
 
             // ════════════════════════════════════════════════════════════════
             // WEB SEARCH: Orchestrator-based two-pass flow
-            // Phase 1: Silent search via retriever chain (Perplexity → Grok → Google Grounding Gemini ...)
+            // Phase 1: Silent search via retriever chain (agnostic, priority-ordered)
             // Phase 2: Compose with skill instructions, stream to client
             // ════════════════════════════════════════════════════════════════
             if (enableWebSearch) {
-                const retrieverChain = buildRetrieverChain({
-                    webSearchRetrievers: webSearchConfig.webSearchRetrievers,
-                    legacyConfig: {
-                        primaryWebSearchEnabled: webSearchConfig.primaryEnabled,
-                        fallbackWebSearchEnabled: webSearchConfig.fallbackEnabled,
-                        webSearchModel: webSearchConfig.webSearchModel,
-                        webSearchFallbackModel: webSearchConfig.webSearchFallbackModel,
-                        fallbackWebSearchEngine: webSearchConfig.fallbackEngine,
-                        fallbackWebSearchMaxResults: webSearchConfig.fallbackMaxResults,
-                    },
-                    openrouterApiKey: webSearchConfig.openrouterApiKey ?? "",
-                    googleApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-                })
-
+                // retrieverChain already built above (reused from mode resolution)
                 if (retrieverChain.length === 0) {
                     return createSearchUnavailableResponse({
                         reasonCode: "no_retrievers_configured",
