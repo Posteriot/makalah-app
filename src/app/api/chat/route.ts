@@ -1014,7 +1014,7 @@ ${sourcesJson}`
             previousSearchDone: boolean
             previousSearchSourceCount?: number
             researchStatus?: { incomplete: boolean; requirement?: string }
-        }): Promise<{ enableWebSearch: boolean; confidence: number; reason: string }> => {
+        }): Promise<{ enableWebSearch: boolean; confidence: number; reason: string; intentType: string }> => {
             const paperModeContext = options.isPaperMode
                 ? `
 
@@ -1051,6 +1051,26 @@ Purpose:
 - Set false ONLY if: user requests save/approve of existing data, OR the response is purely opinion/discussion without factual claims.
 ${paperModeContext}
 
+INTENT CLASSIFICATION — you MUST set intentType to one of these values:
+
+1. "sync_request" — User wants to sync/check session state (e.g., "sinkronkan", "cek state",
+   "status sesi", "status terbaru", "lanjut dari state"). Always set enableWebSearch=false.
+
+2. "compile_daftar_pustaka" — User wants to compile/preview bibliography (daftar pustaka).
+   Always set enableWebSearch=false.
+
+3. "save_submit" — User wants to save, submit, or approve the current stage draft
+   (e.g., "simpan", "save", "submit", "approve", "approved", "disetujui",
+   "selesaikan tahap", "approve & lanjut"). Always set enableWebSearch=false.
+
+4. "search" — User requests search/references/factual data, or AI needs factual data.
+   Set enableWebSearch=true. Reason explains what data is needed.
+
+5. "discussion" — Pure discussion, opinion, or workflow action without factual claims.
+   Set enableWebSearch=false. Reason explains why no search needed.
+
+Priority: sync_request > compile_daftar_pustaka > save_submit > search > discussion
+
 Output rules:
 - Output MUST be one JSON object ONLY.
 - NO markdown, NO backticks, NO explanation outside JSON.
@@ -1060,13 +1080,21 @@ JSON schema:
 {
   "enableWebSearch": boolean,
   "confidence": number,
-  "reason": string
+  "reason": string,
+  "intentType": "search" | "discussion" | "sync_request" | "compile_daftar_pustaka" | "save_submit"
 }`
 
             const routerSchema = z.object({
                 enableWebSearch: z.boolean(),
                 confidence: z.number().min(0).max(1),
                 reason: z.string().max(500),
+                intentType: z.enum([
+                    "search",
+                    "discussion",
+                    "sync_request",
+                    "compile_daftar_pustaka",
+                    "save_submit",
+                ]),
             })
 
             const runStructuredRouter = async () => {
@@ -1088,6 +1116,7 @@ JSON schema:
                         enableWebSearch: result.enableWebSearch,
                         confidence: result.confidence,
                         reason: result.reason,
+                        intentType: result.intentType,
                     }
                 } catch {
                     // Retry on failure
@@ -1112,7 +1141,7 @@ JSON schema:
             const start = cleaned.indexOf("{")
             const end = cleaned.lastIndexOf("}")
             if (start < 0 || end < 0 || end <= start) {
-                return { enableWebSearch: false, confidence: 0, reason: "router_invalid_json_shape" }
+                return { enableWebSearch: true, confidence: 0, reason: "router_failure_safe_default", intentType: "search" as const }
             }
 
             try {
@@ -1120,16 +1149,21 @@ JSON schema:
                     enableWebSearch?: unknown
                     confidence?: unknown
                     reason?: unknown
+                    intentType?: unknown
                 }
 
                 const enableWebSearch = parsed.enableWebSearch === true
                 const confidenceRaw = typeof parsed.confidence === "number" ? parsed.confidence : 0
                 const confidence = Number.isFinite(confidenceRaw) ? Math.max(0, Math.min(1, confidenceRaw)) : 0
                 const reason = typeof parsed.reason === "string" ? parsed.reason.slice(0, 240) : ""
+                const intentType = typeof parsed.intentType === "string"
+                    && ["search", "discussion", "sync_request", "compile_daftar_pustaka", "save_submit"].includes(parsed.intentType)
+                    ? parsed.intentType as "search" | "discussion" | "sync_request" | "compile_daftar_pustaka" | "save_submit"
+                    : enableWebSearch ? "search" : "discussion"
 
-                return { enableWebSearch, confidence, reason }
+                return { enableWebSearch, confidence, reason, intentType }
             } catch {
-                return { enableWebSearch: false, confidence: 0, reason: "router_json_parse_failed" }
+                return { enableWebSearch: true, confidence: 0, reason: "router_failure_safe_default", intentType: "search" as const }
             }
         }
 
@@ -1878,7 +1912,7 @@ Aturan:
                     researchStatus: { incomplete, requirement },
                 })
 
-                const routerFailed = ["router_invalid_json_shape", "router_json_parse_failed"].includes(
+                const routerFailed = ["router_failure_safe_default", "router_invalid_json_shape", "router_json_parse_failed"].includes(
                     webSearchDecision.reason
                 )
                 const explicitSearchRequest = lastUserContent

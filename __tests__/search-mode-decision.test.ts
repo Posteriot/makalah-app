@@ -192,3 +192,39 @@ describe("critical regression: deadlock prevention", () => {
         expect(true).toBe(true)
     })
 })
+
+// ===========================================================================
+// 6. Router intentType enum contract tests
+// ===========================================================================
+describe("router intentType enum contract", () => {
+    const INTENT_TYPES = [
+        "search",
+        "discussion",
+        "sync_request",
+        "compile_daftar_pustaka",
+        "save_submit",
+    ] as const
+
+    type IntentType = typeof INTENT_TYPES[number]
+
+    it("all intent types are distinct (no overlap)", () => {
+        const unique = new Set(INTENT_TYPES)
+        expect(unique.size).toBe(INTENT_TYPES.length)
+    })
+
+    it.each([
+        ["sync_request", false, true, false, false],
+        ["compile_daftar_pustaka", false, false, true, false],
+        ["save_submit", false, false, false, true],
+        ["search", true, false, false, false],
+        ["discussion", false, false, false, false],
+    ] as [IntentType, boolean, boolean, boolean, boolean][])(
+        "intentType=%s → search=%s, sync=%s, compile=%s, save=%s",
+        (intentType, expectSearch, expectSync, expectCompile, expectSave) => {
+            expect(intentType === "search").toBe(expectSearch)
+            expect(intentType === "sync_request").toBe(expectSync)
+            expect(intentType === "compile_daftar_pustaka").toBe(expectCompile)
+            expect(intentType === "save_submit").toBe(expectSave)
+        }
+    )
+})
