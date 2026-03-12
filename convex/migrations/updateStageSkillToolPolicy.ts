@@ -33,9 +33,10 @@ import type { PaperStageId } from "../paperSessions/constants"
 const WEB_SEARCH_ACTIVE = `## Web Search
 Policy: active.
 When factual evidence, references, or literature data is needed, express your search
-intent clearly in your response (e.g., "Saya akan mencari referensi tentang X" or
-"Perlu mencari data pendukung untuk Y"). The orchestrator detects this intent and
-executes web search automatically in the next turn.
+intent clearly in your response (e.g., "I will search for references about X" or
+"I need to find supporting data for Y"). Then ASK the user to confirm or respond —
+search runs on the NEXT user turn. Do NOT say "please wait" — the user MUST send
+a message for search to execute.
 IMPORTANT: Web search and function tools cannot run in the same turn. After search
 results arrive, use function tools to save findings.
 Do not fabricate references — if evidence is needed, request a search.`
@@ -43,8 +44,9 @@ Do not fabricate references — if evidence is needed, request a search.`
 const WEB_SEARCH_PASSIVE = `## Web Search
 Policy: passive — only when user explicitly requests it.
 Do not initiate search on your own. If user asks you to search, express your intent
-clearly (e.g., "Saya akan mencari referensi tentang X"). The orchestrator will detect
-and execute the search automatically in the next turn.
+clearly (e.g., "I will search for references about X"). Then ASK the user to confirm —
+search runs on the NEXT user turn. Do NOT say "please wait" — the user MUST send
+a message for search to execute.
 IMPORTANT: Web search and function tools cannot run in the same turn.
 Do not fabricate references — if evidence is needed, ask user whether to search.`
 
