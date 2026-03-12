@@ -3,50 +3,6 @@ import {
     isStageResearchIncomplete,
 } from "@/lib/ai/paper-search-helpers"
 
-// ---------------------------------------------------------------------------
-// Mirror of isExplicitSearchRequest from route.ts:425-444
-// Tests verify the pattern set is correct
-// ---------------------------------------------------------------------------
-const isExplicitSearchRequest = (text: string) => {
-    const normalized = text.toLowerCase()
-    const patterns = [
-        /\bcari(kan)?\b/,
-        /\bmencari\b/,
-        /\bsearch\b/,
-        /\bpencarian\b/,
-        /\bgoogle\b/,
-        /\binternet\b/,
-        /\btautan\b/,
-        /\blink\b/,
-        /\burl\b/,
-        /\breferensi\b/,
-        /\bliteratur\b/,
-        /\bsumber\b/,
-        /\bdata terbaru\b/,
-        /\bberita terbaru\b/,
-    ]
-    return patterns.some((pattern) => pattern.test(normalized))
-}
-
-// ---------------------------------------------------------------------------
-// Mirror of isExplicitSyncRequest from route.ts:446-460
-// ---------------------------------------------------------------------------
-const isExplicitSyncRequest = (text: string) => {
-    if (!text.trim()) return false
-    if (isExplicitSearchRequest(text)) return false
-
-    const normalized = text.toLowerCase()
-    const patterns = [
-        /\bsinkron\b/,
-        /\bsinkronkan\b/,
-        /\bcek state\b/,
-        /\bstatus sesi\b/,
-        /\blanjut dari state\b/,
-        /\bstatus terbaru\b/,
-    ]
-    return patterns.some((pattern) => pattern.test(normalized))
-}
-
 // ===========================================================================
 // 1. Pre-router guardrails: isStageResearchIncomplete
 // ===========================================================================
@@ -100,58 +56,7 @@ describe("isStageResearchIncomplete", () => {
 })
 
 // ===========================================================================
-// 3. isExplicitSearchRequest pattern verification
-// ===========================================================================
-describe("isExplicitSearchRequest", () => {
-    it.each([
-        ["cari referensi tentang AI", true],
-        ["search for data", true],
-        ["carikan sumber", true],
-        ["mencari literatur", true],
-        ["pencarian google", true],
-        ["data terbaru tentang AI", true],
-        ["berita terbaru hari ini", true],
-    ])('"%s" → true', (input, expected) => {
-        expect(isExplicitSearchRequest(input)).toBe(expected)
-    })
-
-    it.each([
-        ["lanjut"],
-        ["simpan"],
-        ["ya"],
-        ["ok"],
-        ["sinkronkan"],
-    ])('"%s" → false', (input) => {
-        expect(isExplicitSearchRequest(input)).toBe(false)
-    })
-})
-
-// ===========================================================================
-// 4. isExplicitSyncRequest pattern verification
-// ===========================================================================
-describe("isExplicitSyncRequest", () => {
-    it.each([
-        ["sinkronkan", true],
-        ["cek state", true],
-        ["status sesi", true],
-        ["lanjut dari state", true],
-        ["status terbaru", true],
-    ])('"%s" → true', (input, expected) => {
-        expect(isExplicitSyncRequest(input)).toBe(expected)
-    })
-
-    it.each([
-        ["cari referensi", false, "search overrides sync"],
-        ["", false, "empty string"],
-        ["lanjut", false, "not a sync pattern"],
-        ["simpan", false, "not a sync pattern"],
-    ])('"%s" → false (%s)', (input, expected) => {
-        expect(isExplicitSyncRequest(input)).toBe(expected)
-    })
-})
-
-// ===========================================================================
-// 5. Structural regression tests: deadlock prevention
+// 2. Structural regression tests: deadlock prevention
 // ===========================================================================
 describe("critical regression: deadlock prevention", () => {
     it("documents: user confirmation must NOT hard-block search", () => {
@@ -175,7 +80,7 @@ describe("critical regression: deadlock prevention", () => {
 })
 
 // ===========================================================================
-// 6. Router intentType enum contract tests
+// 3. Router intentType enum contract tests
 // ===========================================================================
 describe("router intentType enum contract", () => {
     const INTENT_TYPES = [

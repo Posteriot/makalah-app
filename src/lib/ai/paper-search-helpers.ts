@@ -2,11 +2,12 @@
  * Paper Search Helpers
  *
  * Data-based helpers and system notes for the paper workflow search system.
- * Search mode decisions are made by the LLM router (decideWebSearchMode in route.ts).
+ * Search mode decisions (including intent classification) are made entirely
+ * by the LLM router (decideWebSearchMode in route.ts).
  * This file provides:
  * - Research completeness checks (data-based, used as LLM router context)
  * - System notes injected based on search mode decisions
- * - Utility functions for stage data checks
+ * - Stage research requirements (data definitions)
  */
 
 import type { PaperStageId } from "../../../convex/paperSessions/constants"

@@ -25,7 +25,7 @@ Three independent concerns that must never be mixed:
 | Concern | Responsibility | Current Location |
 |---------|---------------|------------------|
 | **Quality/Knowledge** | HOW the LLM processes and presents results | `skills/web-search-quality/SKILL.md` |
-| **Workflow Control** | WHEN tools are available and what mode is active | `route.ts` (LLM router + structural guardrails), `paper-search-helpers.ts` (system notes + data checks) |
+| **Workflow Control** | WHEN tools are available and what mode is active | `route.ts` (LLM router with intentType enum for all decisions), `paper-search-helpers.ts` (system notes + data checks) |
 | **Tool Execution** | Simple data retrieval, no judgment | `web-search/retrievers/*.ts`, `paper-tools.ts` |
 
 These are independent:
@@ -100,7 +100,7 @@ Registry at `src/lib/ai/web-search/retriever-registry.ts`. New retrievers = impl
 
 ## Paper Stage Architecture (Current — Migration Candidate)
 
-Search mode decisions are now unified under a single LLM router (`decideWebSearchMode` in `route.ts`) for all stages. The regex-based 3-layer protection for ACTIVE stages has been removed — `paper-search-helpers.ts` no longer contains intent detection regex.
+ALL regex have been removed from the search decision path. Search mode decisions — including intent classification (search, discussion, sync, compile, save) — are now unified under a single LLM router (`decideWebSearchMode` in `route.ts`) using a typed `intentType` enum. No regex patterns remain in `route.ts` or `paper-search-helpers.ts` for intent detection, search request matching, or sync request matching.
 
 Currently hardcoded TypeScript instruction strings, not SKILL.md:
 
