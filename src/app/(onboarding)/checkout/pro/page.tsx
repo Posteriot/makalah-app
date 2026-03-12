@@ -419,18 +419,17 @@ function CheckoutPROContent() {
             </div>
 
             {error && (
-              <div className="space-y-2">
-                <CheckoutErrorBanner
-                  title="Gagal memproses pembayaran"
-                  message={error}
-                />
+              <CheckoutErrorBanner
+                title="Gagal memproses pembayaran"
+                message={error}
+              >
                 {errorCode === "PAYMENT_SYSTEM_UNAVAILABLE" && (
                   <PaymentTechnicalReportButton
                     source="payment-preflight-error"
                     paymentContext={{ errorCode }}
                   />
                 )}
-              </div>
+              </CheckoutErrorBanner>
             )}
 
             <div className={sectionCardClass}>

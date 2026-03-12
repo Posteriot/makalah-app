@@ -6,6 +6,7 @@ interface CheckoutErrorBannerProps {
   title: string
   message: string
   className?: string
+  children?: React.ReactNode
 }
 
 const checkoutErrorBannerStyle = {
@@ -18,6 +19,7 @@ export function CheckoutErrorBanner({
   title,
   message,
   className,
+  children,
 }: CheckoutErrorBannerProps) {
   return (
     <div
@@ -39,6 +41,11 @@ export function CheckoutErrorBanner({
           </p>
         </div>
       </div>
+      {children && (
+        <div className="mt-3 flex justify-center">
+          {children}
+        </div>
+      )}
     </div>
   )
 }

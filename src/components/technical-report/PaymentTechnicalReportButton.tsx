@@ -62,7 +62,16 @@ export function PaymentTechnicalReportButton({
       size="sm"
       variant="outline"
       disabled={!isHydrated}
-      className={cn("h-8 rounded-action text-xs font-medium font-sans", className)}
+      className={cn(
+        "h-8 rounded-action text-xs font-medium font-sans",
+        "bg-[oklch(0.984_0_0)] dark:bg-[oklch(0.208_0_0)]",
+        "text-[oklch(0.129_0_0)] dark:text-[oklch(0.968_0_0)]",
+        "border-0 hover:border-0",
+        "hover:bg-[oklch(0.929_0_0)] dark:hover:bg-[oklch(0.269_0_0)]",
+        "hover:text-[oklch(0.129_0_0)] dark:hover:text-[oklch(0.968_0_0)]",
+        "shadow-none hover:shadow-none dark:shadow-none dark:hover:shadow-none",
+        className
+      )}
     >
       <WarningTriangle className="h-3.5 w-3.5" />
       Lapor Masalah Pembayaran
