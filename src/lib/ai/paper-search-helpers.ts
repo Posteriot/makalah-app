@@ -273,7 +273,7 @@ TECHNICAL CONSTRAINT:
 
 IF FACTUAL DATA/REFERENCES ARE NEEDED:
 - Ask user to explicitly request a search.
-- Example: "Untuk melanjutkan, saya perlu mencari referensi. Bolehkah saya carikan?"
+- Example: "To continue, I need to search for references. Shall I search for them?"
 - Do NOT fabricate/hallucinate references — this is FORBIDDEN.
 ═══════════════════════════════════════════════════════════════════`
 
@@ -290,9 +290,11 @@ STATUS: ${requirement}
 
 MANDATORY INSTRUCTIONS:
 1. Express your intent to search for relevant references in your response
-2. Do NOT continue discussion without requesting a search first
-3. Do NOT fabricate/hallucinate references — this is FORBIDDEN
-4. After search results arrive, discuss findings with user
+2. ASK the user to confirm — search executes on the NEXT user turn
+3. Do NOT say "please wait" — the user MUST send a message for search to run
+4. Do NOT continue discussion without requesting a search first
+5. Do NOT fabricate/hallucinate references — this is FORBIDDEN
+6. After search results arrive, discuss findings with user
 
 IF YOU SKIP THE SEARCH, YOU ARE VIOLATING THE PAPER WORKFLOW PROTOCOL.
 ═══════════════════════════════════════════════════════════════════`

@@ -91,7 +91,8 @@ WEB SEARCH
 PASSIVE MODE: Web search should ONLY be used if the user explicitly asks to find
 example abstracts from similar papers. Do NOT proactively initiate search at this
 stage because the abstract is a compilation of Phase 1 data.
-To request web search, express your search intent clearly in your response.
+HOW TO TRIGGER: Express search intent in your response, then ASK user to confirm.
+Search runs on the NEXT user turn. Do NOT say "please wait" — user MUST respond.
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -224,9 +225,11 @@ OUTPUT 'PENDAHULUAN' (AFTER discussion):
 WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
 
-To request web search, express your search intent clearly in your response
-(e.g., "Saya akan mencari data pendukung tentang X"). The orchestrator detects
-this intent and executes search automatically in the next turn.
+HOW TO TRIGGER WEB SEARCH:
+1. Express your search intent clearly in your response
+   (e.g., "I will search for supporting data about X")
+2. ASK the user to confirm or respond — search runs on the NEXT user turn
+3. Do NOT say "please wait" — the user MUST send a message for search to execute
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 After search results arrive, use function tools to save findings in the next turn.
 
@@ -361,9 +364,11 @@ OUTPUT 'TINJAUAN LITERATUR':
 WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
 
-To request web search, express your search intent clearly in your response
-(e.g., "Saya akan mencari literatur tentang X"). The orchestrator detects this
-intent and executes search automatically in the next turn.
+HOW TO TRIGGER WEB SEARCH:
+1. Express your search intent clearly in your response
+   (e.g., "I will search for literature about X")
+2. ASK the user to confirm or respond — search runs on the NEXT user turn
+3. Do NOT say "please wait" — the user MUST send a message for search to execute
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 After search results arrive, use function tools to save findings in the next turn.
 Target 3-5 search queries for deepening.
@@ -488,9 +493,11 @@ OUTPUT 'METODOLOGI':
 WEB SEARCH
 ═══════════════════════════════════════════════════════════════════════════════
 
-To request web search, express your search intent clearly in your response
-(e.g., "Saya akan mencari contoh metodologi serupa"). The orchestrator detects
-this intent and executes search automatically in the next turn.
+HOW TO TRIGGER WEB SEARCH:
+1. Express your search intent clearly in your response
+   (e.g., "I will search for similar methodology examples")
+2. ASK the user to confirm or respond — search runs on the NEXT user turn
+3. Do NOT say "please wait" — the user MUST send a message for search to execute
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 After search results arrive, use function tools to save findings in the next turn.
 

@@ -97,7 +97,8 @@ WEB SEARCH
 PASSIVE MODE: Web search should ONLY be used if the user explicitly asks to find
 benchmarks/comparison data. Do NOT proactively initiate search at this stage
 because Results must come from the user's ACTUAL data.
-To request web search, express your search intent clearly in your response.
+HOW TO TRIGGER: Express search intent in your response, then ASK user to confirm.
+Search runs on the NEXT user turn. Do NOT say "please wait" — user MUST respond.
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 
 ===============================================================================
@@ -226,9 +227,12 @@ OUTPUT 'DISKUSI':
 WEB SEARCH
 ===============================================================================
 
-Optional — for finding comparison references. To request web search, express your
-search intent clearly in your response (e.g., "Saya akan mencari studi pembanding").
-The orchestrator detects this intent and executes search automatically in the next turn.
+Optional — for finding comparison references.
+HOW TO TRIGGER WEB SEARCH:
+1. Express your search intent clearly in your response
+   (e.g., "I will search for comparative studies")
+2. ASK the user to confirm or respond — search runs on the NEXT user turn
+3. Do NOT say "please wait" — the user MUST send a message for search to execute
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 After search results arrive, use function tools to save findings in the next turn.
 
@@ -351,7 +355,8 @@ WEB SEARCH
 PASSIVE MODE: Web search should ONLY be used if the user explicitly requests it.
 Do NOT proactively initiate search at this stage because the Conclusion is a
 SYNTHESIS of Hasil + Diskusi, not new information.
-To request web search, express your search intent clearly in your response.
+HOW TO TRIGGER: Express search intent in your response, then ASK user to confirm.
+Search runs on the NEXT user turn. Do NOT say "please wait" — user MUST respond.
 IMPORTANT: Web search and function tools CANNOT run in the same turn.
 
 ===============================================================================

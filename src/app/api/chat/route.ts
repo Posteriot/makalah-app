@@ -919,28 +919,28 @@ ${sourcesJson}`
             const stageLabel = stageCode && stageCode !== "completed"
                 ? `${getStageLabel(stageCode as PaperStageId)} (${stageCode})`
                 : stageCode === "completed"
-                    ? "Semua tahap selesai (completed)"
-                    : "Tidak diketahui"
+                    ? "All stages completed"
+                    : "Unknown"
             const stageStatus = session?.stageStatus ?? "unknown"
             const dirty = session?.isDirty === true
 
             const lines = [
-                "Status sesi berhasil disinkronkan.",
+                "Session status synced successfully.",
                 "",
-                `- Tahap aktif: ${stageLabel}`,
-                `- Status tahap: ${stageStatus}`,
+                `- Active stage: ${stageLabel}`,
+                `- Stage status: ${stageStatus}`,
                 `- Dirty context: ${dirty ? "true" : "false"}`,
             ]
 
             if (stageStatus === "pending_validation" && dirty) {
                 lines.push(
                     "",
-                    "Data belum sinkron. Minta Agen Makalah melakukan revisi dulu agar sinkronisasi/update draf bisa dilanjutkan."
+                    "Data not yet synced. Request revision first so sync/draft update can proceed."
                 )
             } else {
                 lines.push(
                     "",
-                    "Sinkronisasi selesai. Lanjutkan instruksi berikutnya sesuai tahap aktif saat ini."
+                    "Sync complete. Continue with instructions for the current active stage."
                 )
             }
 
@@ -1069,33 +1069,33 @@ ${sourcesJson}`
             const paperModeContext = options.isPaperMode
                 ? `
 
-KONTEKS PENTING - PAPER MODE AKTIF:
+IMPORTANT CONTEXT - PAPER MODE ACTIVE:
 Current stage: ${options.currentStage ?? "unknown"}
 Stage policy: ${options.stagePolicy.toUpperCase()}
 
-Aturan stage policy (HARUS dipatuhi):
-- Jika policy = PASSIVE: enableWebSearch = true HANYA jika user EKSPLISIT minta search.
-- Jika policy = ACTIVE: enableWebSearch boleh true jika user minta search atau model butuh data faktual.
+Stage policy rules (MUST be followed):
+- If policy = PASSIVE: enableWebSearch = true ONLY if user EXPLICITLY requests search.
+- If policy = ACTIVE: enableWebSearch may be true if user requests search or model needs factual data.
 
-Catatan tambahan:
-- Referensi dan data faktual HARUS dari web search, TIDAK BOLEH di-hallucinate.
-- Set false jika user meminta simpan/approve hasil yang sudah ada, ATAU semua data sudah tersedia dari pencarian sebelumnya.`
+Additional notes:
+- References and factual data MUST come from web search, MUST NOT be hallucinated.
+- Set false if user requests save/approve of existing results, OR all data is already available from previous searches.`
                 : ""
 
-            const routerPrompt = `Anda adalah "router" yang memutuskan apakah jawaban untuk user WAJIB memakai pencarian web.
+            const routerPrompt = `You are a "router" that decides whether the response to the user MUST use web search.
 
-Tujuan:
-- enableWebSearch = true jika:
-  (A) user meminta cek internet/pencarian/referensi, ATAU
-  (B) AI akan menyertakan referensi/literatur/sumber dalam jawabannya, ATAU
-  (C) AI membutuhkan DATA FAKTUAL (statistik, angka, fakta, nama, tanggal, peristiwa) yang berisiko salah jika di-hallucinate.
-- PENTING: Untuk MENCEGAH HALUSINASI, selalu enableWebSearch = true jika jawaban memerlukan data faktual yang spesifik.
-- Set false HANYA jika: user meminta simpan/approve data yang sudah ada, ATAU jawaban murni opini/diskusi tanpa klaim faktual.
+Purpose:
+- enableWebSearch = true if:
+  (A) user requests internet/search/references, OR
+  (B) AI will include references/literature/sources in its response, OR
+  (C) AI needs FACTUAL DATA (statistics, numbers, facts, names, dates, events) that risks being wrong if hallucinated.
+- IMPORTANT: To PREVENT HALLUCINATION, always enableWebSearch = true if the response requires specific factual data.
+- Set false ONLY if: user requests save/approve of existing data, OR the response is purely opinion/discussion without factual claims.
 ${paperModeContext}
 
-Aturan output:
-- Output HARUS satu JSON object SAJA.
-- TANPA markdown, TANPA backticks, TANPA penjelasan di luar JSON.
+Output rules:
+- Output MUST be one JSON object ONLY.
+- NO markdown, NO backticks, NO explanation outside JSON.
 - confidence 0..1.
 
 JSON schema:
@@ -1532,17 +1532,17 @@ Tool ini akan:
 PENTING: Gunakan artifactId yang ada di context percakapan atau yang diberikan AI sebelumnya.`,
                 inputSchema: z.object({
                     artifactId: z.string()
-                        .describe("ID dari artifact yang akan di-update. Harus artifact yang sudah ada."),
+                        .describe("ID of the artifact to update. Must be an existing artifact."),
                     content: z.string().min(10)
-                        .describe("Konten baru untuk artifact (akan menggantikan konten sebelumnya)"),
+                        .describe("New content for the artifact (replaces previous content)"),
                     title: z.string().max(200).optional()
-                        .describe("Judul baru (opsional). Jika tidak diisi, judul lama dipertahankan."),
+                        .describe("New title (optional). If not provided, previous title is retained."),
                     sources: z.array(z.object({
                         url: z.string(),
                         title: z.string(),
                         publishedAt: z.number().optional(),
                     })).optional()
-                        .describe("Web sources jika update berbasis web search. Jika tidak diisi, sources dari versi sebelumnya dipertahankan."),
+                        .describe("Web sources if update is based on web search. If not provided, sources from previous version are retained."),
                 }),
                 execute: async ({ artifactId, content, title, sources }) => {
                     try {
@@ -1892,7 +1892,7 @@ Aturan:
             if (compileDaftarPustakaIntent && !!paperModePrompt) {
                 searchRequestedByPolicy = false
                 activeStageSearchReason = "compile_daftar_pustaka_intent"
-                activeStageSearchNote = getFunctionToolsModeNote("Compile daftar pustaka")
+                activeStageSearchNote = getFunctionToolsModeNote("Compile bibliography")
 
                 console.log("[SearchDecision] Compile intent override: enableWebSearch=false (function tools mode)")
             } else if (stagePolicy === "active" && paperSession && !forcePaperToolsMode) {
@@ -1922,7 +1922,7 @@ Aturan:
                     } else {
                         searchRequestedByPolicy = false
                         activeStageSearchReason = "search_already_done"
-                        activeStageSearchNote = getFunctionToolsModeNote("Search selesai")
+                        activeStageSearchNote = getFunctionToolsModeNote("Search completed")
                     }
                 } else if (searchAlreadyDone && incomplete) {
                     // Priority 1b: Search done BUT research still incomplete → auto-enable search
@@ -1998,7 +1998,7 @@ Aturan:
             if (explicitSyncRequest && !forcePaperToolsMode) {
                 searchRequestedByPolicy = false
                 activeStageSearchReason = "explicit_sync_request"
-                activeStageSearchNote = getFunctionToolsModeNote("Sinkronisasi status sesi")
+                activeStageSearchNote = getFunctionToolsModeNote("Session state sync")
                 console.log("[SearchDecision] Explicit sync override: forced getCurrentPaperState path")
             }
 
@@ -2074,7 +2074,7 @@ Aturan:
                     activeStageSearchReason === "explicit_save_request" ||
                     isExplicitSaveSubmitRequest(lastUserContent)
                 )
-                ? `\n⚠️ ARTIFACT BELUM DIBUAT untuk tahap ini. WAJIB panggil createArtifact() dengan konten yang sudah disimpan di updateStageData SEBELUM memanggil submitStageForValidation(). Pastikan include parameter 'sources' jika ada AVAILABLE_WEB_SOURCES.\n`
+                ? `\n⚠️ ARTIFACT NOT YET CREATED for this stage. You MUST call createArtifact() with the content saved in updateStageData BEFORE calling submitStageForValidation(). Make sure to include the 'sources' parameter if AVAILABLE_WEB_SOURCES exist.\n`
                 : ""
 
             const forcedToolTelemetryName = shouldForceGetCurrentPaperState
