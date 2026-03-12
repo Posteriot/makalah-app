@@ -1198,11 +1198,13 @@ export default defineSchema({
 
   technicalReports: defineTable({
     userId: v.id("users"),
-    scope: v.literal("chat"),
+    scope: v.union(v.literal("chat"), v.literal("payment")),
     source: v.union(
       v.literal("chat-inline"),
       v.literal("footer-link"),
-      v.literal("support-page")
+      v.literal("support-page"),
+      v.literal("payment-checkout"),
+      v.literal("payment-preflight-error")
     ),
     status: v.union(v.literal("open"), v.literal("triaged"), v.literal("resolved")),
     description: v.string(),
@@ -1210,6 +1212,13 @@ export default defineSchema({
     conversationId: v.optional(v.id("conversations")),
     paperSessionId: v.optional(v.id("paperSessions")),
     contextSnapshot: v.optional(v.any()),
+    paymentContext: v.optional(v.object({
+      transactionId: v.optional(v.string()),
+      amount: v.optional(v.number()),
+      paymentMethod: v.optional(v.string()),
+      providerPaymentId: v.optional(v.string()),
+      errorCode: v.optional(v.string()),
+    })),
     createdAt: v.number(),
     updatedAt: v.number(),
     resolvedAt: v.optional(v.number()),
