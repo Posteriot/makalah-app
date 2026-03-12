@@ -1,7 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft, Settings, SidebarCollapse } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, SidebarCollapse, Settings } from "iconoir-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -9,7 +10,6 @@ import { Id } from "../../../convex/_generated/dataModel"
 import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 import { cn } from "@/lib/utils"
 import { SidebarChatHistory } from "./sidebar/SidebarChatHistory"
-import { SidebarPaperSessions } from "./sidebar/SidebarPaperSessions"
 import { SidebarProgress } from "./sidebar/SidebarProgress"
 import type { PanelType } from "./shell/ActivityBar"
 import { CreditMeter } from "@/components/billing/CreditMeter"
@@ -19,7 +19,9 @@ import { UserDropdown } from "@/components/layout/header/UserDropdown"
  * ChatSidebar Props
  *
  * Extended to support multi-state rendering via activePanel prop.
- * Now acts as a container that conditionally renders different sidebar content.
+ * Sekarang sidebar hanya punya dua konteks:
+ * - Riwayat Percakapan (tree workspace)
+ * - Linimasa Progres
  */
 interface ChatSidebarProps {
   /** Active panel from Activity Bar */
@@ -40,6 +42,10 @@ interface ChatSidebarProps {
   onDeleteConversation: (id: Id<"conversations">) => void
   /** Callback to update conversation title */
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
+  /** Callback to delete many conversations */
+  onDeleteConversations?: (ids: Id<"conversations">[]) => Promise<void>
+  /** Callback to delete all conversations */
+  onDeleteAllConversations?: () => Promise<void>
   /** Callback when artifact is selected */
   onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => void
   /** Currently selected artifact ID in panel */
@@ -54,25 +60,24 @@ interface ChatSidebarProps {
   onCloseMobile?: () => void
   /** Loading state for conversations */
   isLoading?: boolean
+  /** More conversations available */
+  hasMoreConversations?: boolean
+  /** Incremental load more callback */
+  onLoadMoreConversations?: () => void
   /** Creating new chat state */
   isCreating?: boolean
   /** Callback to collapse sidebar (desktop only) */
   onCollapseSidebar?: () => void
   /** Callback when panel tab changes (mobile drawer tabs) */
   onPanelChange?: (panel: PanelType) => void
-  /** Callback to open conversation manager workspace panel */
-  onOpenConversationManager?: () => void
-  /** Callback to open paper sessions workspace panel */
-  onOpenPaperSessionsManager?: () => void
 }
 
 /**
  * ChatSidebar - Multi-state container
  *
  * Conditionally renders one of three sidebar states based on activePanel:
- * 1. "chat-history" (default) - SidebarChatHistory with conversation list
- * 2. "paper" - SidebarPaperSessions with paper session folders
- * 3. "progress" - SidebarProgress with paper milestone timeline
+ * 1. "chat-history" (default) - SidebarChatHistory tree
+ * 2. "progress" - SidebarProgress dengan konteks percakapan aktif
  *
  * Common elements:
  * - Sidebar header with "New Chat" button (only for chat-history)
@@ -86,6 +91,8 @@ export function ChatSidebar({
   onNewChat,
   onDeleteConversation,
   onUpdateConversationTitle,
+  onDeleteConversations,
+  onDeleteAllConversations,
   onArtifactSelect,
   activeArtifactId,
   isArtifactPanelOpen,
@@ -93,12 +100,12 @@ export function ChatSidebar({
   className,
   onCloseMobile,
   isLoading,
+  hasMoreConversations,
+  onLoadMoreConversations,
   isCreating,
   onCollapseSidebar,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onPanelChange,
-  onOpenConversationManager,
-  onOpenPaperSessionsManager,
 }: ChatSidebarProps) {
   const router = useRouter()
   const displayedConversationCount = conversations.length
@@ -107,22 +114,12 @@ export function ChatSidebar({
     displayedConversationCount
   )
   const historyCountLabel = `${displayedConversationCount} dari ${resolvedTotalConversationCount}`
+  const [historyManageRequestNonce, setHistoryManageRequestNonce] = useState(0)
+  const [isHistoryManageMode, setIsHistoryManageMode] = useState(false)
 
   // Render sidebar content based on active panel
   const renderContent = () => {
     switch (activePanel) {
-      case "paper":
-        return (
-          <SidebarPaperSessions
-            currentConversationId={currentConversationId}
-            onArtifactSelect={onArtifactSelect}
-            activeArtifactId={activeArtifactId}
-            isArtifactPanelOpen={isArtifactPanelOpen}
-            onArtifactPanelToggle={onArtifactPanelToggle}
-            onOpenPaperSessionsManager={onOpenPaperSessionsManager}
-            onCloseMobile={onCloseMobile}
-          />
-        )
       case "progress":
         return <SidebarProgress conversationId={currentConversationId} />
       case "chat-history":
@@ -130,11 +127,22 @@ export function ChatSidebar({
         return (
           <SidebarChatHistory
             conversations={conversations}
+            totalConversationCount={resolvedTotalConversationCount}
             currentConversationId={currentConversationId}
             onDeleteConversation={onDeleteConversation}
+            onDeleteConversations={onDeleteConversations}
+            onDeleteAllConversations={onDeleteAllConversations}
             onUpdateConversationTitle={onUpdateConversationTitle}
+            onArtifactSelect={onArtifactSelect}
+            activeArtifactId={activeArtifactId}
+            isArtifactPanelOpen={isArtifactPanelOpen}
+            onArtifactPanelToggle={onArtifactPanelToggle}
             onCloseMobile={onCloseMobile}
             isLoading={isLoading}
+            hasMore={hasMoreConversations}
+            onLoadMore={onLoadMoreConversations}
+            manageRequestNonce={historyManageRequestNonce}
+            onManageModeChange={setIsHistoryManageMode}
           />
         )
     }
@@ -239,17 +247,14 @@ export function ChatSidebar({
           <div className="flex items-center gap-1">
             <button
               type="button"
+              onClick={() => setHistoryManageRequestNonce((current) => current + 1)}
               className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-action bg-transparent",
-                "text-[var(--chat-muted-foreground)] transition-colors duration-150",
-                "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
+                "inline-flex h-8 w-8 items-center justify-center rounded-action transition-colors duration-150",
+                isHistoryManageMode
+                  ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-info)]"
+                  : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
               )}
-              aria-label="Buka Kelola Percakapan"
-              title="Buka Kelola Percakapan"
-              onClick={() => {
-                onOpenConversationManager?.()
-                onCloseMobile?.()
-              }}
+              aria-label={isHistoryManageMode ? "Tutup mode kelola riwayat" : "Buka mode kelola riwayat"}
             >
               <Settings className="h-4 w-4" aria-hidden="true" />
             </button>

@@ -1,19 +1,26 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Input } from "@/components/ui/input"
-import { RefreshDouble, ChatBubble, Trash, EditPencil } from "iconoir-react"
-import { Id } from "../../../../convex/_generated/dataModel"
-import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery } from "convex/react"
+import {
+  EditPencil,
+  Folder,
+  NavArrowRight,
+  Page,
+  RefreshDouble,
+  Trash,
+} from "iconoir-react"
 import { api } from "../../../../convex/_generated/api"
+import { Id } from "../../../../convex/_generated/dataModel"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { PaperSessionBadge } from "@/components/paper"
-import { getStageNumber, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import { formatRelativeTime } from "@/lib/date/formatters"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
+import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
+import { getStageNumber, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,13 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
+import { toast } from "sonner"
 
 interface SidebarChatHistoryProps {
   conversations: Array<{
@@ -38,58 +39,246 @@ interface SidebarChatHistoryProps {
     title: string
     lastMessageAt: number
   }>
+  totalConversationCount?: number
   currentConversationId: string | null
-  onDeleteConversation: (id: Id<"conversations">) => void
-  onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
+  onDeleteConversation: (id: Id<"conversations">) => Promise<void> | void
+  onDeleteConversations?: (ids: Id<"conversations">[]) => Promise<unknown>
+  onDeleteAllConversations?: () => Promise<unknown>
+  onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<unknown>
+  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => void
+  activeArtifactId?: Id<"artifacts"> | null
+  isArtifactPanelOpen?: boolean
+  onArtifactPanelToggle?: () => void
   onCloseMobile?: () => void
   isLoading?: boolean
+  hasMore?: boolean
+  onLoadMore?: () => void
+  manageRequestNonce?: number
+  onManageModeChange?: (isManageMode: boolean) => void
 }
 
-/**
- * SidebarChatHistory - Extracted conversation list from ChatSidebar
- *
- * Features preserved:
- * - Conversation list rendering with paper session badges
- * - Inline edit mode (double-click to edit)
- * - Delete confirmation dialog
- * - Context menu for edit/delete actions
- * - Link-based navigation to /chat/[conversationId]
- */
+interface PaperSessionListItem {
+  _id: Id<"paperSessions">
+  conversationId: Id<"conversations">
+  workingTitle?: string
+  paperTitle?: string
+  currentStage: string
+}
+
+interface ArtifactListItem {
+  _id: Id<"artifacts">
+  conversationId: Id<"conversations">
+  title: string
+  type: string
+  version: number
+  sourceArtifactId?: Id<"artifacts">
+  messageId?: Id<"messages">
+  createdAt: number
+}
+
+interface ConversationTreeFile {
+  _id: Id<"artifacts">
+  title: string
+  type: string
+  version: number
+  sourceArtifactId?: Id<"artifacts">
+  messageId?: Id<"messages">
+}
+
+interface ConversationTreeNode {
+  conversationId: Id<"conversations">
+  title: string
+  lastMessageAt: number
+  paperSession: PaperSessionListItem | null
+  latestFiles: ConversationTreeFile[]
+}
+
+function getLatestFiles(artifacts: ArtifactListItem[]): ConversationTreeFile[] {
+  const latestMap = new Map<string, ArtifactListItem>()
+
+  for (const artifact of artifacts) {
+    const key = artifact.type === "refrasa"
+      ? `refrasa-${artifact.sourceArtifactId ?? artifact.title}`
+      : `${artifact.type}-${artifact.title}`
+    const existing = latestMap.get(key)
+
+    if (!existing || artifact.version > existing.version) {
+      latestMap.set(key, artifact)
+    }
+  }
+
+  const latestArtifacts = Array.from(latestMap.values())
+  const parents = latestArtifacts.filter((artifact) => artifact.type !== "refrasa")
+  const refrasas = latestArtifacts.filter((artifact) => artifact.type === "refrasa")
+
+  parents.sort((left, right) => left.createdAt - right.createdAt)
+
+  const ordered: ArtifactListItem[] = []
+  for (const parent of parents) {
+    ordered.push(parent)
+    const children = refrasas
+      .filter((artifact) => artifact.sourceArtifactId === parent._id)
+      .sort((left, right) => left.createdAt - right.createdAt)
+    ordered.push(...children)
+  }
+
+  const placedIds = new Set(ordered.map((artifact) => artifact._id))
+  for (const artifact of refrasas) {
+    if (!placedIds.has(artifact._id)) {
+      ordered.push(artifact)
+    }
+  }
+
+  return ordered.map((artifact) => ({
+    _id: artifact._id,
+    title: artifact.title,
+    type: artifact.type,
+    version: artifact.version,
+    sourceArtifactId: artifact.sourceArtifactId,
+    messageId: artifact.messageId,
+  }))
+}
+
+function FileTypeBadge({ type }: { type: string }) {
+  if (type === "refrasa") {
+    return (
+      <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--chat-info)] text-[9px] font-mono font-bold text-[var(--chat-info-foreground)]">
+        R
+      </span>
+    )
+  }
+
+  return (
+    <Page
+      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]"
+      aria-hidden="true"
+    />
+  )
+}
+
+function FolderNodeIcon({ solid }: { solid: boolean }) {
+  if (solid) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="h-4 w-4 text-[color:color-mix(in_oklab,var(--chat-info)_85%,white)] dark:text-[color:color-mix(in_oklab,var(--chat-info)_72%,white)]"
+        aria-hidden="true"
+      >
+        <path
+          fill="currentColor"
+          d="M3.5 6.75A2.25 2.25 0 0 1 5.75 4.5h4.04c.6 0 1.18.24 1.6.67l1.1 1.08c.14.14.33.22.53.22h5.23a2.25 2.25 0 0 1 2.25 2.25v7.53a3.25 3.25 0 0 1-3.25 3.25H6.75A3.25 3.25 0 0 1 3.5 16.25V6.75Z"
+        />
+      </svg>
+    )
+  }
+
+  return (
+    <Folder
+      className="h-4 w-4 text-[var(--chat-muted-foreground)]"
+      aria-hidden="true"
+    />
+  )
+}
+
 export function SidebarChatHistory({
   conversations,
   currentConversationId,
   onDeleteConversation,
+  onDeleteConversations,
+  onDeleteAllConversations,
   onUpdateConversationTitle,
+  onArtifactSelect,
+  activeArtifactId,
+  isArtifactPanelOpen,
+  onArtifactPanelToggle,
   onCloseMobile,
   isLoading,
+  hasMore = false,
+  onLoadMore,
+  manageRequestNonce = 0,
+  onManageModeChange,
 }: SidebarChatHistoryProps) {
   const { user } = useCurrentUser()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+  const loadMoreLockedRef = useRef(false)
+  const editInputRef = useRef<HTMLInputElement>(null)
+  const lastSyncedConversationIdRef = useRef<string | null>(null)
 
-  // Query paper sessions for current user to show badges
   const paperSessions = useQuery(
     api.paperSessions.getByUser,
-    user ? { userId: user._id } : "skip"
-  )
+    user?._id ? { userId: user._id } : "skip"
+  ) as PaperSessionListItem[] | undefined
+  const artifacts = useQuery(
+    api.artifacts.listByUser,
+    user?._id ? { userId: user._id } : "skip"
+  ) as ArtifactListItem[] | undefined
 
-  // Create a map of conversationId -> paper session for quick lookup
-  const paperSessionMap = new Map(
-    paperSessions?.map((session) => [session.conversationId, session]) ?? []
-  )
+  const treeNodes = useMemo<ConversationTreeNode[]>(() => {
+    const sessionMap = new Map<string, PaperSessionListItem>(
+      (paperSessions ?? []).map((session) => [String(session.conversationId), session])
+    )
+    const artifactsByConversation = new Map<string, ArtifactListItem[]>()
 
-  // State untuk delete confirmation dialog
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [conversationToDelete, setConversationToDelete] = useState<{
-    id: Id<"conversations">
-    title: string
-  } | null>(null)
+    for (const artifact of artifacts ?? []) {
+      const key = String(artifact.conversationId)
+      const existing = artifactsByConversation.get(key)
+      if (existing) {
+        existing.push(artifact)
+      } else {
+        artifactsByConversation.set(key, [artifact])
+      }
+    }
 
-  // State untuk inline edit mode
+    return conversations.map((conversation) => {
+      const paperSession = sessionMap.get(String(conversation._id)) ?? null
+      const latestFiles = paperSession
+        ? getLatestFiles(artifactsByConversation.get(String(conversation._id)) ?? [])
+        : []
+
+      return {
+        conversationId: conversation._id,
+        title: conversation.title,
+        lastMessageAt: conversation.lastMessageAt,
+        paperSession,
+        latestFiles,
+      }
+    })
+  }, [artifacts, conversations, paperSessions])
+
+  const [expandedConversationId, setExpandedConversationId] = useState<Id<"conversations"> | null>(null)
+  const [isManageMode, setIsManageMode] = useState(false)
+  const [selectedConversationIds, setSelectedConversationIds] = useState<Id<"conversations">[]>([])
+  const [deleteMode, setDeleteMode] = useState<"selected" | "all" | null>(null)
   const [editingId, setEditingId] = useState<Id<"conversations"> | null>(null)
   const [editValue, setEditValue] = useState("")
-  const [isUpdating, setIsUpdating] = useState(false)
-  const editInputRef = useRef<HTMLInputElement>(null)
+  const [isUpdatingTitle, setIsUpdatingTitle] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  // Auto-focus input saat edit mode aktif
+  useEffect(() => {
+    onManageModeChange?.(isManageMode)
+  }, [isManageMode, onManageModeChange])
+
+  useEffect(() => {
+    if (manageRequestNonce === 0) return
+    setIsManageMode((current) => {
+      if (current) {
+        setSelectedConversationIds([])
+      }
+      return !current
+    })
+  }, [manageRequestNonce])
+
+  useEffect(() => {
+    if (lastSyncedConversationIdRef.current === currentConversationId) return
+
+    const activeNode = treeNodes.find((node) => String(node.conversationId) === currentConversationId)
+    if (activeNode?.latestFiles.length) {
+      setExpandedConversationId(activeNode.conversationId)
+    }
+    lastSyncedConversationIdRef.current = currentConversationId
+  }, [currentConversationId, treeNodes])
+
   useEffect(() => {
     if (editingId && editInputRef.current) {
       editInputRef.current.focus()
@@ -97,232 +286,445 @@ export function SidebarChatHistory({
     }
   }, [editingId])
 
-  // Handler untuk memulai edit mode
-  const handleStartEdit = (id: Id<"conversations">, title: string) => {
-    setEditingId(id)
+  useEffect(() => {
+    loadMoreLockedRef.current = false
+  }, [conversations.length, hasMore])
+
+  useEffect(() => {
+    if (!hasMore || !onLoadMore || !scrollRef.current || !loadMoreRef.current) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting || loadMoreLockedRef.current) return
+        loadMoreLockedRef.current = true
+        onLoadMore()
+      },
+      {
+        root: scrollRef.current,
+        rootMargin: "0px 0px 160px 0px",
+        threshold: 0,
+      }
+    )
+
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, onLoadMore])
+
+  const selectedCount = selectedConversationIds.length
+  const displayedConversationIds = useMemo(
+    () => treeNodes.map((node) => node.conversationId),
+    [treeNodes]
+  )
+  const allVisibleSelected =
+    displayedConversationIds.length > 0 &&
+    displayedConversationIds.every((id) => selectedConversationIds.includes(id))
+
+  const handleStartEdit = useCallback((conversationId: Id<"conversations">, title: string) => {
+    if (!onUpdateConversationTitle || isManageMode) return
+    setEditingId(conversationId)
     setEditValue(title)
-  }
+  }, [isManageMode, onUpdateConversationTitle])
 
-  // Handler untuk menyimpan edit
-  const handleSaveEdit = async () => {
+  const handleCancelEdit = useCallback(() => {
+    setEditingId(null)
+    setEditValue("")
+  }, [])
+
+  const handleSaveEdit = useCallback(async () => {
     if (!editingId || !onUpdateConversationTitle) {
-      setEditingId(null)
+      handleCancelEdit()
       return
     }
 
-    const trimmedValue = editValue.trim()
-    const originalTitle =
-      conversations.find((c) => c._id === editingId)?.title ?? ""
+    const nextTitle = editValue.trim()
+    const originalTitle = treeNodes.find((node) => node.conversationId === editingId)?.title ?? ""
 
-    // Skip jika kosong atau tidak berubah
-    if (!trimmedValue || trimmedValue === originalTitle) {
-      setEditingId(null)
-      setEditValue("")
+    if (!nextTitle || nextTitle === originalTitle) {
+      handleCancelEdit()
       return
     }
 
-    // Validation: max 50 characters
-    if (trimmedValue.length > 50) {
+    if (nextTitle.length > 50) {
       toast.error("Judul maksimal 50 karakter")
       return
     }
 
-    setIsUpdating(true)
+    setIsUpdatingTitle(true)
     try {
-      await onUpdateConversationTitle(editingId, trimmedValue)
+      await onUpdateConversationTitle(editingId, nextTitle)
     } catch {
       toast.error("Gagal menyimpan judul")
     } finally {
-      setIsUpdating(false)
-      setEditingId(null)
-      setEditValue("")
-    }
-  }
-
-  // Handler untuk cancel edit
-  const handleCancelEdit = () => {
-    setEditingId(null)
-    setEditValue("")
-  }
-
-  // Handler keyboard untuk edit input
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      handleSaveEdit()
-    } else if (e.key === "Escape") {
-      e.preventDefault()
+      setIsUpdatingTitle(false)
       handleCancelEdit()
     }
+  }, [editValue, editingId, handleCancelEdit, onUpdateConversationTitle, treeNodes])
+
+  const handleToggleManageMode = () => {
+    setIsManageMode((prev) => {
+      if (prev) {
+        setSelectedConversationIds([])
+      }
+      return !prev
+    })
   }
 
-  // Handler untuk membuka dialog konfirmasi delete
-  const handleDeleteClick = (id: Id<"conversations">, title: string) => {
-    setConversationToDelete({ id, title })
-    setDeleteDialogOpen(true)
+  const toggleConversationSelection = (conversationId: Id<"conversations">) => {
+    setSelectedConversationIds((current) =>
+      current.includes(conversationId)
+        ? current.filter((id) => id !== conversationId)
+        : [...current, conversationId]
+    )
   }
 
-  // Handler untuk konfirmasi delete
-  const handleConfirmDelete = () => {
-    if (conversationToDelete) {
-      onDeleteConversation(conversationToDelete.id)
+  const handleToggleSelectAllVisible = () => {
+    setSelectedConversationIds(allVisibleSelected ? [] : displayedConversationIds)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (deleteMode === null) return
+
+    setIsDeleting(true)
+    try {
+      if (deleteMode === "all") {
+        await onDeleteAllConversations?.()
+        setSelectedConversationIds([])
+      } else if (selectedConversationIds.length === 1) {
+        await onDeleteConversation(selectedConversationIds[0])
+        setSelectedConversationIds([])
+      } else if (selectedConversationIds.length > 1) {
+        await onDeleteConversations?.(selectedConversationIds)
+        setSelectedConversationIds([])
+      }
+      setDeleteMode(null)
+      setIsManageMode(false)
+      onCloseMobile?.()
+    } finally {
+      setIsDeleting(false)
     }
-    setDeleteDialogOpen(false)
-    setConversationToDelete(null)
   }
 
-  if (isLoading) {
+  const handleArtifactClick = (node: ConversationTreeNode, file: ConversationTreeFile) => {
+    if (!isArtifactPanelOpen) {
+      onArtifactPanelToggle?.()
+    }
+
+    onArtifactSelect?.(file._id, {
+      title: file.title,
+      type: file.type,
+      readOnly: currentConversationId !== String(node.conversationId),
+      sourceConversationId: node.conversationId,
+      sourceMessageId: file.messageId,
+      sourceKind: file.type === "refrasa" ? "refrasa" : "artifact",
+      origin: "chat",
+    })
+
+    onCloseMobile?.()
+  }
+
+  if (isLoading || paperSessions === undefined || artifacts === undefined) {
     return (
-      <div className="space-y-2 p-2">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex flex-col gap-2 p-2">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
-          </div>
-        ))}
+      <div className="flex h-full flex-col">
+        <div className="border-b border-[color:var(--chat-border)] px-3 py-2">
+          <Skeleton className="h-7 w-24" />
+        </div>
+        <div className="space-y-2 p-2">
+          {[1, 2, 3, 4, 5].map((item) => (
+            <div key={item} className="flex flex-col gap-2 px-2 py-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
 
-  if (conversations.length === 0) {
+  if (treeNodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
-        <ChatBubble className="h-8 w-8 mb-2" />
-        <span className="text-xs">Belum ada percakapan</span>
+      <div className="flex h-full flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
+          <Folder className="mb-2 h-8 w-8" />
+          <span className="text-xs">Belum ada percakapan</span>
+        </div>
       </div>
     )
   }
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {conversations.map((conv) => {
-          const paperSession = paperSessionMap.get(conv._id)
-          const isEditing = editingId === conv._id
-          const isExceedingMaxLength = isEditing && editValue.length > 50
-
-          // Flat list — no border, no rounded, no shadow. Matches desktop exactly.
-          const isActive = currentConversationId === conv._id
-          const itemClasses = cn(
-            "group flex w-full items-center px-4 py-2 text-left transition-colors duration-150",
-            isActive
-              ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
-              : "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-sidebar-accent-foreground)]"
-          )
-
-          const renderContent = () => (
-            <>
-              <div className="flex-1 min-w-0">
-                <div
+      <div className="flex h-full flex-col">
+        <div className="shrink-0 border-b border-[color:var(--chat-border)] px-3 py-2">
+          {isManageMode ? (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
+                {selectedCount} terpilih
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleToggleSelectAllVisible}
+                  className="rounded-action px-2 py-1 text-[11px] font-mono text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
+                >
+                  {allVisibleSelected ? "Batal pilih" : "Pilih semua"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteMode("selected")}
+                  disabled={selectedCount === 0}
                   className={cn(
-                    isEditing
-                      ? "flex items-center gap-2"
-                      : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
+                    "rounded-action px-2 py-1 text-[11px] font-mono transition-colors",
+                    selectedCount === 0
+                      ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-50"
+                      : "text-[var(--chat-destructive)] hover:bg-[var(--chat-sidebar-accent)]"
                   )}
                 >
-                  {isEditing ? (
-                    <Input
-                      ref={editInputRef}
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={handleEditKeyDown}
-                      onBlur={handleSaveEdit}
-                      disabled={isUpdating}
-                      className={`h-5 text-xs px-1 py-0 font-medium ${
-                        isExceedingMaxLength
-                          ? "border-[color:var(--chat-destructive)] focus-visible:ring-[var(--chat-destructive)]"
-                          : ""
-                      }`}
-                      aria-invalid={isExceedingMaxLength}
-                    />
-                  ) : (
-                    <span className="block min-w-0 truncate font-sans text-xs font-medium leading-tight text-[var(--chat-sidebar-foreground)]">
-                      {conv.title}
-                    </span>
-                  )}
-                  {paperSession && !isEditing && (
-                    <PaperSessionBadge
-                      stageNumber={getStageNumber(
-                        paperSession.currentStage as PaperStageId | "completed"
-                      )}
-                      className="justify-self-end shrink-0"
-                    />
-                  )}
-                </div>
-                {!isEditing && (
-                  <div className="mt-0 text-[11px] leading-[1.15] text-[var(--chat-muted-foreground)] font-mono">
-                    {formatRelativeTime(conv.lastMessageAt)}
-                  </div>
-                )}
-              </div>
-              {/* Loading indicator saat updating */}
-              {isEditing && isUpdating && (
-                <RefreshDouble className="h-4 w-4 animate-spin text-[var(--chat-muted-foreground)]" />
-              )}
-            </>
-          )
-
-          return (
-            <ContextMenu key={conv._id}>
-              <ContextMenuTrigger asChild>
-                {isEditing ? (
-                  // Saat editing: gunakan div, BUKAN Link
-                  <div className={itemClasses}>{renderContent()}</div>
-                ) : (
-                  // Saat tidak editing: gunakan Link untuk navigasi
-                  <Link
-                    href={`/chat/${conv._id}`}
-                    onClick={() => onCloseMobile?.()}
-                    className={itemClasses}
-                    aria-label={`Select conversation: ${conv.title}`}
-                  >
-                    {renderContent()}
-                  </Link>
-                )}
-              </ContextMenuTrigger>
-              <ContextMenuContent>
-                <ContextMenuItem
-                  onClick={() => handleStartEdit(conv._id, conv.title)}
-                >
-                  <EditPencil className="h-4 w-4 mr-2" />
-                  Edit Judul
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem
-                  onClick={() => handleDeleteClick(conv._id, conv.title)}
-                  className="text-[var(--chat-destructive)] focus:text-[var(--chat-destructive)]"
-                >
-                  <Trash className="h-4 w-4 mr-2" />
                   Hapus
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenu>
-          )
-        })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteMode("all")}
+                  className="rounded-action px-2 py-1 text-[11px] font-mono text-[var(--chat-destructive)] transition-colors hover:bg-[var(--chat-sidebar-accent)]"
+                >
+                  Hapus semua
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleManageMode}
+                  className="rounded-action px-2 py-1 text-[11px] font-mono text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
+                >
+                  Selesai
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className="py-1">
+            {treeNodes.map((node) => {
+              const hasChildren = node.latestFiles.length > 0
+              const isExpanded = expandedConversationId === node.conversationId
+              const isActiveConversation = currentConversationId === String(node.conversationId)
+              const isEditing = editingId === node.conversationId
+              const stageId = node.paperSession?.currentStage as PaperStageId | "completed" | undefined
+              const stageNumber = stageId ? getStageNumber(stageId) : null
+              const metaLabel = formatRelativeTime(node.lastMessageAt)
+
+              return (
+                <div key={node.conversationId}>
+                  <div
+                    className={cn(
+                      "group flex items-start gap-2 px-3 py-2 transition-colors duration-150",
+                      isActiveConversation
+                        ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
+                        : "hover:bg-[var(--chat-sidebar-accent)]"
+                    )}
+                  >
+                    <div className="flex h-5 w-4 shrink-0 items-start justify-center pt-0.5">
+                      {hasChildren ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedConversationId((current) =>
+                              current === node.conversationId ? null : node.conversationId
+                            )
+                          }
+                          className="rounded-action p-0.5 text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]"
+                          aria-label={isExpanded ? "Tutup subtree percakapan" : "Buka subtree percakapan"}
+                        >
+                          <NavArrowRight
+                            className={cn(
+                              "h-3.5 w-3.5 text-[var(--chat-info)] transition-transform duration-150",
+                              isExpanded && "rotate-90"
+                            )}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      ) : (
+                        <span className="h-4 w-4" aria-hidden="true" />
+                      )}
+                    </div>
+
+                    {isManageMode ? (
+                      <div className="mt-0.5 shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={selectedConversationIds.includes(node.conversationId)}
+                          onChange={() => toggleConversationSelection(node.conversationId)}
+                          className="h-3.5 w-3.5 rounded border border-[color:var(--chat-border)] bg-[var(--chat-sidebar)] accent-[var(--chat-info)]"
+                          aria-label={`Pilih percakapan ${node.title}`}
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
+                      <FolderNodeIcon solid={hasChildren} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      {isEditing ? (
+                        <div className="flex items-start gap-2">
+                          <Input
+                            ref={editInputRef}
+                            value={editValue}
+                            onChange={(event) => setEditValue(event.target.value)}
+                            onBlur={handleSaveEdit}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault()
+                                void handleSaveEdit()
+                              } else if (event.key === "Escape") {
+                                event.preventDefault()
+                                handleCancelEdit()
+                              }
+                            }}
+                            disabled={isUpdatingTitle}
+                            className="h-6 px-1 py-0 text-xs font-medium"
+                          />
+                          {isUpdatingTitle ? (
+                            <RefreshDouble className="mt-1 h-4 w-4 animate-spin text-[var(--chat-muted-foreground)]" />
+                          ) : null}
+                        </div>
+                      ) : (
+                        <Link
+                          href={`/chat/${node.conversationId}`}
+                          onClick={() => onCloseMobile?.()}
+                          className="block min-w-0"
+                          aria-current={isActiveConversation ? "page" : undefined}
+                        >
+                          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                            <span
+                              className={cn(
+                                "truncate text-xs leading-tight",
+                                hasChildren
+                                  ? "font-semibold text-[var(--chat-sidebar-foreground)]"
+                                  : "font-medium text-[var(--chat-sidebar-foreground)]"
+                              )}
+                            >
+                              {node.title}
+                            </span>
+                            {node.paperSession && stageNumber ? (
+                              <PaperSessionBadge
+                                stageNumber={stageNumber}
+                                className="justify-self-end shrink-0"
+                              />
+                            ) : null}
+                          </div>
+                          <div
+                            className={cn(
+                              "mt-1 text-[11px] font-mono leading-[1.2]",
+                              hasChildren
+                                ? "text-[color:color-mix(in_oklab,var(--chat-info)_70%,var(--chat-muted-foreground))]"
+                                : "text-[var(--chat-muted-foreground)]"
+                            )}
+                          >
+                            {metaLabel}
+                          </div>
+                        </Link>
+                      )}
+                    </div>
+
+                    {!isManageMode && onUpdateConversationTitle ? (
+                      <button
+                        type="button"
+                        onClick={() => handleStartEdit(node.conversationId, node.title)}
+                        className="mt-0.5 shrink-0 rounded-action p-1 text-[var(--chat-muted-foreground)] opacity-0 transition-all duration-150 hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)] group-hover:opacity-100"
+                        aria-label={`Ubah judul percakapan ${node.title}`}
+                      >
+                        <EditPencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {hasChildren && isExpanded ? (
+                    <div className="relative pb-1 pl-[3.35rem]">
+                      <div
+                        className="absolute bottom-1 left-[1.7rem] top-0 w-px bg-[color:color-mix(in_oklab,var(--chat-info)_28%,transparent)]"
+                        aria-hidden="true"
+                      />
+                      {node.latestFiles.map((file) => {
+                        const isActiveArtifact = activeArtifactId === file._id
+
+                        return (
+                          <button
+                            key={file._id}
+                            type="button"
+                            onClick={() => handleArtifactClick(node, file)}
+                            className={cn(
+                              "group/file relative flex w-full items-start gap-2 rounded-action pl-4 pr-3 py-1.5 text-left transition-colors duration-150",
+                              "hover:bg-[var(--chat-accent)]",
+                              isActiveArtifact && "bg-[var(--chat-accent)]"
+                            )}
+                          >
+                            <span
+                              className="absolute left-[-1rem] top-3 h-px w-3 bg-[color:color-mix(in_oklab,var(--chat-info)_28%,transparent)]"
+                              aria-hidden="true"
+                            />
+                            <FileTypeBadge type={file.type} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[11px] font-medium leading-tight text-[var(--chat-sidebar-foreground)]">
+                                {file.title}
+                              </span>
+                              <span className="mt-0.5 block text-[10px] font-mono leading-[1.15] text-[var(--chat-muted-foreground)]">
+                                {file.type === "refrasa" ? "Refrasa" : "Artifak"} · v{file.version}
+                              </span>
+                            </span>
+                            <NavArrowRight
+                              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--chat-muted-foreground)]"
+                              aria-hidden="true"
+                            />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+
+            {hasMore ? (
+              <div ref={loadMoreRef} className="px-3 py-3 text-center text-[11px] font-mono text-[var(--chat-muted-foreground)]">
+                Memuat percakapan lainnya...
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteMode !== null} onOpenChange={(open) => !open && setDeleteMode(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Percakapan?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteMode === "all" ? "Hapus Semua Percakapan?" : "Hapus Percakapan Terpilih?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Percakapan{" "}
-              <span className="font-medium text-[var(--chat-foreground)]">
-                &quot;{conversationToDelete?.title}&quot;
-              </span>{" "}
-              akan dihapus secara permanen. Aksi ini tidak bisa dibatalkan.
+              {deleteMode === "all"
+                ? "Semua percakapan akan dihapus permanen bersama sesi paper, artifact, dan refrasa terkait."
+                : "Percakapan terpilih akan dihapus permanen bersama sesi paper, artifact, dan refrasa terkait."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConversationToDelete(null)}>
-              Batal
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmDelete}
+              onClick={(event) => {
+                event.preventDefault()
+                void handleConfirmDelete()
+              }}
+              disabled={isDeleting}
               className="bg-[var(--chat-destructive)] text-[var(--chat-destructive-foreground)] hover:bg-[var(--chat-destructive)]"
             >
-              Hapus
+              {isDeleting ? (
+                <span className="inline-flex items-center gap-2">
+                  <RefreshDouble className="h-4 w-4 animate-spin" />
+                  Menghapus...
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2">
+                  <Trash className="h-4 w-4" />
+                  Hapus
+                </span>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
