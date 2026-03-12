@@ -4,7 +4,7 @@
 
 **Goal:** Remove all 40 remaining regex patterns from the search decision path and replace with LLM router intent classification + safe defaults.
 
-**Architecture:** Extend `decideWebSearchMode` router prompt with intent classification (sync, compile, save_submit, search, discussion). Remove all regex functions. Refactor post-router logic to read router's `reason` field. Remove weak-signal regex from `hasPreviousSearchResults`.
+**Architecture:** Extend `decideWebSearchMode` router schema with `intentType: z.enum(["search", "discussion", "sync_request", "compile_daftar_pustaka", "save_submit"])`. Remove all regex functions. Refactor post-router logic to read router's type-safe `intentType` field. Remove weak-signal regex from `hasPreviousSearchResults`.
 
 **Tech Stack:** TypeScript, Vercel AI SDK (`generateText`, `Output.object`), Zod, Vitest
 
@@ -20,7 +20,7 @@
 **Context:**
 The `decideWebSearchMode` function currently classifies only search vs no-search. We need it to also classify sync requests, compile bibliography intent, and save/submit intent — all currently handled by regex.
 
-The router's `reason` field (string, max 500 chars) will carry intent classification. Post-router code reads this field to determine specific actions (sync tool, compile mode, submit validation).
+The router schema is extended with an `intentType` enum field. This gives us compiler-enforced type safety — post-router code reads `intentType` to determine specific actions (sync tool, compile mode, submit validation). The `reason` field remains for human-readable explanation.
 
 **Step 1: Write the failing test**
 
@@ -28,40 +28,43 @@ In `__tests__/search-mode-decision.test.ts`, add a test section that documents t
 
 ```typescript
 // ===========================================================================
-// 6. Router reason-based intent classification (contract tests)
+// 6. Router intentType enum contract tests
 // ===========================================================================
-describe("router reason-based intent classification", () => {
-    // These tests document the contract: post-router code reads reason field
+describe("router intentType enum contract", () => {
+    // These tests document the contract: post-router code reads intentType
     // to determine specific actions. The actual router is an LLM call,
-    // so we test the post-router logic with mocked router responses.
+    // so we test the post-router branching logic with typed values.
 
-    const INTENT_PATTERNS = {
-        sync: "sync_request",
-        compile: "compile_daftar_pustaka",
-        saveSubmit: "save_submit",
-    }
+    const INTENT_TYPES = [
+        "search",
+        "discussion",
+        "sync_request",
+        "compile_daftar_pustaka",
+        "save_submit",
+    ] as const
 
-    it("reason containing 'sync_request' should be detectable", () => {
-        const reason = "User asked to sync session state — sync_request"
-        expect(reason.includes(INTENT_PATTERNS.sync)).toBe(true)
+    type IntentType = typeof INTENT_TYPES[number]
+
+    it("all intent types are distinct (no overlap)", () => {
+        const unique = new Set(INTENT_TYPES)
+        expect(unique.size).toBe(INTENT_TYPES.length)
     })
 
-    it("reason containing 'compile_daftar_pustaka' should be detectable", () => {
-        const reason = "User wants to compile bibliography — compile_daftar_pustaka"
-        expect(reason.includes(INTENT_PATTERNS.compile)).toBe(true)
-    })
-
-    it("reason containing 'save_submit' should be detectable", () => {
-        const reason = "User approved draft, wants to submit — save_submit"
-        expect(reason.includes(INTENT_PATTERNS.saveSubmit)).toBe(true)
-    })
-
-    it("generic search reason should not match special intents", () => {
-        const reason = "User needs references about AI in education"
-        expect(reason.includes(INTENT_PATTERNS.sync)).toBe(false)
-        expect(reason.includes(INTENT_PATTERNS.compile)).toBe(false)
-        expect(reason.includes(INTENT_PATTERNS.saveSubmit)).toBe(false)
-    })
+    it.each([
+        ["sync_request", false, true, false, false],
+        ["compile_daftar_pustaka", false, false, true, false],
+        ["save_submit", false, false, false, true],
+        ["search", true, false, false, false],
+        ["discussion", false, false, false, false],
+    ] as [IntentType, boolean, boolean, boolean, boolean][])(
+        "intentType=%s → search=%s, sync=%s, compile=%s, save=%s",
+        (intentType, expectSearch, expectSync, expectCompile, expectSave) => {
+            expect(intentType === "search").toBe(expectSearch)
+            expect(intentType === "sync_request").toBe(expectSync)
+            expect(intentType === "compile_daftar_pustaka").toBe(expectCompile)
+            expect(intentType === "save_submit").toBe(expectSave)
+        }
+    )
 })
 ```
 
@@ -70,9 +73,28 @@ describe("router reason-based intent classification", () => {
 Run: `cd /Users/eriksupit/Desktop/makalahapp/.worktrees/search-tool-skills-v2 && npx vitest run __tests__/search-mode-decision.test.ts`
 Expected: All tests PASS (these are contract tests, not implementation tests)
 
-**Step 3: Enhance the router prompt**
+**Step 3: Extend the router schema with `intentType` enum**
 
-In `route.ts`, modify the `routerPrompt` string inside `decideWebSearchMode` (line ~1043-1064). Add intent classification guidance:
+In `route.ts`, modify the `routerSchema` inside `decideWebSearchMode` (line ~1066-1070):
+
+```typescript
+const routerSchema = z.object({
+    enableWebSearch: z.boolean(),
+    confidence: z.number().min(0).max(1),
+    reason: z.string().max(500),
+    intentType: z.enum([
+        "search",
+        "discussion",
+        "sync_request",
+        "compile_daftar_pustaka",
+        "save_submit",
+    ]),
+})
+```
+
+**Step 4: Enhance the router prompt**
+
+In `route.ts`, modify the `routerPrompt` string inside `decideWebSearchMode` (line ~1043-1064). Add intent classification guidance for the new `intentType` field:
 
 ```typescript
 const routerPrompt = `You are a "router" that decides whether the response to the user MUST use web search.
@@ -86,20 +108,25 @@ Purpose:
 - Set false ONLY if: user requests save/approve of existing data, OR the response is purely opinion/discussion without factual claims.
 ${paperModeContext}
 
-INTENT CLASSIFICATION — your reason field MUST contain one of these tags when applicable:
+INTENT CLASSIFICATION — you MUST set intentType to one of these values:
 
-1. sync_request — User wants to sync/check session state (e.g., "sinkronkan", "cek state",
-   "status sesi", "status terbaru", "lanjut dari state"). Always enableWebSearch=false.
+1. "sync_request" — User wants to sync/check session state (e.g., "sinkronkan", "cek state",
+   "status sesi", "status terbaru", "lanjut dari state"). Always set enableWebSearch=false.
 
-2. compile_daftar_pustaka — User wants to compile/preview bibliography (daftar pustaka).
-   Always enableWebSearch=false.
+2. "compile_daftar_pustaka" — User wants to compile/preview bibliography (daftar pustaka).
+   Always set enableWebSearch=false.
 
-3. save_submit — User wants to save, submit, or approve the current stage draft
+3. "save_submit" — User wants to save, submit, or approve the current stage draft
    (e.g., "simpan", "save", "submit", "approve", "approved", "disetujui",
-   "selesaikan tahap", "approve & lanjut"). Always enableWebSearch=false.
+   "selesaikan tahap", "approve & lanjut"). Always set enableWebSearch=false.
 
-If none of these special intents apply, classify as search (enableWebSearch=true)
-or discussion (enableWebSearch=false) based on the rules above.
+4. "search" — User requests search/references/factual data, or AI needs factual data.
+   Set enableWebSearch=true. Reason explains what data is needed.
+
+5. "discussion" — Pure discussion, opinion, or workflow action without factual claims.
+   Set enableWebSearch=false. Reason explains why no search needed.
+
+Priority: sync_request > compile_daftar_pustaka > save_submit > search > discussion
 
 Output rules:
 - Output MUST be one JSON object ONLY.
@@ -110,11 +137,12 @@ JSON schema:
 {
   "enableWebSearch": boolean,
   "confidence": number,
-  "reason": string
+  "reason": string,
+  "intentType": "search" | "discussion" | "sync_request" | "compile_daftar_pustaka" | "save_submit"
 }`
 ```
 
-**Step 4: Change router failure default to safe default**
+**Step 5: Change router failure default to safe default**
 
 In `decideWebSearchMode`, change the final fallback (after triple failure) from:
 ```typescript
@@ -122,25 +150,47 @@ return { enableWebSearch: false, confidence: 0, reason: "router_invalid_json_sha
 ```
 to:
 ```typescript
-return { enableWebSearch: true, confidence: 0, reason: "router_failure_safe_default" }
+return { enableWebSearch: true, confidence: 0, reason: "router_failure_safe_default", intentType: "search" as const }
 ```
 
 Also change the JSON parse failure fallback:
 ```typescript
 // Was: return { enableWebSearch: false, confidence: 0, reason: "router_json_parse_failed" }
-return { enableWebSearch: true, confidence: 0, reason: "router_failure_safe_default" }
+return { enableWebSearch: true, confidence: 0, reason: "router_failure_safe_default", intentType: "search" as const }
 ```
 
-**Step 5: Run tests**
+Note: The freeform JSON parse path (line ~1118-1133) also needs to extract `intentType` from the parsed object, with a fallback:
+```typescript
+const intentType = typeof parsed.intentType === "string"
+    && ["search", "discussion", "sync_request", "compile_daftar_pustaka", "save_submit"].includes(parsed.intentType)
+    ? parsed.intentType as "search" | "discussion" | "sync_request" | "compile_daftar_pustaka" | "save_submit"
+    : enableWebSearch ? "search" : "discussion"
+```
+
+**Step 6: Update `decideWebSearchMode` return type**
+
+The function signature's return type must include `intentType`:
+```typescript
+const decideWebSearchMode = async (options: {
+    // ... existing params
+}): Promise<{ enableWebSearch: boolean; confidence: number; reason: string; intentType: string }> => {
+```
+
+Or better, extract the type from the schema:
+```typescript
+type RouterDecision = z.infer<typeof routerSchema>
+```
+
+**Step 7: Run tests**
 
 Run: `cd /Users/eriksupit/Desktop/makalahapp/.worktrees/search-tool-skills-v2 && npx vitest run __tests__/search-mode-decision.test.ts`
 Expected: All tests PASS
 
-**Step 6: Commit**
+**Step 8: Commit**
 
 ```bash
 git add src/app/api/chat/route.ts __tests__/search-mode-decision.test.ts
-git commit -m "feat: enhance LLM router prompt with intent classification tags"
+git commit -m "feat: extend LLM router schema with intentType enum for intent classification"
 ```
 
 ---
@@ -273,12 +323,12 @@ And delete the sync guardrail in the pre-router block (route.ts:1856-1860):
 
 **Step 3: Add post-router sync detection**
 
-After the router call returns, add sync detection via `reason` field:
+After the router call returns, add sync detection via `intentType` field:
 
 ```typescript
 // After searchRequestedByPolicy is set:
 const isSyncRequest = !!paperModePrompt
-    && webSearchDecision.reason.includes("sync_request")
+    && webSearchDecision.intentType === "sync_request"
 
 if (isSyncRequest) {
     searchRequestedByPolicy = false
@@ -324,7 +374,7 @@ git commit -m "refactor: move sync detection from regex to LLM router reason tag
 - Modify: `src/lib/ai/paper-search-helpers.ts` — remove function (line ~95-112)
 
 **Context:**
-`isCompileDaftarPustakaIntent` detects when user wants to compile bibliography. The router now classifies this via `reason` tag.
+`isCompileDaftarPustakaIntent` detects when user wants to compile bibliography. The router now classifies this via `intentType` enum.
 
 **Step 1: Remove function from `paper-search-helpers.ts`**
 
@@ -367,7 +417,7 @@ After the router call returns (near sync detection from Task 3):
 
 ```typescript
 const isCompileIntent = !!paperModePrompt
-    && webSearchDecision.reason.includes("compile_daftar_pustaka")
+    && webSearchDecision.intentType === "compile_daftar_pustaka"
 
 if (isCompileIntent) {
     searchRequestedByPolicy = false
@@ -398,7 +448,7 @@ git commit -m "refactor: move compile daftar pustaka detection from regex to LLM
 - Modify: `src/lib/ai/paper-search-helpers.ts` — remove function (line ~75-89)
 
 **Context:**
-`isExplicitSaveSubmitRequest` is used downstream for submit validation and artifact-missing note. The router now classifies save/submit intent via `reason` tag. Data guards (`stageStatus`, `hasStageRingkasan`, `hasStageArtifact`) remain — they are structural checks.
+`isExplicitSaveSubmitRequest` is used downstream for submit validation and artifact-missing note. The router now classifies save/submit intent via `intentType` enum. Data guards (`stageStatus`, `hasStageRingkasan`, `hasStageArtifact`) remain — they are structural checks.
 
 **Step 1: Remove function from `paper-search-helpers.ts`**
 
@@ -422,7 +472,7 @@ shouldForceSubmitValidation = !enableWebSearch
 ```
 To:
 ```typescript
-const isSaveSubmitIntent = webSearchDecision.reason.includes("save_submit")
+const isSaveSubmitIntent = webSearchDecision.intentType === "save_submit"
 
 shouldForceSubmitValidation = !enableWebSearch
     && !!paperModePrompt
@@ -615,7 +665,7 @@ Each task modifies `route.ts`. Run `npx tsc --noEmit` after each task to catch c
 
 ### Risk: `webSearchDecision` Scope
 
-Tasks 3, 4, 5 all need `webSearchDecision` to be accessible outside the `else` block. After removing pre-router guardrails, the `else` block may need restructuring. The implementer should check if `webSearchDecision` needs to be hoisted to the outer scope.
+Tasks 3, 4, 5 all need `webSearchDecision.intentType` to be accessible outside the `else` block. After removing pre-router guardrails, the `else` block may need restructuring. The implementer should check if `webSearchDecision` needs to be hoisted to the outer scope.
 
 Specifically: after Task 3 removes `explicitSyncRequest` and Task 4 removes `compileDaftarPustakaIntent`, the only pre-router guardrail left is `forcePaperToolsMode` (structural). The `if/else` block simplifies to:
 
@@ -625,10 +675,14 @@ if (forcePaperToolsMode) {
     searchRequestedByPolicy = false
     activeStageSearchReason = "force_paper_tools_mode"
 } else {
-    // LLM router for everything
+    // LLM router for everything — intentType drives all post-router logic
     const webSearchDecision = await decideWebSearchMode(...)
-    // ... post-router logic, sync/compile/save_submit detection
+    // intentType === "sync_request" → force sync
+    // intentType === "compile_daftar_pustaka" → force compile mode
+    // intentType === "save_submit" + data guards → force submit
+    // intentType === "search" → enable web search
+    // intentType === "discussion" → function tools mode
 }
 ```
 
-`shouldForceSubmitValidation` and `missingArtifactNote` (which need `isSaveSubmitIntent`) MUST be inside the `else` block, or `webSearchDecision` must be hoisted. The implementer should handle this.
+`shouldForceSubmitValidation` and `missingArtifactNote` (which need `intentType === "save_submit"`) MUST be inside the `else` block, or `webSearchDecision` must be hoisted. The implementer should handle this.

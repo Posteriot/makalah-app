@@ -76,9 +76,9 @@ Pre-router guardrail that short-circuits to disable search and force sync tool.
 **Problem:** Indonesian sync patterns ("sinkronkan", "cek state", "status sesi") are finite and user-generated (not model-generated), which makes regex slightly more defensible here. But the LLM router can handle this trivially.
 
 **Replacement:**
-- **Extend router schema** to include `mode: "search" | "tools" | "sync"` (or add sync detection to the router prompt context).
-- **Router prompt addition:** `"If user requests session sync (e.g., 'sinkronkan', 'cek state', 'status sesi'), output enableWebSearch=false with reason='sync_request'."`
-- **Route.ts:** After router returns, check `reason.includes("sync")` to set `shouldForceGetCurrentPaperState`.
+- **Extend router schema** with `intentType: z.enum(["search", "discussion", "sync_request", "compile_daftar_pustaka", "save_submit"])`. The LLM outputs a constrained enum value — no string matching needed.
+- **Router prompt addition:** `"If user requests session sync (e.g., 'sinkronkan', 'cek state', 'status sesi'), set intentType='sync_request' and enableWebSearch=false."`
+- **Route.ts:** After router returns, check `intentType === "sync_request"` to set `shouldForceGetCurrentPaperState`.
 
 #### 3. `isCompileDaftarPustakaIntent` (5 regex) → MOVE TO ROUTER
 
@@ -96,8 +96,8 @@ Pre-router guardrail that forces function-tools mode when user wants to compile 
 **Problem:** Detects a specific tool name ("compileDaftarPustaka") — more structural than linguistic. However, the user might express this in many ways ("buat daftar pustaka", "compile bibliography", "finalize references", etc.).
 
 **Replacement:**
-- **Router prompt addition:** `"If the user wants to compile/preview bibliography (daftar pustaka), output enableWebSearch=false with reason='compile_daftar_pustaka'. This intent means the user wants to use the compileDaftarPustaka tool, not web search."`
-- **Route.ts:** After router returns, check `reason.includes("compile_daftar_pustaka")` to set the compile-specific note.
+- **Router prompt addition:** `"If the user wants to compile/preview bibliography (daftar pustaka), set intentType='compile_daftar_pustaka' and enableWebSearch=false. This intent means the user wants to use the compileDaftarPustaka tool, not web search."`
+- **Route.ts:** After router returns, check `intentType === "compile_daftar_pustaka"` to set the compile-specific note.
 
 #### 4. `isExplicitSaveSubmitRequest` (9 regex) → MOVE TO ROUTER
 
@@ -115,8 +115,8 @@ missingArtifactNote = ... && isExplicitSaveSubmitRequest(lastUserContent) ? ... 
 **Problem:** Save/submit patterns are user-generated ("simpan", "submit", "approve") — finite set. But the router already sees the full conversation and can detect save intent.
 
 **Replacement:**
-- **Router prompt addition:** `"If the user wants to save/submit/approve the current draft, output enableWebSearch=false with reason containing 'save_submit'. Save/submit signals: 'simpan', 'save', 'submit', 'approve', 'disetujui', 'selesaikan tahap'."`
-- **Route.ts:** After router returns, check `reason.includes("save_submit")` + data guards (`stageStatus === "drafting"`, `hasStageRingkasan`, `hasStageArtifact`) to set `shouldForceSubmitValidation`.
+- **Router prompt addition:** `"If the user wants to save/submit/approve the current draft, set intentType='save_submit' and enableWebSearch=false. Save/submit signals: 'simpan', 'save', 'submit', 'approve', 'disetujui', 'selesaikan tahap'."`
+- **Route.ts:** After router returns, check `intentType === "save_submit"` + data guards (`stageStatus === "drafting"`, `hasStageRingkasan`, `hasStageArtifact`) to set `shouldForceSubmitValidation`.
 - **Data guards remain** — they are structural checks (does the stage have enough data to submit?), not intent detection.
 
 #### 5. `hasPreviousSearchResults` weak-signal regex (3 patterns) → REMOVE
@@ -136,28 +136,53 @@ Weak signal fallback when `sources` field is absent. Used in both ACTIVE and PAS
 - **Strengthen compose phase instructions** to ensure the `sources` field is always populated when search was performed. If `sources` is empty, it means search genuinely returned nothing.
 - **Accept the edge case:** If compose phase produced text but `sources` was lost somehow, `searchAlreadyDone` returns false → router decides → worst case: one extra search. This is acceptable — better than false positives from phrase matching.
 
+### Router Schema Enhancement
+
+Current router schema has 3 fields. Enhanced schema adds `intentType` as a constrained enum:
+
+```typescript
+const routerSchema = z.object({
+    enableWebSearch: z.boolean(),
+    confidence: z.number().min(0).max(1),
+    reason: z.string().max(500),
+    intentType: z.enum([
+        "search",
+        "discussion",
+        "sync_request",
+        "compile_daftar_pustaka",
+        "save_submit",
+    ]),
+})
+```
+
+**Why enum over string matching:**
+- `z.enum` + `Output.object({ schema })` forces the LLM to pick from a fixed set — no freestyle, no typos
+- Compiler-enforced type safety — `intentType === "sync_requst"` is a compile error
+- Explicit contract — the enum IS the single source of truth for all intents
+- Replaces regex fragility with constrained output — the whole point of eliminating regex
+
 ### Router Prompt Enhancement
 
-Current router prompt handles basic search vs no-search decisions. Enhanced prompt adds:
+Current router prompt handles basic search vs no-search decisions. Enhanced prompt adds intent classification guidance for the new `intentType` field:
 
 ```
-INTENT CLASSIFICATION — in addition to search vs no-search, identify these specific intents:
+INTENT CLASSIFICATION — you MUST set the intentType field to one of these values:
 
-1. SYNC REQUEST: User wants to sync/check session state (e.g., "sinkronkan", "cek state",
-   "status sesi", "lanjut dari state"). Output: enableWebSearch=false, reason must contain "sync_request".
+1. "sync_request" — User wants to sync/check session state (e.g., "sinkronkan", "cek state",
+   "status sesi", "lanjut dari state"). Always set enableWebSearch=false.
 
-2. COMPILE BIBLIOGRAPHY: User wants to compile/preview daftar pustaka (bibliography).
-   Output: enableWebSearch=false, reason must contain "compile_daftar_pustaka".
+2. "compile_daftar_pustaka" — User wants to compile/preview bibliography (daftar pustaka).
+   Always set enableWebSearch=false.
 
-3. SAVE/SUBMIT: User wants to save, submit, or approve the current draft (e.g., "simpan",
-   "save", "submit", "approve", "disetujui", "selesaikan tahap").
-   Output: enableWebSearch=false, reason must contain "save_submit".
+3. "save_submit" — User wants to save, submit, or approve the current stage draft (e.g., "simpan",
+   "save", "submit", "approve", "approved", "disetujui", "selesaikan tahap", "approve & lanjut").
+   Always set enableWebSearch=false.
 
-4. SEARCH: User requests search, references, or factual data. Or AI needs factual data
-   for its response. Output: enableWebSearch=true, reason explains what data is needed.
+4. "search" — User requests search, references, or factual data. Or AI needs factual data
+   for its response. Set enableWebSearch=true, reason explains what data is needed.
 
-5. DISCUSSION: Pure discussion, opinion, or workflow action that doesn't need search.
-   Output: enableWebSearch=false, reason explains why no search needed.
+5. "discussion" — Pure discussion, opinion, or workflow action that doesn't need search.
+   Set enableWebSearch=false, reason explains why no search needed.
 
 Priority: sync_request > compile_daftar_pustaka > save_submit > search > discussion
 ```
@@ -208,7 +233,8 @@ All three must fail for router failure. In that case:
 return {
     enableWebSearch: true,  // search is never harmful
     confidence: 0,
-    reason: "router_failure_safe_default"
+    reason: "router_failure_safe_default",
+    intentType: "search" as const,  // default to search on failure
 }
 ```
 
@@ -249,19 +275,21 @@ searchAlreadyDone:
 ```
 Router:
   LLM router decides search/tools/sync/compile/save_submit
-  Router failure → safe default (enableWebSearch=true)
+  Schema: { enableWebSearch, confidence, reason, intentType }
+  intentType: z.enum(["search", "discussion", "sync_request", "compile_daftar_pustaka", "save_submit"])
+  Router failure → safe default (enableWebSearch=true, intentType="search")
 
 Post-router:
   forcePaperToolsMode (structural) → force tools [kept — no regex]
-  reason contains "sync_request" → force sync
-  reason contains "compile_daftar_pustaka" → force compile tools mode
-  reason contains "save_submit" + data guards → force submit validation
+  intentType === "sync_request" → force sync
+  intentType === "compile_daftar_pustaka" → force compile tools mode
+  intentType === "save_submit" + data guards → force submit validation
 
 searchAlreadyDone:
   sources field (data) only — no weak-signal regex
 ```
 
-**Key simplification:** Pre-router guardrails collapse into the router itself. Post-router logic reads the router's `reason` field instead of running separate regex.
+**Key simplification:** Pre-router guardrails collapse into the router itself. Post-router logic reads the router's `intentType` enum field (type-safe, compiler-enforced) instead of running separate regex.
 
 ## Risk Assessment
 
