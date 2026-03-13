@@ -60,6 +60,43 @@ describe("web-search-quality skill", () => {
     expect(result).toBeNull()
   })
 
+  it("includes PRIORITY SOURCES section in chat mode instructions", () => {
+    const result = webSearchQualitySkill.getInstructions({
+      isPaperMode: false,
+      currentStage: null,
+      hasRecentSources: true,
+      availableSources: [{ url: "https://arxiv.org/abs/123", title: "Test" }],
+    })
+    expect(result).not.toBeNull()
+    expect(result).toContain("PRIORITY SOURCES")
+    expect(result).toContain("Google Scholar")
+    expect(result).toContain("SINTA")
+    expect(result).toContain("Kompas")
+  })
+
+  it("includes PRIORITY SOURCES section in paper mode instructions", () => {
+    const result = webSearchQualitySkill.getInstructions({
+      isPaperMode: true,
+      currentStage: "tinjauan_literatur",
+      hasRecentSources: true,
+      availableSources: [{ url: "https://arxiv.org/abs/123", title: "Test" }],
+    })
+    expect(result).not.toBeNull()
+    expect(result).toContain("PRIORITY SOURCES")
+    expect(result).toContain("Google Scholar")
+  })
+
+  it("includes priority source references in active stage guidance", () => {
+    const result = webSearchQualitySkill.getInstructions({
+      isPaperMode: true,
+      currentStage: "tinjauan_literatur",
+      hasRecentSources: true,
+      availableSources: [{ url: "https://arxiv.org/abs/123", title: "Test" }],
+    })
+    expect(result).not.toBeNull()
+    expect(result).toContain("Heavily leverage priority academic databases")
+  })
+
   it("exposes scoreSources function", () => {
     const result = webSearchQualitySkill.scoreSources([
       { url: "https://arxiv.org/abs/123", title: "A Research Paper Title" },
