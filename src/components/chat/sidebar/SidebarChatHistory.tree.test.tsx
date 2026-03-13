@@ -214,7 +214,7 @@ describe("SidebarChatHistory tree", () => {
     )
 
     fireEvent.click(screen.getByRole("checkbox", { name: /pilih percakapan percakapan aktif/i }))
-    fireEvent.click(screen.getByRole("button", { name: /^hapus$/i }))
+    fireEvent.click(screen.getByRole("button", { name: /hapus percakapan terpilih/i }))
     fireEvent.click(screen.getAllByRole("button", { name: /^hapus$/i }).at(-1) as HTMLButtonElement)
 
     await waitFor(() => {

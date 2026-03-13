@@ -19,6 +19,7 @@ import { PaperSessionBadge } from "@/components/paper"
 import { formatRelativeTime } from "@/lib/date/formatters"
 import { cn } from "@/lib/utils"
 import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { getStageNumber, type PaperStageId } from "../../../../convex/paperSessions/constants"
 import {
   AlertDialog,
@@ -42,7 +43,6 @@ interface SidebarChatHistoryProps {
   currentConversationId: string | null
   onDeleteConversation: (id: Id<"conversations">) => Promise<void> | void
   onDeleteConversations?: (ids: Id<"conversations">[]) => Promise<unknown>
-  onDeleteAllConversations?: () => Promise<unknown>
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<unknown>
   onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => void
   activeArtifactId?: Id<"artifacts"> | null
@@ -277,7 +277,6 @@ export function SidebarChatHistory({
   currentConversationId,
   onDeleteConversation,
   onDeleteConversations,
-  onDeleteAllConversations,
   onUpdateConversationTitle,
   onArtifactSelect,
   activeArtifactId,
@@ -347,7 +346,7 @@ export function SidebarChatHistory({
   const [isTreeStateHydrated, setIsTreeStateHydrated] = useState(false)
   const [isManageMode, setIsManageMode] = useState(false)
   const [selectedConversationIds, setSelectedConversationIds] = useState<Id<"conversations">[]>([])
-  const [deleteMode, setDeleteMode] = useState<"selected" | "all" | null>(null)
+  const [deleteMode, setDeleteMode] = useState<"selected" | null>(null)
   const [editingId, setEditingId] = useState<Id<"conversations"> | null>(null)
   const [editValue, setEditValue] = useState("")
   const [isUpdatingTitle, setIsUpdatingTitle] = useState(false)
@@ -499,15 +498,6 @@ export function SidebarChatHistory({
     }
   }, [editValue, editingId, handleCancelEdit, onUpdateConversationTitle, treeNodes])
 
-  const handleToggleManageMode = () => {
-    setIsManageMode((prev) => {
-      if (prev) {
-        setSelectedConversationIds([])
-      }
-      return !prev
-    })
-  }
-
   const toggleConversationSelection = (conversationId: Id<"conversations">) => {
     setSelectedConversationIds((current) =>
       current.includes(conversationId)
@@ -521,14 +511,11 @@ export function SidebarChatHistory({
   }
 
   const handleConfirmDelete = async () => {
-    if (deleteMode === null) return
+    if (deleteMode === null || selectedConversationIds.length === 0) return
 
     setIsDeleting(true)
     try {
-      if (deleteMode === "all") {
-        await onDeleteAllConversations?.()
-        setSelectedConversationIds([])
-      } else if (selectedConversationIds.length === 1) {
+      if (selectedConversationIds.length === 1) {
         await onDeleteConversation(selectedConversationIds[0])
         setSelectedConversationIds([])
       } else if (selectedConversationIds.length > 1) {
@@ -618,44 +605,44 @@ export function SidebarChatHistory({
         <div className="shrink-0 border-b border-[color:var(--chat-border)] px-3 py-2">
           {isManageMode ? (
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-mono text-[var(--chat-muted-foreground)]">
-                {selectedCount} terpilih
-              </span>
+              <div className="grid min-w-0 flex-1 grid-cols-[1rem_1.12rem_minmax(0,1fr)] items-center gap-2">
+                <span className="h-[1.12rem] w-4 shrink-0" aria-hidden="true" />
+                <label className="-mt-[1px] inline-flex h-[1.12rem] w-[1.12rem] items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={handleToggleSelectAllVisible}
+                    className="h-3.5 w-3.5 rounded border border-[color:var(--chat-border)] bg-[var(--chat-sidebar)] accent-[var(--chat-info)]"
+                    aria-label={allVisibleSelected ? "Batal pilih semua percakapan yang tampil" : "Pilih semua percakapan yang tampil"}
+                  />
+                </label>
+                <span
+                  className="min-w-0 flex-1 text-left text-[11px] font-mono text-[var(--chat-muted-foreground)]"
+                  aria-label={`${selectedCount} percakapan terpilih`}
+                >
+                  {selectedCount}
+                </span>
+              </div>
               <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={handleToggleSelectAllVisible}
-                  className="rounded-action px-2 py-1 text-[11px] font-mono text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
-                >
-                  {allVisibleSelected ? "Batal pilih" : "Pilih semua"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteMode("selected")}
-                  disabled={selectedCount === 0}
-                  className={cn(
-                    "rounded-action px-2 py-1 text-[11px] font-mono transition-colors",
-                    selectedCount === 0
-                      ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-50"
-                      : "text-[var(--chat-destructive)] hover:bg-[var(--chat-sidebar-accent)]"
-                  )}
-                >
-                  Hapus
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteMode("all")}
-                  className="rounded-action px-2 py-1 text-[11px] font-mono text-[var(--chat-destructive)] transition-colors hover:bg-[var(--chat-sidebar-accent)]"
-                >
-                  Hapus semua
-                </button>
-                <button
-                  type="button"
-                  onClick={handleToggleManageMode}
-                  className="rounded-action px-2 py-1 text-[11px] font-mono text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
-                >
-                  Selesai
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteMode("selected")}
+                      disabled={selectedCount === 0}
+                      className={cn(
+                        "inline-flex h-8 w-8 items-center justify-center rounded-action border border-transparent transition-colors",
+                        selectedCount === 0
+                          ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-45"
+                          : "text-[var(--chat-destructive)] hover:bg-[color:color-mix(in_oklab,var(--chat-destructive)_12%,transparent)]"
+                      )}
+                      aria-label="Hapus percakapan terpilih"
+                    >
+                      <Trash className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="font-mono text-xs">Hapus</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           ) : null}
@@ -704,7 +691,7 @@ export function SidebarChatHistory({
                     </div>
 
                     {isManageMode ? (
-                      <div className="mt-0.5 shrink-0">
+                      <div className="-mt-[1px] flex h-[1.12rem] w-[1.12rem] shrink-0 items-center justify-center">
                         <input
                           type="checkbox"
                           checked={selectedConversationIds.includes(node.conversationId)}
@@ -887,13 +874,9 @@ export function SidebarChatHistory({
       <AlertDialog open={deleteMode !== null} onOpenChange={(open) => !open && setDeleteMode(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {deleteMode === "all" ? "Hapus Semua Percakapan?" : "Hapus Percakapan Terpilih?"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Hapus Percakapan?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteMode === "all"
-                ? "Semua percakapan akan dihapus permanen bersama sesi paper, artifact, dan refrasa terkait."
-                : "Percakapan terpilih akan dihapus permanen bersama sesi paper, artifact, dan refrasa terkait."}
+              Percakapan yang dicentang akan dihapus permanen bersama sesi paper, artifact, dan refrasa terkait.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft, SidebarCollapse, Settings } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, SidebarCollapse, Settings, Xmark } from "iconoir-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -44,8 +44,6 @@ interface ChatSidebarProps {
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
   /** Callback to delete many conversations */
   onDeleteConversations?: (ids: Id<"conversations">[]) => Promise<void>
-  /** Callback to delete all conversations */
-  onDeleteAllConversations?: () => Promise<void>
   /** Callback when artifact is selected */
   onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => void
   /** Currently selected artifact ID in panel */
@@ -92,7 +90,6 @@ export function ChatSidebar({
   onDeleteConversation,
   onUpdateConversationTitle,
   onDeleteConversations,
-  onDeleteAllConversations,
   onArtifactSelect,
   activeArtifactId,
   isArtifactPanelOpen,
@@ -135,7 +132,6 @@ export function ChatSidebar({
             currentConversationId={currentConversationId}
             onDeleteConversation={onDeleteConversation}
             onDeleteConversations={onDeleteConversations}
-            onDeleteAllConversations={onDeleteAllConversations}
             onUpdateConversationTitle={onUpdateConversationTitle}
             onArtifactSelect={onArtifactSelect}
             activeArtifactId={activeArtifactId}
@@ -269,12 +265,16 @@ export function ChatSidebar({
               className={cn(
                 "inline-flex h-8 w-8 items-center justify-center rounded-action transition-colors duration-150",
                 isHistoryManageMode
-                  ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-info)]"
+                  ? "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
                   : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
               )}
               aria-label={isHistoryManageMode ? "Tutup mode kelola riwayat" : "Buka mode kelola riwayat"}
             >
-              <Settings className="h-4 w-4" aria-hidden="true" />
+              {isHistoryManageMode ? (
+                <Xmark className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Settings className="h-4 w-4" aria-hidden="true" />
+              )}
             </button>
             {/* Mobile: SidebarCollapse to close drawer */}
             <button

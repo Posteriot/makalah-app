@@ -5,7 +5,6 @@ import { ChatLayout } from "./ChatLayout"
 const mockPush = vi.fn()
 const mockLoadMore = vi.fn()
 const mockDeleteMany = vi.fn()
-const mockDeleteAll = vi.fn()
 const mockToggleArtifactPanel = vi.fn()
 
 vi.mock("next/navigation", () => ({
@@ -21,7 +20,6 @@ vi.mock("@/lib/hooks/useConversations", () => ({
     createNewConversation: vi.fn(),
     deleteConversation: vi.fn(),
     bulkDeleteConversations: mockDeleteMany,
-    deleteAllConversations: mockDeleteAll,
     updateConversationTitle: vi.fn(),
     isLoading: false,
     hasMore: true,
@@ -54,13 +52,11 @@ vi.mock("../ChatSidebar", () => ({
     hasMoreConversations,
     onLoadMoreConversations,
     onDeleteConversations,
-    onDeleteAllConversations,
   }: {
     activePanel: string
     hasMoreConversations?: boolean
     onLoadMoreConversations?: () => void
     onDeleteConversations?: (ids: string[]) => Promise<void>
-    onDeleteAllConversations?: () => Promise<void>
   }) => (
     <div data-testid="chat-sidebar">
       <span>{activePanel}</span>
@@ -71,9 +67,6 @@ vi.mock("../ChatSidebar", () => ({
       <button type="button" onClick={() => onDeleteConversations?.(["conversation-active"])}>
         bulk delete
       </button>
-      <button type="button" onClick={() => onDeleteAllConversations?.()}>
-        delete all
-      </button>
     </div>
   ),
 }))
@@ -83,7 +76,6 @@ describe("ChatLayout sidebar tree architecture", () => {
     mockPush.mockReset()
     mockLoadMore.mockReset()
     mockDeleteMany.mockReset()
-    mockDeleteAll.mockReset()
     mockToggleArtifactPanel.mockReset()
 
     Object.defineProperty(window, "matchMedia", {
@@ -136,11 +128,6 @@ describe("ChatLayout sidebar tree architecture", () => {
     await waitFor(() => {
       expect(mockDeleteMany).toHaveBeenCalledWith(["conversation-active"])
       expect(mockPush).toHaveBeenCalledWith("/chat")
-    })
-
-    fireEvent.click(screen.getAllByRole("button", { name: /delete all/i })[0])
-    await waitFor(() => {
-      expect(mockDeleteAll).toHaveBeenCalledTimes(1)
     })
   })
 })
