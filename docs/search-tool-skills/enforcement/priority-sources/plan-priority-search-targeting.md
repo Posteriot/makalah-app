@@ -116,7 +116,11 @@ Run: `npx vitest run __tests__/search-system-prompt.test.ts`
 
 Expected: Tests for priority source names (Google Scholar, Scopus, SINTA, Kompas, etc.) FAIL because the current hint string does not contain them. Tests for basic behavior (non-empty prompt, append to last user message, no mutation) PASS.
 
-**Step 3: Commit failing tests**
+**Step 3: Commit tests (mix of passing and failing)**
+
+Tests that PASS now (basic behavior): `returns a non-empty system prompt`, `appends search hints to the last user message`, `does not mutate original messages array`, `modifies only the last user message when multiple exist`, `returns messages unchanged if no user message exists`.
+
+Tests that FAIL now (priority sources not yet in hint): `includes priority source hints for academic databases`, `includes priority source hints for Indonesian universities`, `includes priority source hints for Indonesian media`, `includes non-exclusion clause`.
 
 ```bash
 git add __tests__/search-system-prompt.test.ts
