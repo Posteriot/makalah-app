@@ -296,14 +296,18 @@ export function SidebarChatHistory({
   const loadMoreLockedRef = useRef(false)
   const editInputRef = useRef<HTMLInputElement>(null)
   const lastSyncedConversationIdRef = useRef<string | null>(null)
+  const visibleConversationIds = useMemo(
+    () => conversations.map((conversation) => conversation._id),
+    [conversations]
+  )
 
   const paperSessions = useQuery(
-    api.paperSessions.getByUser,
-    user?._id ? { userId: user._id } : "skip"
+    api.paperSessions.getByConversationIds,
+    user?._id ? { userId: user._id, conversationIds: visibleConversationIds } : "skip"
   ) as PaperSessionListItem[] | undefined
   const artifacts = useQuery(
-    api.artifacts.listByUser,
-    user?._id ? { userId: user._id } : "skip"
+    api.artifacts.listLatestByConversationIds,
+    user?._id ? { userId: user._id, conversationIds: visibleConversationIds } : "skip"
   ) as ArtifactListItem[] | undefined
 
   const treeNodes = useMemo<ConversationTreeNode[]>(() => {

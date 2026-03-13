@@ -19,9 +19,9 @@ export function useConversations() {
     betterAuthUserId ? { betterAuthUserId } : "skip"
   )
 
-  const allConversations = useQuery(
-    api.conversations.listConversations,
-    userId ? { userId } : "skip"
+  const windowConversations = useQuery(
+    api.conversations.listConversationsWindow,
+    userId ? { userId, limit: visibleLimit } : "skip"
   )
 
   const totalConversationCount = useQuery(
@@ -35,9 +35,8 @@ export function useConversations() {
   const deleteAllConversationsMutation = useMutation(api.conversations.deleteAllConversations)
   const updateTitleMutation = useMutation(api.conversations.updateConversationTitleFromUser)
 
-  const resolvedAllConversations = allConversations ?? []
-  const resolvedConversations = resolvedAllConversations.slice(0, visibleLimit)
-  const resolvedTotalConversationCount = totalConversationCount ?? resolvedAllConversations.length
+  const resolvedConversations = windowConversations ?? []
+  const resolvedTotalConversationCount = totalConversationCount ?? resolvedConversations.length
   const hasMore = resolvedConversations.length < resolvedTotalConversationCount
 
   const loadMore = useCallback(() => {
@@ -96,7 +95,7 @@ export function useConversations() {
     bulkDeleteConversations,
     deleteAllConversations,
     updateConversationTitle,
-    isLoading: allConversations === undefined || totalConversationCount === undefined,
+    isLoading: windowConversations === undefined || totalConversationCount === undefined,
     userId,
     hasMore,
     loadMore,

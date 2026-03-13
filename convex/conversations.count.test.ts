@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { listConversations, countConversations } from "./conversations"
+import { listConversations, listConversationsWindow, countConversations } from "./conversations"
 import { verifyAuthUserId } from "./authHelpers"
 
 vi.mock("./authHelpers", () => ({
@@ -123,9 +123,15 @@ describe("conversation count query", () => {
     }
 
     const list = await callQuery(listConversations as never, db, { userId: "user_1" as never })
+    const windowed = await callQuery(
+      listConversationsWindow as never,
+      db,
+      { userId: "user_1" as never, limit: 60 }
+    )
     const total = await callQuery(countConversations as never, db, { userId: "user_1" as never })
 
     expect(list).toHaveLength(50)
+    expect(windowed).toHaveLength(60)
     expect(total).toBe(72)
   })
 })

@@ -466,6 +466,34 @@ export const getByUser = query({
     },
 });
 
+export const getByConversationIds = query({
+    args: {
+        userId: v.id("users"),
+        conversationIds: v.array(v.id("conversations")),
+    },
+    handler: async (ctx, args) => {
+        if (!await verifyAuthUserId(ctx, args.userId)) return [];
+        if (args.conversationIds.length === 0) return [];
+
+        const sessions = await Promise.all(
+            args.conversationIds.map(async (conversationId) => {
+                const session = await ctx.db
+                    .query("paperSessions")
+                    .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+                    .unique();
+
+                if (!session || session.userId !== args.userId) {
+                    return null;
+                }
+
+                return session;
+            })
+        );
+
+        return sessions.filter((session) => session !== null);
+    },
+});
+
 /**
  * Mendapatkan daftar paper session milik user dengan filter.
  * - status: "all" | "in_progress" | "completed"

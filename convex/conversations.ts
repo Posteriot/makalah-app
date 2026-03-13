@@ -93,6 +93,11 @@ async function deleteConversationCascade(ctx: MutationCtx, conversationId: Id<"c
         .collect()
 
     for (const file of files) {
+        try {
+            await ctx.storage.delete(file.storageId as Id<"_storage">)
+        } catch {
+            // Ignore stale or already-deleted blobs; row cleanup must still proceed.
+        }
         await ctx.db.delete(file._id)
     }
 
@@ -131,6 +136,24 @@ export const listConversations = query({
             .withIndex("by_user", (q) => q.eq("userId", userId))
             .order("desc")
             .take(50)
+    },
+})
+
+export const listConversationsWindow = query({
+    args: {
+        userId: v.id("users"),
+        limit: v.number(),
+    },
+    handler: async (ctx, { userId, limit }) => {
+        if (!await verifyAuthUserId(ctx, userId)) return []
+
+        const safeLimit = Math.max(1, Math.floor(limit))
+
+        return await ctx.db
+            .query("conversations")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .order("desc")
+            .take(safeLimit)
     },
 })
 

@@ -64,13 +64,13 @@ describe("SidebarChatHistory tree", () => {
       user: { _id: "user-1" },
     })
 
-    let userScopedQueryCount = 0
+    let conversationScopedQueryCount = 0
     mockUseQuery.mockImplementation((_queryRef: unknown, args: unknown) => {
       if (args === "skip") return undefined
 
-      if (typeof args === "object" && args !== null && "userId" in args) {
-        userScopedQueryCount += 1
-        if (userScopedQueryCount === 1) {
+      if (typeof args === "object" && args !== null && "conversationIds" in args) {
+        conversationScopedQueryCount += 1
+        if (conversationScopedQueryCount === 1) {
           return [
             {
               _id: "session-active",
@@ -128,6 +128,23 @@ describe("SidebarChatHistory tree", () => {
     })
   })
 
+  it("meminta data paper hanya untuk conversation yang sedang tampil", () => {
+    render(
+      <SidebarChatHistory
+        conversations={conversations as never}
+        currentConversationId="conversation-active"
+        onDeleteConversation={vi.fn()}
+      />
+    )
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        userId: "user-1",
+        conversationIds: ["conversation-active", "conversation-empty", "conversation-other"],
+      })
+    )
+  })
   it("auto-expand percakapan aktif dan hanya menampilkan latest file", () => {
     render(
       <SidebarChatHistory

@@ -65,18 +65,13 @@ export const listByConversation = queryGeneric({
     type: v.optional(artifactTypeValidator),
   },
   handler: async ({ db }, { conversationId, userId, type }) => {
-    // Query by user first because historical paper-session artifacts may outlive
-    // their conversation row or have stale conversation index state in older dev data.
     const artifacts = await db
       .query("artifacts")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
       .order("desc")
       .collect()
 
-    const targetConversationId = String(conversationId)
-    const ownedArtifacts = artifacts.filter(
-      (artifact) => String(artifact.conversationId) === targetConversationId
-    )
+    const ownedArtifacts = artifacts.filter((artifact) => artifact.userId === userId)
 
     // Filter by type if specified
     if (type) {
@@ -84,6 +79,81 @@ export const listByConversation = queryGeneric({
     }
 
     return ownedArtifacts
+  },
+})
+
+type ArtifactSummary = {
+  _id: unknown
+  title?: string
+  type?: string
+  version?: number
+  createdAt?: number
+  sourceArtifactId?: unknown
+  userId?: unknown
+}
+
+function getLatestArtifactsForConversation(artifacts: ArtifactSummary[]) {
+  const latestMap = new Map<string, ArtifactSummary>()
+
+  for (const artifact of artifacts) {
+    const key = artifact.type === "refrasa"
+      ? `refrasa-${artifact.sourceArtifactId ?? artifact.title}`
+      : `${artifact.type}-${artifact.title}`
+    const existing = latestMap.get(key)
+
+    if (!existing || Number(artifact.version ?? 0) > Number(existing.version ?? 0)) {
+      latestMap.set(key, artifact)
+    }
+  }
+
+  const latestArtifacts = Array.from(latestMap.values())
+  const parents = latestArtifacts.filter((artifact) => artifact.type !== "refrasa")
+  const refrasas = latestArtifacts.filter((artifact) => artifact.type === "refrasa")
+
+  parents.sort((left, right) => Number(left.createdAt ?? 0) - Number(right.createdAt ?? 0))
+
+  const ordered: ArtifactSummary[] = []
+  for (const parent of parents) {
+    ordered.push(parent)
+    const children = refrasas
+      .filter((artifact) => artifact.sourceArtifactId === parent._id)
+      .sort((left, right) => Number(left.createdAt ?? 0) - Number(right.createdAt ?? 0))
+    ordered.push(...children)
+  }
+
+  const placedIds = new Set(ordered.map((artifact) => artifact._id))
+  for (const artifact of refrasas) {
+    if (!placedIds.has(artifact._id)) {
+      ordered.push(artifact)
+    }
+  }
+
+  return ordered
+}
+
+export const listLatestByConversationIds = queryGeneric({
+  args: {
+    userId: v.id("users"),
+    conversationIds: v.array(v.id("conversations")),
+  },
+  handler: async ({ db }, { userId, conversationIds }) => {
+    if (conversationIds.length === 0) return []
+
+    const perConversationArtifacts = await Promise.all(
+      conversationIds.map(async (conversationId) => {
+        const artifacts = await db
+          .query("artifacts")
+          .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+          .order("desc")
+          .collect()
+
+        return getLatestArtifactsForConversation(
+          artifacts.filter((artifact) => artifact.userId === userId)
+        )
+      })
+    )
+
+    return perConversationArtifacts.flat()
   },
 })
 
