@@ -245,9 +245,25 @@ Skills are natural language instruction files (SKILL.md) that guide the LLM's be
 ```
 skills/
 └── web-search-quality/
-    ├── SKILL.md          ← Natural language instructions
-    └── index.ts          ← Loader (reads SKILL.md, injects context)
+    ├── SKILL.md              ← Natural language instructions
+    ├── index.ts              ← Loader (reads SKILL.md, injects context)
+    ├── scripts/
+    │   ├── score-sources.ts  ← Pre-compose: source scoring utility
+    │   └── check-references.ts ← Post-compose: reference integrity check
+    └── references/           ← Supporting reference material
 ```
+
+### Skill Availability
+
+Skills are injected for **all stages** — both ACTIVE and PASSIVE — and chat mode:
+
+| Context | Skill Injected? | Stage Guidance |
+|---------|----------------|----------------|
+| ACTIVE paper stage (e.g., tinjauan_literatur) | Yes | Stage-specific guidance from SKILL.md `### {stage}` section |
+| PASSIVE paper stage (e.g., outline) | Yes | Default guidance from SKILL.md `### default` section |
+| Paper mode, no stage set | No | `null` — skill requires a known stage in paper mode |
+| Chat mode, has recent sources | Yes | Default guidance |
+| Chat mode, no recent sources | No | `null` — skill not needed without search results |
 
 ### Skill Context
 
