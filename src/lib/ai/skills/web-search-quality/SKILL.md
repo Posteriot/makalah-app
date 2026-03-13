@@ -138,22 +138,22 @@ You are accountable for every reference you cite.
 ## STAGE CONTEXT
 
 ### gagasan
-Exploration phase: map the landscape broadly. Minimum 3-5 diverse sources across different domains. Identify key themes, debates, and knowledge gaps. Present findings as a research landscape overview with your assessment of which directions are most promising.
+Exploration phase: map the landscape broadly. Minimum 3-5 diverse sources across different domains. Identify key themes, debates, and knowledge gaps. Present findings as a research landscape overview with your assessment of which directions are most promising. Leverage priority academic databases and reputable media to map the research landscape broadly.
 
 ### topik
-Topic refinement phase: narrow from broad landscape to specific angle. Minimum 5 sources that help sharpen the research question. Show the user where the literature is dense (well-studied) vs sparse (opportunity for original contribution). Recommend the strongest angle based on available evidence.
+Topic refinement phase: narrow from broad landscape to specific angle. Minimum 5 sources that help sharpen the research question. Show the user where the literature is dense (well-studied) vs sparse (opportunity for original contribution). Recommend the strongest angle based on available evidence. Use priority academic databases and university repositories to assess where the literature is dense vs sparse.
 
 ### tinjauan_literatur
-Literature review phase: seek depth and comprehensiveness. Minimum 5 sources, prioritize academic/journals. Identify patterns across studies, methodological trends, gaps not yet addressed, and position the user's research within the existing landscape. Cross-reference findings and note evolving consensus or ongoing debates.
+Literature review phase: seek depth and comprehensiveness. Minimum 5 sources, prioritize academic/journals. Identify patterns across studies, methodological trends, gaps not yet addressed, and position the user's research within the existing landscape. Cross-reference findings and note evolving consensus or ongoing debates. Heavily leverage priority academic databases (Scopus, Google Scholar, SINTA) and Indonesian university repositories for comprehensive literature coverage.
 
 ### pendahuluan
-Framing phase: build a compelling problem context. Use primary data to establish significance, academic sources for theoretical grounding. Minimum 5 sources. The narrative should make the reader understand why this research matters — what problem exists, how big it is, and what is at stake.
+Framing phase: build a compelling problem context. Use primary data to establish significance, academic sources for theoretical grounding. Minimum 5 sources. The narrative should make the reader understand why this research matters — what problem exists, how big it is, and what is at stake. Use priority academic databases for theoretical grounding and reputable media for establishing real-world problem significance.
 
 ### metodologi
-Methodology phase: justify the research approach with precedent. Minimum 5 sources. Find studies using similar methods, cite their rationale, and show how the user's methodology builds on established practice. Note limitations acknowledged in prior work.
+Methodology phase: justify the research approach with precedent. Minimum 5 sources. Find studies using similar methods, cite their rationale, and show how the user's methodology builds on established practice. Note limitations acknowledged in prior work. Use priority academic databases to find methodological precedent and similar study designs.
 
 ### diskusi
-Discussion phase: cross-reference the user's findings with existing literature. Minimum 5 sources. Compare systematically — what aligns with prior research, what differs, and propose explanations for divergences. Identify implications and contributions to the field.
+Discussion phase: cross-reference the user's findings with existing literature. Minimum 5 sources. Compare systematically — what aligns with prior research, what differs, and propose explanations for divergences. Identify implications and contributions to the field. Cross-reference findings using priority academic databases and reputable media for contextual analysis.
 
 ### default
-Treat every question as worthy of thorough research. Minimum 5 sources actively cited. Provide analysis, context, and expert judgment — not just a summary. Cross-reference sources, highlight key data points, and close with your assessment and a prompt for further exploration. If the topic is genuinely simple, the depth comes from breadth of perspective, not length.
+Treat every question as worthy of thorough research. Minimum 5 sources actively cited. Provide analysis, context, and expert judgment — not just a summary. Cross-reference sources, highlight key data points, and close with your assessment and a prompt for further exploration. If the topic is genuinely simple, the depth comes from breadth of perspective, not length. When priority sources are available in search results, prefer them over generic sources while maintaining source diversity.
