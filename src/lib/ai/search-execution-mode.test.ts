@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   resolveSearchExecutionMode,
-} from "./search-execution-mode"
+} from "./web-search/search-execution-mode"
 
 describe("resolveSearchExecutionMode", () => {
   it("selects first enabled retriever when search required", () => {

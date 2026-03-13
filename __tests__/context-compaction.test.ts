@@ -317,7 +317,7 @@ describe("runCompactionChain", () => {
         expect(result.resolvedAtPriority).toBe("P3");
         expect(result.llmSummarized).toBe(true);
         // Should have summary message
-        const summaryMsg = result.messages.find(m => m.content.includes("RINGKASAN DISKUSI"));
+        const summaryMsg = result.messages.find(m => m.content.includes("PREVIOUS DISCUSSION SUMMARY"));
         expect(summaryMsg).toBeDefined();
     });
 

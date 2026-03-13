@@ -67,9 +67,3 @@ EXCEPTIONS (may proceed without workflow):
 
 ═══════════════════════════════════════════════════════════════════════════════
 `;
-
-/**
- * Short version for logging/debugging
- */
-export const PAPER_WORKFLOW_REMINDER_SHORT =
-    "[PAPER INTENT DETECTED] User wants to write a full paper. MUST call startPaperSession first.";

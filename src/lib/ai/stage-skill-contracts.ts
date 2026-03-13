@@ -20,10 +20,6 @@ export const PASSIVE_SEARCH_STAGES: PaperStageId[] = [
     "judul",
 ];
 
-export function stageToSkillId(stage: PaperStageId): string {
-    return `${stage.replace(/_/g, "-")}-skill`;
-}
-
 export function getExpectedSearchPolicy(stage: PaperStageId): "active" | "passive" {
     return ACTIVE_SEARCH_STAGES.includes(stage) ? "active" : "passive";
 }

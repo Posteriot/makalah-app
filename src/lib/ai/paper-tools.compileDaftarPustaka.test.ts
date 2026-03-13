@@ -163,7 +163,7 @@ describe("createPaperTools.compileDaftarPustaka", () => {
     const result = await getCompileToolExecute()({ mode: "persist" })
 
     expect(result.success).toBe(false)
-    expect(result.error).toContain("butuh field ringkasan")
+    expect(result.error).toContain("requires the ringkasan field")
     expect(fetchMutationMock).not.toHaveBeenCalled()
   })
 })

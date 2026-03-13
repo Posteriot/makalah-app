@@ -18,14 +18,15 @@ describe("web-search-quality skill", () => {
     expect(result).toContain("REFERENCE INTEGRITY")
   })
 
-  it("returns null for passive paper stages", () => {
+  it("returns instructions for passive paper stages (default guidance)", () => {
     const result = webSearchQualitySkill.getInstructions({
       isPaperMode: true,
       currentStage: "outline",
       hasRecentSources: true,
       availableSources: [{ url: "https://arxiv.org/abs/123", title: "Test" }],
     })
-    expect(result).toBeNull()
+    expect(result).not.toBeNull()
+    expect(result).toContain("STAGE CONTEXT")
   })
 
   it("includes stage guidance for active paper stages", () => {
