@@ -38,7 +38,7 @@ function buildConversation(id: string) {
 }
 
 describe("sidebar history count transparency", () => {
-  it("menampilkan jumlah sidebar dan total sebenarnya secara eksplisit", () => {
+  it("menampilkan jumlah sementara dengan tanda plus saat masih bisa load lagi", () => {
     const conversations = Array.from({ length: 50 }, (_, index) =>
       buildConversation(`conv-${index + 1}`)
     )
@@ -47,18 +47,18 @@ describe("sidebar history count transparency", () => {
       <ChatSidebar
         activePanel="chat-history"
         conversations={conversations}
-        totalConversationCount={1000}
         currentConversationId={null}
         onNewChat={vi.fn()}
         onDeleteConversation={vi.fn()}
+        hasMoreConversations={true}
       />
     )
 
     expect(screen.getByText("Riwayat")).toBeInTheDocument()
-    expect(screen.getByText("50 dari 1000")).toBeInTheDocument()
+    expect(screen.getByText("50+")).toBeInTheDocument()
   })
 
-  it("tetap transparan saat total tidak melebihi batas sidebar", () => {
+  it("tetap bisa menampilkan total eksplisit saat parent memang memberikannya", () => {
     const conversations = Array.from({ length: 12 }, (_, index) =>
       buildConversation(`conv-${index + 1}`)
     )

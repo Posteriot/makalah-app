@@ -212,7 +212,9 @@ export function ChatLayout({
   const handleUpdateConversationTitle = async (
     id: Id<"conversations">,
     title: string
-  ) => updateConversationTitle(id, title)
+  ) => {
+    await updateConversationTitle(id, title)
+  }
 
   const getGridTemplateColumns = () => {
     const activityBar = "var(--activity-bar-width)"

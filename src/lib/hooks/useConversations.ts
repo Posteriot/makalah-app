@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useState } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useCallback } from "react"
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { useSession } from "@/lib/auth-client"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -12,21 +12,20 @@ const CONVERSATION_LOAD_STEP = 20
 export function useConversations() {
   const { data: session } = useSession()
   const betterAuthUserId = session?.user?.id
-  const [visibleLimit, setVisibleLimit] = useState(INITIAL_CONVERSATION_LIMIT)
 
   const userId = useQuery(
     api.chatHelpers.getMyUserId,
     betterAuthUserId ? {} : "skip"
   )
 
-  const windowConversations = useQuery(
+  const {
+    results: windowConversations,
+    status: paginationStatus,
+    loadMore: loadMoreWindow,
+  } = usePaginatedQuery(
     api.conversations.listConversationsWindow,
-    userId ? { userId, limit: visibleLimit } : "skip"
-  )
-
-  const totalConversationCount = useQuery(
-    api.conversations.countConversations,
-    userId ? { userId } : "skip"
+    userId ? { userId } : "skip",
+    { initialNumItems: INITIAL_CONVERSATION_LIMIT }
   )
 
   const createConversationMutation = useMutation(api.conversations.createConversation)
@@ -35,13 +34,12 @@ export function useConversations() {
   const deleteAllConversationsMutation = useMutation(api.conversations.deleteAllConversations)
   const updateTitleMutation = useMutation(api.conversations.updateConversationTitleFromUser)
 
-  const resolvedConversations = windowConversations ?? []
-  const resolvedTotalConversationCount = totalConversationCount ?? resolvedConversations.length
-  const hasMore = resolvedConversations.length < resolvedTotalConversationCount
+  const resolvedConversations = windowConversations
+  const hasMore = paginationStatus === "CanLoadMore"
 
   const loadMore = useCallback(() => {
-    setVisibleLimit((current) => current + CONVERSATION_LOAD_STEP)
-  }, [])
+    loadMoreWindow(CONVERSATION_LOAD_STEP)
+  }, [loadMoreWindow])
 
   const createNewConversation = useCallback(async () => {
     if (!userId) return null
@@ -84,14 +82,14 @@ export function useConversations() {
 
   return {
     conversations: resolvedConversations,
-    totalConversationCount: resolvedTotalConversationCount,
+    totalConversationCount: undefined,
     displayedConversationCount: resolvedConversations.length,
     createNewConversation,
     deleteConversation,
     bulkDeleteConversations,
     deleteAllConversations,
     updateConversationTitle,
-    isLoading: windowConversations === undefined || totalConversationCount === undefined,
+    isLoading: paginationStatus === "LoadingFirstPage",
     userId,
     hasMore,
     loadMore,

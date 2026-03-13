@@ -86,7 +86,7 @@ interface ChatSidebarProps {
 export function ChatSidebar({
   activePanel = "chat-history",
   conversations,
-  totalConversationCount = 0,
+  totalConversationCount,
   currentConversationId,
   onNewChat,
   onDeleteConversation,
@@ -109,11 +109,15 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
   const router = useRouter()
   const displayedConversationCount = conversations.length
-  const resolvedTotalConversationCount = Math.max(
-    totalConversationCount,
-    displayedConversationCount
-  )
-  const historyCountLabel = `${displayedConversationCount} dari ${resolvedTotalConversationCount}`
+  const resolvedTotalConversationCount =
+    typeof totalConversationCount === "number"
+      ? Math.max(totalConversationCount, displayedConversationCount)
+      : undefined
+  const historyCountLabel = resolvedTotalConversationCount !== undefined
+    ? `${displayedConversationCount} dari ${resolvedTotalConversationCount}`
+    : hasMoreConversations
+      ? `${displayedConversationCount}+`
+      : String(displayedConversationCount)
   const [historyManageRequestNonce, setHistoryManageRequestNonce] = useState(0)
   const [isHistoryManageMode, setIsHistoryManageMode] = useState(false)
 

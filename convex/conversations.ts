@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { paginationOptsValidator } from "convex/server"
 import type { MutationCtx } from "./_generated/server"
 import { requireAuthUser, requireAuthUserId, verifyAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
 import { Id } from "./_generated/dataModel"
@@ -142,18 +143,24 @@ export const listConversations = query({
 export const listConversationsWindow = query({
     args: {
         userId: v.id("users"),
-        limit: v.number(),
+        paginationOpts: paginationOptsValidator,
     },
-    handler: async (ctx, { userId, limit }) => {
-        if (!await verifyAuthUserId(ctx, userId)) return []
-
-        const safeLimit = Math.max(1, Math.floor(limit))
+    handler: async (ctx, { userId, paginationOpts }) => {
+        if (!await verifyAuthUserId(ctx, userId)) {
+            return {
+                page: [],
+                isDone: true,
+                continueCursor: "",
+                splitCursor: null,
+                pageStatus: null,
+            }
+        }
 
         return await ctx.db
             .query("conversations")
             .withIndex("by_user", (q) => q.eq("userId", userId))
             .order("desc")
-            .take(safeLimit)
+            .paginate(paginationOpts)
     },
 })
 
@@ -438,7 +445,7 @@ export const cleanupEmptyConversations = mutation({
 
             // If no messages, delete the conversation
             if (!firstMessage) {
-                await ctx.db.delete(conv._id)
+                await deleteConversationCascade(ctx, conv._id)
                 deletedCount++
             }
         }
