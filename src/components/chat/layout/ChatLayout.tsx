@@ -214,10 +214,6 @@ export function ChatLayout({
     title: string
   ) => updateConversationTitle(id, title)
 
-  const handleExpandPanel = useCallback(() => {
-    onArtifactPanelToggle?.()
-  }, [onArtifactPanelToggle])
-
   const getGridTemplateColumns = () => {
     const activityBar = "var(--activity-bar-width)"
     const sidebar = isSidebarCollapsed ? "0px" : `${sidebarWidth}px`
@@ -302,8 +298,6 @@ export function ChatLayout({
           <TopBar
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={handleToggleSidebar}
-            isPanelCollapsed={!isArtifactPanelOpen}
-            onTogglePanel={handleExpandPanel}
             artifactCount={artifactCount}
           />
           <div className="flex-1 overflow-hidden">{children}</div>

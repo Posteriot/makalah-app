@@ -43,10 +43,6 @@ export function useConversations() {
     setVisibleLimit((current) => current + CONVERSATION_LOAD_STEP)
   }, [])
 
-  const resetVisibleLimit = useCallback(() => {
-    setVisibleLimit(INITIAL_CONVERSATION_LIMIT)
-  }, [])
-
   const createNewConversation = useCallback(async () => {
     if (!userId) return null
     const id = await createConversationMutation({
@@ -99,7 +95,5 @@ export function useConversations() {
     userId,
     hasMore,
     loadMore,
-    visibleLimit,
-    resetVisibleLimit,
   }
 }

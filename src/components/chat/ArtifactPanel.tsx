@@ -228,7 +228,7 @@ export function ArtifactPanel({
           <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
             <Page className="mb-4 h-12 w-12 text-[var(--chat-muted-foreground)]" />
             <p className="max-w-[260px] text-[13px] text-[var(--chat-muted-foreground)]">
-              Belum ada artifak yang dibuka. Pilih artifak dari Sidebar Paper Sessions untuk memulai workspace.
+              Belum ada artifak yang dibuka. Pilih artifak dari Riwayat Percakapan untuk mulai membaca.
             </p>
           </div>
         )}

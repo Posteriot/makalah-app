@@ -45,7 +45,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   const router = useRouter()
   const deepLinkArtifactId = searchParams.get("artifact")
   const deepLinkSourceMessageId = searchParams.get("sourceMessage")
-  const deepLinkHandled = useRef(false)
+  const deepLinkHandledKey = useRef<string | null>(null)
 
   // Cleanup empty conversations ONLY on landing page (/chat without ID)
   // Don't cleanup when viewing a specific conversation - prevents deleting newly created ones
@@ -129,10 +129,18 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
 
   // Deep link: auto-open artifact panel when navigating via ?artifact=<id>
   useEffect(() => {
-    if (!deepLinkArtifactId || deepLinkHandled.current || !artifacts) return
+    if (!deepLinkArtifactId || !artifacts) {
+      deepLinkHandledKey.current = null
+      return
+    }
+
+    const deepLinkKey = `${conversationId ?? "no-conversation"}:${deepLinkArtifactId}:${deepLinkSourceMessageId ?? ""}`
+    if (deepLinkHandledKey.current === deepLinkKey) return
+
     const artifact = artifacts.find((a) => a._id === deepLinkArtifactId)
     if (!artifact) return
-    deepLinkHandled.current = true
+
+    deepLinkHandledKey.current = deepLinkKey
     openArtifactTab({
       id: artifact._id,
       title: artifact.title,

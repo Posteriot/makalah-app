@@ -53,6 +53,11 @@ export interface ArtifactTab {
 /** Maximum number of open artifact tabs */
 const MAX_ARTIFACT_TABS = 8
 
+interface ArtifactTabsState {
+  openTabs: ArtifactTab[]
+  activeTabId: Id<"artifacts"> | null
+}
+
 interface UseArtifactTabsReturn {
   /** Array of open artifact tabs */
   openTabs: ArtifactTab[]
@@ -80,90 +85,111 @@ interface UseArtifactTabsReturn {
  * Max 8 tabs — oldest tab removed when exceeded.
  */
 export function useArtifactTabs(): UseArtifactTabsReturn {
-  const [openTabs, setOpenTabs] = useState<ArtifactTab[]>([])
-  const [activeTabId, setActiveTabId] = useState<Id<"artifacts"> | null>(null)
+  const [{ openTabs, activeTabId }, setTabsState] = useState<ArtifactTabsState>({
+    openTabs: [],
+    activeTabId: null,
+  })
 
   const openTab = useCallback((artifact: ArtifactTab) => {
-    setOpenTabs((prev) => {
+    setTabsState((prev) => {
       // Already open — just activate and update title
-      const existing = prev.find((tab) => tab.id === artifact.id)
+      const existing = prev.openTabs.find((tab) => tab.id === artifact.id)
       if (existing) {
-        return prev.map((tab) =>
-          tab.id === artifact.id ? { ...tab, ...artifact, title: artifact.title } : tab
-        )
+        return {
+          openTabs: prev.openTabs.map((tab) =>
+            tab.id === artifact.id ? { ...tab, ...artifact, title: artifact.title } : tab
+          ),
+          activeTabId: artifact.id,
+        }
       }
 
       // Refrasa tab reuse: replace existing tab with same sourceArtifactId
       if (artifact.type === "refrasa" && artifact.sourceArtifactId) {
-        const idx = prev.findIndex(
+        const idx = prev.openTabs.findIndex(
           (tab) =>
             tab.type === "refrasa" &&
             tab.sourceArtifactId === artifact.sourceArtifactId
         )
         if (idx >= 0) {
-          const updated = [...prev]
+          const updated = [...prev.openTabs]
           updated[idx] = artifact
-          return updated
+          return {
+            openTabs: updated,
+            activeTabId: artifact.id,
+          }
         }
       }
 
       // At max — remove oldest (first) tab
-      if (prev.length >= MAX_ARTIFACT_TABS) {
-        return [...prev.slice(1), artifact]
+      if (prev.openTabs.length >= MAX_ARTIFACT_TABS) {
+        return {
+          openTabs: [...prev.openTabs.slice(1), artifact],
+          activeTabId: artifact.id,
+        }
       }
 
-      return [...prev, artifact]
+      return {
+        openTabs: [...prev.openTabs, artifact],
+        activeTabId: artifact.id,
+      }
     })
-    setActiveTabId(artifact.id)
   }, [])
 
   const closeTab = useCallback((id: Id<"artifacts">) => {
-    setOpenTabs((prev) => {
-      const index = prev.findIndex((tab) => tab.id === id)
+    setTabsState((prev) => {
+      const index = prev.openTabs.findIndex((tab) => tab.id === id)
       if (index < 0) return prev
-      return [...prev.slice(0, index), ...prev.slice(index + 1)]
-    })
-    setActiveTabId((prevActive) => {
-      if (prevActive !== id) return prevActive
-      // Closing active tab — switch to neighbor
-      // Use current openTabs via closure for index calculation
-      return null // Will be resolved in useEffect or by component
-    })
-    // Need to compute next active based on current tabs
-    setOpenTabs((prev) => {
-      // This runs after the removal above
-      // If active was the closed tab, pick next neighbor
-      setActiveTabId((prevActive) => {
-        if (prevActive !== null) return prevActive
-        if (prev.length > 0) {
-          return prev[prev.length - 1].id
+
+      const nextTabs = [
+        ...prev.openTabs.slice(0, index),
+        ...prev.openTabs.slice(index + 1),
+      ]
+
+      if (prev.activeTabId !== id) {
+        return {
+          openTabs: nextTabs,
+          activeTabId: prev.activeTabId,
         }
-        return null
-      })
-      return prev
+      }
+
+      const nextActiveTab =
+        nextTabs[index] ??
+        nextTabs[index - 1] ??
+        null
+
+      return {
+        openTabs: nextTabs,
+        activeTabId: nextActiveTab?.id ?? null,
+      }
     })
   }, [])
 
   const closeAllTabs = useCallback(() => {
-    setOpenTabs([])
-    setActiveTabId(null)
+    setTabsState({
+      openTabs: [],
+      activeTabId: null,
+    })
   }, [])
 
   const updateTabTitle = useCallback((id: Id<"artifacts">, title: string) => {
-    setOpenTabs((prev) =>
-      prev.map((tab) => (tab.id === id ? { ...tab, title } : tab))
-    )
+    setTabsState((prev) => ({
+      openTabs: prev.openTabs.map((tab) => (tab.id === id ? { ...tab, title } : tab)),
+      activeTabId: prev.activeTabId,
+    }))
   }, [])
 
   const updateTabId = useCallback((oldId: Id<"artifacts">, newId: Id<"artifacts">) => {
-    setOpenTabs((prev) =>
-      prev.map((tab) => tab.id === oldId ? { ...tab, id: newId } : tab)
-    )
-    setActiveTabId((prev) => prev === oldId ? newId : prev)
+    setTabsState((prev) => ({
+      openTabs: prev.openTabs.map((tab) => tab.id === oldId ? { ...tab, id: newId } : tab),
+      activeTabId: prev.activeTabId === oldId ? newId : prev.activeTabId,
+    }))
   }, [])
 
   const setActive = useCallback((id: Id<"artifacts">) => {
-    setActiveTabId(id)
+    setTabsState((prev) => ({
+      openTabs: prev.openTabs,
+      activeTabId: id,
+    }))
   }, [])
 
   return {

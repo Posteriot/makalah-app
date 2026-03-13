@@ -24,10 +24,6 @@ interface TopBarProps {
   isSidebarCollapsed: boolean
   /** Callback to toggle sidebar */
   onToggleSidebar: () => void
-  /** Whether the artifact panel is collapsed */
-  isPanelCollapsed: boolean
-  /** Callback to toggle the artifact panel */
-  onTogglePanel: () => void
   /** Number of artifacts (0 = panel toggle disabled) */
   artifactCount: number
 }
@@ -44,8 +40,6 @@ interface TopBarProps {
 export function TopBar({
   isSidebarCollapsed,
   onToggleSidebar,
-  isPanelCollapsed: _isPanelCollapsed,
-  onTogglePanel: _onTogglePanel,
   artifactCount,
 }: TopBarProps) {
   const { resolvedTheme, setTheme } = useTheme()

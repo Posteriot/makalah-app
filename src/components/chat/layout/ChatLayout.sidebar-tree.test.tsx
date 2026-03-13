@@ -34,15 +34,7 @@ vi.mock("../shell/ActivityBar", () => ({
 }))
 
 vi.mock("../shell/TopBar", () => ({
-  TopBar: ({
-    onTogglePanel,
-  }: {
-    onTogglePanel: () => void
-  }) => (
-    <button type="button" onClick={onTogglePanel}>
-      toggle panel artifak
-    </button>
-  ),
+  TopBar: () => <div data-testid="top-bar" />,
 }))
 
 vi.mock("@/components/ui/PanelResizer", () => ({

@@ -61,4 +61,43 @@ describe("useArtifactTabs", () => {
       sourceKind: "artifact",
     })
   })
+
+  it("memindahkan active tab ke tetangga kanan lalu kiri saat tab aktif ditutup", () => {
+    const { result } = renderHook(() => useArtifactTabs())
+
+    act(() => {
+      result.current.openTab({
+        id: "artifact-1" as never,
+        title: "Satu",
+        type: "section",
+      })
+      result.current.openTab({
+        id: "artifact-2" as never,
+        title: "Dua",
+        type: "section",
+      })
+      result.current.openTab({
+        id: "artifact-3" as never,
+        title: "Tiga",
+        type: "section",
+      })
+      result.current.setActiveTab("artifact-2" as never)
+    })
+
+    act(() => {
+      result.current.closeTab("artifact-2" as never)
+    })
+
+    expect(result.current.openTabs.map((tab) => tab.id)).toEqual([
+      "artifact-1",
+      "artifact-3",
+    ])
+    expect(result.current.activeTabId).toBe("artifact-3")
+
+    act(() => {
+      result.current.closeTab("artifact-3" as never)
+    })
+
+    expect(result.current.activeTabId).toBe("artifact-1")
+  })
 })
