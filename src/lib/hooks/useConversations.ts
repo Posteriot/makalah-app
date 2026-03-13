@@ -15,8 +15,8 @@ export function useConversations() {
   const [visibleLimit, setVisibleLimit] = useState(INITIAL_CONVERSATION_LIMIT)
 
   const userId = useQuery(
-    api.chatHelpers.getUserId,
-    betterAuthUserId ? { betterAuthUserId } : "skip"
+    api.chatHelpers.getMyUserId,
+    betterAuthUserId ? {} : "skip"
   )
 
   const windowConversations = useQuery(

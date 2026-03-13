@@ -1,5 +1,11 @@
-import { beforeEach, describe, expect, it } from "vitest"
-import { listByConversation } from "./artifacts"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { get, listByConversation } from "./artifacts"
+import { verifyAuthUserId } from "./authHelpers"
+
+vi.mock("./authHelpers", () => ({
+  verifyAuthUserId: vi.fn(),
+  requireAuthUserId: vi.fn(),
+}))
 
 type MockRecord = {
   _id: string
@@ -34,6 +40,13 @@ function createMockDb() {
       }
       ensureTable(table).push(record)
       return id
+    },
+    async get(id: string) {
+      for (const rows of tables.values()) {
+        const found = rows.find((row) => row._id === id)
+        if (found) return found
+      }
+      return null
     },
     query(table: string) {
       const filters: EqFilter = []
@@ -88,7 +101,8 @@ async function callQuery<TArgs, TResult>(
 
 describe("artifacts.listByConversation", () => {
   beforeEach(() => {
-    // no-op for test symmetry
+    vi.clearAllMocks()
+    vi.mocked(verifyAuthUserId).mockResolvedValue({ _id: "user_1" } as never)
   })
 
   it("mengembalikan artifact owner walau conversation sudah hilang", async () => {
@@ -152,5 +166,60 @@ describe("artifacts.listByConversation", () => {
       title: "Artifact Erik",
       userId: "user_1",
     })
+  })
+
+  it("mengembalikan kosong saat auth user tidak cocok", async () => {
+    const { db } = createMockDb()
+    vi.mocked(verifyAuthUserId).mockResolvedValue(null)
+
+    await db.insert("artifacts", {
+      conversationId: "conversation_shared",
+      userId: "user_1",
+      title: "Artifact Erik",
+      type: "section",
+      version: 1,
+    })
+
+    const result = await callQuery(
+      listByConversation as never,
+      db,
+      {
+        conversationId: "conversation_shared" as never,
+        userId: "user_1" as never,
+      }
+    ) as Array<Record<string, unknown>>
+
+    expect(result).toEqual([])
+  })
+})
+
+describe("artifacts.get", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(verifyAuthUserId).mockResolvedValue({ _id: "user_1" } as never)
+  })
+
+  it("mengembalikan null saat auth user tidak cocok", async () => {
+    const { db } = createMockDb()
+    vi.mocked(verifyAuthUserId).mockResolvedValue(null)
+
+    const artifactId = await db.insert("artifacts", {
+      conversationId: "conversation_1",
+      userId: "user_1",
+      title: "Draft Topik",
+      type: "section",
+      version: 1,
+    })
+
+    const result = await callQuery(
+      get as never,
+      db,
+      {
+        artifactId: artifactId as never,
+        userId: "user_1" as never,
+      }
+    )
+
+    expect(result).toBeNull()
   })
 })

@@ -1,5 +1,6 @@
 import { mutationGeneric, queryGeneric } from "convex/server"
 import { v } from "convex/values"
+import { requireAuthUserId, verifyAuthUserId } from "./authHelpers"
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -38,7 +39,12 @@ export const get = queryGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return null
+    }
+
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       return null
@@ -64,7 +70,12 @@ export const listByConversation = queryGeneric({
     userId: v.id("users"),
     type: v.optional(artifactTypeValidator),
   },
-  handler: async ({ db }, { conversationId, userId, type }) => {
+  handler: async (ctx, { conversationId, userId, type }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     const artifacts = await db
       .query("artifacts")
       .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
@@ -136,7 +147,12 @@ export const listLatestByConversationIds = queryGeneric({
     userId: v.id("users"),
     conversationIds: v.array(v.id("conversations")),
   },
-  handler: async ({ db }, { userId, conversationIds }) => {
+  handler: async (ctx, { userId, conversationIds }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     if (conversationIds.length === 0) return []
 
     const perConversationArtifacts = await Promise.all(
@@ -167,7 +183,12 @@ export const listByUser = queryGeneric({
     type: v.optional(artifactTypeValidator),
     limit: v.optional(v.number()),
   },
-  handler: async ({ db }, { userId, type, limit }) => {
+  handler: async (ctx, { userId, type, limit }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     const artifacts = await db
       .query("artifacts")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -196,7 +217,12 @@ export const getInvalidatedByConversation = queryGeneric({
     conversationId: v.id("conversations"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { conversationId, userId }) => {
+  handler: async (ctx, { conversationId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     // Verify conversation exists and user owns it
     const conversation = await db.get(conversationId)
     if (!conversation) {
@@ -238,7 +264,12 @@ export const getVersionHistory = queryGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       return []
@@ -296,7 +327,12 @@ export const getBySourceArtifact = queryGeneric({
     sourceArtifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { sourceArtifactId, userId }) => {
+  handler: async (ctx, { sourceArtifactId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     const results = await db
       .query("artifacts")
       .withIndex("by_source_artifact", (q) => q.eq("sourceArtifactId", sourceArtifactId))
@@ -334,9 +370,11 @@ export const create = mutationGeneric({
     }))),
   },
   handler: async (
-    { db },
+    ctx,
     { conversationId, userId, messageId, type, title, description, content, format, sources }
   ) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     // Verify conversation exists and user owns it
     const conversation = await db.get(conversationId)
     if (!conversation) {
@@ -397,7 +435,9 @@ export const createRefrasa = mutationGeneric({
       suggestion: v.optional(v.string()),
     })),
   },
-  handler: async ({ db }, { conversationId, userId, sourceArtifactId, content, refrasaIssues }) => {
+  handler: async (ctx, { conversationId, userId, sourceArtifactId, content, refrasaIssues }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const conversation = await db.get(conversationId)
     if (!conversation || conversation.userId !== userId) {
       throw new Error("Unauthorized")
@@ -457,7 +497,9 @@ export const update = mutationGeneric({
       publishedAt: v.optional(v.number()),
     }))),
   },
-  handler: async ({ db }, { artifactId, userId, title, description, content, format, sources }) => {
+  handler: async (ctx, { artifactId, userId, title, description, content, format, sources }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const oldArtifact = await db.get(artifactId)
     if (!oldArtifact) {
       throw new Error("Artifact tidak ditemukan")
@@ -544,7 +586,9 @@ export const remove = mutationGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       throw new Error("Artifact tidak ditemukan")
@@ -579,7 +623,9 @@ export const removeChain = mutationGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       throw new Error("Artifact tidak ditemukan")
@@ -641,7 +687,9 @@ export const markRefrasaApplied = mutationGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact || artifact.userId !== userId) throw new Error("Unauthorized")
     if (artifact.type !== "refrasa") throw new Error("Bukan artifact refrasa")
@@ -663,7 +711,9 @@ export const clearInvalidation = mutationGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       throw new Error("Artifact tidak ditemukan")
@@ -706,7 +756,12 @@ export const checkFinalStatus = queryGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return { isFinal: false }
+    }
+
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       return { isFinal: false }

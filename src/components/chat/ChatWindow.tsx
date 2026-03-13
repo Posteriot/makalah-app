@@ -464,7 +464,7 @@ export function ChatWindow({
   const { data: session } = useSession()
   const effectiveTier = getEffectiveTier(currentUser?.role, currentUser?.subscriptionStatus)
   const { resolvedTheme, setTheme } = useTheme()
-  const userId = useQuery(api.chatHelpers.getUserId, session?.user?.id ? { betterAuthUserId: session.user.id } : "skip")
+  const userId = useQuery(api.chatHelpers.getMyUserId, session?.user?.id ? {} : "skip")
   const createConversation = useMutation(api.conversations.createConversation)
   const upsertAttachmentContextMutation = useMutation(api.conversationAttachmentContexts.upsertByConversation)
   const clearAttachmentContextMutation = useMutation(api.conversationAttachmentContexts.clearByConversation)
