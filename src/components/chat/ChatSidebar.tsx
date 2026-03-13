@@ -233,12 +233,26 @@ export function ChatSidebar({
                 className="block dark:hidden"
               />
             </Link>
-            <div className="min-w-0 rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] px-3 py-1.5">
+            <div
+              className={cn(
+                "min-w-0 rounded-action border px-3 py-1.5 transition-colors duration-150",
+                isHistoryManageMode
+                  ? "border-[color:color-mix(in_oklab,var(--chat-info)_28%,var(--chat-sidebar-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_8%,var(--chat-sidebar))]"
+                  : "border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]"
+              )}
+            >
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
                   Riwayat
                 </span>
-                <span className="shrink-0 rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-2 py-0.5 text-[10px] font-mono font-semibold text-[var(--chat-muted-foreground)]">
+                <span
+                  className={cn(
+                    "shrink-0 rounded-badge border px-2 py-0.5 text-[10px] font-mono font-semibold transition-colors duration-150",
+                    isHistoryManageMode
+                      ? "border-[color:color-mix(in_oklab,var(--chat-info)_24%,var(--chat-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_14%,var(--chat-muted))] text-[color:color-mix(in_oklab,var(--chat-info)_45%,var(--chat-muted-foreground))]"
+                      : "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
+                  )}
+                >
                   {historyCountLabel}
                 </span>
               </div>

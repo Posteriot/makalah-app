@@ -117,7 +117,7 @@ export function TopBar({
             <TooltipTrigger asChild>
               <div
                 className={cn(
-                  "relative mr-1 inline-flex h-8 w-8 items-center justify-center rounded-action",
+                  "relative mr-0.5 inline-flex h-8 min-w-[2.4rem] items-center justify-center rounded-action px-1",
                   hasArtifacts
                     ? "text-[color:color-mix(in_oklab,var(--chat-foreground)_88%,var(--chat-muted-foreground))]"
                     : "text-[var(--chat-muted-foreground)] opacity-45"
@@ -131,7 +131,7 @@ export function TopBar({
                 <Page className="h-[18px] w-[18px]" aria-hidden="true" />
                 <span
                   className={cn(
-                    "pointer-events-none absolute -bottom-0 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
+                    "pointer-events-none absolute -bottom-0 -right-[0.12rem] inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
                     "text-[9px] font-semibold font-mono leading-none",
                     hasArtifacts
                       ? "bg-[var(--chat-info)] text-white dark:text-[color:color-mix(in_oklab,var(--chat-foreground)_92%,white)]"

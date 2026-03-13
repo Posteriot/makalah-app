@@ -198,9 +198,9 @@ function MilestoneItem({
         <div
           className={cn(
             "text-sm font-mono transition-colors",
-            state === "completed" && "font-semibold text-[var(--chat-foreground)]",
+            state === "completed" && "font-medium text-[color:color-mix(in_oklab,var(--chat-foreground)_82%,var(--chat-muted-foreground))]",
             state === "current" && "font-semibold text-[var(--chat-foreground)]",
-            state === "pending" && "font-medium text-[var(--chat-muted-foreground)]",
+            state === "pending" && "font-medium text-[color:color-mix(in_oklab,var(--chat-muted-foreground)_92%,var(--chat-sidebar-border))]",
             canRewind && "group-hover:text-[var(--chat-foreground)]"
           )}
         >
@@ -209,9 +209,9 @@ function MilestoneItem({
         {statusText && (
           <div
             className={cn(
-              "text-xs font-mono transition-colors",
-              state === "completed" && "text-[var(--chat-foreground)]",
-              state === "current" && "text-[var(--chat-muted-foreground)]"
+              "text-[11px] font-sans transition-colors",
+              state === "completed" && "text-[var(--chat-muted-foreground)]",
+              state === "current" && "text-[color:color-mix(in_oklab,var(--chat-foreground)_78%,var(--chat-muted-foreground))]"
             )}
           >
             {statusText}
@@ -399,7 +399,7 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
         {/* Header - Mechanical Grace: .border-hairline */}
         <div className="p-4 border-b border-[color:var(--chat-sidebar-border)]">
           <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)] mb-1">Progress</div>
-          <div className="text-xs font-mono text-[var(--chat-muted-foreground)] truncate mb-3">
+          <div className="text-xs font-sans font-medium text-[var(--chat-muted-foreground)] truncate mb-3">
             {paperTitle}
           </div>
 
@@ -411,7 +411,7 @@ export function SidebarProgress({ conversationId }: SidebarProgressProps) {
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <div className="text-xs font-mono text-[var(--chat-muted-foreground)] text-right">
+            <div className="text-xs font-sans text-[var(--chat-muted-foreground)] text-right">
               {progressPercent}% &middot; Stage {stageNumber}/{totalStages}
             </div>
           </div>

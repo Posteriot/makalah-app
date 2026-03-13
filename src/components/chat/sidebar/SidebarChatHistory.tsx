@@ -92,6 +92,11 @@ interface ConversationTreeNode {
   latestFiles: ConversationTreeFile[]
 }
 
+const TREE_CONNECTOR_CLASSES = {
+  subtreePaddingLeft: "pl-[2.95rem]",
+  branchLine: "absolute left-[-0.2rem] top-[0.95rem] h-px w-[1.05rem]",
+} as const
+
 function getLatestFiles(artifacts: ArtifactListItem[]): ConversationTreeFile[] {
   const latestMap = new Map<string, ArtifactListItem>()
 
@@ -138,10 +143,17 @@ function getLatestFiles(artifacts: ArtifactListItem[]): ConversationTreeFile[] {
   }))
 }
 
-function FileTypeBadge({ type }: { type: string }) {
+function FileTypeBadge({ type, isActive = false }: { type: string; isActive?: boolean }) {
   if (type === "refrasa") {
     return (
-      <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[var(--chat-info)] text-[9px] font-mono font-bold text-[var(--chat-info-foreground)]">
+      <span
+        className={cn(
+          "mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-mono font-bold",
+          isActive
+            ? "bg-[color:color-mix(in_oklab,var(--chat-info)_88%,white)] text-[color:color-mix(in_oklab,var(--chat-foreground)_92%,white)] dark:bg-[color:color-mix(in_oklab,var(--chat-info)_76%,white)] dark:text-[color:color-mix(in_oklab,var(--chat-foreground)_92%,white)]"
+            : "bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
+        )}
+      >
         R
       </span>
     )
@@ -149,7 +161,12 @@ function FileTypeBadge({ type }: { type: string }) {
 
   return (
     <Page
-      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--chat-muted-foreground)]"
+      className={cn(
+        "mt-0.5 h-4 w-4 shrink-0",
+        isActive
+          ? "text-[color:color-mix(in_oklab,var(--chat-info)_82%,white)] dark:text-[color:color-mix(in_oklab,var(--chat-info)_72%,white)]"
+          : "text-[var(--chat-muted-foreground)]"
+      )}
       aria-hidden="true"
     />
   )
@@ -190,6 +207,28 @@ function FolderNodeIcon({ solid }: { solid: boolean }) {
       />
     </svg>
   )
+}
+
+function getFileConnectorStyle(isFirstFile: boolean, isLastFile: boolean) {
+  const top = isFirstFile ? "-0.9rem" : "-0.55rem"
+
+  if (isLastFile) {
+    return {
+      top,
+      height: `calc(0.95rem + ${isFirstFile ? "0.9rem" : "0.55rem"})`,
+    }
+  }
+
+  return {
+    top,
+    bottom: "-0.55rem",
+  }
+}
+
+function getTreeConnectorToneClass(isActiveConversation: boolean) {
+  return isActiveConversation
+    ? "bg-[color:color-mix(in_oklab,var(--chat-sidebar-foreground)_22%,var(--chat-sidebar-accent))]"
+    : "bg-[var(--chat-border)]"
 }
 
 export function SidebarChatHistory({
@@ -651,21 +690,15 @@ export function SidebarChatHistory({
                   {hasChildren && isExpanded ? (
                     <div
                       className={cn(
-                        "relative pb-1 pl-[2.95rem]",
+                        "relative pb-1",
+                        TREE_CONNECTOR_CLASSES.subtreePaddingLeft,
                         isActiveConversation && "bg-[var(--chat-sidebar-accent)]"
                       )}
                     >
-                      <div
-                        className={cn(
-                          "absolute bottom-1 left-[2.75rem] top-[-0.9rem] w-px",
-                          isActiveConversation
-                            ? "bg-[color:color-mix(in_oklab,var(--chat-sidebar-foreground)_22%,var(--chat-sidebar-accent))]"
-                            : "bg-[var(--chat-border)]"
-                        )}
-                        aria-hidden="true"
-                      />
-                      {node.latestFiles.map((file) => {
+                      {node.latestFiles.map((file, index) => {
                         const isActiveArtifact = activeArtifactId === file._id
+                        const isLastFile = index === node.latestFiles.length - 1
+                        const isFirstFile = index === 0
 
                         return (
                           <button
@@ -684,14 +717,20 @@ export function SidebarChatHistory({
                           >
                             <span
                               className={cn(
-                                "absolute left-[-0.2rem] top-[0.95rem] h-px w-[1.05rem]",
-                                isActiveConversation
-                                  ? "bg-[color:color-mix(in_oklab,var(--chat-sidebar-foreground)_22%,var(--chat-sidebar-accent))]"
-                                  : "bg-[var(--chat-border)]"
+                                "absolute left-[-0.2rem] w-px",
+                                getTreeConnectorToneClass(isActiveConversation)
+                              )}
+                              style={getFileConnectorStyle(isFirstFile, isLastFile)}
+                              aria-hidden="true"
+                            />
+                            <span
+                              className={cn(
+                                TREE_CONNECTOR_CLASSES.branchLine,
+                                getTreeConnectorToneClass(isActiveConversation)
                               )}
                               aria-hidden="true"
                             />
-                            <FileTypeBadge type={file.type} />
+                            <FileTypeBadge type={file.type} isActive={isActiveArtifact} />
                             <span className="min-w-0 flex-1">
                               <span
                                 className={cn(
