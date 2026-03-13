@@ -11,6 +11,7 @@ import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 import { useCleanupEmptyConversations } from "@/lib/hooks/useCleanupEmptyConversations"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useArtifactTabs } from "@/lib/hooks/useArtifactTabs"
+import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 import { MobileArtifactViewer } from "./mobile/MobileArtifactViewer"
 import { MobileRefrasaViewer } from "./mobile/MobileRefrasaViewer"
 import { useSession } from "@/lib/auth-client"
@@ -43,7 +44,8 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const deepLinkArtifactId = searchParams.get("artifact")
-  const deepLinkHandled = useRef(false)
+  const deepLinkSourceMessageId = searchParams.get("sourceMessage")
+  const deepLinkHandledKey = useRef<string | null>(null)
 
   // Cleanup empty conversations ONLY on landing page (/chat without ID)
   // Don't cleanup when viewing a specific conversation - prevents deleting newly created ones
@@ -52,6 +54,10 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [mobileArtifactId, setMobileArtifactId] = useState<Id<"artifacts"> | null>(null)
   const [mobileRefrasaId, setMobileRefrasaId] = useState<Id<"artifacts"> | null>(null)
+  const [sourceFocusTarget, setSourceFocusTarget] = useState<{
+    artifactId: Id<"artifacts">
+    sourceMessageId?: Id<"messages">
+  } | null>(null)
   const isValidConvexId = (value: string | null): value is string =>
     typeof value === "string" && /^[a-z0-9]{32}$/.test(value)
   const safeConversationId = isValidConvexId(conversationId)
@@ -101,7 +107,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   useEffect(() => {
     if (!ottGracePeriod) return
     if (session) {
-      setOttGracePeriod(false)
+      queueMicrotask(() => setOttGracePeriod(false))
       // Strip consumed OTT token from URL
       const url = new URL(window.location.href)
       url.searchParams.delete("ott")
@@ -123,23 +129,53 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
 
   // Deep link: auto-open artifact panel when navigating via ?artifact=<id>
   useEffect(() => {
-    if (!deepLinkArtifactId || deepLinkHandled.current || !artifacts) return
+    if (!deepLinkArtifactId || !artifacts) {
+      deepLinkHandledKey.current = null
+      return
+    }
+
+    const deepLinkKey = `${conversationId ?? "no-conversation"}:${deepLinkArtifactId}:${deepLinkSourceMessageId ?? ""}`
+    if (deepLinkHandledKey.current === deepLinkKey) return
+
     const artifact = artifacts.find((a) => a._id === deepLinkArtifactId)
     if (!artifact) return
-    deepLinkHandled.current = true
+
+    deepLinkHandledKey.current = deepLinkKey
     openArtifactTab({
       id: artifact._id,
       title: artifact.title,
       type: artifact.type,
+      origin: "chat",
+      sourceConversationId: safeConversationId ?? undefined,
+      sourceMessageId: deepLinkSourceMessageId
+        ? (deepLinkSourceMessageId as Id<"messages">)
+        : undefined,
+      sourceKind: artifact.type === "refrasa" ? "refrasa" : "artifact",
     })
+    queueMicrotask(() =>
+      setSourceFocusTarget({
+        artifactId: artifact._id,
+        sourceMessageId: deepLinkSourceMessageId
+          ? (deepLinkSourceMessageId as Id<"messages">)
+          : undefined,
+      })
+    )
     // Clean up URL search param
     router.replace(`/chat/${conversationId}`, { scroll: false })
-  }, [deepLinkArtifactId, artifacts, conversationId, openArtifactTab, router])
+  }, [
+    artifacts,
+    conversationId,
+    deepLinkArtifactId,
+    deepLinkSourceMessageId,
+    openArtifactTab,
+    router,
+    safeConversationId,
+  ])
 
   // Handler when artifact is created or selected — opens a tab (desktop) or overlay (mobile)
   const handleArtifactSelect = (
     artifactId: Id<"artifacts">,
-    opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations">; title?: string; type?: string }
+    opts?: ArtifactOpenOptions
   ) => {
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       setMobileArtifactId(artifactId)
@@ -151,6 +187,11 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
         type: artifact?.type ?? opts?.type ?? "section",
         readOnly: opts?.readOnly,
         sourceConversationId: opts?.sourceConversationId,
+        origin: opts?.origin,
+        originSessionId: opts?.originSessionId,
+        originSessionTitle: opts?.originSessionTitle,
+        sourceMessageId: opts?.sourceMessageId,
+        sourceKind: opts?.sourceKind,
       })
     }
   }
@@ -201,6 +242,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
           onMobileMenuClick={() => setIsMobileOpen(true)}
           onArtifactSelect={handleArtifactSelect}
           artifacts={artifacts}
+          sourceFocusTarget={sourceFocusTarget}
         />
       </ChatLayout>
 

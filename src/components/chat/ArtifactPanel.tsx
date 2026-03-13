@@ -14,6 +14,7 @@ import { Page, Xmark } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { FullsizeArtifactModal } from "./FullsizeArtifactModal"
 import { Button } from "@/components/ui/button"
+import { ArtifactOriginRail } from "./ArtifactOriginRail"
 
 interface ArtifactPanelProps {
   conversationId: Id<"conversations"> | null
@@ -26,6 +27,9 @@ interface ArtifactPanelProps {
   onTabClose: (tabId: Id<"artifacts">) => void
   onOpenTab?: (tab: ArtifactTab) => void
   onUpdateTabId?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
+  onReturnToPaperRoot?: () => void
+  onReturnToPaperSession?: () => void
+  onReturnToActivePaperSession?: () => void
 }
 
 /**
@@ -54,9 +58,12 @@ export function ArtifactPanel({
   onTabClose,
   onOpenTab,
   onUpdateTabId,
+  onReturnToPaperRoot,
+  onReturnToPaperSession,
+  onReturnToActivePaperSession,
 }: ArtifactPanelProps) {
   const [isFullsizeOpen, setIsFullsizeOpen] = useState(false)
-  const { user: currentUser } = useCurrentUser()
+  const { user: currentUser, isLoading: isUserLoading } = useCurrentUser()
 
   // Ref for ArtifactViewer actions
   const viewerRef = useRef<ArtifactViewerRef>(null)
@@ -65,24 +72,15 @@ export function ArtifactPanel({
   const activeTabForQuery = activeTabId ? openTabs.find((t) => t.id === activeTabId) : null
   const isReadOnlyActive = activeTabForQuery?.readOnly ?? false
   const sourceConvId = activeTabForQuery?.sourceConversationId
+  const sourceMessageId = activeTabForQuery?.sourceMessageId
 
-  // Fetch artifacts for this conversation
-  const artifacts = useQuery(
-    api.artifacts.listByConversation,
-    conversationId && currentUser?._id
+  // Resolve active artifact directly by ID so read-only/orphan artifacts remain
+  // viewable even when the source conversation has been deleted.
+  const activeArtifact = useQuery(
+    api.artifacts.get,
+    activeTabId && currentUser?._id
       ? {
-          conversationId,
-          userId: currentUser._id,
-        }
-      : "skip"
-  )
-
-  // Query artifacts from source conversation (for read-only cross-session preview)
-  const sourceConversationArtifacts = useQuery(
-    api.artifacts.listByConversation,
-    isReadOnlyActive && sourceConvId && currentUser?._id
-      ? {
-          conversationId: sourceConvId,
+          artifactId: activeTabId,
           userId: currentUser._id,
         }
       : "skip"
@@ -98,10 +96,6 @@ export function ArtifactPanel({
   const isRefrasaTab = activeTab?.type === "refrasa"
   const isReadOnly = isReadOnlyActive
   const sourceConversationId = sourceConvId
-  const activeArtifact = activeTabId
-    ? (artifacts?.find((a) => a._id === activeTabId)
-      ?? sourceConversationArtifacts?.find((a) => a._id === activeTabId))
-    : null
   const openTabCount = openTabs.length
   const isCodeArtifact = activeArtifact
     ? activeArtifact.type === "code" || activeArtifact.format === "latex"
@@ -170,6 +164,13 @@ export function ArtifactPanel({
 
       {/* Main viewer area */}
       <div className="flex-1 overflow-hidden">
+        <ArtifactOriginRail
+          origin={activeTab?.origin}
+          originSessionTitle={activeTab?.originSessionTitle}
+          onReturnToPaperRoot={onReturnToPaperRoot}
+          onReturnToPaperSession={onReturnToPaperSession}
+          onReturnToActivePaperSession={onReturnToActivePaperSession}
+        />
         {activeTabId && isRefrasaTab && conversationId && currentUser?._id ? (
           <RefrasaTabContent
             artifactId={activeTabId}
@@ -185,6 +186,7 @@ export function ArtifactPanel({
             artifactId={activeTabId}
             readOnly={isReadOnly}
             sourceConversationId={sourceConversationId}
+            sourceMessageId={sourceMessageId}
             onCloseReadOnlyTab={() => {
               if (activeTabId && isReadOnly) {
                 onTabClose(activeTabId)
@@ -195,6 +197,11 @@ export function ArtifactPanel({
             }}
             onVersionCreated={onUpdateTabId}
           />
+        ) : activeTabId && (isUserLoading || activeArtifact === undefined) ? (
+          <div className="flex h-full flex-col items-center justify-center p-8 text-[var(--chat-muted-foreground)]">
+            <span className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-[var(--chat-muted-foreground)] border-t-transparent" />
+            <p>Memuat artifak...</p>
+          </div>
         ) : activeTabId && !activeArtifact ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
             <Page className="h-10 w-10 text-[var(--chat-muted-foreground)]" />
@@ -221,7 +228,7 @@ export function ArtifactPanel({
           <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
             <Page className="mb-4 h-12 w-12 text-[var(--chat-muted-foreground)]" />
             <p className="max-w-[260px] text-[13px] text-[var(--chat-muted-foreground)]">
-              Belum ada artifak yang dibuka. Pilih artifak dari Sidebar Paper Sessions untuk memulai workspace.
+              Belum ada artifak yang dibuka. Pilih artifak dari Riwayat Percakapan untuk mulai membaca.
             </p>
           </div>
         )}
@@ -241,11 +248,15 @@ export function ArtifactPanel({
           onVersionCreated={onUpdateTabId}
           readOnly={isReadOnly}
           sourceConversationId={sourceConversationId}
+          sourceMessageId={sourceMessageId}
           onCloseReadOnlyTab={() => {
             if (activeTabId && isReadOnly) {
               onTabClose(activeTabId)
             }
           }}
+          onReturnToPaperRoot={onReturnToPaperRoot}
+          onReturnToPaperSession={onReturnToPaperSession}
+          onReturnToActivePaperSession={onReturnToActivePaperSession}
         />
       )}
     </div>

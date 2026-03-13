@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CREDO
+"AI works better when you give tools and freedom instead of forcing them into rigid, hand-designed workflows—because general learning systems scale better."
+
+
 ## Repository Guidelines
 
 ### MANDATORY LANGUAGE USE

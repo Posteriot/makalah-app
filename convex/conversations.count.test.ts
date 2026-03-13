@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { listConversations, countConversations } from "./conversations"
+import { listConversations, listConversationsWindow, countConversations } from "./conversations"
 import { verifyAuthUserId } from "./authHelpers"
 
 vi.mock("./authHelpers", () => ({
@@ -74,6 +74,16 @@ function createMockDb() {
           orderDirection = direction
           return builder
         },
+        async paginate(opts: { numItems: number; cursor: string | null }) {
+          const items = run().slice(0, opts.numItems)
+          return {
+            page: items,
+            isDone: items.length >= run().length,
+            continueCursor: "",
+            splitCursor: null,
+            pageStatus: null,
+          }
+        },
         async take(limit: number) {
           return run().slice(0, limit)
         },
@@ -123,9 +133,28 @@ describe("conversation count query", () => {
     }
 
     const list = await callQuery(listConversations as never, db, { userId: "user_1" as never })
+    const windowed = await callQuery<
+      {
+        userId: string
+        paginationOpts: { numItems: number; cursor: string | null }
+      },
+      { page: Array<{ title: string }>; isDone: boolean }
+    >(
+      listConversationsWindow as never,
+      db,
+      {
+        userId: "user_1" as never,
+        paginationOpts: {
+          numItems: 60,
+          cursor: null,
+        },
+      }
+    )
     const total = await callQuery(countConversations as never, db, { userId: "user_1" as never })
 
     expect(list).toHaveLength(50)
+    expect(windowed.page).toHaveLength(60)
+    expect(windowed.isDone).toBe(false)
     expect(total).toBe(72)
   })
 })

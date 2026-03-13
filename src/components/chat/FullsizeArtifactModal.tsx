@@ -52,6 +52,7 @@ import { RefrasaLoadingIndicator } from "@/components/refrasa"
 import { RefrasaTabContent } from "@/components/refrasa/RefrasaTabContent"
 import type { ArtifactTab } from "@/lib/hooks/useArtifactTabs"
 import { ArtifactTabs } from "./ArtifactTabs"
+import { ArtifactOriginRail } from "./ArtifactOriginRail"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,7 +77,11 @@ interface FullsizeArtifactModalProps {
   onVersionCreated?: (oldId: Id<"artifacts">, newId: Id<"artifacts">) => void
   readOnly?: boolean
   sourceConversationId?: Id<"conversations">
+  sourceMessageId?: Id<"messages">
   onCloseReadOnlyTab?: () => void
+  onReturnToPaperRoot?: () => void
+  onReturnToPaperSession?: () => void
+  onReturnToActivePaperSession?: () => void
 }
 
 const formatToLanguage: Record<string, string> = {
@@ -154,7 +159,11 @@ export function FullsizeArtifactModal({
   onVersionCreated,
   readOnly,
   sourceConversationId,
+  sourceMessageId,
   onCloseReadOnlyTab,
+  onReturnToPaperRoot,
+  onReturnToPaperSession,
+  onReturnToActivePaperSession,
 }: FullsizeArtifactModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const primaryCloseButtonRef = useRef<HTMLButtonElement>(null)
@@ -188,6 +197,10 @@ export function FullsizeArtifactModal({
     activeArtifactId && currentUser?._id
       ? { artifactId: activeArtifactId, userId: currentUser._id }
       : "skip"
+  )
+  const sourceConversation = useQuery(
+    api.conversations.getConversation,
+    sourceConversationId ? { conversationId: sourceConversationId } : "skip"
   )
   const artifactsInSession = useQuery(
     api.artifacts.listByConversation,
@@ -227,10 +240,21 @@ export function FullsizeArtifactModal({
   })
 
   const isActiveTabRefrasa = modalTabs.find((t) => t.id === modalActiveTabId)?.type === "refrasa"
+  const activeTabMeta = modalTabs.find((t) => t.id === modalActiveTabId)
   const latestArtifactsInSession = useMemo(
     () => (artifactsInSession ? getLatestArtifactVersions(artifactsInSession) : []),
     [artifactsInSession]
   )
+  const sourceChatHref = useMemo(() => {
+    if (!sourceConversationId || !activeArtifactId) return null
+
+    const params = new URLSearchParams({ artifact: String(activeArtifactId) })
+    if (sourceMessageId) {
+      params.set("sourceMessage", String(sourceMessageId))
+    }
+
+    return `/chat/${sourceConversationId}?${params.toString()}`
+  }, [activeArtifactId, sourceConversationId, sourceMessageId])
   const sessionArtifactCount = latestArtifactsInSession.length
   const selectedArtifactValue = latestArtifactsInSession.some(
     (sessionArtifact) => sessionArtifact._id === activeArtifactId
@@ -741,17 +765,24 @@ export function FullsizeArtifactModal({
                 </div>
               ) : (
                 <div className="h-full overflow-hidden bg-[var(--chat-background)]">
+                  <ArtifactOriginRail
+                    origin={activeTabMeta?.origin}
+                    originSessionTitle={activeTabMeta?.originSessionTitle}
+                    onReturnToPaperRoot={onReturnToPaperRoot}
+                    onReturnToPaperSession={onReturnToPaperSession}
+                    onReturnToActivePaperSession={onReturnToActivePaperSession}
+                  />
                   <div className="h-full overflow-auto p-3 md:p-4 scrollbar-thin">
                     {readOnly && (
                       <div className="mb-3 flex items-center gap-2 rounded-action border border-muted bg-muted/30 px-3 py-2">
                         <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
                         <span className="font-mono text-[11px] text-muted-foreground">
                           Artifak dari sesi lain. Mode hanya baca.
-                          {sourceConversationId && (
+                          {sourceConversationId && sourceConversation && sourceChatHref ? (
                             <>
                               {" "}
                               <Link
-                                href={`/chat/${sourceConversationId}?artifact=${activeArtifactId}`}
+                                href={sourceChatHref}
                                 onClick={() => {
                                   onCloseReadOnlyTab?.()
                                   onClose()
@@ -761,7 +792,14 @@ export function FullsizeArtifactModal({
                                 Lihat percakapan terkait
                               </Link>
                             </>
-                          )}
+                          ) : sourceConversationId ? (
+                            <>
+                              {" "}
+                              <span className="text-[var(--chat-muted-foreground)]/80">
+                                Percakapan tidak ditemukan
+                              </span>
+                            </>
+                          ) : null}
                         </span>
                       </div>
                     )}
