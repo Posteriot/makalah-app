@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import { useQuery } from "convex/react"
 import { Button } from "@/components/ui/button"
 import { RefreshDouble, Plus, FastArrowLeft, SidebarCollapse, Settings, Xmark } from "iconoir-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
+import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 import { cn } from "@/lib/utils"
@@ -14,6 +16,7 @@ import { SidebarProgress } from "./sidebar/SidebarProgress"
 import type { PanelType } from "./shell/ActivityBar"
 import { CreditMeter } from "@/components/billing/CreditMeter"
 import { UserDropdown } from "@/components/layout/header/UserDropdown"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 
 /**
  * ChatSidebar Props
@@ -43,7 +46,9 @@ interface ChatSidebarProps {
   /** Callback to update conversation title */
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
   /** Callback to delete many conversations */
-  onDeleteConversations?: (ids: Id<"conversations">[]) => Promise<void>
+  onDeleteConversations: (ids: Id<"conversations">[]) => Promise<void>
+  /** Callback to delete all conversations */
+  onDeleteAllConversations: () => Promise<void>
   /** Callback when artifact is selected */
   onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => void
   /** Currently selected artifact ID in panel */
@@ -66,8 +71,6 @@ interface ChatSidebarProps {
   isCreating?: boolean
   /** Callback to collapse sidebar (desktop only) */
   onCollapseSidebar?: () => void
-  /** Callback when panel tab changes (mobile drawer tabs) */
-  onPanelChange?: (panel: PanelType) => void
 }
 
 /**
@@ -90,6 +93,7 @@ export function ChatSidebar({
   onDeleteConversation,
   onUpdateConversationTitle,
   onDeleteConversations,
+  onDeleteAllConversations,
   onArtifactSelect,
   activeArtifactId,
   isArtifactPanelOpen,
@@ -101,22 +105,29 @@ export function ChatSidebar({
   onLoadMoreConversations,
   isCreating,
   onCollapseSidebar,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onPanelChange,
 }: ChatSidebarProps) {
   const router = useRouter()
+  const { user } = useCurrentUser()
   const displayedConversationCount = conversations.length
+  const [historyManageRequestNonce, setHistoryManageRequestNonce] = useState(0)
+  const [isHistoryManageMode, setIsHistoryManageMode] = useState(false)
+  const manageModeConversationCount = useQuery(
+    api.conversations.countConversations,
+    activePanel === "chat-history" && isHistoryManageMode && user?._id
+      ? { userId: user._id }
+      : "skip"
+  )
   const resolvedTotalConversationCount =
     typeof totalConversationCount === "number"
       ? Math.max(totalConversationCount, displayedConversationCount)
+      : typeof manageModeConversationCount === "number"
+        ? Math.max(manageModeConversationCount, displayedConversationCount)
       : undefined
   const historyCountLabel = resolvedTotalConversationCount !== undefined
     ? `${displayedConversationCount} dari ${resolvedTotalConversationCount}`
     : hasMoreConversations
       ? `${displayedConversationCount}+`
       : String(displayedConversationCount)
-  const [historyManageRequestNonce, setHistoryManageRequestNonce] = useState(0)
-  const [isHistoryManageMode, setIsHistoryManageMode] = useState(false)
 
   // Render sidebar content based on active panel
   const renderContent = () => {
@@ -132,6 +143,7 @@ export function ChatSidebar({
             currentConversationId={currentConversationId}
             onDeleteConversation={onDeleteConversation}
             onDeleteConversations={onDeleteConversations}
+            onDeleteAllConversations={onDeleteAllConversations}
             onUpdateConversationTitle={onUpdateConversationTitle}
             onArtifactSelect={onArtifactSelect}
             activeArtifactId={activeArtifactId}

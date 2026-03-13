@@ -75,6 +75,7 @@ export function ChatLayout({
     createNewConversation,
     deleteConversation,
     bulkDeleteConversations,
+    deleteAllConversations,
     updateConversationTitle,
     isLoading,
     hasMore,
@@ -201,6 +202,13 @@ export function ChatLayout({
     }
   }
 
+  const handleDeleteAllConversations = async () => {
+    await deleteAllConversations()
+    if (conversationId) {
+      router.push("/chat")
+    }
+  }
+
   const handleUpdateConversationTitle = async (
     id: Id<"conversations">,
     title: string
@@ -264,6 +272,7 @@ export function ChatLayout({
             onNewChat={handleNewChat}
             onDeleteConversation={handleDeleteConversation}
             onDeleteConversations={handleDeleteConversations}
+            onDeleteAllConversations={handleDeleteAllConversations}
             onUpdateConversationTitle={handleUpdateConversationTitle}
             onArtifactSelect={onArtifactSelect}
             activeArtifactId={activeArtifactId}
@@ -330,6 +339,7 @@ export function ChatLayout({
             onNewChat={handleNewChat}
             onDeleteConversation={handleDeleteConversation}
             onDeleteConversations={handleDeleteConversations}
+            onDeleteAllConversations={handleDeleteAllConversations}
             onUpdateConversationTitle={handleUpdateConversationTitle}
             onArtifactSelect={onArtifactSelect}
             activeArtifactId={activeArtifactId}
@@ -340,7 +350,6 @@ export function ChatLayout({
             hasMoreConversations={hasMore}
             onLoadMoreConversations={loadMore}
             isCreating={isCreating}
-            onPanelChange={handlePanelChange}
           />
         </SheetContent>
       </Sheet>

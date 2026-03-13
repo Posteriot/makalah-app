@@ -42,7 +42,8 @@ interface SidebarChatHistoryProps {
   totalConversationCount?: number
   currentConversationId: string | null
   onDeleteConversation: (id: Id<"conversations">) => Promise<void> | void
-  onDeleteConversations?: (ids: Id<"conversations">[]) => Promise<unknown>
+  onDeleteConversations: (ids: Id<"conversations">[]) => Promise<unknown>
+  onDeleteAllConversations: () => Promise<unknown>
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<unknown>
   onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => void
   activeArtifactId?: Id<"artifacts"> | null
@@ -274,9 +275,11 @@ function readPersistedTreeState(): {
 
 export function SidebarChatHistory({
   conversations,
+  totalConversationCount,
   currentConversationId,
   onDeleteConversation,
   onDeleteConversations,
+  onDeleteAllConversations,
   onUpdateConversationTitle,
   onArtifactSelect,
   activeArtifactId,
@@ -346,6 +349,7 @@ export function SidebarChatHistory({
   const [isTreeStateHydrated, setIsTreeStateHydrated] = useState(false)
   const [isManageMode, setIsManageMode] = useState(false)
   const [selectedConversationIds, setSelectedConversationIds] = useState<Id<"conversations">[]>([])
+  const [isAllConversationsSelected, setIsAllConversationsSelected] = useState(false)
   const [deleteMode, setDeleteMode] = useState<"selected" | null>(null)
   const [editingId, setEditingId] = useState<Id<"conversations"> | null>(null)
   const [editValue, setEditValue] = useState("")
@@ -372,6 +376,7 @@ export function SidebarChatHistory({
     setIsManageMode((current) => {
       if (current) {
         setSelectedConversationIds([])
+        setIsAllConversationsSelected(false)
       }
       return !current
     })
@@ -449,13 +454,9 @@ export function SidebarChatHistory({
   }, [hasMore, onLoadMore])
 
   const selectedCount = selectedConversationIds.length
-  const displayedConversationIds = useMemo(
-    () => treeNodes.map((node) => node.conversationId),
-    [treeNodes]
-  )
-  const allVisibleSelected =
-    displayedConversationIds.length > 0 &&
-    displayedConversationIds.every((id) => selectedConversationIds.includes(id))
+  const selectionCountLabel = isAllConversationsSelected
+    ? String(totalConversationCount ?? conversations.length)
+    : String(selectedCount)
 
   const handleStartEdit = useCallback((conversationId: Id<"conversations">, title: string) => {
     if (!onUpdateConversationTitle || isManageMode) return
@@ -499,6 +500,7 @@ export function SidebarChatHistory({
   }, [editValue, editingId, handleCancelEdit, onUpdateConversationTitle, treeNodes])
 
   const toggleConversationSelection = (conversationId: Id<"conversations">) => {
+    setIsAllConversationsSelected(false)
     setSelectedConversationIds((current) =>
       current.includes(conversationId)
         ? current.filter((id) => id !== conversationId)
@@ -506,20 +508,29 @@ export function SidebarChatHistory({
     )
   }
 
-  const handleToggleSelectAllVisible = () => {
-    setSelectedConversationIds(allVisibleSelected ? [] : displayedConversationIds)
+  const handleToggleSelectAllConversations = () => {
+    setIsAllConversationsSelected((current) => {
+      const next = !current
+      setSelectedConversationIds([])
+      return next
+    })
   }
 
   const handleConfirmDelete = async () => {
-    if (deleteMode === null || selectedConversationIds.length === 0) return
+    if (deleteMode === null) return
+    if (!isAllConversationsSelected && selectedConversationIds.length === 0) return
 
     setIsDeleting(true)
     try {
-      if (selectedConversationIds.length === 1) {
+      if (isAllConversationsSelected) {
+        await onDeleteAllConversations()
+        setSelectedConversationIds([])
+        setIsAllConversationsSelected(false)
+      } else if (selectedConversationIds.length === 1) {
         await onDeleteConversation(selectedConversationIds[0])
         setSelectedConversationIds([])
       } else if (selectedConversationIds.length > 1) {
-        await onDeleteConversations?.(selectedConversationIds)
+        await onDeleteConversations(selectedConversationIds)
         setSelectedConversationIds([])
       }
       setDeleteMode(null)
@@ -610,17 +621,17 @@ export function SidebarChatHistory({
                 <label className="-mt-[1px] inline-flex h-[1.12rem] w-[1.12rem] items-center justify-center">
                   <input
                     type="checkbox"
-                    checked={allVisibleSelected}
-                    onChange={handleToggleSelectAllVisible}
+                    checked={isAllConversationsSelected}
+                    onChange={handleToggleSelectAllConversations}
                     className="h-3.5 w-3.5 rounded border border-[color:var(--chat-border)] bg-[var(--chat-sidebar)] accent-[var(--chat-info)]"
-                    aria-label={allVisibleSelected ? "Batal pilih semua percakapan yang tampil" : "Pilih semua percakapan yang tampil"}
+                    aria-label={isAllConversationsSelected ? "Batal pilih semua percakapan" : "Pilih semua percakapan"}
                   />
                 </label>
                 <span
                   className="min-w-0 flex-1 text-left text-[11px] font-mono text-[var(--chat-muted-foreground)]"
-                  aria-label={`${selectedCount} percakapan terpilih`}
+                  aria-label={`${selectionCountLabel} percakapan terpilih`}
                 >
-                  {selectedCount}
+                  {selectionCountLabel}
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -629,14 +640,14 @@ export function SidebarChatHistory({
                     <button
                       type="button"
                       onClick={() => setDeleteMode("selected")}
-                      disabled={selectedCount === 0}
+                      disabled={!isAllConversationsSelected && selectedCount === 0}
                       className={cn(
                         "inline-flex h-8 w-8 items-center justify-center rounded-action border border-transparent transition-colors",
-                        selectedCount === 0
+                        !isAllConversationsSelected && selectedCount === 0
                           ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-45"
                           : "text-[var(--chat-destructive)] hover:bg-[color:color-mix(in_oklab,var(--chat-destructive)_12%,transparent)]"
                       )}
-                      aria-label="Hapus percakapan terpilih"
+                      aria-label="Hapus percakapan yang dipilih"
                     >
                       <Trash className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -876,7 +887,9 @@ export function SidebarChatHistory({
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Percakapan?</AlertDialogTitle>
             <AlertDialogDescription>
-              Percakapan yang dicentang akan dihapus permanen bersama sesi paper, artifact, dan refrasa terkait.
+              {isAllConversationsSelected
+                ? "Semua percakapan akan dihapus permanen bersama sesi paper, artifact, dan refrasa terkait."
+                : "Percakapan yang dicentang akan dihapus permanen bersama sesi paper, artifact, dan refrasa terkait."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

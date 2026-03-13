@@ -5,6 +5,7 @@ import { ChatLayout } from "./ChatLayout"
 const mockPush = vi.fn()
 const mockLoadMore = vi.fn()
 const mockDeleteMany = vi.fn()
+const mockDeleteAll = vi.fn()
 const mockToggleArtifactPanel = vi.fn()
 
 vi.mock("next/navigation", () => ({
@@ -20,6 +21,7 @@ vi.mock("@/lib/hooks/useConversations", () => ({
     createNewConversation: vi.fn(),
     deleteConversation: vi.fn(),
     bulkDeleteConversations: mockDeleteMany,
+    deleteAllConversations: mockDeleteAll,
     updateConversationTitle: vi.fn(),
     isLoading: false,
     hasMore: true,
@@ -76,6 +78,7 @@ describe("ChatLayout sidebar tree architecture", () => {
     mockPush.mockReset()
     mockLoadMore.mockReset()
     mockDeleteMany.mockReset()
+    mockDeleteAll.mockReset()
     mockToggleArtifactPanel.mockReset()
 
     Object.defineProperty(window, "matchMedia", {

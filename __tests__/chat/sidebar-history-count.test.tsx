@@ -29,6 +29,14 @@ vi.mock("@/components/layout/header/UserDropdown", () => ({
   UserDropdown: () => <div>mock user dropdown</div>,
 }))
 
+vi.mock("@/lib/hooks/useCurrentUser", () => ({
+  useCurrentUser: () => ({ user: null }),
+}))
+
+vi.mock("convex/react", () => ({
+  useQuery: () => undefined,
+}))
+
 function buildConversation(id: string) {
   return {
     _id: id as never,
@@ -50,6 +58,8 @@ describe("sidebar history count transparency", () => {
         currentConversationId={null}
         onNewChat={vi.fn()}
         onDeleteConversation={vi.fn()}
+        onDeleteConversations={vi.fn()}
+        onDeleteAllConversations={vi.fn()}
         hasMoreConversations={true}
       />
     )
@@ -71,6 +81,8 @@ describe("sidebar history count transparency", () => {
         currentConversationId={null}
         onNewChat={vi.fn()}
         onDeleteConversation={vi.fn()}
+        onDeleteConversations={vi.fn()}
+        onDeleteAllConversations={vi.fn()}
       />
     )
 

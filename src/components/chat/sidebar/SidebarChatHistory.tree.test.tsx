@@ -1,5 +1,6 @@
 "use client"
 
+import type { ComponentProps, ReactNode } from "react"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { SidebarChatHistory } from "./SidebarChatHistory"
@@ -23,7 +24,7 @@ vi.mock("next/link", () => ({
     ...props
   }: {
     href: string
-    children: React.ReactNode
+    children: ReactNode
     onClick?: () => void
   }) => (
     <a href={href} onClick={onClick} {...props}>
@@ -128,14 +129,24 @@ describe("SidebarChatHistory tree", () => {
     })
   })
 
-  it("meminta data paper hanya untuk conversation yang sedang tampil", () => {
-    render(
+  function renderSidebar(
+    overrides: Partial<ComponentProps<typeof SidebarChatHistory>> = {}
+  ) {
+    return render(
       <SidebarChatHistory
         conversations={conversations as never}
+        totalConversationCount={3}
         currentConversationId="conversation-active"
         onDeleteConversation={vi.fn()}
+        onDeleteConversations={vi.fn()}
+        onDeleteAllConversations={vi.fn()}
+        {...overrides}
       />
     )
+  }
+
+  it("meminta data paper hanya untuk conversation yang sedang tampil", () => {
+    renderSidebar()
 
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.anything(),
@@ -146,13 +157,7 @@ describe("SidebarChatHistory tree", () => {
     )
   })
   it("auto-expand percakapan aktif dan hanya menampilkan latest file", () => {
-    render(
-      <SidebarChatHistory
-        conversations={conversations as never}
-        currentConversationId="conversation-active"
-        onDeleteConversation={vi.fn()}
-      />
-    )
+    renderSidebar()
 
     expect(screen.getByText("Pendahuluan")).toBeInTheDocument()
     expect(screen.getByText("Refrasa Pendahuluan")).toBeInTheDocument()
@@ -161,13 +166,7 @@ describe("SidebarChatHistory tree", () => {
   })
 
   it("expand manual pada percakapan lain menutup subtree sebelumnya", () => {
-    render(
-      <SidebarChatHistory
-        conversations={conversations as never}
-        currentConversationId="conversation-active"
-        onDeleteConversation={vi.fn()}
-      />
-    )
+    renderSidebar()
 
     fireEvent.click(screen.getByRole("button", { name: /buka subtree percakapan/i }))
 
@@ -178,14 +177,9 @@ describe("SidebarChatHistory tree", () => {
   it("membuka child file nonaktif sebagai read-only artifact", () => {
     const onArtifactSelect = vi.fn()
 
-    render(
-      <SidebarChatHistory
-        conversations={conversations as never}
-        currentConversationId="conversation-active"
-        onDeleteConversation={vi.fn()}
-        onArtifactSelect={onArtifactSelect}
-      />
-    )
+    renderSidebar({
+      onArtifactSelect,
+    })
 
     fireEvent.click(screen.getByRole("button", { name: /buka subtree percakapan/i }))
     fireEvent.click(screen.getByText("Outline Awal").closest("button") as HTMLButtonElement)
@@ -204,17 +198,13 @@ describe("SidebarChatHistory tree", () => {
   it("mode kelola mendukung hapus satu percakapan", async () => {
     const onDeleteConversation = vi.fn()
 
-    render(
-      <SidebarChatHistory
-        conversations={conversations as never}
-        currentConversationId="conversation-active"
-        onDeleteConversation={onDeleteConversation}
-        manageRequestNonce={1}
-      />
-    )
+    renderSidebar({
+      onDeleteConversation,
+      manageRequestNonce: 1,
+    })
 
     fireEvent.click(screen.getByRole("checkbox", { name: /pilih percakapan percakapan aktif/i }))
-    fireEvent.click(screen.getByRole("button", { name: /hapus percakapan terpilih/i }))
+    fireEvent.click(screen.getByRole("button", { name: /hapus percakapan yang dipilih/i }))
     fireEvent.click(screen.getAllByRole("button", { name: /^hapus$/i }).at(-1) as HTMLButtonElement)
 
     await waitFor(() => {
@@ -222,27 +212,36 @@ describe("SidebarChatHistory tree", () => {
     })
   })
 
+  it("checkbox utama memicu hapus semua percakapan", async () => {
+    const onDeleteAllConversations = vi.fn()
+    const onDeleteConversations = vi.fn()
+
+    renderSidebar({
+      totalConversationCount: 100,
+      onDeleteConversations,
+      onDeleteAllConversations,
+      manageRequestNonce: 1,
+    })
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /pilih semua percakapan/i }))
+    fireEvent.click(screen.getByRole("button", { name: /hapus percakapan yang dipilih/i }))
+    fireEvent.click(screen.getAllByRole("button", { name: /^hapus$/i }).at(-1) as HTMLButtonElement)
+
+    await waitFor(() => {
+      expect(onDeleteAllConversations).toHaveBeenCalledTimes(1)
+      expect(onDeleteConversations).not.toHaveBeenCalled()
+    })
+  })
+
   it("menghormati collapse manual setelah remount", () => {
-    const firstRender = render(
-      <SidebarChatHistory
-        conversations={conversations as never}
-        currentConversationId="conversation-active"
-        onDeleteConversation={vi.fn()}
-      />
-    )
+    const firstRender = renderSidebar()
 
     fireEvent.click(screen.getByRole("button", { name: /tutup subtree percakapan/i }))
     expect(screen.queryByText("Pendahuluan")).not.toBeInTheDocument()
 
     firstRender.unmount()
 
-    render(
-      <SidebarChatHistory
-        conversations={conversations as never}
-        currentConversationId="conversation-active"
-        onDeleteConversation={vi.fn()}
-      />
-    )
+    renderSidebar()
 
     expect(screen.queryByText("Pendahuluan")).not.toBeInTheDocument()
   })
