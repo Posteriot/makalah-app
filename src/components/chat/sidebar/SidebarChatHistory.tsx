@@ -690,7 +690,7 @@ export function SidebarChatHistory({
                         >
                           <NavArrowRight
                             className={cn(
-                              "h-[0.95rem] w-[0.95rem] text-[var(--chat-info)] transition-transform duration-150",
+                              "h-[0.95rem] w-[0.95rem] text-[var(--chat-muted-foreground)] transition-transform duration-150",
                               isExpanded && "rotate-90"
                             )}
                             aria-hidden="true"
