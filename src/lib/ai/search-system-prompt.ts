@@ -24,7 +24,7 @@ export function augmentUserMessageForSearch<T extends { role: string; content: u
     if (result[i].role === "user" && typeof result[i].content === "string") {
       result[i] = {
         ...result[i],
-        content: `${result[i].content}\n\n[Search broadly. Cite at least 10 sources from many different domains. Include both domestic and international sources. Do not over-rely on any single domain.]`,
+        content: `${result[i].content}\n\n[Search broadly. Cite at least 10 sources from many different domains. Include both domestic and international sources. Do not over-rely on any single domain. When relevant, prioritize including sources from: academic databases (Google Scholar, Scopus, ResearchGate, SINTA, Garuda), Indonesian university repositories (UI, UGM, ITB, UIN, Unair), and reputable Indonesian media (Kompas, Tempo, Republika). These are preferred sources — do not exclude other credible sources.]`,
       }
       break
     }
