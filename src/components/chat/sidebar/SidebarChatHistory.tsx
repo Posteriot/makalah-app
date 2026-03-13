@@ -515,7 +515,7 @@ export function SidebarChatHistory({
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="py-1">
+          <div className="pb-1">
             {treeNodes.map((node) => {
               const hasChildren = node.latestFiles.length > 0
               const isExpanded = expandedConversationId === node.conversationId
