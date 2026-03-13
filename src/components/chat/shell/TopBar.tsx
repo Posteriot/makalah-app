@@ -5,8 +5,8 @@ import { useTheme } from "next-themes"
 import {
   SunLight,
   HalfMoon,
-  FastArrowRightSquare,
   FastArrowRight,
+  Page,
 } from "iconoir-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -39,13 +39,13 @@ interface TopBarProps {
  * Content scrolls below it, not behind it.
  *
  * Left: Expand sidebar toggle (only when sidebar collapsed)
- * Right: Theme toggle, Panel toggle, User dropdown
+ * Right: Theme toggle, file indicator, User dropdown
  */
 export function TopBar({
   isSidebarCollapsed,
   onToggleSidebar,
-  isPanelCollapsed,
-  onTogglePanel,
+  isPanelCollapsed: _isPanelCollapsed,
+  onTogglePanel: _onTogglePanel,
   artifactCount,
 }: TopBarProps) {
   const { resolvedTheme, setTheme } = useTheme()
@@ -112,56 +112,40 @@ export function TopBar({
             </button>
           )}
 
-          {/* Artifact Panel Toggle */}
+          {/* Artifact File Indicator */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                onClick={hasArtifacts ? onTogglePanel : undefined}
-                disabled={!hasArtifacts}
+              <div
                 className={cn(
                   "relative mr-1 inline-flex h-8 w-8 items-center justify-center rounded-action",
-                  "transition-colors duration-150",
-                  hasArtifacts &&
-                    isPanelCollapsed &&
-                    "border-transparent bg-transparent text-[var(--chat-muted-foreground)] hover:bg-transparent hover:text-[var(--chat-foreground)]",
-                  hasArtifacts &&
-                    !isPanelCollapsed &&
-                    "border-transparent bg-transparent text-[var(--chat-foreground)] hover:bg-transparent hover:text-[var(--chat-foreground)]",
-                  !hasArtifacts &&
-                    "cursor-not-allowed border border-transparent bg-transparent text-[var(--chat-muted-foreground)] hover:bg-transparent hover:text-[var(--chat-muted-foreground)]"
+                  hasArtifacts
+                    ? "text-[var(--chat-info)]"
+                    : "text-[var(--chat-muted-foreground)] opacity-45"
                 )}
                 aria-label={
-                  !hasArtifacts
-                    ? "Panel artifak nonaktif karena belum ada artifak"
-                    : isPanelCollapsed
-                      ? `Buka panel artifak (${artifactCount})`
-                      : `Tutup panel artifak (${artifactCount})`
+                  hasArtifacts
+                    ? `${artifactCount} artifak tersedia`
+                    : "Belum ada artifak"
                 }
-                aria-pressed={hasArtifacts ? !isPanelCollapsed : undefined}
               >
-                <FastArrowRightSquare
+                <Page className="h-[18px] w-[18px]" aria-hidden="true" />
+                <span
                   className={cn(
-                    "h-[20px] w-[20px]",
-                    isPanelCollapsed && "rotate-180"
+                    "pointer-events-none absolute -bottom-0 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
+                    "text-[9px] font-semibold font-mono leading-none",
+                    hasArtifacts
+                      ? "bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
+                      : "bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
                   )}
-                />
-                {hasArtifacts ? (
-                  <span
-                    className={cn(
-                      "pointer-events-none absolute -bottom-0 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
-                      "text-[9px] font-semibold font-mono leading-none",
-                      "bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
-                    )}
-                  >
-                    {compactArtifactCount}
-                  </span>
-                ) : null}
-              </button>
+                >
+                  {compactArtifactCount}
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
               {!hasArtifacts
-                ? "Belum ada artifak untuk dibuka"
-                : `${isPanelCollapsed ? "Panel tertutup" : "Panel terbuka"} • ${artifactCount} artifak`}
+                ? "Belum ada artifak pada sesi ini"
+                : `${artifactCount} artifak pada sesi ini`}
             </TooltipContent>
           </Tooltip>
 
