@@ -119,7 +119,7 @@ export function TopBar({
                 className={cn(
                   "relative mr-1 inline-flex h-8 w-8 items-center justify-center rounded-action",
                   hasArtifacts
-                    ? "text-[var(--chat-info)]"
+                    ? "text-[color:color-mix(in_oklab,var(--chat-foreground)_88%,var(--chat-muted-foreground))]"
                     : "text-[var(--chat-muted-foreground)] opacity-45"
                 )}
                 aria-label={
@@ -134,7 +134,7 @@ export function TopBar({
                     "pointer-events-none absolute -bottom-0 -right-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1",
                     "text-[9px] font-semibold font-mono leading-none",
                     hasArtifacts
-                      ? "bg-[var(--chat-info)] text-[var(--chat-info-foreground)]"
+                      ? "bg-[var(--chat-info)] text-white dark:text-[color:color-mix(in_oklab,var(--chat-foreground)_92%,white)]"
                       : "bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
                   )}
                 >
