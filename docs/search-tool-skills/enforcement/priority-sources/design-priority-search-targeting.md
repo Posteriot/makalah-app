@@ -140,7 +140,10 @@ policy analysis, and Indonesian socio-cultural context.
 
 ### 4C. `src/lib/ai/skills/web-search-quality/SKILL.md` — Enrich STAGE CONTEXT
 
-Each of the 6 active search stages gets 1-2 sentences referencing priority sources:
+Each of the 6 **active** search stages gets 1-2 sentences referencing priority sources.
+The 8 **passive** stages (outline, abstrak, hasil, kesimpulan, pembaruan_abstrak,
+daftar_pustaka, lampiran, judul) are NOT individually enriched — they fall back to
+`### default` guidance, which includes general priority source preference.
 
 | Stage | Addition |
 |-------|----------|
