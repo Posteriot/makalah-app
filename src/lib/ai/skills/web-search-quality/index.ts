@@ -104,6 +104,11 @@ export const webSearchQualitySkill: WebSearchSkill = {
     // Compose instructions
     const parts: string[] = []
 
+    const prioritySources = parsed.sections.get("PRIORITY SOURCES")
+    if (prioritySources) {
+      parts.push(`## PRIORITY SOURCES\n\n${prioritySources}`)
+    }
+
     const researchStrategy = parsed.sections.get("RESEARCH SOURCE STRATEGY")
     if (researchStrategy) {
       parts.push(`## RESEARCH SOURCE STRATEGY\n\n${researchStrategy}`)
