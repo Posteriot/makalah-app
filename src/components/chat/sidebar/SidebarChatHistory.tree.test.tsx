@@ -58,6 +58,8 @@ describe("SidebarChatHistory tree", () => {
   ]
 
   beforeEach(() => {
+    window.localStorage.clear()
+
     mockUseCurrentUser.mockReturnValue({
       user: { _id: "user-1" },
     })
@@ -201,5 +203,30 @@ describe("SidebarChatHistory tree", () => {
     await waitFor(() => {
       expect(onDeleteConversation).toHaveBeenCalledWith("conversation-active")
     })
+  })
+
+  it("menghormati collapse manual setelah remount", () => {
+    const firstRender = render(
+      <SidebarChatHistory
+        conversations={conversations as never}
+        currentConversationId="conversation-active"
+        onDeleteConversation={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /tutup subtree percakapan/i }))
+    expect(screen.queryByText("Pendahuluan")).not.toBeInTheDocument()
+
+    firstRender.unmount()
+
+    render(
+      <SidebarChatHistory
+        conversations={conversations as never}
+        currentConversationId="conversation-active"
+        onDeleteConversation={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByText("Pendahuluan")).not.toBeInTheDocument()
   })
 })

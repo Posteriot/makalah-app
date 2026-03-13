@@ -97,6 +97,8 @@ const TREE_CONNECTOR_CLASSES = {
   branchLine: "absolute left-[-0.2rem] top-[0.95rem] h-px w-[1.05rem]",
 } as const
 
+const TREE_STATE_STORAGE_KEY = "chat-sidebar-history-tree-state:v1"
+
 function getLatestFiles(artifacts: ArtifactListItem[]): ConversationTreeFile[] {
   const latestMap = new Map<string, ArtifactListItem>()
 
@@ -231,6 +233,45 @@ function getTreeConnectorToneClass(isActiveConversation: boolean) {
     : "bg-[var(--chat-border)]"
 }
 
+function readPersistedTreeState(): {
+  expandedConversationId: string | null
+  manuallyCollapsedConversationIds: string[]
+} {
+  if (typeof window === "undefined") {
+    return {
+      expandedConversationId: null,
+      manuallyCollapsedConversationIds: [],
+    }
+  }
+
+  try {
+    const raw = window.localStorage.getItem(TREE_STATE_STORAGE_KEY)
+    if (!raw) {
+      return {
+        expandedConversationId: null,
+        manuallyCollapsedConversationIds: [],
+      }
+    }
+
+    const parsed = JSON.parse(raw) as {
+      expandedConversationId?: string | null
+      manuallyCollapsedConversationIds?: string[]
+    }
+
+    return {
+      expandedConversationId: parsed.expandedConversationId ?? null,
+      manuallyCollapsedConversationIds: Array.isArray(parsed.manuallyCollapsedConversationIds)
+        ? parsed.manuallyCollapsedConversationIds
+        : [],
+    }
+  } catch {
+    return {
+      expandedConversationId: null,
+      manuallyCollapsedConversationIds: [],
+    }
+  }
+}
+
 export function SidebarChatHistory({
   conversations,
   currentConversationId,
@@ -298,6 +339,8 @@ export function SidebarChatHistory({
   }, [artifacts, conversations, paperSessions])
 
   const [expandedConversationId, setExpandedConversationId] = useState<Id<"conversations"> | null>(null)
+  const [manuallyCollapsedConversationIds, setManuallyCollapsedConversationIds] = useState<string[]>([])
+  const [isTreeStateHydrated, setIsTreeStateHydrated] = useState(false)
   const [isManageMode, setIsManageMode] = useState(false)
   const [selectedConversationIds, setSelectedConversationIds] = useState<Id<"conversations">[]>([])
   const [deleteMode, setDeleteMode] = useState<"selected" | "all" | null>(null)
@@ -311,6 +354,17 @@ export function SidebarChatHistory({
   }, [isManageMode, onManageModeChange])
 
   useEffect(() => {
+    if (isTreeStateHydrated) return
+
+    const persistedState = readPersistedTreeState()
+    setExpandedConversationId(
+      persistedState.expandedConversationId as Id<"conversations"> | null
+    )
+    setManuallyCollapsedConversationIds(persistedState.manuallyCollapsedConversationIds)
+    setIsTreeStateHydrated(true)
+  }, [isTreeStateHydrated])
+
+  useEffect(() => {
     if (manageRequestNonce === 0) return
     setIsManageMode((current) => {
       if (current) {
@@ -321,14 +375,44 @@ export function SidebarChatHistory({
   }, [manageRequestNonce])
 
   useEffect(() => {
+    if (!isTreeStateHydrated) return
+    if (paperSessions === undefined || artifacts === undefined) return
     if (lastSyncedConversationIdRef.current === currentConversationId) return
 
     const activeNode = treeNodes.find((node) => String(node.conversationId) === currentConversationId)
     if (activeNode?.latestFiles.length) {
-      setExpandedConversationId(activeNode.conversationId)
+      const isManuallyCollapsed = manuallyCollapsedConversationIds.includes(
+        String(activeNode.conversationId)
+      )
+
+      setExpandedConversationId(
+        isManuallyCollapsed ? null : activeNode.conversationId
+      )
+    } else if (currentConversationId) {
+      setExpandedConversationId(null)
     }
+
     lastSyncedConversationIdRef.current = currentConversationId
-  }, [currentConversationId, treeNodes])
+  }, [
+    artifacts,
+    currentConversationId,
+    isTreeStateHydrated,
+    manuallyCollapsedConversationIds,
+    paperSessions,
+    treeNodes,
+  ])
+
+  useEffect(() => {
+    if (!isTreeStateHydrated || typeof window === "undefined") return
+
+    window.localStorage.setItem(
+      TREE_STATE_STORAGE_KEY,
+      JSON.stringify({
+        expandedConversationId,
+        manuallyCollapsedConversationIds,
+      })
+    )
+  }, [expandedConversationId, isTreeStateHydrated, manuallyCollapsedConversationIds])
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -473,6 +557,26 @@ export function SidebarChatHistory({
     onCloseMobile?.()
   }
 
+  const handleToggleConversationTree = useCallback((conversationId: Id<"conversations">) => {
+    setExpandedConversationId((current) => {
+      const willCollapse = current === conversationId
+
+      setManuallyCollapsedConversationIds((existing) => {
+        const next = new Set(existing)
+
+        if (willCollapse) {
+          next.add(String(conversationId))
+        } else {
+          next.delete(String(conversationId))
+        }
+
+        return Array.from(next)
+      })
+
+      return willCollapse ? null : conversationId
+    })
+  }, [])
+
   if (isLoading || paperSessions === undefined || artifacts === undefined) {
     return (
       <div className="flex h-full flex-col">
@@ -578,11 +682,7 @@ export function SidebarChatHistory({
                       {hasChildren ? (
                         <button
                           type="button"
-                          onClick={() =>
-                            setExpandedConversationId((current) =>
-                              current === node.conversationId ? null : node.conversationId
-                            )
-                          }
+                          onClick={() => handleToggleConversationTree(node.conversationId)}
                           className="flex h-[1.12rem] w-[1.12rem] items-center justify-center rounded-action text-[var(--chat-muted-foreground)] transition-colors hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]"
                           aria-label={isExpanded ? "Tutup subtree percakapan" : "Buka subtree percakapan"}
                         >
