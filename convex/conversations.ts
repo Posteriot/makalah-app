@@ -134,22 +134,6 @@ export const listConversations = query({
     },
 })
 
-export const listConversationsWindow = query({
-    args: {
-        userId: v.id("users"),
-        limit: v.number(),
-    },
-    handler: async (ctx, { userId, limit }) => {
-        if (!await verifyAuthUserId(ctx, userId)) return []
-        const safeLimit = Math.max(1, Math.floor(limit))
-        return await ctx.db
-            .query("conversations")
-            .withIndex("by_user", (q) => q.eq("userId", userId))
-            .order("desc")
-            .take(safeLimit)
-    },
-})
-
 export const countConversations = query({
     args: { userId: v.id("users") },
     handler: async (ctx, { userId }) => {

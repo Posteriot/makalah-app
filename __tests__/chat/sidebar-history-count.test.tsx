@@ -9,15 +9,12 @@ vi.mock("next/navigation", () => ({
 }))
 
 vi.mock("next/image", () => ({
+  // eslint-disable-next-line @next/next/no-img-element
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} alt={props.alt ?? ""} />,
 }))
 
 vi.mock("@/components/chat/sidebar/SidebarChatHistory", () => ({
   SidebarChatHistory: () => <div>mock history</div>,
-}))
-
-vi.mock("@/components/chat/sidebar/SidebarPaperSessions", () => ({
-  SidebarPaperSessions: () => <div>mock paper</div>,
 }))
 
 vi.mock("@/components/chat/sidebar/SidebarProgress", () => ({
