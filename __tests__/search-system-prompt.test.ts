@@ -38,7 +38,7 @@ describe("augmentUserMessageForSearch", () => {
     const messages = [{ role: "user", content: "test query" }]
     const result = augmentUserMessageForSearch(messages)
     const content = result[0].content as string
-    expect(content).toContain("UI")
+    expect(content).toContain("UI, UGM")
     expect(content).toContain("UGM")
     expect(content).toContain("ITB")
     expect(content).toContain("UIN")
