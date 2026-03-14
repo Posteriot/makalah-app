@@ -613,12 +613,12 @@ export function SidebarChatHistory({
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        <div className={cn("shrink-0 border-b border-[color:var(--chat-border)] px-3 py-2", !isManageMode && "hidden md:block")}>
-          {isManageMode ? (
+        {isManageMode ? (
+          <div className="shrink-0 border-b border-[color:var(--chat-border)] px-3 py-1.5">
             <div className="flex items-center justify-between gap-2">
               <div className="grid min-w-0 flex-1 grid-cols-[1rem_1.12rem_minmax(0,1fr)] items-center gap-2">
                 <span className="h-[1.12rem] w-4 shrink-0" aria-hidden="true" />
-                <label className="-mt-[1px] inline-flex h-[1.12rem] w-[1.12rem] items-center justify-center">
+                <label className="inline-flex h-[1.12rem] w-[1.12rem] items-center justify-center">
                   <input
                     type="checkbox"
                     checked={isAllConversationsSelected}
@@ -656,11 +656,11 @@ export function SidebarChatHistory({
                 </Tooltip>
               </div>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-          <div className="pb-1">
+          <div className={cn("pb-1", isManageMode && "pt-1.5")}>
             {treeNodes.map((node) => {
               const hasChildren = node.latestFiles.length > 0
               const isExpanded = expandedConversationId === node.conversationId

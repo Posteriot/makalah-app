@@ -185,7 +185,7 @@ export function ChatSidebar({
 
       {/* New Chat button — outline style matching chat toolbar buttons */}
       {activePanel === "chat-history" && (
-        <div className="hidden md:block shrink-0 px-2 pt-3 pb-2.5">
+        <div className="hidden md:block shrink-0 px-2 pb-0 pt-3">
           <Button
             onClick={() => {
               onNewChat()
@@ -219,31 +219,33 @@ export function ChatSidebar({
 
       {/* Section header — Riwayat label with count badge */}
       {activePanel === "chat-history" && (
-        <div className="shrink-0 flex items-center justify-between bg-[var(--chat-accent)] px-3 py-2 md:py-2.5">
+        <div className={cn(
+          "shrink-0 flex items-center justify-between bg-[var(--chat-accent)] px-3",
+          isHistoryManageMode ? "py-1.5 md:py-1.5" : "py-2 md:py-2.5"
+        )}>
           <div className="flex min-w-0 items-center gap-2">
             <div
               className={cn(
-                "hidden min-w-0 rounded-action border px-3 py-1.5 transition-colors duration-150 md:block",
+                "hidden min-w-0 items-center gap-2 md:flex",
+                "transition-colors duration-150",
                 isHistoryManageMode
-                  ? "border-[color:color-mix(in_oklab,var(--chat-info)_28%,var(--chat-sidebar-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_8%,var(--chat-sidebar))]"
-                  : "border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]"
+                  ? "text-[color:color-mix(in_oklab,var(--chat-info)_80%,var(--chat-sidebar-foreground))]"
+                  : "text-[var(--chat-sidebar-foreground)]"
               )}
             >
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
-                  Riwayat
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-badge border px-2 py-0.5 text-[10px] font-mono font-semibold transition-colors duration-150",
-                    isHistoryManageMode
-                      ? "border-[color:color-mix(in_oklab,var(--chat-info)_24%,var(--chat-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_14%,var(--chat-muted))] text-[color:color-mix(in_oklab,var(--chat-info)_45%,var(--chat-muted-foreground))]"
-                      : "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
-                  )}
-                >
-                  {historyCountLabel}
-                </span>
-              </div>
+              <span className="truncate text-sm font-sans font-semibold">
+                Riwayat
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 rounded-badge border px-2 py-0.5 text-[10px] font-mono font-semibold transition-colors duration-150",
+                  isHistoryManageMode
+                    ? "border-[color:color-mix(in_oklab,var(--chat-info)_24%,var(--chat-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_14%,var(--chat-muted))] text-[color:color-mix(in_oklab,var(--chat-info)_45%,var(--chat-muted-foreground))]"
+                    : "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
+                )}
+              >
+                {historyCountLabel}
+              </span>
             </div>
 
             <div className="flex min-w-0 items-center gap-2 md:hidden">
