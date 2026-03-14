@@ -330,6 +330,42 @@ export function ChatLayout({
           <SheetHeader className="sr-only">
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
+          <div className="border-b border-[color:var(--chat-sidebar-border)] px-3 py-2 md:hidden">
+            <div
+              role="tablist"
+              aria-label="Panel workspace mobile"
+              className="grid grid-cols-2 gap-1 rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] p-1"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activePanel === "chat-history"}
+                onClick={() => handlePanelChange("chat-history")}
+                className={cn(
+                  "rounded-action px-3 py-2 text-xs font-mono font-semibold uppercase tracking-[0.14em] transition-colors duration-150",
+                  activePanel === "chat-history"
+                    ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
+                    : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)]"
+                )}
+              >
+                Riwayat Percakapan
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activePanel === "progress"}
+                onClick={() => handlePanelChange("progress")}
+                className={cn(
+                  "rounded-action px-3 py-2 text-xs font-mono font-semibold uppercase tracking-[0.14em] transition-colors duration-150",
+                  activePanel === "progress"
+                    ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
+                    : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)]"
+                )}
+              >
+                Linimasa Progres
+              </button>
+            </div>
+          </div>
           <ChatSidebar
             className="w-full border-none"
             activePanel={activePanel}
