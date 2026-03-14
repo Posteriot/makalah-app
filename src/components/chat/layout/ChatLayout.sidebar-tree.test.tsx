@@ -133,4 +133,24 @@ describe("ChatLayout sidebar tree architecture", () => {
       expect(mockPush).toHaveBeenCalledWith("/chat")
     })
   })
+
+  it("menyediakan switcher mobile untuk berpindah dari riwayat ke linimasa progres", async () => {
+    render(
+      <ChatLayout
+        conversationId="conversation-active"
+        artifactPanel={<div data-testid="artifact-panel">artifact-panel</div>}
+      >
+        <div>chat-window</div>
+      </ChatLayout>
+    )
+
+    expect(screen.getByRole("tab", { name: /riwayat percakapan/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /linimasa progres/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("tab", { name: /linimasa progres/i }))
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("chat-sidebar")[0]).toHaveTextContent("progress")
+    })
+  })
 })

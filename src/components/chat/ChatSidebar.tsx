@@ -3,10 +3,8 @@
 import { useState } from "react"
 import { useQuery } from "convex/react"
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft, SidebarCollapse, Settings, Xmark } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, Settings, Xmark } from "iconoir-react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
@@ -163,8 +161,7 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "h-full w-full overflow-visible md:overflow-hidden border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)]",
-        "flex flex-col",
+        "flex h-full min-h-0 w-full flex-col overflow-visible border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)] md:overflow-hidden",
         className
       )}
     >
@@ -222,32 +219,11 @@ export function ChatSidebar({
 
       {/* Section header — Riwayat label with count badge */}
       {activePanel === "chat-history" && (
-        <div className="shrink-0 flex items-center justify-between bg-[var(--chat-accent)] px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link
-              href="/"
-              aria-label="Home"
-              className="md:hidden inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--chat-sidebar-foreground)] transition-opacity hover:opacity-80"
-              onClick={() => onCloseMobile?.()}
-            >
-              <Image
-                src="/logo/makalah_logo_light.svg"
-                alt="Makalah"
-                width={20}
-                height={20}
-                className="hidden dark:block"
-              />
-              <Image
-                src="/logo/makalah_logo_dark.svg"
-                alt="Makalah"
-                width={20}
-                height={20}
-                className="block dark:hidden"
-              />
-            </Link>
+        <div className="shrink-0 flex items-center justify-between bg-[var(--chat-accent)] px-3 py-2 md:py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
             <div
               className={cn(
-                "min-w-0 rounded-action border px-3 py-1.5 transition-colors duration-150",
+                "hidden min-w-0 rounded-action border px-3 py-1.5 transition-colors duration-150 md:block",
                 isHistoryManageMode
                   ? "border-[color:color-mix(in_oklab,var(--chat-info)_28%,var(--chat-sidebar-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_8%,var(--chat-sidebar))]"
                   : "border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]"
@@ -269,6 +245,22 @@ export function ChatSidebar({
                 </span>
               </div>
             </div>
+
+            <div className="flex min-w-0 items-center gap-2 md:hidden">
+              <span className="truncate text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
+                Percakapan
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 rounded-badge border px-2 py-0.5 text-[10px] font-mono font-semibold leading-none transition-colors duration-150",
+                  isHistoryManageMode
+                    ? "border-[color:color-mix(in_oklab,var(--chat-info)_24%,var(--chat-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_14%,var(--chat-muted))] text-[color:color-mix(in_oklab,var(--chat-info)_45%,var(--chat-muted-foreground))]"
+                    : "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
+                )}
+              >
+                {historyCountLabel}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -288,37 +280,35 @@ export function ChatSidebar({
                 <Settings className="h-4 w-4" aria-hidden="true" />
               )}
             </button>
-            {/* Mobile: SidebarCollapse to close drawer */}
-            <button
-              onClick={onCloseMobile}
-              className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
-              aria-label="Close sidebar"
-            >
-              <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />
-            </button>
           </div>
         </div>
       )}
 
       {/* Content — flat scrollable list, same as desktop */}
-      <div className="flex-1 flex flex-col overflow-hidden">{renderContent()}</div>
+      <div data-testid="chat-sidebar-content" className="min-h-0 flex-1 overflow-hidden">
+        {renderContent()}
+      </div>
 
-      {/* CreditMeter — same as desktop: border-top separator, transparent bg */}
-      <CreditMeter
-        variant="compact"
-        className="shrink-0 border-t border-[color:var(--chat-sidebar-border)] bg-transparent"
-        onClick={() => router.push("/subscription/overview")}
-      />
-
-      {/* Mobile-only: User dropdown (replaces single Settings link) */}
-      <div className="md:hidden px-4 py-3 border-t border-[color:var(--chat-sidebar-border)]">
-        <UserDropdown
+      <div
+        data-testid="chat-sidebar-footer"
+        className="shrink-0 border-t border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)]"
+      >
+        <CreditMeter
           variant="compact"
-          compactLabel="first-name"
-          compactFill
-          placement="top-start"
-          onActionComplete={onCloseMobile}
+          className="shrink-0 bg-transparent"
+          onClick={() => router.push("/subscription/overview")}
         />
+
+        {/* Mobile-only: User dropdown (replaces single Settings link) */}
+        <div className="shrink-0 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+          <UserDropdown
+            variant="compact"
+            compactLabel="first-name"
+            compactFill
+            placement="top-start"
+            onActionComplete={onCloseMobile}
+          />
+        </div>
       </div>
     </aside>
   )

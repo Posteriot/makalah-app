@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useEffect, type ReactElement, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
+import Link from "next/link"
+import { SidebarCollapse } from "iconoir-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { PanelResizer } from "@/components/ui/PanelResizer"
 import { cn } from "@/lib/utils"
@@ -326,10 +329,85 @@ export function ChatLayout({
       </div>
 
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-        <SheetContent side="left" className="w-[300px] p-0 [&>button]:hidden" data-chat-scope="">
+        <SheetContent
+          side="left"
+          className="w-[min(92vw,360px)] max-w-none gap-0 p-0 [&>button]:hidden"
+          data-chat-scope=""
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
+          <div className="border-b border-[color:var(--chat-sidebar-border)] px-3 py-2 md:hidden">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                aria-label="Home"
+                className="inline-flex shrink-0 items-center text-[var(--chat-sidebar-foreground)] transition-opacity duration-150 hover:opacity-80"
+                onClick={() => setIsMobileOpen(false)}
+              >
+                <Image
+                  src="/logo/makalah_logo_light.svg"
+                  alt="Makalah"
+                  width={24}
+                  height={24}
+                  className="hidden dark:block"
+                />
+                <Image
+                  src="/logo/makalah_logo_dark.svg"
+                  alt="Makalah"
+                  width={24}
+                  height={24}
+                  className="block dark:hidden"
+                />
+              </Link>
+
+              <div
+                role="tablist"
+                aria-label="Panel workspace mobile"
+                data-testid="mobile-workspace-tabs"
+                className="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-badge border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] p-1"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-label="Riwayat Percakapan"
+                  aria-selected={activePanel === "chat-history"}
+                  onClick={() => handlePanelChange("chat-history")}
+                  className={cn(
+                    "h-8 rounded-badge px-2 text-[10px] font-mono font-semibold uppercase tracking-[0.18em] transition-colors duration-150",
+                    activePanel === "chat-history"
+                      ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
+                      : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)]"
+                  )}
+                >
+                  Riwayat
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-label="Linimasa Progres"
+                  aria-selected={activePanel === "progress"}
+                  onClick={() => handlePanelChange("progress")}
+                  className={cn(
+                    "h-8 rounded-badge px-2 text-[10px] font-mono font-semibold uppercase tracking-[0.18em] transition-colors duration-150",
+                    activePanel === "progress"
+                      ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
+                      : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)]"
+                  )}
+                >
+                  Linimasa
+                </button>
+              </div>
+
+              <button
+                onClick={() => setIsMobileOpen(false)}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
+                aria-label="Close sidebar"
+              >
+                <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
           <ChatSidebar
             className="w-full border-none"
             activePanel={activePanel}

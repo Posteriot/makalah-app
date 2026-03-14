@@ -10,7 +10,7 @@ import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import type { ReasoningTraceStep, ReasoningTraceStatus } from "./ReasoningTracePanel"
 import { useMessages } from "@/lib/hooks/useMessages"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowUpSquare, FastArrowDownSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
+import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
 import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
 import { AttachedFileMeta } from "@/lib/types/attached-file"
@@ -26,8 +26,6 @@ import { useSession } from "@/lib/auth-client"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
 import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
-import { MobilePaperSessionsSheet } from "./mobile/MobilePaperSessionsSheet"
-import { MobileProgressBar } from "./mobile/MobileProgressBar"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import { getEffectiveTier } from "@/lib/utils/subscription"
@@ -432,7 +430,6 @@ export function ChatWindow({
   const [imageDataUrls, setImageDataUrls] = useState<Map<string, string>>(new Map())
   const [isCreatingChat, setIsCreatingChat] = useState(false)
   const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
-  const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
@@ -1747,11 +1744,6 @@ export function ChatWindow({
     onMobileMenuClick?.()
   }
 
-  // Mobile rewind handler — opens confirmation dialog
-  const handleMobileRewindRequest = useCallback((targetStage: PaperStageId) => {
-    setPendingRewindTarget(targetStage)
-  }, [])
-
   const handleRewindConfirm = useCallback(async () => {
     if (!pendingRewindTarget || !userId) return
     setIsRewindSubmitting(true)
@@ -1932,7 +1924,7 @@ export function ChatWindow({
             <NavArrowDown className="h-3 w-3 shrink-0 text-[var(--chat-muted-foreground)]" strokeWidth={1.5} />
           </button>
 
-          {/* Right group: new chat + paper sessions */}
+          {/* Right group: new chat */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => router.push("/chat")}
@@ -1940,22 +1932,6 @@ export function ChatWindow({
               aria-label="Chat baru"
             >
               <ChatPlusIn className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => setShowPaperSessionsSheet((prev) => !prev)}
-              className={
-                showPaperSessionsSheet
-                  ? "text-[var(--chat-foreground)] transition-colors duration-150"
-                  : "text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-150"
-              }
-              aria-label={showPaperSessionsSheet ? "Tutup paper sessions" : "Buka paper sessions"}
-              aria-pressed={showPaperSessionsSheet}
-            >
-              {showPaperSessionsSheet ? (
-                <FastArrowDownSquare className="h-5 w-5" strokeWidth={1.5} />
-              ) : (
-                <FastArrowUpSquare className="h-5 w-5" strokeWidth={1.5} />
-              )}
             </button>
           </div>
         </div>
@@ -2190,16 +2166,6 @@ export function ChatWindow({
           reasoningHeadline={activeReasoningState.headline}
         />
 
-        {/* Mobile Paper Progress Bar */}
-        {isPaperMode && paperSession?.currentStage && (
-          <MobileProgressBar
-            currentStage={paperSession.currentStage as PaperStageId}
-            stageStatus={stageStatus ?? "drafting"}
-            stageData={stageData}
-            onRewindRequest={handleMobileRewindRequest}
-          />
-        )}
-
         {/* Input Area */}
         <ChatInput
           input={input}
@@ -2227,15 +2193,7 @@ export function ChatWindow({
         conversationId={safeConversationId}
       />
 
-      {/* Mobile Paper Sessions Sheet */}
-      <MobilePaperSessionsSheet
-        open={showPaperSessionsSheet}
-        onOpenChange={setShowPaperSessionsSheet}
-        conversationId={safeConversationId}
-        onArtifactSelect={onArtifactSelect}
-      />
-
-      {/* Rewind Confirmation Dialog (mobile progress bar) */}
+      {/* Rewind Confirmation Dialog (progress drawer) */}
       {isPaperMode && paperSession?.currentStage && (
         <RewindConfirmationDialog
           open={pendingRewindTarget !== null}
