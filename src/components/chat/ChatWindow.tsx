@@ -1744,11 +1744,6 @@ export function ChatWindow({
     onMobileMenuClick?.()
   }
 
-  // Mobile rewind handler — opens confirmation dialog
-  const handleMobileRewindRequest = useCallback((targetStage: PaperStageId) => {
-    setPendingRewindTarget(targetStage)
-  }, [])
-
   const handleRewindConfirm = useCallback(async () => {
     if (!pendingRewindTarget || !userId) return
     setIsRewindSubmitting(true)
