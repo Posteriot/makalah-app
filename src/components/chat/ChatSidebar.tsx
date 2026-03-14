@@ -163,8 +163,7 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "h-full w-full overflow-visible md:overflow-hidden border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)]",
-        "flex flex-col",
+        "flex h-full min-h-0 w-full flex-col overflow-visible border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)] md:overflow-hidden",
         className
       )}
     >
@@ -301,24 +300,30 @@ export function ChatSidebar({
       )}
 
       {/* Content — flat scrollable list, same as desktop */}
-      <div className="flex-1 flex flex-col overflow-hidden">{renderContent()}</div>
+      <div data-testid="chat-sidebar-content" className="min-h-0 flex-1 overflow-hidden">
+        {renderContent()}
+      </div>
 
-      {/* CreditMeter — same as desktop: border-top separator, transparent bg */}
-      <CreditMeter
-        variant="compact"
-        className="shrink-0 border-t border-[color:var(--chat-sidebar-border)] bg-transparent"
-        onClick={() => router.push("/subscription/overview")}
-      />
-
-      {/* Mobile-only: User dropdown (replaces single Settings link) */}
-      <div className="md:hidden px-4 py-3 border-t border-[color:var(--chat-sidebar-border)]">
-        <UserDropdown
+      <div
+        data-testid="chat-sidebar-footer"
+        className="shrink-0 border-t border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)]"
+      >
+        <CreditMeter
           variant="compact"
-          compactLabel="first-name"
-          compactFill
-          placement="top-start"
-          onActionComplete={onCloseMobile}
+          className="shrink-0 bg-transparent"
+          onClick={() => router.push("/subscription/overview")}
         />
+
+        {/* Mobile-only: User dropdown (replaces single Settings link) */}
+        <div className="shrink-0 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+          <UserDropdown
+            variant="compact"
+            compactLabel="first-name"
+            compactFill
+            placement="top-start"
+            onActionComplete={onCloseMobile}
+          />
+        </div>
       </div>
     </aside>
   )

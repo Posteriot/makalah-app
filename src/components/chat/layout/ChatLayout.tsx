@@ -326,43 +326,50 @@ export function ChatLayout({
       </div>
 
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-        <SheetContent side="left" className="w-[300px] p-0 [&>button]:hidden" data-chat-scope="">
+        <SheetContent
+          side="left"
+          className="w-[min(92vw,360px)] max-w-none p-0 [&>button]:hidden"
+          data-chat-scope=""
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
-          <div className="border-b border-[color:var(--chat-sidebar-border)] px-3 py-2 md:hidden">
+          <div className="border-b border-[color:var(--chat-sidebar-border)] px-3 py-1.5 md:hidden">
             <div
               role="tablist"
               aria-label="Panel workspace mobile"
-              className="grid grid-cols-2 gap-1 rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] p-1"
+              data-testid="mobile-workspace-tabs"
+              className="grid grid-cols-2 gap-1 rounded-badge border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] p-1"
             >
               <button
                 type="button"
                 role="tab"
+                aria-label="Riwayat Percakapan"
                 aria-selected={activePanel === "chat-history"}
                 onClick={() => handlePanelChange("chat-history")}
                 className={cn(
-                  "rounded-action px-3 py-2 text-xs font-mono font-semibold uppercase tracking-[0.14em] transition-colors duration-150",
+                  "h-8 rounded-badge px-2 text-[10px] font-mono font-semibold uppercase tracking-[0.18em] transition-colors duration-150",
                   activePanel === "chat-history"
                     ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
                     : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)]"
                 )}
               >
-                Riwayat Percakapan
+                Riwayat
               </button>
               <button
                 type="button"
                 role="tab"
+                aria-label="Linimasa Progres"
                 aria-selected={activePanel === "progress"}
                 onClick={() => handlePanelChange("progress")}
                 className={cn(
-                  "rounded-action px-3 py-2 text-xs font-mono font-semibold uppercase tracking-[0.14em] transition-colors duration-150",
+                  "h-8 rounded-badge px-2 text-[10px] font-mono font-semibold uppercase tracking-[0.18em] transition-colors duration-150",
                   activePanel === "progress"
                     ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
                     : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-sidebar-accent-foreground)]"
                 )}
               >
-                Linimasa Progres
+                Linimasa
               </button>
             </div>
           </div>

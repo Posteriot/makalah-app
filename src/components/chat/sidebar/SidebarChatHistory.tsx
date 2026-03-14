@@ -599,7 +599,7 @@ export function SidebarChatHistory({
 
   if (treeNodes.length === 0) {
     return (
-      <div className="flex h-full flex-col">
+      <div className="flex h-full min-h-0 flex-col">
         <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-[var(--chat-muted-foreground)] opacity-50">
           <div className="mb-2">
             <FolderNodeIcon solid={false} />
@@ -612,7 +612,7 @@ export function SidebarChatHistory({
 
   return (
     <>
-      <div className="flex h-full flex-col">
+      <div className="flex h-full min-h-0 flex-col">
         <div className="shrink-0 border-b border-[color:var(--chat-border)] px-3 py-2">
           {isManageMode ? (
             <div className="flex items-center justify-between gap-2">
@@ -659,7 +659,7 @@ export function SidebarChatHistory({
           ) : null}
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           <div className="pb-1">
             {treeNodes.map((node) => {
               const hasChildren = node.latestFiles.length > 0
