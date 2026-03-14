@@ -613,7 +613,7 @@ export function SidebarChatHistory({
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        <div className="shrink-0 border-b border-[color:var(--chat-border)] px-3 py-2">
+        <div className={cn("shrink-0 border-b border-[color:var(--chat-border)] px-3 py-2", !isManageMode && "hidden md:block")}>
           {isManageMode ? (
             <div className="flex items-center justify-between gap-2">
               <div className="grid min-w-0 flex-1 grid-cols-[1rem_1.12rem_minmax(0,1fr)] items-center gap-2">
@@ -705,7 +705,7 @@ export function SidebarChatHistory({
                       <div className="-mt-[1px] flex h-[1.12rem] w-[1.12rem] shrink-0 items-center justify-center">
                         <input
                           type="checkbox"
-                          checked={selectedConversationIds.includes(node.conversationId)}
+                          checked={isAllConversationsSelected || selectedConversationIds.includes(node.conversationId)}
                           onChange={() => toggleConversationSelection(node.conversationId)}
                           className="h-3.5 w-3.5 rounded border border-[color:var(--chat-border)] bg-[var(--chat-sidebar)] accent-[var(--chat-info)]"
                           aria-label={`Pilih percakapan ${node.title}`}
@@ -761,7 +761,7 @@ export function SidebarChatHistory({
                             </span>
                           </div>
                           <div
-                            className="mt-1 text-[11px] font-sans leading-[1.2] text-[var(--chat-muted-foreground)]"
+                            className="mt-1 truncate text-[11px] font-sans leading-[1.2] text-[var(--chat-muted-foreground)]"
                           >
                             {metaLabel}
                           </div>
