@@ -10,6 +10,36 @@ describe("getSearchSystemPrompt", () => {
     expect(prompt).toBeTruthy()
     expect(prompt).toContain("research assistant")
   })
+
+  it("includes priority academic source instructions", () => {
+    const prompt = getSearchSystemPrompt()
+    expect(prompt).toContain("Google Scholar")
+    expect(prompt).toContain("Scopus")
+    expect(prompt).toContain("SINTA")
+    expect(prompt).toContain("Garuda")
+    expect(prompt).toContain("ResearchGate")
+  })
+
+  it("includes Indonesian university repository instructions", () => {
+    const prompt = getSearchSystemPrompt()
+    expect(prompt).toContain("lib.ui.ac.id")
+    expect(prompt).toContain("etd.repository.ugm.ac.id")
+    expect(prompt).toContain("digilib.itb.ac.id")
+    expect(prompt).toContain(".ac.id")
+  })
+
+  it("includes Indonesian media instructions", () => {
+    const prompt = getSearchSystemPrompt()
+    expect(prompt).toContain("kompas.com")
+    expect(prompt).toContain("tempo.co")
+    expect(prompt).toContain("republika.co.id")
+  })
+
+  it("includes search strategy guidance", () => {
+    const prompt = getSearchSystemPrompt()
+    expect(prompt).toContain("multiple search queries")
+    expect(prompt).toContain("targeted queries")
+  })
 })
 
 describe("augmentUserMessageForSearch", () => {
