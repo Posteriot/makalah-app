@@ -34,7 +34,13 @@ export function buildSearchResultsContext(
     })
     .join("\n")
 
-  const searchFindings = searchText?.trim()
+  // When page content is available, OMIT searchText from context.
+  // searchText is the retriever's synthesis which can contain hallucinations —
+  // it's the root cause of compose model fabrication. Page content replaces it
+  // as the ground truth source material.
+  // When NO page content is available (FetchWeb failed), keep searchText as
+  // fallback — same as pre-FetchWeb behavior.
+  const searchFindings = (!anyHasPageContent && searchText?.trim())
     ? `\n\nSearch findings (raw, for your synthesis — do NOT copy verbatim, rewrite with your own analysis):\n${searchText.trim()}`
     : ""
 
