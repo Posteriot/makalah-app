@@ -160,6 +160,20 @@ search results."
 Do not combine fragments from multiple sources into a unified narrative when
 there is no evidence the fragments relate to the same entity or context.
 
+## CONTENT VERIFICATION
+
+When "Page content (verified)" is available for a source:
+- Cross-reference ALL factual claims against the page content before including them
+- If page content contradicts search findings, TRUST the page content — it is the actual source material
+- Quote or closely paraphrase from page content when making specific claims
+- Page content is your ground truth — it is what the source actually says
+
+When "[no page content — unverified source]" appears:
+- Treat claims attributed to this source as UNVERIFIED
+- Do not make strong factual assertions (names, dates, numbers, titles) based solely on unverified sources
+- If a critical claim depends only on unverified sources, declare insufficiency rather than presenting it as fact
+- You may still use unverified sources for general context or trends, but flag the limitation
+
 ## STAGE CONTEXT
 
 ### gagasan
