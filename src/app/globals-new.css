@@ -786,6 +786,24 @@
   background-color: var(--neutral-950);
 }
 
+/* Table cell URL truncation — URLs in table cells get truncated, expand on hover.
+   Uses !important to override linkClassName's break-all and overflow-wrap:anywhere
+   which are applied as Tailwind utility/arbitrary classes on the <a> element. */
+[data-chat-scope] table td a[href] {
+  display: block !important;
+  max-width: 200px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+[data-chat-scope] table td a[href]:hover {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  max-width: none !important;
+}
+
 /* ==========================================================================
  * Auth Token System (Staging)
  * Scoped to [data-auth-scope] for fullpage auth redesign.

@@ -1,7 +1,9 @@
 "use client"
 
-import { Fragment, type ReactNode } from "react"
+import { Fragment, type ReactNode, useState, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
+import { cn } from "@/lib/utils"
+import { Copy, Check } from "iconoir-react"
 import { InlineCitationChip } from "./InlineCitationChip"
 import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
 
@@ -38,6 +40,17 @@ type Block =
   | { type: "code"; language?: string; code: string }
   | { type: "blockquote"; lines: string[] }
   | { type: "hr" }
+
+/** Strip inline markdown formatting for plain-text copy output. */
+export function stripInlineMarkdown(text: string): string {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // [label](url) → label
+    .replace(/\*\*(.+?)\*\*/g, "$1")          // **bold** → bold
+    .replace(/__(.+?)__/g, "$1")               // __bold__ → bold
+    .replace(/\*(.+?)\*/g, "$1")               // *italic* → italic
+    .replace(/_(.+?)_/g, "$1")                 // _italic_ → italic
+    .replace(/`(.+?)`/g, "$1")                 // `code` → code
+}
 
 function isHeading(line: string) {
   const trimmed = line.trimStart()
@@ -735,6 +748,199 @@ function renderInline(
   return nodes
 }
 
+function ChatTableCards({
+  headers,
+  rows,
+  keyPrefix,
+  sources,
+  context,
+}: {
+  headers: string[]
+  rows: string[][]
+  keyPrefix: string
+  sources?: CitationSource[]
+  context?: "chat" | "artifact"
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {rows.map((row, rIdx) => (
+        <div
+          key={`${keyPrefix}-card-${rIdx}`}
+          className="rounded-action border border-[color:var(--chat-border)] bg-[var(--chat-muted)]/30 px-4 py-3"
+        >
+          {/* First column as card title */}
+          <div className="mb-2 text-[13px] font-semibold text-[var(--chat-foreground)]">
+            {renderInline(row[0] ?? "", `${keyPrefix}-card-title-${rIdx}`, sources, context)}
+          </div>
+          {/* Remaining columns as key-value pairs with vertical divider */}
+          <div className="grid grid-cols-[auto_1fr] gap-0 text-[13px]">
+            {headers.slice(1).map((header, hIdx) => {
+              const cellValue = row[hIdx + 1] ?? ""
+              return (
+                <Fragment key={`${keyPrefix}-kv-${rIdx}-${hIdx}`}>
+                  <div className="border-r border-r-[color:var(--chat-border)] pr-2.5 py-1 text-[11px] font-semibold text-[var(--chat-muted-foreground)] whitespace-nowrap">
+                    {stripInlineMarkdown(header)}
+                  </div>
+                  <div className="pl-2.5 py-1 text-[var(--chat-foreground)] leading-relaxed [overflow-wrap:anywhere] break-words">
+                    {renderInline(cellValue, `${keyPrefix}-kv-val-${rIdx}-${hIdx}`, sources, context)}
+                  </div>
+                </Fragment>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TableCopyToolbar({ headers, rows }: { headers: string[]; rows: string[][] }) {
+  const [copiedKey, setCopiedKey] = useState<"plain" | "markdown" | null>(null)
+
+  const copyPlain = async () => {
+    const headerRow = headers.map(stripInlineMarkdown).join("\t")
+    const dataRows = rows.map((r) => r.map(stripInlineMarkdown).join("\t"))
+    const text = [headerRow, ...dataRows].join("\n")
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedKey("plain")
+      setTimeout(() => setCopiedKey(null), 2000)
+    } catch {
+      alert("Failed to copy to clipboard")
+    }
+  }
+
+  const copyMarkdown = async () => {
+    const headerRow = `| ${headers.join(" | ")} |`
+    const separator = `| ${headers.map(() => "---").join(" | ")} |`
+    const dataRows = rows.map((r) => `| ${r.join(" | ")} |`)
+    const text = [headerRow, separator, ...dataRows].join("\n")
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedKey("markdown")
+      setTimeout(() => setCopiedKey(null), 2000)
+    } catch {
+      alert("Failed to copy to clipboard")
+    }
+  }
+
+  const btnClass = (key: "plain" | "markdown") =>
+    cn(
+      "flex items-center gap-1 text-[10px] font-mono transition-colors px-2 py-1 rounded-action",
+      copiedKey === key
+        ? "text-[var(--chat-success)]"
+        : "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-muted)]"
+    )
+
+  const icon = (key: "plain" | "markdown") =>
+    copiedKey === key ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />
+
+  return (
+    <div className="flex justify-end gap-1 mt-1.5">
+      <button type="button" onClick={copyPlain} className={btnClass("plain")}>
+        {icon("plain")}
+        <span>{copiedKey === "plain" ? "Copied" : "Text"}</span>
+      </button>
+      <button type="button" onClick={copyMarkdown} className={btnClass("markdown")}>
+        {icon("markdown")}
+        <span>{copiedKey === "markdown" ? "Copied" : "Markdown"}</span>
+      </button>
+    </div>
+  )
+}
+
+function ChatTable({
+  block,
+  keyPrefix,
+  sources,
+  context,
+  fallbackChip,
+}: {
+  block: { headers: string[]; alignments: ("left" | "center" | "right" | null)[]; rows: string[][] }
+  keyPrefix: string
+  sources?: CitationSource[]
+  context?: "chat" | "artifact"
+  fallbackChip: ReactNode
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isNarrow, setIsNarrow] = useState(false)
+  const isResponsive = block.headers.length >= 4
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !isResponsive) return
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setIsNarrow(entry.contentRect.width < 480)
+      }
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [isResponsive])
+
+  const showCards = isResponsive && isNarrow
+
+  return (
+    <div
+      ref={containerRef}
+      className="my-3"
+      {...(isResponsive ? { "data-responsive-table": "" } : {})}
+    >
+      {showCards ? (
+        <ChatTableCards
+          headers={block.headers}
+          rows={block.rows}
+          keyPrefix={keyPrefix}
+          sources={sources}
+          context={context}
+        />
+      ) : (
+        <div className="overflow-x-auto overflow-y-hidden rounded-action border border-[color:var(--chat-border)]">
+            <table className="min-w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="bg-[var(--chat-muted)]">
+                  {block.headers.map((header, hIdx) => (
+                    <th
+                      key={`${keyPrefix}-th-${hIdx}`}
+                      className={cn(
+                        "border-b border-[color:var(--chat-border)] px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]",
+                        hIdx < block.headers.length - 1 && "border-r border-r-[color:var(--chat-border)]"
+                      )}
+                      style={{ textAlign: block.alignments[hIdx] ?? "left" }}
+                    >
+                      {renderInline(header, `${keyPrefix}-th-${hIdx}`, sources, context)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.rows.map((row, rIdx) => (
+                  <tr key={`${keyPrefix}-tr-${rIdx}`} className="border-b border-[color:var(--chat-border)]/50 last:border-b-0">
+                    {row.map((cell, cIdx) => (
+                      <td
+                        key={`${keyPrefix}-td-${rIdx}-${cIdx}`}
+                        className={cn(
+                          "px-3.5 py-2.5 text-[13px] text-[var(--chat-foreground)] leading-relaxed",
+                          cIdx < row.length - 1 && "border-r border-r-[color:var(--chat-border)]/30"
+                        )}
+                        style={{ textAlign: block.alignments[cIdx] ?? "left" }}
+                      >
+                        {renderInline(cell, `${keyPrefix}-td-${rIdx}-${cIdx}`, sources, context)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+        </div>
+      )}
+      <TableCopyToolbar headers={block.headers} rows={block.rows} />
+      {fallbackChip ? <div className="mt-2">{fallbackChip}</div> : null}
+    </div>
+  )
+}
+
 function renderBlocks(
   blocks: Block[],
   keyPrefix: string,
@@ -894,39 +1100,14 @@ function renderBlocks(
       }
       case "table":
         return (
-          <div key={k} className="my-3 overflow-x-auto">
-            <table className="w-full border-collapse rounded-action border border-[color:var(--chat-border)] text-sm">
-              <thead>
-                <tr className="bg-[var(--chat-muted)]">
-                  {block.headers.map((header, hIdx) => (
-                    <th
-                      key={`${k}-th-${hIdx}`}
-                      className="border-b border-[color:var(--chat-border)] px-3 py-2 text-left font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]"
-                      style={{ textAlign: block.alignments[hIdx] ?? "left" }}
-                    >
-                      {renderInline(header, `${k}-th-${hIdx}`, sources, context)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {block.rows.map((row, rIdx) => (
-                  <tr key={`${k}-tr-${rIdx}`} className="border-b border-[color:var(--chat-border)] last:border-b-0">
-                    {row.map((cell, cIdx) => (
-                      <td
-                        key={`${k}-td-${rIdx}-${cIdx}`}
-                        className="px-3 py-2 font-mono text-sm text-[var(--chat-foreground)]"
-                        style={{ textAlign: block.alignments[cIdx] ?? "left" }}
-                      >
-                        {renderInline(cell, `${k}-td-${rIdx}-${cIdx}`, sources, context)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {fallbackChip ? <div className="mt-2">{fallbackChip}</div> : null}
-          </div>
+          <ChatTable
+            key={k}
+            block={block}
+            keyPrefix={k}
+            sources={sources}
+            context={context}
+            fallbackChip={fallbackChip}
+          />
         )
       case "hr":
         return (

@@ -1,6 +1,6 @@
-import { describe, expect, it, beforeAll } from "vitest"
-import { render } from "@testing-library/react"
-import { MarkdownRenderer } from "./MarkdownRenderer"
+import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { MarkdownRenderer, stripInlineMarkdown } from "./MarkdownRenderer"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 
 beforeAll(() => {
@@ -16,6 +16,13 @@ beforeAll(() => {
       removeEventListener: () => {},
       dispatchEvent: () => false,
     }),
+  })
+
+  Object.defineProperty(navigator, "clipboard", {
+    writable: true,
+    value: {
+      writeText: vi.fn().mockResolvedValue(undefined),
+    },
   })
 })
 
@@ -219,5 +226,140 @@ describe("MarkdownRenderer table rendering", () => {
     // Render in MarkdownRenderer
     const { container } = render(<MarkdownRenderer markdown={frontendProcessed} sources={sources} context="chat" />)
     expect(container.querySelector("table")).not.toBeNull()
+  })
+  it("renders table with vertical dividers between columns", () => {
+    const md = [
+      "| A | B | C |",
+      "|---|---|---|",
+      "| 1 | 2 | 3 |",
+    ].join("\n")
+
+    const { container } = render(<MarkdownRenderer markdown={md} />)
+    const ths = container.querySelectorAll("th")
+    expect(ths.length).toBe(3)
+    const wrapper = container.querySelector("table")?.parentElement
+    expect(wrapper?.className).toContain("overflow-x-auto")
+  })
+
+  it("renders table headers with sans-serif font (not mono)", () => {
+    const md = [
+      "| Header1 | Header2 |",
+      "|---|---|",
+      "| cell1 | cell2 |",
+    ].join("\n")
+
+    const { container } = render(<MarkdownRenderer markdown={md} />)
+    const th = container.querySelector("th")
+    expect(th?.className).not.toContain("font-mono")
+  })
+})
+
+describe("stripInlineMarkdown", () => {
+  it("strips bold markers", () => {
+    expect(stripInlineMarkdown("**bold text**")).toBe("bold text")
+  })
+
+  it("strips italic markers", () => {
+    expect(stripInlineMarkdown("*italic*")).toBe("italic")
+    expect(stripInlineMarkdown("_italic_")).toBe("italic")
+  })
+
+  it("strips backtick code", () => {
+    expect(stripInlineMarkdown("`code`")).toBe("code")
+  })
+
+  it("converts markdown links to label only", () => {
+    expect(stripInlineMarkdown("[Google](https://google.com)")).toBe("Google")
+  })
+
+  it("handles nested bold + link", () => {
+    expect(stripInlineMarkdown("**[link](https://x.com)**")).toBe("link")
+  })
+
+  it("leaves plain text unchanged", () => {
+    expect(stripInlineMarkdown("hello world")).toBe("hello world")
+  })
+
+  it("handles empty string", () => {
+    expect(stripInlineMarkdown("")).toBe("")
+  })
+})
+
+describe("Table responsive card fallback", () => {
+  it("renders table normally when columns <= 3 regardless of container width", () => {
+    const md = [
+      "| A | B | C |",
+      "|---|---|---|",
+      "| 1 | 2 | 3 |",
+    ].join("\n")
+
+    const { container } = render(<MarkdownRenderer markdown={md} />)
+    expect(container.querySelector("table")).not.toBeNull()
+  })
+
+  it("renders 4+ column table with data-responsive-table attribute", () => {
+    const md = [
+      "| A | B | C | D |",
+      "|---|---|---|---|",
+      "| 1 | 2 | 3 | 4 |",
+    ].join("\n")
+
+    const { container } = render(<MarkdownRenderer markdown={md} />)
+    const wrapper = container.querySelector("[data-responsive-table]")
+    expect(wrapper).not.toBeNull()
+  })
+})
+
+describe("Table copy toolbar", () => {
+  beforeEach(() => {
+    vi.mocked(navigator.clipboard.writeText).mockClear()
+  })
+
+  it("renders Text and Markdown copy buttons below table", () => {
+    const md = [
+      "| A | B |",
+      "|---|---|",
+      "| 1 | 2 |",
+    ].join("\n")
+
+    render(<MarkdownRenderer markdown={md} />)
+    expect(screen.getByText("Text")).toBeTruthy()
+    expect(screen.getByText("Markdown")).toBeTruthy()
+  })
+
+  it("copies tab-separated plain text on Text click", async () => {
+    const md = [
+      "| Name | Value |",
+      "|---|---|",
+      "| **alpha** | 1 |",
+      "| beta | 2 |",
+    ].join("\n")
+
+    render(<MarkdownRenderer markdown={md} />)
+    fireEvent.click(screen.getByText("Text"))
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "Name\tValue\nalpha\t1\nbeta\t2"
+      )
+    })
+  })
+
+  it("copies markdown source on Markdown click", async () => {
+    const md = [
+      "| Name | Value |",
+      "|---|---|",
+      "| alpha | 1 |",
+    ].join("\n")
+
+    render(<MarkdownRenderer markdown={md} />)
+    fireEvent.click(screen.getByText("Markdown"))
+
+    await waitFor(() => {
+      const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0] as string
+      expect(call).toContain("| Name | Value |")
+      expect(call).toContain("| --- | --- |")
+      expect(call).toContain("| alpha | 1 |")
+    })
   })
 })
