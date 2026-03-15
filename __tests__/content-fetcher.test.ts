@@ -144,3 +144,76 @@ describe("fetchPageContent", () => {
     expect(results[0].fetchMethod).toBeNull()
   })
 })
+
+describe("fetchPageContent — Tavily fallback", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    vi.resetModules() // Clear module cache so vi.doMock takes effect on next import
+    fetchSpy = vi.spyOn(global, "fetch")
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+    vi.clearAllMocks()
+    vi.restoreAllMocks()
+  })
+
+  it("falls back to Tavily when primary fetch fails", async () => {
+    // Primary fetch fails
+    fetchSpy.mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
+
+    // Mock Tavily SDK
+    vi.doMock("@tavily/core", () => ({
+      tavily: () => ({
+        extract: vi.fn().mockResolvedValue({
+          results: [{ url: "https://blocked.com/page", rawContent: "# Extracted Content\n\nFrom Tavily" }],
+          failedResults: [],
+        }),
+      }),
+    }))
+
+    // Re-import to pick up mock
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+
+    const results = await fetchFn(
+      ["https://blocked.com/page"],
+      { tavilyApiKey: "tvly-test-key" },
+    )
+
+    expect(results[0].pageContent).toContain("Extracted Content")
+    expect(results[0].fetchMethod).toBe("tavily")
+  })
+
+  it("skips Tavily when no API key provided", async () => {
+    fetchSpy.mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
+
+    // Need fresh import after resetModules
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+
+    const results = await fetchFn(["https://blocked.com/page"])
+    // No tavilyApiKey → no fallback → stays null
+    expect(results[0].pageContent).toBeNull()
+    expect(results[0].fetchMethod).toBeNull()
+  })
+
+  it("handles Tavily API failure gracefully", async () => {
+    fetchSpy.mockResolvedValueOnce(new Response("Blocked", { status: 403 }))
+
+    vi.doMock("@tavily/core", () => ({
+      tavily: () => ({
+        extract: vi.fn().mockRejectedValue(new Error("Tavily API down")),
+      }),
+    }))
+
+    const { fetchPageContent: fetchFn } = await import("@/lib/ai/web-search/content-fetcher")
+
+    const results = await fetchFn(
+      ["https://blocked.com/page"],
+      { tavilyApiKey: "tvly-test-key" },
+    )
+
+    // Should degrade gracefully, not throw
+    expect(results[0].pageContent).toBeNull()
+  })
+})
