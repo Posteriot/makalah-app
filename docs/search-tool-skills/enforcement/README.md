@@ -170,7 +170,7 @@ After Phase 1 succeeds, the orchestrator builds compose context and streams to t
 | Position | Content | Size | Purpose |
 |----------|---------|------|---------|
 | 1st | `COMPOSE_PHASE_DIRECTIVE` | ~1.5K | Defines compose phase, overrides conflicting instructions |
-| 2nd | `searchResultsContext` | Variable | Numbered source list + raw search findings |
+| 2nd | `searchResultsContext` | Variable | Numbered source list (with optional `Snippet:` lines when `citedText` present) + raw search findings |
 | 3rd | `systemPrompt` | ~10K | Main app persona/tone/rules from database |
 | 4th | `skillInstructions` | ~6K | `SKILL.md` — quality, credibility, composition rules |
 | 5th | `fileContext` (optional) | ≤20K | User-uploaded document context |
@@ -277,7 +277,7 @@ interface SkillContext {
   isPaperMode: boolean
   currentStage: string | null
   hasRecentSources: boolean
-  availableSources: SourceEntry[]    // { url, title, publishedAt? }
+  availableSources: SourceEntry[]    // { url, title, publishedAt?, citedText? }
 }
 ```
 
@@ -292,6 +292,7 @@ The currently active skill covers:
 | **RESEARCH SOURCE STRATEGY** | How to evaluate source credibility — primary data, authorship, methodology | Yes |
 | **RESPONSE COMPOSITION** | Researcher persona, depth expectations, source usage requirements | Yes |
 | **REFERENCE INTEGRITY** | Integration over decoration, source honesty, claim-source alignment | Yes |
+| **INFORMATION SUFFICIENCY** | Prevents hallucination from thin sources — evidence-based synthesis, insufficiency declaration, no gap-filling | Yes |
 | **STAGE CONTEXT** | Per-stage guidance with priority source references. Active stages (gagasan, topik, tinjauan_literatur, pendahuluan, metodologi, diskusi) get stage-specific enrichment; passive stages fall back to `### default` | Yes (stage-specific or default) |
 
 ### Blocklist Strategy
@@ -342,7 +343,7 @@ interface NormalizedCitation {
   title: string            // Source title (or URL if unavailable)
   startIndex?: number      // Character position in text (0-indexed)
   endIndex?: number        // Character position end (exclusive)
-  citedText?: string       // Cited text segment (debug/display)
+  citedText?: string       // Cited text segment — propagated to compose context as Snippet: lines
   publishedAt?: number     // Unix timestamp (ms)
 }
 ```
@@ -538,7 +539,7 @@ This separation ensures a single source of truth for output language policy (dat
 | `src/lib/ai/paper-search-helpers.ts` | System notes, research completeness checks, stage requirements |
 | `src/lib/ai/stage-skill-contracts.ts` | ACTIVE/PASSIVE stage classification |
 | `src/lib/ai/search-system-prompt.ts` | Search strategy system prompt (priority sources, query construction guidance) + user message augmentation (diversity hints + priority source names) |
-| `src/lib/ai/search-results-context.ts` | Builds numbered source list for compose context |
+| `src/lib/ai/search-results-context.ts` | Builds numbered source list (with optional `Snippet:` lines) for compose context |
 | `src/lib/ai/internal-thought-separator.ts` | Splits internal thought from public content |
 | `src/lib/ai/blocked-domains.ts` | Blocked domain list + `isBlockedSourceDomain()` |
 | `src/lib/citations/normalizer.ts` | Multi-provider citation normalizer dispatcher |
