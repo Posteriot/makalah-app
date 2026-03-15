@@ -109,6 +109,8 @@ export function ChatSidebar({
   const displayedConversationCount = conversations.length
   const [historyManageRequestNonce, setHistoryManageRequestNonce] = useState(0)
   const [isHistoryManageMode, setIsHistoryManageMode] = useState(false)
+  const [selectionCount, setSelectionCount] = useState(0)
+  const [isAllSelected, setIsAllSelected] = useState(false)
   const manageModeConversationCount = useQuery(
     api.conversations.countConversations,
     activePanel === "chat-history" && isHistoryManageMode && user?._id
@@ -121,11 +123,17 @@ export function ChatSidebar({
       : typeof manageModeConversationCount === "number"
         ? Math.max(manageModeConversationCount, displayedConversationCount)
       : undefined
-  const historyCountLabel = resolvedTotalConversationCount !== undefined
-    ? `${displayedConversationCount} dari ${resolvedTotalConversationCount}`
-    : hasMoreConversations
-      ? `${displayedConversationCount}+`
-      : String(displayedConversationCount)
+  const historyCountLabel = isHistoryManageMode
+    ? (() => {
+        const total = resolvedTotalConversationCount ?? displayedConversationCount
+        const selected = isAllSelected ? total : selectionCount
+        return `${selected} dari ${total}`
+      })()
+    : resolvedTotalConversationCount !== undefined
+      ? `${displayedConversationCount} dari ${resolvedTotalConversationCount}`
+      : hasMoreConversations
+        ? `${displayedConversationCount}+`
+        : String(displayedConversationCount)
 
   // Render sidebar content based on active panel
   const renderContent = () => {
@@ -153,6 +161,12 @@ export function ChatSidebar({
             onLoadMore={onLoadMoreConversations}
             manageRequestNonce={historyManageRequestNonce}
             onManageModeChange={setIsHistoryManageMode}
+            onSelectionCountChange={(count, isAll) => {
+              setSelectionCount(count)
+              setIsAllSelected(isAll)
+            }}
+            manageHeaderLabel={historyCountLabel}
+            onToggleManageMode={() => setHistoryManageRequestNonce((current) => current + 1)}
           />
         )
     }
@@ -185,7 +199,7 @@ export function ChatSidebar({
 
       {/* New Chat button — outline style matching chat toolbar buttons */}
       {activePanel === "chat-history" && (
-        <div className="hidden md:block shrink-0 px-2 pt-3 pb-2.5">
+        <div className="hidden md:block shrink-0 px-3 pb-3 pt-3">
           <Button
             onClick={() => {
               onNewChat()
@@ -217,74 +231,7 @@ export function ChatSidebar({
         </div>
       )}
 
-      {/* Section header — Riwayat label with count badge */}
-      {activePanel === "chat-history" && (
-        <div className="shrink-0 flex items-center justify-between bg-[var(--chat-accent)] px-3 py-2 md:py-2.5">
-          <div className="flex min-w-0 items-center gap-2">
-            <div
-              className={cn(
-                "hidden min-w-0 rounded-action border px-3 py-1.5 transition-colors duration-150 md:block",
-                isHistoryManageMode
-                  ? "border-[color:color-mix(in_oklab,var(--chat-info)_28%,var(--chat-sidebar-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_8%,var(--chat-sidebar))]"
-                  : "border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)]"
-              )}
-            >
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
-                  Riwayat
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-badge border px-2 py-0.5 text-[10px] font-mono font-semibold transition-colors duration-150",
-                    isHistoryManageMode
-                      ? "border-[color:color-mix(in_oklab,var(--chat-info)_24%,var(--chat-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_14%,var(--chat-muted))] text-[color:color-mix(in_oklab,var(--chat-info)_45%,var(--chat-muted-foreground))]"
-                      : "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
-                  )}
-                >
-                  {historyCountLabel}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex min-w-0 items-center gap-2 md:hidden">
-              <span className="truncate text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
-                Percakapan
-              </span>
-              <span
-                className={cn(
-                  "shrink-0 rounded-badge border px-2 py-0.5 text-[10px] font-mono font-semibold leading-none transition-colors duration-150",
-                  isHistoryManageMode
-                    ? "border-[color:color-mix(in_oklab,var(--chat-info)_24%,var(--chat-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_14%,var(--chat-muted))] text-[color:color-mix(in_oklab,var(--chat-info)_45%,var(--chat-muted-foreground))]"
-                    : "border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]"
-                )}
-              >
-                {historyCountLabel}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setHistoryManageRequestNonce((current) => current + 1)}
-              className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-action transition-colors duration-150",
-                isHistoryManageMode
-                  ? "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
-                  : "text-[var(--chat-muted-foreground)] hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
-              )}
-              aria-label={isHistoryManageMode ? "Tutup mode kelola riwayat" : "Buka mode kelola riwayat"}
-            >
-              {isHistoryManageMode ? (
-                <Xmark className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Settings className="h-4 w-4" aria-hidden="true" />
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Content — flat scrollable list, same as desktop */}
+      {/* Content — Riwayat header now rendered inside SidebarChatHistory for both modes */}
       <div data-testid="chat-sidebar-content" className="min-h-0 flex-1 overflow-hidden">
         {renderContent()}
       </div>

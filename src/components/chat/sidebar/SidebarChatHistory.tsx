@@ -8,7 +8,9 @@ import {
   NavArrowRight,
   Page,
   RefreshDouble,
+  Settings,
   Trash,
+  Xmark,
 } from "iconoir-react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
@@ -55,6 +57,9 @@ interface SidebarChatHistoryProps {
   onLoadMore?: () => void
   manageRequestNonce?: number
   onManageModeChange?: (isManageMode: boolean) => void
+  onSelectionCountChange?: (count: number, isAll: boolean) => void
+  manageHeaderLabel?: string
+  onToggleManageMode?: () => void
 }
 
 interface PaperSessionListItem {
@@ -291,6 +296,9 @@ export function SidebarChatHistory({
   onLoadMore,
   manageRequestNonce = 0,
   onManageModeChange,
+  onSelectionCountChange,
+  manageHeaderLabel,
+  onToggleManageMode,
 }: SidebarChatHistoryProps) {
   const { user } = useCurrentUser()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -359,6 +367,10 @@ export function SidebarChatHistory({
   useEffect(() => {
     onManageModeChange?.(isManageMode)
   }, [isManageMode, onManageModeChange])
+
+  useEffect(() => {
+    onSelectionCountChange?.(selectedConversationIds.length, isAllConversationsSelected)
+  }, [selectedConversationIds.length, isAllConversationsSelected, onSelectionCountChange])
 
   useEffect(() => {
     if (isTreeStateHydrated) return
@@ -613,51 +625,101 @@ export function SidebarChatHistory({
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        <div className={cn("shrink-0 border-b border-[color:var(--chat-border)] px-3 py-2", !isManageMode && "hidden md:block")}>
-          {isManageMode ? (
-            <div className="flex items-center justify-between gap-2">
-              <div className="grid min-w-0 flex-1 grid-cols-[1rem_1.12rem_minmax(0,1fr)] items-center gap-2">
-                <span className="h-[1.12rem] w-4 shrink-0" aria-hidden="true" />
-                <label className="-mt-[1px] inline-flex h-[1.12rem] w-[1.12rem] items-center justify-center">
-                  <input
-                    type="checkbox"
-                    checked={isAllConversationsSelected}
-                    onChange={handleToggleSelectAllConversations}
-                    className="h-3.5 w-3.5 rounded border border-[color:var(--chat-border)] bg-[var(--chat-sidebar)] accent-[var(--chat-info)]"
-                    aria-label={isAllConversationsSelected ? "Batal pilih semua percakapan" : "Pilih semua percakapan"}
-                  />
-                </label>
-                <span
-                  className="min-w-0 flex-1 text-left text-[11px] font-mono text-[var(--chat-muted-foreground)]"
-                  aria-label={`${selectionCountLabel} percakapan terpilih`}
-                >
-                  {selectionCountLabel}
+        {isManageMode ? (
+          <div className="shrink-0 border-b border-[color:var(--chat-border)] px-3 pt-3 md:pt-0 flex flex-col">
+            {/* Riwayat header — rendered here in manage mode for uniform gap control */}
+            <div className="flex items-center justify-between pb-3">
+              <div className="flex min-w-0 items-center gap-2 text-[color:color-mix(in_oklab,var(--chat-info)_80%,var(--chat-sidebar-foreground))]">
+                <span className="truncate text-sm font-sans font-semibold">
+                  Riwayat
                 </span>
+                {manageHeaderLabel ? (
+                  <span className="shrink-0 rounded-badge border px-2 py-0.5 text-[10px] font-mono font-semibold leading-none border-[color:color-mix(in_oklab,var(--chat-info)_24%,var(--chat-border))] bg-[color:color-mix(in_oklab,var(--chat-info)_14%,var(--chat-muted))] text-[color:color-mix(in_oklab,var(--chat-info)_45%,var(--chat-muted-foreground))]">
+                    {manageHeaderLabel}
+                  </span>
+                ) : null}
               </div>
-              <div className="flex items-center gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteMode("selected")}
-                      disabled={!isAllConversationsSelected && selectedCount === 0}
-                      className={cn(
-                        "inline-flex h-8 w-8 items-center justify-center rounded-action border border-transparent transition-colors",
-                        !isAllConversationsSelected && selectedCount === 0
-                          ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-45"
-                          : "text-[var(--chat-destructive)] hover:bg-[color:color-mix(in_oklab,var(--chat-destructive)_12%,transparent)]"
-                      )}
-                      aria-label="Hapus percakapan yang dipilih"
-                    >
-                      <Trash className="h-4 w-4" aria-hidden="true" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="font-mono text-xs">Hapus</TooltipContent>
-                </Tooltip>
-              </div>
+              {onToggleManageMode ? (
+                <button
+                  type="button"
+                  onClick={onToggleManageMode}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors duration-150"
+                  aria-label="Tutup mode kelola riwayat"
+                >
+                  <Xmark className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
             </div>
-          ) : null}
-        </div>
+            {/* Select-all + delete action row — mirrors conversation item layout for alignment */}
+            <div className="flex items-start gap-2 pb-3">
+              <div className="-mt-[1px] flex h-[1.12rem] w-4 shrink-0 items-center justify-center" aria-hidden="true">
+                <span className="h-[1.12rem] w-4" />
+              </div>
+              <div className="-mt-[1px] flex h-[1.12rem] w-[1.12rem] shrink-0 items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={isAllConversationsSelected}
+                  onChange={handleToggleSelectAllConversations}
+                  className="h-3.5 w-3.5 rounded border border-[color:var(--chat-border)] bg-[var(--chat-sidebar)] accent-[var(--chat-info)]"
+                  aria-label={isAllConversationsSelected ? "Batal pilih semua percakapan" : "Pilih semua percakapan"}
+                />
+              </div>
+              <div className="min-w-0 flex-1" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteMode("selected")}
+                    disabled={!isAllConversationsSelected && selectedCount === 0}
+                    className={cn(
+                      "-mt-[1px] inline-flex h-[1.12rem] w-[1.12rem] items-center justify-center rounded-action transition-colors",
+                      !isAllConversationsSelected && selectedCount === 0
+                        ? "cursor-not-allowed text-[var(--chat-muted-foreground)] opacity-45"
+                        : "text-[var(--chat-destructive)] hover:bg-[color:color-mix(in_oklab,var(--chat-destructive)_12%,transparent)]"
+                    )}
+                    aria-label="Hapus percakapan yang dipilih"
+                  >
+                    <Trash className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="font-mono text-xs">Hapus</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        ) : (
+          <div className="shrink-0 px-3 pt-3 pb-2 md:pt-0 md:pb-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="hidden min-w-0 items-center gap-2 text-[var(--chat-sidebar-foreground)] md:flex">
+                  <span className="truncate text-sm font-sans font-semibold">
+                    Riwayat
+                  </span>
+                  <span className="shrink-0 rounded-badge border px-2 py-0.5 text-[10px] font-mono font-semibold border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]">
+                    {manageHeaderLabel}
+                  </span>
+                </div>
+                <div className="flex min-w-0 items-center gap-2 md:hidden">
+                  <span className="truncate text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
+                    Percakapan
+                  </span>
+                  <span className="shrink-0 rounded-badge border px-2 py-0.5 text-[10px] font-mono font-semibold leading-none border-[color:var(--chat-border)] bg-[var(--chat-muted)] text-[var(--chat-muted-foreground)]">
+                    {manageHeaderLabel}
+                  </span>
+                </div>
+              </div>
+              {onToggleManageMode ? (
+                <button
+                  type="button"
+                  onClick={onToggleManageMode}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-action text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors duration-150"
+                  aria-label="Buka mode kelola riwayat"
+                >
+                  <Settings className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+        )}
 
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           <div className="pb-1">
@@ -674,7 +736,7 @@ export function SidebarChatHistory({
                 <div key={node.conversationId}>
                   <div
                     className={cn(
-                      "group flex items-start gap-2 px-3 py-2 transition-colors duration-150",
+                      "group flex items-start gap-2 px-3 py-3 transition-colors duration-150",
                       isActiveConversation
                         ? "bg-[var(--chat-sidebar-accent)] text-[var(--chat-sidebar-accent-foreground)]"
                         : "hover:bg-[var(--chat-sidebar-accent)]"
