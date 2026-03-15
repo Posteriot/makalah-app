@@ -623,18 +623,19 @@ export function MessageBubble({
             )}
         >
             {/* Action Buttons - Outside bubble, to the left (for user messages) */}
-            {!isEditing && isUser && (
+            {!isEditing && isUser && (() => {
+                const actionBtnStyle: React.CSSProperties = { color: "var(--chat-muted-foreground)" }
+                const copiedBtnStyle: React.CSSProperties = { color: "var(--chat-success)" }
+                const actionBtnClass = "p-1.5 rounded-action transition-colors hover:bg-[color:var(--chat-accent)]"
+                const actionIconClass = "h-4 w-4"
+                return (
                 <div className="flex flex-col items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-2">
                     {onEdit && (
                         editPermission.allowed ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button
-                                        onClick={startEditing}
-                                        className="p-1.5 hover:bg-[var(--chat-accent)] rounded-action text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] transition-colors"
-                                        aria-label="Edit message"
-                                    >
-                                        <EditPencil className="h-4 w-4" />
+                                    <button onClick={startEditing} className={actionBtnClass} style={actionBtnStyle} aria-label="Edit message">
+                                        <EditPencil className={actionIconClass} strokeWidth={2} />
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent side="left">Edit</TooltipContent>
@@ -642,13 +643,8 @@ export function MessageBubble({
                         ) : (
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button
-                                        disabled
-                                        className="p-1.5 rounded-action text-[var(--chat-muted-foreground)] opacity-40 cursor-not-allowed"
-                                        aria-label="Edit message"
-                                        aria-disabled="true"
-                                    >
-                                        <EditPencil className="h-4 w-4" />
+                                    <button disabled className={`${actionBtnClass} opacity-40 cursor-not-allowed`} style={actionBtnStyle} aria-label="Edit message" aria-disabled="true">
+                                        <EditPencil className={actionIconClass} strokeWidth={2} />
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent side="left" className="max-w-[250px]">
@@ -661,21 +657,18 @@ export function MessageBubble({
                         <TooltipTrigger asChild>
                             <button
                                 onClick={handleCopyUserMessage}
-                                className={cn(
-                                    "p-1.5 rounded-action transition-colors",
-                                    isCopied
-                                        ? "text-[var(--chat-success)]"
-                                        : "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-accent)]"
-                                )}
+                                className={actionBtnClass}
+                                style={isCopied ? copiedBtnStyle : actionBtnStyle}
                                 aria-label="Copy message"
                             >
-                                {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                {isCopied ? <Check className={actionIconClass} strokeWidth={2} /> : <Copy className={actionIconClass} strokeWidth={2} />}
                             </button>
                         </TooltipTrigger>
                         <TooltipContent side="left">{isCopied ? "Copied" : "Copy"}</TooltipContent>
                     </Tooltip>
                 </div>
-            )}
+                )
+            })()}
 
             {/* Message Container - User: bubble on right, Agent: no bubble */}
             <div
