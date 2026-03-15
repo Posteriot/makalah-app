@@ -79,8 +79,9 @@ export async function fetchPageContent(
 async function fetchAndParse(url: string, timeoutMs: number): Promise<string | null> {
   const controller = new AbortController()
 
+  let timerId: ReturnType<typeof setTimeout>
   const timeoutPromise = new Promise<null>((resolve) => {
-    setTimeout(() => {
+    timerId = setTimeout(() => {
       controller.abort()
       resolve(null)
     }, timeoutMs)
@@ -113,7 +114,11 @@ async function fetchAndParse(url: string, timeoutMs: number): Promise<string | n
     }
   })()
 
-  return Promise.race([fetchPromise, timeoutPromise])
+  try {
+    return await Promise.race([fetchPromise, timeoutPromise])
+  } finally {
+    clearTimeout(timerId!)
+  }
 }
 
 async function fetchViaTavily(
