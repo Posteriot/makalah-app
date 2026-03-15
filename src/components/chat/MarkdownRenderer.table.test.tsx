@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { MarkdownRenderer } from "./MarkdownRenderer"
+import { MarkdownRenderer, stripInlineMarkdown } from "./MarkdownRenderer"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 
 beforeAll(() => {
@@ -219,5 +219,36 @@ describe("MarkdownRenderer table rendering", () => {
     // Render in MarkdownRenderer
     const { container } = render(<MarkdownRenderer markdown={frontendProcessed} sources={sources} context="chat" />)
     expect(container.querySelector("table")).not.toBeNull()
+  })
+})
+
+describe("stripInlineMarkdown", () => {
+  it("strips bold markers", () => {
+    expect(stripInlineMarkdown("**bold text**")).toBe("bold text")
+  })
+
+  it("strips italic markers", () => {
+    expect(stripInlineMarkdown("*italic*")).toBe("italic")
+    expect(stripInlineMarkdown("_italic_")).toBe("italic")
+  })
+
+  it("strips backtick code", () => {
+    expect(stripInlineMarkdown("`code`")).toBe("code")
+  })
+
+  it("converts markdown links to label only", () => {
+    expect(stripInlineMarkdown("[Google](https://google.com)")).toBe("Google")
+  })
+
+  it("handles nested bold + link", () => {
+    expect(stripInlineMarkdown("**[link](https://x.com)**")).toBe("link")
+  })
+
+  it("leaves plain text unchanged", () => {
+    expect(stripInlineMarkdown("hello world")).toBe("hello world")
+  })
+
+  it("handles empty string", () => {
+    expect(stripInlineMarkdown("")).toBe("")
   })
 })

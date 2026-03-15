@@ -39,6 +39,17 @@ type Block =
   | { type: "blockquote"; lines: string[] }
   | { type: "hr" }
 
+/** Strip inline markdown formatting for plain-text copy output. */
+export function stripInlineMarkdown(text: string): string {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // [label](url) → label
+    .replace(/\*\*(.+?)\*\*/g, "$1")          // **bold** → bold
+    .replace(/__(.+?)__/g, "$1")               // __bold__ → bold
+    .replace(/\*(.+?)\*/g, "$1")               // *italic* → italic
+    .replace(/_(.+?)_/g, "$1")                 // _italic_ → italic
+    .replace(/`(.+?)`/g, "$1")                 // `code` → code
+}
+
 function isHeading(line: string) {
   const trimmed = line.trimStart()
   if (!trimmed.startsWith("#")) return null
