@@ -184,6 +184,33 @@ Sudah aktif:
 - state tab artifact dirapikan
 - kontrol akses artifact diperketat ke auth user yang benar
 
+#### H. Table rendering di chat bubble
+
+Sudah aktif:
+
+- font standardization: Geist Sans untuk semua konten tabel (headers + cells), Geist Mono hanya untuk URL/link
+- vertical dividers antar kolom (header dan body)
+- rounded corners via `overflow-hidden` wrapper
+- per-table copy toolbar: icon + "Text" (tab-separated plain text) dan icon + "Markdown" (raw markdown table)
+- `stripInlineMarkdown()` utility untuk strip formatting sebelum copy plain text
+- responsive card fallback: tabel 4+ kolom otomatis switch ke card layout di container < 480px (via `ResizeObserver`)
+- URL truncation di cell tabel: `max-width: 200px`, ellipsis, hover untuk expand
+- card layout: kolom pertama jadi judul card, sisanya jadi key-value pairs dengan vertical divider
+
+Komponen internal baru di `MarkdownRenderer.tsx`:
+
+- `ChatTable` — wrapper dengan ResizeObserver, toggle antara table dan card mode
+- `ChatTableCards` — card layout untuk tiap row saat narrow
+- `TableCopyToolbar` — toolbar copy di bawah tabel
+
+File terkait:
+
+- `src/components/chat/MarkdownRenderer.tsx`
+- `src/components/chat/MarkdownRenderer.table.test.tsx` (25 tests)
+- `src/app/globals-new.css` (URL truncation CSS)
+
+Design doc: `docs/superpowers/specs/2026-03-15-table-rendering-improvement-design.md`
+
 #### G. Data flow, cleanup, dan security
 
 Sudah aktif:
@@ -284,6 +311,15 @@ Urutan commit yang paling relevan terhadap bentuk akhir branch ini:
 - `d88c9ed9` `Tighten manage mode header-to-list spacing in chat sidebar`
 - `30c75816` `Unify manage mode layout: consistent spacing, selection badge, aligned elements`
 
+### Table rendering
+
+- `e1929432` `feat: add stripInlineMarkdown utility for table copy`
+- `596679ce` `feat: improve table styling — sans-serif fonts, vertical dividers, rounded corners`
+- `5f988d1b` `feat: add per-table copy toolbar (plain text + markdown)`
+- `dfcc7ae1` `feat: add responsive card fallback for wide tables on narrow screens`
+- `8bc26efb` `fix: table overflow and URL truncation not working`
+- `4827250a` `feat: add copy icons and rename table copy buttons`
+
 ## Constraint Visual dan UX yang Wajib Dipatuhi
 
 ### 1. Halaman chat wajib tunduk ke token `--chat-*`
@@ -352,6 +388,12 @@ Kalau ada anomali Convex baru, cek dulu:
   design doc composer desktop
 - `input/2026-03-11-desktop-chat-input-inline-context-autogrow-rollout-plan.md`
   implementation plan composer desktop
+- `2026-03-15-chat-visual-rendering-handoff.md`
+  context handoff untuk visual rendering di chat (markdown renderer, message bubble, dll)
+- `../superpowers/specs/2026-03-15-table-rendering-improvement-design.md`
+  design spec table rendering improvement
+- `../superpowers/plans/2026-03-15-table-rendering-improvement.md`
+  implementation plan table rendering improvement
 
 ## Titik Lanjut yang Masuk Akal
 
