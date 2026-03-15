@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useQuery } from "convex/react"
 import { Button } from "@/components/ui/button"
 import { RefreshDouble, Plus, FastArrowLeft, Settings, Xmark } from "iconoir-react"
@@ -111,6 +111,10 @@ export function ChatSidebar({
   const [isHistoryManageMode, setIsHistoryManageMode] = useState(false)
   const [selectionCount, setSelectionCount] = useState(0)
   const [isAllSelected, setIsAllSelected] = useState(false)
+  const handleSelectionCountChange = useCallback((count: number, isAll: boolean) => {
+    setSelectionCount(count)
+    setIsAllSelected(isAll)
+  }, [])
   const manageModeConversationCount = useQuery(
     api.conversations.countConversations,
     activePanel === "chat-history" && isHistoryManageMode && user?._id
@@ -161,10 +165,7 @@ export function ChatSidebar({
             onLoadMore={onLoadMoreConversations}
             manageRequestNonce={historyManageRequestNonce}
             onManageModeChange={setIsHistoryManageMode}
-            onSelectionCountChange={(count, isAll) => {
-              setSelectionCount(count)
-              setIsAllSelected(isAll)
-            }}
+            onSelectionCountChange={handleSelectionCountChange}
             manageHeaderLabel={historyCountLabel}
             onToggleManageMode={() => setHistoryManageRequestNonce((current) => current + 1)}
           />
