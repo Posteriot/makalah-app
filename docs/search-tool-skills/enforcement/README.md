@@ -155,8 +155,9 @@ User message → augmentUserMessageForSearch() → searchMessages
 ```
 
 - Messages sanitized via `sanitizeMessagesForSearch()` (strips tool parts from assistant messages)
-- Search system prompt: minimal "You are a research assistant" — no blocklist, no constraints
-- User message augmented with diversity hints: "Search broadly. Cite at least 10 sources from many different domains."
+- Search system prompt: enriched search strategy guidance — teaches the retriever model what priority sources to actively seek (academic databases, Indonesian university repositories, Indonesian media) and how to construct targeted search queries. No blocklist — blocklist enforcement is delegated to the compose model via SKILL.md.
+- User message augmented with diversity hints + priority source names: "Search broadly. Cite at least 10 sources... prioritize including sources from: academic databases (Google Scholar, Scopus, ResearchGate, SINTA, Garuda), Indonesian university repositories (UI, UGM, ITB, UIN, Unair), and reputable Indonesian media (Kompas, Tempo, Republika)."
+- Both system prompt and user message carry priority source guidance (dual-channel delivery) — all retrievers receive both via `streamText()`, ensuring priority sources reach the model regardless of how each provider processes system vs user messages.
 - Each retriever in the chain is tried sequentially; first success wins
 - Sources extracted via `retriever.extractSources()`, then canonicalized (UTM removal, hash stripping, trailing slash normalization)
 
@@ -242,6 +243,8 @@ The admin panel configures an ordered array of `webSearchRetrievers` (Convex dat
 
 Skills are natural language instruction files (SKILL.md) that guide the LLM's behavior during the compose phase. They are NOT Claude Code skills — they are server-side knowledge layers injected into Gemini's context.
 
+The retriever model also receives natural language guidance via `getSearchSystemPrompt()` in `search-system-prompt.ts` — this functions as a skill-equivalent for the retriever phase, teaching the model what priority sources to actively seek and how to construct targeted search queries. Priority source guidance is delivered through both channels (system prompt for retriever + SKILL.md for compose) to ensure end-to-end coverage.
+
 ```
 skills/
 └── web-search-quality/
@@ -282,13 +285,14 @@ interface SkillContext {
 
 The currently active skill covers:
 
-| Section | Purpose |
-|---------|---------|
-| **BLOCKED DOMAINS** | Domains to never cite (wikipedia, medium, quora, etc.) |
-| **RESEARCH SOURCE STRATEGY** | How to evaluate source credibility — primary data, authorship, methodology |
-| **RESPONSE COMPOSITION** | Researcher persona, depth expectations, source usage requirements |
-| **REFERENCE INTEGRITY** | Integration over decoration, source honesty, claim-source alignment |
-| **STAGE CONTEXT** | Per-stage guidance (gagasan: broad exploration, tinjauan_literatur: depth, etc.) |
+| Section | Purpose | Loaded by `getInstructions()`? |
+|---------|---------|-------------------------------|
+| **BLOCKED DOMAINS** | Domains to never cite (wikipedia, medium, quora, etc.) | No — parsed but not injected; enforcement via natural language in SKILL.md body |
+| **PRIORITY SOURCES** | Preferred source categories: academic databases (Google Scholar, Scopus, SINTA, Garuda), Indonesian university repositories (.ac.id), reputable Indonesian media (Kompas, Tempo, Republika). Guidance, not restriction. | Yes |
+| **RESEARCH SOURCE STRATEGY** | How to evaluate source credibility — primary data, authorship, methodology | Yes |
+| **RESPONSE COMPOSITION** | Researcher persona, depth expectations, source usage requirements | Yes |
+| **REFERENCE INTEGRITY** | Integration over decoration, source honesty, claim-source alignment | Yes |
+| **STAGE CONTEXT** | Per-stage guidance with priority source references. Active stages (gagasan, topik, tinjauan_literatur, pendahuluan, metodologi, diskusi) get stage-specific enrichment; passive stages fall back to `### default` | Yes (stage-specific or default) |
 
 ### Blocklist Strategy
 
@@ -533,7 +537,7 @@ This separation ensures a single source of truth for output language policy (dat
 | `src/lib/ai/skills/types.ts` | `SkillContext`, `SourceEntry`, `ValidationResult` |
 | `src/lib/ai/paper-search-helpers.ts` | System notes, research completeness checks, stage requirements |
 | `src/lib/ai/stage-skill-contracts.ts` | ACTIVE/PASSIVE stage classification |
-| `src/lib/ai/search-system-prompt.ts` | Minimal search system prompt + user message augmentation |
+| `src/lib/ai/search-system-prompt.ts` | Search strategy system prompt (priority sources, query construction guidance) + user message augmentation (diversity hints + priority source names) |
 | `src/lib/ai/search-results-context.ts` | Builds numbered source list for compose context |
 | `src/lib/ai/internal-thought-separator.ts` | Splits internal thought from public content |
 | `src/lib/ai/blocked-domains.ts` | Blocked domain list + `isBlockedSourceDomain()` |
