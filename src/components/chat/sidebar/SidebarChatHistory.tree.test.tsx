@@ -245,4 +245,72 @@ describe("SidebarChatHistory tree", () => {
 
     expect(screen.queryByText("Pendahuluan")).not.toBeInTheDocument()
   })
+
+  it("menahan tree lama saat metadata batch berikutnya masih loading", () => {
+    const nextConversations = [
+      ...conversations,
+      {
+        _id: "conversation-lazy",
+        title: "Percakapan lazy",
+        lastMessageAt: Date.now() - 3_000,
+      },
+    ]
+
+    mockUseQuery.mockImplementation((_queryRef: unknown, args: unknown) => {
+      if (args === "skip") return undefined
+
+      if (typeof args === "object" && args !== null && "conversationIds" in args) {
+        const conversationIds = (args as { conversationIds: string[] }).conversationIds
+
+        if (conversationIds.includes("conversation-lazy")) {
+          return undefined
+        }
+
+        if (conversationIds.length === 3) {
+          return [
+            {
+              _id: "session-active",
+              conversationId: "conversation-active",
+              currentStage: "topik",
+            },
+            {
+              _id: "artifact-new",
+              title: "Pendahuluan",
+              type: "section",
+              version: 2,
+              conversationId: "conversation-active",
+              createdAt: 2,
+              messageId: "message-1",
+            },
+          ]
+        }
+      }
+
+      return undefined
+    })
+
+    const view = renderSidebar()
+
+    expect(screen.getByText("Pendahuluan")).toBeInTheDocument()
+
+    view.rerender(
+      <SidebarChatHistory
+        conversations={nextConversations as never}
+        totalConversationCount={4}
+        currentConversationId="conversation-active"
+        onDeleteConversation={vi.fn()}
+        onDeleteConversations={vi.fn()}
+        onDeleteAllConversations={vi.fn()}
+        hasMore
+        isLoadingMore
+      />
+    )
+
+    expect(screen.getByText("Percakapan aktif")).toBeInTheDocument()
+    expect(screen.getByText("Pendahuluan")).toBeInTheDocument()
+    expect(screen.getAllByTestId("conversation-loading-placeholder")).toHaveLength(4)
+    expect(screen.getByLabelText("Memuat percakapan")).toBeInTheDocument()
+    expect(screen.queryByText("Belum ada percakapan")).not.toBeInTheDocument()
+    expect(screen.getByText("Riwayat")).toBeInTheDocument()
+  })
 })

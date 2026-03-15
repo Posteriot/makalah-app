@@ -36,6 +36,7 @@ export function useConversations() {
 
   const resolvedConversations = windowConversations
   const hasMore = paginationStatus === "CanLoadMore"
+  const isLoadingMore = paginationStatus === "LoadingMore"
 
   const loadMore = useCallback(() => {
     loadMoreWindow(CONVERSATION_LOAD_STEP)
@@ -90,6 +91,7 @@ export function useConversations() {
     deleteAllConversations,
     updateConversationTitle,
     isLoading: paginationStatus === "LoadingFirstPage",
+    isLoadingMore,
     userId,
     hasMore,
     loadMore,
