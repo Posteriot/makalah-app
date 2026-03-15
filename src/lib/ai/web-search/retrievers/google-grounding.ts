@@ -56,7 +56,6 @@ async function resolveVertexProxyUrls(
   if (proxyIndices.length === 0) return citations
 
   // Resolve in batches
-  let resolvedCount = 0
   const resolved = [...citations]
   for (let i = 0; i < proxyIndices.length; i += REDIRECT_CONCURRENCY) {
     const batch = proxyIndices.slice(i, i + REDIRECT_CONCURRENCY)
@@ -64,7 +63,6 @@ async function resolveVertexProxyUrls(
       batch.map((idx) => resolveRedirect(resolved[idx].url))
     )
     for (let j = 0; j < batch.length; j++) {
-      if (results[j] !== resolved[batch[j]].url) resolvedCount++
       resolved[batch[j]] = { ...resolved[batch[j]], url: results[j] }
     }
   }

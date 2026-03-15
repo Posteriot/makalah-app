@@ -97,6 +97,8 @@ export function UserDropdown({
 
   useEffect(() => {
     if (disabled) {
+      // Parent disabled state should always collapse the menu immediately.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsOpen(false)
     }
   }, [disabled])
