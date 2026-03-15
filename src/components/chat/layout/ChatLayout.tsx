@@ -338,34 +338,42 @@ export function ChatLayout({
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
           <div className="border-b border-[color:var(--chat-sidebar-border)] px-3 py-2 md:hidden">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/"
-                aria-label="Home"
-                className="inline-flex shrink-0 items-center text-[var(--chat-sidebar-foreground)] transition-opacity duration-150 hover:opacity-80"
-                onClick={() => setIsMobileOpen(false)}
+            <div
+              data-testid="mobile-sidebar-header"
+              className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-3"
+            >
+              <div
+                data-testid="mobile-sidebar-header-left"
+                className="flex w-8 items-center justify-start"
               >
-                <Image
-                  src="/logo/makalah_logo_light.svg"
-                  alt="Makalah"
-                  width={24}
-                  height={24}
-                  className="hidden dark:block"
-                />
-                <Image
-                  src="/logo/makalah_logo_dark.svg"
-                  alt="Makalah"
-                  width={24}
-                  height={24}
-                  className="block dark:hidden"
-                />
-              </Link>
+                <Link
+                  href="/"
+                  aria-label="Home"
+                  className="inline-flex shrink-0 items-center text-[var(--chat-sidebar-foreground)] transition-opacity duration-150 hover:opacity-80"
+                  onClick={() => setIsMobileOpen(false)}
+                >
+                  <Image
+                    src="/logo/makalah_logo_light.svg"
+                    alt="Makalah"
+                    width={24}
+                    height={24}
+                    className="hidden dark:block"
+                  />
+                  <Image
+                    src="/logo/makalah_logo_dark.svg"
+                    alt="Makalah"
+                    width={24}
+                    height={24}
+                    className="block dark:hidden"
+                  />
+                </Link>
+              </div>
 
               <div
                 role="tablist"
                 aria-label="Panel workspace mobile"
                 data-testid="mobile-workspace-tabs"
-                className="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-badge border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] p-1"
+                className="grid min-w-0 grid-cols-2 gap-1 rounded-badge border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] p-1"
               >
                 <button
                   type="button"
@@ -399,13 +407,18 @@ export function ChatLayout({
                 </button>
               </div>
 
-              <button
-                onClick={() => setIsMobileOpen(false)}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
-                aria-label="Close sidebar"
+              <div
+                data-testid="mobile-sidebar-header-right"
+                className="flex w-8 items-center justify-end"
               >
-                <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />
-              </button>
+                <button
+                  onClick={() => setIsMobileOpen(false)}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
+                  aria-label="Close sidebar"
+                >
+                  <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />
+                </button>
+              </div>
             </div>
           </div>
           <ChatSidebar
