@@ -189,7 +189,7 @@ type TechnicalReportEmailBase = {
 
 type TechnicalReportDeveloperNotificationInput = TechnicalReportEmailBase & {
   to: string;
-  source: "chat-inline" | "footer-link" | "support-page";
+  source: "chat-inline" | "footer-link" | "support-page" | "payment-checkout" | "payment-preflight-error";
   dashboardUrl: string;
 };
 

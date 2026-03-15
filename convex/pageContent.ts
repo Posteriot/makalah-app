@@ -2,6 +2,16 @@ import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import { requireRole } from "./permissions"
 
+const pageContentItemValidator = v.object({
+  id: v.optional(v.string()),
+  title: v.string(),
+  label: v.optional(v.string()),
+  description: v.string(),
+  supportingPoints: v.optional(v.array(v.string())),
+  icon: v.optional(v.string()),
+  imageId: v.optional(v.id("_storage")),
+})
+
 // ============================================================================
 // QUERIES
 // ============================================================================
@@ -72,6 +82,7 @@ export const upsertSection = mutation({
     sectionType: v.union(
       v.literal("hero"),
       v.literal("benefits"),
+      v.literal("home-walkthrough"),
       v.literal("feature-showcase"),
       v.literal("manifesto"),
       v.literal("problems"),
@@ -88,14 +99,7 @@ export const upsertSection = mutation({
     ctaHref: v.optional(v.string()),
     badgeText: v.optional(v.string()),
     items: v.optional(
-      v.array(
-        v.object({
-          title: v.string(),
-          description: v.string(),
-          icon: v.optional(v.string()),
-          imageId: v.optional(v.id("_storage")),
-        })
-      )
+      v.array(pageContentItemValidator)
     ),
     primaryImageId: v.optional(v.id("_storage")),
     primaryImageAlt: v.optional(v.string()),

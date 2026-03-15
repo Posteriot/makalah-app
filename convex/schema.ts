@@ -48,6 +48,16 @@ export const documentationBlock = v.union(
   })
 )
 
+const pageContentItemValidator = v.object({
+  id: v.optional(v.string()),
+  title: v.string(),
+  label: v.optional(v.string()),
+  description: v.string(),
+  supportingPoints: v.optional(v.array(v.string())),
+  icon: v.optional(v.string()),
+  imageId: v.optional(v.id("_storage")),
+})
+
 export default defineSchema({
   users: defineTable({
     // BetterAuth user ID (links to BetterAuth component's user table)
@@ -1198,11 +1208,13 @@ export default defineSchema({
 
   technicalReports: defineTable({
     userId: v.id("users"),
-    scope: v.literal("chat"),
+    scope: v.union(v.literal("chat"), v.literal("payment")),
     source: v.union(
       v.literal("chat-inline"),
       v.literal("footer-link"),
-      v.literal("support-page")
+      v.literal("support-page"),
+      v.literal("payment-checkout"),
+      v.literal("payment-preflight-error")
     ),
     status: v.union(v.literal("open"), v.literal("triaged"), v.literal("resolved")),
     description: v.string(),
@@ -1210,6 +1222,13 @@ export default defineSchema({
     conversationId: v.optional(v.id("conversations")),
     paperSessionId: v.optional(v.id("paperSessions")),
     contextSnapshot: v.optional(v.any()),
+    paymentContext: v.optional(v.object({
+      transactionId: v.optional(v.string()),
+      amount: v.optional(v.number()),
+      paymentMethod: v.optional(v.string()),
+      providerPaymentId: v.optional(v.string()),
+      errorCode: v.optional(v.string()),
+    })),
     createdAt: v.number(),
     updatedAt: v.number(),
     resolvedAt: v.optional(v.number()),
@@ -1246,6 +1265,7 @@ export default defineSchema({
     sectionType: v.union(
       v.literal("hero"),
       v.literal("benefits"),
+      v.literal("home-walkthrough"),
       v.literal("feature-showcase"),
       v.literal("manifesto"),
       v.literal("problems"),
@@ -1261,12 +1281,7 @@ export default defineSchema({
     ctaText: v.optional(v.string()),
     ctaHref: v.optional(v.string()),
     badgeText: v.optional(v.string()),
-    items: v.optional(v.array(v.object({
-      title: v.string(),
-      description: v.string(),
-      icon: v.optional(v.string()),
-      imageId: v.optional(v.id("_storage")),
-    }))),
+    items: v.optional(v.array(pageContentItemValidator)),
     primaryImageId: v.optional(v.id("_storage")),
     primaryImageAlt: v.optional(v.string()),
     secondaryImageId: v.optional(v.id("_storage")),

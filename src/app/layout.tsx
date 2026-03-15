@@ -1,22 +1,22 @@
 import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import localFont from "next/font/local"
 import "./globals.css"
 import "./globals-new.css"
 import { AppProviders } from "./providers"
 import { Toaster } from "@/components/ui/sonner"
 
 // Geist - Primary UI font
-const geist = Geist({
-  subsets: ["latin"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+const geist = localFont({
+  src: "../assets/fonts/Geist-Variable.woff2",
+  weight: "100 900",
   variable: "--font-sans",
   display: "swap",
 })
 
 // Geist Mono - For technical text, prices, code
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+const geistMono = localFont({
+  src: "../assets/fonts/GeistMono-Variable.woff2",
+  weight: "100 900",
   variable: "--font-mono",
   display: "swap",
 })

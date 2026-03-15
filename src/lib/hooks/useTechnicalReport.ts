@@ -10,7 +10,12 @@ import {
   toUserFriendlyTechnicalReportError,
 } from "@/lib/technical-report/submitFallback"
 
-export type TechnicalReportSource = "chat-inline" | "footer-link" | "support-page"
+export type TechnicalReportSource =
+  | "chat-inline"
+  | "footer-link"
+  | "support-page"
+  | "payment-checkout"
+  | "payment-preflight-error"
 
 export type SubmitTechnicalReportInput = {
   source: TechnicalReportSource
@@ -19,6 +24,13 @@ export type SubmitTechnicalReportInput = {
   conversationId?: Id<"conversations">
   paperSessionId?: Id<"paperSessions">
   contextSnapshot?: Record<string, unknown>
+  paymentContext?: {
+    transactionId?: string
+    amount?: number
+    paymentMethod?: string
+    providerPaymentId?: string
+    errorCode?: string
+  }
 }
 
 type SubmitTechnicalReportResult = {

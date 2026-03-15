@@ -74,6 +74,10 @@ function createMockDb() {
         async collect() {
           return run()
         },
+        async unique() {
+          const results = run()
+          return results[0] ?? null
+        },
       }
 
       return builder
@@ -84,11 +88,12 @@ function createMockDb() {
 }
 
 async function callMutation<TArgs, TResult>(
-  fn: { _handler: (ctx: { db: ReturnType<typeof createMockDb>["db"] }, args: TArgs) => Promise<TResult> },
+  fn: { _handler: (ctx: { db: ReturnType<typeof createMockDb>["db"]; storage: { delete: ReturnType<typeof vi.fn> } }, args: TArgs) => Promise<TResult> },
   db: ReturnType<typeof createMockDb>["db"],
-  args: TArgs
+  args: TArgs,
+  storageDelete = vi.fn()
 ) {
-  return fn._handler({ db }, args)
+  return fn._handler({ db, storage: { delete: storageDelete } }, args)
 }
 
 describe("bulk delete conversations", () => {
@@ -141,5 +146,37 @@ describe("bulk delete conversations", () => {
     expect(
       await db.query("messages").withIndex("by_conversation", (q) => q.eq("conversationId", conversationA)).collect()
     ).toHaveLength(0)
+  })
+
+  it("menghapus blob storage file saat bulk delete", async () => {
+    const { db } = createMockDb()
+    const conversation = await db.insert("conversations", {
+      userId: "user_1",
+      title: "Chat A",
+      lastMessageAt: 1,
+    })
+    await db.insert("files", {
+      userId: "user_1",
+      conversationId: conversation,
+      storageId: "storage_bulk_1",
+      name: "draft.pdf",
+      type: "application/pdf",
+      size: 10,
+    })
+
+    vi.mocked(requireConversationOwner).mockImplementation(async (_ctx, conversationId) => ({
+      authUser: { _id: "user_1" } as never,
+      conversation: (await db.get(conversationId as string)) as never,
+    }))
+
+    const storageDelete = vi.fn().mockResolvedValue(undefined)
+    await callMutation<
+      { conversationIds: string[] },
+      { deletedCount: number }
+    >(bulkDeleteConversations as never, db, {
+      conversationIds: [conversation] as never,
+    }, storageDelete)
+
+    expect(storageDelete).toHaveBeenCalledWith("storage_bulk_1")
   })
 })

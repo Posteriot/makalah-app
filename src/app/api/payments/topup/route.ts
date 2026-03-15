@@ -16,6 +16,7 @@ import {
   assertVisibleVAChannel,
 } from "@/lib/payment/request-validation"
 import { getDefaultVisibleVAChannels } from "@/lib/payment/channel-options"
+import { assertPaymentSystemReady } from "@/lib/payment/preflight"
 
 // Request body type
 interface TopUpRequest {
@@ -39,6 +40,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Convex token missing" }, { status: 500 })
     }
     const convexOptions = { token: convexToken }
+
+    // Pre-flight: check payment system readiness
+    const preflight = assertPaymentSystemReady()
+    if (!preflight.ready) {
+      return NextResponse.json(
+        {
+          error: preflight.userMessage,
+          code: "PAYMENT_SYSTEM_UNAVAILABLE",
+        },
+        { status: 503 }
+      )
+    }
 
     // 2. Get Convex user
     const convexUser = await fetchQuery(api.users.getMyUser, {}, convexOptions)

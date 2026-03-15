@@ -95,13 +95,22 @@ export const submitTechnicalReport = mutation({
     source: v.union(
       v.literal("chat-inline"),
       v.literal("footer-link"),
-      v.literal("support-page")
+      v.literal("support-page"),
+      v.literal("payment-checkout"),
+      v.literal("payment-preflight-error")
     ),
     description: v.string(),
     issueCategory: v.optional(v.string()),
     conversationId: v.optional(v.id("conversations")),
     paperSessionId: v.optional(v.id("paperSessions")),
     contextSnapshot: v.optional(v.any()),
+    paymentContext: v.optional(v.object({
+      transactionId: v.optional(v.string()),
+      amount: v.optional(v.number()),
+      paymentMethod: v.optional(v.string()),
+      providerPaymentId: v.optional(v.string()),
+      errorCode: v.optional(v.string()),
+    })),
   },
   handler: async (ctx, args) => {
     const authUser = await requireAuthUser(ctx)
@@ -121,38 +130,42 @@ export const submitTechnicalReport = mutation({
 
     const description = normalizeDescription(args.description)
     const issueCategory = normalizeIssueCategory(args.issueCategory)
-
-    if (args.conversationId) {
-      const conversation = await ctx.db.get(args.conversationId)
-      if (!conversation || conversation.userId !== authUser._id) {
-        throw new Error("Conversation tidak ditemukan atau tidak memiliki akses.")
-      }
-    }
+    const scope = args.source.startsWith("payment-") ? "payment" as const : "chat" as const
 
     let paperSessionId = args.paperSessionId
-    if (paperSessionId) {
-      const paperSession = await ctx.db.get(paperSessionId)
-      if (!paperSession || paperSession.userId !== authUser._id) {
-        throw new Error("Paper session tidak ditemukan atau tidak memiliki akses.")
-      }
-      if (args.conversationId && paperSession.conversationId !== args.conversationId) {
-        throw new Error("Paper session tidak cocok dengan conversation yang dipilih.")
-      }
-    }
 
-    if (!paperSessionId && args.conversationId) {
-      const session = await ctx.db
-        .query("paperSessions")
-        .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId!))
-        .unique()
-      if (session && session.userId === authUser._id) {
-        paperSessionId = session._id
+    if (scope === "chat") {
+      if (args.conversationId) {
+        const conversation = await ctx.db.get(args.conversationId)
+        if (!conversation || conversation.userId !== authUser._id) {
+          throw new Error("Conversation tidak ditemukan atau tidak memiliki akses.")
+        }
+      }
+
+      if (paperSessionId) {
+        const paperSession = await ctx.db.get(paperSessionId)
+        if (!paperSession || paperSession.userId !== authUser._id) {
+          throw new Error("Paper session tidak ditemukan atau tidak memiliki akses.")
+        }
+        if (args.conversationId && paperSession.conversationId !== args.conversationId) {
+          throw new Error("Paper session tidak cocok dengan conversation yang dipilih.")
+        }
+      }
+
+      if (!paperSessionId && args.conversationId) {
+        const session = await ctx.db
+          .query("paperSessions")
+          .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId!))
+          .unique()
+        if (session && session.userId === authUser._id) {
+          paperSessionId = session._id
+        }
       }
     }
 
     const reportId = await ctx.db.insert("technicalReports", {
       userId: authUser._id,
-      scope: "chat",
+      scope,
       source: args.source,
       status: "open",
       description,
@@ -160,6 +173,7 @@ export const submitTechnicalReport = mutation({
       ...(args.conversationId ? { conversationId: args.conversationId } : {}),
       ...(paperSessionId ? { paperSessionId } : {}),
       ...(args.contextSnapshot ? { contextSnapshot: args.contextSnapshot } : {}),
+      ...(args.paymentContext ? { paymentContext: args.paymentContext } : {}),
       createdAt: now,
       updatedAt: now,
     })
@@ -308,7 +322,13 @@ export const listForAdmin = query({
     requestorUserId: v.id("users"),
     status: v.optional(v.union(v.literal("open"), v.literal("triaged"), v.literal("resolved"))),
     source: v.optional(
-      v.union(v.literal("chat-inline"), v.literal("footer-link"), v.literal("support-page"))
+      v.union(
+        v.literal("chat-inline"),
+        v.literal("footer-link"),
+        v.literal("support-page"),
+        v.literal("payment-checkout"),
+        v.literal("payment-preflight-error")
+      )
     ),
     search: v.optional(v.string()),
     paginationOpts: paginationOptsValidator,

@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { paginationOptsValidator } from "convex/server"
 import type { MutationCtx } from "./_generated/server"
 import { requireAuthUser, requireAuthUserId, verifyAuthUserId, requireConversationOwner, getConversationIfOwner } from "./authHelpers"
 import { Id } from "./_generated/dataModel"
@@ -62,6 +63,54 @@ async function syncPaperSessionWorkingTitleIfEligible(
 }
 
 async function deleteConversationCascade(ctx: MutationCtx, conversationId: Id<"conversations">) {
+    const attachmentContext = await ctx.db
+        .query("conversationAttachmentContexts")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+        .unique()
+
+    if (attachmentContext) {
+        await ctx.db.delete(attachmentContext._id)
+    }
+
+    const paperSession = await ctx.db
+        .query("paperSessions")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+        .unique()
+
+    if (paperSession) {
+        const rewindEntries = await ctx.db
+            .query("rewindHistory")
+            .withIndex("by_session", (q) => q.eq("sessionId", paperSession._id))
+            .collect()
+
+        for (const entry of rewindEntries) {
+            await ctx.db.delete(entry._id)
+        }
+    }
+
+    const files = await ctx.db
+        .query("files")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+        .collect()
+
+    for (const file of files) {
+        try {
+            await ctx.storage.delete(file.storageId as Id<"_storage">)
+        } catch {
+            // Ignore stale or already-deleted blobs; row cleanup must still proceed.
+        }
+        await ctx.db.delete(file._id)
+    }
+
+    const artifacts = await ctx.db
+        .query("artifacts")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+        .collect()
+
+    for (const artifact of artifacts) {
+        await ctx.db.delete(artifact._id)
+    }
+
     const messages = await ctx.db
         .query("messages")
         .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
@@ -69,6 +118,10 @@ async function deleteConversationCascade(ctx: MutationCtx, conversationId: Id<"c
 
     for (const message of messages) {
         await ctx.db.delete(message._id)
+    }
+
+    if (paperSession) {
+        await ctx.db.delete(paperSession._id)
     }
 
     await ctx.db.delete(conversationId)
@@ -84,6 +137,30 @@ export const listConversations = query({
             .withIndex("by_user", (q) => q.eq("userId", userId))
             .order("desc")
             .take(50)
+    },
+})
+
+export const listConversationsWindow = query({
+    args: {
+        userId: v.id("users"),
+        paginationOpts: paginationOptsValidator,
+    },
+    handler: async (ctx, { userId, paginationOpts }) => {
+        if (!await verifyAuthUserId(ctx, userId)) {
+            return {
+                page: [],
+                isDone: true,
+                continueCursor: "",
+                splitCursor: null,
+                pageStatus: null,
+            }
+        }
+
+        return await ctx.db
+            .query("conversations")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .order("desc")
+            .paginate(paginationOpts)
     },
 })
 
@@ -368,7 +445,7 @@ export const cleanupEmptyConversations = mutation({
 
             // If no messages, delete the conversation
             if (!firstMessage) {
-                await ctx.db.delete(conv._id)
+                await deleteConversationCascade(ctx, conv._id)
                 deletedCount++
             }
         }

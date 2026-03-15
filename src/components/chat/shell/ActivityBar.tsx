@@ -6,7 +6,6 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import {
   ChatBubble,
-  Page,
   GitBranch,
 } from "iconoir-react"
 import { Button } from "@/components/ui/button"
@@ -20,7 +19,7 @@ import {
 /**
  * Panel types for Activity Bar navigation
  */
-export type PanelType = "chat-history" | "paper" | "progress"
+export type PanelType = "chat-history" | "progress"
 
 interface ActivityBarProps {
   /** Currently active panel */
@@ -83,8 +82,7 @@ function ActivityBarItem({
  * Located at the leftmost side of the chat layout (48px width).
  * Provides panel switching between:
  * 1. Chat History - List of conversations
- * 2. Paper Sessions - Paper session folders with artifacts
- * 3. Progress - Paper milestone timeline
+ * 2. Progress - Paper milestone timeline
  *
  * Accessibility:
  * - Uses role="navigation" with aria-label
@@ -112,7 +110,7 @@ export function ActivityBar({
   // Keyboard navigation for activity bar
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      const panels: PanelType[] = ["chat-history", "paper", "progress"]
+      const panels: PanelType[] = ["chat-history", "progress"]
       const currentIndex = panels.indexOf(activePanel)
 
       switch (e.key) {
@@ -168,12 +166,7 @@ export function ActivityBar({
     {
       panel: "chat-history",
       icon: <ChatBubble className="h-5 w-5" aria-hidden="true" />,
-      label: "Chat History",
-    },
-    {
-      panel: "paper",
-      icon: <Page className="h-5 w-5" aria-hidden="true" />,
-      label: "Sesi paper",
+      label: "Riwayat percakapan",
     },
     {
       panel: "progress",

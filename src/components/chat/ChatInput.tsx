@@ -54,6 +54,7 @@ export function ChatInput({
     const fullscreenTextareaRef = useRef<HTMLTextAreaElement>(null)
     const [isMobileFocused, setIsMobileFocused] = useState(false)
     const [isFullscreen, setIsFullscreen] = useState(false)
+    const [mobileTextareaHeight, setMobileTextareaHeight] = useState(0)
 
     const handleBoundedInputChange = useCallback((
         event: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>
@@ -97,7 +98,11 @@ export function ChatInput({
         const textarea = mobileTextareaRef.current
         if (textarea) {
             textarea.style.height = "auto"
-            textarea.style.height = `${Math.min(textarea.scrollHeight, MOBILE_MAX_HEIGHT)}px`
+            const nextHeight = Math.min(textarea.scrollHeight, MOBILE_MAX_HEIGHT)
+            textarea.style.height = `${nextHeight}px`
+            setMobileTextareaHeight(nextHeight)
+        } else {
+            setMobileTextareaHeight(0)
         }
     }, [input])
 
@@ -135,6 +140,9 @@ export function ChatInput({
     }, [onSubmit])
 
     const displayedContextFiles = contextFiles ?? attachedFiles
+    const hasContextFiles = displayedContextFiles.length > 0
+    const canClearContext = hasContextFiles || hasActiveAttachmentContext
+    const isMobileStackedLayout = canClearContext || mobileTextareaHeight > 44
 
     const thinScrollbarClassName = cn(
         "scrollbar-thin [scrollbar-width:thin]",
@@ -144,13 +152,88 @@ export function ChatInput({
         "[&::-webkit-scrollbar-thumb:hover]:bg-[color:var(--chat-border)]"
     )
 
+    const renderContextFileChips = () => {
+        if (!hasContextFiles) return null
+
+        return displayedContextFiles.map((file) => {
+            const { baseName, extension } = splitFileName(file.name)
+
+            return (
+                <div
+                    key={file.fileId}
+                    className="inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-accent)] py-1 pl-2.5 pr-1.5 text-xs font-mono text-[var(--chat-info)]"
+                    title={file.name}
+                >
+                    {isImageType(file.type) ? (
+                        <MediaImage className="h-3 w-3 shrink-0" />
+                    ) : (
+                        <Page className="h-3 w-3 shrink-0" />
+                    )}
+                    <span className="inline-flex min-w-0 items-baseline">
+                        <span className="max-w-[120px] truncate">{baseName}</span>
+                        {extension && <span className="shrink-0">{extension}</span>}
+                    </span>
+                    <span className="shrink-0 text-[10px] opacity-60">{formatFileSize(file.size)}</span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (onContextFileRemoved) {
+                                onContextFileRemoved(file.fileId)
+                                return
+                            }
+                            onFileRemoved(file.fileId)
+                        }}
+                        className="ml-0.5 rounded p-0.5 transition-colors hover:bg-[color:var(--chat-info)]/15"
+                        aria-label={`Hapus file konteks ${file.name}`}
+                    >
+                        <Xmark className="h-3 w-3" />
+                    </button>
+                </div>
+            )
+        })
+    }
+
+    const renderClearContextButton = ({
+        hideWhenDisabled = false,
+    }: {
+        hideWhenDisabled?: boolean
+    } = {}) => {
+        if (!onClearAttachmentContext) return null
+        if (hideWhenDisabled && !canClearContext) return null
+
+        return (
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!canClearContext) return
+                                onClearAttachmentContext()
+                            }}
+                            aria-disabled={!canClearContext}
+                            className={cn(
+                                "inline-flex h-8 w-8 items-center justify-center rounded-action border border-[color:var(--chat-border)] text-[var(--chat-muted-foreground)] transition-colors",
+                                canClearContext
+                                    ? "hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]"
+                                    : "opacity-40 cursor-not-allowed"
+                            )}
+                            aria-label="Hapus semua"
+                        >
+                            <Trash className="h-4 w-4" />
+                        </button>
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent className="font-mono text-xs">Hapus semua</TooltipContent>
+            </Tooltip>
+        )
+    }
+
     // Shared context tray
     const renderContextTray = (
         variant: "desktop" | "mobile" | "fullscreen",
         containerClassName?: string
     ) => {
-        const hasContextFiles = displayedContextFiles.length > 0
-        const canClearContext = hasContextFiles || hasActiveAttachmentContext
         const isDesktop = variant === "desktop"
         const itemsContainerClassName = isDesktop
             ? cn(
@@ -181,72 +264,10 @@ export function ChatInput({
                             tooltipText="Upload file tambahan konteks"
                             label="+ Konteks"
                         />
-                            {hasContextFiles ? (
-                            displayedContextFiles.map((file) => {
-                                const { baseName, extension } = splitFileName(file.name)
-
-                                return (
-                                    <div
-                                        key={file.fileId}
-                                        className="inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap rounded-badge border border-[color:var(--chat-info)] bg-[var(--chat-accent)] py-1 pl-2.5 pr-1.5 text-xs font-mono text-[var(--chat-info)]"
-                                        title={file.name}
-                                    >
-                                        {isImageType(file.type) ? (
-                                            <MediaImage className="h-3 w-3 shrink-0" />
-                                        ) : (
-                                            <Page className="h-3 w-3 shrink-0" />
-                                        )}
-                                        <span className="inline-flex min-w-0 items-baseline">
-                                            <span className="max-w-[120px] truncate">{baseName}</span>
-                                            {extension && <span className="shrink-0">{extension}</span>}
-                                        </span>
-                                        <span className="shrink-0 text-[10px] opacity-60">{formatFileSize(file.size)}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (onContextFileRemoved) {
-                                                    onContextFileRemoved(file.fileId)
-                                                    return
-                                                }
-                                                onFileRemoved(file.fileId)
-                                            }}
-                                            className="ml-0.5 rounded p-0.5 transition-colors hover:bg-[color:var(--chat-info)]/15"
-                                            aria-label={`Hapus file konteks ${file.name}`}
-                                        >
-                                            <Xmark className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                )
-                            })
-                            ) : null}
+                            {renderContextFileChips()}
                         </div>
                     </div>
-                    {onClearAttachmentContext && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span className="inline-flex">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            if (!canClearContext) return
-                                            onClearAttachmentContext()
-                                        }}
-                                        aria-disabled={!canClearContext}
-                                        className={cn(
-                                            "inline-flex h-8 w-8 items-center justify-center rounded-action border border-[color:var(--chat-border)] text-[var(--chat-muted-foreground)] transition-colors",
-                                            canClearContext
-                                                ? "hover:bg-[var(--chat-accent)] hover:text-[var(--chat-foreground)]"
-                                                : "opacity-40 cursor-not-allowed"
-                                        )}
-                                        aria-label="Hapus semua"
-                                    >
-                                        <Trash className="h-4 w-4" />
-                                    </button>
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="font-mono text-xs">Hapus semua</TooltipContent>
-                        </Tooltip>
-                    )}
+                    {renderClearContextButton()}
                 </div>
                 <div
                     data-testid={isDesktop ? "desktop-context-separator" : undefined}
@@ -359,64 +380,144 @@ export function ChatInput({
             <div className="md:hidden shrink-0 px-3 py-2 bg-transparent">
                 <form onSubmit={handleMobileSubmit} className="flex">
                     <div
+                        data-testid="mobile-chat-input-shell"
                         className={cn(
                             "w-full rounded-lg border border-[color:var(--chat-border)] bg-[var(--chat-card)] transition-all duration-150",
                         )}
                     >
-                        {renderContextTray("mobile", "px-2 pt-2")}
-                        <div className="flex items-end gap-1 px-2 py-1.5">
-                        {/* Center: Textarea or placeholder */}
-                        {!isMobileExpanded ? (
-                            <div
-                                className="flex-1 flex items-center min-h-[32px] cursor-text"
-                                onClick={() => {
-                                    setIsMobileFocused(true)
-                                    requestAnimationFrame(() => mobileTextareaRef.current?.focus())
-                                }}
-                            >
-                                <span className="text-sm text-[var(--chat-muted-foreground)] select-none">
-                                    Kirim percakapan...
-                                </span>
+                        {isMobileStackedLayout ? (
+                            <div data-testid="mobile-chat-input-stacked">
+                                <div className="flex items-start gap-2 px-2 pt-2">
+                                    <div className="min-w-0 flex-1 flex flex-wrap items-center gap-2">
+                                        <FileUploadButton
+                                            conversationId={conversationId}
+                                            onFileUploaded={onFileAttached}
+                                            onImageDataUrl={onImageDataUrl}
+                                            ariaLabel="Upload file tambahan konteks"
+                                            tooltipText="Upload file tambahan konteks"
+                                            label="+ Konteks"
+                                        />
+                                        {renderContextFileChips()}
+                                    </div>
+                                    {renderClearContextButton({ hideWhenDisabled: true })}
+                                </div>
+                                <div className="px-2 pt-2">
+                                    <div className="h-px w-full bg-[color:var(--chat-border)]/80" aria-hidden="true" />
+                                </div>
+                                <div className="flex items-end gap-1 px-2 py-1.5">
+                                    {!isMobileExpanded ? (
+                                        <div
+                                            className="flex-1 flex items-center min-h-[32px] cursor-text"
+                                            onClick={() => {
+                                                setIsMobileFocused(true)
+                                                requestAnimationFrame(() => mobileTextareaRef.current?.focus())
+                                            }}
+                                        >
+                                            <span className="text-sm text-[var(--chat-muted-foreground)] select-none">
+                                                Kirim percakapan...
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <textarea
+                                            ref={mobileTextareaRef}
+                                            className="flex-1 min-w-0 resize-none bg-transparent focus:outline-none text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)] py-1"
+                                            value={input}
+                                            onChange={handleBoundedInputChange}
+                                            onKeyDown={handleKeyDown}
+                                            onFocus={() => setIsMobileFocused(true)}
+                                            onBlur={() => {
+                                                if (!input.trim()) {
+                                                    setIsMobileFocused(false)
+                                                }
+                                            }}
+                                            placeholder="Kirim percakapan..."
+                                            rows={1}
+                                            aria-label="Message input"
+                                        />
+                                    )}
+
+                                    <div className="shrink-0 self-end flex items-center gap-0.5">
+                                        {isMobileExpanded && (
+                                            <button
+                                                type="button"
+                                                onClick={openFullscreen}
+                                                className={cn(
+                                                    "w-8 h-8 flex items-center justify-center rounded-action",
+                                                    "text-[var(--chat-muted-foreground)]",
+                                                    "active:bg-[var(--chat-accent)] active:text-[var(--chat-foreground)]",
+                                                    "transition-colors duration-150"
+                                                )}
+                                                aria-label="Expand to fullscreen"
+                                            >
+                                                <Expand className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                        {renderSendButton("sm")}
+                                    </div>
+                                </div>
                             </div>
                         ) : (
-                            <textarea
-                                ref={mobileTextareaRef}
-                                className="flex-1 min-w-0 resize-none bg-transparent focus:outline-none text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)] py-1"
-                                value={input}
-                                onChange={handleBoundedInputChange}
-                                onKeyDown={handleKeyDown}
-                                onFocus={() => setIsMobileFocused(true)}
-                                onBlur={() => {
-                                    if (!input.trim()) {
-                                        setIsMobileFocused(false)
-                                    }
-                                }}
-                                placeholder="Kirim percakapan..."
-                                rows={1}
-                                aria-label="Message input"
-                            />
-                        )}
-
-                        {/* Right: Expand (only when expanded) + Send/Stop */}
-                        <div className="shrink-0 self-end flex items-center gap-0.5">
-                            {isMobileExpanded && (
-                                <button
-                                    type="button"
-                                    onClick={openFullscreen}
-                                    className={cn(
-                                        "w-8 h-8 flex items-center justify-center rounded-action",
-                                        "text-[var(--chat-muted-foreground)]",
-                                        "active:bg-[var(--chat-accent)] active:text-[var(--chat-foreground)]",
-                                        "transition-colors duration-150"
+                            <div data-testid="mobile-chat-input-compact" className="flex items-end gap-1.5 px-2 py-1.5">
+                                <div className="shrink-0 py-0.5">
+                                    <FileUploadButton
+                                        conversationId={conversationId}
+                                        onFileUploaded={onFileAttached}
+                                        onImageDataUrl={onImageDataUrl}
+                                        ariaLabel="Upload file tambahan konteks"
+                                        tooltipText="Upload file tambahan konteks"
+                                        label="+ Konteks"
+                                    />
+                                </div>
+                                {!isMobileExpanded ? (
+                                    <div
+                                        className="flex-1 flex items-center min-h-[32px] cursor-text"
+                                        onClick={() => {
+                                            setIsMobileFocused(true)
+                                            requestAnimationFrame(() => mobileTextareaRef.current?.focus())
+                                        }}
+                                    >
+                                        <span className="text-sm text-[var(--chat-muted-foreground)] select-none">
+                                            Kirim percakapan...
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <textarea
+                                        ref={mobileTextareaRef}
+                                        className="flex-1 min-w-0 resize-none bg-transparent focus:outline-none text-sm leading-relaxed text-[var(--chat-foreground)] placeholder:text-sm placeholder:text-[var(--chat-muted-foreground)] py-1"
+                                        value={input}
+                                        onChange={handleBoundedInputChange}
+                                        onKeyDown={handleKeyDown}
+                                        onFocus={() => setIsMobileFocused(true)}
+                                        onBlur={() => {
+                                            if (!input.trim()) {
+                                                setIsMobileFocused(false)
+                                            }
+                                        }}
+                                        placeholder="Kirim percakapan..."
+                                        rows={1}
+                                        aria-label="Message input"
+                                    />
+                                )}
+                                <div className="shrink-0 self-end flex items-center gap-0.5">
+                                    {isMobileExpanded && (
+                                        <button
+                                            type="button"
+                                            onClick={openFullscreen}
+                                            className={cn(
+                                                "w-8 h-8 flex items-center justify-center rounded-action",
+                                                "text-[var(--chat-muted-foreground)]",
+                                                "active:bg-[var(--chat-accent)] active:text-[var(--chat-foreground)]",
+                                                "transition-colors duration-150"
+                                            )}
+                                            aria-label="Expand to fullscreen"
+                                        >
+                                            <Expand className="h-4 w-4" />
+                                        </button>
                                     )}
-                                    aria-label="Expand to fullscreen"
-                                >
-                                    <Expand className="h-4 w-4" />
-                                </button>
-                            )}
-                            {renderSendButton("sm")}
-                        </div>
-                        </div>
+                                    {renderSendButton("sm")}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </form>
             </div>

@@ -10,7 +10,7 @@ import { ChatProcessStatusBar } from "./ChatProcessStatusBar"
 import type { ReasoningTraceStep, ReasoningTraceStatus } from "./ReasoningTracePanel"
 import { useMessages } from "@/lib/hooks/useMessages"
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
-import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, FastArrowUpSquare, FastArrowDownSquare, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
+import { SidebarExpand, WarningCircle, Refresh, ChatPlusIn, NavArrowDown, SunLight, HalfMoon } from "iconoir-react"
 import { useTheme } from "next-themes"
 import { Id } from "../../../convex/_generated/dataModel"
 import { AttachedFileMeta } from "@/lib/types/attached-file"
@@ -26,8 +26,6 @@ import { useSession } from "@/lib/auth-client"
 import { TemplateGrid, type Template } from "./messages/TemplateGrid"
 import { QuotaWarningBanner } from "./QuotaWarningBanner"
 import { MobileEditDeleteSheet } from "./mobile/MobileEditDeleteSheet"
-import { MobilePaperSessionsSheet } from "./mobile/MobilePaperSessionsSheet"
-import { MobileProgressBar } from "./mobile/MobileProgressBar"
 import { RewindConfirmationDialog } from "../paper/RewindConfirmationDialog"
 import type { PaperStageId } from "../../../convex/paperSessions/constants"
 import { getEffectiveTier } from "@/lib/utils/subscription"
@@ -61,6 +59,10 @@ interface ChatWindowProps {
   onArtifactSelect?: (artifactId: Id<"artifacts">) => void
   /** All artifacts for this conversation (for persisted artifact signals after refresh) */
   artifacts?: ConversationArtifact[]
+  sourceFocusTarget?: {
+    artifactId: Id<"artifacts">
+    sourceMessageId?: Id<"messages">
+  } | null
 }
 
 type ChatListRow =
@@ -80,6 +82,41 @@ const VALIDATION_PANEL_COMPACT_WIDTH = 680
 interface PendingStarterPromptPayload {
   conversationId: string
   prompt: string
+}
+
+export function resolveArtifactSourceFocusTarget(
+  root: ParentNode,
+  params: {
+    artifactId?: string | null
+    sourceMessageId?: string | null
+  }
+) {
+  if (params.sourceMessageId) {
+    const messageNode = root.querySelector<HTMLElement>(
+      `[data-message-id="${params.sourceMessageId}"]`
+    )
+    if (messageNode) {
+      return {
+        element: messageNode,
+        highlightedMessageId: params.sourceMessageId,
+      }
+    }
+  }
+
+  if (params.artifactId) {
+    const triggerNode = root.querySelector<HTMLElement>(
+      `[data-artifact-trigger-id="${params.artifactId}"]`
+    )
+    if (triggerNode) {
+      const messageNode = triggerNode.closest<HTMLElement>("[data-message-id]")
+      return {
+        element: messageNode ?? triggerNode,
+        highlightedMessageId: messageNode?.dataset.messageId ?? null,
+      }
+    }
+  }
+
+  return null
 }
 
 function setPendingStarterPrompt(conversationId: string, prompt: string) {
@@ -362,7 +399,13 @@ function PendingAssistantLaneIndicator() {
   )
 }
 
-export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect, artifacts: conversationArtifacts }: ChatWindowProps) {
+export function ChatWindow({
+  conversationId,
+  onMobileMenuClick,
+  onArtifactSelect,
+  artifacts: conversationArtifacts,
+  sourceFocusTarget,
+}: ChatWindowProps) {
   const router = useRouter()
   const { user: currentUser } = useCurrentUser()
 
@@ -387,9 +430,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const [imageDataUrls, setImageDataUrls] = useState<Map<string, string>>(new Map())
   const [isCreatingChat, setIsCreatingChat] = useState(false)
   const [showEditDeleteSheet, setShowEditDeleteSheet] = useState(false)
-  const [showPaperSessionsSheet, setShowPaperSessionsSheet] = useState(false)
   const [pendingRewindTarget, setPendingRewindTarget] = useState<PaperStageId | null>(null)
   const [isRewindSubmitting, setIsRewindSubmitting] = useState(false)
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
   const [chatViewportNode, setChatViewportNode] = useState<HTMLDivElement | null>(null)
   const [chatViewportWidth, setChatViewportWidth] = useState(0)
   const [processUi, setProcessUi] = useState<{
@@ -406,6 +449,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const processIntervalRef = useRef<number | null>(null)
   const processHideTimeoutRef = useRef<number | null>(null)
   const processStartedAtRef = useRef<number | null>(null)
+  const sourceFocusTimeoutRef = useRef<number | null>(null)
   const previousStatusRef = useRef<string>("ready")
   const stoppedManuallyRef = useRef(false)
   const starterPromptLastAttemptAtRef = useRef(new Map<string, number>())
@@ -417,7 +461,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
   const { data: session } = useSession()
   const effectiveTier = getEffectiveTier(currentUser?.role, currentUser?.subscriptionStatus)
   const { resolvedTheme, setTheme } = useTheme()
-  const userId = useQuery(api.chatHelpers.getUserId, session?.user?.id ? { betterAuthUserId: session.user.id } : "skip")
+  const userId = useQuery(api.chatHelpers.getMyUserId, session?.user?.id ? {} : "skip")
   const createConversation = useMutation(api.conversations.createConversation)
   const upsertAttachmentContextMutation = useMutation(api.conversationAttachmentContexts.upsertByConversation)
   const clearAttachmentContextMutation = useMutation(api.conversationAttachmentContexts.clearByConversation)
@@ -501,7 +545,9 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
 
   const activeAttachmentContext = useQuery(
     api.conversationAttachmentContexts.getByConversation,
-    safeConversationId && isAuthenticated ? { conversationId: safeConversationId } : "skip"
+    safeConversationId && isAuthenticated && conversation
+      ? { conversationId: safeConversationId }
+      : "skip"
   )
   const activeContextFileIds = useMemo(
     () => activeAttachmentContext?.activeFileIds ?? [],
@@ -728,6 +774,41 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     () => buildChatQuotaOfferFromError(error, effectiveTier),
     [error, effectiveTier]
   )
+
+  useEffect(() => {
+    if (!sourceFocusTarget) return
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      const target = resolveArtifactSourceFocusTarget(document, {
+        artifactId: String(sourceFocusTarget.artifactId),
+        sourceMessageId: sourceFocusTarget.sourceMessageId
+          ? String(sourceFocusTarget.sourceMessageId)
+          : null,
+      })
+
+      if (!target) return
+
+      target.element.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      })
+
+      if (sourceFocusTimeoutRef.current) {
+        window.clearTimeout(sourceFocusTimeoutRef.current)
+      }
+
+      if (target.highlightedMessageId) {
+        setHighlightedMessageId(target.highlightedMessageId)
+        sourceFocusTimeoutRef.current = window.setTimeout(() => {
+          setHighlightedMessageId(null)
+        }, 2200)
+      }
+    })
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame)
+    }
+  }, [messages, sourceFocusTarget])
 
   type AttachmentSendMode = "inherit" | "replace" | "clear"
 
@@ -1663,11 +1744,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
     onMobileMenuClick?.()
   }
 
-  // Mobile rewind handler — opens confirmation dialog
-  const handleMobileRewindRequest = useCallback((targetStage: PaperStageId) => {
-    setPendingRewindTarget(targetStage)
-  }, [])
-
   const handleRewindConfirm = useCallback(async () => {
     if (!pendingRewindTarget || !userId) return
     setIsRewindSubmitting(true)
@@ -1805,7 +1881,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           <div className="text-center text-[var(--chat-muted-foreground)]">
             {/* Mechanical Grace: Rose error color */}
             <WarningCircle className="h-12 w-12 mx-auto mb-4 text-[var(--chat-destructive)]" />
-            <p className="mb-2 font-sans">Percakapan tidak ditemukan</p>
+            <p className="mb-2 font-sans">Chat tidak ditemukan</p>
             <p className="text-sm opacity-75 font-sans">Percakapan mungkin telah dihapus atau URL tidak valid.</p>
           </div>
         </div>
@@ -1848,7 +1924,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
             <NavArrowDown className="h-3 w-3 shrink-0 text-[var(--chat-muted-foreground)]" strokeWidth={1.5} />
           </button>
 
-          {/* Right group: new chat + paper sessions */}
+          {/* Right group: new chat */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => router.push("/chat")}
@@ -1856,22 +1932,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
               aria-label="Chat baru"
             >
               <ChatPlusIn className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => setShowPaperSessionsSheet((prev) => !prev)}
-              className={
-                showPaperSessionsSheet
-                  ? "text-[var(--chat-foreground)] transition-colors duration-150"
-                  : "text-[var(--chat-muted-foreground)] active:text-[var(--chat-foreground)] transition-colors duration-150"
-              }
-              aria-label={showPaperSessionsSheet ? "Tutup paper sessions" : "Buka paper sessions"}
-              aria-pressed={showPaperSessionsSheet}
-            >
-              {showPaperSessionsSheet ? (
-                <FastArrowDownSquare className="h-5 w-5" strokeWidth={1.5} />
-              ) : (
-                <FastArrowUpSquare className="h-5 w-5" strokeWidth={1.5} />
-              )}
             </button>
           </div>
         </div>
@@ -1954,35 +2014,49 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
                   index === messages.length - 1 &&
                   message.role === "assistant"
 
+                const renderedMessageId = historyMsg?._id ?? message.id
+
                 return (
-                  <div className="pb-4" style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}>
+                  <div
+                    className="pb-4"
+                    data-message-id={renderedMessageId}
+                    style={{ paddingInline: "var(--chat-input-pad-x, 5rem)" }}
+                  >
                     {shouldShowPendingIndicatorBeforeMessage && (
                       <div className="pb-2">
                         <PendingAssistantLaneIndicator />
                       </div>
                     )}
-                    <MessageBubble
-                      key={message.id}
-                      message={displayMessage}
-                      onEdit={handleEdit}
-                      onArtifactSelect={onArtifactSelect}
-                      persistProcessIndicators={
-                        isGenerating &&
-                        index === messages.length - 1 &&
-                        message.role === "assistant"
+                    <div
+                      className={
+                        highlightedMessageId === renderedMessageId
+                          ? "rounded-shell border border-sky-500/70 bg-sky-500/8 transition-colors duration-300"
+                          : undefined
                       }
-                      // Paper mode edit permission props
-                      isPaperMode={isPaperMode}
-                      messageIndex={index}
-                      currentStageStartIndex={currentStageStartIndex}
-                      allMessages={permissionMessages}
-                      stageData={stageData}
-                      // Persisted artifact signals (survive page refresh)
-                      persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
-                      // File name lookup for history messages
-                      fileNameMap={fileNameMap}
-                      fileMetaMap={fileMetaMap}
-                    />
+                    >
+                      <MessageBubble
+                        key={message.id}
+                        message={displayMessage}
+                        onEdit={handleEdit}
+                        onArtifactSelect={onArtifactSelect}
+                        persistProcessIndicators={
+                          isGenerating &&
+                          index === messages.length - 1 &&
+                          message.role === "assistant"
+                        }
+                        // Paper mode edit permission props
+                        isPaperMode={isPaperMode}
+                        messageIndex={index}
+                        currentStageStartIndex={currentStageStartIndex}
+                        allMessages={permissionMessages}
+                        stageData={stageData}
+                        // Persisted artifact signals (survive page refresh)
+                        persistedArtifacts={historyMsg ? messageArtifactMap.get(historyMsg._id) : undefined}
+                        // File name lookup for history messages
+                        fileNameMap={fileNameMap}
+                        fileMetaMap={fileMetaMap}
+                      />
+                    </div>
                   </div>
                 )
               }}
@@ -2092,16 +2166,6 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
           reasoningHeadline={activeReasoningState.headline}
         />
 
-        {/* Mobile Paper Progress Bar */}
-        {isPaperMode && paperSession?.currentStage && (
-          <MobileProgressBar
-            currentStage={paperSession.currentStage as PaperStageId}
-            stageStatus={stageStatus ?? "drafting"}
-            stageData={stageData}
-            onRewindRequest={handleMobileRewindRequest}
-          />
-        )}
-
         {/* Input Area */}
         <ChatInput
           input={input}
@@ -2129,15 +2193,7 @@ export function ChatWindow({ conversationId, onMobileMenuClick, onArtifactSelect
         conversationId={safeConversationId}
       />
 
-      {/* Mobile Paper Sessions Sheet */}
-      <MobilePaperSessionsSheet
-        open={showPaperSessionsSheet}
-        onOpenChange={setShowPaperSessionsSheet}
-        conversationId={safeConversationId}
-        onArtifactSelect={onArtifactSelect}
-      />
-
-      {/* Rewind Confirmation Dialog (mobile progress bar) */}
+      {/* Rewind Confirmation Dialog (progress drawer) */}
       {isPaperMode && paperSession?.currentStage && (
         <RewindConfirmationDialog
           open={pendingRewindTarget !== null}

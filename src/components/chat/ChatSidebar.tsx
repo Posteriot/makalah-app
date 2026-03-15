@@ -1,24 +1,28 @@
 "use client"
 
+import { useState } from "react"
+import { useQuery } from "convex/react"
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft, Settings, SidebarCollapse } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft, Settings, Xmark } from "iconoir-react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
+import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
+import type { ArtifactOpenOptions } from "@/lib/hooks/useArtifactTabs"
 import { cn } from "@/lib/utils"
 import { SidebarChatHistory } from "./sidebar/SidebarChatHistory"
-import { SidebarPaperSessions } from "./sidebar/SidebarPaperSessions"
 import { SidebarProgress } from "./sidebar/SidebarProgress"
 import type { PanelType } from "./shell/ActivityBar"
 import { CreditMeter } from "@/components/billing/CreditMeter"
 import { UserDropdown } from "@/components/layout/header/UserDropdown"
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser"
 
 /**
  * ChatSidebar Props
  *
  * Extended to support multi-state rendering via activePanel prop.
- * Now acts as a container that conditionally renders different sidebar content.
+ * Sekarang sidebar hanya punya dua konteks:
+ * - Riwayat Percakapan (tree workspace)
+ * - Linimasa Progres
  */
 interface ChatSidebarProps {
   /** Active panel from Activity Bar */
@@ -39,8 +43,12 @@ interface ChatSidebarProps {
   onDeleteConversation: (id: Id<"conversations">) => void
   /** Callback to update conversation title */
   onUpdateConversationTitle?: (id: Id<"conversations">, title: string) => Promise<void>
+  /** Callback to delete many conversations */
+  onDeleteConversations: (ids: Id<"conversations">[]) => Promise<void>
+  /** Callback to delete all conversations */
+  onDeleteAllConversations: () => Promise<void>
   /** Callback when artifact is selected */
-  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: { readOnly?: boolean; sourceConversationId?: Id<"conversations">; title?: string; type?: string }) => void
+  onArtifactSelect?: (artifactId: Id<"artifacts">, opts?: ArtifactOpenOptions) => void
   /** Currently selected artifact ID in panel */
   activeArtifactId?: Id<"artifacts"> | null
   /** Whether artifact panel is open */
@@ -53,23 +61,22 @@ interface ChatSidebarProps {
   onCloseMobile?: () => void
   /** Loading state for conversations */
   isLoading?: boolean
+  /** More conversations available */
+  hasMoreConversations?: boolean
+  /** Incremental load more callback */
+  onLoadMoreConversations?: () => void
   /** Creating new chat state */
   isCreating?: boolean
   /** Callback to collapse sidebar (desktop only) */
   onCollapseSidebar?: () => void
-  /** Callback when panel tab changes (mobile drawer tabs) */
-  onPanelChange?: (panel: PanelType) => void
-  /** Callback to open conversation manager workspace panel */
-  onOpenConversationManager?: () => void
 }
 
 /**
  * ChatSidebar - Multi-state container
  *
  * Conditionally renders one of three sidebar states based on activePanel:
- * 1. "chat-history" (default) - SidebarChatHistory with conversation list
- * 2. "paper" - SidebarPaperSessions with paper session folders
- * 3. "progress" - SidebarProgress with paper milestone timeline
+ * 1. "chat-history" (default) - SidebarChatHistory tree
+ * 2. "progress" - SidebarProgress dengan konteks percakapan aktif
  *
  * Common elements:
  * - Sidebar header with "New Chat" button (only for chat-history)
@@ -78,11 +85,13 @@ interface ChatSidebarProps {
 export function ChatSidebar({
   activePanel = "chat-history",
   conversations,
-  totalConversationCount = 0,
+  totalConversationCount,
   currentConversationId,
   onNewChat,
   onDeleteConversation,
   onUpdateConversationTitle,
+  onDeleteConversations,
+  onDeleteAllConversations,
   onArtifactSelect,
   activeArtifactId,
   isArtifactPanelOpen,
@@ -90,34 +99,45 @@ export function ChatSidebar({
   className,
   onCloseMobile,
   isLoading,
+  hasMoreConversations,
+  onLoadMoreConversations,
   isCreating,
   onCollapseSidebar,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onPanelChange,
-  onOpenConversationManager,
 }: ChatSidebarProps) {
   const router = useRouter()
+  const { user } = useCurrentUser()
   const displayedConversationCount = conversations.length
-  const resolvedTotalConversationCount = Math.max(
-    totalConversationCount,
-    displayedConversationCount
+  const [historyManageRequestNonce, setHistoryManageRequestNonce] = useState(0)
+  const [isHistoryManageMode, setIsHistoryManageMode] = useState(false)
+  const [selectionCount, setSelectionCount] = useState(0)
+  const [isAllSelected, setIsAllSelected] = useState(false)
+  const manageModeConversationCount = useQuery(
+    api.conversations.countConversations,
+    activePanel === "chat-history" && isHistoryManageMode && user?._id
+      ? { userId: user._id }
+      : "skip"
   )
-  const historyCountLabel = `${displayedConversationCount} dari ${resolvedTotalConversationCount}`
+  const resolvedTotalConversationCount =
+    typeof totalConversationCount === "number"
+      ? Math.max(totalConversationCount, displayedConversationCount)
+      : typeof manageModeConversationCount === "number"
+        ? Math.max(manageModeConversationCount, displayedConversationCount)
+      : undefined
+  const historyCountLabel = isHistoryManageMode
+    ? (() => {
+        const total = resolvedTotalConversationCount ?? displayedConversationCount
+        const selected = isAllSelected ? total : selectionCount
+        return `${selected} dari ${total}`
+      })()
+    : resolvedTotalConversationCount !== undefined
+      ? `${displayedConversationCount} dari ${resolvedTotalConversationCount}`
+      : hasMoreConversations
+        ? `${displayedConversationCount}+`
+        : String(displayedConversationCount)
 
   // Render sidebar content based on active panel
   const renderContent = () => {
     switch (activePanel) {
-      case "paper":
-        return (
-          <SidebarPaperSessions
-            currentConversationId={currentConversationId}
-            onArtifactSelect={onArtifactSelect}
-            activeArtifactId={activeArtifactId}
-            isArtifactPanelOpen={isArtifactPanelOpen}
-            onArtifactPanelToggle={onArtifactPanelToggle}
-            onCloseMobile={onCloseMobile}
-          />
-        )
       case "progress":
         return <SidebarProgress conversationId={currentConversationId} />
       case "chat-history":
@@ -125,11 +145,28 @@ export function ChatSidebar({
         return (
           <SidebarChatHistory
             conversations={conversations}
+            totalConversationCount={resolvedTotalConversationCount}
             currentConversationId={currentConversationId}
             onDeleteConversation={onDeleteConversation}
+            onDeleteConversations={onDeleteConversations}
+            onDeleteAllConversations={onDeleteAllConversations}
             onUpdateConversationTitle={onUpdateConversationTitle}
+            onArtifactSelect={onArtifactSelect}
+            activeArtifactId={activeArtifactId}
+            isArtifactPanelOpen={isArtifactPanelOpen}
+            onArtifactPanelToggle={onArtifactPanelToggle}
             onCloseMobile={onCloseMobile}
             isLoading={isLoading}
+            hasMore={hasMoreConversations}
+            onLoadMore={onLoadMoreConversations}
+            manageRequestNonce={historyManageRequestNonce}
+            onManageModeChange={setIsHistoryManageMode}
+            onSelectionCountChange={(count, isAll) => {
+              setSelectionCount(count)
+              setIsAllSelected(isAll)
+            }}
+            manageHeaderLabel={historyCountLabel}
+            onToggleManageMode={() => setHistoryManageRequestNonce((current) => current + 1)}
           />
         )
     }
@@ -138,8 +175,7 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "h-full w-full overflow-visible md:overflow-hidden border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)]",
-        "flex flex-col",
+        "flex h-full min-h-0 w-full flex-col overflow-visible border-r border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)] md:overflow-hidden",
         className
       )}
     >
@@ -163,7 +199,7 @@ export function ChatSidebar({
 
       {/* New Chat button — outline style matching chat toolbar buttons */}
       {activePanel === "chat-history" && (
-        <div className="hidden md:block shrink-0 px-2 pt-3 pb-2.5">
+        <div className="hidden md:block shrink-0 px-3 pb-3 pt-3">
           <Button
             onClick={() => {
               onNewChat()
@@ -195,90 +231,31 @@ export function ChatSidebar({
         </div>
       )}
 
-      {/* Section header — Riwayat label with count badge */}
-      {activePanel === "chat-history" && (
-        <div className="shrink-0 flex items-center justify-between bg-[var(--chat-accent)] px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link
-              href="/"
-              aria-label="Home"
-              className="md:hidden inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--chat-sidebar-foreground)] transition-opacity hover:opacity-80"
-              onClick={() => onCloseMobile?.()}
-            >
-              <Image
-                src="/logo/makalah_logo_light.svg"
-                alt="Makalah"
-                width={20}
-                height={20}
-                className="hidden dark:block"
-              />
-              <Image
-                src="/logo/makalah_logo_dark.svg"
-                alt="Makalah"
-                width={20}
-                height={20}
-                className="block dark:hidden"
-              />
-            </Link>
-            <div className="min-w-0 rounded-action border border-[color:var(--chat-sidebar-border)] bg-[var(--chat-sidebar)] px-3 py-1.5">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-sans font-semibold text-[var(--chat-sidebar-foreground)]">
-                  Riwayat
-                </span>
-                <span className="shrink-0 rounded-badge border border-[color:var(--chat-border)] bg-[var(--chat-muted)] px-2 py-0.5 text-[10px] font-mono font-semibold text-[var(--chat-muted-foreground)]">
-                  {historyCountLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-action bg-transparent",
-                "text-[var(--chat-muted-foreground)] transition-colors duration-150",
-                "hover:bg-[var(--chat-sidebar-accent)] hover:text-[var(--chat-foreground)]"
-              )}
-              aria-label="Buka Kelola Percakapan"
-              title="Buka Kelola Percakapan"
-              onClick={() => {
-                onOpenConversationManager?.()
-                onCloseMobile?.()
-              }}
-            >
-              <Settings className="h-4 w-4" aria-hidden="true" />
-            </button>
-            {/* Mobile: SidebarCollapse to close drawer */}
-            <button
-              onClick={onCloseMobile}
-              className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--chat-muted-foreground)] active:bg-[var(--chat-sidebar-accent)] active:text-[var(--chat-foreground)] transition-colors duration-150"
-              aria-label="Close sidebar"
-            >
-              <SidebarCollapse className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Content — Riwayat header now rendered inside SidebarChatHistory for both modes */}
+      <div data-testid="chat-sidebar-content" className="min-h-0 flex-1 overflow-hidden">
+        {renderContent()}
+      </div>
 
-      {/* Content — flat scrollable list, same as desktop */}
-      <div className="flex-1 flex flex-col overflow-hidden">{renderContent()}</div>
-
-      {/* CreditMeter — same as desktop: border-top separator, transparent bg */}
-      <CreditMeter
-        variant="compact"
-        className="shrink-0 border-t border-[color:var(--chat-sidebar-border)] bg-transparent"
-        onClick={() => router.push("/subscription/overview")}
-      />
-
-      {/* Mobile-only: User dropdown (replaces single Settings link) */}
-      <div className="md:hidden px-4 py-3 border-t border-[color:var(--chat-sidebar-border)]">
-        <UserDropdown
+      <div
+        data-testid="chat-sidebar-footer"
+        className="shrink-0 border-t border-[color:var(--chat-sidebar-border)] bg-[var(--chat-accent)]"
+      >
+        <CreditMeter
           variant="compact"
-          compactLabel="first-name"
-          compactFill
-          placement="top-start"
-          onActionComplete={onCloseMobile}
+          className="shrink-0 bg-transparent"
+          onClick={() => router.push("/subscription/overview")}
         />
+
+        {/* Mobile-only: User dropdown (replaces single Settings link) */}
+        <div className="shrink-0 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+          <UserDropdown
+            variant="compact"
+            compactLabel="first-name"
+            compactFill
+            placement="top-start"
+            onActionComplete={onCloseMobile}
+          />
+        </div>
       </div>
     </aside>
   )

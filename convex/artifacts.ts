@@ -1,5 +1,6 @@
 import { mutationGeneric, queryGeneric } from "convex/server"
 import { v } from "convex/values"
+import { requireAuthUserId, verifyAuthUserId } from "./authHelpers"
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -38,7 +39,12 @@ export const get = queryGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return null
+    }
+
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       return null
@@ -64,33 +70,106 @@ export const listByConversation = queryGeneric({
     userId: v.id("users"),
     type: v.optional(artifactTypeValidator),
   },
-  handler: async ({ db }, { conversationId, userId, type }) => {
-    // Verify conversation exists and user owns it
-    const conversation = await db.get(conversationId)
-    if (!conversation) {
-      // Return empty array instead of throwing error
-      // Ini handle race condition saat conversation dihapus sementara query sedang berjalan
-      return []
-    }
-    // Permission check: return empty instead of throwing
-    // Handles: user switch, direct URL access to other's conversation
-    if (conversation.userId !== userId) {
+  handler: async (ctx, { conversationId, userId, type }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
       return []
     }
 
-    // Query artifacts
+    const { db } = ctx
     const artifacts = await db
       .query("artifacts")
       .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
       .order("desc")
       .collect()
 
+    const ownedArtifacts = artifacts.filter((artifact) => artifact.userId === userId)
+
     // Filter by type if specified
     if (type) {
-      return artifacts.filter((a) => a.type === type)
+      return ownedArtifacts.filter((a) => a.type === type)
     }
 
-    return artifacts
+    return ownedArtifacts
+  },
+})
+
+type ArtifactSummary = {
+  _id: unknown
+  title?: string
+  type?: string
+  version?: number
+  createdAt?: number
+  sourceArtifactId?: unknown
+  userId?: unknown
+}
+
+function getLatestArtifactsForConversation(artifacts: ArtifactSummary[]) {
+  const latestMap = new Map<string, ArtifactSummary>()
+
+  for (const artifact of artifacts) {
+    const key = artifact.type === "refrasa"
+      ? `refrasa-${artifact.sourceArtifactId ?? artifact.title}`
+      : `${artifact.type}-${artifact.title}`
+    const existing = latestMap.get(key)
+
+    if (!existing || Number(artifact.version ?? 0) > Number(existing.version ?? 0)) {
+      latestMap.set(key, artifact)
+    }
+  }
+
+  const latestArtifacts = Array.from(latestMap.values())
+  const parents = latestArtifacts.filter((artifact) => artifact.type !== "refrasa")
+  const refrasas = latestArtifacts.filter((artifact) => artifact.type === "refrasa")
+
+  parents.sort((left, right) => Number(left.createdAt ?? 0) - Number(right.createdAt ?? 0))
+
+  const ordered: ArtifactSummary[] = []
+  for (const parent of parents) {
+    ordered.push(parent)
+    const children = refrasas
+      .filter((artifact) => artifact.sourceArtifactId === parent._id)
+      .sort((left, right) => Number(left.createdAt ?? 0) - Number(right.createdAt ?? 0))
+    ordered.push(...children)
+  }
+
+  const placedIds = new Set(ordered.map((artifact) => artifact._id))
+  for (const artifact of refrasas) {
+    if (!placedIds.has(artifact._id)) {
+      ordered.push(artifact)
+    }
+  }
+
+  return ordered
+}
+
+export const listLatestByConversationIds = queryGeneric({
+  args: {
+    userId: v.id("users"),
+    conversationIds: v.array(v.id("conversations")),
+  },
+  handler: async (ctx, { userId, conversationIds }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
+    if (conversationIds.length === 0) return []
+
+    const perConversationArtifacts = await Promise.all(
+      conversationIds.map(async (conversationId) => {
+        const artifacts = await db
+          .query("artifacts")
+          .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
+          .order("desc")
+          .collect()
+
+        return getLatestArtifactsForConversation(
+          artifacts.filter((artifact) => artifact.userId === userId)
+        )
+      })
+    )
+
+    return perConversationArtifacts.flat()
   },
 })
 
@@ -104,7 +183,12 @@ export const listByUser = queryGeneric({
     type: v.optional(artifactTypeValidator),
     limit: v.optional(v.number()),
   },
-  handler: async ({ db }, { userId, type, limit }) => {
+  handler: async (ctx, { userId, type, limit }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     const artifacts = await db
       .query("artifacts")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -133,7 +217,12 @@ export const getInvalidatedByConversation = queryGeneric({
     conversationId: v.id("conversations"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { conversationId, userId }) => {
+  handler: async (ctx, { conversationId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     // Verify conversation exists and user owns it
     const conversation = await db.get(conversationId)
     if (!conversation) {
@@ -175,7 +264,12 @@ export const getVersionHistory = queryGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       return []
@@ -233,7 +327,12 @@ export const getBySourceArtifact = queryGeneric({
     sourceArtifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { sourceArtifactId, userId }) => {
+  handler: async (ctx, { sourceArtifactId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return []
+    }
+
+    const { db } = ctx
     const results = await db
       .query("artifacts")
       .withIndex("by_source_artifact", (q) => q.eq("sourceArtifactId", sourceArtifactId))
@@ -271,9 +370,11 @@ export const create = mutationGeneric({
     }))),
   },
   handler: async (
-    { db },
+    ctx,
     { conversationId, userId, messageId, type, title, description, content, format, sources }
   ) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     // Verify conversation exists and user owns it
     const conversation = await db.get(conversationId)
     if (!conversation) {
@@ -334,7 +435,9 @@ export const createRefrasa = mutationGeneric({
       suggestion: v.optional(v.string()),
     })),
   },
-  handler: async ({ db }, { conversationId, userId, sourceArtifactId, content, refrasaIssues }) => {
+  handler: async (ctx, { conversationId, userId, sourceArtifactId, content, refrasaIssues }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const conversation = await db.get(conversationId)
     if (!conversation || conversation.userId !== userId) {
       throw new Error("Unauthorized")
@@ -394,7 +497,9 @@ export const update = mutationGeneric({
       publishedAt: v.optional(v.number()),
     }))),
   },
-  handler: async ({ db }, { artifactId, userId, title, description, content, format, sources }) => {
+  handler: async (ctx, { artifactId, userId, title, description, content, format, sources }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const oldArtifact = await db.get(artifactId)
     if (!oldArtifact) {
       throw new Error("Artifact tidak ditemukan")
@@ -481,7 +586,9 @@ export const remove = mutationGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       throw new Error("Artifact tidak ditemukan")
@@ -516,7 +623,9 @@ export const removeChain = mutationGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       throw new Error("Artifact tidak ditemukan")
@@ -578,7 +687,9 @@ export const markRefrasaApplied = mutationGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact || artifact.userId !== userId) throw new Error("Unauthorized")
     if (artifact.type !== "refrasa") throw new Error("Bukan artifact refrasa")
@@ -600,7 +711,9 @@ export const clearInvalidation = mutationGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    await requireAuthUserId(ctx, userId)
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       throw new Error("Artifact tidak ditemukan")
@@ -643,7 +756,12 @@ export const checkFinalStatus = queryGeneric({
     artifactId: v.id("artifacts"),
     userId: v.id("users"),
   },
-  handler: async ({ db }, { artifactId, userId }) => {
+  handler: async (ctx, { artifactId, userId }) => {
+    if (!await verifyAuthUserId(ctx, userId)) {
+      return { isFinal: false }
+    }
+
+    const { db } = ctx
     const artifact = await db.get(artifactId)
     if (!artifact) {
       return { isFinal: false }
