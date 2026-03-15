@@ -38,6 +38,7 @@ export interface WebSearchOrchestratorConfig {
   isTransparentReasoning: boolean
   reasoningProviderOptions?: Record<string, unknown>
   traceMode: string
+  tavilyApiKey?: string
   onFinish: (result: WebSearchResult) => Promise<void>
 }
 

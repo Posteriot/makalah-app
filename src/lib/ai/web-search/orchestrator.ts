@@ -9,6 +9,7 @@ import { buildSearchResultsContext } from "@/lib/ai/search-results-context"
 import { composeSkillInstructions } from "@/lib/ai/skills"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 import { buildUserFacingSearchPayload } from "@/lib/ai/internal-thought-separator"
+import { fetchPageContent } from "./content-fetcher"
 import {
   sanitizeMessagesForSearch,
   canonicalizeCitationUrls,
@@ -69,12 +70,14 @@ The search results below are your source material. Use them.
 `.trim()
 
 /**
- * Execute a two-pass web search flow:
- *   Phase 1: Silent search via retriever chain (runs BEFORE stream creation)
- *   Phase 2: Compose with skill instructions, stream to client
+ * Execute a three-phase web search flow:
+ *   Phase 1:   Silent search via retriever chain (runs BEFORE stream creation)
+ *   Phase 1.5: Fetch page content via FetchWeb (runs INSIDE stream execute)
+ *   Phase 2:   Compose with skill instructions, stream to client
  *
  * Phase 1 runs before stream creation so that errors propagate to route.ts
- * for retry / fallback handling.
+ * for retry / fallback handling. Phase 1.5 runs inside execute so Vercel's
+ * streaming timeout doesn't apply (first byte already sent).
  */
 export async function executeWebSearch(
   config: WebSearchOrchestratorConfig,
@@ -151,7 +154,7 @@ export async function executeWebSearch(
   }
 
   // ────────────────────────────────────────────────────────────
-  // Build compose context (BEFORE stream creation)
+  // Prepare sources and skill instructions (BEFORE stream creation)
   // ────────────────────────────────────────────────────────────
   // Strip vertex proxy URLs from searchText — real URLs are in sources array
   const cleanSearchText = searchText.replace(
@@ -184,59 +187,8 @@ export async function executeWebSearch(
     console.error("[Orchestrator] composeSkillInstructions failed:", skillError)
   }
 
-  let searchResultsContext: string
-  try {
-    searchResultsContext = buildSearchResultsContext(
-      scoredSources.map((s) => ({
-        url: s.url,
-        title: s.title,
-        ...(s.citedText ? { citedText: s.citedText } : {}),
-      })),
-      cleanSearchText,
-    )
-  } catch (ctxError) {
-    console.error("[Orchestrator] buildSearchResultsContext failed:", ctxError)
-    searchResultsContext = "## SEARCH RESULTS\nNo sources available."
-  }
-
-  // Build compose system messages
-  // EXCLUDED from compose phase:
-  // - paperModePrompt: Contains "ASK user to confirm search" and tool usage instructions
-  //   that conflict with compose behavior. The model follows these over COMPOSE_PHASE_DIRECTIVE
-  //   because they are longer and more specific. Compose phase only needs to synthesize
-  //   search results — it does not need paper workflow instructions.
-  // - paperWorkflowReminder: Instructs "call startPaperSession IMMEDIATELY" — irrelevant
-  //   and harmful in compose phase (no tools available).
-  // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
-  // When placed after systemPrompt/skillInstructions, the model treats those larger
-  // blocks as primary instructions and ignores the smaller directive.
-  const composeSystemMessages: Array<{ role: "system"; content: string }> = [
-    { role: "system", content: COMPOSE_PHASE_DIRECTIVE },
-    { role: "system", content: searchResultsContext },
-    { role: "system", content: config.systemPrompt },
-    ...(skillInstructions
-      ? [{ role: "system" as const, content: skillInstructions }]
-      : []),
-    ...(config.fileContext
-      ? [{ role: "system" as const, content: `File Context:\n\n${config.fileContext}` }]
-      : []),
-  ]
-
-  const composeMessages = [
-    ...composeSystemMessages,
-    ...(config.composeMessages ?? []),
-  ]
-
-
-  // Start compose stream — may throw, which propagates to route.ts for retry
-  const composeResult = streamText({
-    model: config.composeModel,
-    messages: composeMessages,
-    ...config.samplingOptions,
-  })
-
   // ────────────────────────────────────────────────────────────
-  // PHASE 2: Stream creation — emit search status, compose output, citations
+  // PHASE 1.5 + PHASE 2: Stream creation — fetch content, compose, stream
   // ────────────────────────────────────────────────────────────
   const messageId =
     globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
@@ -253,7 +205,7 @@ export async function executeWebSearch(
     execute: async ({ writer }) => {
       let composedText = ""
 
-      // Emit search status: "searching" → "composing" (Phase 1 already done)
+      // Emit search status: "searching" → "fetching-content" → "composing"
       writer.write({ type: "start", messageId })
       writer.write({
         type: "data-search",
@@ -261,7 +213,80 @@ export async function executeWebSearch(
         data: { status: "searching" },
       })
 
-      // Transition to composing (Phase 1 completed before stream)
+      // ── Phase 1.5: Fetch page content ──
+      writer.write({
+        type: "data-search",
+        id: searchStatusId,
+        data: { status: "fetching-content", sourceCount },
+      })
+
+      const fetchedContent = await fetchPageContent(
+        scoredSources.slice(0, 7).map((s) => s.url),
+        { tavilyApiKey: config.tavilyApiKey, timeoutMs: 5_000 },
+      )
+
+      // Enrich sources with pageContent
+      const enrichedSources = scoredSources.map((s) => {
+        const fetched = fetchedContent.find((f) => f.url === s.url)
+        return {
+          ...s,
+          ...(fetched?.pageContent ? { pageContent: fetched.pageContent } : {}),
+        }
+      })
+
+      // ── Build compose context using enrichedSources ──
+      let searchResultsContext: string
+      try {
+        searchResultsContext = buildSearchResultsContext(
+          enrichedSources.map((s) => ({
+            url: s.url,
+            title: s.title,
+            ...(s.citedText ? { citedText: s.citedText } : {}),
+            ...(s.pageContent ? { pageContent: s.pageContent } : {}),
+          })),
+          cleanSearchText,
+        )
+      } catch (ctxError) {
+        console.error("[Orchestrator] buildSearchResultsContext failed:", ctxError)
+        searchResultsContext = "## SEARCH RESULTS\nNo sources available."
+      }
+
+      // Build compose system messages
+      // EXCLUDED from compose phase:
+      // - paperModePrompt: Contains "ASK user to confirm search" and tool usage instructions
+      //   that conflict with compose behavior. The model follows these over COMPOSE_PHASE_DIRECTIVE
+      //   because they are longer and more specific. Compose phase only needs to synthesize
+      //   search results — it does not need paper workflow instructions.
+      // - paperWorkflowReminder: Instructs "call startPaperSession IMMEDIATELY" — irrelevant
+      //   and harmful in compose phase (no tools available).
+      // COMPOSE_PHASE_DIRECTIVE goes FIRST — it defines the phase context and overrides.
+      // When placed after systemPrompt/skillInstructions, the model treats those larger
+      // blocks as primary instructions and ignores the smaller directive.
+      const composeSystemMessages: Array<{ role: "system"; content: string }> = [
+        { role: "system", content: COMPOSE_PHASE_DIRECTIVE },
+        { role: "system", content: searchResultsContext },
+        { role: "system", content: config.systemPrompt },
+        ...(skillInstructions
+          ? [{ role: "system" as const, content: skillInstructions }]
+          : []),
+        ...(config.fileContext
+          ? [{ role: "system" as const, content: `File Context:\n\n${config.fileContext}` }]
+          : []),
+      ]
+
+      const composeMessages = [
+        ...composeSystemMessages,
+        ...(config.composeMessages ?? []),
+      ]
+
+      // Start compose stream
+      const composeResult = streamText({
+        model: config.composeModel,
+        messages: composeMessages,
+        ...config.samplingOptions,
+      })
+
+      // Transition to composing
       writer.write({
         type: "data-search",
         id: searchStatusId,
