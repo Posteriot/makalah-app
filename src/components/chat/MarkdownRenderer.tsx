@@ -2,6 +2,7 @@
 
 import { Fragment, type ReactNode } from "react"
 import dynamic from "next/dynamic"
+import { cn } from "@/lib/utils"
 import { InlineCitationChip } from "./InlineCitationChip"
 import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
 
@@ -906,36 +907,44 @@ function renderBlocks(
       case "table":
         return (
           <div key={k} className="my-3 overflow-x-auto">
-            <table className="w-full border-collapse rounded-action border border-[color:var(--chat-border)] text-sm">
-              <thead>
-                <tr className="bg-[var(--chat-muted)]">
-                  {block.headers.map((header, hIdx) => (
-                    <th
-                      key={`${k}-th-${hIdx}`}
-                      className="border-b border-[color:var(--chat-border)] px-3 py-2 text-left font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--chat-muted-foreground)]"
-                      style={{ textAlign: block.alignments[hIdx] ?? "left" }}
-                    >
-                      {renderInline(header, `${k}-th-${hIdx}`, sources, context)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {block.rows.map((row, rIdx) => (
-                  <tr key={`${k}-tr-${rIdx}`} className="border-b border-[color:var(--chat-border)] last:border-b-0">
-                    {row.map((cell, cIdx) => (
-                      <td
-                        key={`${k}-td-${rIdx}-${cIdx}`}
-                        className="px-3 py-2 font-mono text-sm text-[var(--chat-foreground)]"
-                        style={{ textAlign: block.alignments[cIdx] ?? "left" }}
+            <div className="overflow-hidden rounded-action border border-[color:var(--chat-border)]">
+              <table className="w-full border-collapse text-[13px]">
+                <thead>
+                  <tr className="bg-[var(--chat-muted)]">
+                    {block.headers.map((header, hIdx) => (
+                      <th
+                        key={`${k}-th-${hIdx}`}
+                        className={cn(
+                          "border-b border-[color:var(--chat-border)] px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--chat-muted-foreground)]",
+                          hIdx < block.headers.length - 1 && "border-r border-r-[color:var(--chat-border)]"
+                        )}
+                        style={{ textAlign: block.alignments[hIdx] ?? "left" }}
                       >
-                        {renderInline(cell, `${k}-td-${rIdx}-${cIdx}`, sources, context)}
-                      </td>
+                        {renderInline(header, `${k}-th-${hIdx}`, sources, context)}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {block.rows.map((row, rIdx) => (
+                    <tr key={`${k}-tr-${rIdx}`} className="border-b border-[color:var(--chat-border)]/50 last:border-b-0">
+                      {row.map((cell, cIdx) => (
+                        <td
+                          key={`${k}-td-${rIdx}-${cIdx}`}
+                          className={cn(
+                            "px-3.5 py-2.5 text-[13px] text-[var(--chat-foreground)] leading-relaxed",
+                            cIdx < row.length - 1 && "border-r border-r-[color:var(--chat-border)]/30"
+                          )}
+                          style={{ textAlign: block.alignments[cIdx] ?? "left" }}
+                        >
+                          {renderInline(cell, `${k}-td-${rIdx}-${cIdx}`, sources, context)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {fallbackChip ? <div className="mt-2">{fallbackChip}</div> : null}
           </div>
         )

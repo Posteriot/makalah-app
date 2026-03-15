@@ -220,6 +220,31 @@ describe("MarkdownRenderer table rendering", () => {
     const { container } = render(<MarkdownRenderer markdown={frontendProcessed} sources={sources} context="chat" />)
     expect(container.querySelector("table")).not.toBeNull()
   })
+  it("renders table with vertical dividers between columns", () => {
+    const md = [
+      "| A | B | C |",
+      "|---|---|---|",
+      "| 1 | 2 | 3 |",
+    ].join("\n")
+
+    const { container } = render(<MarkdownRenderer markdown={md} />)
+    const ths = container.querySelectorAll("th")
+    expect(ths.length).toBe(3)
+    const wrapper = container.querySelector("table")?.parentElement
+    expect(wrapper?.className).toContain("overflow-hidden")
+  })
+
+  it("renders table headers with sans-serif font (not mono)", () => {
+    const md = [
+      "| Header1 | Header2 |",
+      "|---|---|",
+      "| cell1 | cell2 |",
+    ].join("\n")
+
+    const { container } = render(<MarkdownRenderer markdown={md} />)
+    const th = container.querySelector("th")
+    expect(th?.className).not.toContain("font-mono")
+  })
 })
 
 describe("stripInlineMarkdown", () => {
