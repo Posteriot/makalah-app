@@ -33,9 +33,10 @@ Search specifically for content from: Kompas (kompas.com), Tempo (tempo.co), and
 }
 
 /**
- * Augment the last user message with search diversity hints.
- * Perplexity uses the user message as its search query basis,
- * so this directly influences retrieval behavior.
+ * Augment the last user message with search diversity and priority source hints.
+ * All retrievers receive these hints alongside the system prompt —
+ * dual-channel delivery ensures priority sources reach the model
+ * regardless of how each provider processes system vs user messages.
  */
 export function augmentUserMessageForSearch<T extends { role: string; content: unknown }>(messages: T[]): T[] {
   const result = [...messages]
