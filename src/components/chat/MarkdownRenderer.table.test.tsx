@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll, vi } from "vitest"
+import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { MarkdownRenderer, stripInlineMarkdown } from "./MarkdownRenderer"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
@@ -282,6 +282,31 @@ describe("stripInlineMarkdown", () => {
 
   it("handles empty string", () => {
     expect(stripInlineMarkdown("")).toBe("")
+  })
+})
+
+describe("Table responsive card fallback", () => {
+  it("renders table normally when columns <= 3 regardless of container width", () => {
+    const md = [
+      "| A | B | C |",
+      "|---|---|---|",
+      "| 1 | 2 | 3 |",
+    ].join("\n")
+
+    const { container } = render(<MarkdownRenderer markdown={md} />)
+    expect(container.querySelector("table")).not.toBeNull()
+  })
+
+  it("renders 4+ column table with data-responsive-table attribute", () => {
+    const md = [
+      "| A | B | C | D |",
+      "|---|---|---|---|",
+      "| 1 | 2 | 3 | 4 |",
+    ].join("\n")
+
+    const { container } = render(<MarkdownRenderer markdown={md} />)
+    const wrapper = container.querySelector("[data-responsive-table]")
+    expect(wrapper).not.toBeNull()
   })
 })
 

@@ -786,6 +786,20 @@
   background-color: var(--neutral-950);
 }
 
+/* Table cell URL truncation — URLs in table cells get truncated, expand on hover */
+[data-chat-scope] table td a[href] {
+  display: block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-chat-scope] table td a[href]:hover {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: none;
+}
+
 /* ==========================================================================
  * Auth Token System (Staging)
  * Scoped to [data-auth-scope] for fullpage auth redesign.
