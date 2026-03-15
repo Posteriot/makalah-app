@@ -166,9 +166,6 @@ See `future-paper-workflow-skill-notes.md` for migration analysis.
 |------|-------------|
 | `README.md` | This document — principles and evidence |
 | `architecture-constraints.md` | Architecture rules: language, scope, tools vs skills |
-| `web-search-quality-skill-design.md` | Web search quality skill design |
 | `future-paper-workflow-skill-notes.md` | Paper stage skill migration analysis |
-| `web-search-orchestrator-design.md` | Orchestrator + retriever chain design |
-| `web-search-orchestrator-implementation-plans.md` | Orchestrator implementation plan |
-| `admin-panel-search-redesign-design.md` | Admin panel N-retriever redesign |
-| `admin-panel-search-redesign-implementation-plans.md` | Admin panel redesign implementation plan |
+| `enforcement/README.md` | Full technical documentation: search mode decision, orchestrator, retrievers, skills, citations |
+| `enforcement/priority-sources/` | Design doc and implementation plan for priority search targeting |
