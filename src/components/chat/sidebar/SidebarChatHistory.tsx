@@ -280,7 +280,7 @@ function readPersistedTreeState(): {
 
 export function SidebarChatHistory({
   conversations,
-  totalConversationCount,
+  totalConversationCount: _totalConversationCount,
   currentConversationId,
   onDeleteConversation,
   onDeleteConversations,
@@ -466,9 +466,6 @@ export function SidebarChatHistory({
   }, [hasMore, onLoadMore])
 
   const selectedCount = selectedConversationIds.length
-  const selectionCountLabel = isAllConversationsSelected
-    ? String(totalConversationCount ?? conversations.length)
-    : String(selectedCount)
 
   const handleStartEdit = useCallback((conversationId: Id<"conversations">, title: string) => {
     if (!onUpdateConversationTitle || isManageMode) return

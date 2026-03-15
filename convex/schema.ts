@@ -488,7 +488,7 @@ export default defineSchema({
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
-          publishedAt: v.optional(v.number()), // Timestamp from google_search
+          publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
         }))),
         webSearchReferences: v.optional(v.array(v.object({
           url: v.string(),
@@ -511,7 +511,7 @@ export default defineSchema({
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
-          publishedAt: v.optional(v.number()), // Timestamp from google_search
+          publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
         }))),
         webSearchReferences: v.optional(v.array(v.object({
           url: v.string(),
@@ -577,7 +577,7 @@ export default defineSchema({
           authors: v.optional(v.string()),
           year: v.optional(v.number()),
           url: v.optional(v.string()),
-          publishedAt: v.optional(v.number()), // Timestamp from google_search
+          publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
           inTextCitation: v.string(),
           isFromPhase1: v.boolean(),
         }))),

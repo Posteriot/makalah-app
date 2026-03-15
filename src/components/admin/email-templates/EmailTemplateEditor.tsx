@@ -142,7 +142,7 @@ function EmailTemplateEditorForm({
   const [isActive, setIsActive] = useState(
     initialTemplate?.isActive ?? false,
   )
-  const [placeholders, setPlaceholders] = useState<
+  const [placeholders] = useState<
     { key: string; description: string; example: string }[]
   >(
     (initialTemplate?.availablePlaceholders as { key: string; description: string; example: string }[]) ?? [],

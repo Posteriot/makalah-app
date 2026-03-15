@@ -30,7 +30,7 @@ export const GagasanData = v.object({
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
-        publishedAt: v.optional(v.number()), // Timestamp from google_search
+        publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
     }))),
     webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
@@ -50,7 +50,7 @@ export const TopikData = v.object({
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
-        publishedAt: v.optional(v.number()), // Timestamp from google_search
+        publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
     }))),
     webSearchReferences: v.optional(v.array(v.object(WebSearchReferenceShape))),
     artifactId: v.optional(v.id("artifacts")),
@@ -99,7 +99,7 @@ export const TinjauanLiteraturData = v.object({
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
-        publishedAt: v.optional(v.number()), // Timestamp from google_search
+        publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
         inTextCitation: v.string(),
         isFromPhase1: v.boolean(),
     }))),
@@ -211,7 +211,7 @@ export const DaftarPustakaData = v.object({
         authors: v.optional(v.string()),
         year: v.optional(v.number()),
         url: v.optional(v.string()),
-        publishedAt: v.optional(v.number()), // Timestamp from google_search
+        publishedAt: v.optional(v.number()), // Timestamp from web search source metadata
         doi: v.optional(v.string()),
         inTextCitation: v.optional(v.string()), // AI-generated: "(Supit, 2024)"
         fullReference: v.optional(v.string()), // AI-generated: APA 7th format

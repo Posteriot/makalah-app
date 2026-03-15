@@ -21,36 +21,37 @@ export function useCurrentUser() {
 
   const createAppUser = useMutation(api.users.createAppUser)
   const creationAttemptedRef = useRef(false)
-  const lastKnownUserSessionIdRef = useRef<string | null>(sessionUserId)
-
-  // Cache user only for the active session. The cache may smooth brief Convex
-  // revalidation, but it must not survive logout or a session switch.
-  const [lastKnownUser, setLastKnownUser] = useState(convexUser ?? null)
+  const [lastKnownUserState, setLastKnownUserState] = useState(() => ({
+    sessionId: sessionUserId,
+    user: convexUser ?? null,
+  }))
 
   useEffect(() => {
     if (!sessionUserId) {
-      lastKnownUserSessionIdRef.current = null
-      setLastKnownUser(null)
+      // Clear session-scoped cache immediately on logout/final session loss.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLastKnownUserState({ sessionId: null, user: null })
       creationAttemptedRef.current = false
       return
     }
 
-    if (lastKnownUserSessionIdRef.current !== sessionUserId) {
-      lastKnownUserSessionIdRef.current = sessionUserId
-      setLastKnownUser(null)
+    if (lastKnownUserState.sessionId !== sessionUserId) {
+      // Reset cache when BetterAuth session identity changes.
+      setLastKnownUserState({ sessionId: sessionUserId, user: null })
       creationAttemptedRef.current = false
     }
-  }, [sessionUserId])
+  }, [lastKnownUserState.sessionId, sessionUserId])
 
   useEffect(() => {
     if (!convexUser || !sessionUserId) return
-    lastKnownUserSessionIdRef.current = sessionUserId
-    setLastKnownUser(convexUser)
+    // Preserve the last resolved Convex user during brief revalidation gaps.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLastKnownUserState({ sessionId: sessionUserId, user: convexUser })
   }, [convexUser, sessionUserId])
 
   const cachedUser =
-    sessionUserId && lastKnownUserSessionIdRef.current === sessionUserId
-      ? lastKnownUser
+    sessionUserId && lastKnownUserState.sessionId === sessionUserId
+      ? lastKnownUserState.user
       : null
 
   // Auto-create app user if authenticated but no Convex record yet

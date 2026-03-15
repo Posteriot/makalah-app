@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useQuery } from "convex/react"
 import { Button } from "@/components/ui/button"
-import { RefreshDouble, Plus, FastArrowLeft, Settings, Xmark } from "iconoir-react"
+import { RefreshDouble, Plus, FastArrowLeft } from "iconoir-react"
 import { useRouter } from "next/navigation"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
