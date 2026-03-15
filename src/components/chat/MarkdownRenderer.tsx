@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, type ReactNode } from "react"
+import { Fragment, type ReactNode, useState } from "react"
 import dynamic from "next/dynamic"
 import { cn } from "@/lib/utils"
 import { InlineCitationChip } from "./InlineCitationChip"
@@ -747,6 +747,56 @@ function renderInline(
   return nodes
 }
 
+function TableCopyToolbar({ headers, rows }: { headers: string[]; rows: string[][] }) {
+  const [copiedKey, setCopiedKey] = useState<"plain" | "markdown" | null>(null)
+
+  const copyPlain = async () => {
+    const headerRow = headers.map(stripInlineMarkdown).join("\t")
+    const dataRows = rows.map((r) => r.map(stripInlineMarkdown).join("\t"))
+    const text = [headerRow, ...dataRows].join("\n")
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedKey("plain")
+      setTimeout(() => setCopiedKey(null), 2000)
+    } catch {
+      alert("Failed to copy to clipboard")
+    }
+  }
+
+  const copyMarkdown = async () => {
+    const headerRow = `| ${headers.join(" | ")} |`
+    const separator = `| ${headers.map(() => "---").join(" | ")} |`
+    const dataRows = rows.map((r) => `| ${r.join(" | ")} |`)
+    const text = [headerRow, separator, ...dataRows].join("\n")
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedKey("markdown")
+      setTimeout(() => setCopiedKey(null), 2000)
+    } catch {
+      alert("Failed to copy to clipboard")
+    }
+  }
+
+  const btnClass = (key: "plain" | "markdown") =>
+    cn(
+      "flex items-center gap-1 text-[10px] font-mono transition-colors px-2 py-1 rounded-action",
+      copiedKey === key
+        ? "text-[var(--chat-success)]"
+        : "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-muted)]"
+    )
+
+  return (
+    <div className="flex justify-end gap-1 mt-1.5">
+      <button type="button" onClick={copyPlain} className={btnClass("plain")}>
+        {copiedKey === "plain" ? "Copied" : "Copy"}
+      </button>
+      <button type="button" onClick={copyMarkdown} className={btnClass("markdown")}>
+        {copiedKey === "markdown" ? "Copied" : "Copy Markdown"}
+      </button>
+    </div>
+  )
+}
+
 function renderBlocks(
   blocks: Block[],
   keyPrefix: string,
@@ -945,6 +995,7 @@ function renderBlocks(
                 </tbody>
               </table>
             </div>
+            <TableCopyToolbar headers={block.headers} rows={block.rows} />
             {fallbackChip ? <div className="mt-2">{fallbackChip}</div> : null}
           </div>
         )

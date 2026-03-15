@@ -1,5 +1,5 @@
-import { describe, expect, it, beforeAll } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { describe, expect, it, beforeAll, vi } from "vitest"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { MarkdownRenderer, stripInlineMarkdown } from "./MarkdownRenderer"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 
@@ -16,6 +16,13 @@ beforeAll(() => {
       removeEventListener: () => {},
       dispatchEvent: () => false,
     }),
+  })
+
+  Object.defineProperty(navigator, "clipboard", {
+    writable: true,
+    value: {
+      writeText: vi.fn().mockResolvedValue(undefined),
+    },
   })
 })
 
@@ -275,5 +282,59 @@ describe("stripInlineMarkdown", () => {
 
   it("handles empty string", () => {
     expect(stripInlineMarkdown("")).toBe("")
+  })
+})
+
+describe("Table copy toolbar", () => {
+  beforeEach(() => {
+    vi.mocked(navigator.clipboard.writeText).mockClear()
+  })
+
+  it("renders Copy and Copy Markdown buttons below table", () => {
+    const md = [
+      "| A | B |",
+      "|---|---|",
+      "| 1 | 2 |",
+    ].join("\n")
+
+    render(<MarkdownRenderer markdown={md} />)
+    expect(screen.getByText("Copy")).toBeTruthy()
+    expect(screen.getByText("Copy Markdown")).toBeTruthy()
+  })
+
+  it("copies tab-separated plain text on Copy click", async () => {
+    const md = [
+      "| Name | Value |",
+      "|---|---|",
+      "| **alpha** | 1 |",
+      "| beta | 2 |",
+    ].join("\n")
+
+    render(<MarkdownRenderer markdown={md} />)
+    fireEvent.click(screen.getByText("Copy"))
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "Name\tValue\nalpha\t1\nbeta\t2"
+      )
+    })
+  })
+
+  it("copies markdown source on Copy Markdown click", async () => {
+    const md = [
+      "| Name | Value |",
+      "|---|---|",
+      "| alpha | 1 |",
+    ].join("\n")
+
+    render(<MarkdownRenderer markdown={md} />)
+    fireEvent.click(screen.getByText("Copy Markdown"))
+
+    await waitFor(() => {
+      const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0] as string
+      expect(call).toContain("| Name | Value |")
+      expect(call).toContain("| --- | --- |")
+      expect(call).toContain("| alpha | 1 |")
+    })
   })
 })
