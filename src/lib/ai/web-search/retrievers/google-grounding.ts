@@ -1,5 +1,5 @@
 import { google } from "@ai-sdk/google"
-import { normalizeCitations } from "@/lib/citations/normalizer"
+import { normalizeGoogleGrounding, normalizeSourcesList } from "@/lib/citations/normalizer"
 import type { NormalizedCitation } from "@/lib/citations/types"
 import type { AnyStreamTextResult, RetrieverConfig, SearchRetriever } from "../types"
 
@@ -102,14 +102,15 @@ export const googleGroundingRetriever: SearchRetriever = {
         ),
       ])
 
-      // Try result.sources first, fallback to providerMetadata
-      const sourcesArr = Array.isArray(sources) ? sources : []
-      let raw: NormalizedCitation[]
-      if (sourcesArr.length > 0) {
-        raw = normalizeCitations(sources, "perplexity")
-        if (raw.length === 0) raw = normalizeCitations(metadata, "gateway")
-      } else {
-        raw = normalizeCitations(metadata, "gateway")
+      // Use Google Grounding normalizer — extracts citedText from
+      // groundingSupports[].segment.text via direct Google API.
+      let raw: NormalizedCitation[] = normalizeGoogleGrounding(metadata)
+      if (raw.length === 0) {
+        // Fallback: if providerMetadata has no grounding data, try AI SDK result.sources
+        const sourcesArr = Array.isArray(sources) ? sources : []
+        if (sourcesArr.length > 0) {
+          raw = normalizeSourcesList(sources)
+        }
       }
 
       // Step 1: Dedup by proxy URL
