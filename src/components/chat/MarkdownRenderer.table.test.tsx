@@ -152,8 +152,8 @@ describe("MarkdownRenderer table rendering", () => {
     ].join("\n")
 
     const sources = [
-      { url: "https://journal.limudata.co.id/article/123" },
-      { url: "https://itb.ac.id/research/456" },
+      { url: "https://journal.limudata.co.id/article/123", title: "Jurnal Indonesia" },
+      { url: "https://itb.ac.id/research/456", title: "Universitas ITB" },
     ]
 
     // Pass through formatParagraphEndCitations (same as backend)
@@ -195,8 +195,8 @@ describe("MarkdownRenderer table rendering", () => {
     ].join("\n")
 
     const sources = [
-      { url: "https://journal.limudata.co.id/article/123" },
-      { url: "https://itb.ac.id/research/456" },
+      { url: "https://journal.limudata.co.id/article/123", title: "Jurnal Indonesia" },
+      { url: "https://itb.ac.id/research/456", title: "Universitas ITB" },
     ]
 
     // First pass: backend formatParagraphEndCitations
