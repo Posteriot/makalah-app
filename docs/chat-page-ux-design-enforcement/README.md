@@ -90,17 +90,33 @@ Sekarang dia adalah indikator pasif:
 
 Mode kelola di `Riwayat` sekarang:
 
-- dipicu dari icon header `Riwayat`
-- saat aktif, icon header berubah dari `settings` menjadi `close`
-- toolbar list menjadi compact:
-  - checkbox utama
-  - angka jumlah terseleksi
-  - satu icon `hapus`
+- dipicu dari icon `Settings` (h-5 w-5) di header `Riwayat`
+- saat aktif, icon header berubah dari `Settings` menjadi `Xmark` (close)
+- header Riwayat di-render dari `SidebarChatHistory` untuk kedua mode (manage dan non-manage), bukan dari `ChatSidebar` — ini menjamin posisi vertikal "Riwayat" stabil saat toggle mode
+- badge di header menunjukkan konteks berbeda per mode:
+  - non-manage: jumlah pagination (contoh: `14` atau `14 dari 20`)
+  - manage: jumlah terseleksi dari total (contoh: `3 dari 14`)
+- toolbar select-all compact:
+  - checkbox select-all (struktur identik dengan item: `-mt-[1px] h-[1.12rem] w-[1.12rem]`)
+  - icon `hapus` (h-[1.12rem] w-[1.12rem], icon h-3.5)
+  - angka jumlah terseleksi dihapus dari action bar (redundan dengan badge header)
 
 Semantics checkbox utama:
 
 - checkbox utama = semua percakapan user
 - bukan hanya semua item yang sedang tampil
+
+### 7. Layout spacing manage mode
+
+Spacing vertikal di manage mode diatur supaya semua gap antar section sama:
+
+- button "Percakapan Baru" wrapper: `px-3 pb-3 pt-3`
+- manage container: `px-3 pt-3 md:pt-0 flex flex-col` dengan `border-b`
+- Riwayat row: `pb-3` (gap ke select-all row)
+- select-all row: `pb-3` (gap ke border)
+- item percakapan: `py-3` (gap dari border ke konten)
+- semua icon button di manage header: `h-5 w-5` (20px) supaya tidak inflate row height
+- select-all row menggunakan `items-start` dan struktur kolom identik dengan item percakapan untuk alignment checkbox vertikal
 
 ## Status Implementasi Saat Ini
 
@@ -128,6 +144,12 @@ Sudah aktif:
 - state expand aktif persisten lintas refresh/remount
 - mode kelola compact dengan checkbox utama + delete tunggal
 - exact total count saat manage mode aktif
+- header Riwayat di-render dari `SidebarChatHistory` untuk kedua mode — posisi stabil saat toggle
+- badge header menunjukkan selection count di manage mode (`3 dari 14`)
+- angka redundan di action bar dihapus
+- spacing vertikal manage mode disamakan (pb-3/py-3)
+- button wrapper px-3 sejajar dengan header
+- select-all row struktur identik item row untuk alignment checkbox
 
 #### C. Sesi paper dan file paper
 
@@ -258,6 +280,9 @@ Urutan commit yang paling relevan terhadap bentuk akhir branch ini:
 - `f3baaf5f` `Refine conversation management controls`
 - `fb99e310` `Refine conversation selection semantics and remove superseded workspace docs`
 - `01de530c` `Align chat tree chevron color`
+- `ba16ec50` `Fix chat mobile cleanup and stabilize build fonts`
+- `d88c9ed9` `Tighten manage mode header-to-list spacing in chat sidebar`
+- `30c75816` `Unify manage mode layout: consistent spacing, selection badge, aligned elements`
 
 ## Constraint Visual dan UX yang Wajib Dipatuhi
 
@@ -332,7 +357,7 @@ Kalau ada anomali Convex baru, cek dulu:
 
 Kalau branch ini dilanjutkan lagi, titik lanjut yang paling logis sekarang adalah:
 
-1. polish mikro tambahan di tree sidebar dan manage mode
+1. verifikasi visual spacing manage mode di berbagai viewport (desktop narrow, tablet)
 2. audit UX mobile agar menyusul arsitektur desktop yang baru
 3. audit performa / cost query lebih lanjut untuk user dengan histori sangat besar
 4. integrasi kelak dengan `Knowledge Base` tanpa menghidupkan lagi panel kanan manager lama
