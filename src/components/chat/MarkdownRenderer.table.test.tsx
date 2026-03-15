@@ -315,7 +315,7 @@ describe("Table copy toolbar", () => {
     vi.mocked(navigator.clipboard.writeText).mockClear()
   })
 
-  it("renders Copy and Copy Markdown buttons below table", () => {
+  it("renders Text and Markdown copy buttons below table", () => {
     const md = [
       "| A | B |",
       "|---|---|",
@@ -323,11 +323,11 @@ describe("Table copy toolbar", () => {
     ].join("\n")
 
     render(<MarkdownRenderer markdown={md} />)
-    expect(screen.getByText("Copy")).toBeTruthy()
-    expect(screen.getByText("Copy Markdown")).toBeTruthy()
+    expect(screen.getByText("Text")).toBeTruthy()
+    expect(screen.getByText("Markdown")).toBeTruthy()
   })
 
-  it("copies tab-separated plain text on Copy click", async () => {
+  it("copies tab-separated plain text on Text click", async () => {
     const md = [
       "| Name | Value |",
       "|---|---|",
@@ -336,7 +336,7 @@ describe("Table copy toolbar", () => {
     ].join("\n")
 
     render(<MarkdownRenderer markdown={md} />)
-    fireEvent.click(screen.getByText("Copy"))
+    fireEvent.click(screen.getByText("Text"))
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -345,7 +345,7 @@ describe("Table copy toolbar", () => {
     })
   })
 
-  it("copies markdown source on Copy Markdown click", async () => {
+  it("copies markdown source on Markdown click", async () => {
     const md = [
       "| Name | Value |",
       "|---|---|",
@@ -353,7 +353,7 @@ describe("Table copy toolbar", () => {
     ].join("\n")
 
     render(<MarkdownRenderer markdown={md} />)
-    fireEvent.click(screen.getByText("Copy Markdown"))
+    fireEvent.click(screen.getByText("Markdown"))
 
     await waitFor(() => {
       const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0] as string

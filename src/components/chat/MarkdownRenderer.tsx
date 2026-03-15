@@ -3,6 +3,7 @@
 import { Fragment, type ReactNode, useState, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { cn } from "@/lib/utils"
+import { Copy, Check } from "iconoir-react"
 import { InlineCitationChip } from "./InlineCitationChip"
 import { STAGE_ORDER, getStageLabel, type PaperStageId } from "../../../convex/paperSessions/constants"
 
@@ -831,13 +832,18 @@ function TableCopyToolbar({ headers, rows }: { headers: string[]; rows: string[]
         : "text-[var(--chat-muted-foreground)] hover:text-[var(--chat-foreground)] hover:bg-[var(--chat-muted)]"
     )
 
+  const icon = (key: "plain" | "markdown") =>
+    copiedKey === key ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />
+
   return (
     <div className="flex justify-end gap-1 mt-1.5">
       <button type="button" onClick={copyPlain} className={btnClass("plain")}>
-        {copiedKey === "plain" ? "Copied" : "Copy"}
+        {icon("plain")}
+        <span>{copiedKey === "plain" ? "Copied" : "Text"}</span>
       </button>
       <button type="button" onClick={copyMarkdown} className={btnClass("markdown")}>
-        {copiedKey === "markdown" ? "Copied" : "Copy Markdown"}
+        {icon("markdown")}
+        <span>{copiedKey === "markdown" ? "Copied" : "Markdown"}</span>
       </button>
     </div>
   )
