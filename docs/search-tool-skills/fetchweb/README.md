@@ -58,6 +58,10 @@ Two candidate mechanisms identified:
 - `TAVILY_API_KEY` already configured in `.env.local` (prefix: `tvly-`)
 - Needs to be added to Vercel environment variables
 
+### Evaluated but Not Viable
+
+- **Cloudflare markdown.new** (`https://markdown.new/{url}`): Free service that converts HTML to clean markdown via three-tier fallback (Accept header → Workers AI → Browser Rendering). 500 requests/day per IP, no paid tier. Good as a technique (`Accept: text/markdown` header to Cloudflare-enabled sites) but unreliable for production — no SLA, no way to scale beyond 500/day, rate limit tied to server IP not API key.
+
 ### Open Questions (Not Yet Decided)
 
 - Where in the pipeline does fetching happen? After search? During search? Replacing search?
