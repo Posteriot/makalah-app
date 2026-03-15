@@ -24,6 +24,12 @@ type TelemetryEvent = {
   createdAt: number
 }
 
+const WEBSEARCH_TOOL_NAMES = new Set([
+  "google_search",
+  "web_search",
+  "two_pass_search",
+])
+
 const REQUIRED_FALLBACK_REASONS = [
   "google_search_tool_import_failed",
   "google_search_tool_factory_missing",
@@ -54,7 +60,8 @@ const formatReasonLabel = (reason: string) =>
   reason.replace(/_/g, " ")
 
 const isWebsearchEvent = (event: TelemetryEvent) =>
-  event.toolUsed === "google_search" || event.mode === "websearch"
+  (typeof event.toolUsed === "string" && WEBSEARCH_TOOL_NAMES.has(event.toolUsed)) ||
+  event.mode === "websearch"
 
 export function WebsearchToolMonitorPanel({
   toolHealth,
@@ -65,7 +72,17 @@ export function WebsearchToolMonitorPanel({
   recentFailures: TelemetryEvent[] | undefined
   failoverTimeline: TelemetryEvent[] | undefined
 }) {
-  const websearchHealth = toolHealth?.find((entry) => entry.tool === "google_search")
+  const websearchEntries = (toolHealth ?? []).filter((entry) => WEBSEARCH_TOOL_NAMES.has(entry.tool))
+  const websearchHealth = websearchEntries.length === 0
+    ? null
+    : {
+        totalCalls: websearchEntries.reduce((sum, entry) => sum + entry.totalCalls, 0),
+        successCount: websearchEntries.reduce((sum, entry) => sum + entry.successCount, 0),
+        failureCount: websearchEntries.reduce((sum, entry) => sum + entry.failureCount, 0),
+        avgLatencyMs:
+          websearchEntries.reduce((sum, entry) => sum + entry.avgLatencyMs * entry.totalCalls, 0) /
+          Math.max(1, websearchEntries.reduce((sum, entry) => sum + entry.totalCalls, 0)),
+      }
   const failureEvents = (recentFailures ?? []).filter(isWebsearchEvent)
   const failoverEvents = (failoverTimeline ?? []).filter(isWebsearchEvent)
 
@@ -106,14 +123,17 @@ export function WebsearchToolMonitorPanel({
             </div>
           ) : !websearchHealth ? (
             <p className="mt-4 font-mono text-[11px] text-muted-foreground">
-              Belum ada telemetry `google_search` pada periode ini.
+              Belum ada telemetry websearch pada periode ini.
             </p>
           ) : (
             <dl className="mt-4 space-y-2.5 text-xs">
               <Metric label="Total Call" value={websearchHealth.totalCalls.toLocaleString("id-ID")} />
               <Metric label="Success" value={websearchHealth.successCount.toLocaleString("id-ID")} />
               <Metric label="Failure" value={websearchHealth.failureCount.toLocaleString("id-ID")} />
-              <Metric label="Success Rate" value={formatPercent(websearchHealth.successRate)} />
+              <Metric
+                label="Success Rate"
+                value={formatPercent(websearchHealth.successCount / Math.max(1, websearchHealth.totalCalls))}
+              />
               <Metric label="Avg Latency" value={formatLatency(websearchHealth.avgLatencyMs)} />
             </dl>
           )}
@@ -227,4 +247,3 @@ function Metric({
     </div>
   )
 }
-
