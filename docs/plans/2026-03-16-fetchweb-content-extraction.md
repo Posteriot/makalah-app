@@ -106,6 +106,25 @@ describe("fetchPageContent", () => {
     expect(results[0].pageContent).not.toContain("Footer content")
   })
 
+  it("returns null pageContent when page has no article content (non-article page)", async () => {
+    // A page with only navigation/forms — readability can't extract an article
+    const html = `
+      <html><head><title>Login Page</title></head>
+      <body>
+        <nav>Menu</nav>
+        <form><input type="text" /><button>Login</button></form>
+      </body></html>
+    `
+    fetchSpy.mockResolvedValueOnce(
+      new Response(html, { status: 200, headers: { "content-type": "text/html" } }),
+    )
+
+    const results = await fetchPageContent(["https://example.com/login"])
+
+    expect(results[0].pageContent).toBeNull()
+    expect(results[0].fetchMethod).toBeNull()
+  })
+
   it("returns null pageContent when fetch returns non-200", async () => {
     fetchSpy.mockResolvedValueOnce(
       new Response("Not Found", { status: 404 }),
@@ -196,6 +215,8 @@ describe("fetchPageContent", () => {
 Run: `npx vitest run __tests__/content-fetcher.test.ts`
 
 Expected: FAIL — `Cannot find module '@/lib/ai/web-search/content-fetcher'`
+
+Note: Task 2 now has 8 test cases (added non-article page test).
 
 **Step 3: Commit**
 
@@ -357,7 +378,7 @@ function truncate(text: string): string {
 
 Run: `npx vitest run __tests__/content-fetcher.test.ts`
 
-Expected: All 7 tests PASS.
+Expected: All 8 tests PASS.
 
 If linkedom + readability has compatibility issues: replace `parseHTML` from `linkedom` with `JSDOM` from `jsdom`. This is the known risk from the design doc.
 
@@ -384,6 +405,7 @@ describe("fetchPageContent — Tavily fallback", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
+    vi.resetModules() // Clear module cache so vi.doMock takes effect on next import
     fetchSpy = vi.spyOn(global, "fetch")
   })
 
@@ -496,20 +518,7 @@ describe("buildSearchResultsContext — with pageContent", () => {
     expect(result).toContain("Actual page content here")
   })
 
-  it("marks sources without pageContent as unverified", () => {
-    const sources = [
-      {
-        url: "https://example.com/no-content",
-        title: "No Content",
-      },
-    ]
-
-    const result = buildSearchResultsContext(sources, "search findings")
-
-    expect(result).toContain("[no page content")
-  })
-
-  it("mixes verified and unverified sources", () => {
+  it("marks sources without pageContent as unverified when some have content", () => {
     const sources = [
       { url: "https://a.com", title: "Verified", pageContent: "Real content here." },
       { url: "https://b.com", title: "Unverified" },
@@ -519,6 +528,23 @@ describe("buildSearchResultsContext — with pageContent", () => {
 
     expect(result).toContain("Page content (verified)")
     expect(result).toContain("[no page content")
+  })
+
+  it("omits verified/unverified labels when NO source has pageContent (FetchWeb unavailable)", () => {
+    // When FetchWeb is entirely down, all sources lack pageContent.
+    // In this case, omit labels entirely — behave like current pipeline.
+    const sources = [
+      { url: "https://a.com", title: "Source A" },
+      { url: "https://b.com", title: "Source B" },
+    ]
+
+    const result = buildSearchResultsContext(sources, "search findings")
+
+    expect(result).not.toContain("Page content (verified)")
+    expect(result).not.toContain("[no page content")
+    // Should still have the basic source listing
+    expect(result).toContain("Source A")
+    expect(result).toContain("Source B")
   })
 })
 ```
@@ -551,13 +577,21 @@ export function buildSearchResultsContext(
     return `## SEARCH RESULTS\nNo sources found from web search. Answer based on your knowledge and inform the user that no web sources were available.`
   }
 
+  // Only show verified/unverified labels when at least one source has pageContent.
+  // When FetchWeb is entirely unavailable (no source has pageContent), omit labels
+  // to avoid making compose model over-cautious — behave like current pipeline.
+  const anyHasPageContent = sources.some((s) => s.pageContent)
+
   const sourceList = sources
     .map((s, i) => {
       const tierLabel = s.tier ? ` (${s.tier})` : ""
       const snippet = s.citedText ? `\n   Snippet: ${s.citedText}` : ""
-      const content = s.pageContent
-        ? `\n   Page content (verified):\n   ${s.pageContent.split("\n").join("\n   ")}`
-        : "\n   [no page content — unverified source]"
+      let content = ""
+      if (anyHasPageContent) {
+        content = s.pageContent
+          ? `\n   Page content (verified):\n   ${s.pageContent.split("\n").join("\n   ")}`
+          : "\n   [no page content — unverified source]"
+      }
       return `${i + 1}. ${s.title} — ${s.url}${tierLabel}${snippet}${content}`
     })
     .join("\n")
@@ -579,7 +613,7 @@ ${sourceList}${searchFindings}`
 
 Run: `npx vitest run __tests__/search-results-context-page-content.test.ts`
 
-Expected: All 3 tests PASS.
+Expected: All 4 tests PASS (including the FetchWeb-unavailable fallback test).
 
 **Step 5: Run existing search-results tests to check for regressions**
 
@@ -638,7 +672,7 @@ writer.write({
 
 const fetchedContent = await fetchPageContent(
   scoredSources.slice(0, 7).map((s) => s.url),
-  { tavilyApiKey: config.tavilyApiKey, timeoutMs: 10_000 },
+  { tavilyApiKey: config.tavilyApiKey, timeoutMs: 5_000 },
 )
 
 // Enrich sources with pageContent
@@ -662,9 +696,25 @@ const searchResultsContext = buildSearchResultsContext(
 )
 ```
 
-4. The compose `streamText` call now uses the enriched context. Since we moved context building into execute, the compose `streamText` call also moves into execute (after context is built).
+4. **CRITICAL restructuring — what moves into `execute`:**
 
-5. Key constraint: `composeSystemMessages` must be built inside `execute` now, using the enriched `searchResultsContext`.
+The following blocks currently run BEFORE stream creation (lines ~156-236 in current orchestrator). They must ALL move INSIDE the `execute` callback, AFTER the FetchWeb step:
+
+- `buildSearchResultsContext()` call (needs enriched sources)
+- `composeSkillInstructions()` call (no change, but must be in same scope)
+- `composeSystemMessages` array construction
+- `composeMessages` array construction
+- `streamText()` for compose model
+- The entire compose streaming loop (`for await (const chunk of composeResult...)`)
+
+What stays BEFORE stream creation (unchanged):
+- Phase 1 retriever loop (lines 102-140)
+- `cleanSearchText` generation (line 157-159)
+- `scoredSources` mapping (lines 162-168)
+- `sourceCount` calculation (line 168)
+- `skillInstructions` loading (lines 170-185) — can stay outside since it doesn't depend on pageContent
+
+The `execute` callback becomes the container for Phase 1.5 + Phase 2.
 
 **Step 3: Run full test suite**
 
@@ -756,28 +806,65 @@ git commit -m "feat: add CONTENT VERIFICATION section to SKILL.md"
 ### Task 9: Handle data-search Status in Client
 
 **Files:**
-- Search for where `data-search` status is consumed in client code. The new `"fetching-content"` status needs to display something (or be treated as a sub-state of "searching").
+- Modify: `src/components/chat/SearchStatusIndicator.tsx`
 
-**Step 1: Find client handler for data-search**
+The component uses a `SearchStatus` type and a `resolveText()` function to map status → display text.
 
-Run: `grep -r "fetching\|data-search\|searching\|composing" src/components/ --include="*.tsx" --include="*.ts" -l`
+**Step 1: Add "fetching-content" to SearchStatus type**
 
-Look for the component that handles `status: "searching"` / `status: "composing"` / `status: "done"` states.
+In `src/components/chat/SearchStatusIndicator.tsx`, find the type definition (line ~6):
 
-**Step 2: Add "fetching-content" status**
+```typescript
+// BEFORE:
+export type SearchStatus = "searching" | "composing" | "done" | "off" | "error"
 
-Two options (decide based on what you find):
+// AFTER:
+export type SearchStatus = "searching" | "fetching-content" | "composing" | "done" | "off" | "error"
+```
 
-**Option A — Map to existing status:** If the UI just shows a spinner with text, add "fetching-content" as a recognized status with label "Mengambil konten sumber..." (Indonesian).
+**Step 2: Add to SHIMMER_STATUSES set**
 
-**Option B — Ignore:** If `fetching-content` is not in the status enum, it may just be ignored by the client (treated as unknown). This is acceptable for v1 — the user sees "searching" then "composing" with a slightly longer gap.
+Find the `SHIMMER_STATUSES` set and add `"fetching-content"`:
 
-Prefer Option A if the status component uses a switch/map, Option B if it's a simple ternary.
+```typescript
+// BEFORE:
+const SHIMMER_STATUSES: ReadonlySet<SearchStatus> = new Set(["searching", "composing"])
 
-**Step 3: Commit if changes were made**
+// AFTER:
+const SHIMMER_STATUSES: ReadonlySet<SearchStatus> = new Set(["searching", "fetching-content", "composing"])
+```
+
+**Step 3: Add display text in resolveText()**
+
+Find the `resolveText()` function and add the new status case. Add between "searching" and "composing" cases:
+
+```typescript
+// Add this case:
+if (status === "fetching-content") return "Mengambil konten sumber..."
+```
+
+**Step 4: Update isProcessing check**
+
+Find the `isProcessing` variable and add the new status:
+
+```typescript
+// BEFORE:
+const isProcessing = status === "searching" || status === "composing" || status === "done"
+
+// AFTER:
+const isProcessing = status === "searching" || status === "fetching-content" || status === "composing" || status === "done"
+```
+
+**Step 5: Run type check**
+
+Run: `npx tsc --noEmit`
+
+Expected: No type errors.
+
+**Step 6: Commit**
 
 ```bash
-git add <changed-files>
+git add src/components/chat/SearchStatusIndicator.tsx
 git commit -m "feat: add fetching-content status to search UI"
 ```
 
@@ -805,7 +892,18 @@ Run: `npm run build`
 
 Expected: Build succeeds.
 
-**Step 4: Manual smoke test plan**
+**Step 4: Add TAVILY_API_KEY to Vercel environment**
+
+Run:
+```bash
+npx vercel env add TAVILY_API_KEY
+```
+
+When prompted: paste the key from `.env.local` (starts with `tvly-`). Add to all environments (Development, Preview, Production).
+
+Alternatively, add via Vercel dashboard: Project → Settings → Environment Variables.
+
+**Step 5: Manual smoke test plan**
 
 To verify the feature works end-to-end, test with the same query that demonstrated hallucination:
 
@@ -818,7 +916,7 @@ To verify the feature works end-to-end, test with the same query that demonstrat
    - Response should either cite actual page content OR declare insufficiency
 5. Check server logs for `[content-fetcher]` or `[Orchestrator]` Phase 1.5 output
 
-**Step 5: Final commit if any fixes needed**
+**Step 6: Final commit if any fixes needed**
 
 ```bash
 git add -A
