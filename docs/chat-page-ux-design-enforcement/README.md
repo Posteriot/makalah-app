@@ -221,6 +221,21 @@ Sudah aktif:
 - hardening access control artifact
 - dead query dan dead surface manager lama sudah dihapus
 
+#### I. Composer mobile dan header sidebar mobile
+
+Sudah aktif:
+
+- composer mobile chat tidak lagi memakai mode inline context button yang berubah-ubah
+- composer mobile sekarang selalu memakai layout dua baris stabil seperti desktop:
+  - tray konteks di baris atas
+  - separator
+  - area input + aksi kirim/fullscreen di baris bawah
+- textarea mobile tetap satu instance saat isi bertambah ke multiline
+- safe-area bawah untuk composer mobile sudah diatur eksplisit
+- densitas vertikal composer mobile sudah dirapatkan supaya tidak terasa terlalu tinggi saat keyboard terbuka
+- fullscreen composer mobile punya safe-area top/bottom sendiri karena hidup sebagai overlay `fixed`
+- header sidebar mobile sudah memakai slot kiri dan kanan simetris, sehingga tabs `Riwayat | Linimasa` benar-benar center secara optik terhadap header penuh
+
 ### Sudah Dihapus dari Branch Ini
 
 - route / halaman penuh workspace manager lama
@@ -260,9 +275,13 @@ Sudah aktif:
 
 - `src/components/chat/sidebar/SidebarProgress.tsx`
 
-### Composer desktop
+### Composer chat
 
 - `src/components/chat/ChatInput.tsx`
+
+### Header sidebar mobile
+
+- `src/components/chat/layout/ChatLayout.tsx`
 
 ## File Test yang Menjadi Bukti Regresi
 
@@ -287,6 +306,11 @@ Sudah aktif:
 - `convex/conversations.bulk-delete.test.ts`
 - `convex/artifacts.list-by-conversation.test.ts`
 
+### Composer mobile dan header sidebar mobile
+
+- `src/components/chat/ChatInput.mobile-layout.test.tsx`
+- `src/components/chat/layout/ChatLayout.sidebar-tree.test.tsx`
+
 ## Commit Penting untuk Menelusuri Progres
 
 Urutan commit yang paling relevan terhadap bentuk akhir branch ini:
@@ -310,6 +334,11 @@ Urutan commit yang paling relevan terhadap bentuk akhir branch ini:
 - `ba16ec50` `Fix chat mobile cleanup and stabilize build fonts`
 - `d88c9ed9` `Tighten manage mode header-to-list spacing in chat sidebar`
 - `30c75816` `Unify manage mode layout: consistent spacing, selection badge, aligned elements`
+
+### Composer mobile dan header sidebar mobile
+
+- `9b7e89a9` `Refine mobile chat composer layout`
+- `05bafb0c` `Center mobile sidebar header tabs`
 
 ### Table rendering
 
@@ -385,9 +414,9 @@ Kalau ada anomali Convex baru, cek dulu:
 - `chat-session-sidebar/2026-03-12-chat-session-sidebar-tree-implementation-plan-v1.md`
   implementation plan final untuk sidebar tree
 - `input/2026-03-11-desktop-chat-input-inline-context-autogrow-design.md`
-  design doc composer desktop
+  design doc composer desktop lama, sudah tidak mewakili implementasi mobile terbaru
 - `input/2026-03-11-desktop-chat-input-inline-context-autogrow-rollout-plan.md`
-  implementation plan composer desktop
+  implementation plan composer desktop lama, sudah tidak mewakili implementasi mobile terbaru
 - `2026-03-15-chat-visual-rendering-handoff.md`
   context handoff untuk visual rendering di chat (markdown renderer, message bubble, dll)
 - `../superpowers/specs/2026-03-15-table-rendering-improvement-design.md`
@@ -400,7 +429,7 @@ Kalau ada anomali Convex baru, cek dulu:
 Kalau branch ini dilanjutkan lagi, titik lanjut yang paling logis sekarang adalah:
 
 1. verifikasi visual spacing manage mode di berbagai viewport (desktop narrow, tablet)
-2. audit UX mobile agar menyusul arsitektur desktop yang baru
+2. audit minor UX mobile lanjutan untuk polish, bukan lagi perubahan arsitektur composer/header
 3. audit performa / cost query lebih lanjut untuk user dengan histori sangat besar
 4. integrasi kelak dengan `Knowledge Base` tanpa menghidupkan lagi panel kanan manager lama
 
