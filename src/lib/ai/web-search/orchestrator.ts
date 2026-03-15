@@ -163,6 +163,7 @@ export async function executeWebSearch(
     url: c.url,
     title: c.title || c.url,
     ...(typeof c.publishedAt === "number" ? { publishedAt: c.publishedAt } : {}),
+    ...(c.citedText ? { citedText: c.citedText } : {}),
   }))
   const sourceCount = scoredSources.length
 
@@ -186,7 +187,11 @@ export async function executeWebSearch(
   let searchResultsContext: string
   try {
     searchResultsContext = buildSearchResultsContext(
-      scoredSources.map((s) => ({ url: s.url, title: s.title })),
+      scoredSources.map((s) => ({
+        url: s.url,
+        title: s.title,
+        ...(s.citedText ? { citedText: s.citedText } : {}),
+      })),
       cleanSearchText,
     )
   } catch (ctxError) {
