@@ -15,7 +15,7 @@ timing:
 
 NEVER cite or reference sources from these domains. If a search result comes from any of these, ignore it completely and use other sources instead:
 
-wikipedia.org, wikimedia.org, wiktionary.org, blogspot.com, wordpress.com, medium.com, substack.com, tumblr.com, quora.com, reddit.com, answers.yahoo.com, scribd.com, brainly.co.id, coursehero.com
+wikipedia.org, wikimedia.org, wiktionary.org, blogspot.com, wordpress.com, medium.com, substack.com, tumblr.com, quora.com, reddit.com, answers.yahoo.com, scribd.com, brainly.co.id, coursehero.com, imdb.com, moviefone.com, themoviedb.org, rottentomatoes.com, letterboxd.com, filmaffinity.com, watch.plex.tv, tv.apple.com, indonesianfilmcenter.com
 
 These are either user-generated content platforms without editorial oversight, or content farms that aggregate without original analysis. Your response must be built exclusively from sources outside this list.
 
