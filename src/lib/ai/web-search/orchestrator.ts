@@ -20,6 +20,7 @@ import type {
   RetrieverChainEntry,
 } from "./types"
 import type { SkillContext } from "@/lib/ai/skills/types"
+import { sanitizeReasoningDelta } from "@/lib/ai/reasoning-sanitizer"
 
 /**
  * Compose Phase Directive — injected into compose context to prevent
@@ -308,20 +309,41 @@ export async function executeWebSearch(
         },
       })
 
+      // Reasoning accumulator: convert raw reasoning chunks to data-reasoning-thought
+      // events that the client UI expects (same pattern as non-search path in route.ts)
+      const reasoningTraceId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}-trace`
+      let reasoningChunkCount = 0
+
       // Stream compose output to user
       for await (const chunk of composeResult.toUIMessageStream({
         sendStart: false,
         generateMessageId: () => messageId,
         sendReasoning: config.isTransparentReasoning,
       })) {
-        // Forward reasoning chunks when transparent reasoning is enabled;
-        // skip them otherwise to avoid empty UI artifacts.
+        // Convert reasoning chunks to data-reasoning-thought events for UI
         if (
           chunk.type === "reasoning-start" ||
           chunk.type === "reasoning-delta" ||
           chunk.type === "reasoning-end"
         ) {
           if (!config.isTransparentReasoning) continue
+
+          if (chunk.type === "reasoning-delta") {
+            reasoningChunkCount += 1
+            const sanitized = sanitizeReasoningDelta(chunk.delta ?? "")
+            if (sanitized.trim() && (reasoningChunkCount % 3 === 0 || sanitized.length > 100)) {
+              writer.write({
+                type: "data-reasoning-thought",
+                id: `${reasoningTraceId}-thought-${reasoningChunkCount}`,
+                data: {
+                  traceId: reasoningTraceId,
+                  delta: sanitized,
+                  ts: Date.now(),
+                },
+              })
+            }
+          }
+          continue
         }
 
         if (chunk.type === "text-delta") {
