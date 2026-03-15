@@ -238,7 +238,7 @@ describe("MarkdownRenderer table rendering", () => {
     const ths = container.querySelectorAll("th")
     expect(ths.length).toBe(3)
     const wrapper = container.querySelector("table")?.parentElement
-    expect(wrapper?.className).toContain("overflow-hidden")
+    expect(wrapper?.className).toContain("overflow-x-auto")
   })
 
   it("renders table headers with sans-serif font (not mono)", () => {

@@ -786,18 +786,22 @@
   background-color: var(--neutral-950);
 }
 
-/* Table cell URL truncation — URLs in table cells get truncated, expand on hover */
+/* Table cell URL truncation — URLs in table cells get truncated, expand on hover.
+   Uses !important to override linkClassName's break-all and overflow-wrap:anywhere
+   which are applied as Tailwind utility/arbitrary classes on the <a> element. */
 [data-chat-scope] table td a[href] {
-  display: block;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block !important;
+  max-width: 200px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
 }
 [data-chat-scope] table td a[href]:hover {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  max-width: none;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  max-width: none !important;
 }
 
 /* ==========================================================================

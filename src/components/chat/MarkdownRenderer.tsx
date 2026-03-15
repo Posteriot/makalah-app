@@ -890,9 +890,8 @@ function ChatTable({
           context={context}
         />
       ) : (
-        <div className="overflow-x-auto">
-          <div className="overflow-hidden rounded-action border border-[color:var(--chat-border)]">
-            <table className="w-full border-collapse text-[13px]">
+        <div className="overflow-x-auto overflow-y-hidden rounded-action border border-[color:var(--chat-border)]">
+            <table className="min-w-full border-collapse text-[13px]">
               <thead>
                 <tr className="bg-[var(--chat-muted)]">
                   {block.headers.map((header, hIdx) => (
@@ -928,7 +927,6 @@ function ChatTable({
                 ))}
               </tbody>
             </table>
-          </div>
         </div>
       )}
       <TableCopyToolbar headers={block.headers} rows={block.rows} />
