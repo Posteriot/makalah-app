@@ -50,8 +50,11 @@ export async function fetchPageContent(
 
   const results: FetchedContent[] = primaryResults.map((settled, i) => {
     if (settled.status === "fulfilled" && settled.value) {
+      console.log(`[FetchWeb] ✓ PRIMARY ok: ${urls[i]} (${settled.value.length} chars)`)
       return { url: urls[i], pageContent: settled.value, fetchMethod: "fetch" as const }
     }
+    const reason = settled.status === "rejected" ? settled.reason?.message : "empty/null content"
+    console.log(`[FetchWeb] ✗ PRIMARY fail: ${urls[i]} — ${reason}`)
     return { url: urls[i], pageContent: null, fetchMethod: null }
   })
 
@@ -62,16 +65,25 @@ export async function fetchPageContent(
       .map((r) => r.url)
 
     if (failedUrls.length > 0) {
+      console.log(`[FetchWeb] Tavily fallback for ${failedUrls.length} failed URLs...`)
       const tavilyResults = await fetchViaTavily(failedUrls, options.tavilyApiKey)
       for (const tr of tavilyResults) {
         const idx = results.findIndex((r) => r.url === tr.url)
         if (idx !== -1 && tr.content) {
+          console.log(`[FetchWeb] ✓ TAVILY ok: ${tr.url} (${tr.content.length} chars)`)
           results[idx].pageContent = truncate(tr.content)
           results[idx].fetchMethod = "tavily"
+        } else {
+          console.log(`[FetchWeb] ✗ TAVILY fail: ${tr.url}`)
         }
       }
     }
   }
+
+  const successCount = results.filter((r) => r.pageContent !== null).length
+  const fetchCount = results.filter((r) => r.fetchMethod === "fetch").length
+  const tavilyCount = results.filter((r) => r.fetchMethod === "tavily").length
+  console.log(`[FetchWeb] Done: ${successCount}/${urls.length} succeeded (fetch=${fetchCount}, tavily=${tavilyCount})`)
 
   return results
 }

@@ -38,10 +38,15 @@ export function buildSearchResultsContext(
     ? `\n\nSearch findings (raw, for your synthesis — do NOT copy verbatim, rewrite with your own analysis):\n${searchText.trim()}`
     : ""
 
-  return `## SEARCH RESULTS (COMPLETED)
+  const context = `## SEARCH RESULTS (COMPLETED)
 Web search has been executed. The following sources were retrieved.
 You MUST synthesize these sources in your response. Use ONLY these sources for citations. Do not fabricate or guess URLs.
 
 Sources:
 ${sourceList}${searchFindings}`
+
+  const verifiedCount = sources.filter((s) => s.pageContent).length
+  console.log(`[SearchContext] Built context: ${sources.length} sources (${verifiedCount} verified), ${context.length} chars total`)
+
+  return context
 }
