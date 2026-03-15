@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render } from "@testing-library/react"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { formatParagraphEndCitations } from "@/lib/citations/paragraph-citation-formatter"
 

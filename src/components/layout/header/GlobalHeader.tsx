@@ -168,6 +168,8 @@ export function GlobalHeader() {
   }, [])
 
   useEffect(() => {
+    // Intentionally set after mount so first client paint matches SSR output.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMounted(true)
   }, [])
 
@@ -203,6 +205,8 @@ export function GlobalHeader() {
   }, [isMobileMenuOpen])
 
   useEffect(() => {
+    // Sync menu visibility to route changes without changing existing UX.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenuState((prev) => {
       if (!prev.isOpen && prev.pathname === pathname) return prev
       return { isOpen: false, pathname }
@@ -211,11 +215,15 @@ export function GlobalHeader() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
+    // Hash is browser-only state, so we read it after navigation settles.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentHash(window.location.hash)
   }, [pathname, currentSearch])
 
   useEffect(() => {
     if (authViewState === "authenticated") return
+    // Keep unauthenticated mobile state closed to avoid stale open panels.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenuState((prev) => {
       if (!prev.isOpen) return prev
       return { isOpen: false, pathname }
