@@ -220,10 +220,16 @@ export async function executeWebSearch(
         data: { status: "fetching-content", sourceCount },
       })
 
+      const urlsToFetch = scoredSources.slice(0, 7).map((s) => s.url)
+      console.log(`[Orchestrator] Phase 1.5: fetching content for ${urlsToFetch.length} URLs...`)
+      const fetchStart = Date.now()
+
       const fetchedContent = await fetchPageContent(
-        scoredSources.slice(0, 7).map((s) => s.url),
+        urlsToFetch,
         { tavilyApiKey: config.tavilyApiKey, timeoutMs: 5_000 },
       )
+
+      console.log(`[Orchestrator] Phase 1.5 done in ${Date.now() - fetchStart}ms`)
 
       // Enrich sources with pageContent
       const enrichedSources = scoredSources.map((s) => {
@@ -233,6 +239,9 @@ export async function executeWebSearch(
           ...(fetched?.pageContent ? { pageContent: fetched.pageContent } : {}),
         }
       })
+
+      const enrichedCount = enrichedSources.filter((s) => s.pageContent).length
+      console.log(`[Orchestrator] Enriched: ${enrichedCount}/${enrichedSources.length} sources have pageContent`)
 
       // ── Build compose context using enrichedSources ──
       let searchResultsContext: string
@@ -302,13 +311,14 @@ export async function executeWebSearch(
         generateMessageId: () => messageId,
         sendReasoning: config.isTransparentReasoning,
       })) {
-        // Skip reasoning chunks (not forwarded in web search mode)
+        // Forward reasoning chunks when transparent reasoning is enabled;
+        // skip them otherwise to avoid empty UI artifacts.
         if (
           chunk.type === "reasoning-start" ||
           chunk.type === "reasoning-delta" ||
           chunk.type === "reasoning-end"
         ) {
-          continue
+          if (!config.isTransparentReasoning) continue
         }
 
         if (chunk.type === "text-delta") {
